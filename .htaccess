@@ -5,7 +5,7 @@ RewriteOptions inherit
     </IfModule>
 
     RewriteEngine On
-    RewriteBase /ems/
+    RewriteBase /billing.skoolready.com/
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
@@ -16,10 +16,10 @@ RewriteOptions inherit
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Handle Front Controller - redirect to public folder
+    # Handle Front Controller - redirect to root index.php
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^ public/index.php [L]
+    RewriteRule ^ index.php [L]
 </IfModule>
 
 # php -- BEGIN cPanel-generated handler, do not edit
