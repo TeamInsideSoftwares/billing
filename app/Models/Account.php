@@ -11,8 +11,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Account extends Authenticatable
 {
     use HasAlphaNumericId, HasFactory, Notifiable;
+    // 1. Tell Laravel the actual name of your primary key
+    protected $primaryKey = 'accountid';
+
+    // 2. Tell Laravel this is NOT an auto-incrementing integer
+    public $incrementing = false;
+
+    // 3. Tell Laravel the key type is a string
+    protected $keyType = 'string';
 
     protected $fillable = [
+        'accountid',
         'name',
         'slug',
         'status',

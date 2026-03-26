@@ -152,16 +152,44 @@ Invoice Items Table
 </section>
 
 @if($invoice->payments->count())
-<section class="panel-card">
-    <h3>Payments ({{ $invoice->payments->count() }})</h3>
-    <div class="table-list">
-        @foreach($invoice->payments->take(5) as $payment)
-        <div class="table-row">
-            <div><strong>{{ $payment->reference ?? 'Payment' }}</strong></div>
-            <div>Rs {{ number_format($payment->amount) }}</div>
-            <div>{{ $payment->paid_at }} - {{ $payment->method }}</div>
-        </div>
-        @endforeach
+<section class="panel-card" style="margin-top: 2rem;">
+    <h3 style="margin-top: 0; font-size: 1.1em; color: #374151;">Payments received ({{ $invoice->payments->count() }})</h3>
+    <table class="data-table" style="width: 100%; margin-top: 1rem;">
+        <thead>
+            <tr style="text-align: left; border-bottom: 2px solid #e5e7eb;">
+                <th style="padding: 0.75rem 0.5rem;">Date</th>
+                <th style="padding: 0.75rem 0.5rem;">Method</th>
+                <th style="padding: 0.75rem 0.5rem;">Reference</th>
+                <th style="padding: 0.75rem 0.5rem; text-align: right;">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($invoice->payments as $payment)
+            <tr style="border-bottom: 1px solid #f3f4f6;">
+                <td style="padding: 0.75rem 0.5rem;">{{ $payment->paid_at instanceof \DateTime ? $payment->paid_at->format('d M Y') : $payment->paid_at }}</td>
+                <td style="padding: 0.75rem 0.5rem;">{{ $payment->method }}</td>
+                <td style="padding: 0.75rem 0.5rem;">{{ $payment->reference ?? 'N/A' }}</td>
+                <td style="padding: 0.75rem 0.5rem; text-align: right;"><strong>Rs {{ number_format($payment->amount, 2) }}</strong></td>
+            </tr>
+            @endforeach
+        </tbody>
+        <tfoot style="border-top: 2px solid #e5e7eb;">
+            <tr>
+                <td colspan="3" style="padding: 1rem 0.5rem 0.5rem; text-align: right;"><strong>Total Paid:</strong></td>
+                <td style="padding: 1rem 0.5rem 0.5rem; text-align: right;"><strong>Rs {{ number_format($invoice->payments->sum('amount'), 2) }}</strong></td>
+            </tr>
+            <tr>
+                <td colspan="3" style="padding: 0.5rem; text-align: right;"><strong>Balance Due:</strong></td>
+                <td style="padding: 0.5rem; text-align: right; color: #ef4444;"><strong>Rs {{ number_format($invoice->balance_due, 2) }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+</section>
+@else
+<section class="panel-card" style="margin-top: 2rem;">
+    <div style="text-align: center; padding: 2rem; color: #6b7280;">
+        <p style="margin-bottom: 1rem;">No payments recorded for this invoice yet.</p>
+        <a href="{{ route('payments.create', ['invoiceid' => $invoice->invoiceid, 'clientid' => $invoice->clientid, 'amount' => $invoice->balance_due]) }}" class="primary-button" style="text-decoration: none; display: inline-block;">Record a payment</a>
     </div>
 </section>
 @endif

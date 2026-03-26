@@ -8,9 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'account_id',
-    'client_id',
-    'service_id',
+    'accountid',
+    'clientid',
+    'serviceid',
     'start_date',
     'next_billing_date',
     'end_date',
@@ -23,6 +23,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class Subscription extends Model
 {
+protected $primaryKey = 'subscriptionid';
+    public function getRouteKeyName(): string
+    {
+        return 'subscriptionid';
+    }
+
+    protected function idLength(): int
+    {
+        return 6;
+    }
+
     use HasAlphaNumericId;
 
     protected function casts(): array
@@ -39,17 +50,17 @@ class Subscription extends Model
 
     public function account(): BelongsTo
     {
-        return $this->belongsTo(Account::class);
+        return $this->belongsTo(Account::class, 'accountid');
     }
 
     public function client(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Client::class, 'clientid');
     }
 
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(Service::class, 'serviceid');
     }
 
     public function creator(): BelongsTo

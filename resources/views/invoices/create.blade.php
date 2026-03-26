@@ -14,16 +14,16 @@
         @csrf
         <div class="form-grid">
             <div>
-                <label for="client_id">Select Client *</label>
-                <select id="client_id" name="client_id" required>
+                <label for="clientid">Select Client *</label>
+                <select id="clientid" name="clientid" required>
                     <option value="">-- Choose Client --</option>
                     @foreach($clients as $client)
-                        <option value="{{ $client->id }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
+                        <option value="{{ $client->clientid }}" {{ old('clientid') == $client->clientid ? 'selected' : '' }}>
                             {{ $client->business_name ?? $client->contact_name }}
                         </option>
                     @endforeach
                 </select>
-                @error('client_id') <span class="error">{{ $message }}</span> @enderror
+                @error('clientid') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="invoice_number">Invoice Number *</label>
@@ -61,11 +61,11 @@
             {{-- Add Item Row --}}
             <div class="add-item-row form-grid" style="background: #f9fafb; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
                 <div>
-                    <label for="item_service_id">Service *</label>
-                    <select id="item_service_id">
+                    <label for="item_serviceid">Service *</label>
+                    <select id="item_serviceid">
                         <option value="">-- Select Service --</option>
                         @foreach($services as $service)
-                            <option value="{{ $service->id }}" 
+                            <option value="{{ $service->serviceid }}" 
                                     data-unit-price="{{ $service->unit_price }}" 
                                     data-tax-rate="{{ $service->tax_rate ?? 18 }}">
                                 {{ $service->name }} (Rs {{ number_format($service->unit_price, 2) }})
@@ -79,11 +79,11 @@
                 </div>
                 <div>
                     <label for="item_unit_price">Unit Price (Rs)</label>
-                    <input type="number" id="item_unit_price" min="0" step="0.01" readonly>
+                    <input type="number" id="item_unit_price" min="0" step="0.01">
                 </div>
                 <div>
                     <label for="item_tax_rate">Tax (%)</label>
-                    <input type="number" id="item_tax_rate" min="0" max="100" step="0.01" readonly>
+                    <input type="number" id="item_tax_rate" min="0" max="100" step="0.01">
                 </div>
                 <div style="align-self: end;">
                     <button type="button" id="addItemBtn" class="primary-button" style="height: 100%;">Add Item</button>
@@ -140,32 +140,26 @@ document.addEventListener('DOMContentLoaded', function() {
     let itemCounter = 0;
     const items = [];
 
+    const tbody = document.getElementById('itemsTbody');
+
     // Service select change
-    document.getElementById('item_service_id').addEventListener('change', function() {
+    document.getElementById('item_serviceid').addEventListener('change', function() {
         const option = this.options[this.selectedIndex];
-        document.getElementById('item_unit_price').value = option.dataset.unitPrice || '';
-        document.getElementById('item_tax_rate').value = option.dataset.taxRate || '';
-        calculateLineTotal();
+        if (option.value) {
+            document.getElementById('item_unit_price').value = option.dataset.unitPrice || '0';
+            document.getElementById('item_tax_rate').value = option.dataset.taxRate || '0';
+        } else {
+            document.getElementById('item_unit_price').value = '';
+            document.getElementById('item_tax_rate').value = '';
+        }
     });
-
-    // Qty/Price/Tax change
-    ['item_quantity', 'item_unit_price', 'item_tax_rate'].forEach(id => {
-        document.getElementById(id).addEventListener('input', calculateLineTotal);
-    });
-
-    function calculateLineTotal() {
-        const qty = parseFloat(document.getElementById('item_quantity').value) || 0;
-        const price = parseFloat(document.getElementById('item_unit_price').value) || 0;
-        const lineTotal = qty * price;
-        // Display line total if needed
-    }
 
     // Add Item
     document.getElementById('addItemBtn').addEventListener('click', function() {
-        const serviceId = document.getElementById('item_service_id').value;
+        const serviceId = document.getElementById('item_serviceid').value;
         if (!serviceId) return alert('Select a service');
 
-        const serviceName = document.getElementById('item_service_id').options[document.getElementById('item_service_id').selectedIndex].text;
+        const serviceName = document.getElementById('item_serviceid').options[document.getElementById('item_serviceid').selectedIndex].text;
         const qty = parseFloat(document.getElementById('item_quantity').value) || 1;
         const unitPrice = parseFloat(document.getElementById('item_unit_price').value) || 0;
         const taxRate = parseFloat(document.getElementById('item_tax_rate').value) || 0;
@@ -175,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
         itemCounter++;
         const item = {
             id: itemCounter,
-            service_id: serviceId,
+            serviceid: serviceId,
             service_name: serviceName,
             quantity: qty,
             unit_price: unitPrice,
@@ -185,27 +179,53 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         items.push(item);
 
-        // Add row to table
-        const tbody = document.getElementById('itemsTbody');
-        const row = tbody.insertRow();
+        const row = document.createElement('tr');
+        row.dataset.itemId = itemCounter;
         row.innerHTML = `
-            <td style="padding: 1rem;">${serviceName}</td>
-            <td style="padding: 1rem; text-align: right;">${qty.toFixed(2)}</td>
-            <td style="padding: 1rem; text-align: right;">Rs ${unitPrice.toFixed(2)}</td>
-            <td style="padding: 1rem; text-align: right;">${taxRate}%</td>
-            <td style="padding: 1rem; text-align: right;"><strong>Rs ${lineTotal.toFixed(2)}</strong></td>
+            <td style="padding: 1rem;">
+                ${serviceName}
+            </td>
+            <td style="padding: 1rem; text-align: right;">
+                <input type="number" class="item-qty" value="${qty}" min="0.01" step="0.01" style="width: 100px; text-align: right;">
+            </td>
+            <td style="padding: 1rem; text-align: right;">
+                <input type="number" class="item-price" value="${unitPrice}" min="0" step="0.01" style="width: 100px; text-align: right;">
+            </td>
+            <td style="padding: 1rem; text-align: right;">
+                <input type="number" class="item-tax" value="${taxRate}" min="0" max="100" step="0.01" style="width: 100px; text-align: right;">
+            </td>
+            <td style="padding: 1rem; text-align: right;" class="item-line-total"><strong>Rs ${lineTotal.toFixed(2)}</strong></td>
             <td style="padding: 1rem; text-align: right;">
                 <button type="button" class="remove-item" data-id="${itemCounter}" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Remove</button>
             </td>
         `;
+        tbody.appendChild(row);
 
         document.getElementById('itemsTable').style.display = 'table';
         updateSummary();
         resetItemInputs();
     });
 
+    // Inline edit
+    tbody.addEventListener('input', function(e) {
+        if (e.target.classList.contains('item-qty') || e.target.classList.contains('item-price') || e.target.classList.contains('item-tax')) {
+            const row = e.target.closest('tr');
+            const itemId = parseInt(row.dataset.itemId);
+            const item = items.find(i => i.id === itemId);
+            if (item) {
+                item.quantity = parseFloat(row.querySelector('.item-qty').value) || 0;
+                item.unit_price = parseFloat(row.querySelector('.item-price').value) || 0;
+                item.tax_rate = parseFloat(row.querySelector('.item-tax').value) || 0;
+                item.line_total = item.quantity * item.unit_price;
+                item.tax_amount = item.line_total * (item.tax_rate / 100);
+                row.querySelector('.item-line-total strong').textContent = `Rs ${item.line_total.toFixed(2)}`;
+                updateSummary();
+            }
+        }
+    });
+
     // Remove item
-    document.addEventListener('click', function(e) {
+    tbody.addEventListener('click', function(e) {
         if (e.target.classList.contains('remove-item')) {
             const itemId = parseInt(e.target.dataset.id);
             const index = items.findIndex(item => item.id === itemId);
@@ -233,7 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('formTaxTotal').value = taxTotal;
         document.getElementById('formGrandTotal').value = grandTotal;
         document.getElementById('formItemsData').value = JSON.stringify(items.map(item => ({
-            service_id: item.service_id,
+            serviceid: item.serviceid,
             quantity: item.quantity,
             unit_price: item.unit_price,
             tax_rate: item.tax_rate,
@@ -244,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function resetItemInputs() {
-        document.getElementById('item_service_id').value = '';
+        document.getElementById('item_serviceid').value = '';
         document.getElementById('item_quantity').value = 1;
         document.getElementById('item_unit_price').value = '';
         document.getElementById('item_tax_rate').value = '';
@@ -252,3 +272,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endsection
+

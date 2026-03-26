@@ -14,7 +14,16 @@ export default defineConfig({
     server: {
         host: true,
         watch: {
-            ignored: ['**/storage/framework/views/**'],
+            usePolling: true,
+            debounce: 1000,
+            ignored: [
+                '**/storage/framework/views/**',
+                '**/node_modules/**',
+                '**/storage/**',
+                '**/vendor/**',
+                '**/.git/**',
+            ],
         },
+
     },
 });

@@ -343,6 +343,96 @@ a {
 
 .activity-item:last-child { border-bottom: 0; }
 
+/* Paper Component (Modern Invoice Look) */
+.paper-canvas {
+    background: #e2e8f0;
+    padding: 3rem 1rem;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+}
+
+.paper {
+    background: white;
+    width: 100%;
+    max-width: 800px;
+    padding: 4rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border-radius: 0.125rem;
+    color: #1e293b;
+    font-family: 'Inter', serif;
+}
+
+.paper h1, .paper h2, .paper h3 {
+    color: #0f172a;
+    font-weight: 800;
+}
+
+.paper-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4rem;
+}
+
+.paper-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3rem;
+    margin-bottom: 3rem;
+}
+
+.paper-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.paper-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 3rem;
+}
+
+.paper-table th {
+    text-align: left;
+    padding: 1rem 0;
+    border-bottom: 2px solid #f1f5f9;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.paper-table td {
+    padding: 1.25rem 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.paper-summary {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+    margin-top: 2rem;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    width: 250px;
+    font-size: 0.95rem;
+}
+
+.summary-row.total {
+    border-top: 2px solid #0f172a;
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    font-weight: 800;
+    font-size: 1.25rem;
+    color: #0f172a;
+}
+
 /* Section Bar */
 .section-bar {
     display: flex;
@@ -359,6 +449,37 @@ a {
 
 .text-link:hover {
   text-decoration: underline;
+}
+
+/* Data Tables for Index Pages - Bottom borders only */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 0.875rem 0 0.625rem 0;
+  border-bottom: 2px solid var(--line);
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0.025em;
+}
+
+.data-table td {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.data-table tbody tr:hover {
+  background: var(--panel-hover);
+}
+
+.data-table .table-actions {
+  white-space: nowrap;
 }
 
 @media (max-width: 1024px) {

@@ -9,8 +9,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'account_id',
+    'accountid',
     'client_code',
+
     'business_name',
     'contact_name',
     'email',
@@ -28,6 +29,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class Client extends Model
 {
+protected $primaryKey = 'clientid';
+    public function getRouteKeyName(): string
+    {
+        return 'clientid';
+    }
+
+    protected function idLength(): int
+    {
+        return 6;
+    }
+
     use HasAlphaNumericId;
 
     public function account(): BelongsTo
@@ -37,21 +49,22 @@ class Client extends Model
 
     public function invoices(): HasMany
     {
-        return $this->hasMany(Invoice::class);
+        return $this->hasMany(Invoice::class, 'clientid');
     }
 
     public function payments(): HasMany
     {
-        return $this->hasMany(Payment::class);
+        return $this->hasMany(Payment::class, 'clientid');
     }
 
     public function subscriptions(): HasMany
     {
-        return $this->hasMany(Subscription::class);
+        return $this->hasMany(Subscription::class, 'clientid');
     }
 
     public function users(): HasMany
     {
-        return $this->hasMany(User::class);
+        return $this->hasMany(User::class, 'clientid');
     }
+
 }

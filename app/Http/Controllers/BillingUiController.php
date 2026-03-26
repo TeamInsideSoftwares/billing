@@ -21,13 +21,13 @@ class BillingUiController extends Controller
 {
     public function dashboard(): View
     {
-        $accountId = auth()->id();
+        $accountid = auth()->id();
         
         $stats = [
-            ['label' => 'Total Clients', 'value' => Client::where('account_id', $accountId)->count(), 'change' => '', 'tone' => 'positive'],
-            ['label' => 'Total Invoices', 'value' => Invoice::where('account_id', $accountId)->count(), 'change' => '', 'tone' => 'warning'],
-            ['label' => 'Total Revenue', 'value' => 'Rs ' . number_format(Payment::where('account_id', $accountId)->sum('amount'), 2), 'change' => '', 'tone' => 'positive'],
-            ['label' => 'Overdue Count', 'value' => Invoice::where('account_id', $accountId)->where('status', 'overdue')->count(), 'change' => '', 'tone' => 'warning'],
+            ['label' => 'Total Clients', 'value' => Client::where('accountid', $accountid)->count(), 'change' => '', 'tone' => 'positive'],
+            ['label' => 'Total Invoices', 'value' => Invoice::where('accountid', $accountid)->count(), 'change' => '', 'tone' => 'warning'],
+            ['label' => 'Total Revenue', 'value' => 'Rs ' . number_format(Payment::where('accountid', $accountid)->sum('amount'), 2), 'change' => '', 'tone' => 'positive'],
+            ['label' => 'Overdue Count', 'value' => Invoice::where('accountid', $accountid)->where('status', 'overdue')->count(), 'change' => '', 'tone' => 'warning'],
         ];
 
         return view('dashboard', [
@@ -44,20 +44,21 @@ class BillingUiController extends Controller
     public function clients(): View
     {
         $query = Client::query();
+        $searchTerm = request('search', '');
         
-        if (request('search')) {
-            $query->where(function ($q) {
-                $search = request('search');
-                $q->where('business_name', 'like', '%' . $search . '%')
-                  ->orWhere('contact_name', 'like', '%' . $search . '%')
-                  ->orWhere('email', 'like', '%' . $search . '%');
+        if ($searchTerm) {
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('business_name', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('contact_name', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('email', 'like', '%' . $searchTerm . '%');
             });
         }
+        $resultCount = $query->count();
         
         $clients = $query->latest()->take(20)->get()->map(function ($client) {
-            $outstanding = Invoice::where('client_id', $client->id)->where('status', '!=', 'paid')->sum('grand_total') - Payment::where('client_id', $client->id)->sum('amount');
+            $outstanding = Invoice::where('clientid', $client->clientid)->where('status', '!=', 'paid')->sum('grand_total') - Payment::where('clientid', $client->clientid)->sum('amount');
             return [
-                'id' => $client->id,
+'record_id' => $client->clientid,
                 'name' => $client->business_name ?? $client->contact_name,
                 'contact' => $client->contact_name,
                 'email' => $client->email,
@@ -69,18 +70,22 @@ class BillingUiController extends Controller
         return view('clients.index', [
             'title' => 'Clients',
             'clients' => $clients,
+            'searchTerm' => $searchTerm,
+            'resultCount' => $resultCount,
         ]);
     }
 
     public function services(): View
     {
         $query = Service::query();
-        if (request('search')) {
-            $query->where('name', 'like', '%' . request('search') . '%');
+        $searchTerm = request('search', '');
+        if ($searchTerm) {
+            $query->where('name', 'like', '%' . $searchTerm . '%');
         }
+        $resultCount = $query->count();
         $services = $query->latest()->take(20)->get()->map(function ($service) {
             return [
-                'id' => $service->id,
+'record_id' => $service->serviceid,
                 'name' => $service->name,
                 'type' => ucfirst(str_replace('-', ' ', $service->billing_type ?? 'one time')),
                 'price' => 'Rs ' . number_format($service->unit_price ?? 0, 2),
@@ -92,18 +97,22 @@ class BillingUiController extends Controller
         return view('services.index', [
             'title' => 'Services',
             'services' => $services,
+            'searchTerm' => $searchTerm,
+            'resultCount' => $resultCount,
         ]);
     }
 
     public function settings(): View
     {
         $query = Setting::query();
-        if (request('search')) {
-            $query->where('setting_key', 'like', '%' . request('search') . '%');
+        $searchTerm = request('search', '');
+        if ($searchTerm) {
+            $query->where('setting_key', 'like', '%' . $searchTerm . '%');
         }
+        $resultCount = $query->count();
         $settings = $query->latest()->take(20)->get()->map(function ($setting) {
             return [
-                'id' => $setting->id,
+'record_id' => $setting->settingid,
                 'key' => $setting->setting_key,
                 'value' => $setting->setting_value,
                 'status' => 'Active',
@@ -121,6 +130,8 @@ class BillingUiController extends Controller
             'title' => 'Settings',
             'settings' => $settings,
             'account' => $account,
+            'searchTerm' => $searchTerm,
+            'resultCount' => $resultCount,
         ]);
     }
 
@@ -153,10 +164,22 @@ class BillingUiController extends Controller
 
     public function invoices(): View
     {
-        $invoices = Invoice::latest()->take(20)->get()->map(function ($invoice) {
+        $query = Invoice::with('client');
+        $searchTerm = request('search', '');
+        
+        if ($searchTerm) {
+            $query->where('invoice_number', 'like', '%' . $searchTerm . '%')
+                  ->orWhereHas('client', function ($q) use ($searchTerm) {
+                      $q->where('business_name', 'like', '%' . $searchTerm . '%')
+                        ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+                  });
+        }
+        $resultCount = $query->count();
+        
+        $invoices = $query->latest()->take(20)->get()->map(function ($invoice) {
             return [
-                'id' => $invoice->id,
-                'number' => $invoice->invoice_number ?? 'INV-' . str_pad($invoice->id, 4, '0', STR_PAD_LEFT),
+'record_id' => $invoice->invoiceid,
+                'number' => $invoice->invoice_number ?? 'INV-' . str_pad($invoice->invoiceid, 4, '0', STR_PAD_LEFT),
                 'client' => $invoice->client->business_name ?? 'Client',
                 'issued' => $invoice->created_at->format('d M Y'),
                 'due' => $invoice->due_date?->format('d M Y') ?? 'N/A',
@@ -168,34 +191,64 @@ class BillingUiController extends Controller
         return view('invoices.index', [
             'title' => 'Invoices',
             'invoices' => $invoices,
+            'searchTerm' => $searchTerm,
+            'resultCount' => $resultCount,
         ]);
     }
 
     public function payments(): View
     {
-        $payments = Payment::latest()->take(20)->get()->map(function ($payment) {
+        $query = Payment::with('client');
+        $searchTerm = request('search', '');
+        
+        if ($searchTerm) {
+            $query->where('reference', 'like', '%' . $searchTerm . '%')
+                  ->orWhereHas('client', function ($q) use ($searchTerm) {
+                      $q->where('business_name', 'like', '%' . $searchTerm . '%')
+                        ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+                  });
+        }
+        $resultCount = $query->count();
+        
+        $payments = $query->latest()->take(20)->get()->map(function ($payment) {
             return [
-                'id' => $payment->id,
-                'ref' => $payment->reference ?? 'PAY-' . str_pad($payment->id, 3, '0', STR_PAD_LEFT),
+                'record_id' => $payment->paymentid,
+                'number' => $payment->payment_number,
                 'client' => $payment->client->business_name ?? 'Client',
-                'date' => $payment->paid_at?->format('d M Y') ?? $payment->created_at->format('d M Y'),
-                'method' => $payment->method ?? 'Bank Transfer',
+                'date' => $payment->payment_date?->format('d M Y'),
+                'method' => $payment->payment_method ?? 'Bank Transfer',
                 'amount' => 'Rs ' . number_format($payment->amount ?? 0),
-                'status' => $payment->status ?? 'Pending',
+                'status' => $payment->status ?? 'Completed',
             ];
         });
 
         return view('payments.index', [
             'title' => 'Payments',
             'payments' => $payments,
+            'searchTerm' => $searchTerm,
+            'resultCount' => $resultCount,
         ]);
     }
 
     public function subscriptions(): View
     {
-        $subscriptions = Subscription::latest()->take(20)->get()->map(function ($subscription) {
+        $query = Subscription::with(['client', 'service']);
+        $searchTerm = request('search', '');
+        
+        if ($searchTerm) {
+            $query->whereHas('client', function ($q) use ($searchTerm) {
+                      $q->where('business_name', 'like', '%' . $searchTerm . '%')
+                        ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+                  })
+                  ->orWhereHas('service', function ($q) use ($searchTerm) {
+                      $q->where('name', 'like', '%' . $searchTerm . '%');
+                  });
+        }
+        $resultCount = $query->count();
+        
+        $subscriptions = $query->latest()->take(20)->get()->map(function ($subscription) {
             return [
-                'id' => $subscription->id,
+'record_id' => $subscription->subscriptionid,
                 'client' => $subscription->client->business_name ?? 'Client',
                 'service' => $subscription->service->name ?? 'Service',
                 'next_bill' => $subscription->next_billing_date?->format('d M Y'),
@@ -207,15 +260,29 @@ class BillingUiController extends Controller
         return view('subscriptions.index', [
             'title' => 'Subscriptions',
             'subscriptions' => $subscriptions,
+            'searchTerm' => $searchTerm,
+            'resultCount' => $resultCount,
         ]);
     }
 
     public function estimates(): View
     {
-        $estimates = Estimate::latest()->take(20)->get()->map(function ($estimate) {
+        $query = Estimate::with('client');
+        $searchTerm = request('search', '');
+        
+        if ($searchTerm) {
+            $query->where('estimate_number', 'like', '%' . $searchTerm . '%')
+                  ->orWhereHas('client', function ($q) use ($searchTerm) {
+                      $q->where('business_name', 'like', '%' . $searchTerm . '%')
+                        ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+                  });
+        }
+        $resultCount = $query->count();
+        
+        $estimates = $query->latest()->take(20)->get()->map(function ($estimate) {
             return [
-                'id' => $estimate->id,
-                'number' => $estimate->estimate_number ?? 'EST-' . str_pad($estimate->id, 4, '0', STR_PAD_LEFT),
+'record_id' => $estimate->estimateid,
+                'number' => $estimate->estimate_number ?? 'EST-' . str_pad($estimate->estimateid, 4, '0', STR_PAD_LEFT),
                 'client' => $estimate->client->business_name ?? 'Client',
                 'amount' => 'Rs ' . number_format($estimate->total ?? 0),
                 'expiry' => $estimate->expiry_date?->format('d M Y') ?? 'N/A',
@@ -226,6 +293,8 @@ class BillingUiController extends Controller
         return view('estimates.index', [
             'title' => 'Estimates',
             'estimates' => $estimates,
+            'searchTerm' => $searchTerm,
+            'resultCount' => $resultCount,
         ]);
     }
 
@@ -243,12 +312,12 @@ class BillingUiController extends Controller
             'billing_type' => 'required|in:one-time,recurring',
             'unit_price' => 'required|numeric|min:0',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
-            'account_id' => 'nullable|size:10',
+            'accountid' => 'nullable|size:6',
             'status' => 'in:active,inactive',
         ]);
 
-        $userAccountId = auth()->check() ? (auth()->user()->account_id ?? 'ACC0000001') : 'ACC0000001';
-        $validated['account_id'] = $validated['account_id'] ?? $userAccountId;
+        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
 
         Service::create($validated);
 
@@ -303,15 +372,15 @@ class BillingUiController extends Controller
         $validated = $request->validate([
             'key' => 'required|string|max:255|unique:settings,setting_key',
             'value' => 'required',
-            'account_id' => 'nullable|size:10',
+            'accountid' => 'nullable|size:10',
         ]);
 
-        $userAccountId = auth()->check() ? (auth()->user()->account_id ?? 'ACC0000001') : 'ACC0000001';
+        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         
         Setting::create([
             'setting_key' => $validated['key'],
             'setting_value' => $validated['value'],
-            'account_id' => $validated['account_id'] ?? $userAccountId,
+            'accountid' => $validated['accountid'] ?? $userAccountId,
         ]);
 
         return redirect()->route('settings.index')->with('success', 'Setting created successfully.');
@@ -333,7 +402,7 @@ class BillingUiController extends Controller
     public function settingsUpdate(Request $request, Setting $setting)
     {
         $validated = $request->validate([
-            'key' => 'required|string|max:255|unique:settings,setting_key,' . $setting->id,
+'key' => 'required|string|max:255|unique:settings,setting_key,' . $setting->getKey() . ',settingid',
             'value' => 'required',
         ]);
 
@@ -363,10 +432,10 @@ class BillingUiController extends Controller
 
     public function clientsStore(Request $request)
     {
-        $userAccountId = auth()->check() ? auth()->user()->account_id ?? 'ACC0000001' : 'ACC0000001';
+        $userAccountId = auth()->check() ? auth()->user()->accountid ?? 'ACC0000001' : 'ACC0000001';
 
         $validated = $request->validate([
-            'account_id' => 'required|exists:accounts,id|size:10',
+            'accountid' => 'required|exists:accounts,accountid|size:10',
             'business_name' => 'required|string|max:255',
             'contact_name' => 'nullable|string|max:255',
             'email' => 'required|email|unique:clients,email',
@@ -376,7 +445,7 @@ class BillingUiController extends Controller
         ]);
 
         // Override with user context if not provided
-        $validated['account_id'] = $validated['account_id'] ?? $userAccountId;
+        $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
 
         Client::create($validated);
 
@@ -409,7 +478,7 @@ class BillingUiController extends Controller
         $validated = $request->validate([
             'business_name' => 'required|string|max:255',
             'contact_name' => 'nullable|string|max:255',
-            'email' => 'required|email|unique:clients,email,' . $client->id,
+'email' => 'required|email|unique:clients,email,' . $client->getKey() . ',clientid',
             'phone' => 'nullable|string|max:20',
             'billing_email' => 'nullable|email',
             'status' => 'in:active,review,inactive',
@@ -440,17 +509,17 @@ class BillingUiController extends Controller
     public function subscriptionsStore(Request $request)
     {
         $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'service_id' => 'required|exists:services,id',
+            'clientid' => 'required|exists:clients,clientid',
+            'serviceid' => 'required|exists:services,serviceid',
             'start_date' => 'required|date',
             'next_billing_date' => 'required|date|after:start_date',
             'price' => 'required|numeric|min:0',
-            'account_id' => 'nullable|size:10',
+            'accountid' => 'nullable|size:10',
             'status' => 'required|in:active,cancelled,expired',
         ]);
 
-        $userAccountId = auth()->check() ? (auth()->user()->account_id ?? 'ACC0000001') : 'ACC0000001';
-        $validated['account_id'] = $validated['account_id'] ?? $userAccountId;
+        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
 
         Subscription::create($validated);
 
@@ -469,16 +538,16 @@ class BillingUiController extends Controller
     public function estimatesStore(Request $request)
     {
         $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
+            'clientid' => 'required|exists:clients,clientid',
             'estimate_number' => 'required|string|unique:estimates,estimate_number',
             'issue_date' => 'required|date',
             'expiry_date' => 'nullable|date|after_or_equal:issue_date',
-            'account_id' => 'nullable|size:10',
+            'accountid' => 'nullable|size:10',
             'status' => 'required|in:draft,sent,accepted,declined,expired',
         ]);
 
-        $userAccountId = auth()->check() ? (auth()->user()->account_id ?? 'ACC0000001') : 'ACC0000001';
-        $validated['account_id'] = $validated['account_id'] ?? $userAccountId;
+        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
 
         Estimate::create($validated);
 
@@ -498,7 +567,7 @@ class BillingUiController extends Controller
     public function invoicesStore(Request $request)
     {
         $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
+            'clientid' => 'required|exists:clients,clientid',
             'invoice_number' => 'required|string|unique:invoices,invoice_number',
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
@@ -508,11 +577,11 @@ class BillingUiController extends Controller
             'tax_total' => 'required|numeric|min:0',
             'grand_total' => 'required|numeric|min:0',
             'items_data' => 'required|json',
-            'account_id' => 'nullable|size:10',
+            'accountid' => 'nullable|size:10',
         ]);
 
-        $userAccountId = auth()->check() ? (auth()->user()->account_id ?? 'ACC0000001') : 'ACC0000001';
-        $validated['account_id'] = $validated['account_id'] ?? $userAccountId;
+        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
         unset($validated['items_data']);
 
         $itemsData = json_decode($request->items_data, true);
@@ -531,10 +600,10 @@ class BillingUiController extends Controller
         $invoice = Invoice::create($validated);
 
         foreach ($itemsData as $index => $itemData) {
-            $service = Service::find($itemData['service_id']);
+            $service = Service::find($itemData['serviceid']);
             InvoiceItem::create([
-                'invoice_id' => $invoice->id,
-                'service_id' => $itemData['service_id'],
+                'invoiceid' => $invoice->invoiceid,
+                'serviceid' => $itemData['serviceid'],
                 'item_name' => $service?->name ?? 'Custom Service Item',
                 'item_description' => null,
                 'quantity' => $itemData['quantity'],
@@ -554,12 +623,15 @@ class BillingUiController extends Controller
         return view('invoices.show', ['title' => 'Invoice Details', 'invoice' => $invoice]);
     }
 
-    public function invoicesEdit(Invoice $invoice): View
+public function invoicesEdit(Invoice $invoice): View
     {
+        $invoice->load(['items.service']);
         return view('invoices.edit', [
             'title' => 'Edit Invoice',
             'invoice' => $invoice,
-            'clients' => Client::all()
+            'clients' => Client::all(),
+            'services' => Service::all(),
+            'items' => $invoice->items
         ]);
     }
 
@@ -595,23 +667,112 @@ class BillingUiController extends Controller
     public function paymentsStore(Request $request)
     {
         $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'invoice_id' => 'nullable|exists:invoices,id',
+            'clientid' => 'required|exists:clients,clientid',
+            'invoiceid' => 'nullable|exists:invoices,invoiceid',
             'reference' => 'nullable|string|max:255',
             'amount' => 'required|numeric|min:0.01',
-            'method' => 'required|in:cash,bank_transfer,card,upi',
+            'method' => 'required|string',
             'paid_at' => 'required|date',
             'notes' => 'nullable|string',
-            'account_id' => 'nullable|size:10',
-            'status' => 'required|in:pending,confirmed,failed',
         ]);
 
-        $userAccountId = auth()->check() ? (auth()->user()->account_id ?? 'ACC0000001') : 'ACC0000001';
-        $validated['account_id'] = $validated['account_id'] ?? $userAccountId;
+        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        
+        $paymentData = [
+            'accountid' => $userAccountId,
+            'clientid' => $validated['clientid'],
+            'invoiceid' => $validated['invoiceid'],
+            'payment_number' => 'PAY-' . strtoupper(bin2hex(random_bytes(3))),
+            'payment_date' => $validated['paid_at'],
+            'amount' => $validated['amount'],
+            'payment_method' => $validated['method'],
+            'reference_number' => $validated['reference'],
+            'notes' => $validated['notes'],
+            'status' => 'completed',
+            'received_by' => (auth()->user() instanceof \App\Models\User) ? auth()->id() : null,
+        ];
 
-        Payment::create($validated);
+        $payment = Payment::create($paymentData);
+
+        // Update Invoice balance if applicable
+        if ($payment->invoiceid) {
+            $invoice = Invoice::find($payment->invoiceid);
+            if ($invoice) {
+                $invoice->balance_due -= $payment->amount;
+                $invoice->amount_paid += $payment->amount;
+                if ($invoice->balance_due <= 0) {
+                    $invoice->status = 'paid';
+                    $invoice->balance_due = 0;
+                    $invoice->paid_at = now();
+                }
+                $invoice->save();
+            }
+        }
 
         return redirect()->route('payments.index')->with('success', 'Payment recorded successfully.');
+    }
+
+    public function paymentsShow(Payment $payment): View
+    {
+        $payment->load(['client', 'invoice']);
+        return view('payments.show', [
+            'title' => 'Payment Details',
+            'payment' => $payment,
+        ]);
+    }
+
+    public function paymentsEdit(Payment $payment): View
+    {
+        return view('payments.edit', [
+            'title' => 'Edit Payment',
+            'payment' => $payment,
+            'clients' => Client::all(),
+            'invoices' => Invoice::all(),
+        ]);
+    }
+
+    public function paymentsUpdate(Request $request, Payment $payment)
+    {
+        $validated = $request->validate([
+            'clientid' => 'required|exists:clients,clientid',
+            'invoiceid' => 'nullable|exists:invoices,invoiceid',
+            'reference' => 'nullable|string|max:255',
+            'amount' => 'required|numeric|min:0.01',
+            'method' => 'required|string',
+            'paid_at' => 'required|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        $payment->update([
+            'clientid' => $validated['clientid'],
+            'invoiceid' => $validated['invoiceid'],
+            'payment_date' => $validated['paid_at'],
+            'amount' => $validated['amount'],
+            'payment_method' => $validated['method'],
+            'reference_number' => $validated['reference'],
+            'notes' => $validated['notes'],
+        ]);
+
+        return redirect()->route('payments.index')->with('success', 'Payment updated successfully.');
+    }
+
+    public function paymentsDestroy(Payment $payment)
+    {
+        // If it was linked to an invoice, we should ideally revert the balance_due.
+        if ($payment->invoiceid) {
+            $invoice = Invoice::find($payment->invoiceid);
+            if ($invoice) {
+                $invoice->balance_due += $payment->amount;
+                if ($invoice->balance_due > 0 && $invoice->status == 'paid') {
+                    $invoice->status = 'sent'; // Or whatever was previous
+                }
+                $invoice->save();
+            }
+        }
+
+        $payment->delete();
+
+        return redirect()->route('payments.index')->with('success', 'Payment deleted successfully.');
     }
 
     public function subscriptionsShow(Subscription $subscription): View
@@ -626,8 +787,8 @@ class BillingUiController extends Controller
     public function subscriptionsUpdate(Request $request, Subscription $subscription)
     {
         $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'service_id' => 'required|exists:services,id',
+            'clientid' => 'required|exists:clients,clientid',
+            'serviceid' => 'required|exists:services,serviceid',
             'start_date' => 'required|date',
             'next_billing_date' => 'required|date|after_or_equal:start_date',
             'price' => 'required|numeric|min:0',
@@ -659,8 +820,8 @@ class BillingUiController extends Controller
     public function estimatesUpdate(Request $request, Estimate $estimate)
     {
         $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'estimate_number' => 'required|string|unique:estimates,estimate_number,' . $estimate->id,
+            'clientid' => 'required|exists:clients,clientid',
+'estimate_number' => 'required|string|unique:estimates,estimate_number,' . $estimate->getKey() . ',estimateid',
             'issue_date' => 'required|date',
             'expiry_date' => 'nullable|date|after_or_equal:issue_date',
             'status' => 'required|in:draft,sent,accepted,declined,expired',
@@ -682,15 +843,54 @@ class BillingUiController extends Controller
     public function invoicesUpdate(Request $request, Invoice $invoice)
     {
         $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
-'invoice_number' => 'required|string|unique:invoices,invoice_number,' . $invoice->id,
+            'clientid' => 'required|exists:clients,clientid',
+            'invoice_number' => 'required|string|unique:invoices,invoice_number,' . $invoice->invoiceid . ',invoiceid',
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
             'notes' => 'nullable|string',
             'status' => 'required|in:draft,sent,paid,overdue,cancelled',
+            'items_data' => 'required|json',
         ]);
 
-        $invoice->update($validated);
+        $itemsData = json_decode($request->items_data, true);
+        $subtotal = 0;
+        $taxTotal = 0;
+        foreach ($itemsData as $itemData) {
+            $subtotal += $itemData['line_total'];
+            $taxTotal += $itemData['line_total'] * ($itemData['tax_rate'] / 100);
+        }
+        $grandTotal = $subtotal + $taxTotal;
+
+        $invoice->update([
+            'clientid' => $validated['clientid'],
+            'invoice_number' => $validated['invoice_number'],
+            'issue_date' => $validated['issue_date'],
+            'due_date' => $validated['due_date'],
+            'notes' => $validated['notes'],
+            'status' => $validated['status'],
+            'subtotal' => $subtotal,
+            'tax_total' => $taxTotal,
+            'grand_total' => $grandTotal,
+            'balance_due' => $grandTotal, // Simple logic: reset balance due on update. In a real app, you might want to subtract payments already made.
+        ]);
+
+        // Delete old items and recreate
+        $invoice->items()->delete();
+
+        foreach ($itemsData as $index => $itemData) {
+            $service = Service::find($itemData['serviceid']);
+            InvoiceItem::create([
+                'invoiceid' => $invoice->invoiceid,
+                'serviceid' => $itemData['serviceid'],
+                'item_name' => $service?->name ?? 'Custom Service Item',
+                'item_description' => null,
+                'quantity' => $itemData['quantity'],
+                'unit_price' => $itemData['unit_price'],
+                'tax_rate' => $itemData['tax_rate'],
+                'line_total' => $itemData['line_total'],
+                'sort_order' => $index + 1,
+            ]);
+        }
 
         return redirect()->route('invoices.index')->with('success', 'Invoice updated successfully.');
     }

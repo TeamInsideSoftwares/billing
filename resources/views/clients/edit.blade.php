@@ -15,7 +15,7 @@
         @csrf
         <div class="form-grid">
             <div style="display:none;">
-                <input type="hidden" name="account_id" value="{{ $client->account_id ?? auth()->user()->account_id ?? 'ACC0000001' }}">
+                <input type="hidden" name="accountid" value="{{ $client->accountid ?? auth()->user()->accountid ?? 'ACC0000001' }}">
             </div>
             <div>
                 <label for="business_name">Business Name *</label>

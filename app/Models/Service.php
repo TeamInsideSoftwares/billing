@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'account_id',
+    'accountid',
+
     'service_code',
     'name',
     'description',
@@ -20,6 +21,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class Service extends Model
 {
+protected $primaryKey = 'serviceid';
+    public function getRouteKeyName(): string
+    {
+        return 'serviceid';
+    }
+
+    protected function idLength(): int
+    {
+        return 6;
+    }
+
     use HasAlphaNumericId;
 
     protected function casts(): array
@@ -38,16 +50,17 @@ class Service extends Model
 
     public function invoiceItems(): HasMany
     {
-        return $this->hasMany(InvoiceItem::class);
+        return $this->hasMany(InvoiceItem::class, 'serviceid');
     }
 
     public function estimateItems(): HasMany
     {
-        return $this->hasMany(EstimateItem::class);
+        return $this->hasMany(EstimateItem::class, 'serviceid');
     }
 
     public function subscriptions(): HasMany
     {
-        return $this->hasMany(Subscription::class);
+        return $this->hasMany(Subscription::class, 'serviceid');
     }
+
 }

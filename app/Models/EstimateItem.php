@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'estimate_id',
-    'service_id',
+    'estimateid',
+    'serviceid',
     'item_name',
     'item_description',
     'quantity',
@@ -20,6 +20,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class EstimateItem extends Model
 {
+protected $primaryKey = 'estimateitemid';
+
+    protected function idLength(): int
+    {
+        return 6;
+    }
+
     use HasAlphaNumericId;
 
     protected function casts(): array
@@ -34,11 +41,11 @@ class EstimateItem extends Model
 
     public function estimate(): BelongsTo
     {
-        return $this->belongsTo(Estimate::class);
+        return $this->belongsTo(Estimate::class, 'estimateid');
     }
 
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(Service::class, 'serviceid');
     }
 }

@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'invoice_id',
-    'service_id',
+    'invoiceid',
+    'serviceid',
     'item_name',
     'item_description',
     'quantity',
@@ -20,6 +20,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class InvoiceItem extends Model
 {
+protected $primaryKey = 'invoiceitemid';
+
+    protected function idLength(): int
+    {
+        return 6;
+    }
+
     use HasAlphaNumericId;
 
     protected function casts(): array
@@ -34,11 +41,11 @@ class InvoiceItem extends Model
 
     public function invoice(): BelongsTo
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->belongsTo(Invoice::class, 'invoiceid');
     }
 
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(Service::class, 'serviceid');
     }
 }

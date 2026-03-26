@@ -8,17 +8,28 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'account_id',
+    'accountid',
     'setting_key',
     'setting_value',
 ])]
 class Setting extends Model
 {
+protected $primaryKey = 'settingid';
+    public function getRouteKeyName(): string
+    {
+        return 'settingid';
+    }
+
+    protected function idLength(): int
+    {
+        return 6;
+    }
+
     use HasAlphaNumericId;
 
     public function account(): BelongsTo
     {
-        return $this->belongsTo(Account::class);
+        return $this->belongsTo(Account::class, 'accountid');
     }
 
     // Accessors for shorter property names in views

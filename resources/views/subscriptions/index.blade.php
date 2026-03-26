@@ -7,37 +7,53 @@
                 <input type="search" name="search" placeholder="Search by client or service..." value="{{ request('search') }}">
                 <button type="submit">Search</button>
             </form>
-            <p class="eyebrow">{{ count($subscriptions) }} Subscriptions</p>
+            @if (isset($searchTerm) && $searchTerm)
+                <p class="eyebrow">{{ $resultCount }} subscriptions matching "{{ $searchTerm }}"</p>
+                <span class="search-badge">Filtered</span>
+            @else
+                <p class="eyebrow">{{ count($subscriptions) }} subscriptions</p>
+            @endif
             <h3>Subscription billing</h3>
+
         </div>
         <a href="{{ route('subscriptions.create') }}" class="primary-button">Add Subscription</a>
     </section>
 
     <section class="panel-card">
-        <div class="table-list">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Subscription</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
             @foreach ($subscriptions as $subscription)
-                <div class="table-row">
-                    <div>
-                        <strong>{{ $subscription['client'] }}</strong>
-                        <span>{{ $subscription['service'] }}</span>
-                    </div>
-                    <div>
+                <tr>
+                    <td>
+                        <strong>{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $subscription['client']) : $subscription['client'] !!}</strong>
+                        <span>{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $subscription['service']) : $subscription['service'] !!}</span>
+                    </td>
+                    <td>
                         <strong>{{ $subscription['amount'] }}</strong>
                         <span>Next bill {{ $subscription['next_bill'] }}</span>
-                    </div>
-                    <div>
+                    </td>
+                    <td>
                         <span class="status-pill {{ strtolower($subscription['status']) }}">{{ $subscription['status'] }}</span>
-                    </div>
-                    <div class="table-actions">
-                        <a href="{{ route('subscriptions.index') }}" class="text-link">View</a>
-                        <form method="POST" action="{{ route('subscriptions.index') }}" class="inline-delete" style="display: inline;" onsubmit="return confirm('Delete subscription for {{ $subscription['client'] }}?')">
+                    </td>
+                    <td class="table-actions">
+                        <a href="{{ route('subscriptions.show', $subscription['record_id']) }}" class="text-link">View</a>
+                        <form method="POST" action="{{ route('subscriptions.destroy', $subscription['record_id']) }}" class="inline-delete" style="display: inline;" onsubmit="return confirm('Delete subscription for {{ $subscription['client'] }}?')">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="text-link danger">Delete</button>
                         </form>
-                    </div>
-                </div>
+                    </td>
+                </tr>
             @endforeach
-        </div>
+            </tbody>
+        </table>
     </section>
 @endsection

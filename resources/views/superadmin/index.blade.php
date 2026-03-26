@@ -10,31 +10,43 @@
     </section>
 
     <section class="panel-card">
-        <div class="table-list">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Agency</th>
+                    <th>Contact</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
             @if(count($accounts) > 0)
                 @foreach ($accounts as $acc)
-                    <div class="table-row">
-                        <div>
+                    <tr>
+                        <td>
                             <strong>{{ $acc->name }}</strong>
                             <span style="font-size: 0.8rem; color: var(--slate-400);">ID: {{ $acc->id }}</span>
-                        </div>
-                        <div>
+                        </td>
+                        <td>
                             <strong>{{ $acc->email }}</strong>
                             <span>{{ $acc->legal_name ?? 'No legal name' }}</span>
-                        </div>
-                        <div>
+                        </td>
+                        <td>
                             <span class="status-pill {{ $acc->status }}">{{ ucfirst($acc->status) }}</span>
-                        </div>
-                        <div class="table-actions">
+                        </td>
+                        <td class="table-actions">
                             <a href="#" class="text-link">Manage</a>
-                        </div>
-                    </div>
+                        </td>
+                    </tr>
                 @endforeach
             @else
-                <div style="padding: 2rem; text-align: center; color: var(--slate-400);">
-                    No agencies registered yet.
-                </div>
+                <tr>
+                    <td colspan="4" style="padding: 2rem; text-align: center; color: var(--slate-400);">
+                        No agencies registered yet.
+                    </td>
+                </tr>
             @endif
-        </div>
+            </tbody>
+        </table>
     </section>
 @endsection

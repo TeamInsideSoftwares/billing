@@ -12,12 +12,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['account_id', 'client_id', 'name', 'email', 'password', 'role', 'is_active'])]
+#[Fillable(['accountid', 'clientid', 'name', 'email', 'password', 'role', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasAlphaNumericId, HasFactory, Notifiable;
+use HasAlphaNumericId, HasFactory, Notifiable;
+
+protected $primaryKey = 'id';
+
+    protected function idLength(): int
+    {
+        return 10;
+    }
 
     /**
      * Get the attributes that should be cast.

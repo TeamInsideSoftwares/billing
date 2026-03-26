@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'account_id',
-    'client_id',
+    'accountid',
+    'clientid',
     'estimate_number',
     'status',
     'issue_date',
@@ -21,11 +21,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'grand_total',
     'notes',
     'terms',
-    'converted_invoice_id',
+    'invoiceid',
     'created_by',
 ])]
 class Estimate extends Model
 {
+protected $primaryKey = 'estimateid';
+    public function getRouteKeyName(): string
+    {
+        return 'estimateid';
+    }
+
+    protected function idLength(): int
+    {
+        return 6;
+    }
+
     use HasAlphaNumericId;
 
     protected function casts(): array
@@ -42,17 +53,17 @@ class Estimate extends Model
 
     public function account(): BelongsTo
     {
-        return $this->belongsTo(Account::class);
+        return $this->belongsTo(Account::class, 'accountid');
     }
 
     public function client(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Client::class, 'clientid');
     }
 
     public function convertedInvoice(): BelongsTo
     {
-        return $this->belongsTo(Invoice::class, 'converted_invoice_id');
+        return $this->belongsTo(Invoice::class, 'invoiceid');
     }
 
     public function creator(): BelongsTo
@@ -62,6 +73,7 @@ class Estimate extends Model
 
     public function items(): HasMany
     {
-        return $this->hasMany(EstimateItem::class);
+        return $this->hasMany(EstimateItem::class, 'estimateid');
     }
 }
+

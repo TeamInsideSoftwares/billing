@@ -11,15 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Consolidated 'accounts' (The Agency / Workspace)
         Schema::create('accounts', function (Blueprint $table) {
-            $table->string('id', 10)->primary();
+            $table->string('accountid', 10)->primary();
             $table->string('name', 150);
             $table->string('slug', 150)->unique();
             $table->string('status', 20)->default('active');
             $table->string('plan_name', 50)->default('starter');
             
-            // Merged 'Company' fields into Account
             $table->string('legal_name', 150)->nullable();
             $table->string('email', 150)->unique();
             $table->string('password');
@@ -40,8 +38,8 @@ return new class extends Migration
         });
 
         Schema::create('clients', function (Blueprint $table) {
-            $table->string('id', 10)->primary();
-            $table->string('account_id', 10); // Pointer to Agency Workspace
+            $table->string('clientid', 6)->primary();
+            $table->string('accountid', 10);
             $table->string('client_code', 30)->nullable()->unique();
             $table->string('business_name', 150);
             $table->string('contact_name', 150)->nullable();
@@ -59,13 +57,13 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->foreign('account_id')->references('id')->on('accounts')->cascadeOnDelete();
-            $table->index(['account_id', 'status']);
+            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
+            $table->index(['accountid', 'status']);
         });
 
         Schema::create('services', function (Blueprint $table) {
-            $table->string('id', 10)->primary();
-            $table->string('account_id', 10);
+            $table->string('serviceid', 6)->primary();
+            $table->string('accountid', 10);
             $table->string('service_code', 30)->nullable()->unique();
             $table->string('name', 150);
             $table->text('description')->nullable();
@@ -75,14 +73,14 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
-            $table->foreign('account_id')->references('id')->on('accounts')->cascadeOnDelete();
-            $table->index(['account_id', 'billing_type']);
+            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
+            $table->index(['accountid', 'billing_type']);
         });
 
         Schema::create('invoices', function (Blueprint $table) {
-            $table->string('id', 10)->primary();
-            $table->string('account_id', 10);
-            $table->string('client_id', 10);
+            $table->string('invoiceid', 6)->primary();
+            $table->string('accountid', 10);
+            $table->string('clientid', 6);
             $table->string('invoice_number', 30)->unique();
             $table->string('status', 20)->default('draft');
             $table->date('issue_date');
@@ -101,16 +99,16 @@ return new class extends Migration
             $table->string('created_by', 10)->nullable();
             $table->timestamps();
 
-            $table->foreign('account_id')->references('id')->on('accounts')->cascadeOnDelete();
-            $table->foreign('client_id')->references('id')->on('clients')->restrictOnDelete();
-            $table->foreign('created_by')->references('id')->on('users')->nullOnDelete();
-            $table->index(['account_id', 'status']);
+            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
+            $table->foreign('clientid')->references('clientid')->on('clients')->onDelete('restrict');
+            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
+            $table->index(['accountid', 'status']);
         });
 
         Schema::create('invoice_items', function (Blueprint $table) {
-            $table->string('id', 10)->primary();
-            $table->string('invoice_id', 10);
-            $table->string('service_id', 10)->nullable();
+            $table->string('invoiceitemid', 6)->primary();
+            $table->string('invoiceid', 6);
+            $table->string('serviceid', 6)->nullable();
             $table->string('item_name', 150);
             $table->text('item_description')->nullable();
             $table->decimal('quantity', 10, 2)->default(1);
@@ -120,15 +118,15 @@ return new class extends Migration
             $table->unsignedInteger('sort_order')->default(1);
             $table->timestamps();
 
-            $table->foreign('invoice_id')->references('id')->on('invoices')->cascadeOnDelete();
-            $table->foreign('service_id')->references('id')->on('services')->nullOnDelete();
+            $table->foreign('invoiceid')->references('invoiceid')->on('invoices')->onDelete('cascade');
+            $table->foreign('serviceid')->references('serviceid')->on('services')->onDelete('set null');
         });
 
         Schema::create('payments', function (Blueprint $table) {
-            $table->string('id', 10)->primary();
-            $table->string('account_id', 10);
-            $table->string('client_id', 10);
-            $table->string('invoice_id', 10)->nullable();
+            $table->string('paymentid', 6)->primary();
+            $table->string('accountid', 10);
+            $table->string('clientid', 6);
+            $table->string('invoiceid', 6)->nullable();
             $table->string('payment_number', 30)->unique();
             $table->date('payment_date');
             $table->decimal('amount', 12, 2);
@@ -141,18 +139,18 @@ return new class extends Migration
             $table->string('received_by', 10)->nullable();
             $table->timestamps();
 
-            $table->foreign('account_id')->references('id')->on('accounts')->cascadeOnDelete();
-            $table->foreign('client_id')->references('id')->on('clients')->restrictOnDelete();
-            $table->foreign('invoice_id')->references('id')->on('invoices')->nullOnDelete();
-            $table->foreign('received_by')->references('id')->on('users')->nullOnDelete();
-            $table->index(['account_id', 'status']);
+            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
+            $table->foreign('clientid')->references('clientid')->on('clients')->onDelete('restrict');
+            $table->foreign('invoiceid')->references('invoiceid')->on('invoices')->onDelete('set null');
+            $table->foreign('received_by')->references('id')->on('users')->onDelete('set null');
+            $table->index(['accountid', 'status']);
         });
 
         Schema::create('subscriptions', function (Blueprint $table) {
-            $table->string('id', 10)->primary();
-            $table->string('account_id', 10);
-            $table->string('client_id', 10);
-            $table->string('service_id', 10);
+            $table->string('subscriptionid', 6)->primary();
+            $table->string('accountid', 10);
+            $table->string('clientid', 6);
+            $table->string('serviceid', 6);
             $table->date('start_date');
             $table->date('next_billing_date');
             $table->date('end_date')->nullable();
@@ -164,17 +162,17 @@ return new class extends Migration
             $table->string('created_by', 10)->nullable();
             $table->timestamps();
 
-            $table->foreign('account_id')->references('id')->on('accounts')->cascadeOnDelete();
-            $table->foreign('client_id')->references('id')->on('clients')->restrictOnDelete();
-            $table->foreign('service_id')->references('id')->on('services')->restrictOnDelete();
-            $table->foreign('created_by')->references('id')->on('users')->nullOnDelete();
-            $table->index(['account_id', 'status']);
+            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
+            $table->foreign('clientid')->references('clientid')->on('clients')->onDelete('restrict');
+            $table->foreign('serviceid')->references('serviceid')->on('services')->onDelete('restrict');
+            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
+            $table->index(['accountid', 'status']);
         });
 
         Schema::create('estimates', function (Blueprint $table) {
-            $table->string('id', 10)->primary();
-            $table->string('account_id', 10);
-            $table->string('client_id', 10);
+            $table->string('estimateid', 6)->primary();
+            $table->string('accountid', 10);
+            $table->string('clientid', 6);
             $table->string('estimate_number', 30)->unique();
             $table->string('status', 20)->default('draft');
             $table->date('issue_date');
@@ -185,21 +183,21 @@ return new class extends Migration
             $table->decimal('grand_total', 12, 2)->default(0);
             $table->text('notes')->nullable();
             $table->text('terms')->nullable();
-            $table->string('converted_invoice_id', 10)->nullable();
+            $table->string('invoiceid', 6)->nullable();
             $table->string('created_by', 10)->nullable();
             $table->timestamps();
 
-            $table->foreign('account_id')->references('id')->on('accounts')->cascadeOnDelete();
-            $table->foreign('client_id')->references('id')->on('clients')->restrictOnDelete();
-            $table->foreign('converted_invoice_id')->references('id')->on('invoices')->nullOnDelete();
-            $table->foreign('created_by')->references('id')->on('users')->nullOnDelete();
-            $table->index(['account_id', 'status']);
+            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
+            $table->foreign('clientid')->references('clientid')->on('clients')->onDelete('restrict');
+            $table->foreign('invoiceid')->references('invoiceid')->on('invoices')->onDelete('set null');
+            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
+            $table->index(['accountid', 'status']);
         });
 
         Schema::create('estimate_items', function (Blueprint $table) {
-            $table->string('id', 10)->primary();
-            $table->string('estimate_id', 10);
-            $table->string('service_id', 10)->nullable();
+            $table->string('estimateitemid', 6)->primary();
+            $table->string('estimateid', 6);
+            $table->string('serviceid', 6)->nullable();
             $table->string('item_name', 150);
             $table->text('item_description')->nullable();
             $table->decimal('quantity', 10, 2)->default(1);
@@ -209,19 +207,19 @@ return new class extends Migration
             $table->unsignedInteger('sort_order')->default(1);
             $table->timestamps();
 
-            $table->foreign('estimate_id')->references('id')->on('estimates')->cascadeOnDelete();
-            $table->foreign('service_id')->references('id')->on('services')->nullOnDelete();
+            $table->foreign('estimateid')->references('estimateid')->on('estimates')->onDelete('cascade');
+            $table->foreign('serviceid')->references('serviceid')->on('services')->onDelete('set null');
         });
 
         Schema::create('settings', function (Blueprint $table) {
-            $table->string('id', 10)->primary();
-            $table->string('account_id', 10);
+            $table->string('settingid', 6)->primary();
+            $table->string('accountid', 10);
             $table->string('setting_key', 100);
             $table->text('setting_value')->nullable();
             $table->timestamps();
 
-            $table->foreign('account_id')->references('id')->on('accounts')->cascadeOnDelete();
-            $table->unique(['account_id', 'setting_key']);
+            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
+            $table->unique(['accountid', 'setting_key']);
         });
     }
 
@@ -242,3 +240,4 @@ return new class extends Migration
         Schema::dropIfExists('accounts');
     }
 };
+

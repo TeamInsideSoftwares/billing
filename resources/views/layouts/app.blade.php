@@ -26,9 +26,9 @@
     <div class="layout-grid">
         <aside class="sidebar" data-sidebar>
             <div class="brand-block">
-                <div class="brand-mark">SR</div>
+                <!-- <div class="brand-mark">SR</div> -->
                 <div>
-                    <p class="eyebrow">SkoolReady Billing</p>
+                    <p class="eyebrow">Billing</p>
                     <h1>Control Center</h1>
                 </div>
             </div>
@@ -67,12 +67,13 @@
                     <h2>{{ $title ?? 'Dashboard' }}</h2>
                 </div>
 
-                <div class="topbar-actions">
+                <!-- <div class="topbar-actions">
                     <form action="{{ route('clients.index') }}" method="GET" class="search-form">
-                        <input type="text" name="search" placeholder="Search clients, invoices, payments..." class="search-chip">
+                        <input type="text" name="search" placeholder="Global search across clients, invoices, payments..." class="search-chip" value="{{ request('search') }}">
                     </form>
+
                     <a href="{{ route('invoices.create' ?? 'invoices.index') }}" class="primary-button">New Invoice</a>
-                </div>
+                </div> -->
             </header>
 
             @if (session('success'))

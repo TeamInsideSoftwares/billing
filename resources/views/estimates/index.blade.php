@@ -7,37 +7,57 @@
                 <input type="search" name="search" placeholder="Search by number or client..." value="{{ request('search') }}">
                 <button type="submit">Search</button>
             </form>
-            <p class="eyebrow">{{ count($estimates) }} Estimates</p>
+            @if (isset($searchTerm) && $searchTerm)
+                <p class="eyebrow">{{ $resultCount }} estimates matching "{{ $searchTerm }}"</p>
+                <span class="search-badge">Filtered</span>
+            @else
+                <p class="eyebrow">{{ count($estimates) }} estimates</p>
+            @endif
             <h3>Estimate pipeline</h3>
+
         </div>
         <a href="{{ route('estimates.create') }}" class="primary-button">New Estimate</a>
     </section>
 
     <section class="panel-card">
-        <div class="table-list">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Estimate</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
             @foreach ($estimates as $estimate)
-                <div class="table-row">
-                    <div>
-                        <strong>{{ $estimate['number'] }}</strong>
-                        <span>{{ $estimate['client'] }}</span>
-                    </div>
-                    <div>
+                <tr>
+                    <td>
+                        <strong>{!! $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $estimate['number']) : $estimate['number'] !!}</strong>
+                        <span>{!! $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $estimate['client']) : $estimate['client'] !!}</span>
+                    </td>
+</xai:function_call name="edit_file">
+
+<xai:function_call name="edit_file">
+<parameter name="path">resources/views/invoices/index.blade.php
+                    <td>
                         <strong>{{ $estimate['amount'] }}</strong>
                         <span>Expires {{ $estimate['expiry'] }}</span>
-                    </div>
-                    <div>
+                    </td>
+                    <td>
                         <span class="status-pill {{ strtolower($estimate['status']) }}">{{ $estimate['status'] }}</span>
-                    </div>
-                    <div class="table-actions">
-                        <a href="{{ route('estimates.show', $estimate['id']) }}" class="text-link">View</a>
-                        <form method="POST" action="{{ route('estimates.destroy', $estimate['id']) }}" class="inline-delete" style="display: inline;" onsubmit="return confirm('Delete {{ $estimate['number'] }}?')">
+                    </td>
+                    <td class="table-actions">
+                        <a href="{{ route('estimates.show', $estimate['record_id']) }}" class="text-link">View</a>
+ action="{{ route('estimates.destroy', $estimate['record_id']) }}"
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="text-link danger">Delete</button>
                         </form>
-                    </div>
-                </div>
+                    </td>
+                </tr>
             @endforeach
-        </div>
+            </tbody>
+        </table>
     </section>
 @endsection

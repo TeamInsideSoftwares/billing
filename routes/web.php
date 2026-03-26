@@ -44,6 +44,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/payments', 'payments')->name('payments.index');
         Route::get('/payments/create', 'paymentsCreate')->name('payments.create');
         Route::post('/payments', 'paymentsStore')->name('payments.store');
+        Route::get('/payments/{payment}', 'paymentsShow')->name('payments.show');
+        Route::get('/payments/{payment}/edit', 'paymentsEdit')->name('payments.edit');
+        Route::put('/payments/{payment}', 'paymentsUpdate')->name('payments.update');
+        Route::delete('/payments/{payment}', 'paymentsDestroy')->name('payments.destroy');
         
         Route::get('/subscriptions', 'subscriptions')->name('subscriptions.index');
         Route::get('/subscriptions/create', 'subscriptionsCreate')->name('subscriptions.create');

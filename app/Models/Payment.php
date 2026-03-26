@@ -8,9 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'account_id',
-    'client_id',
-    'invoice_id',
+    'accountid',
+    'clientid',
+    'invoiceid',
     'payment_number',
     'payment_date',
     'amount',
@@ -24,6 +24,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class Payment extends Model
 {
+protected $primaryKey = 'paymentid';
+    public function getRouteKeyName(): string
+    {
+        return 'paymentid';
+    }
+
+    protected function idLength(): int
+    {
+        return 6;
+    }
+
     use HasAlphaNumericId;
 
     protected function casts(): array
@@ -36,17 +47,17 @@ class Payment extends Model
 
     public function account(): BelongsTo
     {
-        return $this->belongsTo(Account::class);
+        return $this->belongsTo(Account::class, 'accountid');
     }
 
     public function client(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Client::class, 'clientid');
     }
 
     public function invoice(): BelongsTo
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->belongsTo(Invoice::class, 'invoiceid');
     }
 
     public function receiver(): BelongsTo

@@ -14,24 +14,24 @@
         @csrf
         <div class="form-grid">
             <div>
-                <label for="client_id">Select Client *</label>
-                <select id="client_id" name="client_id" required>
+                <label for="clientid">Select Client *</label>
+                <select id="clientid" name="clientid" required>
                     <option value="">-- Choose Client --</option>
                     @foreach($clients as $client)
-                        <option value="{{ $client->id }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
+                        <option value="{{ $client->clientid }}" {{ old('clientid') == $client->clientid ? 'selected' : '' }}>
                             {{ $client->business_name ?? $client->contact_name }}
                         </option>
                     @endforeach
                 </select>
-                @error('client_id') <span class="error">{{ $message }}</span> @enderror
+                @error('clientid') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="invoice_id">Related Invoice (Optional)</label>
-                <select id="invoice_id" name="invoice_id">
+                <label for="invoiceid">Related Invoice (Optional)</label>
+                <select id="invoiceid" name="invoiceid">
                     <option value="">-- No Specific Invoice --</option>
                     @foreach($invoices as $invoice)
-                        <option value="{{ $invoice->id }}" {{ old('invoice_id') == $invoice->id ? 'selected' : '' }}>
-                            {{ $invoice->number }} ({{ $invoice->client->business_name ?? 'Client' }})
+                        <option value="{{ $invoice->invoiceid }}" {{ old('invoiceid') == $invoice->invoiceid ? 'selected' : '' }}>
+                            {{ $invoice->invoice_number }} ({{ $invoice->client->business_name ?? 'Client' }})
                         </option>
                     @endforeach
                 </select>

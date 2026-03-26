@@ -14,16 +14,16 @@
         @csrf
         <div class="form-grid">
             <div>
-                <label for="client_id">Select Client *</label>
-                <select id="client_id" name="client_id" required>
+                <label for="clientid">Select Client *</label>
+                <select id="clientid" name="clientid" required>
                     <option value="">-- Choose Client --</option>
                     @foreach($clients as $client)
-                        <option value="{{ $client->id }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
+                        <option value="{{ $client->id }}" {{ old('clientid') == $client->id ? 'selected' : '' }}>
                             {{ $client->business_name ?? $client->contact_name }}
                         </option>
                     @endforeach
                 </select>
-                @error('client_id') <span class="error">{{ $message }}</span> @enderror
+                @error('clientid') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="number">Estimate Number *</label>

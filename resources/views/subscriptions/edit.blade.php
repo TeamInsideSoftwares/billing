@@ -15,28 +15,28 @@
         @csrf
         <div class="form-grid">
             <div>
-                <label for="client_id">Select Client *</label>
-                <select id="client_id" name="client_id" required>
+                <label for="clientid">Select Client *</label>
+                <select id="clientid" name="clientid" required>
                     <option value="">-- Choose Client --</option>
                     @foreach($clients as $client)
-                        <option value="{{ $client->id }}" {{ old('client_id', $subscription->client_id) == $client->id ? 'selected' : '' }}>
+                        <option value="{{ $client->id }}" {{ old('clientid', $subscription->clientid) == $client->id ? 'selected' : '' }}>
                             {{ $client->business_name ?? $client->contact_name }}
                         </option>
                     @endforeach
                 </select>
-                @error('client_id') <span class="error">{{ $message }}</span> @enderror
+                @error('clientid') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="service_id">Select Recurring Service *</label>
-                <select id="service_id" name="service_id" required>
+                <label for="serviceid">Select Recurring Service *</label>
+                <select id="serviceid" name="serviceid" required>
                     <option value="">-- Choose Service --</option>
                     @foreach($services as $service)
-                        <option value="{{ $service->id }}" {{ old('service_id', $subscription->service_id) == $service->id ? 'selected' : '' }}>
+                        <option value="{{ $service->id }}" {{ old('serviceid', $subscription->serviceid) == $service->id ? 'selected' : '' }}>
                             {{ $service->name }} (Rs {{ number_format($service->unit_price) }})
                         </option>
                     @endforeach
                 </select>
-                @error('service_id') <span class="error">{{ $message }}</span> @enderror
+                @error('serviceid') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="start_date">Start Date *</label>

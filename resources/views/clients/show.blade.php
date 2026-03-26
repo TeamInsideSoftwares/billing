@@ -5,6 +5,7 @@
     <div>
         <p class="eyebrow">{{ $client->business_name ?? $client->contact_name }}</p>
         <h3>Client details</h3>
+        <a href="{{ route('clients.index') }}" class="text-link">&larr; Back to clients</a>
     </div>
     <div>
         <a href="{{ route('clients.edit', $client) }}" class="primary-button">Edit</a>

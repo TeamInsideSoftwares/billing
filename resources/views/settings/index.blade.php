@@ -69,27 +69,37 @@
             <a href="{{ route('settings.create') }}" class="text-link">+ Add Key</a>
         </div>
 
-        <div class="table-list">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Key</th>
+                    <th>Value</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
             @if(count($settings) > 0)
                 @foreach ($settings as $setting)
-                    <div class="table-row">
-                        <div style="flex: 1;">
+                    <tr>
+                        <td style="font-family: monospace;">
                             <code style="background: var(--slate-100); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">{{ $setting['key'] }}</code>
-                        </div>
-                        <div style="flex: 2;">
+                        </td>
+                        <td>
                             <strong>{{ $setting['value'] }}</strong>
-                        </div>
-                        <div class="table-actions">
-                            <a href="{{ route('settings.edit', $setting['id']) }}" class="text-link">Edit</a>
-                        </div>
-                    </div>
+                        </td>
+                        <td class="table-actions">
+                            <a href="{{ route('settings.edit', $setting['record_id']) }}" class="text-link">Edit</a>
+                        </td>
+                    </tr>
                 @endforeach
             @else
-                <div class="empty-state" style="padding: 2rem; text-align: center; color: var(--slate-400);">
-                    No custom settings defined.
-                </div>
+                <tr>
+                    <td colspan="3" style="padding: 2rem; text-align: center; color: var(--slate-400);">
+                        No custom settings defined.
+                    </td>
+                </tr>
             @endif
-        </div>
+            </tbody>
+        </table>
     </section>
 @endsection
-

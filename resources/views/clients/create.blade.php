@@ -24,7 +24,7 @@
         @endif
         <div class="form-grid">
             <div style="display:none;">
-                <input type="hidden" name="account_id" value="{{ auth()->user()->account_id ?? 'ACC0000001' }}">
+                <input type="hidden" name="accountid" value="{{ auth()->user()->accountid ?? 'ACC0000001' }}">
             </div>
             <div>
                 <label for="business_name">Business Name *</label>
