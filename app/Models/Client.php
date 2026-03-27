@@ -11,14 +11,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'accountid',
     'client_code',
-
+    'logo_path',
     'business_name',
+    'group_name',
     'contact_name',
     'email',
     'phone',
+    'whatsapp_number',
     'billing_email',
     'tax_number',
     'status',
+    'currency',
     'address_line_1',
     'address_line_2',
     'city',
@@ -29,7 +32,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class Client extends Model
 {
-protected $primaryKey = 'clientid';
+    protected $primaryKey = 'clientid';
     public function getRouteKeyName(): string
     {
         return 'clientid';
@@ -44,7 +47,12 @@ protected $primaryKey = 'clientid';
 
     public function account(): BelongsTo
     {
-        return $this->belongsTo(Account::class);
+        return $this->belongsTo(Account::class, 'accountid', 'accountid');
+    }
+
+    public function billingDetail(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ClientBillingDetail::class, 'clientid', 'clientid');
     }
 
     public function invoices(): HasMany

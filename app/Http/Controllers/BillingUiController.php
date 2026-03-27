@@ -16,6 +16,9 @@ use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Account;
+use App\Models\ProductCategory;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class BillingUiController extends Controller
 {
@@ -77,7 +80,7 @@ class BillingUiController extends Controller
 
     public function services(): View
     {
-        $query = Service::query();
+        $query = Service::with('category');
         $searchTerm = request('search', '');
         if ($searchTerm) {
             $query->where('name', 'like', '%' . $searchTerm . '%');
@@ -85,12 +88,28 @@ class BillingUiController extends Controller
         $resultCount = $query->count();
         $services = $query->latest()->take(20)->get()->map(function ($service) {
             return [
-'record_id' => $service->serviceid,
+                'record_id' => $service->serviceid,
                 'name' => $service->name,
-                'type' => ucfirst(str_replace('-', ' ', $service->billing_type ?? 'one time')),
-                'price' => 'Rs ' . number_format($service->unit_price ?? 0, 2),
+                'category_name' => $service->category->name ?? 'No Category',
+                'cost_price' => 'Rs ' . number_format($service->cost_price ?? 0, 2),
+                'selling_price' => 'Rs ' . number_format($service->selling_price ?? 0, 2),
                 'tax' => ($service->tax_rate ?? 18) . '%',
-                'status' => $service->status ?? 'Active',
+                'status' => $service->is_active ? 'Active' : 'Inactive',
+            ];
+        });
+
+        $catQuery = ProductCategory::query();
+        $catSearch = request('cat_search', '');
+        if ($catSearch) {
+            $catQuery->where('name', 'like', '%' . $catSearch . '%');
+        }
+        $catResultCount = $catQuery->count();
+        $productCategories = $catQuery->latest()->take(20)->get()->map(function ($pc) {
+            return [
+                'record_id' => $pc->product_categoryid,
+                'name' => $pc->name,
+                'description' => $pc->description ?? '',
+                'status' => strtolower($pc->status ?? 'active'),
             ];
         });
 
@@ -99,6 +118,9 @@ class BillingUiController extends Controller
             'services' => $services,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
+            'productCategories' => $productCategories,
+            'catSearch' => $catSearch,
+            'catResultCount' => $catResultCount,
         ]);
     }
 
@@ -301,16 +323,22 @@ class BillingUiController extends Controller
     // Services CRUD
     public function servicesCreate(): View
     {
-        return view('services.create', ['title' => 'New Service']);
+        $categories = ProductCategory::where('status', 'active')->get();
+        return view('services.create', [
+            'title' => 'New Service',
+            'categories' => $categories
+        ]);
     }
 
     public function servicesStore(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'product_categoryid' => 'nullable|exists:product_categories,product_categoryid',
             'description' => 'nullable|string',
-            'billing_type' => 'required|in:one-time,recurring',
-            'unit_price' => 'required|numeric|min:0',
+            'cost_price' => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|min:0',
+            'sac_code' => 'nullable|string|max:20',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
             'accountid' => 'nullable|size:6',
             'status' => 'in:active,inactive',
@@ -318,6 +346,7 @@ class BillingUiController extends Controller
 
         $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
+        $validated['is_active'] = ($request->status ?? 'active') === 'active';
 
         Service::create($validated);
 
@@ -326,7 +355,7 @@ class BillingUiController extends Controller
 
     public function servicesShow(Service $service): View
     {
-        $service->load('subscriptions');
+        $service->load(['subscriptions', 'category']);
         return view('services.show', [
             'title' => 'Service Details',
             'service' => $service,
@@ -335,20 +364,28 @@ class BillingUiController extends Controller
 
     public function servicesEdit(Service $service): View
     {
-        return view('services.edit', ['title' => 'Edit Service', 'service' => $service]);
+        $categories = ProductCategory::where('status', 'active')->get();
+        return view('services.edit', [
+            'title' => 'Edit Service', 
+            'service' => $service,
+            'categories' => $categories
+        ]);
     }
 
     public function servicesUpdate(Request $request, Service $service)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'product_categoryid' => 'nullable|exists:product_categories,product_categoryid',
             'description' => 'nullable|string',
-            'billing_type' => 'required|in:one-time,recurring',
-            'unit_price' => 'required|numeric|min:0',
+            'cost_price' => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|min:0',
+            'sac_code' => 'nullable|string|max:20',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
             'status' => 'in:active,inactive',
         ]);
 
+        $validated['is_active'] = ($request->status ?? 'active') === 'active';
         $service->update($validated);
 
         return redirect()->route('services.index')->with('success', 'Service updated successfully.');
@@ -359,6 +396,88 @@ class BillingUiController extends Controller
         $service->delete();
 
         return redirect()->route('services.index')->with('success', 'Service deleted successfully.');
+    }
+
+    // Product Categories CRUD
+    public function productCategories(): View
+    {
+        $query = ProductCategory::query();
+        $searchTerm = request('search', '');
+        if ($searchTerm) {
+            $query->where('name', 'like', '%' . $searchTerm . '%');
+        }
+        $resultCount = $query->count();
+        $productCategories = $query->latest()->take(20)->get()->map(function ($pc) {
+            return [
+                'record_id' => $pc->product_categoryid,
+                'name' => $pc->name,
+                'description' => Str::limit($pc->description ?? '', 50),
+                'status' => ucfirst($pc->status ?? 'Active'),
+            ];
+        });
+
+        return view('product-categories.index', [
+            'title' => 'Product Categories',
+            'productCategories' => $productCategories,
+            'searchTerm' => $searchTerm,
+            'resultCount' => $resultCount,
+        ]);
+    }
+
+    public function productCategoriesCreate(): View
+    {
+        return view('product-categories.create', ['title' => 'New Product Category']);
+    }
+
+    public function productCategoriesStore(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:150',
+            'description' => 'nullable|string',
+            'status' => 'in:active,inactive',
+        ]);
+
+        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $validated['accountid'] = $userAccountId;
+
+        ProductCategory::create($validated);
+
+        return redirect()->back()->with('success', 'Product category created successfully.')->with('open_cat_modal', true);
+    }
+
+    public function productCategoriesShow(ProductCategory $productCategory): View
+    {
+        return view('product-categories.show', [
+            'title' => 'Product Category Details',
+            'productCategory' => $productCategory,
+        ]);
+    }
+
+    public function productCategoriesEdit(ProductCategory $productCategory): View
+    {
+        return view('product-categories.edit', ['title' => 'Edit Product Category', 'productCategory' => $productCategory]);
+    }
+
+    public function productCategoriesUpdate(Request $request, $id)
+    {
+        $category = ProductCategory::where('product_categoryid', $id)->firstOrFail();
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:150',
+            'description' => 'nullable|string',
+            'status' => 'in:active,inactive',
+        ]);
+
+        $category->update($validated);
+
+        return redirect()->back()->with('success', 'Product category updated successfully.')->with('open_cat_modal', true);
+    }
+
+    public function productCategoriesDestroy(ProductCategory $productCategory)
+    {
+        $productCategory->delete();
+
+        return redirect()->back()->with('success', 'Product category deleted successfully.')->with('open_cat_modal', true);
     }
 
     // Settings CRUD
@@ -437,17 +556,51 @@ class BillingUiController extends Controller
         $validated = $request->validate([
             'accountid' => 'required|exists:accounts,accountid|size:10',
             'business_name' => 'required|string|max:255',
+            'group_name' => 'nullable|string|max:255',
             'contact_name' => 'nullable|string|max:255',
             'email' => 'required|email|unique:clients,email',
             'phone' => 'nullable|string|max:20',
-            'billing_email' => 'nullable|email',
+            'whatsapp_number' => 'nullable|string|max:20',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'status' => 'in:active,review,inactive',
+            'currency' => 'required|string|size:3',
+            // Billing Details
+            'gstin' => 'nullable|string|max:20',
+            'billing_email' => 'nullable|email',
+            'city' => 'nullable|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'country' => 'nullable|string|max:100',
+            'postal_code' => 'nullable|string|max:20',
+            'address_line_1' => 'nullable|string|max:150',
         ]);
+
+        // Handle logo upload
+        if ($request->hasFile('logo')) {
+            $path = $request->file('logo')->store('logos', 'public');
+            // Add /public/ before /storage/ to match subdirectory setup
+            $baseUrl = rtrim(config('app.url'), '/');
+            $validated['logo_path'] = $baseUrl . '/public/storage/' . $path;
+        }
 
         // Override with user context if not provided
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
+        
+        if (empty($validated['group_name'])) {
+            $validated['group_name'] = $validated['business_name'];
+        }
 
-        Client::create($validated);
+        $client = Client::create($validated);
+
+        // Create billing details
+        $client->billingDetail()->create([
+            'gstin' => $validated['gstin'] ?? null,
+            'billing_email' => $validated['billing_email'] ?? null,
+            'city' => $validated['city'] ?? null,
+            'state' => $validated['state'] ?? null,
+            'country' => $validated['country'] ?? 'India',
+            'postal_code' => $validated['postal_code'] ?? null,
+            'address_line_1' => $validated['address_line_1'] ?? null,
+        ]);
 
         return redirect()->route('clients.index')->with('success', 'Client created successfully.');
     }
@@ -477,14 +630,61 @@ class BillingUiController extends Controller
     {
         $validated = $request->validate([
             'business_name' => 'required|string|max:255',
+            'group_name' => 'nullable|string|max:255',
             'contact_name' => 'nullable|string|max:255',
 'email' => 'required|email|unique:clients,email,' . $client->getKey() . ',clientid',
             'phone' => 'nullable|string|max:20',
-            'billing_email' => 'nullable|email',
+            'whatsapp_number' => 'nullable|string|max:20',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'status' => 'in:active,review,inactive',
+            'currency' => 'required|string|size:3',
+            // Billing Details
+            'gstin' => 'nullable|string|max:20',
+            'billing_email' => 'nullable|email',
+            'city' => 'nullable|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'country' => 'nullable|string|max:100',
+            'postal_code' => 'nullable|string|max:20',
+            'address_line_1' => 'nullable|string|max:150',
         ]);
 
+        // Handle logo upload
+        if ($request->hasFile('logo')) {
+            // Delete old logo if it exists
+            if ($client->logo_path) {
+                // Since we store the full URL, we need to extract the relative path
+                // URL structure: base_url/public/storage/logos/filename.jpg
+                $storageBase = rtrim(config('app.url'), '/') . '/public/storage/';
+                $oldPath = str_replace($storageBase, '', $client->logo_path);
+                Storage::disk('public')->delete($oldPath);
+            }
+            $path = $request->file('logo')->store('logos', 'public');
+            $baseUrl = rtrim(config('app.url'), '/');
+            $validated['logo_path'] = $baseUrl . '/public/storage/' . $path;
+        }
+
+        if (empty($validated['group_name'])) {
+            $validated['group_name'] = $validated['business_name'];
+        }
+
         $client->update($validated);
+
+        // Update or Create billing details
+        $billingData = [
+            'gstin' => $validated['gstin'] ?? null,
+            'billing_email' => $validated['billing_email'] ?? null,
+            'city' => $validated['city'] ?? null,
+            'state' => $validated['state'] ?? null,
+            'country' => $validated['country'] ?? 'India',
+            'postal_code' => $validated['postal_code'] ?? null,
+            'address_line_1' => $validated['address_line_1'] ?? null,
+        ];
+
+        if ($client->billingDetail) {
+            $client->billingDetail->update($billingData);
+        } else {
+            $client->billingDetail()->create($billingData);
+        }
 
         return redirect()->route('clients.index')->with('success', 'Client updated successfully.');
     }

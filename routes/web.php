@@ -65,6 +65,15 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/estimates/{estimate}', 'estimatesUpdate')->name('estimates.update');
         Route::delete('/estimates/{estimate}', 'estimatesDestroy')->name('estimates.destroy');
         
+        // Product Categories CRUD
+        Route::get('/product-categories', 'productCategories')->name('product-categories.index');
+        Route::get('/product-categories/create', 'productCategoriesCreate')->name('product-categories.create');
+        Route::post('/product-categories', 'productCategoriesStore')->name('product-categories.store');
+        Route::get('/product-categories/{productCategory}', 'productCategoriesShow')->name('product-categories.show');
+        Route::get('/product-categories/{productCategory}/edit', 'productCategoriesEdit')->name('product-categories.edit');
+        Route::put('/product-categories/{productCategory}', 'productCategoriesUpdate')->name('product-categories.update');
+        Route::delete('/product-categories/{productCategory}', 'productCategoriesDestroy')->name('product-categories.destroy');
+        
         Route::get('/settings', 'settings')->name('settings.index');
         Route::put('/settings/agency', 'agencyUpdate')->name('agency.update');
         Route::get('/settings/create', 'settingsCreate')->name('settings.create');

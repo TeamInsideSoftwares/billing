@@ -10,12 +10,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'accountid',
+    'product_categoryid',
 
     'service_code',
     'name',
     'description',
-    'billing_type',
-    'unit_price',
+    'cost_price',
+    'selling_price',
+    'sac_code',
     'tax_rate',
     'is_active',
 ])]
@@ -37,7 +39,8 @@ protected $primaryKey = 'serviceid';
     protected function casts(): array
     {
         return [
-            'unit_price' => 'decimal:2',
+            'cost_price' => 'decimal:2',
+            'selling_price' => 'decimal:2',
             'tax_rate' => 'decimal:2',
             'is_active' => 'boolean',
         ];
@@ -45,7 +48,12 @@ protected $primaryKey = 'serviceid';
 
     public function account(): BelongsTo
     {
-        return $this->belongsTo(Account::class);
+        return $this->belongsTo(Account::class, 'accountid', 'accountid');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ProductCategory::class, 'product_categoryid', 'product_categoryid');
     }
 
     public function invoiceItems(): HasMany

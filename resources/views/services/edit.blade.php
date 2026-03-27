@@ -20,22 +20,31 @@
                 @error('name') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="description">Description</label>
-                <textarea id="description" name="description" rows="3">{{ old('description', $service->description) }}</textarea>
-                @error('description') <span class="error">{{ $message }}</span> @enderror
-            </div>
-            <div>
-                <label for="billing_type">Billing Type *</label>
-                <select id="billing_type" name="billing_type" required>
-                    <option value="one-time" {{ old('billing_type', $service->billing_type) == 'one-time' ? 'selected' : '' }}>One Time</option>
-                    <option value="recurring" {{ old('billing_type', $service->billing_type) == 'recurring' ? 'selected' : '' }}>Recurring</option>
+                <label for="product_categoryid">Category</label>
+                <select id="product_categoryid" name="product_categoryid">
+                    <option value="">-- No Category --</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->product_categoryid }}" {{ old('product_categoryid', $service->product_categoryid) == $category->product_categoryid ? 'selected' : '' }}>
+                            {{ $category->name }}
+                        </option>
+                    @endforeach
                 </select>
-                @error('billing_type') <span class="error">{{ $message }}</span> @enderror
+                @error('product_categoryid') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="unit_price">Unit Price (Rs) *</label>
-                <input type="number" id="unit_price" name="unit_price" step="0.01" min="0" value="{{ old('unit_price', $service->unit_price) }}" required>
-                @error('unit_price') <span class="error">{{ $message }}</span> @enderror
+                <label for="sac_code">SAC Code</label>
+                <input type="text" id="sac_code" name="sac_code" value="{{ old('sac_code', $service->sac_code) }}">
+                @error('sac_code') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div>
+                <label for="cost_price">Cost Price (Rs) *</label>
+                <input type="number" step="0.01" id="cost_price" name="cost_price" value="{{ old('cost_price', $service->cost_price) }}" required>
+                @error('cost_price') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div>
+                <label for="selling_price">Selling Price (Rs) *</label>
+                <input type="number" step="0.01" id="selling_price" name="selling_price" value="{{ old('selling_price', $service->selling_price) }}" required>
+                @error('selling_price') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="tax_rate">Tax Rate (%)</label>
@@ -45,10 +54,15 @@
             <div>
                 <label for="status">Status</label>
                 <select id="status" name="status">
-                    <option value="active" {{ old('status', $service->status) == 'active' ? 'selected' : '' }}>Active</option>
-                    <option value="inactive" {{ old('status', $service->status) == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                    <option value="active" {{ old('status', $service->is_active ? 'active' : 'inactive') == 'active' ? 'selected' : '' }}>Active</option>
+                    <option value="inactive" {{ old('status', $service->is_active ? 'active' : 'inactive') == 'inactive' ? 'selected' : '' }}>Inactive</option>
                 </select>
                 @error('status') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div style="grid-column: span 2;">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="3">{{ old('description', $service->description) }}</textarea>
+                @error('description') <span class="error">{{ $message }}</span> @enderror
             </div>
         </div>
         <div class="form-actions">

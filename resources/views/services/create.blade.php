@@ -19,17 +19,31 @@
                 @error('name') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="billing_type">Billing Type *</label>
-                <select id="billing_type" name="billing_type" required>
-                    <option value="one-time" {{ old('billing_type') == 'one-time' ? 'selected' : '' }}>One Time</option>
-                    <option value="recurring" {{ old('billing_type') == 'recurring' ? 'selected' : '' }}>Recurring</option>
+                <label for="product_categoryid">Category</label>
+                <select id="product_categoryid" name="product_categoryid">
+                    <option value="">-- No Category --</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->product_categoryid }}" {{ old('product_categoryid') == $category->product_categoryid ? 'selected' : '' }}>
+                            {{ $category->name }}
+                        </option>
+                    @endforeach
                 </select>
-                @error('billing_type') <span class="error">{{ $message }}</span> @enderror
+                @error('product_categoryid') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="unit_price">Unit Price (Rs) *</label>
-                <input type="number" step="0.01" id="unit_price" name="unit_price" value="{{ old('unit_price') }}" required>
-                @error('unit_price') <span class="error">{{ $message }}</span> @enderror
+                <label for="sac_code">SAC Code</label>
+                <input type="text" id="sac_code" name="sac_code" value="{{ old('sac_code') }}">
+                @error('sac_code') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div>
+                <label for="cost_price">Cost Price (Rs) *</label>
+                <input type="number" step="0.01" id="cost_price" name="cost_price" value="{{ old('cost_price') }}" required>
+                @error('cost_price') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div>
+                <label for="selling_price">Selling Price (Rs) *</label>
+                <input type="number" step="0.01" id="selling_price" name="selling_price" value="{{ old('selling_price') }}" required>
+                @error('selling_price') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="tax_rate">Tax Rate (%)</label>
