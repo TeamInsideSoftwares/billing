@@ -8,7 +8,10 @@
                 <button type="submit">Search</button>
             </form>
         </div>
-        <a href="{{ route('clients.create') }}" class="primary-button">Add Client</a>
+        <div>
+            <a href="{{ route('clients.create') }}" class="primary-button">Add Client</a>
+            <a href="{{ route('groups.index') }}" class="secondary-button">Manage Groups</a>
+        </div>
     </section>
 
     <section class="panel-card">

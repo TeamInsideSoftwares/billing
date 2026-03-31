@@ -17,7 +17,6 @@
         $navItems = [
             ['label' => 'Dashboard', 'route' => 'dashboard'],
             ['label' => 'Clients', 'route' => 'clients.index'],
-            ['label' => 'Groups', 'route' => 'groups.index'],
             ['label' => 'Services', 'route' => 'services.index'],
             ['label' => 'Invoices', 'route' => 'invoices.index'],
             ['label' => 'Payments', 'route' => 'payments.index'],

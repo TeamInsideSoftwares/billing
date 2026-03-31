@@ -99,8 +99,8 @@
                                 </td>
                                 <td>
                                     <select name="costings[{{ $index }}][tax_included]" style="min-width: 120px;" required>
-                                        <option value="0" {{ ($costing['tax_included'] ?? 0) == 0 ? 'selected' : '' }}>Excl. Tax</option>
-                                        <option value="1" {{ ($costing['tax_included'] ?? 0) == 1 ? 'selected' : '' }}>Incl. Tax</option>
+<option value="no" {{ ($costing['tax_included'] ?? 'no') == 'no' ? 'selected' : '' }}>Excl. Tax</option>
+<option value="yes" {{ ($costing['tax_included'] ?? 'no') == 'yes' ? 'selected' : '' }}>Incl. Tax</option>
                                     </select>
                                 </td>
                                 <td>
@@ -164,13 +164,13 @@
                 </td>
                 <td><input type="number" step="0.01" name="costings[${rowIndex}][cost_price]" value="${data.cost_price || ''}" required></td>
                 <td><input type="number" step="0.01" name="costings[${rowIndex}][selling_price]" value="${data.selling_price || ''}" required></td>
+                <td><input type="text" maxlength="20" name="costings[${rowIndex}][sac_code]" value="${data.sac_code || ''}"></td>
                 <td>
                     <select name="costings[${rowIndex}][tax_included]" style="min-width: 120px;" required>
                         <option value="no">Excl. Tax</option>
                         <option value="yes">Incl. Tax</option>
                     </select>
                 </td>
-                <td><input type="text" maxlength="20" name="costings[${rowIndex}][sac_code]" value="${data.sac_code || ''}"></td>
                 <td><input type="number" step="0.01" min="0" max="100" name="costings[${rowIndex}][tax_rate]" value="${data.tax_rate || ''}"></td>
                 <td style="width: 70px; text-align: center;"><button type="button" class="text-link danger remove-costing">Remove</button></td>
             `;
@@ -178,13 +178,10 @@
             if (data.currency_code) {
                 row.querySelector(`select[name="costings[${rowIndex}][currency_code]"]`).value = data.currency_code;
             }
-            if (data.tax_included !== undefined) {
-                row.querySelector(`select[name="costings[${rowIndex}][tax_included]"]`).value = data.tax_included;
-            }
+// Fixed: tax_included now uses 'no'/'yes' consistently
             rowIndex++;
         }
     })();
 </script>
 @endsection
 
-@endsection

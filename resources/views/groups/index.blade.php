@@ -7,10 +7,12 @@
                 <input type="search" name="search" placeholder="Search groups by name..." value="{{ request('search') }}">
                 <button type="submit">Search</button>
             </form>
+            <a href="{{ route('clients.index') }}" class="text-link">&larr; Back to clients</a>
         </div>
-        <div class="button-group" style="display: flex; gap: 0.75rem;">
+        
+        <!-- <div class="button-group" style="display: flex; gap: 0.75rem;">
             <a href="{{ route('groups.create') }}" class="primary-button">Add Group</a>
-        </div>
+        </div> -->
     </section>
 
     <section class="panel-card">

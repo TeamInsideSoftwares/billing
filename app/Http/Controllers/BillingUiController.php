@@ -174,14 +174,19 @@ class BillingUiController extends Controller
             $editingSetting = Setting::find(request('edit'));
         }
 
+        $currencies = DB::table('currency')
+            ->orderBy('iso')
+            ->get(['iso', 'name']);
+
         return view('settings.index', [
             'title' => 'Settings',
             'settings' => $settings,
             'account' => $account,
             'financialYears' => $financialYears,
-            'searchTerm' => $searchTerm,
+'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
             'editingSetting' => $editingSetting,
+            'currencies' => $currencies,
         ]);
     }
 
@@ -201,7 +206,7 @@ class BillingUiController extends Controller
             'legal_name' => 'nullable|string|max:150',
             'tax_number' => 'nullable|string|max:50',
             'website' => 'nullable|url|max:150',
-            'currency_code' => 'required|string|size:3',
+'currency_code' => 'required|string|size:3|exists:currency,iso',
             'timezone' => 'required|string|max:100',
             'fy_startdate' => 'nullable|string|max:10',
             'address_line_1' => 'nullable|string|max:255',

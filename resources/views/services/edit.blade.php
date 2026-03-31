@@ -180,13 +180,13 @@
                 </td>
                 <td><input type="number" step="0.01" name="costings[${rowIndex}][cost_price]" value="${data.cost_price || ''}" required></td>
                 <td><input type="number" step="0.01" name="costings[${rowIndex}][selling_price]" value="${data.selling_price || ''}" required></td>
+                <td><input type="text" maxlength="20" name="costings[${rowIndex}][sac_code]" value="${data.sac_code || ''}"></td>
                 <td>
                     <select name="costings[${rowIndex}][tax_included]" style="min-width: 120px;" required>
-                        <option value="0">Excl. Tax</option>
-                        <option value="1">Incl. Tax</option>
+                        <option value="no">Excl. Tax</option>
+                        <option value="yes">Incl. Tax</option>
                     </select>
                 </td>
-                <td><input type="text" maxlength="20" name="costings[${rowIndex}][sac_code]" value="${data.sac_code || ''}"></td>
                 <td><input type="number" step="0.01" min="0" max="100" name="costings[${rowIndex}][tax_rate]" value="${data.tax_rate || ''}"></td>
                 <td style="width: 70px; text-align: center;"><button type="button" class="text-link danger remove-costing">Remove</button></td>
             `;

@@ -157,7 +157,13 @@ label {
 
             <div>
                 <label>Currency</label>
-                <input type="text" name="currency_code" value="{{ old('currency_code', $account->currency_code ?? 'INR') }}">
+                <select name="currency_code" style="width: 100%; padding: 0.45rem 0.6rem;">
+                    @foreach($currencies as $currency)
+                        <option value="{{ $currency->iso }}" {{ old('currency_code', $account->currency_code ?? 'INR') == $currency->iso ? 'selected' : '' }}>
+                            {{ $currency->iso }} - {{ $currency->name }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
 
             <div>
