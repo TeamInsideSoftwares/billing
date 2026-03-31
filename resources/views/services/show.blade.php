@@ -43,6 +43,7 @@
                     <th>Currency</th>
                     <th>Cost Price</th>
                     <th>Selling Price</th>
+                    <th>Tax Type</th>
                     <th>SAC Code</th>
                     <th>Tax %</th>
                 </tr>
@@ -53,6 +54,7 @@
                         <td><strong>{{ $costing->currency_code }}</strong></td>
                         <td>{{ number_format($costing->cost_price, 2) }}</td>
                         <td>{{ number_format($costing->selling_price, 2) }}</td>
+                        <td>{{ $costing->tax_included ? 'Incl. Tax' : 'Excl. Tax' }}</td>
                         <td>{{ $costing->sac_code ?? '-' }}</td>
                         <td>{{ number_format($costing->tax_rate, 2) }}%</td>
                     </tr>

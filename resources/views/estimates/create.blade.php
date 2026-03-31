@@ -3,8 +3,6 @@
 @section('content')
 <section class="section-bar">
     <div>
-        <p class="eyebrow">Pre-Sales</p>
-        <h3>Create new estimate</h3>
     </div>
     <a href="{{ route('estimates.index') }}" class="text-link">&larr; Back to estimates</a>
 </section>

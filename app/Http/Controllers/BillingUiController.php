@@ -19,9 +19,11 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Account;
 use App\Models\ProductCategory;
+use App\Models\FinancialYear;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 use App\Models\ServiceCosting;
 
 class BillingUiController extends Controller
@@ -84,7 +86,13 @@ class BillingUiController extends Controller
 
     public function services(): View
     {
-        $query = Service::with(['category', 'costings'])->orderBy('sequence')->orderBy('name');
+        $query = Service::with(['category', 'costings'])
+            ->join('ps_categories', 'services.ps_catid', '=', 'ps_categories.ps_catid', 'left')
+            ->select('services.*', 'ps_categories.name as cat_name')
+            ->orderBy('cat_name', 'asc')
+            ->orderBy('services.sequence', 'asc')
+            ->orderBy('services.name', 'asc');
+        
         $searchTerm = request('search', '');
         if ($searchTerm) {
             $query->where('name', 'like', '%' . $searchTerm . '%');
@@ -98,6 +106,7 @@ class BillingUiController extends Controller
                     'selling_price' => $costing->selling_price,
                     'sac_code' => $costing->sac_code,
                     'tax_rate' => $costing->tax_rate,
+                    'tax_included' => $costing->tax_included,
                 ];
             });
 
@@ -155,28 +164,34 @@ class BillingUiController extends Controller
             ];
         });
 
-        $account = null;
-        if (auth()->check()) {
-            $account = auth()->user()->account;
-        } else {
-            $account = Account::find('ACC0000001');
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $account = Account::find($accountid);
+        $financialYears = $account ? $account->financialYears()->orderBy('financial_year')->get() : collect();
+
+        // Check for edit mode
+        $editingSetting = null;
+        if (request('edit')) {
+            $editingSetting = Setting::find(request('edit'));
         }
 
         return view('settings.index', [
             'title' => 'Settings',
             'settings' => $settings,
             'account' => $account,
+            'financialYears' => $financialYears,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
+            'editingSetting' => $editingSetting,
         ]);
     }
 
-    public function agencyUpdate(Request $request)
+    public function accountUpdate(Request $request)
     {
-        $account = auth()->check() ? auth()->user()->account : Account::find('ACC0000001');
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $account = Account::find($accountid);
 
         if (! $account) {
-            return redirect()->back()->with('error', 'Agency profile not found.');
+            return redirect()->back()->with('error', 'Profile not found.');
         }
 
         $validated = $request->validate([
@@ -188,17 +203,74 @@ class BillingUiController extends Controller
             'website' => 'nullable|url|max:150',
             'currency_code' => 'required|string|size:3',
             'timezone' => 'required|string|max:100',
+            'fy_startdate' => 'nullable|string|max:10',
             'address_line_1' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:100',
             'country' => 'nullable|string|max:100',
+            'postal_code' => 'nullable|string|max:20',
         ]);
+
+        // If fy_startdate is provided via month picker (YYYY-MM), format it to MM-01 for year-agnostic storage
+        if (!empty($validated['fy_startdate']) && strlen($validated['fy_startdate']) === 7) {
+            $validated['fy_startdate'] = \Carbon\Carbon::parse($validated['fy_startdate'] . '-01')->format('m-d');
+        }
 
         $account->update($validated);
 
-        return redirect()->route('settings.index')->with('success', 'Agency profile updated successfully.');
-    }
+        return redirect()->to(route('settings.index') . '#personal')->with('success', 'Profile updated successfully.');
+        }
 
-    public function invoices(): View
+        public function financialYearUpdate(Request $request)
+        {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $account = Account::find($accountid);
+        if (!$account) {
+            return redirect()->back()->with('error', 'Account not found.');
+        }
+
+        $validated = $request->validate([
+            'year_start' => 'required|integer|min:2000|max:2100',
+            'year_end' => 'required|integer|min:2000|max:2100',
+        ]);
+
+        $fyString = $validated['year_start'] . '-' . $validated['year_end'];
+
+        // Find or create FY.
+        $fy = FinancialYear::updateOrCreate(
+            [
+                'accountid' => $account->accountid,
+                'financial_year' => $fyString,
+            ],
+            [
+                'default' => true,
+            ]
+        );
+
+        // Set as default
+        FinancialYear::where('accountid', $account->accountid)
+            ->where('fy_id', '!=', $fy->fy_id)
+            ->update(['default' => false]);
+
+        return redirect()->to(route('settings.index') . '#financial-year')->with('success', 'Financial Year "' . $fyString . '" set as default.');
+        }
+        public function financialYearSetDefault(FinancialYear $financialYear)
+        {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+
+        if ($financialYear->accountid !== $accountid) {
+            return redirect()->back()->with('error', 'Unauthorized action.');
+        }
+
+        // Set all others to false
+        FinancialYear::where('accountid', $accountid)->update(['default' => false]);
+
+        // Set this one to true
+        $financialYear->update(['default' => true]);
+
+        return redirect()->to(route('settings.index') . '#financial-year')->with('success', 'Financial Year "' . $financialYear->financial_year . '" set as default.');
+        }
+
+        public function invoices(): View
     {
         $query = Invoice::with('client');
         $searchTerm = request('search', '');
@@ -368,6 +440,7 @@ class BillingUiController extends Controller
             'costings.*.selling_price' => 'required|numeric|min:0',
             'costings.*.sac_code' => 'nullable|string|max:20',
             'costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
+            'costings.*.tax_included' => 'required|in:yes,no',
         ]);
 
         $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
@@ -382,6 +455,7 @@ class BillingUiController extends Controller
                     'selling_price' => $costing['selling_price'],
                     'sac_code' => $costing['sac_code'] ?? null,
                     'tax_rate' => $costing['tax_rate'] ?? 0,
+                    'tax_included' => $costing['tax_included'],
                 ];
             });
 
@@ -391,14 +465,9 @@ class BillingUiController extends Controller
                 'name' => $validated['name'],
                 'ps_catid' => $validated['ps_catid'] ?? null,
                 'description' => $validated['description'] ?? null,
-                'sac_code' => $primaryCosting['sac_code'] ?? null,
                 'accountid' => $validated['accountid'],
                 'is_active' => $validated['is_active'],
-                'sequence' => $validated['sequence'] ?? ((Service::max('sequence') ?? 0) + 1),
-                'unit_price' => $primaryCosting['selling_price'] ?? 0,
-                'tax_rate' => $primaryCosting['tax_rate'] ?? 0,
-                'cost_price' => $primaryCosting['cost_price'] ?? 0,
-                'selling_price' => $primaryCosting['selling_price'] ?? 0,
+                'sequence' => $validated['sequence'] ?? ((Service::where('accountid', $validated['accountid'])->where('ps_catid', $validated['ps_catid'] ?? null)->max('sequence') ?? 0) + 1),
             ]);
 
             $costings->each(function ($costing) use ($service, $validated) {
@@ -409,6 +478,7 @@ class BillingUiController extends Controller
                     'selling_price' => $costing['selling_price'],
                     'sac_code' => $costing['sac_code'],
                     'tax_rate' => $costing['tax_rate'],
+                    'tax_included' => $costing['tax_included'],
                 ]);
             });
         });
@@ -458,6 +528,7 @@ class BillingUiController extends Controller
             'costings.*.selling_price' => 'required|numeric|min:0',
             'costings.*.sac_code' => 'nullable|string|max:20',
             'costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
+            'costings.*.tax_included' => 'required|in:yes,no',
         ]);
 
         $validated['is_active'] = ($request->status ?? 'active') === 'active';
@@ -470,6 +541,7 @@ class BillingUiController extends Controller
                     'selling_price' => $costing['selling_price'],
                     'sac_code' => $costing['sac_code'] ?? null,
                     'tax_rate' => $costing['tax_rate'] ?? 0,
+                    'tax_included' => $costing['tax_included'],
                 ];
             });
 
@@ -479,13 +551,8 @@ class BillingUiController extends Controller
                 'name' => $validated['name'],
                 'ps_catid' => $validated['ps_catid'] ?? null,
                 'description' => $validated['description'] ?? null,
-                'sac_code' => $primaryCosting['sac_code'] ?? null,
                 'is_active' => $validated['is_active'],
                 'sequence' => $validated['sequence'] ?? ($service->sequence ?? 0),
-                'unit_price' => $primaryCosting['selling_price'] ?? 0,
-                'tax_rate' => $primaryCosting['tax_rate'] ?? 0,
-                'cost_price' => $primaryCosting['cost_price'] ?? 0,
-                'selling_price' => $primaryCosting['selling_price'] ?? 0,
             ]);
 
             $service->costings()->delete();
@@ -498,6 +565,7 @@ class BillingUiController extends Controller
                     'selling_price' => $costing['selling_price'],
                     'sac_code' => $costing['sac_code'],
                     'tax_rate' => $costing['tax_rate'],
+                    'tax_included' => $costing['tax_included'],
                 ]);
             });
         });
@@ -739,7 +807,7 @@ class BillingUiController extends Controller
             'accountid' => $validated['accountid'] ?? $userAccountId,
         ]);
 
-        return redirect()->route('settings.index')->with('success', 'Setting created successfully.');
+        return redirect()->to(route('settings.index') . '#config')->with('success', 'Setting created successfully.');
     }
 
     public function settingsShow(Setting $setting): View
@@ -750,15 +818,15 @@ class BillingUiController extends Controller
         ]);
     }
 
-    public function settingsEdit(Setting $setting): View
+    public function settingsEdit(Setting $setting)
     {
-        return view('settings.edit', ['title' => 'Edit Setting', 'setting' => $setting]);
+        return redirect()->to(route('settings.index', ['edit' => $setting->settingid]) . '#config');
     }
 
     public function settingsUpdate(Request $request, Setting $setting)
     {
         $validated = $request->validate([
-'key' => 'required|string|max:255|unique:settings,setting_key,' . $setting->getKey() . ',settingid',
+            'key' => 'required|string|max:255|unique:settings,setting_key,' . $setting->getKey() . ',settingid',
             'value' => 'required',
         ]);
 
@@ -767,14 +835,14 @@ class BillingUiController extends Controller
             'setting_value' => $validated['value'],
         ]);
 
-        return redirect()->route('settings.index')->with('success', 'Setting updated successfully.');
+        return redirect()->to(route('settings.index') . '#config')->with('success', 'Setting updated successfully.');
     }
 
     public function settingsDestroy(Setting $setting)
     {
         $setting->delete();
 
-        return redirect()->route('settings.index')->with('success', 'Setting deleted successfully.');
+        return redirect()->to(route('settings.index') . '#config')->with('success', 'Setting deleted successfully.');
     }
 
     // Clients CRUD

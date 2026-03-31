@@ -25,7 +25,6 @@ class Account extends Authenticatable
         'name',
         'slug',
         'status',
-        'plan_name',
         'legal_name',
         'email',
         'password',
@@ -34,6 +33,7 @@ class Account extends Authenticatable
         'website',
         'currency_code',
         'timezone',
+        'fy_startdate',
         'address_line_1',
         'address_line_2',
         'city',
@@ -68,5 +68,10 @@ class Account extends Authenticatable
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function financialYears(): HasMany
+    {
+        return $this->hasMany(FinancialYear::class, 'accountid', 'accountid');
     }
 }

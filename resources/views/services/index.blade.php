@@ -10,7 +10,7 @@
 
         </div>
         <div class="button-group" style="display: flex; gap: 0.75rem;">
-            <a href="{{ route('services.create') }}" class="primary-button">Add Service</a>
+            <a href="{{ route('services.create') }}" class="primary-button">Add Products/Services</a>
             <button class="primary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal">Manage Categories</button>
         </div>
     </section>
@@ -135,110 +135,123 @@
         }
     </script>
 
-    <section class="panel-card">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th style="width: 40px;">#</th>
-                    <th>Service</th>
-                    <th>Costings</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody id="services-sortable-body">
-            @foreach ($services as $service)
-                <tr draggable="true" data-service-id="{{ $service['record_id'] }}" style="cursor: move;">
-                    <td style="text-align: center; color: var(--text-muted); font-weight: 600;">
-                        {{ $service['sequence'] }}
-                    </td>
-                    <td>
-                        <strong>{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $service['name']) : $service['name'] !!}</strong>
-                        <span class="eyebrow" style="display:block; margin: 0.25rem 0;">{{ $service['category_name'] }}</span>
-                    </td>
-                    <td>
-                        @if(count($service['costings']) > 0)
-                            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
-                                @foreach($service['costings'] as $costing)
-                                    <div style="display:flex; gap:0.5rem; align-items:center; background: var(--bg-muted); padding: 0.35rem 0.5rem; border-radius: 0.4rem; border: 1px solid var(--line);">
-                                        <span class="status-pill" style="text-transform: uppercase; padding: 0.15rem 0.4rem; font-size: 0.75rem;">{{ $costing['currency_code'] }}</span>
-                                        <span style="font-size: 0.9rem;">Cost {{ number_format($costing['cost_price'], 2) }}</span>
-                                        <strong style="font-size: 0.9rem;">Sell {{ number_format($costing['selling_price'], 2) }}</strong>
-                                        @if(!empty($costing['sac_code']))
-                                            <span style="font-size: 0.8rem; color: var(--text-muted);">SAC {{ $costing['sac_code'] }}</span>
-                                        @endif
-                                        <span style="font-size: 0.8rem; color: var(--text-muted);">Tax {{ number_format($costing['tax_rate'], 2) }}%</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @else
-                            <span class="eyebrow">No costings</span>
-                        @endif
-                    </td>
-                    <td>
-                        <span class="status-pill {{ strtolower($service['status']) }}">{{ $service['status'] }}</span>
-                    </td>
-                    <td class="table-actions">
-                        <a href="{{ route('services.edit', $service['record_id']) }}" class="text-link">Edit</a>
-                        <form method="POST" action="{{ route('services.destroy', $service['record_id']) }}" class="inline-delete" style="display: inline;" onsubmit="return confirm('Delete {{ $service['name'] }}?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="text-link danger">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-            @endforeach
-            </tbody>
-        </table>
-    </section>
+    <div class="services-accordion-container">
+        @php
+            $groupedServices = collect($services)->groupBy('category_name');
+        @endphp
+
+        @foreach ($groupedServices as $categoryName => $servicesInCategory)
+            <details class="category-accordion" open>
+                <summary class="accordion-header">
+                    <span class="category-title">{{ $categoryName }}</span>
+                    <span class="service-count">{{ count($servicesInCategory) }} items</span>
+                    <span class="accordion-icon"></span>
+                </summary>
+                <div class="accordion-content">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">#</th>
+                                <th>Service</th>
+                                <th>Costings</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody class="services-sortable-body">
+                        @foreach ($servicesInCategory as $index => $service)
+                            <tr draggable="true" data-service-id="{{ $service['record_id'] }}" style="cursor: move;">
+                                <td class="service-seq" style="text-align: center; color: var(--text-muted); font-weight: 600;">
+                                    {{ $index + 1 }}
+                                </td>
+                                <td>
+                                    <strong>{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $service['name']) : $service['name'] !!}</strong>
+                                </td>
+                                <td>
+                                    @if(count($service['costings']) > 0)
+                                        <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                            @foreach($service['costings'] as $costing)
+                                                <div style="display:flex; gap:0.5rem; align-items:center; background: var(--bg-muted); padding: 0.35rem 0.5rem; border-radius: 0.4rem; border: 1px solid var(--line);">
+                                                    <span class="status-pill" style="text-transform: uppercase; padding: 0.15rem 0.4rem; font-size: 0.75rem;">{{ $costing['currency_code'] }}</span>
+                                                    <span style="font-size: 0.9rem;">Cost {{ number_format($costing['cost_price'], 2) }}</span>
+                                                    <strong style="font-size: 0.9rem;">Sell {{ number_format($costing['selling_price'], 2) }}</strong>
+                                                    @if(!empty($costing['sac_code']))
+                                                        <span style="font-size: 0.8rem; color: var(--text-muted);">SAC {{ $costing['sac_code'] }}</span>
+                                                    @endif
+                                                    <span style="font-size: 0.8rem; color: var(--text-muted);">Tax {{ number_format($costing['tax_rate'], 2) }}% ({{ $costing['tax_included'] === 'yes' ? 'Incl.' : 'Excl.' }})</span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <span class="eyebrow">No costings</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="status-pill {{ strtolower($service['status']) }}">{{ $service['status'] }}</span>
+                                </td>
+                                <td class="table-actions">
+                                    <a href="{{ route('services.edit', $service['record_id']) }}" class="text-link">Edit</a>
+                                    <form method="POST" action="{{ route('services.destroy', $service['record_id']) }}" class="inline-delete" style="display: inline;" onsubmit="return confirm('Delete {{ $service['name'] }}?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-link danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        @endforeach
+    </div>
 
     <script>
         (function () {
-            const tbody = document.getElementById('services-sortable-body');
-            if (!tbody) return;
+            const tbodies = document.querySelectorAll('.services-sortable-body');
+            if (!tbodies.length) return;
 
             let draggedRow = null;
 
-            tbody.querySelectorAll('tr[draggable="true"]').forEach((row) => {
-                row.addEventListener('dragstart', function () {
-                    draggedRow = this;
-                    this.style.opacity = '0.5';
-                });
+            tbodies.forEach(tbody => {
+                tbody.querySelectorAll('tr[draggable="true"]').forEach((row) => {
+                    row.addEventListener('dragstart', function () {
+                        draggedRow = this;
+                        this.style.opacity = '0.5';
+                    });
 
-                row.addEventListener('dragend', function () {
-                    this.style.opacity = '1';
-                });
+                    row.addEventListener('dragend', function () {
+                        this.style.opacity = '1';
+                    });
 
-                row.addEventListener('dragover', function (e) {
-                    e.preventDefault();
-                });
+                    row.addEventListener('dragover', function (e) {
+                        e.preventDefault();
+                    });
 
-                row.addEventListener('drop', function (e) {
-                    e.preventDefault();
-                    if (!draggedRow || draggedRow === this) return;
+                    row.addEventListener('drop', function (e) {
+                        e.preventDefault();
+                        if (!draggedRow || draggedRow === this) return;
 
-                    const rows = Array.from(tbody.children);
-                    const draggedIndex = rows.indexOf(draggedRow);
-                    const targetIndex = rows.indexOf(this);
+                        const tbodyOfTarget = this.closest('tbody');
+                        const rows = Array.from(tbodyOfTarget.children);
+                        const draggedIndex = rows.indexOf(draggedRow);
+                        const targetIndex = rows.indexOf(this);
 
-                    if (draggedIndex < targetIndex) {
-                        this.after(draggedRow);
-                    } else {
-                        this.before(draggedRow);
-                    }
+                        if (draggedIndex < targetIndex) {
+                            this.after(draggedRow);
+                        } else {
+                            this.before(draggedRow);
+                        }
 
-                    saveOrder();
+                        saveOrder(tbodyOfTarget);
+                    });
                 });
             });
 
-            function saveOrder() {
+            function saveOrder(tbody) {
                 const rows = Array.from(tbody.querySelectorAll('tr[data-service-id]'));
                 const order = rows.map((row, index) => {
-                    // Update sequence number in UI
-                    const seqCell = row.querySelector('td:first-child');
-                    if (seqCell) {
-                        seqCell.textContent = index + 1;
-                    }
+                    // We don't update sequence UI globally here since it's grouped now
                     return row.dataset.serviceId;
                 });
 

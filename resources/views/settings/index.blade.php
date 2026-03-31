@@ -1,72 +1,301 @@
 @extends('layouts.app')
 
 @section('content')
-    <section class="section-bar">
-        <div>
-            <p class="eyebrow">Settings</p>
-            <h3>Agency & System Configuration</h3>
-        </div>
-    </section>
 
-    @if($account)
-    <section class="panel-card" style="margin-bottom: 2rem;">
-        <div class="panel-header">
-            <h4>Agency Profile</h4>
-            <p>Your agency's public and billing information.</p>
-        </div>
-        <form method="POST" action="{{ route('agency.update') }}" class="form-grid" style="margin-top: 1.5rem;">
+<section class="section-bar">
+    <div></div>
+</section>
+
+<!-- Tabs Wrapper -->
+<div style="padding: 10px 0;">
+    <div class="tabs-nav">
+        <button class="tab-button active" data-tab="personal">Personal Info</button>
+        <button class="tab-button" data-tab="financial-year">Financial Year</button>
+        <button class="tab-button" data-tab="config">Configuration Keys</button>
+    </div>
+</div>
+
+<style>
+/* Tabs Container */
+.tabs-nav {
+    display: inline-flex; /* KEY FIX */
+    gap: 6px;
+    padding: 6px;
+    background: #f1f5f9;
+    border-radius: 10px;
+    width: fit-content; /* prevents full width */
+}
+
+/* Tab Buttons */
+.tab-button {
+    flex: 0 1 auto;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #475569;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+/* Hover */
+.tab-button:hover:not(.active) {
+    background: #e2e8f0;
+}
+
+/* Active Tab */
+.tab-button.active {
+    background: #3b82f6;
+    color: white;
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+    margin-top: 10px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Card */
+.panel-card {
+    padding: 1.25rem;
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+/* Form */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-grid input {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+}
+
+/* Labels */
+label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.85rem;
+}
+
+.required {
+    font-weight: 600;
+}
+
+/* Actions */
+.form-actions {
+    grid-column: span 2;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.primary-button {
+    padding: 0.6rem 1.2rem;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+/* Table */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th, .data-table td {
+    padding: 0.6rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.text-link {
+    color: #3b82f6;
+    cursor: pointer;
+}
+</style>
+
+<!-- PERSONAL TAB -->
+<div id="personal" class="tab-content active">
+    <section class="panel-card">
+        <p style="margin-bottom: 1rem;">Your public and billing information.</p>
+
+        <form method="POST" action="{{ route('account.update') }}" class="form-grid">
             @csrf
             @method('PUT')
+
             <div>
-                <label for="name">Agency Name *</label>
-                <input type="text" id="name" name="name" value="{{ old('name', $account->name) }}" required>
+                <label class="required">Business Name *</label>
+                <input type="text" name="name" value="{{ old('name', $account->name ?? '') }}" required>
+            </div>
+
+            <div>
+                <label>Legal Entity Name</label>
+                <input type="text" name="legal_name" value="{{ old('legal_name', $account->legal_name ?? '') }}">
+            </div>
+
+            <div>
+                <label class="required">Email *</label>
+                <input type="email" name="email" value="{{ old('email', $account->email ?? '') }}" required>
+            </div>
+
+            <div>
+                <label>Phone</label>
+                <input type="text" name="phone" value="{{ old('phone', $account->phone ?? '') }}">
+            </div>
+
+            <div>
+                <label>Currency</label>
+                <input type="text" name="currency_code" value="{{ old('currency_code', $account->currency_code ?? 'INR') }}">
+            </div>
+
+            <div>
+                <label>Timezone</label>
+                <input type="text" name="timezone" value="{{ old('timezone', $account->timezone ?? 'Asia/Kolkata') }}">
+            </div>
+
+            <div>
+                <label>Address</label>
+                <input type="text" name="address_line_1" value="{{ old('address_line_1', $account->address_line_1 ?? '') }}">
+            </div>
+
+            <div>
+                <label>City</label>
+                <input type="text" name="city" value="{{ old('city', $account->city ?? '') }}">
+            </div>
+
+            <div>
+                <label>Country</label>
+                <input type="text" name="country" value="{{ old('country', $account->country ?? '') }}">
             </div>
             <div>
-                <label for="legal_name">Legal Entity Name</label>
-                <input type="text" id="legal_name" name="legal_name" value="{{ old('legal_name', $account->legal_name) }}">
+                <label>Postal Code</label>
+                <input type="text" name="postal_code" value="{{ old('postal_code', $account->postal_code ?? '') }}">
             </div>
             <div>
-                <label for="email">Contact Email *</label>
-                <input type="email" id="email" name="email" value="{{ old('email', $account->email) }}" required>
+                <label>FY Start Month</label>
+                <input type="month" name="fy_startdate" value="{{ old('fy_startdate', $account->fy_startdate ? date('Y-').substr($account->fy_startdate, 0, 2) : date('Y-04')) }}">
             </div>
-            <div>
-                <label for="phone">Phone Number</label>
-                <input type="text" id="phone" name="phone" value="{{ old('phone', $account->phone) }}">
-            </div>
-            <div>
-                <label for="currency_code">Currency *</label>
-                <input type="text" id="currency_code" name="currency_code" value="{{ old('currency_code', $account->currency_code ?? 'INR') }}" required maxlength="3">
-            </div>
-            <div>
-                <label for="timezone">Timezone *</label>
-                <input type="text" id="timezone" name="timezone" value="{{ old('timezone', $account->timezone ?? 'Asia/Kolkata') }}" required>
-            </div>
-            <div style="grid-column: span 2;">
-                <label for="address_line_1">Address</label>
-                <input type="text" id="address_line_1" name="address_line_1" value="{{ old('address_line_1', $account->address_line_1) }}">
-            </div>
-            <div>
-                <label for="city">City</label>
-                <input type="text" id="city" name="city" value="{{ old('city', $account->city) }}">
-            </div>
-            <div>
-                <label for="country">Country</label>
-                <input type="text" id="country" name="country" value="{{ old('country', $account->country) }}">
-            </div>
-            <div class="form-actions" style="grid-column: span 2;">
-                <button type="submit" class="primary-button">Update Agency Profile</button>
+            
+
+            <div class="form-actions">
+                <button type="submit" class="primary-button">Update Profile</button>
             </div>
         </form>
     </section>
-    @endif
+</div>
 
+<!-- FINANCIAL YEAR -->
+<div id="financial-year" class="tab-content">
     <section class="panel-card">
-        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <div>
-                <h4>System Settings</h4>
-                <p>Advanced configuration keys.</p>
+        <p style="margin-bottom: 1rem;">Enter the start and end years for your financial year (e.g. 2024 - 2025).</p>
+
+        @if ($errors->any())
+            <div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; margin-bottom: 1rem;">
+                <ul style="margin: 0; padding-left: 20px;">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
-            <a href="{{ route('settings.create') }}" class="text-link">+ Add Key</a>
+        @endif
+
+        <form method="POST" action="{{ route('financial-year.update') }}" style="display: flex; align-items: center; gap: 10px; max-width: 400px;">
+            @csrf
+            <input type="number" name="year_start" value="{{ date('Y') }}" required style="width: 100px; padding: 0.45rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+            <span style="font-size: 1.5rem; font-weight: bold;">-</span>
+            <input type="number" name="year_end" value="{{ date('Y') + 1 }}" required style="width: 100px; padding: 0.45rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+            <button type="submit" class="primary-button">Add</button>
+        </form>
+
+        <div style="margin-top: 2rem;">
+            <h4>Financial Years</h4>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Financial Year</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($financialYears as $fy)
+                        <tr>
+                            <td>{{ $fy->financial_year }}</td>
+                            <td>
+                                @if($fy->default)
+                                    <span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Default</span>
+                                @else
+                                    -
+                                @endif
+                            </td>
+                            <td>
+                                @if(!$fy->default)
+                                    <form method="POST" action="{{ route('financial-year.default', $fy->fy_id) }}" style="display: inline;">
+                                        @csrf
+                                        @method('PUT')
+                                        <button type="submit" class="text-link" style="background: none; border: none; padding: 0; font-size: 0.85rem;">Set as Default</button>
+                                    </form>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="3">No financial years recorded.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<!-- CONFIG -->
+<div id="config" class="tab-content">
+    <section class="panel-card">
+        <div style="margin-bottom: 2rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <h5 style="margin-bottom: 0.75rem;">
+                {{ $editingSetting ? 'Edit Configuration Key' : 'Add New Configuration Key' }}
+            </h5>
+            
+            <form method="POST" action="{{ $editingSetting ? route('settings.update', $editingSetting->settingid) : route('settings.store') }}" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.75rem; align-items: end;">
+                @csrf
+                @if($editingSetting)
+                    @method('PUT')
+                @endif
+                
+                <div>
+                    <label style="font-size: 0.75rem; margin-bottom: 2px;">Key Name *</label>
+                    <input type="text" name="key" value="{{ old('key', $editingSetting->setting_key ?? '') }}" placeholder="e.g. STRIPE_API_KEY" required style="padding: 0.4rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                </div>
+                <div>
+                    <label style="font-size: 0.75rem; margin-bottom: 2px;">Value *</label>
+                    <input type="text" name="value" value="{{ old('value', $editingSetting->setting_value ?? '') }}" placeholder="Enter value" required style="padding: 0.4rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="submit" class="primary-button" style="padding: 0.45rem 1rem;">
+                        {{ $editingSetting ? 'Update Key' : 'Add Key' }}
+                    </button>
+                    @if($editingSetting)
+                        <a href="{{ route('settings.index') }}#config" class="text-link" style="padding: 0.45rem 0.5rem; text-decoration: none; border: 1px solid #cbd5e1; border-radius: 4px; background: white; font-size: 0.85rem; color: #64748b;">Cancel</a>
+                    @endif
+                </div>
+            </form>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+            <h4>System Settings</h4>
         </div>
 
         <table class="data-table">
@@ -78,28 +307,64 @@
                 </tr>
             </thead>
             <tbody>
-            @if(count($settings) > 0)
-                @foreach ($settings as $setting)
+                @forelse ($settings as $setting)
                     <tr>
-                        <td style="font-family: monospace;">
-                            <code style="background: var(--slate-100); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">{{ $setting['key'] }}</code>
-                        </td>
+                        <td><code>{{ $setting['key'] }}</code></td>
+                        <td>{{ $setting['value'] }}</td>
                         <td>
-                            <strong>{{ $setting['value'] }}</strong>
-                        </td>
-                        <td class="table-actions">
-                            <a href="{{ route('settings.edit', $setting['record_id']) }}" class="text-link">Edit</a>
+                            <a href="{{ route('settings.index', ['edit' => $setting['record_id']]) }}#config" class="text-link">Edit</a>
                         </td>
                     </tr>
-                @endforeach
-            @else
-                <tr>
-                    <td colspan="3" style="padding: 2rem; text-align: center; color: var(--slate-400);">
-                        No custom settings defined.
-                    </td>
-                </tr>
-            @endif
+                @empty
+                    <tr>
+                        <td colspan="3">No settings found</td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
     </section>
+</div>
+
+<!-- JS -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const buttons = document.querySelectorAll('.tab-button');
+    const tabs = document.querySelectorAll('.tab-content');
+
+    function activateTab(tabId) {
+        if (!tabId) return;
+        
+        // Remove active class from all
+        buttons.forEach(b => b.classList.remove('active'));
+        tabs.forEach(t => t.classList.remove('active'));
+
+        // Add to target
+        const btn = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+        const tab = document.getElementById(tabId);
+        
+        if (btn && tab) {
+            btn.classList.add('active');
+            tab.classList.add('active');
+            // Update URL hash without jumping
+            window.history.replaceState(null, null, `#${tabId}`);
+        }
+    }
+
+    buttons.forEach(button => {
+        button.addEventListener('click', () => {
+            activateTab(button.dataset.tab);
+        });
+    });
+
+    // Handle initial load from Hash
+    const hash = window.location.hash.replace('#', '');
+    if (hash) {
+        activateTab(hash);
+    } else {
+        // Default to personal if no hash
+        activateTab('personal');
+    }
+});
+</script>
+
 @endsection

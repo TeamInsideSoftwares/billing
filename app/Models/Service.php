@@ -12,16 +12,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'accountid',
     'ps_catid',
-
     'service_code',
     'name',
     'sequence',
     'description',
-    'unit_price',
-    'cost_price',
-    'selling_price',
-    'sac_code',
-    'tax_rate',
     'is_active',
 ])]
 class Service extends Model
@@ -43,11 +37,7 @@ class Service extends Model
     protected function casts(): array
     {
         return [
-            'unit_price' => 'decimal:2',
             'sequence' => 'integer',
-            'cost_price' => 'decimal:2',
-            'selling_price' => 'decimal:2',
-            'tax_rate' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }

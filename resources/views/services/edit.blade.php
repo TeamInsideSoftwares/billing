@@ -53,6 +53,7 @@
                     'selling_price' => $c->selling_price,
                     'sac_code' => $c->sac_code,
                     'tax_rate' => $c->tax_rate,
+                    'tax_included' => $c->tax_included,
                 ];
             })->toArray());
 
@@ -63,6 +64,7 @@
                     'selling_price' => '',
                     'sac_code' => '',
                     'tax_rate' => '',
+                    'tax_included' => 'no',
                 ]];
             }
             $currencies = $currencies ?? collect();
@@ -84,6 +86,7 @@
                             <th>Cost Price</th>
                             <th>Selling Price</th>
                             <th>SAC Code</th>
+                            <th>Tax Type</th>
                             <th>Tax %</th>
                             <th></th>
                         </tr>
@@ -109,6 +112,12 @@
                                 </td>
                                 <td>
                                     <input type="text" maxlength="20" name="costings[{{ $index }}][sac_code]" value="{{ $costing['sac_code'] ?? '' }}">
+                                </td>
+                                <td>
+                                    <select name="costings[{{ $index }}][tax_included]" style="min-width: 120px;" required>
+                                        <option value="no" {{ ($costing['tax_included'] ?? 'no') == 'no' ? 'selected' : '' }}>Excl. Tax</option>
+                                        <option value="yes" {{ ($costing['tax_included'] ?? 'no') == 'yes' ? 'selected' : '' }}>Incl. Tax</option>
+                                    </select>
                                 </td>
                                 <td>
                                     <input type="number" step="0.01" min="0" max="100" name="costings[{{ $index }}][tax_rate]" value="{{ $costing['tax_rate'] }}">
@@ -171,6 +180,12 @@
                 </td>
                 <td><input type="number" step="0.01" name="costings[${rowIndex}][cost_price]" value="${data.cost_price || ''}" required></td>
                 <td><input type="number" step="0.01" name="costings[${rowIndex}][selling_price]" value="${data.selling_price || ''}" required></td>
+                <td>
+                    <select name="costings[${rowIndex}][tax_included]" style="min-width: 120px;" required>
+                        <option value="0">Excl. Tax</option>
+                        <option value="1">Incl. Tax</option>
+                    </select>
+                </td>
                 <td><input type="text" maxlength="20" name="costings[${rowIndex}][sac_code]" value="${data.sac_code || ''}"></td>
                 <td><input type="number" step="0.01" min="0" max="100" name="costings[${rowIndex}][tax_rate]" value="${data.tax_rate || ''}"></td>
                 <td style="width: 70px; text-align: center;"><button type="button" class="text-link danger remove-costing">Remove</button></td>
@@ -178,6 +193,9 @@
             tableBody.appendChild(row);
             if (data.currency_code) {
                 row.querySelector(`select[name="costings[${rowIndex}][currency_code]"]`).value = data.currency_code;
+            }
+            if (data.tax_included !== undefined) {
+                row.querySelector(`select[name="costings[${rowIndex}][tax_included]"]`).value = data.tax_included;
             }
             rowIndex++;
         }

@@ -229,3 +229,103 @@ mark {
     text-align: center;
   }
 }
+
+/* Services Accordion Styles */
+.services-accordion-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.category-accordion {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.category-accordion[open] {
+    box-shadow: var(--shadow);
+}
+
+.accordion-header {
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: white;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.accordion-header:hover {
+    background: #f8fafc;
+}
+
+.accordion-header::-webkit-details-marker {
+    display: none;
+}
+
+.category-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text);
+}
+
+.service-count {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    background: #f1f5f9;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    margin-left: auto;
+    margin-right: 1rem;
+}
+
+.accordion-icon {
+    width: 20px;
+    height: 20px;
+    position: relative;
+    transition: transform 0.2s ease;
+}
+
+.accordion-icon::before,
+.accordion-icon::after {
+    content: '';
+    position: absolute;
+    background: var(--muted);
+    border-radius: 2px;
+}
+
+.accordion-icon::before {
+    width: 12px;
+    height: 2px;
+    top: 9px;
+    left: 4px;
+}
+
+.accordion-icon::after {
+    width: 2px;
+    height: 12px;
+    top: 4px;
+    left: 9px;
+}
+
+.category-accordion[open] .accordion-icon {
+    transform: rotate(45deg);
+}
+
+.accordion-content {
+    padding: 0 1.25rem 1.25rem 1.25rem;
+    background: white;
+    border-top: 1px solid var(--line);
+}
+
+.accordion-content .data-table {
+    margin-top: 0;
+}

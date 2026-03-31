@@ -6,14 +6,14 @@
             <p class="eyebrow">Agencies Master</p>
             <h3>All Registered Agencies</h3>
         </div>
-        <a href="{{ route('accounts.create') }}" class="primary-button">+ Register New Agency</a>
+        <a href="{{ route('accounts.create') }}" class="primary-button">+ Register New Company</a>
     </section>
 
     <section class="panel-card">
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Agency</th>
+                    <th>Company</th>
                     <th>Contact</th>
                     <th>Status</th>
                     <th></th>

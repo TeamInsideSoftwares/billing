@@ -85,12 +85,14 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/groups/{group}', 'groupsDestroy')->name('groups.destroy');
         
         Route::get('/settings', 'settings')->name('settings.index');
-        Route::put('/settings/agency', 'agencyUpdate')->name('agency.update');
+        Route::put('/settings/account', 'accountUpdate')->name('account.update');
         Route::get('/settings/create', 'settingsCreate')->name('settings.create');
         Route::post('/settings', 'settingsStore')->name('settings.store');
         Route::get('/settings/{setting}', 'settingsShow')->name('settings.show');
         Route::get('/settings/{setting}/edit', 'settingsEdit')->name('settings.edit');
         Route::put('/settings/{setting}', 'settingsUpdate')->name('settings.update');
         Route::delete('/settings/{setting}', 'settingsDestroy')->name('settings.destroy');
+        Route::put('/settings/financial-year/{financialYear}/default', 'financialYearSetDefault')->name('financial-year.default');
+        Route::post('/settings/financial-year', 'financialYearUpdate')->name('financial-year.update');
     });
 });
