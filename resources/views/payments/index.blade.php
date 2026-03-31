@@ -7,13 +7,6 @@
                 <input type="search" name="search" placeholder="Search by reference or client..." value="{{ request('search') }}">
                 <button type="submit">Search</button>
             </form>
-            @if (isset($searchTerm) && $searchTerm)
-                <p class="eyebrow">{{ $resultCount }} payments matching "{{ $searchTerm }}"</p>
-                <span class="search-badge">Filtered</span>
-            @else
-                <p class="eyebrow">{{ count($payments) }} payments</p>
-            @endif
-            <h3>Payments received</h3>
 
         </div>
         <a href="{{ route('payments.create') }}" class="primary-button">Record Payment</a>

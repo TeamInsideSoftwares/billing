@@ -12,14 +12,15 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body class="app-shell">
+    <!-- ['label' => 'Subscriptions', 'route' => 'subscriptions.index'], -->
     @php
         $navItems = [
             ['label' => 'Dashboard', 'route' => 'dashboard'],
             ['label' => 'Clients', 'route' => 'clients.index'],
+            ['label' => 'Groups', 'route' => 'groups.index'],
             ['label' => 'Services', 'route' => 'services.index'],
             ['label' => 'Invoices', 'route' => 'invoices.index'],
             ['label' => 'Payments', 'route' => 'payments.index'],
-            ['label' => 'Subscriptions', 'route' => 'subscriptions.index'],
             ['label' => 'Estimates', 'route' => 'estimates.index'],
             ['label' => 'Settings', 'route' => 'settings.index'],
         ];
@@ -65,17 +66,39 @@
             <header class="topbar">
                 <div>
                     <button type="button" class="menu-toggle" data-sidebar-toggle>Menu</button>
-                    <p class="eyebrow">Operations Workspace</p>
                     <h2>{{ $title ?? 'Dashboard' }}</h2>
                 </div>
 
-                <!-- <div class="topbar-actions">
-                    <form action="{{ route('clients.index') }}" method="GET" class="search-form">
-                        <input type="text" name="search" placeholder="Global search across clients, invoices, payments..." class="search-chip" value="{{ request('search') }}">
-                    </form>
-
-                    <a href="{{ route('invoices.create' ?? 'invoices.index') }}" class="primary-button">New Invoice</a>
-                </div> -->
+                <div class="topbar-actions">
+                <div class="header-right" style="display: flex; align-items: center; gap: 1rem;">
+                        <button type="button" class="icon-btn notification-btn" title="Notifications">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                        </button>
+                        
+                        <div class="dropdown">
+                            <button type="button" class="icon-btn profile-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><h6 class="dropdown-header">{{ auth()->user()->name }}</h6></li>
+                                <li><a class="dropdown-item" href="#">Profile</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form action="{{ route('logout') }}" method="POST">
+                                        @csrf
+                                        <button type="submit" class="dropdown-item text-danger">Sign Out</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </header>
 
             @if (session('success'))

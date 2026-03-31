@@ -7,13 +7,6 @@
                 <input type="search" name="search" placeholder="Search by number or client..." value="{{ request('search') }}">
                 <button type="submit">Search</button>
             </form>
-            @if (isset($searchTerm) && $searchTerm)
-                <p class="eyebrow">{{ $resultCount }} estimates matching "{{ $searchTerm }}"</p>
-                <span class="search-badge">Filtered</span>
-            @else
-                <p class="eyebrow">{{ count($estimates) }} estimates</p>
-            @endif
-            <h3>Estimate pipeline</h3>
 
         </div>
         <a href="{{ route('estimates.create') }}" class="primary-button">New Estimate</a>

@@ -7,13 +7,6 @@
                 <input type="search" name="search" placeholder="Search services by name..." value="{{ request('search') }}">
                 <button type="submit">Search</button>
             </form>
-            @if (isset($searchTerm) && $searchTerm)
-                <p class="eyebrow">{{ $resultCount }} services matching "{{ $searchTerm }}"</p>
-                <span class="search-badge">Filtered</span>
-            @else
-                <p class="eyebrow">{{ count($services) }} services</p>
-            @endif
-            <h3>Billable services</h3>
 
         </div>
         <div class="button-group" style="display: flex; gap: 0.75rem;">
@@ -146,26 +139,41 @@
         <table class="data-table">
             <thead>
                 <tr>
+                    <th style="width: 40px;">#</th>
                     <th>Service</th>
-                    <th>Cost Price</th>
-                    <th>Selling Price</th>
+                    <th>Costings</th>
                     <th>Status</th>
                     <th></th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="services-sortable-body">
             @foreach ($services as $service)
-                <tr>
+                <tr draggable="true" data-service-id="{{ $service['record_id'] }}" style="cursor: move;">
+                    <td style="text-align: center; color: var(--text-muted); font-weight: 600;">
+                        {{ $service['sequence'] }}
+                    </td>
                     <td>
                         <strong>{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $service['name']) : $service['name'] !!}</strong>
                         <span class="eyebrow" style="display:block; margin: 0.25rem 0;">{{ $service['category_name'] }}</span>
                     </td>
                     <td>
-                        <strong>{{ $service['cost_price'] }}</strong>
-                    </td>
-                    <td>
-                        <strong>{{ $service['selling_price'] }}</strong>
-                        <span style="display:block; font-size: 0.8rem; color: var(--text-muted);">Tax {{ $service['tax'] }}</span>
+                        @if(count($service['costings']) > 0)
+                            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                @foreach($service['costings'] as $costing)
+                                    <div style="display:flex; gap:0.5rem; align-items:center; background: var(--bg-muted); padding: 0.35rem 0.5rem; border-radius: 0.4rem; border: 1px solid var(--line);">
+                                        <span class="status-pill" style="text-transform: uppercase; padding: 0.15rem 0.4rem; font-size: 0.75rem;">{{ $costing['currency_code'] }}</span>
+                                        <span style="font-size: 0.9rem;">Cost {{ number_format($costing['cost_price'], 2) }}</span>
+                                        <strong style="font-size: 0.9rem;">Sell {{ number_format($costing['selling_price'], 2) }}</strong>
+                                        @if(!empty($costing['sac_code']))
+                                            <span style="font-size: 0.8rem; color: var(--text-muted);">SAC {{ $costing['sac_code'] }}</span>
+                                        @endif
+                                        <span style="font-size: 0.8rem; color: var(--text-muted);">Tax {{ number_format($costing['tax_rate'], 2) }}%</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <span class="eyebrow">No costings</span>
+                        @endif
                     </td>
                     <td>
                         <span class="status-pill {{ strtolower($service['status']) }}">{{ $service['status'] }}</span>
@@ -183,5 +191,67 @@
             </tbody>
         </table>
     </section>
-@endsection
 
+    <script>
+        (function () {
+            const tbody = document.getElementById('services-sortable-body');
+            if (!tbody) return;
+
+            let draggedRow = null;
+
+            tbody.querySelectorAll('tr[draggable="true"]').forEach((row) => {
+                row.addEventListener('dragstart', function () {
+                    draggedRow = this;
+                    this.style.opacity = '0.5';
+                });
+
+                row.addEventListener('dragend', function () {
+                    this.style.opacity = '1';
+                });
+
+                row.addEventListener('dragover', function (e) {
+                    e.preventDefault();
+                });
+
+                row.addEventListener('drop', function (e) {
+                    e.preventDefault();
+                    if (!draggedRow || draggedRow === this) return;
+
+                    const rows = Array.from(tbody.children);
+                    const draggedIndex = rows.indexOf(draggedRow);
+                    const targetIndex = rows.indexOf(this);
+
+                    if (draggedIndex < targetIndex) {
+                        this.after(draggedRow);
+                    } else {
+                        this.before(draggedRow);
+                    }
+
+                    saveOrder();
+                });
+            });
+
+            function saveOrder() {
+                const rows = Array.from(tbody.querySelectorAll('tr[data-service-id]'));
+                const order = rows.map((row, index) => {
+                    // Update sequence number in UI
+                    const seqCell = row.querySelector('td:first-child');
+                    if (seqCell) {
+                        seqCell.textContent = index + 1;
+                    }
+                    return row.dataset.serviceId;
+                });
+
+                fetch("{{ route('services.reorder') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': "{{ csrf_token() }}",
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ order }),
+                });
+            }
+        })();
+    </script>
+@endsection

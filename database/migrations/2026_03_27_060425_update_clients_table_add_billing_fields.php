@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('clients', function (Blueprint $table) {
-            $table->string('logo_path', 255)->nullable()->after('client_code');
+            $table->string('logo_path', 255)->nullable()->after('groupid');
             $table->string('whatsapp_number', 30)->nullable()->after('phone');
             $table->string('group_name', 150)->nullable()->after('business_name');
             $table->string('currency', 3)->default('INR')->after('status');

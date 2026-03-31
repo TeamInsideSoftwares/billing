@@ -59,6 +59,12 @@
     <section class="panel-card">
         <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 0.5rem;">Billing Details</h4>
         <dl style="display: grid; grid-template-columns: 120px 1fr; gap: 0.75rem;">
+            <dt style="color: var(--text-muted); font-size: 0.9rem;">Billing ID</dt>
+            <dd style="font-weight: 600;">{{ $client->bd_id ?? 'N/A' }}</dd>
+
+            <dt style="color: var(--text-muted); font-size: 0.9rem;">Business</dt>
+            <dd>{{ $client->billingDetail->business_name ?? 'N/A' }}</dd>
+
             <dt style="color: var(--text-muted); font-size: 0.9rem;">GSTIN</dt>
             <dd style="font-weight: 600;">{{ $client->billingDetail->gstin ?? 'N/A' }}</dd>
             

@@ -4,7 +4,7 @@
 <div class="panel-card">
     <h2>{{ $title }}</h2>
     
-    <form method="POST" action="{{ route('product-categories.update', $productCategory->product_categoryid) }}" class="form-grid">
+    <form method="POST" action="{{ route('product-categories.update', $productCategory->ps_catid) }}" class="form-grid">
         @csrf
         @method('PUT')
         

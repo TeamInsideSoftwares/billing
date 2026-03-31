@@ -55,11 +55,11 @@
         </div>
 
         {{-- Items Section --}}
-        <div class="items-section" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
+        <div class="items-section" style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #e5e7eb;">
             <h4>Invoice Items</h4>
             
             {{-- Add Item Row --}}
-            <div class="add-item-row form-grid" style="background: #f9fafb; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
+            <div class="add-item-row form-grid" style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                 <div>
                     <label for="item_serviceid">Service *</label>
                     <select id="item_serviceid">
@@ -107,7 +107,7 @@
             </table>
 
             {{-- Summary Panel - Bottom Right --}}
-            <div id="invoiceSummary" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; float: right; width: 300px; margin-left: 2rem;">
+            <div id="invoiceSummary" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; float: right; width: 300px; margin-left: 1.25rem;">
                 <h4 style="margin-top: 0;">Invoice Summary</h4>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
                     <span>Subtotal:</span>

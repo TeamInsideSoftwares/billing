@@ -28,6 +28,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/services', 'services')->name('services.index');
         Route::get('/services/create', 'servicesCreate')->name('services.create');
         Route::post('/services', 'servicesStore')->name('services.store');
+        Route::post('/services/reorder', 'servicesReorder')->name('services.reorder');
         Route::get('/services/{service}', 'servicesShow')->name('services.show');
         Route::get('/services/{service}/edit', 'servicesEdit')->name('services.edit');
         Route::put('/services/{service}', 'servicesUpdate')->name('services.update');
@@ -73,6 +74,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/product-categories/{productCategory}/edit', 'productCategoriesEdit')->name('product-categories.edit');
         Route::put('/product-categories/{productCategory}', 'productCategoriesUpdate')->name('product-categories.update');
         Route::delete('/product-categories/{productCategory}', 'productCategoriesDestroy')->name('product-categories.destroy');
+        
+        // Groups CRUD
+        Route::get('/groups', 'groups')->name('groups.index');
+        Route::get('/groups/create', 'groupsCreate')->name('groups.create');
+        Route::post('/groups', 'groupsStore')->name('groups.store');
+        Route::get('/groups/{group}', 'groupsShow')->name('groups.show');
+        Route::get('/groups/{group}/edit', 'groupsEdit')->name('groups.edit');
+        Route::put('/groups/{group}', 'groupsUpdate')->name('groups.update');
+        Route::delete('/groups/{group}', 'groupsDestroy')->name('groups.destroy');
         
         Route::get('/settings', 'settings')->name('settings.index');
         Route::put('/settings/agency', 'agencyUpdate')->name('agency.update');

@@ -10,10 +10,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'accountid',
-    'client_code',
+    'groupid',
     'logo_path',
     'business_name',
-    'group_name',
     'contact_name',
     'email',
     'phone',
@@ -29,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'postal_code',
     'country',
     'notes',
+    'bd_id',
 ])]
 class Client extends Model
 {
@@ -52,7 +52,7 @@ class Client extends Model
 
     public function billingDetail(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
-        return $this->hasOne(ClientBillingDetail::class, 'clientid', 'clientid');
+        return $this->hasOne(ClientBillingDetail::class, 'bd_id', 'bd_id');
     }
 
     public function invoices(): HasMany

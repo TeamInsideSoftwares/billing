@@ -4,7 +4,6 @@
 <section class="section-bar">
     <div>
         <p class="eyebrow">Edit {{ $invoice->invoice_number }}</p>
-        <h3>Update invoice details</h3>
     </div>
     <a href="{{ route('invoices.index') }}" class="text-link">&larr; Back to invoices</a>
 </section>
@@ -56,11 +55,11 @@
         </div>
 
         {{-- Items Section --}}
-        <div class="items-section" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
+        <div class="items-section" style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #e5e7eb;">
             <h4>Invoice Items</h4>
             
             {{-- Add Item Row --}}
-            <div class="add-item-row form-grid" style="background: #f9fafb; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
+            <div class="add-item-row form-grid" style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                 <div>
                     <label for="item_serviceid">Service *</label>
                     <select id="item_serviceid">

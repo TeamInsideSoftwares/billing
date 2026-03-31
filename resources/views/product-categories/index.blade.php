@@ -7,13 +7,6 @@
                 <input type="search" name="search" placeholder="Search product categories by name..." value="{{ request('search') }}">
                 <button type="submit">Search</button>
             </form>
-            @if (isset($searchTerm) && $searchTerm)
-                <p class="eyebrow">{{ $resultCount }} categories matching "{{ $searchTerm }}"</p>
-                <span class="search-badge">Filtered</span>
-            @else
-                <p class="eyebrow">{{ count($productCategories) }} product categories</p>
-            @endif
-            <h3>Product Categories</h3>
         </div>
         <a href="{{ route('product-categories.create') }}" class="primary-button">Add Product Category</a>
     </section>

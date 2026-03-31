@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasAlphaNumericId;
+use App\Models\ServiceCosting;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,11 +11,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'accountid',
-    'product_categoryid',
+    'ps_catid',
 
     'service_code',
     'name',
+    'sequence',
     'description',
+    'unit_price',
     'cost_price',
     'selling_price',
     'sac_code',
@@ -23,7 +26,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class Service extends Model
 {
-protected $primaryKey = 'serviceid';
+    protected $primaryKey = 'serviceid';
+
+    use HasAlphaNumericId;
+
     public function getRouteKeyName(): string
     {
         return 'serviceid';
@@ -34,11 +40,11 @@ protected $primaryKey = 'serviceid';
         return 6;
     }
 
-    use HasAlphaNumericId;
-
     protected function casts(): array
     {
         return [
+            'unit_price' => 'decimal:2',
+            'sequence' => 'integer',
             'cost_price' => 'decimal:2',
             'selling_price' => 'decimal:2',
             'tax_rate' => 'decimal:2',
@@ -53,7 +59,7 @@ protected $primaryKey = 'serviceid';
 
     public function category(): BelongsTo
     {
-        return $this->belongsTo(ProductCategory::class, 'product_categoryid', 'product_categoryid');
+        return $this->belongsTo(ProductCategory::class, 'ps_catid', 'ps_catid');
     }
 
     public function invoiceItems(): HasMany
@@ -69,6 +75,11 @@ protected $primaryKey = 'serviceid';
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class, 'serviceid');
+    }
+
+    public function costings(): HasMany
+    {
+        return $this->hasMany(ServiceCosting::class, 'serviceid', 'serviceid')->orderBy('currency_code');
     }
 
 }

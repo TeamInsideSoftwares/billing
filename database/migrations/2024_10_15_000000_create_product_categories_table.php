@@ -8,8 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('product_categories', function (Blueprint $table) {
-            $table->string('product_categoryid', 6)->primary();
+        Schema::create('ps_categories', function (Blueprint $table) {
+            $table->string('ps_catid', 6)->primary();
             $table->string('accountid', 10);
             $table->string('name', 150);
             $table->text('description')->nullable();
@@ -23,7 +23,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('product_categories');
+        Schema::dropIfExists('ps_categories');
     }
 };
 

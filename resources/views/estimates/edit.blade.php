@@ -4,7 +4,6 @@
 <section class="section-bar">
     <div>
         <p class="eyebrow">Edit {{ $estimate->number }}</p>
-        <h3>Update estimate details</h3>
     </div>
     <a href="{{ route('estimates.index') }}" class="text-link">&larr; Back to estimates</a>
 </section>

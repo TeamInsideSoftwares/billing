@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProductCategory extends Model
 {
-    protected $primaryKey = 'product_categoryid';
+    protected $table = 'ps_categories';
+
+    protected $primaryKey = 'ps_catid';
 
     public function getRouteKeyName(): string
     {
-        return 'product_categoryid';
+        return 'ps_catid';
     }
 
     protected function idLength(): int
@@ -25,6 +27,7 @@ class ProductCategory extends Model
     protected $fillable = [
         'accountid',
         'name',
+        'sequence',
         'description',
         'status',
     ];
@@ -32,6 +35,7 @@ class ProductCategory extends Model
     protected function casts(): array
     {
         return [
+            'sequence' => 'integer',
             'status' => 'string',
         ];
     }

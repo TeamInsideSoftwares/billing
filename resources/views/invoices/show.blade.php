@@ -31,7 +31,7 @@
     </div>
 </section>
 
-<section class="panel-card" style="margin-top: 10px;">
+<section class="panel-card" style="margin-top: 0.5rem;">
     <h3 style="margin-top: 0; font-size: 1em; padding: 5px; color: #374151;">Details</h3>
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin-bottom: 1rem;">
 
@@ -152,7 +152,7 @@ Invoice Items Table
 </section>
 
 @if($invoice->payments->count())
-<section class="panel-card" style="margin-top: 2rem;">
+<section class="panel-card" style="margin-top: 1rem;">
     <h3 style="margin-top: 0; font-size: 1.1em; color: #374151;">Payments received ({{ $invoice->payments->count() }})</h3>
     <table class="data-table" style="width: 100%; margin-top: 1rem;">
         <thead>

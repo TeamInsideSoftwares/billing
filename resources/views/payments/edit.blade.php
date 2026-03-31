@@ -4,7 +4,6 @@
 <section class="section-bar">
     <div>
         <p class="eyebrow">Edit {{ $payment->reference ?? 'Payment' . $payment->id }}</p>
-        <h3>Update payment details</h3>
     </div>
     <a href="{{ route('payments.index') }}" class="text-link">&larr; Back to payments</a>
 </section>

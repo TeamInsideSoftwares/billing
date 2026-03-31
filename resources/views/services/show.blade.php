@@ -23,11 +23,45 @@
             <span class="status-pill {{ strtolower($service->status ?? 'active') }}">{{ ucfirst($service->status ?? 'Active') }}</span>
         </div>
         <div class="service-stats">
-            <strong>Unit Price: Rs {{ number_format($service->unit_price ?? 0, 2) }}</strong>
-            <span>Tax {{ $service->tax_rate ?? 18 }}%</span>
+            @if($service->costings->count())
+                <strong>{{ $service->costings->count() }} costing{{ $service->costings->count() > 1 ? 's' : '' }}</strong>
+                <span>Default tax {{ $service->costings->first()->tax_rate ?? 0 }}%</span>
+            @else
+                <strong>No costings yet</strong>
+            @endif
         </div>
     </div>
 </section>
+
+@if($service->costings->count())
+<section class="panel-card">
+    <h3>Costings</h3>
+    <div style="overflow-x:auto;">
+        <table class="data-table" style="min-width: 500px;">
+            <thead>
+                <tr>
+                    <th>Currency</th>
+                    <th>Cost Price</th>
+                    <th>Selling Price</th>
+                    <th>SAC Code</th>
+                    <th>Tax %</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($service->costings as $costing)
+                    <tr>
+                        <td><strong>{{ $costing->currency_code }}</strong></td>
+                        <td>{{ number_format($costing->cost_price, 2) }}</td>
+                        <td>{{ number_format($costing->selling_price, 2) }}</td>
+                        <td>{{ $costing->sac_code ?? '-' }}</td>
+                        <td>{{ number_format($costing->tax_rate, 2) }}%</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</section>
+@endif
 
 @if($service->description)
 <section class="panel-card">

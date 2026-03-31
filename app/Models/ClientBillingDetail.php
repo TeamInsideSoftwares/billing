@@ -7,8 +7,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ClientBillingDetail extends Model
 {
+    protected $primaryKey = 'bd_id';
+    public $incrementing = false;
+    protected $keyType = 'string';
+
     protected $fillable = [
-        'clientid',
+        'bd_id',
+        'accountid',
+        'business_name',
         'gstin',
         'billing_email',
         'address_line_1',
@@ -21,6 +27,11 @@ class ClientBillingDetail extends Model
 
     public function client(): BelongsTo
     {
-        return $this->belongsTo(Client::class, 'clientid', 'clientid');
+        return $this->belongsTo(Client::class, 'bd_id', 'bd_id');
+    }
+
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'accountid', 'accountid');
     }
 }

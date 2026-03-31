@@ -7,14 +7,6 @@
                 <input type="search" name="search" placeholder="Search clients by name or email..." value="{{ request('search') }}">
                 <button type="submit">Search</button>
             </form>
-            @if (isset($searchTerm) && $searchTerm)
-                <p class="eyebrow">{{ $resultCount }} clients matching "{{ $searchTerm }}"</p>
-                <span class="search-badge">Filtered</span>
-            @else
-                <p class="eyebrow">{{ count($clients) }} clients</p>
-            @endif
-            <h3>Accounts and balances</h3>
-
         </div>
         <a href="{{ route('clients.create') }}" class="primary-button">Add Client</a>
     </section>

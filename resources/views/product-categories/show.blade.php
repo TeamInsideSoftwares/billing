@@ -5,8 +5,8 @@
     <div class="section-bar">
         <h2>{{ $title }}</h2>
         <div class="button-group">
-            <a href="{{ route('product-categories.edit', $productCategory->product_categoryid) }}" class="primary-button small">Edit</a>
-            <form method="POST" action="{{ route('product-categories.destroy', $productCategory->product_categoryid) }}" class="inline-delete" style="display: inline;" onsubmit="return confirm('Delete this product category?')">
+            <a href="{{ route('product-categories.edit', $productCategory->ps_catid) }}" class="primary-button small">Edit</a>
+            <form method="POST" action="{{ route('product-categories.destroy', $productCategory->ps_catid) }}" class="inline-delete" style="display: inline;" onsubmit="return confirm('Delete this product category?')">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="danger-button small">Delete</button>
@@ -18,7 +18,7 @@
     <div class="record-details">
         <div class="detail-row">
             <span class="detail-label">ID</span>
-            <span class="detail-value">{{ $productCategory->product_categoryid }}</span>
+            <span class="detail-value">{{ $productCategory->ps_catid }}</span>
         </div>
         <div class="detail-row">
             <span class="detail-label">Name</span>
