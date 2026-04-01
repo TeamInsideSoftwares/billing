@@ -154,6 +154,7 @@
                                 <th style="width: 40px;">#</th>
                                 <th>Service</th>
                                 <th>Costings</th>
+                                <th>Add-ons</th>
                                 <th>Status</th>
                                 <th></th>
                             </tr>
@@ -166,6 +167,24 @@
                                 </td>
                                 <td>
                                     <strong>{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $service['name']) : $service['name'] !!}</strong>
+                                    
+                                    @if(!empty($service['addons']) && count($service['addons']) > 0)
+                                        <div style="margin-top: 0.5rem; padding-left: 0.75rem; border-left: 2px solid var(--line); display: flex; flex-direction: column; gap: 0.25rem;">
+                                            <span class="eyebrow" style="font-size: 0.65rem;">Add-on Items:</span>
+                                            @foreach($service['addons'] as $addon)
+                                                <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                                    <span style="color: var(--text);">{{ $addon['name'] }}</span>
+                                                    @if(count($addon['costings']) > 0)
+                                                        <span style="font-size: 0.75rem;">
+                                                            (@foreach($addon['costings'] as $ac)
+                                                                {{ $ac['currency_code'] }} {{ number_format($ac['selling_price'], 2) }}{{ !$loop->last ? ', ' : '' }}
+                                                            @endforeach)
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 </td>
                                 <td>
                                     @if(count($service['costings']) > 0)
@@ -185,6 +204,9 @@
                                     @else
                                         <span class="eyebrow">No costings</span>
                                     @endif
+                                </td>
+                                <td>
+                                    <span class="status-pill">{{ $service['addon_count'] ?? 0 }}</span>
                                 </td>
                                 <td>
                                     <span class="status-pill {{ strtolower($service['status']) }}">{{ $service['status'] }}</span>

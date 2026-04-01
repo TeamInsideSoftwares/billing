@@ -54,9 +54,37 @@
                         <td><strong>{{ $costing->currency_code }}</strong></td>
                         <td>{{ number_format($costing->cost_price, 2) }}</td>
                         <td>{{ number_format($costing->selling_price, 2) }}</td>
-                        <td>{{ $costing->tax_included ? 'Incl. Tax' : 'Excl. Tax' }}</td>
+                        <td>{{ $costing->tax_included === 'yes' ? 'Incl. Tax' : 'Excl. Tax' }}</td>
                         <td>{{ $costing->sac_code ?? '-' }}</td>
                         <td>{{ number_format($costing->tax_rate, 2) }}%</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</section>
+@endif
+
+@if($service->addons->count())
+<section class="panel-card">
+    <h3>Add-on Items ({{ $service->addons->count() }})</h3>
+    <div style="overflow-x:auto;">
+        <table class="data-table" style="min-width: 620px;">
+            <thead>
+                <tr>
+                    <th>Item Name</th>
+                    <th>Description</th>
+                    <th>Costing Rows</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($service->addons as $addon)
+                    <tr>
+                        <td><strong>{{ $addon->name }}</strong></td>
+                        <td>{{ $addon->description ?: '-' }}</td>
+                        <td>{{ $addon->costings->count() }}</td>
+                        <td><span class="status-pill {{ $addon->is_active ? 'active' : 'inactive' }}">{{ $addon->is_active ? 'Active' : 'Inactive' }}</span></td>
                     </tr>
                 @endforeach
             </tbody>

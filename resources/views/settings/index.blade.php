@@ -11,7 +11,9 @@
     <div class="tabs-nav">
         <button class="tab-button active" data-tab="personal">Personal Info</button>
         <button class="tab-button" data-tab="financial-year">Financial Year</button>
-        <button class="tab-button" data-tab="config">Configuration Keys</button>
+<button class="tab-button" data-tab="config">Configuration Keys</button>
+        <button class="tab-button" data-tab="billing-details">Billing Details</button>
+        <button class="tab-button" data-tab="quotation-details">Quotation Details</button>
     </div>
 </div>
 
@@ -321,13 +323,195 @@ label {
                             <a href="{{ route('settings.index', ['edit' => $setting['record_id']]) }}#config" class="text-link">Edit</a>
                         </td>
                     </tr>
-                @empty
+@empty
                     <tr>
                         <td colspan="3">No settings found</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
+    </section>
+</div>
+
+<!-- BILLING DETAILS TAB -->
+<div id="billing-details" class="tab-content">
+    <section class="panel-card">
+        <div style="margin-bottom: 1rem;">
+            <h4>Billing Details</h4>
+            <p>Add billing details for invoices.</p>
+        </div>
+        @if ($errors->any())
+            <div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; margin-bottom: 1rem;">
+                <ul style="margin: 0; padding-left: 20px;">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+        <form method="POST" action="#" class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            @csrf
+            @if(isset($editingBillingDetail))
+                @method('PUT')
+                <input type="hidden" name="account_qdid" value="{{ $editingBillingDetail->account_qdid }}">
+            @endif
+            <input type="hidden" name="accountid" value="{{ $account->accountid }}">
+            <div>
+                <label class="required">Serial Number</label>
+                <input type="text" name="serial_number" value="{{ old('serial_number', $editingBillingDetail->serial_number ?? '') }}" required>
+            </div>
+            <div>
+                <label class="required">Billing Name</label>
+                <input type="text" name="billing_name" value="{{ old('billing_name', $editingBillingDetail->billing_name ?? '') }}" required>
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Address</label>
+                <textarea name="address" rows="3" style="width: 100%; padding: 0.45rem 0.6rem;">{{ old('address', $editingBillingDetail->address ?? '') }}</textarea>
+            </div>
+            <div>
+                <label>GSTIN</label>
+                <input type="text" name="gstin" value="{{ old('gstin', $editingBillingDetail->gstin ?? '') }}">
+            </div>
+            <div>
+                <label>TIN</label>
+                <input type="text" name="tin" value="{{ old('tin', $editingBillingDetail->tin ?? '') }}">
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Terms &amp; Conditions</label>
+                <textarea name="terms_conditions" rows="4" style="width: 100%; padding: 0.45rem 0.6rem;">{{ old('terms_conditions', $editingBillingDetail->terms_conditions ?? '') }}</textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="primary-button">{{ isset($editingBillingDetail) ? 'Update' : 'Add' }} Billing Detail</button>
+                @if(isset($editingBillingDetail))
+                    <a href="{{ route('settings.index') }}#billing-details" class="text-link" style="margin-left: 1rem;">Cancel</a>
+                @endif
+            </div>
+        </form>
+
+        <div style="margin-top: 2rem;">
+            <h5>Billing Details List</h5>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Serial</th>
+                        <th>Name</th>
+                        <th>GSTIN</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($billingDetails ?? [] as $bd)
+                        <tr>
+                            <td>{{ $bd->serial_number }}</td>
+                            <td>{{ $bd->billing_name }}</td>
+                            <td>{{ $bd->gstin ?? '-' }}</td>
+                            <td>
+                                <a href="{{ route('settings.index', ['edit_bd' => $bd->account_qdid]) }}#billing-details" class="text-link">Edit</a>
+                                <form method="POST" action="{{ route('billing-details.destroy', $bd->account_qdid) }}" style="display: inline; margin-left: 1rem;" onsubmit="return confirm('Delete?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="text-link" style="background: none; border: none; color: #ef4444;">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4">No billing details added</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<!-- QUOTATION DETAILS TAB -->
+<div id="quotation-details" class="tab-content">
+    <section class="panel-card">
+        <div style="margin-bottom: 1rem;">
+            <h4>Quotation Details</h4>
+            <p>Add quotation details for estimates.</p>
+        </div>
+        @if ($errors->any())
+            <div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; margin-bottom: 1rem;">
+                <ul style="margin: 0; padding-left: 20px;">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+        <form method="POST" action="#" class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            @csrf
+            @if(isset($editingQuotationDetail))
+                @method('PUT')
+                <input type="hidden" name="account_qd" value="{{ $editingQuotationDetail->account_qd }}">
+            @endif
+            <input type="hidden" name="accountid" value="{{ $account->accountid }}">
+            <div>
+                <label class="required">Serial Number</label>
+                <input type="text" name="serial_number" value="{{ old('serial_number', $editingQuotationDetail->serial_number ?? '') }}" required>
+            </div>
+            <div>
+                <label class="required">Quotation Name</label>
+                <input type="text" name="quotation_name" value="{{ old('quotation_name', $editingQuotationDetail->quotation_name ?? '') }}" required>
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Address</label>
+                <textarea name="address" rows="3" style="width: 100%; padding: 0.45rem 0.6rem;">{{ old('address', $editingQuotationDetail->address ?? '') }}</textarea>
+            </div>
+            <div>
+                <label>GSTIN</label>
+                <input type="text" name="gstin" value="{{ old('gstin', $editingQuotationDetail->gstin ?? '') }}">
+            </div>
+            <div>
+                <label>TIN</label>
+                <input type="text" name="tin" value="{{ old('tin', $editingQuotationDetail->tin ?? '') }}">
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Terms &amp; Conditions</label>
+                <textarea name="terms_conditions" rows="4" style="width: 100%; padding: 0.45rem 0.6rem;">{{ old('terms_conditions', $editingQuotationDetail->terms_conditions ?? '') }}</textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="primary-button">{{ isset($editingQuotationDetail) ? 'Update' : 'Add' }} Quotation Detail</button>
+                @if(isset($editingQuotationDetail))
+                    <a href="{{ route('settings.index') }}#quotation-details" class="text-link" style="margin-left: 1rem;">Cancel</a>
+                @endif
+            </div>
+        </form>
+
+        <div style="margin-top: 2rem;">
+            <h5>Quotation Details List</h5>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Serial</th>
+                        <th>Name</th>
+                        <th>GSTIN</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($quotationDetails ?? [] as $qd)
+                        <tr>
+                            <td>{{ $qd->serial_number }}</td>
+                            <td>{{ $qd->quotation_name }}</td>
+                            <td>{{ $qd->gstin ?? '-' }}</td>
+                            <td>
+                                <a href="{{ route('settings.index', ['edit_qd' => $qd->account_qd]) }}#quotation-details" class="text-link">Edit</a>
+                                <form method="POST" action="{{ route('quotation-details.destroy', $qd->account_qd) }}" style="display: inline; margin-left: 1rem;" onsubmit="return confirm('Delete?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="text-link" style="background: none; border: none; color: #ef4444;">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4">No quotation details added</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </section>
 </div>
 

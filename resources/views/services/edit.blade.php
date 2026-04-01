@@ -9,9 +9,10 @@
 </section>
 
 <section class="panel-card">
-    <form method="POST" action="{{ route('services.update', $service) }}" class="service-form">
+    <form method="POST" action="{{ route('services.update', $service) }}" class="service-form" id="service-form">
         @method('PUT')
         @csrf
+        <input type="hidden" name="serviceid" id="serviceid" value="{{ $service->serviceid }}">
         <div class="form-grid">
             <div>
                 <label for="name">Service Name *</label>
@@ -30,14 +31,7 @@
                 </select>
                 @error('ps_catid') <span class="error">{{ $message }}</span> @enderror
             </div>
-            <div>
-                <label for="status">Status</label>
-                <select id="status" name="status">
-                    <option value="active" {{ old('status', $service->is_active ? 'active' : 'inactive') == 'active' ? 'selected' : '' }}>Active</option>
-                    <option value="inactive" {{ old('status', $service->is_active ? 'active' : 'inactive') == 'inactive' ? 'selected' : '' }}>Inactive</option>
-                </select>
-                @error('status') <span class="error">{{ $message }}</span> @enderror
-            </div>
+
             <div style="grid-column: span 2;">
                 <label for="description">Description</label>
                 <textarea id="description" name="description" rows="3">{{ old('description', $service->description) }}</textarea>
@@ -67,6 +61,38 @@
                     'tax_included' => 'no',
                 ]];
             }
+
+            $existingAddons = old('addons', $service->addons->map(function($addon) use ($defaultCurrency) {
+                $addonCostings = $addon->costings->map(function($costing) {
+                    return [
+                        'currency_code' => $costing->currency_code,
+                        'cost_price' => $costing->cost_price,
+                        'selling_price' => $costing->selling_price,
+                        'sac_code' => $costing->sac_code,
+                        'tax_rate' => $costing->tax_rate,
+                        'tax_included' => $costing->tax_included,
+                    ];
+                })->values()->all();
+
+                if (empty($addonCostings)) {
+                    $addonCostings = [[
+                        'currency_code' => $defaultCurrency ?? 'INR',
+                        'cost_price' => '',
+                        'selling_price' => '',
+                        'sac_code' => '',
+                        'tax_rate' => '',
+                        'tax_included' => 'no',
+                    ]];
+                }
+
+                return [
+                    'name' => $addon->name,
+                    'description' => $addon->description,
+                    'status' => $addon->is_active ? 'active' : 'inactive',
+                    'costings' => $addonCostings,
+                ];
+            })->toArray());
+
             $currencies = $currencies ?? collect();
         @endphp
 
@@ -76,7 +102,9 @@
                     <p class="eyebrow" style="margin: 0;">Costings</p>
                     <strong>Add pricing per currency</strong>
                 </div>
-                <button type="button" class="text-link" id="add-costing-row">+ Add currency</button>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button type="button" class="text-link" id="add-costing-row">+ Add currency</button>
+                </div>
             </div>
             <div style="overflow-x: auto;">
                 <table class="data-table" style="min-width: 600px;" id="costings-table">
@@ -98,30 +126,22 @@
                                     <select name="costings[{{ $index }}][currency_code]" style="min-width: 180px;" required>
                                         <option value="">Select</option>
                                         @foreach($currencies as $currency)
-                                            <option value="{{ $currency->iso }}" {{ $costing['currency_code'] === $currency->iso ? 'selected' : '' }}>
+                                            <option value="{{ $currency->iso }}" {{ ($costing['currency_code'] ?? '') === $currency->iso ? 'selected' : '' }}>
                                                 {{ $currency->iso }} - {{ $currency->name }}
                                             </option>
-                                        @endforeach
-                                    </select>
+                                            @endforeach
+                                        </select>
                                 </td>
-                                <td>
-                                    <input type="number" step="0.01" name="costings[{{ $index }}][cost_price]" value="{{ $costing['cost_price'] }}" required>
-                                </td>
-                                <td>
-                                    <input type="number" step="0.01" name="costings[{{ $index }}][selling_price]" value="{{ $costing['selling_price'] }}" required>
-                                </td>
-                                <td>
-                                    <input type="text" maxlength="20" name="costings[{{ $index }}][sac_code]" value="{{ $costing['sac_code'] ?? '' }}">
-                                </td>
+                                <td><input type="number" step="0.01" name="costings[{{ $index }}][cost_price]" value="{{ $costing['cost_price'] ?? '' }}" required></td>
+                                <td><input type="number" step="0.01" name="costings[{{ $index }}][selling_price]" value="{{ $costing['selling_price'] ?? '' }}" required></td>
+                                <td><input type="text" maxlength="20" name="costings[{{ $index }}][sac_code]" value="{{ $costing['sac_code'] ?? '' }}"></td>
                                 <td>
                                     <select name="costings[{{ $index }}][tax_included]" style="min-width: 120px;" required>
-                                        <option value="no" {{ ($costing['tax_included'] ?? 'no') == 'no' ? 'selected' : '' }}>Excl. Tax</option>
-                                        <option value="yes" {{ ($costing['tax_included'] ?? 'no') == 'yes' ? 'selected' : '' }}>Incl. Tax</option>
+                                        <option value="no" {{ ($costing['tax_included'] ?? 'no') === 'no' ? 'selected' : '' }}>Excl. Tax</option>
+                                        <option value="yes" {{ ($costing['tax_included'] ?? 'no') === 'yes' ? 'selected' : '' }}>Incl. Tax</option>
                                     </select>
                                 </td>
-                                <td>
-                                    <input type="number" step="0.01" min="0" max="100" name="costings[{{ $index }}][tax_rate]" value="{{ $costing['tax_rate'] }}">
-                                </td>
+                                <td><input type="number" step="0.01" min="0" max="100" name="costings[{{ $index }}][tax_rate]" value="{{ $costing['tax_rate'] ?? '' }}"></td>
                                 <td style="width: 70px; text-align: center;">
                                     <button type="button" class="text-link danger remove-costing">Remove</button>
                                 </td>
@@ -130,12 +150,134 @@
                     </tbody>
                 </table>
             </div>
-            @error('costings') <span class="error">{{ $message }}</span> @enderror
-            @error('costings.*.currency_code') <span class="error">{{ $message }}</span> @enderror
-            @error('costings.*.cost_price') <span class="error">{{ $message }}</span> @enderror
-            @error('costings.*.selling_price') <span class="error">{{ $message }}</span> @enderror
-            @error('costings.*.sac_code') <span class="error">{{ $message }}</span> @enderror
-            @error('costings.*.tax_rate') <span class="error">{{ $message }}</span> @enderror
+            <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+                <button type="button" class="primary-button" id="save-service-btn" style="font-size: 0.875rem; padding: 0.4rem 0.8rem;">
+                    Save Service
+                </button>
+            </div>
+        </div>
+
+        <div class="panel-card" style="margin-top: 1rem; border: 1px dashed var(--line);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>Do you want to add add-on items for this service?</strong>
+                </div>
+                <div style="display: flex; gap: 1.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="has_addons_toggle" value="yes" id="has-addons-yes" {{ $service->addons->count() > 0 ? 'checked' : '' }}> Yes
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="has_addons_toggle" value="no" id="has-addons-no" {{ $service->addons->count() === 0 ? 'checked' : '' }}> No
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel-card" id="addon-section" style="margin-top: 1rem; border: 1px dashed var(--line); {{ $service->addons->count() > 0 ? '' : 'display: none;' }}">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <div>
+                    <p class="eyebrow" style="margin: 0;" id="addon-section-title">Service Add-on Items for {{ $service->name }}</p>
+                    <strong>Add item and then add one or more costing rows under it</strong>
+                </div>
+                <button type="button" class="text-link" id="add-addon-card">+ Add item</button>
+            </div>
+
+            <div id="addon-cards" style="display:flex; flex-direction:column; gap:0.9rem;">
+                @foreach($existingAddons as $addonIndex => $addon)
+                    @php
+                        $addonCostings = collect($addon['costings'] ?? [])->values()->all();
+                        if (empty($addonCostings)) {
+                            $addonCostings = [[
+                                'currency_code' => $defaultCurrency ?? 'INR',
+                                'cost_price' => '',
+                                'selling_price' => '',
+                                'sac_code' => '',
+                                'tax_rate' => '',
+                                'tax_included' => 'no',
+                            ]];
+                        }
+                    @endphp
+
+                    <div class="addon-card panel-card" style="border:1px solid var(--line);" data-addon-index="{{ $addonIndex }}" data-next-costing-index="{{ count($addonCostings) }}" data-addon-id="{{ $service->addons[$addonIndex]->addonid ?? '' }}">
+                        <div class="form-grid" style="margin-bottom:0.7rem;">
+                            <div>
+                                <label>Item Name *</label>
+                                <input type="text" name="addons[{{ $addonIndex }}][name]" value="{{ $addon['name'] ?? '' }}" maxlength="150" required>
+                            </div>
+
+                            <div style="grid-column: span 2;">
+                                <label>Description</label>
+                                <input type="text" name="addons[{{ $addonIndex }}][description]" value="{{ $addon['description'] ?? '' }}">
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                            <strong>Item Costings</strong>
+                            <div style="display:flex;align-items:center; gap:1rem;">
+                                <button type="button" class="text-link add-addon-costing">+ Add currency</button>
+                                <!-- Divider -->
+                                <span style="opacity:0.4;">|</span>
+                                <button type="button" class="text-link danger remove-addon-card">✕ Remove item</button>
+                            </div>
+                        </div>
+
+                        <div style="overflow-x:auto;">
+                            <table class="data-table" style="min-width: 700px;">
+                                <thead>
+                                    <tr>
+                                        <th>Currency</th>
+                                        <th>Cost Price</th>
+                                        <th>Selling Price</th>
+                                        <th>SAC Code</th>
+                                        <th>Tax Type</th>
+                                        <th>Tax %</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="addon-costing-rows">
+                                    @foreach($addonCostings as $costingIndex => $addonCosting)
+                                        <tr>
+                                            <td>
+                                                <select name="addons[{{ $addonIndex }}][costings][{{ $costingIndex }}][currency_code]" style="min-width: 180px;" required>
+                                                    <option value="">Select</option>
+                                                    @foreach($currencies as $currency)
+                                                        <option value="{{ $currency->iso }}" {{ ($addonCosting['currency_code'] ?? '') === $currency->iso ? 'selected' : '' }}>
+                                                            {{ $currency->iso }} - {{ $currency->name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td><input type="number" step="0.01" name="addons[{{ $addonIndex }}][costings][{{ $costingIndex }}][cost_price]" value="{{ $addonCosting['cost_price'] ?? '' }}" required></td>
+                                            <td><input type="number" step="0.01" name="addons[{{ $addonIndex }}][costings][{{ $costingIndex }}][selling_price]" value="{{ $addonCosting['selling_price'] ?? '' }}" required></td>
+                                            <td><input type="text" maxlength="20" name="addons[{{ $addonIndex }}][costings][{{ $costingIndex }}][sac_code]" value="{{ $addonCosting['sac_code'] ?? '' }}"></td>
+                                            <td>
+                                                <select name="addons[{{ $addonIndex }}][costings][{{ $costingIndex }}][tax_included]" style="min-width: 120px;" required>
+                                                    <option value="no" {{ ($addonCosting['tax_included'] ?? 'no') === 'no' ? 'selected' : '' }}>Excl. Tax</option>
+                                                    <option value="yes" {{ ($addonCosting['tax_included'] ?? 'no') === 'yes' ? 'selected' : '' }}>Incl. Tax</option>
+                                                </select>
+                                            </td>
+                                            <td><input type="number" step="0.01" min="0" max="100" name="addons[{{ $addonIndex }}][costings][{{ $costingIndex }}][tax_rate]" value="{{ $addonCosting['tax_rate'] ?? '' }}"></td>
+                                            <td style="width: 70px; text-align: center;"><button type="button" class="text-link danger remove-addon-costing">Remove</button></td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+                            <button type="button" class="primary-button save-addon-btn" style="font-size: 0.875rem; padding: 0.4rem 0.8rem;">Save Item</button>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            @error('addons') <span class="error">{{ $message }}</span> @enderror
+            @error('addons.*.name') <span class="error">{{ $message }}</span> @enderror
+            @error('addons.*.costings') <span class="error">{{ $message }}</span> @enderror
+            @error('addons.*.costings.*.currency_code') <span class="error">{{ $message }}</span> @enderror
+            @error('addons.*.costings.*.cost_price') <span class="error">{{ $message }}</span> @enderror
+            @error('addons.*.costings.*.selling_price') <span class="error">{{ $message }}</span> @enderror
+            @error('addons.*.costings.*.tax_rate') <span class="error">{{ $message }}</span> @enderror
+            @error('addons.*.costings.*.tax_included') <span class="error">{{ $message }}</span> @enderror
         </div>
 
         <div class="form-actions">
@@ -146,59 +288,303 @@
 </section>
 
 <script>
-    (function() {
-        const tableBody = document.getElementById('costing-rows');
-        let rowIndex = tableBody.rows.length;
-        const currencyOptionsHtml = @json(
-            collect($currencies)->map(function ($currency) {
-                return '<option value="' . e($currency->iso) . '">' . e($currency->iso . ' - ' . $currency->name) . '</option>';
-            })->implode('')
-        );
+(function() {
+    const costingTableBody = document.getElementById('costing-rows');
+    let costingRowIndex = costingTableBody.rows.length;
 
-        document.getElementById('add-costing-row').addEventListener('click', function() {
-            addRow();
-        });
+    const addonCards = document.getElementById('addon-cards');
+    const existingAddonIndexes = Array.from(addonCards.querySelectorAll('.addon-card'))
+        .map((card) => parseInt(card.dataset.addonIndex || '0', 10));
+    let addonIndex = existingAddonIndexes.length ? Math.max(...existingAddonIndexes) + 1 : 0;
 
-        tableBody.addEventListener('click', function(e) {
-            if (e.target.classList.contains('remove-costing')) {
-                if (tableBody.rows.length === 1) {
-                    alert('At least one costing is required.');
-                    return;
-                }
-                e.target.closest('tr').remove();
-            }
-        });
+    const currencyOptionsHtml = @json(
+        collect($currencies)->map(function ($currency) {
+            return '<option value="' . e($currency->iso) . '">' . e($currency->iso . ' - ' . $currency->name) . '</option>';
+        })->implode('')
+    );
 
-        function addRow(data = {}) {
-            const row = document.createElement('tr');
-            row.innerHTML = `
+    function mainCostingRowHtml(index, data = {}) {
+        return `
+            <tr>
                 <td>
-                    <select name="costings[${rowIndex}][currency_code]" style="min-width: 180px;" required>
+                    <select name="costings[${index}][currency_code]" style="min-width: 180px;" required>
                         <option value="">Select</option>
                         ${currencyOptionsHtml}
                     </select>
                 </td>
-                <td><input type="number" step="0.01" name="costings[${rowIndex}][cost_price]" value="${data.cost_price || ''}" required></td>
-                <td><input type="number" step="0.01" name="costings[${rowIndex}][selling_price]" value="${data.selling_price || ''}" required></td>
-                <td><input type="text" maxlength="20" name="costings[${rowIndex}][sac_code]" value="${data.sac_code || ''}"></td>
+                <td><input type="number" step="0.01" name="costings[${index}][cost_price]" value="${data.cost_price || ''}" required></td>
+                <td><input type="number" step="0.01" name="costings[${index}][selling_price]" value="${data.selling_price || ''}" required></td>
+                <td><input type="text" maxlength="20" name="costings[${index}][sac_code]" value="${data.sac_code || ''}"></td>
                 <td>
-                    <select name="costings[${rowIndex}][tax_included]" style="min-width: 120px;" required>
+                    <select name="costings[${index}][tax_included]" style="min-width: 120px;" required>
                         <option value="no">Excl. Tax</option>
                         <option value="yes">Incl. Tax</option>
                     </select>
                 </td>
-                <td><input type="number" step="0.01" min="0" max="100" name="costings[${rowIndex}][tax_rate]" value="${data.tax_rate || ''}"></td>
+                <td><input type="number" step="0.01" min="0" max="100" name="costings[${index}][tax_rate]" value="${data.tax_rate || ''}"></td>
                 <td style="width: 70px; text-align: center;"><button type="button" class="text-link danger remove-costing">Remove</button></td>
-            `;
-            tableBody.appendChild(row);
-            if (data.currency_code) {
-                row.querySelector(`select[name="costings[${rowIndex}][currency_code]"]`).value = data.currency_code;
-            }
-            if (data.tax_included !== undefined) {
-                row.querySelector(`select[name="costings[${rowIndex}][tax_included]"]`).value = data.tax_included;
-            }
-            rowIndex++;
+            </tr>
+        `;
+    }
+
+    function addonCostingRowHtml(aIndex, cIndex, data = {}) {
+        return `
+            <tr>
+                <td>
+                    <select name="addons[${aIndex}][costings][${cIndex}][currency_code]" style="min-width: 180px;" required>
+                        <option value="">Select</option>
+                        ${currencyOptionsHtml}
+                    </select>
+                </td>
+                <td><input type="number" step="0.01" name="addons[${aIndex}][costings][${cIndex}][cost_price]" value="${data.cost_price || ''}" required></td>
+                <td><input type="number" step="0.01" name="addons[${aIndex}][costings][${cIndex}][selling_price]" value="${data.selling_price || ''}" required></td>
+                <td><input type="text" maxlength="20" name="addons[${aIndex}][costings][${cIndex}][sac_code]" value="${data.sac_code || ''}"></td>
+                <td>
+                    <select name="addons[${aIndex}][costings][${cIndex}][tax_included]" style="min-width: 120px;" required>
+                        <option value="no">Excl. Tax</option>
+                        <option value="yes">Incl. Tax</option>
+                    </select>
+                </td>
+                <td><input type="number" step="0.01" min="0" max="100" name="addons[${aIndex}][costings][${cIndex}][tax_rate]" value="${data.tax_rate || ''}"></td>
+                <td style="width: 70px; text-align: center;"><button type="button" class="text-link danger remove-addon-costing">Remove</button></td>
+            </tr>
+        `;
+    }
+
+    function addonCardHtml(aIndex, firstCostingIndex = 0) {
+        return `
+            <div class="addon-card panel-card" style="border:1px solid var(--line);" data-addon-index="${aIndex}" data-next-costing-index="${firstCostingIndex + 1}" data-addon-id="">
+                <div class="form-grid" style="margin-bottom:0.7rem;">
+                    <div>
+                        <label>Item Name *</label>
+                        <input type="text" name="addons[${aIndex}][name]" maxlength="150" required>
+                    </div>
+
+                    <div style="grid-column: span 2;">
+                        <label>Description</label>
+                        <input type="text" name="addons[${aIndex}][description]">
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                    <strong>Item Costings</strong>
+                    <div style="display:flex;align-items:center; gap:1rem;">
+                        <button type="button" class="text-link add-addon-costing">+ Add currency</button>
+                        <!-- Divider -->
+                        <span style="opacity:0.4;">|</span>
+                        <button type="button" class="text-link danger remove-addon-card"> ✕ Remove item</button>
+                    </div>
+                </div>
+                        
+                <div style="overflow-x:auto;">
+                    <table class="data-table" style="min-width: 700px;">
+                        <thead>
+                            <tr>
+                                <th>Currency</th>
+                                <th>Cost Price</th>
+                                <th>Selling Price</th>
+                                <th>SAC Code</th>
+                                <th>Tax Type</th>
+                                <th>Tax %</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody class="addon-costing-rows">
+                            ${addonCostingRowHtml(aIndex, firstCostingIndex)}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+                    <button type="button" class="primary-button save-addon-btn" style="font-size: 0.875rem; padding: 0.4rem 0.8rem;">Save Item</button>
+                </div>
+            </div>
+        `;
+    }
+    
+    document.getElementById('add-costing-row').addEventListener('click', function() {
+        const row = document.createElement('tbody');
+        row.innerHTML = mainCostingRowHtml(costingRowIndex);
+        costingTableBody.appendChild(row.firstElementChild);
+        costingRowIndex++;
+    });
+
+    costingTableBody.addEventListener('click', function(e) {
+        if (!e.target.classList.contains('remove-costing')) return;
+        if (costingTableBody.rows.length === 1) {
+            alert('At least one costing is required.');
+            return;
         }
-    })();
+        e.target.closest('tr').remove();
+    });
+
+    document.getElementById('add-addon-card').addEventListener('click', function() {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = addonCardHtml(addonIndex);
+        addonCards.appendChild(wrapper.firstElementChild);
+        addonIndex++;
+    });
+
+    addonCards.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-addon-card')) {
+            e.target.closest('.addon-card').remove();
+            return;
+        }
+
+        if (e.target.classList.contains('add-addon-costing')) {
+            const card = e.target.closest('.addon-card');
+            const aIndex = card.dataset.addonIndex;
+            let cIndex = parseInt(card.dataset.nextCostingIndex || '0', 10);
+            const tbody = card.querySelector('.addon-costing-rows');
+
+            const rowWrap = document.createElement('tbody');
+            rowWrap.innerHTML = addonCostingRowHtml(aIndex, cIndex);
+            tbody.appendChild(rowWrap.firstElementChild);
+
+            card.dataset.nextCostingIndex = String(cIndex + 1);
+            return;
+        }
+
+        if (e.target.classList.contains('remove-addon-costing')) {
+            const card = e.target.closest('.addon-card');
+            const tbody = card.querySelector('.addon-costing-rows');
+            if (tbody.querySelectorAll('tr').length === 1) {
+                alert('Each add-on item needs at least one costing row.');
+                return;
+            }
+            e.target.closest('tr').remove();
+        }
+    });
+
+    const addonToggleYes = document.getElementById('has-addons-yes');
+    const addonToggleNo = document.getElementById('has-addons-no');
+    const addonSection = document.getElementById('addon-section');
+    const addonSectionTitle = document.getElementById('addon-section-title');
+
+    function toggleAddonSection() {
+        if (addonToggleYes.checked) {
+            addonSection.style.display = 'block';
+        } else {
+            addonSection.style.display = 'none';
+        }
+    }
+
+    addonToggleYes.addEventListener('change', toggleAddonSection);
+    addonToggleNo.addEventListener('change', toggleAddonSection);
+
+    document.getElementById('save-service-btn').addEventListener('click', function() {
+        const btn = this;
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = 'Saving...';
+
+        const serviceid = document.getElementById('serviceid').value;
+        const name = document.getElementById('name').value;
+        const ps_catid = document.getElementById('ps_catid').value;
+        const description = document.getElementById('description').value;
+
+        const costings = [];
+        costingTableBody.querySelectorAll('tr').forEach((row) => {
+            costings.push({
+                currency_code: row.querySelector(`[name*="[currency_code]"]`).value,
+                cost_price: row.querySelector(`[name*="[cost_price]"]`).value,
+                selling_price: row.querySelector(`[name*="[selling_price]"]`).value,
+                sac_code: row.querySelector(`[name*="[sac_code]"]`).value,
+                tax_included: row.querySelector(`[name*="[tax_included]"]`).value,
+                tax_rate: row.querySelector(`[name*="[tax_rate]"]`).value,
+            });
+        });
+
+        fetch("{{ route('services.ajax-save') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                serviceid, name, ps_catid, description, costings
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                addonSectionTitle.innerText = `Service Add-on Items for ${name}`;
+                alert(data.message);
+            } else {
+                alert('Error: ' + (data.message || 'Something went wrong'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to save service.');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerText = originalText;
+        });
+    });
+
+    addonCards.addEventListener('click', function(e) {
+        if (e.target.classList.contains('save-addon-btn')) {
+            const btn = e.target;
+            const card = btn.closest('.addon-card');
+            const serviceid = document.getElementById('serviceid').value;
+
+            if (!serviceid) {
+                alert('Service ID not found.');
+                return;
+            }
+
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = 'Saving...';
+
+            const addonid = card.dataset.addonId;
+            const name = card.querySelector(`input[name*="[name]"]`).value;
+            const description = card.querySelector(`input[name*="[description]"]`).value;
+
+            const costings = [];
+            card.querySelectorAll('.addon-costing-rows tr').forEach(row => {
+                costings.push({
+                    currency_code: row.querySelector(`[name*="[currency_code]"]`).value,
+                    cost_price: row.querySelector(`[name*="[cost_price]"]`).value,
+                    selling_price: row.querySelector(`[name*="[selling_price]"]`).value,
+                    sac_code: row.querySelector(`[name*="[sac_code]"]`).value,
+                    tax_included: row.querySelector(`[name*="[tax_included]"]`).value,
+                    tax_rate: row.querySelector(`[name*="[tax_rate]"]`).value,
+                });
+            });
+
+            fetch("{{ route('services.addons.ajax-save') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    serviceid, addonid, name, description, costings
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    card.dataset.addonId = data.addonid;
+                    alert(data.message);
+                } else {
+                    alert('Error: ' + (data.message || 'Something went wrong'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to save item.');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            });
+        }
+    });
+})();
 </script>
 @endsection

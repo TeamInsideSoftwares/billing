@@ -5,7 +5,6 @@ RewriteOptions inherit
     </IfModule>
 
     RewriteEngine On
-    RewriteBase /billing.skoolready.com/
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .

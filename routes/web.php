@@ -33,6 +33,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/services/{service}/edit', 'servicesEdit')->name('services.edit');
         Route::put('/services/{service}', 'servicesUpdate')->name('services.update');
         Route::delete('/services/{service}', 'servicesDestroy')->name('services.destroy');
+        Route::post('/services/ajax-save', 'servicesSaveAjax')->name('services.ajax-save');
+        Route::post('/services/addons/ajax-save', 'addonsSaveAjax')->name('services.addons.ajax-save');
         
         Route::get('/invoices', 'invoices')->name('invoices.index');
         Route::get('/invoices/create', 'invoicesCreate')->name('invoices.create');

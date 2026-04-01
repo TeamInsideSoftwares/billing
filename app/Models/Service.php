@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasAlphaNumericId;
+use App\Models\ServiceAddon;
 use App\Models\ServiceCosting;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -70,6 +71,11 @@ class Service extends Model
     public function costings(): HasMany
     {
         return $this->hasMany(ServiceCosting::class, 'serviceid', 'serviceid')->orderBy('currency_code');
+    }
+
+    public function addons(): HasMany
+    {
+        return $this->hasMany(ServiceAddon::class, 'serviceid', 'serviceid')->orderBy('sequence')->orderBy('name');
     }
 
 }

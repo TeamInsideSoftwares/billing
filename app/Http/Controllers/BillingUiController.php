@@ -14,6 +14,8 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Payment;
 use App\Models\Service;
+use App\Models\ServiceAddon;
+use App\Models\ServiceAddonCosting;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\User;
@@ -86,7 +88,7 @@ class BillingUiController extends Controller
 
     public function services(): View
     {
-        $query = Service::with(['category', 'costings'])
+        $query = Service::with(['category', 'costings', 'addons'])
             ->join('ps_categories', 'services.ps_catid', '=', 'ps_categories.ps_catid', 'left')
             ->select('services.*', 'ps_categories.name as cat_name')
             ->orderBy('cat_name', 'asc')
@@ -116,6 +118,7 @@ class BillingUiController extends Controller
                 'sequence' => (int) ($service->sequence ?? 0),
                 'category_name' => $service->category->name ?? 'No Category',
                 'costings' => $costings,
+                'addon_count' => $service->addons->count(),
                 'status' => $service->is_active ? 'Active' : 'Inactive',
             ];
         });
@@ -174,16 +177,26 @@ class BillingUiController extends Controller
             $editingSetting = Setting::find(request('edit'));
         }
 
-        $currencies = DB::table('currency')
+$currencies = DB::table('currency')
             ->orderBy('iso')
             ->get(['iso', 'name']);
+
+        $billingDetails = $account ? $account->billingDetails : collect();
+        $quotationDetails = $account ? $account->quotationDetails : collect();
+
+        $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('account_bd', request('edit_bd'))->where('accountid', $accountid)->first() : null;
+        $editingQuotationDetail = request('edit_qd') ? AccountQuotationDetail::where('account_qd', request('edit_qd'))->where('accountid', $accountid)->first() : null;
 
         return view('settings.index', [
             'title' => 'Settings',
             'settings' => $settings,
             'account' => $account,
             'financialYears' => $financialYears,
-'searchTerm' => $searchTerm,
+            'billingDetails' => $billingDetails,
+            'quotationDetails' => $quotationDetails,
+            'editingBillingDetail' => $editingBillingDetail,
+            'editingQuotationDetail' => $editingQuotationDetail,
+            'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
             'editingSetting' => $editingSetting,
             'currencies' => $currencies,
@@ -438,7 +451,6 @@ class BillingUiController extends Controller
             'description' => 'nullable|string',
             'sequence' => 'nullable|integer|min:0',
             'accountid' => 'nullable|size:6',
-            'status' => 'in:active,inactive',
             'costings' => 'required|array|min:1',
             'costings.*.currency_code' => 'required|string|size:3|exists:currency,iso|distinct',
             'costings.*.cost_price' => 'required|numeric|min:0',
@@ -446,11 +458,23 @@ class BillingUiController extends Controller
             'costings.*.sac_code' => 'nullable|string|max:20',
             'costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
             'costings.*.tax_included' => 'required|in:yes,no',
+            'addons' => 'nullable|array',
+            'addons.*.name' => 'required|string|max:150',
+            'addons.*.description' => 'nullable|string',
+            'addons.*.status' => 'required|in:active,inactive',
+            'addons.*.sequence' => 'nullable|integer|min:0',
+            'addons.*.costings' => 'required|array|min:1',
+            'addons.*.costings.*.currency_code' => 'required|string|size:3|exists:currency,iso',
+            'addons.*.costings.*.cost_price' => 'required|numeric|min:0',
+            'addons.*.costings.*.selling_price' => 'required|numeric|min:0',
+            'addons.*.costings.*.sac_code' => 'nullable|string|max:20',
+            'addons.*.costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
+            'addons.*.costings.*.tax_included' => 'required|in:yes,no',
         ]);
 
         $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
-        $validated['is_active'] = ($request->status ?? 'active') === 'active';
+        $validated['is_active'] = true;
 
         DB::transaction(function () use ($validated) {
             $costings = collect($validated['costings'])->map(function (array $costing) {
@@ -463,8 +487,6 @@ class BillingUiController extends Controller
                     'tax_included' => $costing['tax_included'],
                 ];
             });
-
-            $primaryCosting = $costings->first();
 
             $service = Service::create([
                 'name' => $validated['name'],
@@ -486,6 +508,32 @@ class BillingUiController extends Controller
                     'tax_included' => $costing['tax_included'],
                 ]);
             });
+
+            $addons = collect($validated['addons'] ?? [])
+                ->filter(fn (array $addon) => ! empty(trim((string) ($addon['name'] ?? ''))))
+                ->values();
+
+            $addons->each(function (array $addon, int $index) use ($service, $validated) {
+                $addonModel = $service->addons()->create([
+                    'accountid' => $validated['accountid'],
+                    'name' => trim($addon['name']),
+                    'description' => $addon['description'] ?? null,
+                    'sequence' => $addon['sequence'] ?? ($index + 1),
+                    'is_active' => true,
+                ]);
+
+                collect($addon['costings'] ?? [])->each(function (array $costing) use ($addonModel, $validated) {
+                    $addonModel->costings()->create([
+                        'accountid' => $validated['accountid'],
+                        'currency_code' => strtoupper($costing['currency_code']),
+                        'cost_price' => $costing['cost_price'],
+                        'selling_price' => $costing['selling_price'],
+                        'sac_code' => $costing['sac_code'] ?? null,
+                        'tax_rate' => $costing['tax_rate'] ?? 0,
+                        'tax_included' => $costing['tax_included'],
+                    ]);
+                });
+            });
         });
 
         return redirect()->route('services.index')->with('success', 'Service created successfully.');
@@ -493,7 +541,7 @@ class BillingUiController extends Controller
 
     public function servicesShow(Service $service): View
     {
-        $service->load(['subscriptions', 'category', 'costings']);
+        $service->load(['subscriptions', 'category', 'costings', 'addons.costings']);
         return view('services.show', [
             'title' => 'Service Details',
             'service' => $service,
@@ -506,7 +554,7 @@ class BillingUiController extends Controller
         $currencies = DB::table('currency')
             ->orderBy('iso')
             ->get(['iso', 'name']);
-        $service->load('costings');
+        $service->load(['costings', 'addons.costings']);
         $accountCurrency = auth()->check()
             ? (auth()->user()->account->currency_code ?? 'INR')
             : 'INR';
@@ -526,7 +574,6 @@ class BillingUiController extends Controller
             'ps_catid' => 'nullable|exists:ps_categories,ps_catid',
             'description' => 'nullable|string',
             'sequence' => 'nullable|integer|min:0',
-            'status' => 'in:active,inactive',
             'costings' => 'required|array|min:1',
             'costings.*.currency_code' => 'required|string|size:3|exists:currency,iso|distinct',
             'costings.*.cost_price' => 'required|numeric|min:0',
@@ -534,9 +581,21 @@ class BillingUiController extends Controller
             'costings.*.sac_code' => 'nullable|string|max:20',
             'costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
             'costings.*.tax_included' => 'required|in:yes,no',
+            'addons' => 'nullable|array',
+            'addons.*.name' => 'required|string|max:150',
+            'addons.*.description' => 'nullable|string',
+            'addons.*.status' => 'required|in:active,inactive',
+            'addons.*.sequence' => 'nullable|integer|min:0',
+            'addons.*.costings' => 'required|array|min:1',
+            'addons.*.costings.*.currency_code' => 'required|string|size:3|exists:currency,iso',
+            'addons.*.costings.*.cost_price' => 'required|numeric|min:0',
+            'addons.*.costings.*.selling_price' => 'required|numeric|min:0',
+            'addons.*.costings.*.sac_code' => 'nullable|string|max:20',
+            'addons.*.costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
+            'addons.*.costings.*.tax_included' => 'required|in:yes,no',
         ]);
 
-        $validated['is_active'] = ($request->status ?? 'active') === 'active';
+        $validated['is_active'] = true;
 
         DB::transaction(function () use ($validated, $service) {
             $costings = collect($validated['costings'])->map(function (array $costing) {
@@ -549,8 +608,6 @@ class BillingUiController extends Controller
                     'tax_included' => $costing['tax_included'],
                 ];
             });
-
-            $primaryCosting = $costings->first();
 
             $service->update([
                 'name' => $validated['name'],
@@ -572,6 +629,34 @@ class BillingUiController extends Controller
                     'tax_rate' => $costing['tax_rate'],
                     'tax_included' => $costing['tax_included'],
                 ]);
+            });
+
+            $service->addons()->delete();
+
+            $addons = collect($validated['addons'] ?? [])
+                ->filter(fn (array $addon) => ! empty(trim((string) ($addon['name'] ?? ''))))
+                ->values();
+
+            $addons->each(function (array $addon, int $index) use ($service) {
+                $addonModel = $service->addons()->create([
+                    'accountid' => $service->accountid,
+                    'name' => trim($addon['name']),
+                    'description' => $addon['description'] ?? null,
+                    'sequence' => $addon['sequence'] ?? ($index + 1),
+                    'is_active' => ($addon['status'] ?? 'active') === 'active',
+                ]);
+
+                collect($addon['costings'] ?? [])->each(function (array $costing) use ($addonModel, $service) {
+                    $addonModel->costings()->create([
+                        'accountid' => $service->accountid,
+                        'currency_code' => strtoupper($costing['currency_code']),
+                        'cost_price' => $costing['cost_price'],
+                        'selling_price' => $costing['selling_price'],
+                        'sac_code' => $costing['sac_code'] ?? null,
+                        'tax_rate' => $costing['tax_rate'] ?? 0,
+                        'tax_included' => $costing['tax_included'],
+                    ]);
+                });
             });
         });
 
@@ -601,6 +686,124 @@ class BillingUiController extends Controller
         });
 
         return response()->json(['success' => true]);
+    }
+
+    public function servicesSaveAjax(Request $request)
+    {
+        $validated = $request->validate([
+            'serviceid' => 'nullable|string|exists:services,serviceid',
+            'name' => 'required|string|max:255',
+            'ps_catid' => 'nullable|exists:ps_categories,ps_catid',
+            'description' => 'nullable|string',
+            'costings' => 'required|array|min:1',
+            'costings.*.currency_code' => 'required|string|size:3|exists:currency,iso',
+            'costings.*.cost_price' => 'required|numeric|min:0',
+            'costings.*.selling_price' => 'required|numeric|min:0',
+            'costings.*.sac_code' => 'nullable|string|max:20',
+            'costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
+            'costings.*.tax_included' => 'required|in:yes,no',
+        ]);
+
+        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        
+        $service = DB::transaction(function () use ($validated, $userAccountId) {
+            $serviceData = [
+                'name' => $validated['name'],
+                'ps_catid' => $validated['ps_catid'] ?? null,
+                'description' => $validated['description'] ?? null,
+                'accountid' => $userAccountId,
+                'is_active' => true,
+            ];
+
+            if (!empty($validated['serviceid'])) {
+                $service = Service::where('serviceid', $validated['serviceid'])->firstOrFail();
+                $service->update($serviceData);
+            } else {
+                $serviceData['sequence'] = (Service::where('accountid', $userAccountId)->max('sequence') ?? 0) + 1;
+                $service = Service::create($serviceData);
+            }
+
+            // Sync costings
+            $service->costings()->delete();
+            foreach ($validated['costings'] as $costing) {
+                $service->costings()->create([
+                    'accountid' => $userAccountId,
+                    'currency_code' => strtoupper($costing['currency_code']),
+                    'cost_price' => $costing['cost_price'],
+                    'selling_price' => $costing['selling_price'],
+                    'sac_code' => $costing['sac_code'] ?? null,
+                    'tax_rate' => $costing['tax_rate'] ?? 0,
+                    'tax_included' => $costing['tax_included'],
+                ]);
+            }
+
+            return $service;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Service saved successfully.',
+            'serviceid' => $service->serviceid,
+        ]);
+    }
+
+    public function addonsSaveAjax(Request $request)
+    {
+        $validated = $request->validate([
+            'serviceid' => 'required|string|exists:services,serviceid',
+            'addonid' => 'nullable|string|exists:service_addons,addonid',
+            'name' => 'required|string|max:150',
+            'description' => 'nullable|string',
+            'costings' => 'required|array|min:1',
+            'costings.*.currency_code' => 'required|string|size:3|exists:currency,iso',
+            'costings.*.cost_price' => 'required|numeric|min:0',
+            'costings.*.selling_price' => 'required|numeric|min:0',
+            'costings.*.sac_code' => 'nullable|string|max:20',
+            'costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
+            'costings.*.tax_included' => 'required|in:yes,no',
+        ]);
+
+        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+
+        $addon = DB::transaction(function () use ($validated, $userAccountId) {
+            $addonData = [
+                'accountid' => $userAccountId,
+                'serviceid' => $validated['serviceid'],
+                'name' => trim($validated['name']),
+                'description' => $validated['description'] ?? null,
+                'is_active' => true,
+            ];
+
+            if (!empty($validated['addonid'])) {
+                $addon = ServiceAddon::where('addonid', $validated['addonid'])->firstOrFail();
+                $addon->update($addonData);
+            } else {
+                $addonData['sequence'] = (ServiceAddon::where('serviceid', $validated['serviceid'])->max('sequence') ?? 0) + 1;
+                $addon = ServiceAddon::create($addonData);
+            }
+
+            // Sync costings
+            $addon->costings()->delete();
+            foreach ($validated['costings'] as $costing) {
+                $addon->costings()->create([
+                    'accountid' => $userAccountId,
+                    'currency_code' => strtoupper($costing['currency_code']),
+                    'cost_price' => $costing['cost_price'],
+                    'selling_price' => $costing['selling_price'],
+                    'sac_code' => $costing['sac_code'] ?? null,
+                    'tax_rate' => $costing['tax_rate'] ?? 0,
+                    'tax_included' => $costing['tax_included'],
+                ]);
+            }
+
+            return $addon;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Add-on item saved successfully.',
+            'addonid' => $addon->addonid,
+        ]);
     }
 
     // Product Categories CRUD

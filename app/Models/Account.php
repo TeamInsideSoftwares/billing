@@ -74,4 +74,14 @@ class Account extends Authenticatable
     {
         return $this->hasMany(FinancialYear::class, 'accountid', 'accountid');
     }
+
+    public function billingDetails(): HasMany
+    {
+        return $this->hasMany(AccountBillingDetail::class);
+    }
+
+    public function quotationDetails(): HasMany
+    {
+        return $this->hasMany(AccountQuotationDetail::class);
+    }
 }
