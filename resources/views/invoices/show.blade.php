@@ -1,15 +1,16 @@
 @extends('layouts.app')
 
 @section('content')
+<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Invoice Details</h3>
+
 <section class="section-bar">
     <div>
-        <a href="{{ route('invoices.index') }}" class="text-link" style="margin-bottom: 1rem; display: inline-block;">← Back to Invoices</a>
-        <p class="eyebrow">{{ $invoice->invoice_number }}</p>
         <p style="font-size: 1.1em; margin-bottom: 0.75rem;">
-                {{ $invoice->client->business_name ?? $invoice->client->contact_name ?? 'N/A' }}
+            <b>Client Name: </b>{{ $invoice->client->business_name ?? $invoice->client->contact_name ?? 'N/A' }}
         </p>
+        <a href="{{ route('invoices.index') }}" class="text-link">← Back to Invoices</a>
     </div>
-    <div>
+    <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
         <a href="{{ route('invoices.edit', $invoice) }}" class="primary-button">Edit</a>
         <form method="POST" action="{{ route('invoices.destroy', $invoice) }}" class="inline-delete" onsubmit="return confirm('Delete this invoice?')">
             @csrf @method('DELETE')
@@ -22,7 +23,7 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem;">
         <div>
             <h1 style="margin: 0 0 0.5rem 0; font-size: 1.5em;">{{ $invoice->invoice_number }}</h1>
-            <span class="status-pill {{ strtolower($invoice->status ?? 'draft') }}">{{ ucfirst($invoice->status ?? 'Draft') }}</span>
+        <span class="status-pill {{ strtolower($invoice->status ?? 'draft') }}">{{ ucfirst($invoice->status ?? 'Draft') }}</span>
         </div>
         <div style="text-align: right;">
             <div style="font-size: 1.5em; font-weight: bold; margin-bottom: 0.25rem;">Rs {{ number_format($invoice->grand_total ?? 0, 2) }}</div>

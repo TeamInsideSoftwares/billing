@@ -329,3 +329,124 @@ mark {
 .accordion-content .data-table {
     margin-top: 0;
 }
+
+/* Custom Radio Buttons */
+.custom-radio {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.custom-radio:hover {
+    background: #f1f5f9;
+}
+
+.custom-radio input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    max-width: 18px;
+    max-height: 18px;
+    border: 2px solid #cbd5e1;
+    border-radius: 50%;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.custom-radio input[type="radio"]:checked {
+    border-color: #3b82f6;
+    background: #3b82f6;
+}
+
+.custom-radio input[type="radio"]:checked::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+}
+
+.custom-radio .radio-label {
+    font-size: 0.85rem;
+    color: #475569;
+    user-select: none;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Custom Checkbox */
+.custom-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.custom-checkbox:hover {
+    background: #f1f5f9;
+}
+
+.custom-checkbox input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    max-width: 18px;
+    max-height: 18px;
+    border: 2px solid #cbd5e1;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.custom-checkbox input[type="checkbox"]:checked {
+    border-color: #3b82f6;
+    background: #3b82f6;
+}
+
+.custom-checkbox input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.custom-checkbox .checkbox-label {
+    font-size: 0.8rem;
+    color: #475569;
+    user-select: none;
+    font-weight: 500;
+    white-space: nowrap;
+}

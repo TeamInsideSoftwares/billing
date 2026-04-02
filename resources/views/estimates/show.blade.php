@@ -1,10 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
+
 <section class="section-bar">
     <div>
         <p class="eyebrow">{{ $estimate->number }}</p>
-        <h3>Estimate details</h3>
+        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Estimate Details</h3>
     </div>
     <div>
         <a href="{{ route('estimates.edit', $estimate) }}" class="primary-button">Edit</a>

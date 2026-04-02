@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
+    <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Create New Client</h3>
+
 <section class="section-bar">
     <div>
     </div>
@@ -89,15 +91,21 @@
             </div>
             <div>
                 <label for="country">Country</label>
-                <input type="text" id="country" name="country" value="{{ old('country', 'India') }}" maxlength="100">
+                <select id="country" name="country" class="country-select" data-selected="{{ old('country', 'India') }}">
+                    <option value="">Select Country</option>
+                </select>
             </div>
             <div>
                 <label for="state">State</label>
-                <input type="text" id="state" name="state" value="{{ old('state') }}" maxlength="100">
+                <select id="state" name="state" class="state-select" data-selected="{{ old('state') }}">
+                    <option value="">Select State</option>
+                </select>
             </div>
             <div>
                 <label for="city">City</label>
-                <input type="text" id="city" name="city" value="{{ old('city') }}" maxlength="100">
+                <select id="city" name="city" class="city-select" data-selected="{{ old('city') }}">
+                    <option value="">Select City</option>
+                </select>
             </div>
             <div>
                 <label for="postal_code">Postal Code</label>
@@ -116,9 +124,9 @@
 
         <h4 style="margin-top: 2rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--line); padding-bottom: 0.5rem;">Billing Details</h4>
         <div style="margin-bottom: 0.75rem;">
-            <label style="display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.9rem;">
+            <label class="custom-checkbox">
                 <input type="checkbox" id="billing_same_as_client" name="billing_same_as_client" value="1" {{ old('billing_same_as_client') ? 'checked' : '' }}>
-                Keep billing details same as client details
+                <span class="checkbox-label">Keep billing details same as client details</span>
             </label>
         </div>
         <div class="form-grid">
@@ -159,24 +167,25 @@
                 @error('billing_address_line_1') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="billing_city">Billing City</label>
-                <input type="text" id="billing_city" name="billing_city" value="{{ old('billing_city') }}">
-                @error('billing_city') <span class="error">{{ $message }}</span> @enderror
+                <label for="billing_country">Billing Country</label>
+                <select id="billing_country" name="billing_country" class="country-select" data-selected="{{ old('billing_country', 'India') }}">
+                    <option value="">Select Country</option>
+                </select>
+                @error('billing_country') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="billing_state">Billing State</label>
-                <input type="text" id="billing_state" name="billing_state" value="{{ old('billing_state') }}">
+                <select id="billing_state" name="billing_state" class="state-select" data-selected="{{ old('billing_state') }}">
+                    <option value="">Select State</option>
+                </select>
                 @error('billing_state') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="billing_postal_code">Billing Postal Code</label>
-                <input type="text" id="billing_postal_code" name="billing_postal_code" value="{{ old('billing_postal_code') }}">
-                @error('billing_postal_code') <span class="error">{{ $message }}</span> @enderror
-            </div>
-            <div>
-                <label for="billing_country">Billing Country</label>
-                <input type="text" id="billing_country" name="billing_country" value="{{ old('billing_country', 'India') }}">
-                @error('billing_country') <span class="error">{{ $message }}</span> @enderror
+                <label for="billing_city">Billing City</label>
+                <select id="billing_city" name="billing_city" class="city-select" data-selected="{{ old('billing_city') }}">
+                    <option value="">Select City</option>
+                </select>
+                @error('billing_city') <span class="error">{{ $message }}</span> @enderror
             </div>
         </div>
 

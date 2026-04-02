@@ -3,16 +3,14 @@
 @section('content')
     <section class="section-bar">
         <div>
-            <form method="GET" action="{{ route('groups.index') }}" class="search-form">
-                <input type="search" name="search" placeholder="Search groups by name..." value="{{ request('search') }}">
-                <button type="submit">Search</button>
-            </form>
-            <a href="{{ route('clients.index') }}" class="text-link">&larr; Back to clients</a>
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Client Groups</h3>
+            @if(request('search'))
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #64748b;">
+                    Search results for "{{ request('search') }}"
+                </p>
+            @endif
+            <a href="{{ route('clients.index') }}" class="text-link" style="margin-top: 0.5rem; display: inline-block;">&larr; Back to clients</a>
         </div>
-        
-        <!-- <div class="button-group" style="display: flex; gap: 0.75rem;">
-            <a href="{{ route('groups.create') }}" class="primary-button">Add Group</a>
-        </div> -->
     </section>
 
     <section class="panel-card">

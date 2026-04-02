@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
+<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Record New Payment</h3>
+
 <section class="section-bar">
     <div>
         <p class="eyebrow">Collections</p>

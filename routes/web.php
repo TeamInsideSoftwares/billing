@@ -88,6 +88,9 @@ Route::middleware(['auth'])->group(function () {
         
         Route::get('/settings', 'settings')->name('settings.index');
         Route::put('/settings/account', 'accountUpdate')->name('account.update');
+        Route::post('/settings/billing-details', 'accountBillingUpdate')->name('account.billing.update');
+        Route::post('/settings/quotation-details', 'accountQuotationUpdate')->name('account.quotation.update');
+        Route::post('/settings/serial-preview', 'generateSerialPreview')->name('serial.preview');
         Route::get('/settings/create', 'settingsCreate')->name('settings.create');
         Route::post('/settings', 'settingsStore')->name('settings.store');
         Route::get('/settings/{setting}', 'settingsShow')->name('settings.show');

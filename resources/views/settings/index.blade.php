@@ -9,7 +9,7 @@
 <!-- Tabs Wrapper -->
 <div style="padding: 10px 0;">
     <div class="tabs-nav">
-        <button class="tab-button active" data-tab="personal">Personal Info</button>
+        <button class="tab-button active" data-tab="personal">Business Info</button>
         <button class="tab-button" data-tab="financial-year">Financial Year</button>
 <button class="tab-button" data-tab="config">Configuration Keys</button>
         <button class="tab-button" data-tab="billing-details">Billing Details</button>
@@ -179,21 +179,50 @@ label {
             </div>
 
             <div>
-                <label>City</label>
-                <input type="text" name="city" value="{{ old('city', $account->city ?? '') }}">
+                <label>Country</label>
+                <select name="country" class="country-select" data-selected="{{ old('country', $account->country ?? '') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
+                    <option value="">Select Country</option>
+                </select>
             </div>
 
             <div>
-                <label>Country</label>
-                <input type="text" name="country" value="{{ old('country', $account->country ?? '') }}">
+                <label>State</label>
+                <select name="state" class="state-select" data-selected="{{ old('state', $account->state ?? '') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
+                    <option value="">Select State</option>
+                </select>
             </div>
+
+            <div>
+                <label>City</label>
+                <select name="city" class="city-select" data-selected="{{ old('city', $account->city ?? '') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
+                    <option value="">Select City</option>
+                </select>
+            </div>
+
             <div>
                 <label>Postal Code</label>
                 <input type="text" name="postal_code" value="{{ old('postal_code', $account->postal_code ?? '') }}">
             </div>
             <div>
-                <label>FY Start Month</label>
-                <input type="month" name="fy_startdate" value="{{ old('fy_startdate', $account->fy_startdate ? date('Y-').substr($account->fy_startdate, 0, 2) : date('Y-04')) }}">
+                <label>FY Start (Day & Month)</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    @php
+                        $currentFy = old('fy_startdate', $account->fy_startdate ?? '04-01');
+                        $parts = explode('-', $currentFy);
+                        $curMonth = $parts[0] ?? '04';
+                        $curDay = $parts[1] ?? '01';
+                    @endphp
+                    <select name="fy_day" style="width: 80px; padding: 0.45rem 0.6rem;">
+                        @for ($i = 1; $i <= 31; $i++)
+                            <option value="{{ sprintf('%02d', $i) }}" {{ $curDay == sprintf('%02d', $i) ? 'selected' : '' }}>{{ $i }}</option>
+                        @endfor
+                    </select>
+                    <select name="fy_month" style="flex: 1; padding: 0.45rem 0.6rem;">
+                        @foreach(['01'=>'January','02'=>'February','03'=>'March','04'=>'April','05'=>'May','06'=>'June','07'=>'July','08'=>'August','09'=>'September','10'=>'October','11'=>'November','12'=>'December'] as $mVal => $mName)
+                            <option value="{{ $mVal }}" {{ $curMonth == $mVal ? 'selected' : '' }}>{{ $mName }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
             
 
@@ -285,7 +314,19 @@ label {
                 
                 <div>
                     <label style="font-size: 0.75rem; margin-bottom: 2px;">Key Name *</label>
-                    <input type="text" name="key" value="{{ old('key', $editingSetting->setting_key ?? '') }}" placeholder="e.g. STRIPE_API_KEY" required style="padding: 0.4rem; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <select id="config-key-select" name="key" required style="padding: 0.4rem; border-radius: 4px; border: 1px solid #cbd5e1; width: 100%;">
+                        <option value="">-- Select Key --</option>
+                        @php
+                            $currentKey = old('key', $editingSetting->setting_key ?? '');
+                        @endphp
+                        @foreach($suggestedKeys as $group => $keys)
+                            <optgroup label="{{ $group }}">
+                                @foreach($keys as $key => $label)
+                                    <option value="{{ $key }}" {{ $currentKey == $key ? 'selected' : '' }}>{{ $key }} ({{ $label }})</option>
+                                @endforeach
+                            </optgroup>
+                        @endforeach
+                    </select>
                 </div>
                 <div>
                     <label style="font-size: 0.75rem; margin-bottom: 2px;">Value *</label>
@@ -349,16 +390,76 @@ label {
                 </ul>
             </div>
         @endif
-        <form method="POST" action="#" class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <form method="POST" action="{{ route('account.billing.update') }}" class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             @csrf
             @if(isset($editingBillingDetail))
-                @method('PUT')
-                <input type="hidden" name="account_qdid" value="{{ $editingBillingDetail->account_qdid }}">
+                <input type="hidden" name="account_bdid" value="{{ $editingBillingDetail->account_bdid }}">
             @endif
             <input type="hidden" name="accountid" value="{{ $account->accountid }}">
-            <div>
-                <label class="required">Serial Number</label>
-                <input type="text" name="serial_number" value="{{ old('serial_number', $editingBillingDetail->serial_number ?? '') }}" required>
+            <div style="grid-column: span 2; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <h5 style="margin: 0 0 0.75rem 0; font-size: 0.95rem; color: #1e293b;">Serial Number Configuration</h5>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+                    <div>
+                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Prefix</label>
+                        <input type="text" name="prefix" value="{{ old('prefix', $editingBillingDetail->prefix ?? '') }}" placeholder="INV-" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Suffix</label>
+                        <input type="text" name="suffix" value="{{ old('suffix', $editingBillingDetail->suffix ?? '') }}" placeholder="-2026" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Preview</label>
+                        <div id="billing-preview" style="font-family: monospace; font-size: 0.9rem; color: #1e293b; padding: 0.4rem 0.5rem; background: white; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            {{ $editingBillingDetail->prefix ?? '' }}[NUMBER]{{ $editingBillingDetail->suffix ?? '' }}
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: start;">
+                    <div>
+                        <label style="font-size: 0.8rem; margin-bottom: 0.5rem; display: block; font-weight: 600;">Mode</label>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <label class="custom-radio">
+                                <input type="radio" name="serial_mode" value="auto_generate" 
+                                    {{ old('serial_mode', $editingBillingDetail->serial_mode ?? 'auto_generate') == 'auto_generate' ? 'checked' : '' }}
+                                    class="billing-serial-mode-radio">
+                                <span class="radio-label">Auto Generate</span>
+                            </label>
+                            <label class="custom-radio">
+                                <input type="radio" name="serial_mode" value="auto_increment" 
+                                    {{ old('serial_mode', $editingBillingDetail->serial_mode ?? 'auto_generate') == 'auto_increment' ? 'checked' : '' }}
+                                    class="billing-serial-mode-radio">
+                                <span class="radio-label">Auto Increment</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div id="billing-auto-generate-options" style="padding: 0.75rem; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <label style="font-size: 0.8rem; margin-bottom: 0.5rem; display: block;">Alphanumeric Length</label>
+                            <select name="alphanumeric_length" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
+                                <option value="4" {{ old('alphanumeric_length', $editingBillingDetail->alphanumeric_length ?? 4) == 4 ? 'selected' : '' }}>4 characters (A3F9)</option>
+                                <option value="6" {{ old('alphanumeric_length', $editingBillingDetail->alphanumeric_length ?? 4) == 6 ? 'selected' : '' }}>6 characters (A3F9B2)</option>
+                            </select>
+                        </div>
+
+                        <div id="billing-auto-increment-options" style="padding: 0.75rem; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: end;">
+                                <div>
+                                    <label style="font-size: 0.8rem; margin-bottom: 0.5rem; display: block;">Start From</label>
+                                    <input type="number" name="auto_increment_start" value="{{ old('auto_increment_start', $editingBillingDetail->auto_increment_start ?? 1) }}" min="1" max="99999" placeholder="1001" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
+                                </div>
+                                <div>
+                                    <label class="custom-checkbox">
+                                        <input type="checkbox" name="reset_on_fy" value="1" {{ old('reset_on_fy', $editingBillingDetail->reset_on_fy ?? false) ? 'checked' : '' }}>
+                                        <span class="checkbox-label">Reset on FY</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div>
                 <label class="required">Billing Name</label>
@@ -369,6 +470,28 @@ label {
                 <textarea name="address" rows="3" style="width: 100%; padding: 0.45rem 0.6rem;">{{ old('address', $editingBillingDetail->address ?? '') }}</textarea>
             </div>
             <div>
+                <label>Country</label>
+                <select name="country" class="country-select" data-selected="{{ old('country', $editingBillingDetail->country ?? 'India') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
+                    <option value="">Select Country</option>
+                </select>
+            </div>
+            <div>
+                <label>State</label>
+                <select name="state" class="state-select" data-selected="{{ old('state', $editingBillingDetail->state ?? '') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
+                    <option value="">Select State</option>
+                </select>
+            </div>
+            <div>
+                <label>City</label>
+                <select name="city" class="city-select" data-selected="{{ old('city', $editingBillingDetail->city ?? '') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
+                    <option value="">Select City</option>
+                </select>
+            </div>
+            <div>
+                <label>Postal Code</label>
+                <input type="text" name="postal_code" value="{{ old('postal_code', $editingBillingDetail->postal_code ?? '') }}">
+            </div>
+            <div>
                 <label>GSTIN</label>
                 <input type="text" name="gstin" value="{{ old('gstin', $editingBillingDetail->gstin ?? '') }}">
             </div>
@@ -377,50 +500,19 @@ label {
                 <input type="text" name="tin" value="{{ old('tin', $editingBillingDetail->tin ?? '') }}">
             </div>
             <div style="grid-column: span 2;">
-                <label>Terms &amp; Conditions</label>
-                <textarea name="terms_conditions" rows="4" style="width: 100%; padding: 0.45rem 0.6rem;">{{ old('terms_conditions', $editingBillingDetail->terms_conditions ?? '') }}</textarea>
+<label>Terms &amp; Conditions</label>
+                <div id="billing-terms-editor" style="border: 1px solid #cbd5e1; border-radius: 6px; min-height: 100px; padding: 0.5rem;">{!! old('terms_conditions', $editingBillingDetail->terms_conditions ?? '') !!}</div>
+                <textarea name="terms_conditions" id="billing-terms-hidden" style="display: none;">{{ old('terms_conditions', $editingBillingDetail->terms_conditions ?? '') }}</textarea>
             </div>
             <div class="form-actions">
-                <button type="submit" class="primary-button">{{ isset($editingBillingDetail) ? 'Update' : 'Add' }} Billing Detail</button>
-                @if(isset($editingBillingDetail))
+                <button type="submit" class="primary-button">Save Billing Detail</button>
+                @if(isset($editingBillingDetail) && request('edit_bd'))
                     <a href="{{ route('settings.index') }}#billing-details" class="text-link" style="margin-left: 1rem;">Cancel</a>
                 @endif
             </div>
         </form>
 
-        <div style="margin-top: 2rem;">
-            <h5>Billing Details List</h5>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Serial</th>
-                        <th>Name</th>
-                        <th>GSTIN</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($billingDetails ?? [] as $bd)
-                        <tr>
-                            <td>{{ $bd->serial_number }}</td>
-                            <td>{{ $bd->billing_name }}</td>
-                            <td>{{ $bd->gstin ?? '-' }}</td>
-                            <td>
-                                <a href="{{ route('settings.index', ['edit_bd' => $bd->account_qdid]) }}#billing-details" class="text-link">Edit</a>
-                                <form method="POST" action="{{ route('billing-details.destroy', $bd->account_qdid) }}" style="display: inline; margin-left: 1rem;" onsubmit="return confirm('Delete?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="text-link" style="background: none; border: none; color: #ef4444;">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4">No billing details added</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+<!-- Single billing detail form (no list) -->
     </section>
 </div>
 
@@ -440,16 +532,76 @@ label {
                 </ul>
             </div>
         @endif
-        <form method="POST" action="#" class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <form method="POST" action="{{ route('account.quotation.update') }}" class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             @csrf
             @if(isset($editingQuotationDetail))
-                @method('PUT')
-                <input type="hidden" name="account_qd" value="{{ $editingQuotationDetail->account_qd }}">
+                <input type="hidden" name="account_qdid" value="{{ $editingQuotationDetail->account_qdid }}">
             @endif
             <input type="hidden" name="accountid" value="{{ $account->accountid }}">
-            <div>
-                <label class="required">Serial Number</label>
-                <input type="text" name="serial_number" value="{{ old('serial_number', $editingQuotationDetail->serial_number ?? '') }}" required>
+            <div style="grid-column: span 2; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <h5 style="margin: 0 0 0.75rem 0; font-size: 0.95rem; color: #1e293b;">Serial Number Configuration</h5>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+                    <div>
+                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Prefix</label>
+                        <input type="text" name="prefix" value="{{ old('prefix', $editingQuotationDetail->prefix ?? '') }}" placeholder="QUO-" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Suffix</label>
+                        <input type="text" name="suffix" value="{{ old('suffix', $editingQuotationDetail->suffix ?? '') }}" placeholder="-2026" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Preview</label>
+                        <div id="quotation-preview" style="font-family: monospace; font-size: 0.9rem; color: #1e293b; padding: 0.4rem 0.5rem; background: white; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            {{ $editingQuotationDetail->prefix ?? '' }}[NUMBER]{{ $editingQuotationDetail->suffix ?? '' }}
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: start;">
+                    <div>
+                        <label style="font-size: 0.8rem; margin-bottom: 0.5rem; display: block; font-weight: 600;">Mode</label>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <label class="custom-radio">
+                                <input type="radio" name="serial_mode" value="auto_generate" 
+                                    {{ old('serial_mode', $editingQuotationDetail->serial_mode ?? 'auto_generate') == 'auto_generate' ? 'checked' : '' }}
+                                    class="quotation-serial-mode-radio">
+                                <span class="radio-label">Auto Generate</span>
+                            </label>
+                            <label class="custom-radio">
+                                <input type="radio" name="serial_mode" value="auto_increment" 
+                                    {{ old('serial_mode', $editingQuotationDetail->serial_mode ?? 'auto_generate') == 'auto_increment' ? 'checked' : '' }}
+                                    class="quotation-serial-mode-radio">
+                                <span class="radio-label">Auto Increment</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div id="quotation-auto-generate-options" style="padding: 0.75rem; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <label style="font-size: 0.8rem; margin-bottom: 0.5rem; display: block;">Alphanumeric Length</label>
+                            <select name="alphanumeric_length" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
+                                <option value="4" {{ old('alphanumeric_length', $editingQuotationDetail->alphanumeric_length ?? 4) == 4 ? 'selected' : '' }}>4 characters (A3F9)</option>
+                                <option value="6" {{ old('alphanumeric_length', $editingQuotationDetail->alphanumeric_length ?? 4) == 6 ? 'selected' : '' }}>6 characters (A3F9B2)</option>
+                            </select>
+                        </div>
+
+                        <div id="quotation-auto-increment-options" style="padding: 0.75rem; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: end;">
+                                <div>
+                                    <label style="font-size: 0.8rem; margin-bottom: 0.5rem; display: block;">Start From</label>
+                                    <input type="number" name="auto_increment_start" value="{{ old('auto_increment_start', $editingQuotationDetail->auto_increment_start ?? 1) }}" min="1" max="99999" placeholder="1001" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
+                                </div>
+                                <div>
+                                    <label class="custom-checkbox">
+                                        <input type="checkbox" name="reset_on_fy" value="1" {{ old('reset_on_fy', $editingQuotationDetail->reset_on_fy ?? false) ? 'checked' : '' }}>
+                                        <span class="checkbox-label">Reset on FY</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div>
                 <label class="required">Quotation Name</label>
@@ -460,6 +612,28 @@ label {
                 <textarea name="address" rows="3" style="width: 100%; padding: 0.45rem 0.6rem;">{{ old('address', $editingQuotationDetail->address ?? '') }}</textarea>
             </div>
             <div>
+                <label>Country</label>
+                <select name="country" class="country-select" data-selected="{{ old('country', $editingQuotationDetail->country ?? 'India') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
+                    <option value="">Select Country</option>
+                </select>
+            </div>
+            <div>
+                <label>State</label>
+                <select name="state" class="state-select" data-selected="{{ old('state', $editingQuotationDetail->state ?? '') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
+                    <option value="">Select State</option>
+                </select>
+            </div>
+            <div>
+                <label>City</label>
+                <select name="city" class="city-select" data-selected="{{ old('city', $editingQuotationDetail->city ?? '') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
+                    <option value="">Select City</option>
+                </select>
+            </div>
+            <div>
+                <label>Postal Code</label>
+                <input type="text" name="postal_code" value="{{ old('postal_code', $editingQuotationDetail->postal_code ?? '') }}">
+            </div>
+            <div>
                 <label>GSTIN</label>
                 <input type="text" name="gstin" value="{{ old('gstin', $editingQuotationDetail->gstin ?? '') }}">
             </div>
@@ -468,50 +642,19 @@ label {
                 <input type="text" name="tin" value="{{ old('tin', $editingQuotationDetail->tin ?? '') }}">
             </div>
             <div style="grid-column: span 2;">
-                <label>Terms &amp; Conditions</label>
-                <textarea name="terms_conditions" rows="4" style="width: 100%; padding: 0.45rem 0.6rem;">{{ old('terms_conditions', $editingQuotationDetail->terms_conditions ?? '') }}</textarea>
+<label>Terms &amp; Conditions</label>
+                <div id="quotation-terms-editor" style="border: 1px solid #cbd5e1; border-radius: 6px; min-height: 100px; padding: 0.5rem;">{!! old('terms_conditions', $editingQuotationDetail->terms_conditions ?? '') !!}</div>
+                <textarea name="terms_conditions" id="quotation-terms-hidden" style="display: none;">{{ old('terms_conditions', $editingQuotationDetail->terms_conditions ?? '') }}</textarea>
             </div>
             <div class="form-actions">
-                <button type="submit" class="primary-button">{{ isset($editingQuotationDetail) ? 'Update' : 'Add' }} Quotation Detail</button>
-                @if(isset($editingQuotationDetail))
+                <button type="submit" class="primary-button">Save Quotation Detail</button>
+                @if(isset($editingQuotationDetail) && request('edit_qd'))
                     <a href="{{ route('settings.index') }}#quotation-details" class="text-link" style="margin-left: 1rem;">Cancel</a>
                 @endif
             </div>
         </form>
 
-        <div style="margin-top: 2rem;">
-            <h5>Quotation Details List</h5>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Serial</th>
-                        <th>Name</th>
-                        <th>GSTIN</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($quotationDetails ?? [] as $qd)
-                        <tr>
-                            <td>{{ $qd->serial_number }}</td>
-                            <td>{{ $qd->quotation_name }}</td>
-                            <td>{{ $qd->gstin ?? '-' }}</td>
-                            <td>
-                                <a href="{{ route('settings.index', ['edit_qd' => $qd->account_qd]) }}#quotation-details" class="text-link">Edit</a>
-                                <form method="POST" action="{{ route('quotation-details.destroy', $qd->account_qd) }}" style="display: inline; margin-left: 1rem;" onsubmit="return confirm('Delete?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="text-link" style="background: none; border: none; color: #ef4444;">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4">No quotation details added</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+<!-- Single quotation detail form (no list) -->
     </section>
 </div>
 
@@ -554,7 +697,84 @@ document.addEventListener('DOMContentLoaded', function () {
         // Default to personal if no hash
         activateTab('personal');
     }
+
+    // Serial mode toggle handler
+    function handleSerialModeChange(radio) {
+        const form = radio.closest('form');
+        const isQuotation = form.action.includes('quotation');
+        const prefix = isQuotation ? 'quotation' : 'billing';
+        
+        const autoGenDiv = document.getElementById(`${prefix}-auto-generate-options`);
+        const autoIncDiv = document.getElementById(`${prefix}-auto-increment-options`);
+        
+        if (radio.value === 'auto_generate') {
+            if (autoGenDiv) autoGenDiv.style.display = 'block';
+            if (autoIncDiv) autoIncDiv.style.display = 'none';
+        } else if (radio.value === 'auto_increment') {
+            if (autoGenDiv) autoGenDiv.style.display = 'none';
+            if (autoIncDiv) autoIncDiv.style.display = 'block';
+        }
+    }
+
+    // Attach event listeners to serial mode radios
+    document.querySelectorAll('input[name="serial_mode"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            handleSerialModeChange(this);
+        });
+    });
+
+    // Initialize on page load - trigger for billing
+    setTimeout(() => {
+        const billingRadio = document.querySelector('#billing-details input[name="serial_mode"]:checked');
+        if (billingRadio) {
+            handleSerialModeChange(billingRadio);
+        }
+        
+        // Initialize on page load - trigger for quotation
+        const quotationRadio = document.querySelector('#quotation-details input[name="serial_mode"]:checked');
+        if (quotationRadio) {
+            handleSerialModeChange(quotationRadio);
+        }
+    }, 100);
 });
+
+function initTinyMCE() {
+  tinymce.init({
+    selector: '#billing-terms-editor, #quotation-terms-editor',
+    license_key: 'gpl',
+height: 300,
+    menubar: false,
+    plugins: 'lists link image table',
+    toolbar: 'undo redo | link | blocks | bold italic underline | alignleft aligncenter alignright | bullist numlist',
+    block_formats: 'Paragraph=p; Heading 1=h1; Heading 2=h2; Heading 3=h3; Heading 4=h4',
+    extended_valid_elements: 'a[href|target|style]',
+    allow_script_urls: true,
+    setup: function(editor){
+      editor.on('change', function(){
+        const hiddenId = editor.id === 'billing-terms-editor' ? 'billing-terms-hidden' : 'quotation-terms-hidden';
+        document.getElementById(hiddenId).value = editor.getContent();
+      });
+    },
+    content_style: `
+      .mce-content-body[data-mce-placeholder]:not(.mce-visualblocks)::before {
+        color: #000;
+      }`
+  });
+
+  // Sync before form submission
+  document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function() {
+      if (typeof tinymce !== 'undefined') {
+        const billingEditor = tinymce.get('billing-terms-editor');
+        if (billingEditor) document.getElementById('billing-terms-hidden').value = billingEditor.getContent();
+        
+        const quotationEditor = tinymce.get('quotation-terms-editor');
+        if (quotationEditor) document.getElementById('quotation-terms-hidden').value = quotationEditor.getContent();
+      }
+    });
+  });
+}
+initTinyMCE();
 </script>
 
 @endsection

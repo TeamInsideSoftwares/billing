@@ -3,11 +3,12 @@
 @section('content')
     <section class="section-bar">
         <div>
-            <form method="GET" action="{{ route('payments.index') }}" class="search-form">
-                <input type="search" name="search" placeholder="Search by reference or client..." value="{{ request('search') }}">
-                <button type="submit">Search</button>
-            </form>
-
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">All Payments</h3>
+            @if(request('search'))
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #64748b;">
+                    Search results for "{{ request('search') }}"
+                </p>
+            @endif
         </div>
         <a href="{{ route('payments.create') }}" class="primary-button">Record Payment</a>
     </section>

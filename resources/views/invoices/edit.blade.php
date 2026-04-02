@@ -1,9 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+
 <section class="section-bar">
     <div>
-        <p class="eyebrow">Edit {{ $invoice->invoice_number }}</p>
+        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Edit {{ $invoice->invoice_number }}</h3>
     </div>
     <a href="{{ route('invoices.index') }}" class="text-link">&larr; Back to invoices</a>
 </section>

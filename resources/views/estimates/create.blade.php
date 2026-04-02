@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
+<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Create New Estimate</h3>
+
 <section class="section-bar">
     <div>
     </div>

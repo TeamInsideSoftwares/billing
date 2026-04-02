@@ -3,10 +3,12 @@
 @section('content')
     <section class="section-bar">
         <div>
-            <form method="GET" action="{{ route('clients.index') }}" class="search-form">
-                <input type="search" name="search" placeholder="Search clients by name or email..." value="{{ request('search') }}">
-                <button type="submit">Search</button>
-            </form>
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">All Clients</h3>
+            @if(request('search'))
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #64748b;">
+                    Found {{ $clients->count() }} result(s) for "{{ request('search') }}"
+                </p>
+            @endif
         </div>
         <div>
             <a href="{{ route('clients.create') }}" class="primary-button">Add Client</a>

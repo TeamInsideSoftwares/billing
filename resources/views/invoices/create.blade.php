@@ -1,10 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
+
 <section class="section-bar">
     <div>
         <p class="eyebrow">Billing</p>
-        <h3>Create new invoice</h3>
+        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Create New Invoice</h3>
     </div>
     <a href="{{ route('invoices.index') }}" class="text-link">&larr; Back to invoices</a>
 </section>

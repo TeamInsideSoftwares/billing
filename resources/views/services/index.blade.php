@@ -3,15 +3,16 @@
 @section('content')
     <section class="section-bar">
         <div>
-            <form method="GET" action="{{ route('services.index') }}" class="search-form">
-                <input type="search" name="search" placeholder="Search services by name..." value="{{ request('search') }}">
-                <button type="submit">Search</button>
-            </form>
-
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">All Services</h3>
+            @if(request('search'))
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #64748b;">
+                    Found {{ $resultCount }} result(s) for "{{ request('search') }}"
+                </p>
+            @endif
         </div>
         <div class="button-group" style="display: flex; gap: 0.75rem;">
             <a href="{{ route('services.create') }}" class="primary-button">Add Products/Services</a>
-            <button class="primary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal">Manage Categories</button>
+            <button class="secondary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal">Manage Categories</button>
         </div>
     </section>
 

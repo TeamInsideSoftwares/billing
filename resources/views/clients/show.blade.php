@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+
 <section class="section-bar">
     <div>
-        <p class="eyebrow">{{ $client->business_name ?? $client->contact_name }}</p>
-        <h3>Client details</h3>
+        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Client Details</h3>
         <a href="{{ route('clients.index') }}" class="text-link">&larr; Back to clients</a>
     </div>
     <div>

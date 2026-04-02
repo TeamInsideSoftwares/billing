@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
+<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Create New Service</h3>
+
 <section class="section-bar">
     <div></div>
     <a href="{{ route('services.index') }}" class="text-link">&larr; Back to services</a>
@@ -113,12 +115,14 @@
                 <div>
                     <strong>Do you want to add add-on items for this service?</strong>
                 </div>
-                <div style="display: flex; gap: 1.5rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                        <input type="radio" name="has_addons_toggle" value="yes" id="has-addons-yes"> Yes
+                <div style="display: flex; gap: 1rem;">
+                    <label class="custom-radio">
+                        <input type="radio" name="has_addons_toggle" value="yes" id="has-addons-yes">
+                        <span class="radio-label">Yes</span>
                     </label>
-                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                        <input type="radio" name="has_addons_toggle" value="no" id="has-addons-no" checked> No
+                    <label class="custom-radio">
+                        <input type="radio" name="has_addons_toggle" value="no" id="has-addons-no" checked>
+                        <span class="radio-label">No</span>
                     </label>
                 </div>
             </div>

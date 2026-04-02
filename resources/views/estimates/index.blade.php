@@ -3,11 +3,12 @@
 @section('content')
     <section class="section-bar">
         <div>
-            <form method="GET" action="{{ route('estimates.index') }}" class="search-form">
-                <input type="search" name="search" placeholder="Search by number or client..." value="{{ request('search') }}">
-                <button type="submit">Search</button>
-            </form>
-
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">All Estimates</h3>
+            @if(request('search'))
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #64748b;">
+                    Search results for "{{ request('search') }}"
+                </p>
+            @endif
         </div>
         <a href="{{ route('estimates.create') }}" class="primary-button">New Estimate</a>
     </section>

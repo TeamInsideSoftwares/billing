@@ -3,7 +3,7 @@
 @section('content')
 <section class="section-bar">
     <div>
-        <p class="eyebrow">Edit {{ $service->name }}</p>
+        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Edit {{ $service->name }}</h3>
     </div>
     <a href="{{ route('services.index') }}" class="text-link">&larr; Back to services</a>
 </section>
@@ -162,12 +162,14 @@
                 <div>
                     <strong>Do you want to add add-on items for this service?</strong>
                 </div>
-                <div style="display: flex; gap: 1.5rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                        <input type="radio" name="has_addons_toggle" value="yes" id="has-addons-yes" {{ $service->addons->count() > 0 ? 'checked' : '' }}> Yes
+                <div style="display: flex; gap: 1rem;">
+                    <label class="custom-radio">
+                        <input type="radio" name="has_addons_toggle" value="yes" id="has-addons-yes" {{ $service->addons->count() > 0 ? 'checked' : '' }}>
+                        <span class="radio-label">Yes</span>
                     </label>
-                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                        <input type="radio" name="has_addons_toggle" value="no" id="has-addons-no" {{ $service->addons->count() === 0 ? 'checked' : '' }}> No
+                    <label class="custom-radio">
+                        <input type="radio" name="has_addons_toggle" value="no" id="has-addons-no" {{ $service->addons->count() === 0 ? 'checked' : '' }}>
+                        <span class="radio-label">No</span>
                     </label>
                 </div>
             </div>
