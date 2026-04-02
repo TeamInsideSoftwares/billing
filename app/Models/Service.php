@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'accountid',
     'ps_catid',
     'service_code',
+    'type',
+    'sync',
     'name',
     'sequence',
     'description',

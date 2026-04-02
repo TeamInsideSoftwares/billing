@@ -155,6 +155,7 @@
                         <thead>
                             <tr>
                                 <th style="width: 40px;">#</th>
+                                <th>Type</th>
                                 <th>Service</th>
                                 <th>Costings</th>
                                 <th>Add-ons</th>
@@ -169,21 +170,20 @@
                                     {{ $index + 1 }}
                                 </td>
                                 <td>
+                                    <span class="badge" style="display: inline-block; padding: 0.25rem 0.5rem; background: {{ ($service['type'] ?? 'service') === 'product' ? '#fef3c7' : '#dbeafe' }}; color: {{ ($service['type'] ?? 'service') === 'product' ? '#92400e' : '#1e40af' }}; border-radius: 0.25rem; font-size: 0.75rem; text-transform: capitalize;">
+                                        {{ $service['type'] ?? 'service' }}
+                                    </span>
+                                </td>
+                                <td>
                                     <strong>{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $service['name']) : $service['name'] !!}</strong>
                                 </td>
                                 <td>
                                     @if(count($service['costings']) > 0)
-                                        <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                        <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
                                             @foreach($service['costings'] as $costing)
-                                                <div style="display:flex; gap:0.5rem; align-items:center; background: var(--bg-muted); padding: 0.35rem 0.5rem; border-radius: 0.4rem; border: 1px solid var(--line);">
-                                                    <span class="status-pill" style="text-transform: uppercase; padding: 0.15rem 0.4rem; font-size: 0.75rem;">{{ $costing['currency_code'] }}</span>
-                                                    <span style="font-size: 0.9rem;">Cost {{ number_format($costing['cost_price'], 0) }}</span>
-                                                    <strong style="font-size: 0.9rem;">Sell {{ number_format($costing['selling_price'], 0) }}</strong>
-                                                    @if(!empty($costing['sac_code']))
-                                                        <span style="font-size: 0.8rem; color: var(--text-muted);">SAC {{ $costing['sac_code'] }}</span>
-                                                    @endif
-                                                    <span style="font-size: 0.8rem; color: var(--text-muted);">Tax {{ number_format($costing['tax_rate'], 0) }}% ({{ $costing['tax_included'] === 'yes' ? 'Incl.' : 'Excl.' }})</span>
-                                                </div>
+                                                <span class="badge" style="display: inline-block; padding: 0.25rem 0.5rem; background: #e0e7ff; color: #4338ca; border-radius: 0.25rem; font-size: 0.75rem;">
+                                                    {{ $costing['currency_code'] }} {{ number_format($costing['selling_price'], 0) }}
+                                                </span>
                                             @endforeach
                                         </div>
                                     @else
@@ -192,14 +192,18 @@
                                 </td>
                                 <td>
                                     @if(!empty($service['addons']) && count($service['addons']) > 0)
-                                        <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                        <div style="display: flex; flex-direction: column; gap: 0.35rem;">
                                             @foreach($service['addons'] as $addon)
-                                                <div style="font-size: 0.8rem;">
+                                                <div style="font-size: 0.85rem;">
                                                     <span style="color: var(--text); font-weight: 500;">{{ $addon['name'] }}</span>
                                                     @if(count($addon['costings']) > 0)
-                                                        <span style="color: var(--text-muted); font-size: 0.75rem;">
-                                                            &mdash; @foreach($addon['costings'] as $ac){{ $ac['currency_code'] }} {{ number_format($ac['selling_price'], 0) }}{{ !$loop->last ? ', ' : '' }}@endforeach
-                                                        </span>
+                                                        <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem;">
+                                                            @foreach($addon['costings'] as $ac)
+                                                                <span class="badge" style="display: inline-block; padding: 0.2rem 0.4rem; background: #f3f4f6; color: #374151; border-radius: 0.25rem; font-size: 0.7rem;">
+                                                                    {{ $ac['currency_code'] }} {{ number_format($ac['selling_price'], 0) }}
+                                                                </span>
+                                                            @endforeach
+                                                        </div>
                                                     @endif
                                                 </div>
                                             @endforeach

@@ -20,6 +20,7 @@ use App\Models\ServiceAddon;
 use App\Models\ServiceAddonCosting;
 use App\Models\Setting;
 use App\Models\Subscription;
+use App\Models\TermsCondition;
 use App\Models\User;
 use App\Models\Account;
 use App\Models\ProductCategory;
@@ -203,6 +204,26 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
 
         $editingQuotationDetail = request('edit_qd') ? AccountQuotationDetail::where('account_qdid', request('edit_qd'))->where('accountid', $accountid)->first() : ($account->quotationDetails()->first());
 
+        $termsQuery = TermsCondition::query()
+            ->where('accountid', $accountid)
+            ->orderByRaw('COALESCE(sort_order, 999999), created_at DESC');
+
+        $billingTerms = (clone $termsQuery)
+            ->where('type', 'billing')
+            ->get();
+
+        $quotationTerms = (clone $termsQuery)
+            ->where('type', 'quotation')
+            ->get();
+
+        $editingTerm = null;
+        if (request('edit_tc')) {
+            $editingTerm = TermsCondition::query()
+                ->where('accountid', $accountid)
+                ->where('tc_id', request('edit_tc'))
+                ->first();
+        }
+
 
         $suggestedKeys = [
             'Email Settings' => [
@@ -244,6 +265,9 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
             'editingSetting' => $editingSetting,
             'currencies' => $currencies,
             'suggestedKeys' => $suggestedKeys,
+            'billingTerms' => $billingTerms,
+            'quotationTerms' => $quotationTerms,
+            'editingTerm' => $editingTerm,
         ]);
     }
 
@@ -309,6 +333,9 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
             'postal_code' => 'nullable|string|max:20',
             'gstin' => 'nullable|string|max:50',
             'tin' => 'nullable|string|max:50',
+            'authorize_signatory' => 'nullable|string|max:255',
+            'signature_upload' => 'nullable|string|max:500',
+            'billing_from_email' => 'nullable|email|max:255',
             'terms_conditions' => 'nullable|string',
         ]);
 
@@ -349,6 +376,9 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
             'postal_code' => 'nullable|string|max:20',
             'gstin' => 'nullable|string|max:50',
             'tin' => 'nullable|string|max:50',
+            'authorize_signatory' => 'nullable|string|max:255',
+            'signature_upload' => 'nullable|string|max:500',
+            'billing_from_email' => 'nullable|email|max:255',
             'terms_conditions' => 'nullable|string',
         ]);
 
@@ -571,6 +601,8 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
     public function servicesStore(Request $request)
     {
         $validated = $request->validate([
+            'type' => 'required|in:product,service',
+            'sync' => 'required|in:yes,no',
             'name' => 'required|string|max:255',
             'ps_catid' => 'nullable|exists:ps_categories,ps_catid',
             'description' => 'nullable|string',
@@ -613,7 +645,9 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
                 ];
             });
 
-            $service = Service::create([
+$service = Service::create([
+                'type' => $validated['type'],
+                'sync' => $validated['sync'],
                 'name' => $validated['name'],
                 'ps_catid' => $validated['ps_catid'] ?? null,
                 'description' => $validated['description'] ?? null,
@@ -695,6 +729,8 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
     public function servicesUpdate(Request $request, Service $service)
     {
         $validated = $request->validate([
+            'type' => 'required|in:product,service',
+            'sync' => 'required|in:yes,no',
             'name' => 'required|string|max:255',
             'ps_catid' => 'nullable|exists:ps_categories,ps_catid',
             'description' => 'nullable|string',
@@ -734,7 +770,9 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
                 ];
             });
 
-            $service->update([
+$service->update([
+                'type' => $validated['type'],
+                'sync' => $validated['sync'],
                 'name' => $validated['name'],
                 'ps_catid' => $validated['ps_catid'] ?? null,
                 'description' => $validated['description'] ?? null,
@@ -815,8 +853,10 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
 
     public function servicesSaveAjax(Request $request)
     {
-        $validated = $request->validate([
+$validated = $request->validate([
             'serviceid' => 'nullable|string|exists:services,serviceid',
+            'type' => 'required|in:product,service',
+            'sync' => 'required|in:yes,no',
             'name' => 'required|string|max:255',
             'ps_catid' => 'nullable|exists:ps_categories,ps_catid',
             'description' => 'nullable|string',
@@ -832,7 +872,9 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
         $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         
         $service = DB::transaction(function () use ($validated, $userAccountId) {
-            $serviceData = [
+$serviceData = [
+                'type' => $validated['type'],
+                'sync' => $validated['sync'],
                 'name' => $validated['name'],
                 'ps_catid' => $validated['ps_catid'] ?? null,
                 'description' => $validated['description'] ?? null,

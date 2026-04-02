@@ -14,6 +14,7 @@
 <button class="tab-button" data-tab="config">Configuration Keys</button>
         <button class="tab-button" data-tab="billing-details">Billing Details</button>
         <button class="tab-button" data-tab="quotation-details">Quotation Details</button>
+        <button class="tab-button" data-tab="terms-conditions">Terms &amp; Conditions</button>
     </div>
 </div>
 
@@ -499,11 +500,19 @@ label {
                 <label>TIN</label>
                 <input type="text" name="tin" value="{{ old('tin', $editingBillingDetail->tin ?? '') }}">
             </div>
-            <div style="grid-column: span 2;">
-<label>Terms &amp; Conditions</label>
-                <div id="billing-terms-editor" style="border: 1px solid #cbd5e1; border-radius: 6px; min-height: 100px; padding: 0.5rem;">{!! old('terms_conditions', $editingBillingDetail->terms_conditions ?? '') !!}</div>
-                <textarea name="terms_conditions" id="billing-terms-hidden" style="display: none;">{{ old('terms_conditions', $editingBillingDetail->terms_conditions ?? '') }}</textarea>
+            <div>
+                <label>Authorize Signatory</label>
+                <input type="text" name="authorize_signatory" value="{{ old('authorize_signatory', $editingBillingDetail->authorize_signatory ?? '') }}">
             </div>
+            <div>
+                <label>Signature Upload</label>
+                <input type="text" name="signature_upload" value="{{ old('signature_upload', $editingBillingDetail->signature_upload ?? '') }}">
+            </div>
+            <div>
+                <label>Billing From Email</label>
+                <input type="email" name="billing_from_email" value="{{ old('billing_from_email', $editingBillingDetail->billing_from_email ?? '') }}">
+            </div>
+
             <div class="form-actions">
                 <button type="submit" class="primary-button">Save Billing Detail</button>
                 @if(isset($editingBillingDetail) && request('edit_bd'))
@@ -641,11 +650,19 @@ label {
                 <label>TIN</label>
                 <input type="text" name="tin" value="{{ old('tin', $editingQuotationDetail->tin ?? '') }}">
             </div>
-            <div style="grid-column: span 2;">
-<label>Terms &amp; Conditions</label>
-                <div id="quotation-terms-editor" style="border: 1px solid #cbd5e1; border-radius: 6px; min-height: 100px; padding: 0.5rem;">{!! old('terms_conditions', $editingQuotationDetail->terms_conditions ?? '') !!}</div>
-                <textarea name="terms_conditions" id="quotation-terms-hidden" style="display: none;">{{ old('terms_conditions', $editingQuotationDetail->terms_conditions ?? '') }}</textarea>
+            <div>
+                <label>Authorize Signatory</label>
+                <input type="text" name="authorize_signatory" value="{{ old('authorize_signatory', $editingQuotationDetail->authorize_signatory ?? '') }}">
             </div>
+            <div>
+                <label>Signature Upload</label>
+                <input type="text" name="signature_upload" value="{{ old('signature_upload', $editingQuotationDetail->signature_upload ?? '') }}">
+            </div>
+            <div>
+                <label>Billing From Email</label>
+                <input type="email" name="billing_from_email" value="{{ old('billing_from_email', $editingQuotationDetail->billing_from_email ?? '') }}">
+            </div>
+
             <div class="form-actions">
                 <button type="submit" class="primary-button">Save Quotation Detail</button>
                 @if(isset($editingQuotationDetail) && request('edit_qd'))
@@ -655,6 +672,151 @@ label {
         </form>
 
 <!-- Single quotation detail form (no list) -->
+    </section>
+</div>
+
+<!-- TERMS & CONDITIONS TAB -->
+<div id="terms-conditions" class="tab-content">
+    <section class="panel-card">
+        <div style="margin-bottom: 1rem;">
+            <h4>Terms &amp; Conditions</h4>
+            <p>Manage reusable terms &amp; conditions for billing and quotations. Each point can be selected individually when generating documents.</p>
+        </div>
+
+        @if(session('success') && str_contains(request()->header('referer', ''), 'terms'))
+            <div style="background: #dcfce7; color: #166534; padding: 10px; border-radius: 6px; margin-bottom: 1rem;">{{ session('success') }}</div>
+        @endif
+
+        {{-- Add / Edit Form --}}
+        <div style="padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 1.5rem;">
+            <h5 style="margin: 0 0 0.75rem 0; font-size: 0.95rem; color: #1e293b;">
+                {{ $editingTerm ? 'Edit Term' : 'Add New Term' }}
+            </h5>
+            <form method="POST" action="{{ route('terms-conditions.store') }}" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                @csrf
+                @if($editingTerm)
+                    <input type="hidden" name="tc_id" value="{{ $editingTerm->tc_id }}">
+                @endif
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                    <div>
+                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Type *</label>
+                        <select name="type" required style="width: 100%; padding: 0.4rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+                            <option value="billing" {{ old('type', $editingTerm->type ?? '') == 'billing' ? 'selected' : '' }}>Billing</option>
+                            <option value="quotation" {{ old('type', $editingTerm->type ?? '') == 'quotation' ? 'selected' : '' }}>Quotation</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Title *</label>
+                        <input type="text" name="title" value="{{ old('title', $editingTerm->title ?? '') }}" required placeholder="e.g. Payment due within 30 days" style="width: 100%; padding: 0.4rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+                    </div>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Content *</label>
+                    <textarea name="content" rows="3" required placeholder="Full text of this term..." style="width: 100%; padding: 0.45rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 4px; resize: vertical;">{{ old('content', $editingTerm->content ?? '') }}</textarea>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer;">
+                        <input type="checkbox" name="is_active" value="1" {{ old('is_active', $editingTerm->is_active ?? true) ? 'checked' : '' }}>
+                        Active
+                    </label>
+                    <div style="display: flex; gap: 0.5rem; margin-left: auto;">
+                        <button type="submit" class="primary-button">{{ $editingTerm ? 'Update Term' : 'Add Term' }}</button>
+                        @if($editingTerm)
+                            <a href="{{ route('settings.index') }}#terms-conditions" style="padding: 0.6rem 1rem; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: #64748b; font-size: 0.85rem;">Cancel</a>
+                        @endif
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        {{-- Billing Terms List --}}
+        <div style="margin-bottom: 1.5rem;">
+            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Billing Terms</h5>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40%;">Title</th>
+                        <th>Content</th>
+                        <th style="width: 80px;">Status</th>
+                        <th style="width: 100px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($billingTerms as $term)
+                        <tr>
+                            <td>{{ $term->title }}</td>
+                            <td style="font-size: 0.85rem; color: #475569;">{{ Str::limit($term->content, 80) }}</td>
+                            <td>
+                                @if($term->is_active)
+                                    <span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Active</span>
+                                @else
+                                    <span style="background: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Inactive</span>
+                                @endif
+                            </td>
+                            <td style="display: flex; gap: 0.5rem;">
+                                <a href="{{ route('settings.index', ['edit_tc' => $term->tc_id]) }}#terms-conditions" class="text-link" style="font-size: 0.8rem;">Edit</a>
+                                <form method="POST" action="{{ route('terms-conditions.toggle', $term->tc_id) }}" style="display: inline;">
+                                    @csrf @method('PATCH')
+                                    <button type="submit" class="text-link" style="background: none; border: none; padding: 0; font-size: 0.8rem; color: #f59e0b;">Toggle</button>
+                                </form>
+                                <form method="POST" action="{{ route('terms-conditions.destroy', $term->tc_id) }}" style="display: inline;" onsubmit="return confirm('Delete this term?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="text-link" style="background: none; border: none; padding: 0; font-size: 0.8rem; color: #ef4444;">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="4" style="color: #94a3b8;">No billing terms added yet.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Quotation Terms List --}}
+        <div>
+            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Quotation Terms</h5>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40%;">Title</th>
+                        <th>Content</th>
+                        <th style="width: 80px;">Status</th>
+                        <th style="width: 100px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($quotationTerms as $term)
+                        <tr>
+                            <td>{{ $term->title }}</td>
+                            <td style="font-size: 0.85rem; color: #475569;">{{ Str::limit($term->content, 80) }}</td>
+                            <td>
+                                @if($term->is_active)
+                                    <span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Active</span>
+                                @else
+                                    <span style="background: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Inactive</span>
+                                @endif
+                            </td>
+                            <td style="display: flex; gap: 0.5rem;">
+                                <a href="{{ route('settings.index', ['edit_tc' => $term->tc_id]) }}#terms-conditions" class="text-link" style="font-size: 0.8rem;">Edit</a>
+                                <form method="POST" action="{{ route('terms-conditions.toggle', $term->tc_id) }}" style="display: inline;">
+                                    @csrf @method('PATCH')
+                                    <button type="submit" class="text-link" style="background: none; border: none; padding: 0; font-size: 0.8rem; color: #f59e0b;">Toggle</button>
+                                </form>
+                                <form method="POST" action="{{ route('terms-conditions.destroy', $term->tc_id) }}" style="display: inline;" onsubmit="return confirm('Delete this term?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="text-link" style="background: none; border: none; padding: 0; font-size: 0.8rem; color: #ef4444;">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="4" style="color: #94a3b8;">No quotation terms added yet.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </section>
 </div>
 
@@ -737,44 +899,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }, 100);
 });
-
-function initTinyMCE() {
-  tinymce.init({
-    selector: '#billing-terms-editor, #quotation-terms-editor',
-    license_key: 'gpl',
-height: 300,
-    menubar: false,
-    plugins: 'lists link image table',
-    toolbar: 'undo redo | link | blocks | bold italic underline | alignleft aligncenter alignright | bullist numlist',
-    block_formats: 'Paragraph=p; Heading 1=h1; Heading 2=h2; Heading 3=h3; Heading 4=h4',
-    extended_valid_elements: 'a[href|target|style]',
-    allow_script_urls: true,
-    setup: function(editor){
-      editor.on('change', function(){
-        const hiddenId = editor.id === 'billing-terms-editor' ? 'billing-terms-hidden' : 'quotation-terms-hidden';
-        document.getElementById(hiddenId).value = editor.getContent();
-      });
-    },
-    content_style: `
-      .mce-content-body[data-mce-placeholder]:not(.mce-visualblocks)::before {
-        color: #000;
-      }`
-  });
-
-  // Sync before form submission
-  document.querySelectorAll('form').forEach(form => {
-    form.addEventListener('submit', function() {
-      if (typeof tinymce !== 'undefined') {
-        const billingEditor = tinymce.get('billing-terms-editor');
-        if (billingEditor) document.getElementById('billing-terms-hidden').value = billingEditor.getContent();
-        
-        const quotationEditor = tinymce.get('quotation-terms-editor');
-        if (quotationEditor) document.getElementById('quotation-terms-hidden').value = quotationEditor.getContent();
-      }
-    });
-  });
-}
-initTinyMCE();
 </script>
 
 @endsection

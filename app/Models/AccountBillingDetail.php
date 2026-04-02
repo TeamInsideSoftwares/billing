@@ -38,6 +38,9 @@ class AccountBillingDetail extends Model
         'postal_code',
         'gstin',
         'tin',
+        'authorize_signatory',
+        'signature_upload',
+        'billing_from_email',
         'terms_conditions',
     ];
 

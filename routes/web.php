@@ -2,6 +2,16 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingUiController;
+use App\Http\Controllers\ClientsController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GroupsController;
+use App\Http\Controllers\InvoicesController;
+use App\Http\Controllers\PaymentsController;
+use App\Http\Controllers\ProductCategoriesController;
+use App\Http\Controllers\QuotationsController;
+use App\Http\Controllers\ServicesController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SubscriptionsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login')->middleware('guest');
@@ -13,10 +23,11 @@ Route::middleware(['auth'])->group(function () {
         return redirect()->route('dashboard');
     });
 
-    Route::controller(BillingUiController::class)->group(function () {
+    Route::controller(DashboardController::class)->group(function () {
         Route::get('/dashboard', 'dashboard')->name('dashboard');
-        
-        // Others (Existing CRUDs)
+    });
+
+    Route::controller(ClientsController::class)->group(function () {
         Route::get('/clients', 'clients')->name('clients.index');
         Route::get('/clients/create', 'clientsCreate')->name('clients.create');
         Route::post('/clients', 'clientsStore')->name('clients.store');
@@ -24,7 +35,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/clients/{client}/edit', 'clientsEdit')->name('clients.edit');
         Route::put('/clients/{client}', 'clientsUpdate')->name('clients.update');
         Route::delete('/clients/{client}', 'clientsDestroy')->name('clients.destroy');
-        
+    });
+
+    Route::controller(ServicesController::class)->group(function () {
         Route::get('/services', 'services')->name('services.index');
         Route::get('/services/create', 'servicesCreate')->name('services.create');
         Route::post('/services', 'servicesStore')->name('services.store');
@@ -35,7 +48,9 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/services/{service}', 'servicesDestroy')->name('services.destroy');
         Route::post('/services/ajax-save', 'servicesSaveAjax')->name('services.ajax-save');
         Route::post('/services/addons/ajax-save', 'addonsSaveAjax')->name('services.addons.ajax-save');
-        
+    });
+
+    Route::controller(InvoicesController::class)->group(function () {
         Route::get('/invoices', 'invoices')->name('invoices.index');
         Route::get('/invoices/create', 'invoicesCreate')->name('invoices.create');
         Route::post('/invoices', 'invoicesStore')->name('invoices.store');
@@ -43,7 +58,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/invoices/{invoice}/edit', 'invoicesEdit')->name('invoices.edit');
         Route::put('/invoices/{invoice}', 'invoicesUpdate')->name('invoices.update');
         Route::delete('/invoices/{invoice}', 'invoicesDestroy')->name('invoices.destroy');
-        
+    });
+
+    Route::controller(PaymentsController::class)->group(function () {
         Route::get('/payments', 'payments')->name('payments.index');
         Route::get('/payments/create', 'paymentsCreate')->name('payments.create');
         Route::post('/payments', 'paymentsStore')->name('payments.store');
@@ -51,7 +68,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/payments/{payment}/edit', 'paymentsEdit')->name('payments.edit');
         Route::put('/payments/{payment}', 'paymentsUpdate')->name('payments.update');
         Route::delete('/payments/{payment}', 'paymentsDestroy')->name('payments.destroy');
-        
+    });
+
+    Route::controller(SubscriptionsController::class)->group(function () {
         Route::get('/subscriptions', 'subscriptions')->name('subscriptions.index');
         Route::get('/subscriptions/create', 'subscriptionsCreate')->name('subscriptions.create');
         Route::post('/subscriptions', 'subscriptionsStore')->name('subscriptions.store');
@@ -59,7 +78,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/subscriptions/{subscription}/edit', 'subscriptionsEdit')->name('subscriptions.edit');
         Route::put('/subscriptions/{subscription}', 'subscriptionsUpdate')->name('subscriptions.update');
         Route::delete('/subscriptions/{subscription}', 'subscriptionsDestroy')->name('subscriptions.destroy');
-        
+    });
+
+    Route::controller(QuotationsController::class)->group(function () {
         Route::get('/quotations', 'quotations')->name('quotations.index');
         Route::get('/quotations/create', 'quotationsCreate')->name('quotations.create');
         Route::post('/quotations', 'quotationsStore')->name('quotations.store');
@@ -67,8 +88,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/quotations/{quotation}/edit', 'quotationsEdit')->name('quotations.edit');
         Route::put('/quotations/{quotation}', 'quotationsUpdate')->name('quotations.update');
         Route::delete('/quotations/{quotation}', 'quotationsDestroy')->name('quotations.destroy');
-        
-        // Product Categories CRUD
+    });
+
+    Route::controller(ProductCategoriesController::class)->group(function () {
         Route::get('/product-categories', 'productCategories')->name('product-categories.index');
         Route::get('/product-categories/create', 'productCategoriesCreate')->name('product-categories.create');
         Route::post('/product-categories', 'productCategoriesStore')->name('product-categories.store');
@@ -76,8 +98,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/product-categories/{productCategory}/edit', 'productCategoriesEdit')->name('product-categories.edit');
         Route::put('/product-categories/{productCategory}', 'productCategoriesUpdate')->name('product-categories.update');
         Route::delete('/product-categories/{productCategory}', 'productCategoriesDestroy')->name('product-categories.destroy');
-        
-        // Groups CRUD
+    });
+
+    Route::controller(GroupsController::class)->group(function () {
         Route::get('/groups', 'groups')->name('groups.index');
         Route::get('/groups/create', 'groupsCreate')->name('groups.create');
         Route::post('/groups', 'groupsStore')->name('groups.store');
@@ -85,12 +108,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/groups/{group}/edit', 'groupsEdit')->name('groups.edit');
         Route::put('/groups/{group}', 'groupsUpdate')->name('groups.update');
         Route::delete('/groups/{group}', 'groupsDestroy')->name('groups.destroy');
-        
+    });
+
+    Route::controller(SettingsController::class)->group(function () {
         Route::get('/settings', 'settings')->name('settings.index');
         Route::put('/settings/account', 'accountUpdate')->name('account.update');
         Route::post('/settings/billing-details', 'accountBillingUpdate')->name('account.billing.update');
         Route::post('/settings/quotation-details', 'accountQuotationUpdate')->name('account.quotation.update');
-        Route::post('/settings/serial-preview', 'generateSerialPreview')->name('serial.preview');
         Route::get('/settings/create', 'settingsCreate')->name('settings.create');
         Route::post('/settings', 'settingsStore')->name('settings.store');
         Route::get('/settings/{setting}', 'settingsShow')->name('settings.show');
@@ -99,5 +123,13 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/settings/{setting}', 'settingsDestroy')->name('settings.destroy');
         Route::put('/settings/financial-year/{financialYear}/default', 'financialYearSetDefault')->name('financial-year.default');
         Route::post('/settings/financial-year', 'financialYearUpdate')->name('financial-year.update');
+    });
+
+    // Keep terms conditions on legacy controller until moved fully.
+    Route::controller(BillingUiController::class)->group(function () {
+        Route::post('/settings/terms-conditions', 'termsConditionsStore')->name('terms-conditions.store');
+        Route::delete('/settings/terms-conditions/{tcId}', 'termsConditionsDestroy')->name('terms-conditions.destroy');
+        Route::patch('/settings/terms-conditions/{tcId}/toggle', 'termsConditionsToggle')->name('terms-conditions.toggle');
+        Route::post('/settings/serial-preview', 'generateSerialPreview')->name('serial.preview');
     });
 });
