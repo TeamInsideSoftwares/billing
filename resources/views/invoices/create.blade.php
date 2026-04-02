@@ -69,7 +69,7 @@
                             <option value="{{ $service->serviceid }}" 
                                     data-unit-price="{{ $service->unit_price }}" 
                                     data-tax-rate="{{ $service->tax_rate ?? 18 }}">
-                                {{ $service->name }} (Rs {{ number_format($service->unit_price, 2) }})
+                                {{ $service->name }} (Rs {{ number_format($service->unit_price, 0) }})
                             </option>
                         @endforeach
                     </select>
@@ -197,7 +197,9 @@ document.addEventListener('DOMContentLoaded', function() {
             </td>
             <td style="padding: 1rem; text-align: right;" class="item-line-total"><strong>Rs ${lineTotal.toFixed(2)}</strong></td>
             <td style="padding: 1rem; text-align: right;">
-                <button type="button" class="remove-item" data-id="${itemCounter}" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Remove</button>
+                <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove item">
+                    <i class="fas fa-trash"></i>
+                </button>
             </td>
         `;
         tbody.appendChild(row);

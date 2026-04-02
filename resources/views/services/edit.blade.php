@@ -143,7 +143,7 @@
                                 </td>
                                 <td><input type="number" step="0.01" min="0" max="100" name="costings[{{ $index }}][tax_rate]" value="{{ $costing['tax_rate'] ?? '' }}"></td>
                                 <td style="width: 70px; text-align: center;">
-                                    <button type="button" class="text-link danger remove-costing">Remove</button>
+                                    <button type="button" class="icon-action-btn delete remove-costing"><i class="fas fa-trash"></i></button>
                                 </td>
                             </tr>
                         @endforeach
@@ -259,7 +259,7 @@
                                                 </select>
                                             </td>
                                             <td><input type="number" step="0.01" min="0" max="100" name="addons[{{ $addonIndex }}][costings][{{ $costingIndex }}][tax_rate]" value="{{ $addonCosting['tax_rate'] ?? '' }}"></td>
-                                            <td style="width: 70px; text-align: center;"><button type="button" class="text-link danger remove-addon-costing">Remove</button></td>
+                                            <td style="width: 70px; text-align: center;"><button type="button" class="icon-action-btn delete remove-addon-costing"><i class="fas fa-trash"></i></button></td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -324,7 +324,7 @@
                     </select>
                 </td>
                 <td><input type="number" step="0.01" min="0" max="100" name="costings[${index}][tax_rate]" value="${data.tax_rate || ''}"></td>
-                <td style="width: 70px; text-align: center;"><button type="button" class="text-link danger remove-costing">Remove</button></td>
+                <td style="width: 70px; text-align: center;"><button type="button" class="icon-action-btn delete remove-costing"><i class="fas fa-trash"></i></button></td>
             </tr>
         `;
     }
@@ -348,7 +348,7 @@
                     </select>
                 </td>
                 <td><input type="number" step="0.01" min="0" max="100" name="addons[${aIndex}][costings][${cIndex}][tax_rate]" value="${data.tax_rate || ''}"></td>
-                <td style="width: 70px; text-align: center;"><button type="button" class="text-link danger remove-addon-costing">Remove</button></td>
+                <td style="width: 70px; text-align: center;"><button type="button" class="icon-action-btn delete remove-addon-costing"><i class="fas fa-trash"></i></button></td>
             </tr>
         `;
     }

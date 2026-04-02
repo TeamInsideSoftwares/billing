@@ -52,11 +52,11 @@
                 @foreach($service->costings as $costing)
                     <tr>
                         <td><strong>{{ $costing->currency_code }}</strong></td>
-                        <td>{{ number_format($costing->cost_price, 2) }}</td>
-                        <td>{{ number_format($costing->selling_price, 2) }}</td>
+                        <td>{{ number_format($costing->cost_price, 0) }}</td>
+                        <td>{{ number_format($costing->selling_price, 0) }}</td>
                         <td>{{ $costing->tax_included === 'yes' ? 'Incl. Tax' : 'Excl. Tax' }}</td>
                         <td>{{ $costing->sac_code ?? '-' }}</td>
-                        <td>{{ number_format($costing->tax_rate, 2) }}%</td>
+                        <td>{{ number_format($costing->tax_rate, 0) }}%</td>
                     </tr>
                 @endforeach
             </tbody>

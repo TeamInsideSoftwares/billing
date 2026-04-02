@@ -63,13 +63,15 @@
                                                 <span class="status-pill {{ $category['status'] }}" style="font-size: 0.65rem; padding: 0.1rem 0.4rem; margin-top: 0.2rem; display: inline-block;">{{ ucfirst($category['status']) }}</span>
                                             </td>
                                             <td style="padding: 0.6rem 0.75rem; text-align: right; vertical-align: middle;">
-                                                <button type="button" class="text-link small" style="margin-right: 0.5rem;"
+                                                <button type="button" class="icon-action-btn edit" style="margin-right: 0.25rem;" title="Edit"
                                                     onclick="editCategory('{{ $category['record_id'] }}', '{{ addslashes($category['name']) }}', '{{ addslashes($category['description']) }}', '{{ $category['status'] }}')">
-                                                    Edit
+                                                    <i class="fas fa-edit"></i>
                                                 </button>
                                                 <form method="POST" action="{{ route('product-categories.destroy', $category['record_id']) }}" style="display: inline;">
                                                     @csrf @method('DELETE')
-                                                    <button type="submit" class="text-link danger small" onclick="return confirm('Delete?')">Del</button>
+                                                    <button type="submit" class="icon-action-btn delete" title="Delete" onclick="return confirm('Delete?')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
                                                 </form>
                                             </td>
                                         </tr>
@@ -163,29 +165,11 @@
                         <tbody class="services-sortable-body">
                         @foreach ($servicesInCategory as $index => $service)
                             <tr draggable="true" data-service-id="{{ $service['record_id'] }}" style="cursor: move;">
-                                <td class="service-seq" style="text-align: center; color: var(--text-muted); font-weight: 600;">
+                                <td style="text-align: center; color: var(--text-muted); font-weight: 600; width: 40px;">
                                     {{ $index + 1 }}
                                 </td>
                                 <td>
                                     <strong>{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $service['name']) : $service['name'] !!}</strong>
-                                    
-                                    @if(!empty($service['addons']) && count($service['addons']) > 0)
-                                        <div style="margin-top: 0.5rem; padding-left: 0.75rem; border-left: 2px solid var(--line); display: flex; flex-direction: column; gap: 0.25rem;">
-                                            <span class="eyebrow" style="font-size: 0.65rem;">Add-on Items:</span>
-                                            @foreach($service['addons'] as $addon)
-                                                <div style="font-size: 0.8rem; color: var(--text-muted);">
-                                                    <span style="color: var(--text);">{{ $addon['name'] }}</span>
-                                                    @if(count($addon['costings']) > 0)
-                                                        <span style="font-size: 0.75rem;">
-                                                            (@foreach($addon['costings'] as $ac)
-                                                                {{ $ac['currency_code'] }} {{ number_format($ac['selling_price'], 2) }}{{ !$loop->last ? ', ' : '' }}
-                                                            @endforeach)
-                                                        </span>
-                                                    @endif
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @endif
                                 </td>
                                 <td>
                                     @if(count($service['costings']) > 0)
@@ -193,12 +177,12 @@
                                             @foreach($service['costings'] as $costing)
                                                 <div style="display:flex; gap:0.5rem; align-items:center; background: var(--bg-muted); padding: 0.35rem 0.5rem; border-radius: 0.4rem; border: 1px solid var(--line);">
                                                     <span class="status-pill" style="text-transform: uppercase; padding: 0.15rem 0.4rem; font-size: 0.75rem;">{{ $costing['currency_code'] }}</span>
-                                                    <span style="font-size: 0.9rem;">Cost {{ number_format($costing['cost_price'], 2) }}</span>
-                                                    <strong style="font-size: 0.9rem;">Sell {{ number_format($costing['selling_price'], 2) }}</strong>
+                                                    <span style="font-size: 0.9rem;">Cost {{ number_format($costing['cost_price'], 0) }}</span>
+                                                    <strong style="font-size: 0.9rem;">Sell {{ number_format($costing['selling_price'], 0) }}</strong>
                                                     @if(!empty($costing['sac_code']))
                                                         <span style="font-size: 0.8rem; color: var(--text-muted);">SAC {{ $costing['sac_code'] }}</span>
                                                     @endif
-                                                    <span style="font-size: 0.8rem; color: var(--text-muted);">Tax {{ number_format($costing['tax_rate'], 2) }}% ({{ $costing['tax_included'] === 'yes' ? 'Incl.' : 'Excl.' }})</span>
+                                                    <span style="font-size: 0.8rem; color: var(--text-muted);">Tax {{ number_format($costing['tax_rate'], 0) }}% ({{ $costing['tax_included'] === 'yes' ? 'Incl.' : 'Excl.' }})</span>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -207,18 +191,38 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <span class="status-pill">{{ $service['addon_count'] ?? 0 }}</span>
+                                    @if(!empty($service['addons']) && count($service['addons']) > 0)
+                                        <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                            @foreach($service['addons'] as $addon)
+                                                <div style="font-size: 0.8rem;">
+                                                    <span style="color: var(--text); font-weight: 500;">{{ $addon['name'] }}</span>
+                                                    @if(count($addon['costings']) > 0)
+                                                        <span style="color: var(--text-muted); font-size: 0.75rem;">
+                                                            &mdash; @foreach($addon['costings'] as $ac){{ $ac['currency_code'] }} {{ number_format($ac['selling_price'], 0) }}{{ !$loop->last ? ', ' : '' }}@endforeach
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <span style="color: var(--muted); font-size: 0.8rem;">—</span>
+                                    @endif
                                 </td>
                                 <td>
                                     <span class="status-pill {{ strtolower($service['status']) }}">{{ $service['status'] }}</span>
                                 </td>
-                                <td class="table-actions">
-                                    <a href="{{ route('services.edit', $service['record_id']) }}" class="text-link">Edit</a>
-                                    <form method="POST" action="{{ route('services.destroy', $service['record_id']) }}" class="inline-delete" style="display: inline;" onsubmit="return confirm('Delete {{ $service['name'] }}?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-link danger">Delete</button>
-                                    </form>
+                                <td style="white-space: nowrap; width: 1%;">
+                                    <div class="table-actions">
+                                        <a href="{{ route('services.edit', $service['record_id']) }}" class="icon-action-btn edit" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <form method="POST" action="{{ route('services.destroy', $service['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $service['name'] }}?')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="icon-action-btn delete" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
@@ -273,10 +277,7 @@
 
             function saveOrder(tbody) {
                 const rows = Array.from(tbody.querySelectorAll('tr[data-service-id]'));
-                const order = rows.map((row, index) => {
-                    // We don't update sequence UI globally here since it's grouped now
-                    return row.dataset.serviceId;
-                });
+                const order = rows.map(row => row.dataset.serviceId);
 
                 fetch("{{ route('services.reorder') }}", {
                     method: 'POST',

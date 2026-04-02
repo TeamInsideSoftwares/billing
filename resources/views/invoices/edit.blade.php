@@ -69,7 +69,7 @@
                             <option value="{{ $service->serviceid }}" 
                                     data-unit-price="{{ $service->unit_price }}" 
                                     data-tax-rate="{{ $service->tax_rate ?? 18 }}">
-                                {{ $service->name }} (Rs {{ number_format($service->unit_price, 2) }})
+                                {{ $service->name }} (Rs {{ number_format($service->unit_price, 0) }})
                             </option>
                         @endforeach
                     </select>
@@ -118,9 +118,11 @@
                             <td style="padding: 1rem; text-align: right;">
                                 <input type="number" class="item-tax" value="{{ $item->tax_rate }}" min="0" max="100" step="0.01" style="width: 100px; text-align: right;">
                             </td>
-                            <td style="padding: 1rem; text-align: right;" class="item-line-total"><strong>Rs {{ number_format($item->line_total, 2) }}</strong></td>
+                            <td style="padding: 1rem; text-align: right;" class="item-line-total"><strong>Rs {{ number_format($item->line_total, 0) }}</strong></td>
                             <td style="padding: 1rem; text-align: right;">
-                                <button type="button" class="remove-item" data-id="{{ $loop->index + 1 }}" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Remove</button>
+                                <button type="button" class="remove-item icon-action-btn delete" data-id="{{ $loop->index + 1 }}" title="Remove item">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </td>
                         </tr>
                     @endforeach
@@ -132,15 +134,15 @@
                 <h4 style="margin-top: 0;">Invoice Summary</h4>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
                     <span>Subtotal:</span>
-                    <strong id="subtotal">Rs {{ number_format($invoice->subtotal, 2) }}</strong>
+                    <strong id="subtotal">Rs {{ number_format($invoice->subtotal, 0) }}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
                     <span>Tax:</span>
-                    <strong id="taxTotal">Rs {{ number_format($invoice->tax_total, 2) }}</strong>
+                    <strong id="taxTotal">Rs {{ number_format($invoice->tax_total, 0) }}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 1.2em; font-weight: bold; border-top: 2px solid #e2e8f0; padding-top: 0.5rem; margin-top: 0.5rem;">
                     <span>Total:</span>
-                    <strong id="grandTotal">Rs {{ number_format($invoice->grand_total, 2) }}</strong>
+                    <strong id="grandTotal">Rs {{ number_format($invoice->grand_total, 0) }}</strong>
                 </div>
             </div>
         </div>
@@ -231,7 +233,9 @@ document.addEventListener('DOMContentLoaded', function() {
             </td>
             <td style="padding: 1rem; text-align: right;" class="item-line-total"><strong>Rs ${lineTotal.toFixed(2)}</strong></td>
             <td style="padding: 1rem; text-align: right;">
-                <button type="button" class="remove-item" data-id="${itemCounter}" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Remove</button>
+                <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove item">
+                    <i class="fas fa-trash"></i>
+                </button>
             </td>
         `;
         tbody.appendChild(row);

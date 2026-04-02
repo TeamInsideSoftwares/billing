@@ -6,11 +6,15 @@
         <p class="eyebrow">{{ $payment->payment_number }}</p>
         <h3>Payment details</h3>
     </div>
-    <div>
-        <a href="{{ route('payments.edit', $payment) }}" class="primary-button">Edit</a>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="{{ route('payments.edit', $payment) }}" class="icon-action-btn edit" title="Edit" style="width: 36px; height: 36px; font-size: 1rem;">
+            <i class="fas fa-edit"></i>
+        </a>
         <form method="POST" action="{{ route('payments.destroy', $payment) }}" class="inline-delete" onsubmit="return confirm('Delete this payment?')">
             @csrf @method('DELETE')
-            <button type="submit" class="danger-button">Delete</button>
+            <button type="submit" class="icon-action-btn delete" title="Delete" style="width: 36px; height: 36px; font-size: 1rem;">
+                <i class="fas fa-trash"></i>
+            </button>
         </form>
     </div>
 </section>
@@ -22,7 +26,7 @@
             <p>Client: {{ $payment->client->business_name ?? $payment->client->contact_name ?? 'Client' }}</p>
         </div>
         <div class="client-stats">
-            <strong>Rs {{ number_format($payment->amount ?? 0, 2) }}</strong>
+            <strong>Rs {{ number_format($payment->amount ?? 0, 0) }}</strong>
             <span>{{ $payment->payment_date->format('d M Y') }} via {{ $payment->payment_method ?? 'N/A' }}</span>
         </div>
     </div>
@@ -38,7 +42,7 @@
         <dd>{{ $payment->invoice->invoice_number ?? 'N/A' }}</dd>
         @endif
         <dt>Amount</dt>
-        <dd>Rs {{ number_format($payment->amount ?? 0, 2) }}</dd>
+        <dd>Rs {{ number_format($payment->amount ?? 0, 0) }}</dd>
         <dt>Date</dt>
         <dd>{{ $payment->payment_date->format('d M Y') }}</dd>
         <dt>Method</dt>

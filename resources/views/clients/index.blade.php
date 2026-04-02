@@ -44,12 +44,18 @@
                         <span class="status-pill {{ strtolower($client['status']) }}">{{ $client['status'] }}</span>
                     </td>
                     <td class="table-actions">
-                        <a href="{{ route('clients.show', $client['record_id']) }}" class="text-link">View</a>
-                        <a href="{{ route('clients.edit', $client['record_id']) }}" class="text-link">Edit</a>
-                        <form method="POST" action="{{ route('clients.destroy', $client['record_id']) }}" class="inline-delete" style="display: inline;" onsubmit="return confirm('Delete {{ $client['name'] }}?')">
+                        <a href="{{ route('clients.show', $client['record_id']) }}" class="icon-action-btn view" title="View">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="{{ route('clients.edit', $client['record_id']) }}" class="icon-action-btn edit" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form method="POST" action="{{ route('clients.destroy', $client['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $client['name'] }}?')">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="text-link danger">Delete</button>
+                            <button type="submit" class="icon-action-btn delete" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </form>
                     </td>
                 </tr>

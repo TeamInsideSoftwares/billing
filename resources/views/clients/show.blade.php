@@ -7,11 +7,15 @@
         <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Client Details</h3>
         <a href="{{ route('clients.index') }}" class="text-link">&larr; Back to clients</a>
     </div>
-    <div>
-        <a href="{{ route('clients.edit', $client) }}" class="primary-button">Edit</a>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="{{ route('clients.edit', $client) }}" class="icon-action-btn edit" title="Edit" style="width: 36px; height: 36px; font-size: 1rem;">
+            <i class="fas fa-edit"></i>
+        </a>
         <form method="POST" action="{{ route('clients.destroy', $client) }}" class="inline-delete" onsubmit="return confirm('Delete this client?')">
             @csrf @method('DELETE')
-            <button type="submit" class="danger-button">Delete</button>
+            <button type="submit" class="icon-action-btn delete" title="Delete" style="width: 36px; height: 36px; font-size: 1rem;">
+                <i class="fas fa-trash"></i>
+            </button>
         </form>
     </div>
 </section>

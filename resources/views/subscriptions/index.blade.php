@@ -44,11 +44,15 @@
                         <span class="status-pill {{ strtolower($subscription['status']) }}">{{ $subscription['status'] }}</span>
                     </td>
                     <td class="table-actions">
-                        <a href="{{ route('subscriptions.show', $subscription['record_id']) }}" class="text-link">View</a>
-                        <form method="POST" action="{{ route('subscriptions.destroy', $subscription['record_id']) }}" class="inline-delete" style="display: inline;" onsubmit="return confirm('Delete subscription for {{ $subscription['client'] }}?')">
+                        <a href="{{ route('subscriptions.show', $subscription['record_id']) }}" class="icon-action-btn view" title="View">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <form method="POST" action="{{ route('subscriptions.destroy', $subscription['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete subscription for {{ $subscription['client'] }}?')">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="text-link danger">Delete</button>
+                            <button type="submit" class="icon-action-btn delete" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </form>
                     </td>
                 </tr>

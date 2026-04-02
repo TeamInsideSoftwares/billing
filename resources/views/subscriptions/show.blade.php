@@ -23,7 +23,7 @@
             <span class="status-pill {{ strtolower($subscription->status ?? 'active') }}">{{ ucfirst($subscription->status ?? 'Active') }}</span>
         </div>
         <div class="client-stats">
-            <strong>Rs {{ number_format($subscription->price ?? 0, 2) }}</strong>
+            <strong>Rs {{ number_format($subscription->price ?? 0, 0) }}</strong>
             <span>Next: {{ $subscription->next_billing_date }}</span>
         </div>
     </div>
@@ -41,7 +41,7 @@
         <dt>Next Billing</dt>
         <dd>{{ $subscription->next_billing_date }}</dd>
         <dt>Price</dt>
-        <dd>Rs {{ number_format($subscription->price ?? 0, 2) }}</dd>
+        <dd>Rs {{ number_format($subscription->price ?? 0, 0) }}</dd>
         <dt>Status</dt>
         <dd><span class="status-pill {{ strtolower($subscription->status) }}">{{ ucfirst($subscription->status) }}</span></dd>
     </dl>

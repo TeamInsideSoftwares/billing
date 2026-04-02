@@ -39,7 +39,7 @@ class BillingUiController extends Controller
         $stats = [
             ['label' => 'Total Clients', 'value' => Client::where('accountid', $accountid)->count(), 'change' => '', 'tone' => 'positive'],
             ['label' => 'Total Invoices', 'value' => Invoice::where('accountid', $accountid)->count(), 'change' => '', 'tone' => 'warning'],
-            ['label' => 'Total Revenue', 'value' => 'Rs ' . number_format(Payment::where('accountid', $accountid)->sum('amount'), 2), 'change' => '', 'tone' => 'positive'],
+            ['label' => 'Total Revenue', 'value' => 'Rs ' . number_format(Payment::where('accountid', $accountid)->sum('amount'), 0), 'change' => '', 'tone' => 'positive'],
             ['label' => 'Overdue Count', 'value' => Invoice::where('accountid', $accountid)->where('status', 'overdue')->count(), 'change' => '', 'tone' => 'warning'],
         ];
 

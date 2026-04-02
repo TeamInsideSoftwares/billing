@@ -38,12 +38,15 @@
                         <span class="status-pill {{ strtolower($quotation['status']) }}">{{ $quotation['status'] }}</span>
                     </td>
                     <td class="table-actions">
-                        <a href="{{ route('quotations.show', $quotation['record_id']) }}" class="text-link">View</a>
-                        <form method="POST" class="inline-delete"
-                              action="{{ route('quotations.destroy', $quotation['record_id']) }}"
+                        <a href="{{ route('quotations.show', $quotation['record_id']) }}" class="icon-action-btn view" title="View">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <form method="POST" class="inline-delete" action="{{ route('quotations.destroy', $quotation['record_id']) }}" onsubmit="return confirm('Delete {{ $quotation['number'] }}?')">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="text-link danger">Delete</button>
+                            <button type="submit" class="icon-action-btn delete" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </form>
                     </td>
                 </tr>
