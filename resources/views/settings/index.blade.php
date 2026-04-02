@@ -521,7 +521,7 @@ label {
     <section class="panel-card">
         <div style="margin-bottom: 1rem;">
             <h4>Quotation Details</h4>
-            <p>Add quotation details for estimates.</p>
+            <p>Add quotation details for quotations.</p>
         </div>
         @if ($errors->any())
             <div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; margin-bottom: 1rem;">

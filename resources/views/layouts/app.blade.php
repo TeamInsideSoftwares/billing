@@ -21,9 +21,9 @@
             ['label' => 'Dashboard', 'route' => 'dashboard'],
             ['label' => 'Clients', 'route' => 'clients.index'],
             ['label' => 'Services', 'route' => 'services.index'],
+            ['label' => 'Quotations', 'route' => 'quotations.index'],
             ['label' => 'Invoices', 'route' => 'invoices.index'],
             ['label' => 'Payments', 'route' => 'payments.index'],
-            ['label' => 'Estimates', 'route' => 'estimates.index'],
             ['label' => 'Settings', 'route' => 'settings.index'],
         ];
     @endphp
@@ -78,7 +78,7 @@
                             'clients' => ['route' => 'clients.index', 'placeholder' => 'Search clients...'],
                             'services' => ['route' => 'services.index', 'placeholder' => 'Search services...'],
                             'invoices' => ['route' => 'invoices.index', 'placeholder' => 'Search invoices...'],
-                            'estimates' => ['route' => 'estimates.index', 'placeholder' => 'Search estimates...'],
+                            'quotations' => ['route' => 'quotations.index', 'placeholder' => 'Search quotations...'],
                             'payments' => ['route' => 'payments.index', 'placeholder' => 'Search payments...'],
                             'groups' => ['route' => 'groups.index', 'placeholder' => 'Search groups...'],
                         ];

@@ -58,9 +58,9 @@ class Service extends Model
         return $this->hasMany(InvoiceItem::class, 'serviceid');
     }
 
-    public function estimateItems(): HasMany
+    public function quotationItems(): HasMany
     {
-        return $this->hasMany(EstimateItem::class, 'serviceid');
+        return $this->hasMany(QuotationItem::class, 'serviceid');
     }
 
     public function subscriptions(): HasMany

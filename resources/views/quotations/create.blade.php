@@ -1,16 +1,16 @@
 @extends('layouts.app')
 
 @section('content')
-<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Create New Estimate</h3>
+<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Create New Quotation</h3>
 
 <section class="section-bar">
     <div>
     </div>
-    <a href="{{ route('estimates.index') }}" class="text-link">&larr; Back to estimates</a>
+    <a href="{{ route('quotations.index') }}" class="text-link">&larr; Back to quotations</a>
 </section>
 
 <section class="panel-card">
-    <form method="POST" action="{{ route('estimates.store') }}" class="client-form">
+    <form method="POST" action="{{ route('quotations.store') }}" class="client-form">
         @csrf
         <div class="form-grid">
             <div>
@@ -26,9 +26,9 @@
                 @error('clientid') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="number">Estimate Number *</label>
-                <input type="text" id="estimate_number" name="estimate_number" value="{{ old('estimate_number', 'EST-' . date('Ymd') . '-' . rand(100, 999)) }}" required>
-                @error('estimate_number') <span class="error">{{ $message }}</span> @enderror
+                <label for="number">Quotation Number *</label>
+                <input type="text" id="quotation_number" name="quotation_number" value="{{ old('quotation_number', 'QUO-' . date('Ymd') . '-' . rand(100, 999)) }}" required>
+                @error('quotation_number') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="issue_date">Issue Date *</label>
@@ -51,8 +51,8 @@
             </div>
         </div>
         <div class="form-actions">
-            <button type="submit" class="primary-button">Create Estimate</button>
-            <a href="{{ route('estimates.index') }}" class="text-link">Cancel</a>
+            <button type="submit" class="primary-button">Create Quotation</button>
+            <a href="{{ route('quotations.index') }}" class="text-link">Cancel</a>
         </div>
     </form>
 </section>

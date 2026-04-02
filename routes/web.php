@@ -60,13 +60,13 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/subscriptions/{subscription}', 'subscriptionsUpdate')->name('subscriptions.update');
         Route::delete('/subscriptions/{subscription}', 'subscriptionsDestroy')->name('subscriptions.destroy');
         
-        Route::get('/estimates', 'estimates')->name('estimates.index');
-        Route::get('/estimates/create', 'estimatesCreate')->name('estimates.create');
-        Route::post('/estimates', 'estimatesStore')->name('estimates.store');
-        Route::get('/estimates/{estimate}', 'estimatesShow')->name('estimates.show');
-        Route::get('/estimates/{estimate}/edit', 'estimatesEdit')->name('estimates.edit');
-        Route::put('/estimates/{estimate}', 'estimatesUpdate')->name('estimates.update');
-        Route::delete('/estimates/{estimate}', 'estimatesDestroy')->name('estimates.destroy');
+        Route::get('/quotations', 'quotations')->name('quotations.index');
+        Route::get('/quotations/create', 'quotationsCreate')->name('quotations.create');
+        Route::post('/quotations', 'quotationsStore')->name('quotations.store');
+        Route::get('/quotations/{quotation}', 'quotationsShow')->name('quotations.show');
+        Route::get('/quotations/{quotation}/edit', 'quotationsEdit')->name('quotations.edit');
+        Route::put('/quotations/{quotation}', 'quotationsUpdate')->name('quotations.update');
+        Route::delete('/quotations/{quotation}', 'quotationsDestroy')->name('quotations.destroy');
         
         // Product Categories CRUD
         Route::get('/product-categories', 'productCategories')->name('product-categories.index');

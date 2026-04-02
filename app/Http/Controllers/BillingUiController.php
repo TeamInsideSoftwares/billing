@@ -9,8 +9,8 @@ use App\Models\Client;
 use App\Models\ClientBillingDetail;
 use App\Models\AccountBillingDetail;
 use App\Models\AccountQuotationDetail;
-use App\Models\Estimate;
-use App\Models\EstimateItem;
+use App\Models\Quotation;
+use App\Models\QuotationItem;
 use App\Models\Group;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
@@ -516,13 +516,13 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
         ]);
     }
 
-    public function estimates(): View
+    public function quotations(): View
     {
-        $query = Estimate::with('client');
+        $query = Quotation::with('client');
         $searchTerm = request('search', '');
         
         if ($searchTerm) {
-            $query->where('estimate_number', 'like', '%' . $searchTerm . '%')
+            $query->where('quotation_number', 'like', '%' . $searchTerm . '%')
                   ->orWhereHas('client', function ($q) use ($searchTerm) {
                       $q->where('business_name', 'like', '%' . $searchTerm . '%')
                         ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
@@ -530,20 +530,20 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
         }
         $resultCount = $query->count();
         
-        $estimates = $query->latest()->take(20)->get()->map(function ($estimate) {
+        $quotations = $query->latest()->take(20)->get()->map(function ($quotation) {
             return [
-'record_id' => $estimate->estimateid,
-                'number' => $estimate->estimate_number ?? 'EST-' . str_pad($estimate->estimateid, 4, '0', STR_PAD_LEFT),
-                'client' => $estimate->client->business_name ?? 'Client',
-                'amount' => 'Rs ' . number_format($estimate->total ?? 0),
-                'expiry' => $estimate->expiry_date?->format('d M Y') ?? 'N/A',
-                'status' => $estimate->status ?? 'Draft',
+'record_id' => $quotation->quotationid,
+                'number' => $quotation->quotation_number ?? 'QUO-' . str_pad($quotation->quotationid, 4, '0', STR_PAD_LEFT),
+                'client' => $quotation->client->business_name ?? 'Client',
+                'amount' => 'Rs ' . number_format($quotation->total ?? 0),
+                'expiry' => $quotation->expiry_date?->format('d M Y') ?? 'N/A',
+                'status' => $quotation->status ?? 'Draft',
             ];
         });
 
-        return view('estimates.index', [
-            'title' => 'Estimates',
-            'estimates' => $estimates,
+        return view('quotations.index', [
+            'title' => 'Quotations',
+            'quotations' => $quotations,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
         ]);
@@ -1482,20 +1482,20 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
         return redirect()->route('subscriptions.index')->with('success', 'Subscription created successfully.');
     }
 
-    // Estimates CRUD
-    public function estimatesCreate(): View
+    // quotations CRUD
+    public function quotationsCreate(): View
     {
-        return view('estimates.create', [
-            'title' => 'New Estimate',
+        return view('quotations.create', [
+            'title' => 'New Quotation',
             'clients' => Client::all(),
         ]);
     }
 
-    public function estimatesStore(Request $request)
+    public function quotationsStore(Request $request)
     {
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'estimate_number' => 'required|string|unique:estimates,estimate_number',
+            'quotation_number' => 'required|string|unique:quotations,quotation_number',
             'issue_date' => 'required|date',
             'expiry_date' => 'nullable|date|after_or_equal:issue_date',
             'accountid' => 'nullable|size:10',
@@ -1505,9 +1505,9 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
         $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
 
-        Estimate::create($validated);
+        Quotation::create($validated);
 
-        return redirect()->route('estimates.index')->with('success', 'Estimate created successfully.');
+        return redirect()->route('quotations.index')->with('success', 'Quotation created successfully.');
     }
 
     // Invoices CRUD
@@ -1591,11 +1591,11 @@ public function invoicesEdit(Invoice $invoice): View
         ]);
     }
 
-    public function estimatesEdit(Estimate $estimate): View
+    public function quotationsEdit(Quotation $quotation): View
     {
-        return view('estimates.edit', [
-            'title' => 'Edit Estimate',
-            'estimate' => $estimate,
+        return view('quotations.edit', [
+            'title' => 'Edit Quotation',
+            'quotation' => $quotation,
             'clients' => Client::all()
         ]);
     }
@@ -1763,36 +1763,36 @@ public function invoicesEdit(Invoice $invoice): View
         return redirect()->route('subscriptions.index')->with('success', 'Subscription deleted successfully.');
     }
 
-    // Complete Estimates CRUD
-    public function estimatesShow(Estimate $estimate): View
+    // Complete quotations CRUD
+    public function quotationsShow(Quotation $quotation): View
     {
-        $estimate->load('client');
-        return view('estimates.show', [
-            'title' => 'Estimate Details',
-            'estimate' => $estimate,
+        $quotation->load('client');
+        return view('quotations.show', [
+            'title' => 'Quotation Details',
+            'quotation' => $quotation,
         ]);
     }
 
-    public function estimatesUpdate(Request $request, Estimate $estimate)
+    public function quotationsUpdate(Request $request, Quotation $quotation)
     {
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-'estimate_number' => 'required|string|unique:estimates,estimate_number,' . $estimate->getKey() . ',estimateid',
+            'quotation_number' => 'required|string|unique:quotations,quotation_number,' . $quotation->getKey() . ',quotationid',
             'issue_date' => 'required|date',
             'expiry_date' => 'nullable|date|after_or_equal:issue_date',
             'status' => 'required|in:draft,sent,accepted,declined,expired',
         ]);
 
-        $estimate->update($validated);
+        $quotation->update($validated);
 
-        return redirect()->route('estimates.index')->with('success', 'Estimate updated successfully.');
+        return redirect()->route('quotations.index')->with('success', 'Quotation updated successfully.');
     }
 
-    public function estimatesDestroy(Estimate $estimate)
+    public function quotationsDestroy(Quotation $quotation)
     {
-        $estimate->delete();
+        $quotation->delete();
 
-        return redirect()->route('estimates.index')->with('success', 'Estimate deleted successfully.');
+        return redirect()->route('quotations.index')->with('success', 'Quotation deleted successfully.');
     }
 
     // Complete Invoices CRUD

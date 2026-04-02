@@ -6,7 +6,7 @@
             <p class="eyebrow">Today Overview</p>
             <h3>Billing operations for schools and education clients.</h3>
             <p class="hero-copy">
-                Track revenue, watch dues, push estimates forward, and keep recurring billing under control from one screen.
+                Track revenue, watch dues, push quotations forward, and keep recurring billing under control from one screen.
             </p>
         </div>
         <div class="hero-kicker">

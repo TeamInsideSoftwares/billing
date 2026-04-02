@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'estimateid',
+    'quotationid',
     'serviceid',
     'item_name',
     'item_description',
@@ -18,9 +18,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'line_total',
     'sort_order',
 ])]
-class EstimateItem extends Model
+class QuotationItem extends Model
 {
-protected $primaryKey = 'estimateitemid';
+    protected $table = 'quotation_items';
+    protected $primaryKey = 'quotationitemid';
 
     protected function idLength(): int
     {
@@ -39,9 +40,9 @@ protected $primaryKey = 'estimateitemid';
         ];
     }
 
-    public function estimate(): BelongsTo
+    public function quotation(): BelongsTo
     {
-        return $this->belongsTo(Estimate::class, 'estimateid');
+        return $this->belongsTo(Quotation::class, 'quotationid');
     }
 
     public function service(): BelongsTo

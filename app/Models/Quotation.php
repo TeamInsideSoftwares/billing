@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'accountid',
     'clientid',
-    'estimate_number',
+    'quotation_number',
     'status',
     'issue_date',
     'expiry_date',
@@ -24,12 +24,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'invoiceid',
     'created_by',
 ])]
-class Estimate extends Model
+class Quotation extends Model
 {
-protected $primaryKey = 'estimateid';
+    protected $table = 'quotations';
+    protected $primaryKey = 'quotationid';
+    
     public function getRouteKeyName(): string
     {
-        return 'estimateid';
+        return 'quotationid';
     }
 
     protected function idLength(): int
@@ -73,7 +75,7 @@ protected $primaryKey = 'estimateid';
 
     public function items(): HasMany
     {
-        return $this->hasMany(EstimateItem::class, 'estimateid');
+        return $this->hasMany(QuotationItem::class, 'quotationid');
     }
 }
 
