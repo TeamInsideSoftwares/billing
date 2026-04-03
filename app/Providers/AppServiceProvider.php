@@ -26,5 +26,10 @@ class AppServiceProvider extends ServiceProvider
                 URL::forceScheme('https');
             }
         }
+
+        // Route model binding for TermsCondition
+        \Illuminate\Support\Facades\Route::bind('term', function ($value) {
+            return \App\Models\TermsCondition::where('tc_id', $value)->firstOrFail();
+        });
     }
 }

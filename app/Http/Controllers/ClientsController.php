@@ -98,6 +98,7 @@ class ClientsController extends Controller
             'billing_country' => 'nullable|string|max:100',
             'billing_postal_code' => 'nullable|string|max:20',
             'billing_address_line_1' => 'nullable|string|max:150',
+            'billing_phone' => 'nullable|string|max:20',
         ]);
 
         if ($request->hasFile('logo')) {
@@ -130,6 +131,7 @@ class ClientsController extends Controller
                 'state' => $validated['billing_state'] ?? null,
                 'country' => $validated['billing_country'] ?? 'India',
                 'postal_code' => $validated['billing_postal_code'] ?? null,
+                'phone' => $validated['billing_phone'] ?? null,
                 'address_line_1' => $validated['billing_address_line_1'] ?? null,
             ]);
         } else {
@@ -143,6 +145,7 @@ class ClientsController extends Controller
                 'state' => $validated['billing_state'] ?? null,
                 'country' => $validated['billing_country'] ?? 'India',
                 'postal_code' => $validated['billing_postal_code'] ?? null,
+                'phone' => $validated['billing_phone'] ?? null,
                 'address_line_1' => $validated['billing_address_line_1'] ?? null,
             ]);
         }
@@ -223,6 +226,7 @@ class ClientsController extends Controller
             'billing_country' => 'nullable|string|max:100',
             'billing_postal_code' => 'nullable|string|max:20',
             'billing_address_line_1' => 'nullable|string|max:150',
+            'billing_phone' => 'nullable|string|max:20',
         ]);
 
         if ($request->hasFile('logo')) {
@@ -258,6 +262,7 @@ class ClientsController extends Controller
                 'state' => $validated['billing_state'] ?? null,
                 'country' => $validated['billing_country'] ?? 'India',
                 'postal_code' => $validated['billing_postal_code'] ?? null,
+                'phone' => $validated['billing_phone'] ?? null,
                 'address_line_1' => $validated['billing_address_line_1'] ?? null,
             ]);
             $selectedBdId = $existingBillingDetail->bd_id;

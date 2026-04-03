@@ -23,12 +23,11 @@
                     </select>
                     @error('type') <span class="error">{{ $message }}</span> @enderror
                 </div>
-                <div style="display:flex; align-items: end;">
-                    <label for="sync">Sync</label>
-                    <label class="custom-checkbox" style="margin-left: 0.5rem;">
+                <div style="display:flex; align-items: center; gap: 0.5rem;">
+                    <label class="custom-checkbox" style="display: flex; align-items: center; cursor: pointer;">
                         <input type="hidden" name="sync" value="no">
                         <input type="checkbox" name="sync" value="yes" id="sync" {{ old('sync') == 'yes' ? 'checked' : '' }}>
-                        <span class="checkbox-label">Yes</span>
+                        <span style="margin-left: 0.5rem;">Sync</span>
                     </label>
                     @error('sync') <span class="error">{{ $message }}</span> @enderror
                 </div>

@@ -193,6 +193,16 @@
                 </select>
                 @error('billing_city') <span class="error">{{ $message }}</span> @enderror
             </div>
+            <div>
+                <label for="billing_phone">Billing Phone</label>
+                <input type="text" id="billing_phone" name="billing_phone" value="{{ old('billing_phone', $client->billingDetail->phone ?? '') }}">
+                @error('billing_phone') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div>
+                <label for="billing_postal_code">Billing Postal Code</label>
+                <input type="text" id="billing_postal_code" name="billing_postal_code" value="{{ old('billing_postal_code', $client->billingDetail->postal_code ?? '') }}" maxlength="20">
+                @error('billing_postal_code') <span class="error">{{ $message }}</span> @enderror
+            </div>
         </div>
 
         <div class="form-actions">

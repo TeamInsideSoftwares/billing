@@ -11,6 +11,8 @@ use App\Models\TermsCondition;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Http\RedirectResponse;
 
 class SettingsController extends Controller
 {
@@ -35,9 +37,11 @@ class SettingsController extends Controller
         $account = Account::find($accountid);
         $financialYears = $account ? $account->financialYears()->orderBy('financial_year')->get() : collect();
 
+        $editId = request('e') ? base64_decode(request('e')) : null;
+
         $editingSetting = null;
-        if (request('edit')) {
-            $editingSetting = Setting::find(request('edit'));
+        if ($editId && str_starts_with($editId, 'SET')) {
+            $editingSetting = Setting::find($editId);
         }
 
         $currencies = DB::table('currency')
@@ -47,13 +51,13 @@ class SettingsController extends Controller
         $billingDetails = $account ? $account->billingDetails : collect();
         $quotationDetails = $account ? $account->quotationDetails : collect();
 
-        $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('account_bdid', request('edit_bd'))->where('accountid', $accountid)->first() : ($account->billingDetails()->first());
+        $editingBillingDetail = ($editId && str_starts_with($editId, 'ABD')) ? AccountBillingDetail::where('account_bdid', $editId)->where('accountid', $accountid)->first() : ($account->billingDetails()->first());
 
-        $editingQuotationDetail = request('edit_qd') ? AccountQuotationDetail::where('account_qdid', request('edit_qd'))->where('accountid', $accountid)->first() : ($account->quotationDetails()->first());
+        $editingQuotationDetail = ($editId && str_starts_with($editId, 'AQD')) ? AccountQuotationDetail::where('account_qdid', $editId)->where('accountid', $accountid)->first() : ($account->quotationDetails()->first());
 
         $termsQuery = TermsCondition::query()
             ->where('accountid', $accountid)
-            ->orderByRaw('COALESCE(sort_order, 999999), created_at DESC');
+            ->orderByRaw('COALESCE(sequence, 999999), created_at DESC');
 
         $billingTerms = (clone $termsQuery)
             ->where('type', 'billing')
@@ -64,10 +68,10 @@ class SettingsController extends Controller
             ->get();
 
         $editingTerm = null;
-        if (request('edit_tc')) {
+        if ($editId && strlen($editId) === 6 && !str_starts_with($editId, 'SET') && !str_starts_with($editId, 'ABD') && !str_starts_with($editId, 'AQD')) {
             $editingTerm = TermsCondition::query()
                 ->where('accountid', $accountid)
-                ->where('tc_id', request('edit_tc'))
+                ->where('tc_id', $editId)
                 ->first();
         }
 
@@ -159,20 +163,31 @@ class SettingsController extends Controller
         $account = Account::find($accountid);
 
         if (! $account) {
-            return redirect()->back()->with('error', 'Account not found.');
+            return redirect()->to(route('settings.index') . '#billing-details')->with('error', 'Account not found.');
         }
 
-        $validated = $request->validate([
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'account_bdid' => 'nullable|string|size:6|exists:account_billing_details,account_bdid',
             'serial_number' => 'nullable|string|max:20',
             'prefix' => 'nullable|string|max:50',
+            'prefix_type' => 'nullable|string|max:50',
+            'prefix_value' => 'nullable|string|max:50',
+            'prefix_length' => 'nullable|integer|min:0|max:20',
+            'prefix_separator' => 'nullable|string|max:10',
             'suffix' => 'nullable|string|max:50',
-            'serial_mode' => 'required|in:auto_generate,auto_increment',
+            'suffix_type' => 'nullable|string|max:50',
+            'suffix_value' => 'nullable|string|max:50',
+            'suffix_length' => 'nullable|integer|min:0|max:20',
+            'serial_mode' => 'nullable|in:auto_generate,auto_increment',
+            'number_type' => 'nullable|string|max:50',
+            'number_value' => 'nullable|string|max:50',
+            'number_length' => 'nullable|integer|min:1|max:20',
+            'number_separator' => 'nullable|string|max:10',
             'alphanumeric_length' => 'nullable|integer|in:4,6',
             'auto_increment_start' => 'nullable|integer|min:1|max:99999',
             'reset_on_fy' => 'boolean',
-            'billing_name' => 'required|string|max:150',
-            'address' => 'required|string',
+            'billing_name' => 'nullable|string|max:150',
+            'address' => 'nullable|string',
             'city' => 'nullable|string|max:100',
             'state' => 'nullable|string|max:100',
             'country' => 'nullable|string|max:100',
@@ -180,10 +195,35 @@ class SettingsController extends Controller
             'gstin' => 'nullable|string|max:50',
             'tin' => 'nullable|string|max:50',
             'authorize_signatory' => 'nullable|string|max:255',
-            'signature_upload' => 'nullable|string|max:500',
+            'signature_upload' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
             'billing_from_email' => 'nullable|email|max:255',
-            'terms_conditions' => 'nullable|string',
         ]);
+
+        if ($validator->fails()) {
+            return redirect()->to(route('settings.index') . '#billing-details')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $validated = $validator->validated();
+        $validated['reset_on_fy'] = $request->has('reset_on_fy');
+
+        // Handle file upload
+        if ($request->hasFile('signature_upload') && $request->file('signature_upload')->isValid()) {
+            try {
+                $file = $request->file('signature_upload');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $path = $file->storeAs('signatures', $filename, 'public');
+                $validated['signature_upload'] = $path;
+            } catch (\Exception $e) {
+                return redirect()->to(route('settings.index') . '#billing-details')
+                    ->with('error', 'Failed to upload signature: ' . $e->getMessage())
+                    ->withInput();
+            }
+        } else {
+            // Remove signature_upload from validated if no new file uploaded
+            unset($validated['signature_upload']);
+        }
 
         if (!empty($validated['account_bdid'])) {
             $billingDetail = AccountBillingDetail::where('account_bdid', $validated['account_bdid'])->where('accountid', $accountid)->firstOrFail();
@@ -202,20 +242,31 @@ class SettingsController extends Controller
         $account = Account::find($accountid);
 
         if (! $account) {
-            return redirect()->back()->with('error', 'Account not found.');
+            return redirect()->to(route('settings.index') . '#quotation-details')->with('error', 'Account not found.');
         }
 
-        $validated = $request->validate([
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'account_qdid' => 'nullable|string|size:6|exists:account_quotation_details,account_qdid',
             'serial_number' => 'nullable|string|max:20',
             'prefix' => 'nullable|string|max:50',
+            'prefix_type' => 'nullable|string|max:50',
+            'prefix_value' => 'nullable|string|max:50',
+            'prefix_length' => 'nullable|integer|min:0|max:20',
+            'prefix_separator' => 'nullable|string|max:10',
             'suffix' => 'nullable|string|max:50',
-            'serial_mode' => 'required|in:auto_generate,auto_increment',
+            'suffix_type' => 'nullable|string|max:50',
+            'suffix_value' => 'nullable|string|max:50',
+            'suffix_length' => 'nullable|integer|min:0|max:20',
+            'serial_mode' => 'nullable|in:auto_generate,auto_increment',
+            'number_type' => 'nullable|string|max:50',
+            'number_value' => 'nullable|string|max:50',
+            'number_length' => 'nullable|integer|min:1|max:20',
+            'number_separator' => 'nullable|string|max:10',
             'alphanumeric_length' => 'nullable|integer|in:4,6',
             'auto_increment_start' => 'nullable|integer|min:1|max:99999',
             'reset_on_fy' => 'boolean',
-            'quotation_name' => 'required|string|max:150',
-            'address' => 'required|string',
+            'quotation_name' => 'nullable|string|max:150',
+            'address' => 'nullable|string',
             'city' => 'nullable|string|max:100',
             'state' => 'nullable|string|max:100',
             'country' => 'nullable|string|max:100',
@@ -223,10 +274,34 @@ class SettingsController extends Controller
             'gstin' => 'nullable|string|max:50',
             'tin' => 'nullable|string|max:50',
             'authorize_signatory' => 'nullable|string|max:255',
-            'signature_upload' => 'nullable|string|max:500',
+            'signature_upload' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
             'billing_from_email' => 'nullable|email|max:255',
-            'terms_conditions' => 'nullable|string',
         ]);
+
+        if ($validator->fails()) {
+            return redirect()->to(route('settings.index') . '#quotation-details')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $validated = $validator->validated();
+
+        // Handle file upload
+        if ($request->hasFile('signature_upload') && $request->file('signature_upload')->isValid()) {
+            try {
+                $file = $request->file('signature_upload');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $path = $file->storeAs('signatures', $filename, 'public');
+                $validated['signature_upload'] = $path;
+            } catch (\Exception $e) {
+                return redirect()->to(route('settings.index') . '#quotation-details')
+                    ->with('error', 'Failed to upload signature: ' . $e->getMessage())
+                    ->withInput();
+            }
+        } else {
+            // Remove signature_upload from validated if no new file uploaded
+            unset($validated['signature_upload']);
+        }
 
         if (!empty($validated['account_qdid'])) {
             $quotationDetail = AccountQuotationDetail::where('account_qdid', $validated['account_qdid'])->where('accountid', $accountid)->firstOrFail();
@@ -263,6 +338,27 @@ class SettingsController extends Controller
                 'default' => true,
             ]
         );
+
+        // If a new FY is created (wasn't just an update), check for serial resets
+        if ($fy->wasRecentlyCreated) {
+            $billingDetail = AccountBillingDetail::where('accountid', $accountid)->first();
+            if ($billingDetail && $billingDetail->reset_on_fy) {
+                $billingDetail->update([
+                    'prefix_value' => null,
+                    'number_value' => null,
+                    'suffix_value' => null,
+                ]);
+            }
+
+            $quotationDetail = AccountQuotationDetail::where('accountid', $accountid)->first();
+            if ($quotationDetail && $quotationDetail->reset_on_fy) {
+                $quotationDetail->update([
+                    'prefix_value' => null,
+                    'number_value' => null,
+                    'suffix_value' => null,
+                ]);
+            }
+        }
 
         FinancialYear::where('accountid', $account->accountid)
             ->where('fy_id', '!=', $fy->fy_id)
@@ -319,7 +415,7 @@ class SettingsController extends Controller
 
     public function settingsEdit(Setting $setting)
     {
-        return redirect()->to(route('settings.index', ['edit' => $setting->settingid]) . '#config');
+        return redirect()->to(route('settings.index', ['e' => base64_encode($setting->settingid)]) . '#config');
     }
 
     public function settingsUpdate(Request $request, Setting $setting)
@@ -343,4 +439,145 @@ class SettingsController extends Controller
 
         return redirect()->to(route('settings.index') . '#config')->with('success', 'Setting deleted successfully.');
     }
+
+    public function termsConditionsStore(Request $request)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+
+        $editId = $request->e ? base64_decode($request->e) : null;
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'tc_id' => 'nullable|string|size:6|exists:terms_conditions,tc_id',
+            'type' => 'required|in:billing,quotation',
+            'content' => 'required|string',
+            'sequence' => 'nullable|integer|min:1',
+            'is_active' => 'boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->to(route('settings.index') . '#terms-conditions')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $validated = $validator->validated();
+        $tc_id = $validated['tc_id'] ?? $editId;
+
+        $validated['accountid'] = $accountid;
+        $validated['is_active'] = true;
+
+        if (!empty($tc_id)) {
+            // Update existing term
+            $term = TermsCondition::where('tc_id', $tc_id)->where('accountid', $accountid)->firstOrFail();
+            $term->update($validated);
+            $message = 'Term updated successfully.';
+        } else {
+            // Get the next sequence number for this type
+            $maxSequence = TermsCondition::where('accountid', $accountid)
+                ->where('type', $validated['type'])
+                ->max('sequence');
+            
+            $validated['sequence'] = ($maxSequence ?? 0) + 1;
+            
+            TermsCondition::create($validated);
+            $message = 'Term created successfully.';
+        }
+
+        // Redirect without edit_tc parameter to clear the form
+        return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', $message);
+    }
+
+    public function termsConditionsUpdateSequence(Request $request, TermsCondition $term)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        if ($term->accountid !== $accountid) {
+            abort(403, 'Unauthorized');
+        }
+
+        $validated = $request->validate([
+            'sequence' => 'required|integer|min:1',
+        ]);
+
+        $newSequence = $validated['sequence'];
+        $oldSequence = $term->sequence;
+
+        // If sequence is changing, swap with the term that has the target sequence
+        if ($newSequence != $oldSequence) {
+            // Find the term that currently has the target sequence
+            $targetTerm = TermsCondition::where('accountid', $accountid)
+                ->where('type', $term->type)
+                ->where('sequence', $newSequence)
+                ->first();
+
+            // Swap sequences
+            if ($targetTerm) {
+                // Temporarily set to a high number to avoid unique constraint issues
+                $targetTerm->update(['sequence' => 9999]);
+                $term->update(['sequence' => $newSequence]);
+                $targetTerm->update(['sequence' => $oldSequence]);
+            } else {
+                // No term at target sequence, just update
+                $term->update(['sequence' => $newSequence]);
+            }
+        }
+
+        return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'Sequence updated successfully.');
+    }
+
+    public function termsConditionsToggle(TermsCondition $term)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        if ($term->accountid !== $accountid) {
+            abort(403, 'Unauthorized');
+        }
+        $term->update(['is_active' => !$term->is_active]);
+        return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'Term status toggled.');
+    }
+
+    public function termsConditionsDestroy(TermsCondition $term)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        if ($term->accountid !== $accountid) {
+            abort(403, 'Unauthorized');
+        }
+        $term->delete();
+        return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'Term deleted successfully.');
+    }
+
+    public function fyPrefixUpdate(Request $request)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $account = Account::find($accountid);
+        if (!$account) {
+            return redirect()->back()->with('error', 'Account not found.');
+        }
+
+        $validated = $request->validate([
+            'fy_prefix_type' => 'required|in:fixed_value,value/number',
+            'fy_prefix_sep' => 'required|in:-,/,none',
+            'fy_prefix_value' => 'nullable|string|max:50',
+            'fy_number_sep' => 'required|in:-,/,none',
+        ]);
+
+        $keys = [
+            'fy_prefix_type' => $validated['fy_prefix_type'],
+            'fy_prefix_sep' => $validated['fy_prefix_sep'] === 'none' ? '' : $validated['fy_prefix_sep'],
+            'fy_prefix_value' => $validated['fy_prefix_value'] ?? '',
+            'fy_number_sep' => $validated['fy_number_sep'] === 'none' ? '' : $validated['fy_number_sep'],
+        ];
+
+        foreach ($keys as $key => $value) {
+            Setting::updateOrCreate(
+                ['accountid' => $accountid, 'setting_key' => $key],
+                ['setting_value' => $value]
+            );
+        }
+
+        return redirect()->to(route('settings.index') . '#financial-year')->with('success', 'FY Prefix configuration saved successfully.');
+    }
 }
+
+
+
+
+

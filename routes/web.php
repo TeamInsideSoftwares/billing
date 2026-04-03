@@ -110,7 +110,8 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/groups/{group}', 'groupsDestroy')->name('groups.destroy');
     });
 
-    Route::controller(SettingsController::class)->group(function () {
+Route::controller(SettingsController::class)->group(function () {
+        Route::post('/settings/fy-prefix', 'fyPrefixUpdate')->name('settings.fy-prefix.update');
         Route::get('/settings', 'settings')->name('settings.index');
         Route::put('/settings/account', 'accountUpdate')->name('account.update');
         Route::post('/settings/billing-details', 'accountBillingUpdate')->name('account.billing.update');
@@ -123,13 +124,14 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/settings/{setting}', 'settingsDestroy')->name('settings.destroy');
         Route::put('/settings/financial-year/{financialYear}/default', 'financialYearSetDefault')->name('financial-year.default');
         Route::post('/settings/financial-year', 'financialYearUpdate')->name('financial-year.update');
-    });
-
-    // Keep terms conditions on legacy controller until moved fully.
-    Route::controller(BillingUiController::class)->group(function () {
         Route::post('/settings/terms-conditions', 'termsConditionsStore')->name('terms-conditions.store');
-        Route::delete('/settings/terms-conditions/{tcId}', 'termsConditionsDestroy')->name('terms-conditions.destroy');
-        Route::patch('/settings/terms-conditions/{tcId}/toggle', 'termsConditionsToggle')->name('terms-conditions.toggle');
+        Route::patch('/settings/terms-conditions/{term}/sequence', 'termsConditionsUpdateSequence')->name('terms-conditions.update-sequence');
+        Route::delete('/settings/terms-conditions/{term}', 'termsConditionsDestroy')->name('terms-conditions.destroy');
+        Route::patch('/settings/terms-conditions/{term}/toggle', 'termsConditionsToggle')->name('terms-conditions.toggle');
         Route::post('/settings/serial-preview', 'generateSerialPreview')->name('serial.preview');
     });
+
+    // // Keep terms conditions on legacy controller until moved fully.
+    // Route::controller(BillingUiController::class)->group(function () {
+    // });
 });

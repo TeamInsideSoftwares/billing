@@ -319,9 +319,6 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
         $validated = $request->validate([
             'account_bdid' => 'nullable|string|size:6|exists:account_billing_details,account_bdid',
             'serial_number' => 'nullable|string|max:20',
-            'prefix' => 'nullable|string|max:50',
-            'suffix' => 'nullable|string|max:50',
-            'serial_mode' => 'required|in:auto_generate,auto_increment',
             'alphanumeric_length' => 'nullable|integer|in:4,6',
             'auto_increment_start' => 'nullable|integer|min:1|max:99999',
             'reset_on_fy' => 'boolean',
@@ -350,6 +347,50 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
         return redirect()->to(route('settings.index') . '#billing-details')->with('success', 'Billing details updated successfully.');
     }
 
+    public function termsConditionsStore(Request $request)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+
+        $validated = $request->validate([
+            'tc_id' => 'nullable|string|size:8|exists:terms_conditions,tc_id',
+            'type' => 'required|in:billing,quotation',
+            'content' => 'required|string',
+            'is_active' => 'boolean',
+        ]);
+
+        $validated['accountid'] = $accountid;
+        $validated['title'] = $validated['title'] ?? Str::limit(strip_tags($validated['content']), 50); // Auto title if missing
+
+        if (!empty($validated['tc_id'])) {
+            $term = TermsCondition::where('tc_id', $validated['tc_id'])->where('accountid', $accountid)->firstOrFail();
+            $term->update($validated);
+            return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'Term updated.');
+        } else {
+            TermsCondition::create($validated);
+            return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'Term created.');
+        }
+    }
+
+    public function termsConditionsToggle(TermsCondition $term)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        if ($term->accountid !== $accountid) {
+            abort(403);
+        }
+        $term->update(['is_active' => !$term->is_active]);
+        return back()->with('success', 'Term status toggled.');
+    }
+
+    public function termsConditionsDestroy(TermsCondition $term)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        if ($term->accountid !== $accountid) {
+            abort(403);
+        }
+        $term->delete();
+        return back()->with('success', 'Term deleted.');
+    }
+
     public function accountQuotationUpdate(Request $request)
     {
         $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
@@ -362,9 +403,6 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
         $validated = $request->validate([ 
            'account_qdid' => 'nullable|string|size:6|exists:account_quotation_details,account_qdid',
             'serial_number' => 'nullable|string|max:20',
-            'prefix' => 'nullable|string|max:50',
-            'suffix' => 'nullable|string|max:50',
-            'serial_mode' => 'required|in:auto_generate,auto_increment',
             'alphanumeric_length' => 'nullable|integer|in:4,6',
             'auto_increment_start' => 'nullable|integer|min:1|max:99999',
             'reset_on_fy' => 'boolean',
@@ -379,7 +417,7 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
             'authorize_signatory' => 'nullable|string|max:255',
             'signature_upload' => 'nullable|string|max:500',
             'billing_from_email' => 'nullable|email|max:255',
-            'terms_conditions' => 'nullable|string',
+            // 'terms_conditions' => 'nullable|string',  // unused - managed in terms tab
         ]);
 
         if (!empty($validated['account_qdid'])) {

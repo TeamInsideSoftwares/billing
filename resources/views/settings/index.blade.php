@@ -132,7 +132,10 @@ label {
 <!-- PERSONAL TAB -->
 <div id="personal" class="tab-content active">
     <section class="panel-card">
-        <p style="margin-bottom: 1rem;">Your public and billing information.</p>
+        <div style="margin-bottom: 1.5rem;">
+            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Business Information</h5>
+            <p style="font-size: 0.85rem; color: #64748b;">Manage your public profile and billing details for your organization.</p>
+        </div>
 
         <form method="POST" action="{{ route('account.update') }}" class="form-grid">
             @csrf
@@ -237,7 +240,10 @@ label {
 <!-- FINANCIAL YEAR -->
 <div id="financial-year" class="tab-content">
     <section class="panel-card">
-        <p style="margin-bottom: 1rem;">Enter the start and end years for your financial year (e.g. 2024 - 2025).</p>
+        <div style="margin-bottom: 1.5rem;">
+            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Add Financial Year</h5>
+            <p style="font-size: 0.85rem; color: #64748b;">Select the start and end years for your financial cycle.</p>
+        </div>
 
         @if ($errors->any())
             <div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; margin-bottom: 1rem;">
@@ -249,52 +255,76 @@ label {
             </div>
         @endif
 
-        <form method="POST" action="{{ route('financial-year.update') }}" style="display: flex; align-items: center; gap: 10px; max-width: 400px;">
+        <form method="POST" action="{{ route('financial-year.update') }}" style="display: flex; align-items: flex-end; gap: 12px; max-width: 500px; background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
             @csrf
-            <input type="number" name="year_start" value="{{ date('Y') }}" required style="width: 100px; padding: 0.45rem; border: 1px solid #cbd5e1; border-radius: 4px;">
-            <span style="font-size: 1.5rem; font-weight: bold;">-</span>
-            <input type="number" name="year_end" value="{{ date('Y') + 1 }}" required style="width: 100px; padding: 0.45rem; border: 1px solid #cbd5e1; border-radius: 4px;">
-            <button type="submit" class="primary-button">Add</button>
+            <div style="flex: 1;">
+                <label style="font-size: 0.75rem; color: #64748b; margin-bottom: 4px; display: block; font-weight: 600;">Start Year</label>
+                <select name="year_start" id="fy_year_start" required style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
+                    @php $currentYear = date('Y'); @endphp
+                    @for($y = $currentYear - 1; $y <= $currentYear + 1; $y++)
+                        <option value="{{ $y }}" {{ $y == $currentYear ? 'selected' : '' }}>{{ $y }}</option>
+                    @endfor
+                </select>
+            </div>
+            <span style="font-size: 1.25rem; font-weight: bold; color: #94a3b8; margin-bottom: 8px;">-</span>
+            <div style="flex: 1;">
+                <label style="font-size: 0.75rem; color: #64748b; margin-bottom: 4px; display: block; font-weight: 600;">End Year</label>
+                <select name="year_end" id="fy_year_end" required style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
+                    @for($y = $currentYear; $y <= $currentYear + 2; $y++)
+                        <option value="{{ $y }}" {{ $y == $currentYear + 1 ? 'selected' : '' }}>{{ $y }}</option>
+                    @endfor
+                </select>
+            </div>
+            <button type="submit" class="primary-button" style="padding: 0.5rem 1.25rem; height: 38px;">Add FY</button>
         </form>
 
-        <div style="margin-top: 2rem;">
-            <h4>Financial Years</h4>
+        <div style="margin-top: 2.5rem;">
+            <h5 style="margin-bottom: 1rem; color: #1e293b;">Recorded Financial Years</h5>
             <table class="data-table">
                 <thead>
                     <tr>
+                        <th style="width: 60px;">#</th>
                         <th>Financial Year</th>
                         <th>Status</th>
-                        <th></th>
+                        <th style="text-align: right;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($financialYears as $fy)
+                    @forelse ($financialYears as $index => $fy)
                         <tr>
-                            <td>{{ $fy->financial_year }}</td>
+                            <td style="color: #64748b; font-size: 0.85rem;">{{ $index + 1 }}</td>
+                            <td style="font-weight: 500;">{{ $fy->financial_year }}</td>
                             <td>
                                 @if($fy->default)
-                                    <span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Default</span>
+                                    <span style="background: #dcfce7; color: #166534; padding: 2px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">Default</span>
                                 @else
-                                    -
+                                    <span style="color: #94a3b8; font-size: 0.85rem;">-</span>
                                 @endif
                             </td>
-                            <td>
+                            <td style="text-align: right;">
                                 @if(!$fy->default)
                                     <form method="POST" action="{{ route('financial-year.default', $fy->fy_id) }}" style="display: inline;">
                                         @csrf
                                         @method('PUT')
-                                        <button type="submit" class="text-link" style="background: none; border: none; padding: 0; font-size: 0.85rem;">Set as Default</button>
+                                        <button type="submit" class="text-link" style="background: none; border: 1px solid #3b82f6; color: #3b82f6; padding: 3px 10px; border-radius: 4px; font-size: 0.75rem; transition: all 0.2s;">Set Default</button>
                                     </form>
                                 @endif
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3">No financial years recorded.</td>
+                            <td colspan="4" style="text-align: center; color: #94a3b8; padding: 2rem;">No financial years recorded.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <div style="margin-top: 2rem; border-top: 1px solid #f1f5f9; padding-top: 1.5rem;">
+            <h5 style="margin-bottom: 0.25rem; color: #1e293b; font-size: 1rem;">Serial Number Configuration</h5>
+            <p style="margin-bottom: 1rem; font-size: 0.8rem; color: #64748b;">Configure how your invoice and quotation numbers are generated.</p>
+
+            @include('settings.serial-config')
         </div>
     </section>
 </div>
@@ -302,10 +332,15 @@ label {
 <!-- CONFIG -->
 <div id="config" class="tab-content">
     <section class="panel-card">
+        <div style="margin-bottom: 1.5rem;">
+            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Configuration Keys</h5>
+            <p style="font-size: 0.85rem; color: #64748b;">Manage system-wide configuration keys for email and payment gateways.</p>
+        </div>
+
         <div style="margin-bottom: 2rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <h5 style="margin-bottom: 0.75rem;">
+            <h6 style="margin-bottom: 0.75rem; font-weight: 600;">
                 {{ $editingSetting ? 'Edit Configuration Key' : 'Add New Configuration Key' }}
-            </h5>
+            </h6>
             
             <form method="POST" action="{{ $editingSetting ? route('settings.update', $editingSetting->settingid) : route('settings.store') }}" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.75rem; align-items: end;">
                 @csrf
@@ -345,29 +380,37 @@ label {
         </div>
 
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-            <h4>System Settings</h4>
+            <h6 style="margin: 0; color: #1e293b; font-weight: 600;">System Settings</h6>
         </div>
 
         <table class="data-table">
             <thead>
                 <tr>
+                    <th style="width: 40px;">#</th>
                     <th>Key</th>
                     <th>Value</th>
-                    <th></th>
+                    <th style="text-align: right;">Action</th>
                 </tr>
             </thead>
             <tbody>
-                @forelse ($settings as $setting)
+                @forelse ($settings as $index => $setting)
                     <tr>
+                        <td style="color: #64748b; font-size: 0.85rem;">{{ $index + 1 }}</td>
                         <td><code>{{ $setting['key'] }}</code></td>
                         <td>{{ $setting['value'] }}</td>
-                        <td>
-                            <a href="{{ route('settings.index', ['edit' => $setting['record_id']]) }}#config" class="text-link">Edit</a>
+                        <td style="text-align: right;">
+                            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                                <a href="{{ route('settings.index', ['e' => base64_encode($setting['record_id'])]) }}#config" class="text-link" style="border: 1px solid #3b82f6; color: #3b82f6; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; text-decoration: none;">Edit</a>
+                                <form method="POST" action="{{ route('settings.destroy', $setting['record_id']) }}" onsubmit="return confirm('Delete this setting?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" style="background: none; border: 1px solid #ef4444; color: #ef4444; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Delete</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
 @empty
                     <tr>
-                        <td colspan="3">No settings found</td>
+                        <td colspan="4" style="text-align: center; color: #94a3b8; padding: 2rem;">No settings found</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -378,9 +421,9 @@ label {
 <!-- BILLING DETAILS TAB -->
 <div id="billing-details" class="tab-content">
     <section class="panel-card">
-        <div style="margin-bottom: 1rem;">
-            <h4>Billing Details</h4>
-            <p>Add billing details for invoices.</p>
+        <div style="margin-bottom: 1.5rem;">
+            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Billing Details</h5>
+            <p style="font-size: 0.85rem; color: #64748b;">Configure the billing information that will appear on your invoices.</p>
         </div>
         @if ($errors->any())
             <div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; margin-bottom: 1rem;">
@@ -391,80 +434,21 @@ label {
                 </ul>
             </div>
         @endif
-        <form method="POST" action="{{ route('account.billing.update') }}" class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <form method="POST" action="{{ route('account.billing.update') }}" enctype="multipart/form-data" class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             @csrf
             @if(isset($editingBillingDetail))
                 <input type="hidden" name="account_bdid" value="{{ $editingBillingDetail->account_bdid }}">
             @endif
             <input type="hidden" name="accountid" value="{{ $account->accountid }}">
-            <div style="grid-column: span 2; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-                <h5 style="margin: 0 0 0.75rem 0; font-size: 0.95rem; color: #1e293b;">Serial Number Configuration</h5>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
-                    <div>
-                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Prefix</label>
-                        <input type="text" name="prefix" value="{{ old('prefix', $editingBillingDetail->prefix ?? '') }}" placeholder="INV-" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
-                    </div>
-                    <div>
-                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Suffix</label>
-                        <input type="text" name="suffix" value="{{ old('suffix', $editingBillingDetail->suffix ?? '') }}" placeholder="-2026" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
-                    </div>
-                    <div>
-                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Preview</label>
-                        <div id="billing-preview" style="font-family: monospace; font-size: 0.9rem; color: #1e293b; padding: 0.4rem 0.5rem; background: white; border-radius: 4px; border: 1px solid #cbd5e1;">
-                            {{ $editingBillingDetail->prefix ?? '' }}[NUMBER]{{ $editingBillingDetail->suffix ?? '' }}
-                        </div>
-                    </div>
-                </div>
 
-                <div style="display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: start;">
-                    <div>
-                        <label style="font-size: 0.8rem; margin-bottom: 0.5rem; display: block; font-weight: 600;">Mode</label>
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                            <label class="custom-radio">
-                                <input type="radio" name="serial_mode" value="auto_generate" 
-                                    {{ old('serial_mode', $editingBillingDetail->serial_mode ?? 'auto_generate') == 'auto_generate' ? 'checked' : '' }}
-                                    class="billing-serial-mode-radio">
-                                <span class="radio-label">Auto Generate</span>
-                            </label>
-                            <label class="custom-radio">
-                                <input type="radio" name="serial_mode" value="auto_increment" 
-                                    {{ old('serial_mode', $editingBillingDetail->serial_mode ?? 'auto_generate') == 'auto_increment' ? 'checked' : '' }}
-                                    class="billing-serial-mode-radio">
-                                <span class="radio-label">Auto Increment</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div id="billing-auto-generate-options" style="padding: 0.75rem; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
-                            <label style="font-size: 0.8rem; margin-bottom: 0.5rem; display: block;">Alphanumeric Length</label>
-                            <select name="alphanumeric_length" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
-                                <option value="4" {{ old('alphanumeric_length', $editingBillingDetail->alphanumeric_length ?? 4) == 4 ? 'selected' : '' }}>4 characters (A3F9)</option>
-                                <option value="6" {{ old('alphanumeric_length', $editingBillingDetail->alphanumeric_length ?? 4) == 6 ? 'selected' : '' }}>6 characters (A3F9B2)</option>
-                            </select>
-                        </div>
-
-                        <div id="billing-auto-increment-options" style="padding: 0.75rem; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
-                            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: end;">
-                                <div>
-                                    <label style="font-size: 0.8rem; margin-bottom: 0.5rem; display: block;">Start From</label>
-                                    <input type="number" name="auto_increment_start" value="{{ old('auto_increment_start', $editingBillingDetail->auto_increment_start ?? 1) }}" min="1" max="99999" placeholder="1001" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
-                                </div>
-                                <div>
-                                    <label class="custom-checkbox">
-                                        <input type="checkbox" name="reset_on_fy" value="1" {{ old('reset_on_fy', $editingBillingDetail->reset_on_fy ?? false) ? 'checked' : '' }}>
-                                        <span class="checkbox-label">Reset on FY</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
             <div>
                 <label class="required">Billing Name</label>
                 <input type="text" name="billing_name" value="{{ old('billing_name', $editingBillingDetail->billing_name ?? '') }}" required>
+            </div>
+            
+            <div>
+                <label>Billing From Email</label>
+                <input type="email" name="billing_from_email" value="{{ old('billing_from_email', $editingBillingDetail->billing_from_email ?? '') }}">
             </div>
             <div style="grid-column: span 2;">
                 <label>Address</label>
@@ -506,11 +490,19 @@ label {
             </div>
             <div>
                 <label>Signature Upload</label>
-                <input type="text" name="signature_upload" value="{{ old('signature_upload', $editingBillingDetail->signature_upload ?? '') }}">
-            </div>
-            <div>
-                <label>Billing From Email</label>
-                <input type="email" name="billing_from_email" value="{{ old('billing_from_email', $editingBillingDetail->billing_from_email ?? '') }}">
+                <input type="file" name="signature_upload" id="billing-signature-upload" accept="image/*" onchange="previewSignature(this, 'billing-signature-preview')">
+                <small style="color: #64748b; font-size: 0.75rem; display: block; margin-top: 0.25rem;">Max file size: 5MB. Supported formats: JPG, PNG, GIF, SVG</small>
+                @if(!empty($editingBillingDetail->signature_upload))
+                    <div style="margin-top: 0.5rem;">
+                        <small style="color: #64748b; font-size: 0.75rem; display: block; margin-bottom: 0.25rem;">Current signature:</small>
+                        <img id="billing-signature-preview" src="{{ asset('storage/' . $editingBillingDetail->signature_upload) }}" alt="Signature" style="max-width: 200px; max-height: 100px; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px;">
+                    </div>
+                @else
+                    <div id="billing-signature-preview" style="margin-top: 0.5rem; display: none;">
+                        <small style="color: #64748b; font-size: 0.75rem; display: block; margin-bottom: 0.25rem;">Preview:</small>
+                        <img src="" alt="Signature Preview" style="max-width: 200px; max-height: 100px; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px;">
+                    </div>
+                @endif
             </div>
 
             <div class="form-actions">
@@ -528,9 +520,9 @@ label {
 <!-- QUOTATION DETAILS TAB -->
 <div id="quotation-details" class="tab-content">
     <section class="panel-card">
-        <div style="margin-bottom: 1rem;">
-            <h4>Quotation Details</h4>
-            <p>Add quotation details for quotations.</p>
+        <div style="margin-bottom: 1.5rem;">
+            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Quotation Details</h5>
+            <p style="font-size: 0.85rem; color: #64748b;">Configure the details that will appear on your quotations.</p>
         </div>
         @if ($errors->any())
             <div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; margin-bottom: 1rem;">
@@ -541,80 +533,20 @@ label {
                 </ul>
             </div>
         @endif
-        <form method="POST" action="{{ route('account.quotation.update') }}" class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <form method="POST" action="{{ route('account.quotation.update') }}" enctype="multipart/form-data" class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             @csrf
             @if(isset($editingQuotationDetail))
                 <input type="hidden" name="account_qdid" value="{{ $editingQuotationDetail->account_qdid }}">
             @endif
             <input type="hidden" name="accountid" value="{{ $account->accountid }}">
-            <div style="grid-column: span 2; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-                <h5 style="margin: 0 0 0.75rem 0; font-size: 0.95rem; color: #1e293b;">Serial Number Configuration</h5>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
-                    <div>
-                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Prefix</label>
-                        <input type="text" name="prefix" value="{{ old('prefix', $editingQuotationDetail->prefix ?? '') }}" placeholder="QUO-" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
-                    </div>
-                    <div>
-                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Suffix</label>
-                        <input type="text" name="suffix" value="{{ old('suffix', $editingQuotationDetail->suffix ?? '') }}" placeholder="-2026" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
-                    </div>
-                    <div>
-                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Preview</label>
-                        <div id="quotation-preview" style="font-family: monospace; font-size: 0.9rem; color: #1e293b; padding: 0.4rem 0.5rem; background: white; border-radius: 4px; border: 1px solid #cbd5e1;">
-                            {{ $editingQuotationDetail->prefix ?? '' }}[NUMBER]{{ $editingQuotationDetail->suffix ?? '' }}
-                        </div>
-                    </div>
-                </div>
 
-                <div style="display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: start;">
-                    <div>
-                        <label style="font-size: 0.8rem; margin-bottom: 0.5rem; display: block; font-weight: 600;">Mode</label>
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                            <label class="custom-radio">
-                                <input type="radio" name="serial_mode" value="auto_generate" 
-                                    {{ old('serial_mode', $editingQuotationDetail->serial_mode ?? 'auto_generate') == 'auto_generate' ? 'checked' : '' }}
-                                    class="quotation-serial-mode-radio">
-                                <span class="radio-label">Auto Generate</span>
-                            </label>
-                            <label class="custom-radio">
-                                <input type="radio" name="serial_mode" value="auto_increment" 
-                                    {{ old('serial_mode', $editingQuotationDetail->serial_mode ?? 'auto_generate') == 'auto_increment' ? 'checked' : '' }}
-                                    class="quotation-serial-mode-radio">
-                                <span class="radio-label">Auto Increment</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div id="quotation-auto-generate-options" style="padding: 0.75rem; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
-                            <label style="font-size: 0.8rem; margin-bottom: 0.5rem; display: block;">Alphanumeric Length</label>
-                            <select name="alphanumeric_length" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
-                                <option value="4" {{ old('alphanumeric_length', $editingQuotationDetail->alphanumeric_length ?? 4) == 4 ? 'selected' : '' }}>4 characters (A3F9)</option>
-                                <option value="6" {{ old('alphanumeric_length', $editingQuotationDetail->alphanumeric_length ?? 4) == 6 ? 'selected' : '' }}>6 characters (A3F9B2)</option>
-                            </select>
-                        </div>
-
-                        <div id="quotation-auto-increment-options" style="padding: 0.75rem; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
-                            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: end;">
-                                <div>
-                                    <label style="font-size: 0.8rem; margin-bottom: 0.5rem; display: block;">Start From</label>
-                                    <input type="number" name="auto_increment_start" value="{{ old('auto_increment_start', $editingQuotationDetail->auto_increment_start ?? 1) }}" min="1" max="99999" placeholder="1001" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">
-                                </div>
-                                <div>
-                                    <label class="custom-checkbox">
-                                        <input type="checkbox" name="reset_on_fy" value="1" {{ old('reset_on_fy', $editingQuotationDetail->reset_on_fy ?? false) ? 'checked' : '' }}>
-                                        <span class="checkbox-label">Reset on FY</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
             <div>
                 <label class="required">Quotation Name</label>
                 <input type="text" name="quotation_name" value="{{ old('quotation_name', $editingQuotationDetail->quotation_name ?? '') }}" required>
+            </div>
+            <div>
+                <label>Billing From Email</label>
+                <input type="email" name="billing_from_email" value="{{ old('billing_from_email', $editingQuotationDetail->billing_from_email ?? '') }}">
             </div>
             <div style="grid-column: span 2;">
                 <label>Address</label>
@@ -656,11 +588,19 @@ label {
             </div>
             <div>
                 <label>Signature Upload</label>
-                <input type="text" name="signature_upload" value="{{ old('signature_upload', $editingQuotationDetail->signature_upload ?? '') }}">
-            </div>
-            <div>
-                <label>Billing From Email</label>
-                <input type="email" name="billing_from_email" value="{{ old('billing_from_email', $editingQuotationDetail->billing_from_email ?? '') }}">
+                <input type="file" name="signature_upload" id="quotation-signature-upload" accept="image/*" onchange="previewSignature(this, 'quotation-signature-preview')">
+                <small style="color: #64748b; font-size: 0.75rem; display: block; margin-top: 0.25rem;">Max file size: 5MB. Supported formats: JPG, PNG, GIF, SVG</small>
+                @if(!empty($editingQuotationDetail->signature_upload))
+                    <div style="margin-top: 0.5rem;">
+                        <small style="color: #64748b; font-size: 0.75rem; display: block; margin-bottom: 0.25rem;">Current signature:</small>
+                        <img id="quotation-signature-preview" src="{{ asset('storage/' . $editingQuotationDetail->signature_upload) }}" alt="Signature" style="max-width: 200px; max-height: 100px; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px;">
+                    </div>
+                @else
+                    <div id="quotation-signature-preview" style="margin-top: 0.5rem; display: none;">
+                        <small style="color: #64748b; font-size: 0.75rem; display: block; margin-bottom: 0.25rem;">Preview:</small>
+                        <img src="" alt="Signature Preview" style="max-width: 200px; max-height: 100px; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px;">
+                    </div>
+                @endif
             </div>
 
             <div class="form-actions">
@@ -679,97 +619,87 @@ label {
 <div id="terms-conditions" class="tab-content">
     <section class="panel-card">
         <div style="margin-bottom: 1rem;">
-            <h4>Terms &amp; Conditions</h4>
-            <p>Manage reusable terms &amp; conditions for billing and quotations. Each point can be selected individually when generating documents.</p>
+            <h5 style="margin-bottom: 0.25rem; color: #1e293b; font-size: 1rem;">Terms & Conditions</h5>
+            <p style="font-size: 0.8rem; color: #64748b;">Manage reusable terms and conditions for your documents.</p>
         </div>
 
-        @if(session('success') && str_contains(request()->header('referer', ''), 'terms'))
-            <div style="background: #dcfce7; color: #166534; padding: 10px; border-radius: 6px; margin-bottom: 1rem;">{{ session('success') }}</div>
-        @endif
-
         {{-- Add / Edit Form --}}
-        <div style="padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 1.5rem;">
-            <h5 style="margin: 0 0 0.75rem 0; font-size: 0.95rem; color: #1e293b;">
+        <div style="padding: 0.75rem; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 1rem;">
+            <h6 style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #1e293b; font-weight: 600;">
                 {{ $editingTerm ? 'Edit Term' : 'Add New Term' }}
-            </h5>
-            <form method="POST" action="{{ route('terms-conditions.store') }}" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            </h6>
+            <form method="POST" action="{{ route('terms-conditions.store') }}" style="display: flex; gap: 0.5rem; align-items: end;">
                 @csrf
                 @if($editingTerm)
                     <input type="hidden" name="tc_id" value="{{ $editingTerm->tc_id }}">
                 @endif
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <div>
-                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Type *</label>
-                        <select name="type" required style="width: 100%; padding: 0.4rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
-                            <option value="billing" {{ old('type', $editingTerm->type ?? '') == 'billing' ? 'selected' : '' }}>Billing</option>
-                            <option value="quotation" {{ old('type', $editingTerm->type ?? '') == 'quotation' ? 'selected' : '' }}>Quotation</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Title *</label>
-                        <input type="text" name="title" value="{{ old('title', $editingTerm->title ?? '') }}" required placeholder="e.g. Payment due within 30 days" style="width: 100%; padding: 0.4rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
-                    </div>
+                <div style="flex: 0 0 120px;">
+                    <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b;">Type *</label>
+                    <select name="type" required style="width: 100%; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">
+                        <option value="billing" {{ old('type', $editingTerm->type ?? '') == 'billing' ? 'selected' : '' }}>Billing</option>
+                        <option value="quotation" {{ old('type', $editingTerm->type ?? '') == 'quotation' ? 'selected' : '' }}>Quotation</option>
+                    </select>
                 </div>
-
-                <div>
-                    <label style="font-size: 0.8rem; margin-bottom: 0.25rem;">Content *</label>
-                    <textarea name="content" rows="3" required placeholder="Full text of this term..." style="width: 100%; padding: 0.45rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 4px; resize: vertical;">{{ old('content', $editingTerm->content ?? '') }}</textarea>
+                <div style="flex: 1;">
+                    <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b; font-weight: 600;">Terms and Condition *</label>
+                    <input type="text" name="content" value="{{ old('content', $editingTerm->content ?? '') }}" placeholder="Enter terms and condition" required style="width: 100%; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">
                 </div>
-
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer;">
-                        <input type="checkbox" name="is_active" value="1" {{ old('is_active', $editingTerm->is_active ?? true) ? 'checked' : '' }}>
-                        Active
-                    </label>
-                    <div style="display: flex; gap: 0.5rem; margin-left: auto;">
-                        <button type="submit" class="primary-button">{{ $editingTerm ? 'Update Term' : 'Add Term' }}</button>
-                        @if($editingTerm)
-                            <a href="{{ route('settings.index') }}#terms-conditions" style="padding: 0.6rem 1rem; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: #64748b; font-size: 0.85rem;">Cancel</a>
-                        @endif
-                    </div>
+                <div style="display: flex; gap: 0.4rem;">
+                    <button type="submit" class="primary-button" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">{{ $editingTerm ? 'Update' : 'Add' }}</button>
+                    @if($editingTerm)
+                        <a href="{{ route('settings.index') }}#terms-conditions" style="padding: 0.4rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #64748b; font-size: 0.85rem; display: inline-block;">Cancel</a>
+                    @endif
                 </div>
             </form>
         </div>
 
         {{-- Billing Terms List --}}
-        <div style="margin-bottom: 1.5rem;">
-            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Billing Terms</h5>
-            <table class="data-table">
+        <div style="margin-bottom: 1rem;">
+            <h6 style="margin-bottom: 0.4rem; color: #1e293b; font-weight: 600; font-size: 0.9rem;">Billing Terms</h6>
+            <table class="data-table" style="font-size: 0.85rem;">
                 <thead>
                     <tr>
-                        <th style="width: 40%;">Title</th>
-                        <th>Content</th>
-                        <th style="width: 80px;">Status</th>
-                        <th style="width: 100px;"></th>
+                        <th style="width: 50px; padding: 0.4rem;">Seq</th>
+                        <th style="padding: 0.4rem;">Terms and Condition</th>
+                        <th style="width: 70px; padding: 0.4rem;">Status</th>
+                        <th style="width: 80px; text-align: right; padding: 0.4rem;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($billingTerms as $term)
+                    @forelse($billingTerms as $index => $term)
                         <tr>
-                            <td>{{ $term->title }}</td>
-                            <td style="font-size: 0.85rem; color: #475569;">{{ Str::limit($term->content, 80) }}</td>
-                            <td>
+                            <td style="color: #64748b; text-align: center; padding: 0.4rem;">
+                                <form method="POST" action="{{ route('terms-conditions.update-sequence', $term) }}" style="display: inline-block; margin: 0;">
+                                    @csrf @method('PATCH')
+                                    <select name="sequence" onchange="this.form.submit()" 
+                                            style="width: 50px; padding: 0.2rem 0.3rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem; text-align: center;">
+                                        @for($i = 1; $i <= $billingTerms->count(); $i++)
+                                            <option value="{{ $i }}" {{ ($term->sequence ?? ($index + 1)) == $i ? 'selected' : '' }}>{{ $i }}</option>
+                                        @endfor
+                                    </select>
+                                </form>
+                            </td>
+                            <td style="padding: 0.4rem;">{{ $term->content }}</td>
+                            <td style="padding: 0.4rem;">
                                 @if($term->is_active)
-                                    <span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Active</span>
+                                    <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Active</span>
                                 @else
-                                    <span style="background: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Inactive</span>
+                                    <span style="background: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Inactive</span>
                                 @endif
                             </td>
-                            <td style="display: flex; gap: 0.5rem;">
-                                <a href="{{ route('settings.index', ['edit_tc' => $term->tc_id]) }}#terms-conditions" class="text-link" style="font-size: 0.8rem;">Edit</a>
-                                <form method="POST" action="{{ route('terms-conditions.toggle', $term->tc_id) }}" style="display: inline;">
-                                    @csrf @method('PATCH')
-                                    <button type="submit" class="text-link" style="background: none; border: none; padding: 0; font-size: 0.8rem; color: #f59e0b;">Toggle</button>
-                                </form>
-                                <form method="POST" action="{{ route('terms-conditions.destroy', $term->tc_id) }}" style="display: inline;" onsubmit="return confirm('Delete this term?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="text-link" style="background: none; border: none; padding: 0; font-size: 0.8rem; color: #ef4444;">Delete</button>
-                                </form>
+                            <td style="text-align: right; padding: 0.4rem;">
+                                <div class="table-actions">
+                                    <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id)]) }}#terms-conditions" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>
+                                    <form method="POST" action="{{ route('terms-conditions.destroy', $term) }}" onsubmit="return confirm('Delete this term?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="icon-action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" style="color: #94a3b8;">No billing terms added yet.</td></tr>
+                        <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 1.5rem; font-size: 0.85rem;">No billing terms added yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -777,42 +707,50 @@ label {
 
         {{-- Quotation Terms List --}}
         <div>
-            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Quotation Terms</h5>
-            <table class="data-table">
+            <h6 style="margin-bottom: 0.4rem; color: #1e293b; font-weight: 600; font-size: 0.9rem;">Quotation Terms</h6>
+            <table class="data-table" style="font-size: 0.85rem;">
                 <thead>
                     <tr>
-                        <th style="width: 40%;">Title</th>
-                        <th>Content</th>
-                        <th style="width: 80px;">Status</th>
-                        <th style="width: 100px;"></th>
+                        <th style="width: 50px; padding: 0.4rem;">Seq</th>
+                        <th style="padding: 0.4rem;">Terms and Condition</th>
+                        <th style="width: 70px; padding: 0.4rem;">Status</th>
+                        <th style="width: 80px; text-align: right; padding: 0.4rem;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($quotationTerms as $term)
+                    @forelse($quotationTerms as $index => $term)
                         <tr>
-                            <td>{{ $term->title }}</td>
-                            <td style="font-size: 0.85rem; color: #475569;">{{ Str::limit($term->content, 80) }}</td>
-                            <td>
+                            <td style="color: #64748b; text-align: center; padding: 0.4rem;">
+                                <form method="POST" action="{{ route('terms-conditions.update-sequence', $term) }}" style="display: inline-block; margin: 0;">
+                                    @csrf @method('PATCH')
+                                    <select name="sequence" onchange="this.form.submit()" 
+                                            style="width: 50px; padding: 0.2rem 0.3rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem; text-align: center;">
+                                        @for($i = 1; $i <= $quotationTerms->count(); $i++)
+                                            <option value="{{ $i }}" {{ ($term->sequence ?? ($index + 1)) == $i ? 'selected' : '' }}>{{ $i }}</option>
+                                        @endfor
+                                    </select>
+                                </form>
+                            </td>
+                            <td style="padding: 0.4rem;">{{ $term->content }}</td>
+                            <td style="padding: 0.4rem;">
                                 @if($term->is_active)
-                                    <span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Active</span>
+                                    <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Active</span>
                                 @else
-                                    <span style="background: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Inactive</span>
+                                    <span style="background: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Inactive</span>
                                 @endif
                             </td>
-                            <td style="display: flex; gap: 0.5rem;">
-                                <a href="{{ route('settings.index', ['edit_tc' => $term->tc_id]) }}#terms-conditions" class="text-link" style="font-size: 0.8rem;">Edit</a>
-                                <form method="POST" action="{{ route('terms-conditions.toggle', $term->tc_id) }}" style="display: inline;">
-                                    @csrf @method('PATCH')
-                                    <button type="submit" class="text-link" style="background: none; border: none; padding: 0; font-size: 0.8rem; color: #f59e0b;">Toggle</button>
-                                </form>
-                                <form method="POST" action="{{ route('terms-conditions.destroy', $term->tc_id) }}" style="display: inline;" onsubmit="return confirm('Delete this term?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="text-link" style="background: none; border: none; padding: 0; font-size: 0.8rem; color: #ef4444;">Delete</button>
-                                </form>
+                            <td style="text-align: right; padding: 0.4rem;">
+                                <div class="table-actions">
+                                    <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id)]) }}#terms-conditions" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>
+                                    <form method="POST" action="{{ route('terms-conditions.destroy', $term) }}" onsubmit="return confirm('Delete this term?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="icon-action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" style="color: #94a3b8;">No quotation terms added yet.</td></tr>
+                        <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 1.5rem; font-size: 0.85rem;">No quotation terms added yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -851,16 +789,50 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // Financial Year Sync
+    const fyStart = document.getElementById('fy_year_start');
+    const fyEnd = document.getElementById('fy_year_end');
+
+    if (fyStart && fyEnd) {
+        fyStart.addEventListener('change', function() {
+            const selectedStart = parseInt(this.value);
+            fyEnd.value = selectedStart + 1;
+            
+            // Limit end year options visibility for clarity
+            Array.from(fyEnd.options).forEach(opt => {
+                const optVal = parseInt(opt.value);
+                if (optVal === selectedStart + 1) {
+                    opt.style.display = 'block';
+                } else {
+                    opt.style.display = 'none';
+                }
+            });
+        });
+
+        // Initialize display on load
+        fyStart.dispatchEvent(new Event('change'));
+    }
+
     // Handle initial load from Hash
     const hash = window.location.hash.replace('#', '');
+    const urlParams = new URLSearchParams(window.location.search);
+    const encodedE = urlParams.get('e');
+    const decodedE = encodedE ? atob(encodedE) : null;
+
     if (hash) {
         activateTab(hash);
+    } else if (decodedE) {
+        if (decodedE.startsWith('TC')) activateTab('terms-conditions');
+        else if (decodedE.startsWith('SET')) activateTab('config');
+        else if (decodedE.startsWith('ABD')) activateTab('billing-details');
+        else if (decodedE.startsWith('AQD')) activateTab('quotation-details');
+        else activateTab('personal');
     } else {
         // Default to personal if no hash
         activateTab('personal');
     }
 
-    // Serial mode toggle handler
+    // Serial mode toggle handler - OLD (kept for reference if still needed, but likely replaced)
     function handleSerialModeChange(radio) {
         const form = radio.closest('form');
         const isQuotation = form.action.includes('quotation');
@@ -878,7 +850,145 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Attach event listeners to serial mode radios
+    // NEW Serial Configuration Logic
+    function updateSerialPreview(target) {
+        const form = document.getElementById(`${target}-serial-form`);
+        if (!form) return;
+
+        const previewDiv = document.getElementById(`${target}-preview`);
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const date = String(now.getDate()).padStart(2, '0');
+
+        function getPartValue(part) {
+            const type = form.querySelector(`[name="${part}_type"]`).value;
+            const valInputGroup = form.querySelector(`[name="${part}_value"]`).closest('.input-group-val');
+            const valLabel = valInputGroup.querySelector('.val-label');
+            const lengthInputGroup = form.querySelector(`[name="${part}_length"]`).closest('.input-group-len');
+
+            const valField = form.querySelector(`[name="${part}_value"]`);
+            const lengthField = form.querySelector(`[name="${part}_length"]`);
+
+            // Visibility & Label Logic
+            if (type === 'manual text') {
+                valInputGroup.style.display = 'block';
+                valLabel.innerText = 'Enter value';
+                lengthInputGroup.style.display = 'none';
+            } else if (type === 'auto generate') {
+                valInputGroup.style.display = 'none';
+                lengthInputGroup.style.display = 'block';
+            } else if (type === 'auto increment') {
+                valInputGroup.style.display = 'block';
+                valLabel.innerText = 'Start From';
+                lengthInputGroup.style.display = 'none';
+            } else {
+                valInputGroup.style.display = 'none';
+                lengthInputGroup.style.display = 'none';
+            }
+
+            // Preview Logic
+            switch (type) {
+                case 'manual text':
+                    return valField.value || (part === 'prefix' ? (target == 'billing' ? 'INV' : 'QUO') : (part === 'suffix' ? '2026' : '1001'));
+                case 'date':
+                    return `${year}-${month}-${date}`;
+                case 'year':
+                    return `${year}`;
+                case 'month-year':
+                    return `${month}-${year}`;
+                case 'date-month':
+                    return `${date}-${month}`;
+                case 'auto increment':
+                    return valField.value || '1';
+                case 'auto generate':
+                    const genLen = parseInt(lengthField.value) || 4;
+                    let result = '';
+                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                    for (let i = 0; i < genLen; i++) {
+                        result += chars.charAt(Math.floor(Math.random() * chars.length));
+                    }
+                    return result;
+                default:
+                    return '';
+            }
+        }
+
+        const prefix = getPartValue('prefix');
+        const number = getPartValue('number');
+        const suffix = getPartValue('suffix');
+
+        // Get separators from dropdowns
+        const prefixSepField = form.querySelector('[name="prefix_separator"]');
+        const numberSepField = form.querySelector('[name="number_separator"]');
+        
+        const prefixSep = prefixSepField && prefixSepField.value !== 'none' ? prefixSepField.value : '';
+        const numberSep = numberSepField && numberSepField.value !== 'none' ? numberSepField.value : '';
+
+        previewDiv.innerText = prefix + prefixSep + number + numberSep + suffix;
+    }
+
+// Attach listeners to new serial fields
+    document.querySelectorAll('.serial-type-select, input[name$="_value"], input[name$="_length"], input[name$="_start"], select[name$="_separator"]').forEach(el => {
+        el.addEventListener('input', function() {
+            const form = this.closest('form');
+            const target = form.id ? form.id.split('-')[0] : null;
+            if (target && (target === 'billing' || target === 'quotation')) {
+                updateSerialPreview(target);
+            }
+        });
+    });
+    
+    function updateFYPrefixPreview() {
+        const form = document.getElementById('fy-prefix-form');
+        if (!form) return;
+        
+        const previewDiv = document.getElementById('fy-prefix-preview');
+        const type = form.querySelector('[name="fy_prefix_type"]').value;
+        const prefixSep = form.querySelector('[name="fy_prefix_sep"]').value;
+        const prefixValue = form.querySelector('[name="fy_prefix_value"]').value || 'FY';
+        const numberSep = form.querySelector('[name="fy_number_sep"]').value;
+        const numberValue = '001'; // placeholder
+        const year = new Date().getFullYear();
+        
+        let previewText = prefixValue;
+        if (prefixSep !== 'none') previewText += prefixSep;
+        previewText += numberValue;
+        if (numberSep !== 'none') previewText += numberSep;
+        previewText += year;
+        
+        previewDiv.innerText = previewText;
+        
+        // Update label based on type
+        const valLabel = document.getElementById('fy-val-label');
+        if (type === 'value/number') {
+            valLabel.innerText = 'Enter value';
+        } else {
+            valLabel.innerText = 'Fixed Value';
+        }
+    }
+
+
+
+    // Initialize previews
+    updateSerialPreview('billing');
+    updateSerialPreview('quotation');
+
+    // Initialize field visibility on page load
+    ['billing', 'quotation'].forEach(target => {
+        ['prefix', 'number', 'suffix'].forEach(part => {
+            const form = document.getElementById(`${target}-serial-form`);
+            if (!form) return;
+            
+            const typeSelect = form.querySelector(`[name="${part}_type"]`);
+            if (typeSelect) {
+                // Trigger change event to set initial visibility
+                typeSelect.dispatchEvent(new Event('input'));
+            }
+        });
+    });
+
+    // Attach event listeners to old serial mode radios (if they still exist)
     document.querySelectorAll('input[name="serial_mode"]').forEach(radio => {
         radio.addEventListener('change', function() {
             handleSerialModeChange(this);
@@ -899,6 +1009,23 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }, 100);
 });
+
+// Signature preview function
+function previewSignature(input, previewId) {
+    const previewContainer = document.getElementById(previewId);
+    const previewImg = previewContainer.querySelector('img');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            previewContainer.style.display = 'block';
+        };
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
 </script>
 
 @endsection

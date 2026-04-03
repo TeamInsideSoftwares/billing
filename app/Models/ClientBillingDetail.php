@@ -22,6 +22,7 @@ class ClientBillingDetail extends Model
         'city',
         'state',
         'postal_code',
+        'billing_phone',
         'country',
     ];
 

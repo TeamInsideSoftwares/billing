@@ -17,7 +17,7 @@ class TermsCondition extends Model
 
     protected function idLength(): int
     {
-        return 8;
+        return 6;
     }
 
     protected $fillable = [
@@ -27,7 +27,7 @@ class TermsCondition extends Model
         'title',
         'content',
         'is_active',
-        'sort_order',
+        'sequence',
     ];
 
     protected $casts = [
