@@ -90,11 +90,11 @@ class InvoicesController extends Controller
         $invoice = Invoice::create($validated);
 
         foreach ($itemsData as $index => $itemData) {
-            $service = Service::find($itemData['serviceid']);
+            $service = Service::find($itemData['itemid']);
             InvoiceItem::create([
                 'invoiceid' => $invoice->invoiceid,
-                'serviceid' => $itemData['serviceid'],
-                'item_name' => $service?->name ?? 'Custom Service Item',
+                'itemid' => $itemData['itemid'],
+                'item_name' => $service?->name ?? 'Custom Item',
                 'item_description' => null,
                 'quantity' => $itemData['quantity'],
                 'unit_price' => $itemData['unit_price'],
@@ -162,11 +162,11 @@ class InvoicesController extends Controller
         $invoice->items()->delete();
 
         foreach ($itemsData as $index => $itemData) {
-            $service = Service::find($itemData['serviceid']);
+            $service = Service::find($itemData['itemid']);
             InvoiceItem::create([
                 'invoiceid' => $invoice->invoiceid,
-                'serviceid' => $itemData['serviceid'],
-                'item_name' => $service?->name ?? 'Custom Service Item',
+                'itemid' => $itemData['itemid'],
+                'item_name' => $service?->name ?? 'Custom Item',
                 'item_description' => null,
                 'quantity' => $itemData['quantity'],
                 'unit_price' => $itemData['unit_price'],
@@ -186,3 +186,4 @@ class InvoicesController extends Controller
         return redirect()->route('invoices.index')->with('success', 'Invoice deleted successfully.');
     }
 }
+

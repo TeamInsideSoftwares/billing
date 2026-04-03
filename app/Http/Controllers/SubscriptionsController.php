@@ -12,7 +12,7 @@ class SubscriptionsController extends Controller
 {
     public function subscriptions(): View
     {
-        $query = Subscription::with(['client', 'service']);
+        $query = Subscription::with(['client', 'item']);
         $searchTerm = request('search', '');
 
         if ($searchTerm) {
@@ -20,7 +20,7 @@ class SubscriptionsController extends Controller
                 $q->where('business_name', 'like', '%' . $searchTerm . '%')
                     ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
             })
-                ->orWhereHas('service', function ($q) use ($searchTerm) {
+                ->orWhereHas('item', function ($q) use ($searchTerm) {
                     $q->where('name', 'like', '%' . $searchTerm . '%');
                 });
         }
@@ -30,7 +30,7 @@ class SubscriptionsController extends Controller
             return [
                 'record_id' => $subscription->subscriptionid,
                 'client' => $subscription->client->business_name ?? 'Client',
-                'service' => $subscription->service->name ?? 'Service',
+                'service' => $subscription->item->name ?? 'Item',
                 'next_bill' => $subscription->next_billing_date?->format('d M Y'),
                 'amount' => 'Rs ' . number_format($subscription->price ?? 0),
                 'status' => $subscription->status ?? 'Active',
@@ -58,7 +58,7 @@ class SubscriptionsController extends Controller
     {
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'serviceid' => 'required|exists:services,serviceid',
+            'itemid' => 'required|exists:items,itemid',
             'start_date' => 'required|date',
             'next_billing_date' => 'required|date|after:start_date',
             'price' => 'required|numeric|min:0',
@@ -76,7 +76,7 @@ class SubscriptionsController extends Controller
 
     public function subscriptionsShow(Subscription $subscription): View
     {
-        $subscription->load('client', 'service');
+        $subscription->load('client', 'item');
         return view('subscriptions.show', [
             'title' => 'Subscription Details',
             'subscription' => $subscription,
@@ -97,7 +97,7 @@ class SubscriptionsController extends Controller
     {
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'serviceid' => 'required|exists:services,serviceid',
+            'itemid' => 'required|exists:items,itemid',
             'start_date' => 'required|date',
             'next_billing_date' => 'required|date|after_or_equal:start_date',
             'price' => 'required|numeric|min:0',
@@ -116,3 +116,4 @@ class SubscriptionsController extends Controller
         return redirect()->route('subscriptions.index')->with('success', 'Subscription deleted successfully.');
     }
 }
+

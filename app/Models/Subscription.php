@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'accountid',
     'clientid',
-    'serviceid',
+    'itemid',
     'start_date',
     'next_billing_date',
     'end_date',
@@ -23,7 +23,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class Subscription extends Model
 {
-protected $primaryKey = 'subscriptionid';
+    protected $primaryKey = 'subscriptionid';
+
     public function getRouteKeyName(): string
     {
         return 'subscriptionid';
@@ -58,9 +59,14 @@ protected $primaryKey = 'subscriptionid';
         return $this->belongsTo(Client::class, 'clientid');
     }
 
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(Service::class, 'itemid', 'itemid');
+    }
+
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class, 'serviceid');
+        return $this->item();
     }
 
     public function creator(): BelongsTo

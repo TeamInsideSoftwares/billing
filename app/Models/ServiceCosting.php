@@ -10,7 +10,7 @@ class ServiceCosting extends Model
 {
     use HasAlphaNumericId;
 
-    protected $table = 'service_costings';
+    protected $table = 'item_costings';
     protected $primaryKey = 'costingid';
 
     protected function idLength(): int
@@ -20,7 +20,7 @@ class ServiceCosting extends Model
 
     protected $fillable = [
         'accountid',
-        'serviceid',
+        'itemid',
         'currency_code',
         'cost_price',
         'selling_price',
@@ -35,8 +35,13 @@ class ServiceCosting extends Model
         'tax_rate' => 'decimal:2',
     ];
 
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(Service::class, 'itemid', 'itemid');
+    }
+
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class, 'serviceid', 'serviceid');
+        return $this->item();
     }
 }

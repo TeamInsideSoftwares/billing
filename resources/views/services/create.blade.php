@@ -1,263 +1,177 @@
 @extends('layouts.app')
 
 @section('content')
-<h3 id="service-page-title" style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Create New Service</h3>
-
 <section class="section-bar">
-    <div></div>
-    <a href="{{ route('services.index') }}" class="text-link">&larr; Back to services</a>
+    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Create New Item</h3>
+    <a href="{{ route('services.index') }}" class="text-link">&larr; Back to items</a>
 </section>
 
-<section class="panel-card">
-    <form method="POST" action="{{ route('services.store') }}" class="client-form" id="service-form">
+<section class="panel-card" style="padding: 1.25rem;">
+    <form method="POST" action="{{ route('services.store') }}" class="service-form" id="item-form">
         @csrf
-        <input type="hidden" name="serviceid" id="serviceid" value="">
-        
-        <div id="service-form-section">
-            <div class="form-grid">
-                <div>
-                    <label for="type">Type *</label>
-                    <select id="type" name="type" required>
-                        <option value="product" {{ old('type') == 'product' ? 'selected' : '' }}>Product</option>
-                        <option value="service" {{ old('type', 'service') == 'service' ? 'selected' : '' }}>Service</option>
-                    </select>
-                    @error('type') <span class="error">{{ $message }}</span> @enderror
-                </div>
-                <div style="display:flex; align-items: center; gap: 0.5rem;">
-                    <label class="custom-checkbox" style="display: flex; align-items: center; cursor: pointer;">
-                        <input type="hidden" name="sync" value="no">
-                        <input type="checkbox" name="sync" value="yes" id="sync" {{ old('sync') == 'yes' ? 'checked' : '' }}>
-                        <span style="margin-left: 0.5rem;">Sync</span>
-                    </label>
-                    @error('sync') <span class="error">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <label for="name">Service Name *</label>
-                    <input type="text" id="name" name="name" value="{{ old('name') }}" required>
-                    @error('name') <span class="error">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <label for="ps_catid">Category</label>
-                    <select id="ps_catid" name="ps_catid">
-                        <option value="">-- No Category --</option>
-                        @foreach($categories as $category)
-                            <option value="{{ $category->ps_catid }}" {{ old('ps_catid') == $category->ps_catid ? 'selected' : '' }}>
-                                {{ $category->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('ps_catid') <span class="error">{{ $message }}</span> @enderror
-                </div>
 
-                <div style="grid-column: span 2;">
-                    <label for="description">Description</label>
-                    <textarea id="description" name="description" rows="3">{{ old('description') }}</textarea>
-                </div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
+            <div>
+                <label for="type" style="font-size: 0.82rem;">Type *</label>
+                <select id="type" name="type" required style="padding: 0.4rem 0.5rem; font-size: 0.875rem;">
+                    <option value="product" {{ old('type') == 'product' ? 'selected' : '' }}>Product</option>
+                    <option value="service" {{ old('type', 'service') == 'service' ? 'selected' : '' }}>Service</option>
+                </select>
+                @error('type') <span class="error">{{ $message }}</span> @enderror
             </div>
-
-            @php
-                $existingCostings = old('costings', [[
-                    'currency_code' => $defaultCurrency ?? 'INR',
-                    'cost_price' => '',
-                    'selling_price' => '',
-                    'sac_code' => '',
-                    'tax_rate' => '',
-                    'tax_included' => 'no',
-                ]]);
-
-                $existingAddons = old('addons', []);
-                $currencies = $currencies ?? collect();
-            @endphp
-
-            <div class="panel-card" style="margin-top: 1rem; border: 1px dashed var(--line);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                    <div>
-                        <p class="eyebrow" style="margin: 0;">Costings</p>
-                        <strong>Add pricing per currency</strong>
-                    </div>
-                    <div style="display: flex; gap: 0.75rem;">
-                        <button type="button" class="text-link" id="add-costing-row">+ Add currency</button>
-                    </div>
-                </div>
-                <div style="overflow-x: auto;">
-                    <table class="data-table" style="min-width: 600px;" id="costings-table">
-                        <thead>
-                            <tr>
-                                <th>Currency</th>
-                                <th>Cost Price</th>
-                                <th>Selling Price</th>
-                                <th>SAC Code</th>
-                                <th>Tax Type</th>
-                                <th>Tax %</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="costing-rows">
-                            @foreach($existingCostings as $index => $costing)
-                                <tr>
-                                    <td>
-                                        <select name="costings[{{ $index }}][currency_code]" style="min-width: 180px;" required>
-                                            <option value="">Select</option>
-                                            @foreach($currencies as $currency)
-                                                <option value="{{ $currency->iso }}" {{ ($costing['currency_code'] ?? '') === $currency->iso ? 'selected' : '' }}>
-                                                    {{ $currency->iso }} - {{ $currency->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                    <td><input type="number" step="0.01" name="costings[{{ $index }}][cost_price]" value="{{ $costing['cost_price'] ?? '' }}" required></td>
-                                    <td><input type="number" step="0.01" name="costings[{{ $index }}][selling_price]" value="{{ $costing['selling_price'] ?? '' }}" required></td>
-                                    <td><input type="text" maxlength="20" name="costings[{{ $index }}][sac_code]" value="{{ $costing['sac_code'] ?? '' }}"></td>
-                                    <td>
-                                        <select name="costings[{{ $index }}][tax_included]" style="min-width: 120px;" required>
-                                            <option value="no" {{ ($costing['tax_included'] ?? 'no') === 'no' ? 'selected' : '' }}>Excl. Tax</option>
-                                            <option value="yes" {{ ($costing['tax_included'] ?? 'no') === 'yes' ? 'selected' : '' }}>Incl. Tax</option>
-                                        </select>
-                                    </td>
-                                    <td><input type="number" step="0.01" min="0" max="100" name="costings[{{ $index }}][tax_rate]" value="{{ $costing['tax_rate'] ?? '' }}"></td>
-                                    <td style="width: 70px; text-align: center;">
-                                        <button type="button" class="icon-action-btn delete remove-costing"><i class="fas fa-trash"></i></button>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-                <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
-                    <button type="button" class="primary-button" id="save-service-btn" style="font-size: 0.875rem; padding: 0.4rem 0.8rem;">Save Service</button>
-                </div>
+            <div>
+                <label for="sync" style="font-size: 0.82rem;">Sync</label>
+                <label class="custom-checkbox" style="display: flex; align-items: center; margin-top: 0.25rem; cursor: pointer;">
+                    <input type="hidden" name="sync" value="no">
+                    <input type="checkbox" name="sync" value="yes" id="sync" {{ old('sync') == 'yes' ? 'checked' : '' }}>
+                </label>
+                @error('sync') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div style="grid-column: span 2;">
+                <label for="ps_catid" style="font-size: 0.82rem;">Category</label>
+                <select id="ps_catid" name="ps_catid" style="padding: 0.4rem 0.5rem; font-size: 0.875rem;">
+                    <option value="">-- No Category --</option>
+                    @foreach($categories as $category)
+                    <option value="{{ $category->ps_catid }}" {{ old('ps_catid') == $category->ps_catid ? 'selected' : '' }}>
+                        {{ $category->name }}
+                    </option>
+                    @endforeach
+                </select>
+                @error('ps_catid') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div style="grid-column: span 2;">
+                <label for="name" style="font-size: 0.82rem;">Item Name *</label>
+                <input type="text" id="name" name="name" value="{{ old('name') }}" required style="padding: 0.4rem 0.5rem; font-size: 0.875rem;">
+                @error('name') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div style="grid-column: span 2;">
+                <label for="description" style="font-size: 0.82rem;">Description</label>
+                <textarea id="description" name="description" rows="2" style="padding: 0.4rem 0.5rem; font-size: 0.875rem;">{{ old('description') }}</textarea>
+                @error('description') <span class="error">{{ $message }}</span> @enderror
             </div>
         </div>
 
-        <h4 id="saved-service-heading" style="margin: 1rem 0 0 0; display: none; color: #1f2937;"></h4>
+        @php
+            $existingCostings = collect(old('costings', [[
+                'currency_code' => $defaultCurrency ?? 'INR',
+                'cost_price' => '',
+                'selling_price' => '',
+                'sac_code' => '',
+                'tax_rate' => '',
+                'tax_included' => 'no',
+            ]]))->values()->all();
+            $selectedAddonIds = collect(old('addons', []))->values()->all();
+        @endphp
 
-        <div class="panel-card" id="addon-question-panel" style="margin-top: 1rem; border: 1px dashed var(--line); display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <strong>Do you want to add add-on items for this service?</strong>
-                </div>
-                <div style="display: flex; gap: 1rem;">
-                    <label class="custom-radio">
-                        <input type="radio" name="has_addons_toggle" value="yes" id="has-addons-yes">
-                        <span class="radio-label">Yes</span>
-                    </label>
-                    <label class="custom-radio">
-                        <input type="radio" name="has_addons_toggle" value="no" id="has-addons-no" checked>
-                        <span class="radio-label">No</span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <div class="panel-card" id="addon-section" style="margin-top: 1rem; border: 1px dashed var(--line); display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                <div>
-                    <p class="eyebrow" style="margin: 0;" id="addon-section-title">Service Add-on Items</p>
-                    <strong id="service-name-heading">Add item details and save to list below</strong>
-                </div>
-            </div>
-
-            <div class="panel-card" style="border:1px solid var(--line);">
-                <div class="form-grid" style="margin-bottom:0.7rem;">
-                    <div>
-                        <label for="addon-name">Item Name *</label>
-                        <input type="text" id="addon-name" maxlength="150" required>
-                    </div>
-
-                    <div style="grid-column: span 2;">
-                        <label for="addon-description">Description</label>
-                        <input type="text" id="addon-description">
-                    </div>
-                </div>
-
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                    <strong>Item Costings</strong>
-                    <button type="button" class="text-link" id="add-addon-costing-row">+ Add currency</button>
-                </div>
-
-                <div style="overflow-x:auto;">
-                    <table class="data-table" style="min-width: 700px;">
-                        <thead>
-                            <tr>
-                                <th>Currency</th>
-                                <th>Cost Price</th>
-                                <th>Selling Price</th>
-                                <th>SAC Code</th>
-                                <th>Tax Type</th>
-                                <th>Tax %</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="addon-costing-rows"></tbody>
-                    </table>
-                </div>
-
-                <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
-                    <button type="button" class="text-link" id="reset-addon-form">Clear Form</button>
-                    <button type="button" class="primary-button" id="save-addon-item-btn" style="font-size: 0.875rem; padding: 0.4rem 0.8rem;">Save Item</button>
+        <div style="border-top: 1px solid var(--line); padding-top: 1rem; margin-top: 1rem;">
+            <div style="position: relative; max-width: 480px;" id="addons-dropdown-wrap">
+                <button type="button" class="secondary-button" id="addons-toggle" style="width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; font-size: 0.82rem;">
+                    <span id="addons-selected-label">Select add-ons</span>
+                    <span aria-hidden="true">&#9662;</span>
+                </button>
+                <div id="addons-dropdown" style="display: none; position: absolute; left: 0; right: 0; top: calc(100% + 0.35rem); background: #fff; border: 1px solid var(--line); border-radius: 0.5rem; padding: 0.65rem; max-height: 260px; overflow: auto; z-index: 20;">
+                    @forelse($availableAddonItems as $item)
+                        <label class="custom-checkbox" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; font-size: 0.85rem;">
+                            <input type="checkbox" value="{{ $item->itemid }}" data-item-name="{{ $item->name }}" class="addon-checkbox" {{ in_array($item->itemid, $selectedAddonIds, true) ? 'checked' : '' }}>
+                            <span class="checkbox-label">{{ $item->name }}</span>
+                            <span style="color: #64748b; font-size: 0.75rem;">({{ ucfirst($item->type ?? 'service') }})</span>
+                        </label>
+                    @empty
+                        <p style="margin: 0; color: #64748b; font-size: 0.82rem;">No existing items available.</p>
+                    @endforelse
                 </div>
             </div>
-
-            <div style="margin-top: 1rem;">
-                <strong>Saved Add-on Items</strong>
-                <div style="overflow-x:auto; margin-top: 0.5rem;">
-                    <table class="data-table" style="min-width: 700px;">
-                        <thead>
-                            <tr>
-                                <th style="width: 80px;">#</th>
-                                <th>Item Name</th>
-                                <th>Selling Price</th>
-                            </tr>
-                        </thead>
-                        <tbody id="saved-addon-list-body">
-                            <tr id="saved-addon-empty-row">
-                                <td colspan="3" style="text-align:center; color:#64748b;">No items saved yet.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
+            <div id="addons-hidden-inputs"></div>
+            <div id="saved-addons-list" style="margin-top: 0.35rem; display: flex; flex-wrap: wrap; gap: 0.35rem;"></div>
             @error('addons') <span class="error">{{ $message }}</span> @enderror
-            @error('addons.*.name') <span class="error">{{ $message }}</span> @enderror
-            @error('addons.*.costings') <span class="error">{{ $message }}</span> @enderror
-            @error('addons.*.costings.*.currency_code') <span class="error">{{ $message }}</span> @enderror
-            @error('addons.*.costings.*.cost_price') <span class="error">{{ $message }}</span> @enderror
-            @error('addons.*.costings.*.selling_price') <span class="error">{{ $message }}</span> @enderror
-            @error('addons.*.costings.*.tax_rate') <span class="error">{{ $message }}</span> @enderror
-            @error('addons.*.costings.*.tax_included') <span class="error">{{ $message }}</span> @enderror
+            @error('addons.*') <span class="error">{{ $message }}</span> @enderror
         </div>
 
-        <div class="form-actions">
-            <a href="{{ route('services.index') }}" class="text-link">Back to services</a>
+        <div style="border-top: 1px solid var(--line); padding-top: 1rem; margin-top: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <div>
+                    <p class="eyebrow" style="margin: 0; font-size: 0.75rem;">Item Costings</p>
+                    <strong style="font-size: 0.875rem;">Add pricing per currency</strong>
+                </div>
+                <button type="button" class="text-link" id="add-costing-row" style="font-size: 0.82rem;">+ Add currency</button>
+            </div>
+
+            <p id="costings-empty-state" style="margin: 0 0 0.45rem 0; color: #64748b; font-size: 0.8rem; display:none;">
+                No pricing rows yet. Click + Add currency.
+            </p>
+
+            <div id="costings-table-wrap" style="overflow-x: auto;">
+                <table class="data-table" style="min-width: 600px; font-size: 0.82rem;" id="costings-table">
+                    <thead>
+                        <tr>
+                            <th>Currency</th>
+                            <th>Cost Price</th>
+                            <th>Selling Price</th>
+                            <th>SAC Code</th>
+                            <th>Tax Type</th>
+                            <th>Tax %</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="costing-rows">
+                        @foreach($existingCostings as $index => $costing)
+                            <tr>
+                                <td>
+                                    <select name="costings[{{ $index }}][currency_code]" style="min-width: 150px; padding: 0.3rem;" required>
+                                        <option value="">Select</option>
+                                        @foreach($currencies as $currency)
+                                            <option value="{{ $currency->iso }}" {{ ($costing['currency_code'] ?? '') === $currency->iso ? 'selected' : '' }}>
+                                                {{ $currency->iso }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td><input type="number" step="0.01" name="costings[{{ $index }}][cost_price]" value="{{ $costing['cost_price'] ?? '' }}" required style="padding: 0.3rem; width: 100px;"></td>
+                                <td><input type="number" step="0.01" name="costings[{{ $index }}][selling_price]" value="{{ $costing['selling_price'] ?? '' }}" required style="padding: 0.3rem; width: 100px;"></td>
+                                <td><input type="text" maxlength="20" name="costings[{{ $index }}][sac_code]" value="{{ $costing['sac_code'] ?? '' }}" style="padding: 0.3rem; width: 80px;"></td>
+                                <td>
+                                    <select name="costings[{{ $index }}][tax_included]" style="min-width: 100px; padding: 0.3rem;" required>
+                                        <option value="no" {{ ($costing['tax_included'] ?? 'no') === 'no' ? 'selected' : '' }}>Excl.</option>
+                                        <option value="yes" {{ ($costing['tax_included'] ?? 'no') === 'yes' ? 'selected' : '' }}>Incl.</option>
+                                    </select>
+                                </td>
+                                <td><input type="number" step="0.01" min="0" max="100" name="costings[{{ $index }}][tax_rate]" value="{{ $costing['tax_rate'] ?? '' }}" style="padding: 0.3rem; width: 70px;"></td>
+                                <td style="width: 60px; text-align: center;">
+                                    <button type="button" class="icon-action-btn delete remove-costing" style="padding: 0.25rem;"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="saved-items-panel" style="border-top: 1px solid var(--line); padding-top: 1rem; margin-top: 1rem; display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 0.85rem;">Saved Items</strong>
+                <span id="saved-items-count" style="color: #64748b; font-size: 0.78rem;">0 saved</span>
+            </div>
+            <div id="saved-items-list" style="margin-top: 0.45rem; display: flex; flex-direction: column; gap: 0.35rem;"></div>
+        </div>
+
+        <div class="form-actions" style="margin-top: 1rem;">
+            <button type="button" id="save-item-stay-btn" class="primary-button" style="padding: 0.4rem 1rem; font-size: 0.875rem;">Save Item</button>
+            <a href="{{ route('services.index') }}" class="text-link">Back to items</a>
         </div>
     </form>
 </section>
 
 <script>
 (function() {
-    const serviceIdInput = document.getElementById('serviceid');
-    const serviceNameInput = document.getElementById('name');
-    const servicePageTitle = document.getElementById('service-page-title');
-
     const costingTableBody = document.getElementById('costing-rows');
+    const costingTableWrap = document.getElementById('costings-table-wrap');
+    const costingEmptyState = document.getElementById('costings-empty-state');
+    const saveItemStayBtn = document.getElementById('save-item-stay-btn');
+    const savedItemsPanel = document.getElementById('saved-items-panel');
+    const savedItemsList = document.getElementById('saved-items-list');
+    const savedItemsCount = document.getElementById('saved-items-count');
     let costingRowIndex = costingTableBody.rows.length;
-
-    const addonQuestionPanel = document.getElementById('addon-question-panel');
-    const addonToggleYes = document.getElementById('has-addons-yes');
-    const addonToggleNo = document.getElementById('has-addons-no');
-    const addonSection = document.getElementById('addon-section');
-    const addonSectionTitle = document.getElementById('addon-section-title');
-    const serviceNameHeading = document.getElementById('service-name-heading');
-    const serviceFormSection = document.getElementById('service-form-section');
-    const savedServiceHeading = document.getElementById('saved-service-heading');
-
-    const addonNameInput = document.getElementById('addon-name');
-    const addonDescriptionInput = document.getElementById('addon-description');
-    const addonCostingRows = document.getElementById('addon-costing-rows');
-    const savedAddonListBody = document.getElementById('saved-addon-list-body');
-
-    const existingAddons = @json(collect($existingAddons)->values());
+    const editUrlTemplate = @json(route('services.edit', ['service' => '__ITEMID__']));
 
     const currencyOptionsHtml = @json(
         collect($currencies)->map(function ($currency) {
@@ -265,352 +179,277 @@
         })->implode('')
     );
 
-    function mainCostingRowHtml(index, data = {}) {
+    function syncCostingTableVisibility() {
+        const hasRows = costingTableBody.querySelectorAll('tr').length > 0;
+        costingTableWrap.style.display = hasRows ? 'block' : 'none';
+        costingEmptyState.style.display = hasRows ? 'none' : 'block';
+    }
+
+    function costingRowHtml(index) {
         return `
             <tr>
                 <td>
-                    <select name="costings[${index}][currency_code]" style="min-width: 180px;" required>
+                    <select name="costings[${index}][currency_code]" style="min-width: 150px; padding: 0.3rem;" required>
                         <option value="">Select</option>
                         ${currencyOptionsHtml}
                     </select>
                 </td>
-                <td><input type="number" step="0.01" name="costings[${index}][cost_price]" value="${data.cost_price || ''}" required></td>
-                <td><input type="number" step="0.01" name="costings[${index}][selling_price]" value="${data.selling_price || ''}" required></td>
-                <td><input type="text" maxlength="20" name="costings[${index}][sac_code]" value="${data.sac_code || ''}"></td>
+                <td><input type="number" step="0.01" name="costings[${index}][cost_price]" required style="padding: 0.3rem; width: 100px;"></td>
+                <td><input type="number" step="0.01" name="costings[${index}][selling_price]" required style="padding: 0.3rem; width: 100px;"></td>
+                <td><input type="text" maxlength="20" name="costings[${index}][sac_code]" style="padding: 0.3rem; width: 80px;"></td>
                 <td>
-                    <select name="costings[${index}][tax_included]" style="min-width: 120px;" required>
-                        <option value="no">Excl. Tax</option>
-                        <option value="yes">Incl. Tax</option>
+                    <select name="costings[${index}][tax_included]" style="min-width: 100px; padding: 0.3rem;" required>
+                        <option value="no" selected>Excl.</option>
+                        <option value="yes">Incl.</option>
                     </select>
                 </td>
-                <td><input type="number" step="0.01" min="0" max="100" name="costings[${index}][tax_rate]" value="${data.tax_rate || ''}"></td>
-                <td style="width: 70px; text-align: center;"><button type="button" class="icon-action-btn delete remove-costing"><i class="fas fa-trash"></i></button></td>
+                <td><input type="number" step="0.01" min="0" max="100" name="costings[${index}][tax_rate]" style="padding: 0.3rem; width: 70px;"></td>
+                <td style="width: 60px; text-align: center;">
+                    <button type="button" class="icon-action-btn delete remove-costing" style="padding: 0.25rem;"><i class="fas fa-trash"></i></button>
+                </td>
             </tr>
         `;
     }
 
-    function addonCostingRowHtml(data = {}) {
-        return `
-            <tr>
-                <td>
-                    <select class="addon-currency" style="min-width: 180px;" required>
-                        <option value="">Select</option>
-                        ${currencyOptionsHtml}
-                    </select>
-                </td>
-                <td><input type="number" step="0.01" class="addon-cost-price" value="${data.cost_price || ''}" required></td>
-                <td><input type="number" step="0.01" class="addon-selling-price" value="${data.selling_price || ''}" required></td>
-                <td><input type="text" maxlength="20" class="addon-sac-code" value="${data.sac_code || ''}"></td>
-                <td>
-                    <select class="addon-tax-included" style="min-width: 120px;" required>
-                        <option value="no">Excl. Tax</option>
-                        <option value="yes">Incl. Tax</option>
-                    </select>
-                </td>
-                <td><input type="number" step="0.01" min="0" max="100" class="addon-tax-rate" value="${data.tax_rate || ''}"></td>
-                <td style="width: 70px; text-align: center;"><button type="button" class="icon-action-btn delete remove-addon-costing"><i class="fas fa-trash"></i></button></td>
-            </tr>
-        `;
-    }
-
-    function addMainCostingRow() {
-        const row = document.createElement('tbody');
-        row.innerHTML = mainCostingRowHtml(costingRowIndex);
-        costingTableBody.appendChild(row.firstElementChild);
+    document.getElementById('add-costing-row').addEventListener('click', function() {
+        const row = document.createElement('tr');
+        row.innerHTML = costingRowHtml(costingRowIndex).trim();
+        const select = row.querySelector('select[name^="costings"][name$="[currency_code]"]');
+        if (select) {
+            select.value = '{{ $defaultCurrency ?? "INR" }}';
+        }
+        costingTableBody.appendChild(row);
         costingRowIndex++;
-    }
-
-    function addAddonCostingRow(data = {}) {
-        const rowWrap = document.createElement('tbody');
-        rowWrap.innerHTML = addonCostingRowHtml(data);
-        const row = rowWrap.firstElementChild;
-
-        addonCostingRows.appendChild(row);
-        row.querySelector('.addon-currency').value = data.currency_code || '';
-        row.querySelector('.addon-tax-included').value = data.tax_included || 'no';
-    }
-
-    function setSavedServiceHeading(serviceName) {
-        if (!serviceName) {
-            servicePageTitle.innerText = 'Create New Service';
-            addonSectionTitle.innerText = 'Service Add-on Items';
-            serviceNameHeading.innerText = 'Add item details and save to list below';
-            return;
-        }
-
-        servicePageTitle.innerText = `Service Saved: ${serviceName}`;
-        addonSectionTitle.innerText = `Service Add-on Items for ${serviceName}`;
-        serviceNameHeading.innerText = `Add-on items for ${serviceName}`;
-        savedServiceHeading.innerText = serviceName;
-    }
-
-    function toggleServiceFormSection() {
-        const serviceSaved = Boolean(serviceIdInput.value);
-        serviceFormSection.style.display = serviceSaved ? 'none' : 'block';
-        savedServiceHeading.style.display = serviceSaved ? 'block' : 'none';
-
-        if (serviceSaved) {
-            savedServiceHeading.innerText = serviceNameInput.value.trim();
-        }
-    }
-
-    function toggleAddonSection() {
-        const serviceSaved = Boolean(serviceIdInput.value);
-        addonQuestionPanel.style.display = serviceSaved ? 'block' : 'none';
-
-        if (!serviceSaved) {
-            addonSection.style.display = 'none';
-            return;
-        }
-
-        addonSection.style.display = addonToggleYes.checked ? 'block' : 'none';
-    }
-
-    function resetAddonForm() {
-        addonNameInput.value = '';
-        addonDescriptionInput.value = '';
-        addonCostingRows.innerHTML = '';
-        addAddonCostingRow();
-    }
-
-    function appendSavedAddon(addonName, costings) {
-        const emptyRow = document.getElementById('saved-addon-empty-row');
-        if (emptyRow) {
-            emptyRow.remove();
-        }
-
-        const tr = document.createElement('tr');
-        const sequence = savedAddonListBody.querySelectorAll('tr').length + 1;
-
-        const tdSequence = document.createElement('td');
-        tdSequence.textContent = String(sequence);
-
-        const tdName = document.createElement('td');
-        tdName.textContent = addonName || '-';
-
-        const tdSellingPrice = document.createElement('td');
-        
-        // Create currency badges for all costings
-        if (Array.isArray(costings) && costings.length > 0) {
-            costings.forEach((costing, index) => {
-                if (index > 0) {
-                    tdSellingPrice.appendChild(document.createTextNode(' '));
-                }
-                
-                const badge = document.createElement('span');
-                badge.className = 'badge';
-                badge.style.cssText = 'display: inline-block; padding: 0.25rem 0.5rem; background: #e0e7ff; color: #4338ca; border-radius: 0.25rem; font-size: 0.75rem; margin-right: 0.25rem;';
-                badge.textContent = `${costing.currency_code} ${costing.selling_price}`;
-                tdSellingPrice.appendChild(badge);
-            });
-        } else {
-            tdSellingPrice.textContent = '-';
-        }
-
-        tr.appendChild(tdSequence);
-        tr.appendChild(tdName);
-        tr.appendChild(tdSellingPrice);
-        savedAddonListBody.appendChild(tr);
-    }
-
-    document.getElementById('add-costing-row').addEventListener('click', addMainCostingRow);
+        syncCostingTableVisibility();
+    });
 
     costingTableBody.addEventListener('click', function(e) {
         const removeButton = e.target.closest('.remove-costing');
         if (!removeButton) return;
-
-        if (costingTableBody.rows.length === 1) {
-            alert('At least one costing is required.');
+        if (costingTableBody.querySelectorAll('tr').length === 1) {
+            alert('At least one costing row is required.');
             return;
         }
-
         removeButton.closest('tr').remove();
+        syncCostingTableVisibility();
     });
 
-    document.getElementById('add-addon-costing-row').addEventListener('click', function() {
-        addAddonCostingRow();
-    });
+    const dropdownWrap = document.getElementById('addons-dropdown-wrap');
+    const dropdown = document.getElementById('addons-dropdown');
+    const toggle = document.getElementById('addons-toggle');
+    const selectedLabel = document.getElementById('addons-selected-label');
+    const savedAddonsList = document.getElementById('saved-addons-list');
+    const hiddenInputsWrap = document.getElementById('addons-hidden-inputs');
+    const initialSavedAddonIds = @json($selectedAddonIds);
+    const savedAddons = new Map();
 
-    addonCostingRows.addEventListener('click', function(e) {
-        const removeButton = e.target.closest('.remove-addon-costing');
-        if (!removeButton) return;
+    function refreshAddonLabel() {
+        const checked = dropdown.querySelectorAll('.addon-checkbox:checked').length;
+        selectedLabel.textContent = checked > 0 ? `${checked} item(s) selected` : 'Select add-ons';
+    }
 
-        if (addonCostingRows.querySelectorAll('tr').length === 1) {
-            alert('Each add-on item needs at least one costing row.');
+    function renderSavedAddons() {
+        savedAddonsList.innerHTML = '';
+        hiddenInputsWrap.innerHTML = '';
+
+        if (savedAddons.size === 0) {
+            const empty = document.createElement('span');
+            empty.style.color = '#64748b';
+            empty.style.fontSize = '0.78rem';
+            empty.textContent = 'No add-ons saved yet.';
+            savedAddonsList.appendChild(empty);
             return;
         }
 
-        removeButton.closest('tr').remove();
-    });
+        savedAddons.forEach((name, id) => {
+            const pill = document.createElement('span');
+            pill.style.cssText = 'display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.2rem 0.45rem; background: #f3f4f6; color: #374151; border-radius: 0.25rem; font-size: 0.75rem;';
+            pill.innerHTML = `${name} <button type="button" data-remove-addon-id="${id}" style="border:none;background:transparent;color:#6b7280;cursor:pointer;font-size:0.82rem;line-height:1;">x</button>`;
+            savedAddonsList.appendChild(pill);
 
-    document.getElementById('reset-addon-form').addEventListener('click', resetAddonForm);
-
-    addonToggleYes.addEventListener('change', toggleAddonSection);
-    addonToggleNo.addEventListener('change', toggleAddonSection);
-
-    document.getElementById('save-service-btn').addEventListener('click', function() {
-        const btn = this;
-        const originalText = btn.innerText;
-        btn.disabled = true;
-        btn.innerText = 'Saving...';
-
-        const serviceid = serviceIdInput.value;
-        const type = document.getElementById('type').value;
-        const sync = document.getElementById('sync').checked ? 'yes' : 'no';
-        const name = serviceNameInput.value;
-        const ps_catid = document.getElementById('ps_catid').value;
-        const description = document.getElementById('description').value;
-
-        const costings = [];
-        costingTableBody.querySelectorAll('tr').forEach((row) => {
-            costings.push({
-                currency_code: row.querySelector(`[name*="[currency_code]"]`).value,
-                cost_price: row.querySelector(`[name*="[cost_price]"]`).value,
-                selling_price: row.querySelector(`[name*="[selling_price]"]`).value,
-                sac_code: row.querySelector(`[name*="[sac_code]"]`).value,
-                tax_included: row.querySelector(`[name*="[tax_included]"]`).value,
-                tax_rate: row.querySelector(`[name*="[tax_rate]"]`).value,
-            });
-        });
-
-        fetch("{{ route('services.ajax-save') }}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify({
-                serviceid, type, sync, name, ps_catid, description, costings
-            }),
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.message || 'Server error');
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                serviceIdInput.value = data.serviceid;
-                setSavedServiceHeading(name.trim());
-                toggleServiceFormSection();
-                toggleAddonSection();
-                alert(data.message);
-            } else {
-                alert('Error: ' + (data.message || 'Something went wrong'));
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error: ' + error.message);
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.innerText = originalText;
-        });
-    });
-
-    document.getElementById('save-addon-item-btn').addEventListener('click', function() {
-        const btn = this;
-        const serviceid = serviceIdInput.value;
-
-        if (!serviceid) {
-            alert('Please save the main service details first.');
-            return;
-        }
-
-        const addonName = addonNameInput.value.trim();
-        const addonDescription = addonDescriptionInput.value.trim();
-
-        if (!addonName) {
-            alert('Please enter item name.');
-            addonNameInput.focus();
-            return;
-        }
-
-        const costings = [];
-        let hasInvalidCosting = false;
-
-        addonCostingRows.querySelectorAll('tr').forEach((row) => {
-            const costing = {
-                currency_code: row.querySelector('.addon-currency').value,
-                cost_price: row.querySelector('.addon-cost-price').value,
-                selling_price: row.querySelector('.addon-selling-price').value,
-                sac_code: row.querySelector('.addon-sac-code').value,
-                tax_included: row.querySelector('.addon-tax-included').value,
-                tax_rate: row.querySelector('.addon-tax-rate').value,
-            };
-
-            if (!costing.currency_code || costing.cost_price === '' || costing.selling_price === '') {
-                hasInvalidCosting = true;
-            }
-
-            costings.push(costing);
-        });
-
-        if (costings.length === 0 || hasInvalidCosting) {
-            alert('Please complete all required costing fields.');
-            return;
-        }
-
-        const originalText = btn.innerText;
-        btn.disabled = true;
-        btn.innerText = 'Saving...';
-
-        fetch("{{ route('services.addons.ajax-save') }}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify({
-                serviceid,
-                name: addonName,
-                description: addonDescription,
-                costings
-            }),
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.message || 'Server error');
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                appendSavedAddon(addonName, costings);
-                resetAddonForm();
-                alert(data.message);
-            } else {
-                alert('Error: ' + (data.message || 'Something went wrong'));
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error: ' + error.message);
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.innerText = originalText;
-        });
-    });
-
-    if (existingAddons.length > 0) {
-        existingAddons.forEach((addon) => {
-            appendSavedAddon(addon.name, addon.costings || []);
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'addons[]';
+            hidden.value = id;
+            hiddenInputsWrap.appendChild(hidden);
         });
     }
 
-    resetAddonForm();
-    setSavedServiceHeading(serviceIdInput.value ? serviceNameInput.value.trim() : '');
-    toggleServiceFormSection();
-    toggleAddonSection();
+    function collectCostingsFromRows() {
+        const rows = Array.from(costingTableBody.querySelectorAll('tr'));
+        const costings = [];
+
+        rows.forEach((row) => {
+            const currency = row.querySelector('select[name*="[currency_code]"]')?.value || '';
+            const costPrice = row.querySelector('input[name*="[cost_price]"]')?.value || '';
+            const sellingPrice = row.querySelector('input[name*="[selling_price]"]')?.value || '';
+            const sacCode = row.querySelector('input[name*="[sac_code]"]')?.value || '';
+            const taxIncluded = row.querySelector('select[name*="[tax_included]"]')?.value || 'no';
+            const taxRate = row.querySelector('input[name*="[tax_rate]"]')?.value || '';
+
+            if (currency || costPrice || sellingPrice || sacCode || taxRate) {
+                costings.push({
+                    currency_code: currency,
+                    cost_price: costPrice,
+                    selling_price: sellingPrice,
+                    sac_code: sacCode,
+                    tax_included: taxIncluded,
+                    tax_rate: taxRate
+                });
+            }
+        });
+
+        return costings;
+    }
+
+    function renderSavedItemRow(item) {
+        savedItemsPanel.style.display = 'block';
+        const editUrl = editUrlTemplate.replace('__ITEMID__', item.itemid);
+        const currencyCodes = Array.from(new Set((item.costings || [])
+            .map((c) => (c.currency_code || '').trim())
+            .filter((code) => code !== '')));
+        const currencyBadgesHtml = currencyCodes.length
+            ? currencyCodes.map((code) => `<span class="badge" style="display:inline-block;padding:0.2rem 0.45rem;background:#e0e7ff;color:#4338ca;border-radius:0.25rem;font-size:0.75rem;">${code}</span>`).join(' ')
+            : `<span style="color:#64748b;font-size:0.75rem;">No costings</span>`;
+
+        const row = document.createElement('div');
+        row.style.cssText = 'padding: 0.35rem 0.5rem; border: 1px solid var(--line); border-radius: 0.35rem; background: #fff; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; font-size: 0.82rem;';
+        row.innerHTML = `<div style="min-width:0;"><strong>${item.name}</strong><div style="margin-top:0.2rem;display:flex;flex-wrap:wrap;gap:0.3rem;">${currencyBadgesHtml}</div></div><a href="${editUrl}" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>`;
+        savedItemsList.prepend(row);
+
+        const count = savedItemsList.children.length;
+        savedItemsCount.textContent = `${count} saved`;
+    }
+
+    function resetAfterQuickSave() {
+        document.getElementById('type').value = 'service';
+        document.getElementById('sync').checked = false;
+        document.getElementById('name').value = '';
+        document.getElementById('ps_catid').value = '';
+        document.getElementById('description').value = '';
+
+        costingTableBody.innerHTML = '';
+        const firstRow = document.createElement('tr');
+        firstRow.innerHTML = costingRowHtml(0).trim();
+        const firstCurrency = firstRow.querySelector('select[name^="costings"][name$="[currency_code]"]');
+        if (firstCurrency) {
+            firstCurrency.value = '{{ $defaultCurrency ?? "INR" }}';
+        }
+        costingTableBody.appendChild(firstRow);
+        costingRowIndex = 1;
+        syncCostingTableVisibility();
+
+        savedAddons.clear();
+        dropdown.querySelectorAll('.addon-checkbox').forEach((cb) => {
+            cb.checked = false;
+        });
+        renderSavedAddons();
+        refreshAddonLabel();
+
+        document.getElementById('name').focus();
+    }
+
+    toggle.addEventListener('click', function () {
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!dropdownWrap.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+
+    dropdown.querySelectorAll('.addon-checkbox').forEach((cb) => {
+        cb.addEventListener('change', function () {
+            if (cb.checked) {
+                savedAddons.set(cb.value, cb.dataset.itemName || cb.value);
+            } else {
+                savedAddons.delete(cb.value);
+            }
+            refreshAddonLabel();
+            renderSavedAddons();
+        });
+    });
+
+    savedAddonsList.addEventListener('click', function (e) {
+        const btn = e.target.closest('button[data-remove-addon-id]');
+        if (!btn) return;
+        const id = btn.dataset.removeAddonId;
+        savedAddons.delete(id);
+        const checkbox = dropdown.querySelector(`.addon-checkbox[value="${id}"]`);
+        if (checkbox) {
+            checkbox.checked = false;
+        }
+        renderSavedAddons();
+        refreshAddonLabel();
+    });
+
+    initialSavedAddonIds.forEach((id) => {
+        const checkbox = dropdown.querySelector(`.addon-checkbox[value="${id}"]`);
+        if (checkbox) {
+            savedAddons.set(id, checkbox.dataset.itemName || id);
+        }
+    });
+
+    saveItemStayBtn.addEventListener('click', async function () {
+        const payload = {
+            type: document.getElementById('type').value,
+            sync: document.getElementById('sync').checked ? 'yes' : 'no',
+            name: document.getElementById('name').value.trim(),
+            ps_catid: document.getElementById('ps_catid').value || null,
+            description: document.getElementById('description').value.trim(),
+            addons: Array.from(savedAddons.keys()),
+            costings: collectCostingsFromRows()
+        };
+
+        if (!payload.name) {
+            alert('Item name is required.');
+            document.getElementById('name').focus();
+            return;
+        }
+
+        if (!payload.costings.length) {
+            alert('At least one costing row is required.');
+            return;
+        }
+
+        try {
+            saveItemStayBtn.disabled = true;
+            saveItemStayBtn.textContent = 'Saving...';
+
+            const res = await fetch("{{ route('services.ajax-save') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || 'Failed to save item.');
+            }
+
+            renderSavedItemRow({
+                name: payload.name,
+                type: payload.type,
+                itemid: data.itemid,
+                costings: payload.costings
+            });
+            resetAfterQuickSave();
+        } catch (error) {
+            alert(error.message || 'Unable to save item.');
+        } finally {
+            saveItemStayBtn.disabled = false;
+            saveItemStayBtn.textContent = 'Save Item';
+        }
+    });
+
+    syncCostingTableVisibility();
+    refreshAddonLabel();
+    renderSavedAddons();
 })();
 </script>
 @endsection

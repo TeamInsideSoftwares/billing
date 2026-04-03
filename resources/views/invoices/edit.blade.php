@@ -62,11 +62,11 @@
             {{-- Add Item Row --}}
             <div class="add-item-row form-grid" style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                 <div>
-                    <label for="item_serviceid">Service *</label>
-                    <select id="item_serviceid">
-                        <option value="">-- Select Service --</option>
+                    <label for="item_itemid">Item *</label>
+                    <select id="item_itemid">
+                        <option value="">-- Select Item --</option>
                         @foreach($services as $service)
-                            <option value="{{ $service->serviceid }}" 
+                            <option value="{{ $service->itemid }}" 
                                     data-unit-price="{{ $service->unit_price }}" 
                                     data-tax-rate="{{ $service->tax_rate ?? 18 }}">
                                 {{ $service->name }} (Rs {{ number_format($service->unit_price, 0) }})
@@ -95,7 +95,7 @@
             <table id="itemsTable" style="width: 100%; border-collapse: collapse; margin-bottom: 1rem;">
                 <thead>
                     <tr style="background: #f3f4f6;">
-                        <th style="padding: 1rem; text-align: left;">Service</th>
+                        <th style="padding: 1rem; text-align: left;">Item</th>
                         <th style="padding: 1rem; text-align: right; width: 100px;">Qty</th>
                         <th style="padding: 1rem; text-align: right; width: 120px;">Unit Price</th>
                         <th style="padding: 1rem; text-align: right; width: 100px;">Tax %</th>
@@ -107,7 +107,7 @@
                     @foreach($items as $item)
                         <tr data-item-id="{{ $loop->index + 1 }}">
                             <td style="padding: 1rem;">
-                                {{ $item->service->name ?? 'Custom Item' }}
+                                {{ $item->item->name ?? 'Custom Item' }}
                             </td>
                             <td style="padding: 1rem; text-align: right;">
                                 <input type="number" class="item-qty" value="{{ $item->quantity }}" min="0.01" step="0.01" style="width: 100px; text-align: right;">
@@ -165,8 +165,8 @@ document.addEventListener('DOMContentLoaded', function() {
         @foreach($items as $item)
             {
                 id: {{ $loop->index + 1 }},
-                serviceid: '{{ $item->serviceid }}',
-                service_name: '{{ $item->service->name ?? "Custom" }}',
+                itemid: '{{ $item->itemid }}',
+                item_name: '{{ $item->item->name ?? "Custom" }}',
                 quantity: {{ $item->quantity }},
                 unit_price: {{ $item->unit_price }},
                 tax_rate: {{ $item->tax_rate }},
@@ -179,8 +179,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const tbody = document.getElementById('itemsTbody');
     updateSummary();
 
-    // Service select change
-    document.getElementById('item_serviceid').addEventListener('change', function() {
+    // Item select change
+    document.getElementById('item_itemid').addEventListener('change', function() {
         const option = this.options[this.selectedIndex];
         if (option.value) {
             document.getElementById('item_unit_price').value = option.dataset.unitPrice || '0';
@@ -193,10 +193,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add Item
     document.getElementById('addItemBtn').addEventListener('click', function() {
-        const serviceId = document.getElementById('item_serviceid').value;
-        if (!serviceId) return alert('Select a service');
+        const serviceId = document.getElementById('item_itemid').value;
+        if (!serviceId) return alert('Select an item');
 
-        const serviceName = document.getElementById('item_serviceid').options[document.getElementById('item_serviceid').selectedIndex].text;
+        const serviceName = document.getElementById('item_itemid').options[document.getElementById('item_itemid').selectedIndex].text;
         const qty = parseFloat(document.getElementById('item_quantity').value) || 1;
         const unitPrice = parseFloat(document.getElementById('item_unit_price').value) || 0;
         const taxRate = parseFloat(document.getElementById('item_tax_rate').value) || 0;
@@ -206,8 +206,8 @@ document.addEventListener('DOMContentLoaded', function() {
         itemCounter++;
         const item = {
             id: itemCounter,
-            serviceid: serviceId,
-            service_name: serviceName,
+            itemid: serviceId,
+            item_name: serviceName,
             quantity: qty,
             unit_price: unitPrice,
             tax_rate: taxRate,
@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('formTaxTotal').value = taxTotal;
         document.getElementById('formGrandTotal').value = grandTotal;
         document.getElementById('formItemsData').value = JSON.stringify(items.map(item => ({
-            serviceid: item.serviceid,
+            itemid: item.itemid,
             quantity: item.quantity,
             unit_price: item.unit_price,
             tax_rate: item.tax_rate,
@@ -297,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function resetItemInputs() {
-        document.getElementById('item_serviceid').value = '';
+        document.getElementById('item_itemid').value = '';
         document.getElementById('item_quantity').value = 1;
         document.getElementById('item_unit_price').value = '';
         document.getElementById('item_tax_rate').value = '';
@@ -305,3 +305,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endsection
+
+

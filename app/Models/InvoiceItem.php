@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'invoiceid',
-    'serviceid',
+    'itemid',
     'item_name',
     'item_description',
     'quantity',
@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class InvoiceItem extends Model
 {
-protected $primaryKey = 'invoiceitemid';
+    protected $primaryKey = 'invoiceitemid';
 
     protected function idLength(): int
     {
@@ -44,8 +44,13 @@ protected $primaryKey = 'invoiceitemid';
         return $this->belongsTo(Invoice::class, 'invoiceid');
     }
 
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(Service::class, 'itemid', 'itemid');
+    }
+
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class, 'serviceid');
+        return $this->item();
     }
 }

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'quotationid',
-    'serviceid',
+    'itemid',
     'item_name',
     'item_description',
     'quantity',
@@ -45,8 +45,13 @@ class QuotationItem extends Model
         return $this->belongsTo(Quotation::class, 'quotationid');
     }
 
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(Service::class, 'itemid', 'itemid');
+    }
+
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class, 'serviceid');
+        return $this->item();
     }
 }

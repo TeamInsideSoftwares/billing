@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasAlphaNumericId;
-use App\Models\ServiceAddon;
-use App\Models\ServiceCosting;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,17 +17,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'name',
     'sequence',
     'description',
+    'addons',
     'is_active',
 ])]
 class Service extends Model
 {
-    protected $primaryKey = 'serviceid';
+    protected $table = 'items';
+    protected $primaryKey = 'itemid';
 
     use HasAlphaNumericId;
 
     public function getRouteKeyName(): string
     {
-        return 'serviceid';
+        return 'itemid';
     }
 
     protected function idLength(): int
@@ -41,6 +41,7 @@ class Service extends Model
     {
         return [
             'sequence' => 'integer',
+            'addons' => 'array',
             'is_active' => 'boolean',
         ];
     }
@@ -57,27 +58,26 @@ class Service extends Model
 
     public function invoiceItems(): HasMany
     {
-        return $this->hasMany(InvoiceItem::class, 'serviceid');
+        return $this->hasMany(InvoiceItem::class, 'itemid', 'itemid');
     }
 
     public function quotationItems(): HasMany
     {
-        return $this->hasMany(QuotationItem::class, 'serviceid');
+        return $this->hasMany(QuotationItem::class, 'itemid', 'itemid');
     }
 
     public function subscriptions(): HasMany
     {
-        return $this->hasMany(Subscription::class, 'serviceid');
+        return $this->hasMany(Subscription::class, 'itemid', 'itemid');
     }
 
     public function costings(): HasMany
     {
-        return $this->hasMany(ServiceCosting::class, 'serviceid', 'serviceid')->orderBy('currency_code');
+        return $this->hasMany(ServiceCosting::class, 'itemid', 'itemid')->orderBy('currency_code');
     }
 
-    public function addons(): HasMany
+    public function addonsLegacy(): HasMany
     {
-        return $this->hasMany(ServiceAddon::class, 'serviceid', 'serviceid')->orderBy('sequence')->orderBy('name');
+        return $this->hasMany(ServiceAddon::class, 'itemid', 'itemid')->orderBy('sequence')->orderBy('name');
     }
-
 }

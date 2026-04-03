@@ -19,7 +19,7 @@
                 <select id="clientid" name="clientid" required>
                     <option value="">-- Choose Client --</option>
                     @foreach($clients as $client)
-                        <option value="{{ $client->id }}" {{ old('clientid', $subscription->clientid) == $client->id ? 'selected' : '' }}>
+                        <option value="{{ $client->clientid }}" {{ old('clientid', $subscription->clientid) == $client->clientid ? 'selected' : '' }}>
                             {{ $client->business_name ?? $client->contact_name }}
                         </option>
                     @endforeach
@@ -27,16 +27,16 @@
                 @error('clientid') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="serviceid">Select Recurring Service *</label>
-                <select id="serviceid" name="serviceid" required>
-                    <option value="">-- Choose Service --</option>
+                <label for="itemid">Select Recurring Item *</label>
+                <select id="itemid" name="itemid" required>
+                    <option value="">-- Choose Item --</option>
                     @foreach($services as $service)
-                        <option value="{{ $service->id }}" {{ old('serviceid', $subscription->serviceid) == $service->id ? 'selected' : '' }}>
+                        <option value="{{ $service->itemid }}" {{ old('itemid', $subscription->itemid) == $service->itemid ? 'selected' : '' }}>
                             {{ $service->name }} (Rs {{ number_format($service->unit_price) }})
                         </option>
                     @endforeach
                 </select>
-                @error('serviceid') <span class="error">{{ $message }}</span> @enderror
+                @error('itemid') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="start_date">Start Date *</label>
@@ -69,4 +69,6 @@
     </form>
 </section>
 @endsection
+
+
 

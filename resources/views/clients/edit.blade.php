@@ -3,9 +3,7 @@
 @section('content')
 
 <section class="section-bar">
-    <div>
-        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Edit {{ $client->business_name ?? $client->contact_name }}</h3>
-    </div>
+    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Edit {{ $client->business_name ?? $client->contact_name }}</h3>
     <a href="{{ route('clients.index') }}" class="text-link">&larr; Back to clients</a>
 </section>
 
@@ -28,7 +26,7 @@
             <input type="hidden" name="accountid" value="{{ $client->accountid ?? auth()->user()->accountid ?? 'ACC0000001' }}">
         </div>
 
-<h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 0.5rem;">Client Details</h4>
+        <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 0.5rem;">Client Details</h4>
         <div class="form-grid">
             <div>
                 <label for="business_name">Business Name *</label>
@@ -119,7 +117,7 @@
             </div>
             <div style="grid-column: span 2;">
                 <label for="address_line_1">Address</label>
-                <input type="text" id="address_line_1" name="address_line_1" value="{{ old('address_line_1', $client->address_line_1) }}" maxlength="150">
+                <textarea id="address_line_1" name="address_line_1" rows="3" maxlength="300" style="resize: vertical;">{{ old('address_line_1', $client->address_line_1) }}</textarea>
             </div>
         </div>
 
@@ -128,14 +126,14 @@
             $selectedExistingBdId = old('existing_bd_id', $client->bd_id);
         @endphp
 
-<h4 style="margin-top: 1.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 0.5rem;">Billing Details</h4>
+        <h4 style="margin-top: 1.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 0.5rem;">Billing Details</h4>
         <div style="margin-bottom: 0.75rem;">
             <label class="custom-checkbox">
                 <input type="checkbox" id="billing_same_as_client" name="billing_same_as_client" value="1" {{ old('billing_same_as_client') ? 'checked' : '' }}>
                 <span class="checkbox-label">Keep billing details same as client details</span>
             </label>
         </div>
-        <div class="form-grid">
+        <div class="form-grid" style="border: 1px solid var(--line); border-radius: 0.6rem; background: #f8fafc; padding: 0.75rem;">
             <div style="grid-column: span 2;">
                 <label for="existing_bd_id">Select Existing Billing Business</label>
                 <select id="existing_bd_id" name="existing_bd_id">
@@ -167,10 +165,10 @@
                 <input type="email" id="billing_email" name="billing_email" value="{{ old('billing_email', $client->billingDetail->billing_email ?? '') }}">
                 @error('billing_email') <span class="error">{{ $message }}</span> @enderror
             </div>
-            <div style="grid-column: span 2;">
-                <label for="billing_address_line_1">Billing Address</label>
-                <input type="text" id="billing_address_line_1" name="billing_address_line_1" value="{{ old('billing_address_line_1', $client->billingDetail->address_line_1 ?? '') }}">
-                @error('billing_address_line_1') <span class="error">{{ $message }}</span> @enderror
+            <div>
+                <label for="billing_phone">Billing Phone</label>
+                <input type="text" id="billing_phone" name="billing_phone" value="{{ old('billing_phone', $client->billingDetail->phone ?? '') }}">
+                @error('billing_phone') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="billing_country">Billing Country</label>
@@ -193,15 +191,17 @@
                 </select>
                 @error('billing_city') <span class="error">{{ $message }}</span> @enderror
             </div>
-            <div>
-                <label for="billing_phone">Billing Phone</label>
-                <input type="text" id="billing_phone" name="billing_phone" value="{{ old('billing_phone', $client->billingDetail->phone ?? '') }}">
-                @error('billing_phone') <span class="error">{{ $message }}</span> @enderror
-            </div>
+            
             <div>
                 <label for="billing_postal_code">Billing Postal Code</label>
                 <input type="text" id="billing_postal_code" name="billing_postal_code" value="{{ old('billing_postal_code', $client->billingDetail->postal_code ?? '') }}" maxlength="20">
                 @error('billing_postal_code') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            
+            <div style="grid-column: span 2;">
+                <label for="billing_address_line_1">Billing Address</label>
+                <textarea id="billing_address_line_1" name="billing_address_line_1" rows="3" maxlength="300" style="resize: vertical;">{{ old('billing_address_line_1', $client->billingDetail->address_line_1 ?? '') }}</textarea>
+                @error('billing_address_line_1') <span class="error">{{ $message }}</span> @enderror
             </div>
         </div>
 
@@ -379,4 +379,3 @@
     }
 </script>
 @endsection
-

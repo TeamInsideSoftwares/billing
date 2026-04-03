@@ -47,7 +47,6 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/services/{service}', 'servicesUpdate')->name('services.update');
         Route::delete('/services/{service}', 'servicesDestroy')->name('services.destroy');
         Route::post('/services/ajax-save', 'servicesSaveAjax')->name('services.ajax-save');
-        Route::post('/services/addons/ajax-save', 'addonsSaveAjax')->name('services.addons.ajax-save');
     });
 
     Route::controller(InvoicesController::class)->group(function () {
@@ -135,3 +134,4 @@ Route::controller(SettingsController::class)->group(function () {
     // Route::controller(BillingUiController::class)->group(function () {
     // });
 });
+

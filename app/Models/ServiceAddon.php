@@ -21,7 +21,7 @@ class ServiceAddon extends Model
 
     protected $fillable = [
         'accountid',
-        'serviceid',
+        'itemid',
         'addon_code',
         'name',
         'sequence',
@@ -39,7 +39,7 @@ class ServiceAddon extends Model
 
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class, 'serviceid', 'serviceid');
+        return $this->belongsTo(Service::class, 'itemid', 'itemid');
     }
 
     public function costings(): HasMany
@@ -47,3 +47,4 @@ class ServiceAddon extends Model
         return $this->hasMany(ServiceAddonCosting::class, 'addonid', 'addonid')->orderBy('currency_code');
     }
 }
+
