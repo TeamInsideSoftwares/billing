@@ -10,9 +10,9 @@
     ];
     
     $sepOptions = [
+    'none' => 'No Separator',
         '-' => 'Hyphen (-)',
         '/' => 'Slash (/)',
-        'none' => 'No Separator',
     ];
 @endphp
 
@@ -24,6 +24,7 @@
                     <h4 style="margin-bottom: 0.75rem; font-size: 0.95rem;">Invoice Serial</h4>
                     <form method="POST" action="{{ route('account.billing.update') }}" id="billing-serial-form">
                         @csrf
+                        <input type="hidden" name="from_tab" value="financial-year">
                         @if(isset($editingBillingDetail))
                             <input type="hidden" name="account_bdid" value="{{ $editingBillingDetail->account_bdid }}">
                         @endif
@@ -74,7 +75,7 @@
                                         <label style="font-size: 0.65rem; color: #64748b; display: block; margin-bottom: 2px;">Separator</label>
                                         <select name="{{ $part }}_separator" style="width: 100%; padding: 0.35rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;">
                                             @foreach($sepOptions as $val => $text)
-                                                <option value="{{ $val }}" {{ ($editingBillingDetail->{$part.'_separator'} ?? '-') == $val ? 'selected' : '' }}>{{ $text }}</option>
+                                                <option value="{{ $val }}" {{ ($editingBillingDetail->{$part.'_separator'} ?? 'none') == $val ? 'selected' : '' }}>{{ $text }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -99,6 +100,7 @@
                     <h4 style="margin-bottom: 0.75rem; font-size: 0.95rem;">Quotation Serial</h4>
                     <form method="POST" action="{{ route('account.quotation.update') }}" id="quotation-serial-form">
                         @csrf
+                        <input type="hidden" name="from_tab" value="financial-year">
                         @if(isset($editingQuotationDetail))
                             <input type="hidden" name="account_qdid" value="{{ $editingQuotationDetail->account_qdid }}">
                         @endif
@@ -149,7 +151,7 @@
                                         <label style="font-size: 0.65rem; color: #64748b; display: block; margin-bottom: 2px;">Separator</label>
                                         <select name="{{ $part }}_separator" style="width: 100%; padding: 0.35rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;">
                                             @foreach($sepOptions as $val => $text)
-                                                <option value="{{ $val }}" {{ ($editingQuotationDetail->{$part.'_separator'} ?? '-') == $val ? 'selected' : '' }}>{{ $text }}</option>
+                                                <option value="{{ $val }}" {{ ($editingQuotationDetail->{$part.'_separator'} ?? 'none') == $val ? 'selected' : '' }}>{{ $text }}</option>
                                             @endforeach
                                         </select>
                                     </div>

@@ -42,7 +42,7 @@
                 @error('due_date') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="status">Status</label>
+                <label for="status">Status *</label>
                 <select id="status" name="status">
                     <option value="draft" {{ old('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                     <option value="sent" {{ old('status') == 'sent' ? 'selected' : '' }}>Sent</option>

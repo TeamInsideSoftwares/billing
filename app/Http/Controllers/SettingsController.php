@@ -146,10 +146,20 @@ class SettingsController extends Controller
             'state' => 'nullable|string|max:100',
             'country' => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:20',
+            'logo' => 'nullable|image|max:5120',
         ]);
 
         if (!empty($validated['fy_month']) && !empty($validated['fy_day'])) {
             $validated['fy_startdate'] = $validated['fy_month'] . '-' . $validated['fy_day'];
+        }
+
+        // Handle logo upload
+        if ($request->hasFile('logo')) {
+            if ($account->logo_path && \Storage::exists($account->logo_path)) {
+                \Storage::delete($account->logo_path);
+            }
+            $path = $request->file('logo')->store('logos', 'public');
+            $validated['logo_path'] = 'storage/' . $path;
         }
 
         $account->update($validated);
@@ -233,7 +243,8 @@ class SettingsController extends Controller
             AccountBillingDetail::create($validated);
         }
 
-        return redirect()->to(route('settings.index') . '#billing-details')->with('success', 'Billing details updated successfully.');
+        $redirectTo = $request->input('from_tab') === 'financial-year' ? '#financial-year' : '#billing-details';
+        return redirect()->to(route('settings.index') . $redirectTo)->with('success', 'Billing details updated successfully.');
     }
 
     public function accountQuotationUpdate(Request $request)
@@ -311,7 +322,8 @@ class SettingsController extends Controller
             AccountQuotationDetail::create($validated);
         }
 
-        return redirect()->to(route('settings.index') . '#quotation-details')->with('success', 'Quotation details updated successfully.');
+        $redirectTo = $request->input('from_tab') === 'financial-year' ? '#financial-year' : '#quotation-details';
+        return redirect()->to(route('settings.index') . $redirectTo)->with('success', 'Quotation details updated successfully.');
     }
 
     public function financialYearUpdate(Request $request)

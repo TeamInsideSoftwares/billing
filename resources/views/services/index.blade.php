@@ -10,17 +10,17 @@
             </p>
         @endif
     </div>
-    <div class="button-group" style="display: flex; gap: 0.75rem;">
+    <div>
         <a href="{{ route('services.create') }}" class="primary-button">Add Item</a>
-        <button class="secondary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal">Manage Categories</button>
+        <button class="secondary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal"><i class="fas fa-folder" style="margin-right: 5px;"></i>Manage Categories</button>
     </div>
 </section>
 
 <div class="modal fade" id="productCategoriesModal" tabindex="-1">
-    <div class="modal-dialog modal-md modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--line);">
-                <h5 class="modal-title" id="catModalTitle" style="font-size: 1.1rem; font-weight: 700;">Manage Categories</h5>
+    <div class="modal-dialog modal-md modal-dialog-centered" style="max-width: 650px;">
+        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header" style="padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
+                <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;"><i class="fas fa-folder" style="margin-right: 0.5rem; color: #64748b;"></i>Manage Categories</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" style="padding: 1.25rem;">
@@ -103,36 +103,44 @@
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th style="width: 40px;">#</th>
-                            <th>Type</th>
-                            <th>Item</th>
-                            <th>Costings</th>
-                            <th>Add-ons</th>
-                            <th>Status</th>
-                            <th></th>
+                            <th style="width: 35%;">Item</th>
+                            <th style="width: 8%;">Type</th>
+                            <th style="width: 18%;">Costings</th>
+                            <th style="width: 14%;">Add-ons</th>
+                            <th style="width: 8%;">Status</th>
+                            <th style="width: 8%;">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="services-sortable-body">
                     @foreach ($servicesInCategory as $index => $service)
-                        <tr draggable="true" data-service-id="{{ $service['record_id'] }}" style="cursor: move;">
-                            <td style="text-align: center; color: var(--text-muted); font-weight: 600; width: 40px;">{{ $index + 1 }}</td>
+                        <tr draggable="true" data-service-id="{{ $service['record_id'] }}" style="cursor: move; vertical-align: middle;">
                             <td>
-                                <span style="display: inline-block; padding: 0.15rem 0.4rem; border: 1px solid #e5e7eb; border-radius: 0.25rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; color: #374151; background: #f9fafb;">
+                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                    <div style="width: 36px; height: 36px; border-radius: 8px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0;">
+                                        <i class="fas fa-{{ $service['type'] === 'product' ? 'box' : 'cog' }}"></i>
+                                    </div>
+                                    <div>
+                                        <span style="display: inline-block; margin-right: 0.45rem; padding: 0.1rem 0.35rem; border-radius: 0.25rem; font-size: 0.7rem; background: #eef2f7; color: #475569;" data-seq-badge>{{ $service['sequence'] }}</span>
+                                        <strong style="font-size: 0.9rem;">{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $service['name']) : $service['name'] !!}</strong>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span style="display: inline-block; padding: 0.2rem 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.25rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; color: #374151; background: #f9fafb;">
                                     {{ $service['type'] ?? 'service' }}
                                 </span>
                             </td>
-                            <td><strong>{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $service['name']) : $service['name'] !!}</strong></td>
                             <td>
                                 @if(count($service['costings']) > 0)
                                     <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
                                         @foreach($service['costings'] as $costing)
-                                            <span style="display: inline-block; padding: 0.15rem 0.35rem; border: 1px solid #e5e7eb; border-radius: 0.25rem; font-size: 0.7rem; color: #374151; background: #f9fafb;">
+                                            <span style="display: inline-block; padding: 0.15rem 0.4rem; background: #f1f5f9; color: #475569; border-radius: 0.25rem; font-size: 0.72rem;">
                                                 {{ $costing['currency_code'] }} {{ number_format($costing['selling_price'], 0) }}
                                             </span>
                                         @endforeach
                                     </div>
                                 @else
-                                    <span style="color: var(--muted); font-size: 0.75rem;">No costings</span>
+                                    <span style="color: #94a3b8; font-size: 0.75rem;">No costings</span>
                                 @endif
                             </td>
                             <td>
@@ -145,12 +153,14 @@
                                         @endforeach
                                     </div>
                                 @else
-                                    <span style="color: var(--muted); font-size: 0.75rem;">-</span>
+                                    <span style="color: #94a3b8; font-size: 0.75rem;">—</span>
                                 @endif
                             </td>
-                            <td><span class="status-pill {{ strtolower($service['status']) }}">{{ $service['status'] }}</span></td>
-                            <td style="white-space: nowrap; width: 1%;">
-                                <div class="table-actions">
+                            <td>
+                                <span class="status-pill {{ strtolower($service['status']) }}">{{ $service['status'] }}</span>
+                            </td>
+                            <td style="vertical-align: middle; white-space: nowrap; width: 1%;">
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
                                     <a href="{{ route('services.edit', $service['record_id']) }}" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>
                                     <form method="POST" action="{{ route('services.destroy', $service['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $service['name'] }}?')">
                                         @csrf @method('DELETE')
@@ -204,18 +214,18 @@
                         this.before(draggedRow);
                     }
 
-                    updateRowNumbers(tbodyOfTarget);
+                    updateSequenceBadges(tbodyOfTarget);
                     saveOrder(tbodyOfTarget);
                 });
             });
         });
 
-        function updateRowNumbers(tbody) {
-            const rows = tbody.querySelectorAll('tr');
+        function updateSequenceBadges(tbody) {
+            const rows = tbody.querySelectorAll('tr[data-service-id]');
             rows.forEach((row, index) => {
-                const seqCell = row.querySelector('td:first-child');
-                if (seqCell) {
-                    seqCell.textContent = index + 1;
+                const badge = row.querySelector('[data-seq-badge]');
+                if (badge) {
+                    badge.textContent = index + 1;
                 }
             });
         }

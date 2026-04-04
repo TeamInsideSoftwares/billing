@@ -131,39 +131,80 @@ label {
 
 <!-- PERSONAL TAB -->
 <div id="personal" class="tab-content active">
-    <section class="panel-card">
-        <div style="margin-bottom: 1.5rem;">
-            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Business Information</h5>
-            <p style="font-size: 0.85rem; color: #64748b;">Manage your public profile and billing details for your organization.</p>
+    <section class="panel-card" style="padding: 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-building"></i></div>
+            <div>
+                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Business Information</h5>
+                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Manage your public profile and billing details</p>
+            </div>
         </div>
 
-        <form method="POST" action="{{ route('account.update') }}" class="form-grid">
+        @if ($errors->any())
+            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <strong style="color: #991b1b; font-size: 0.9rem;">Please fix the following errors:</strong>
+                </div>
+                <ul style="margin: 0; padding-left: 1.5rem; color: #b91c1c; font-size: 0.85rem;">
+                    @foreach ($errors->all() as $error)
+                        <li style="margin-bottom: 0.15rem;">{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <form method="POST" action="{{ route('account.update') }}" enctype="multipart/form-data" class="form-grid" style="grid-template-columns: repeat(4, 1fr); gap: 0.75rem;">
             @csrf
             @method('PUT')
 
-            <div>
-                <label class="required">Business Name *</label>
-                <input type="text" name="name" value="{{ old('name', $account->name ?? '') }}" required>
+            <!-- Logo Upload -->
+            <div style="grid-column: span 1;">
+                <label style="font-size: 0.8rem;">Company Logo</label>
+                <div style="border: 2px dashed #e2e8f0; border-radius: 8px; padding: 0.75rem; text-align: center; background: #f8fafc;">
+                    @if(!empty($account->logo_path))
+                        <img src="{{ asset($account->logo_path) }}" alt="Logo" id="logo-preview" style="max-width: 120px; max-height: 80px; border-radius: 6px; margin-bottom: 0.5rem; object-fit: contain;">
+                    @else
+                        <div id="logo-preview" style="width: 120px; height: 80px; margin: 0 auto 0.5rem; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: #e2e8f0; color: #94a3b8; font-size: 1.5rem;"><i class="fas fa-image"></i></div>
+                    @endif
+                    <input type="file" name="logo" id="logo-upload" accept="image/*" onchange="previewLogo(this)" style="font-size: 0.75rem; width: 100%;">
+                    <small style="color: #94a3b8; font-size: 0.7rem;">Square recommended. 5MB max.</small>
+                </div>
             </div>
 
             <div>
-                <label>Legal Entity Name</label>
-                <input type="text" name="legal_name" value="{{ old('legal_name', $account->legal_name ?? '') }}">
+                <label style="font-size: 0.8rem;" class="required">Business Name *</label>
+                <input type="text" name="name" value="{{ old('name', $account->name ?? '') }}" required style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
 
             <div>
-                <label class="required">Email *</label>
-                <input type="email" name="email" value="{{ old('email', $account->email ?? '') }}" required>
+                <label style="font-size: 0.8rem;">Legal Entity Name</label>
+                <input type="text" name="legal_name" value="{{ old('legal_name', $account->legal_name ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
 
             <div>
-                <label>Phone</label>
-                <input type="text" name="phone" value="{{ old('phone', $account->phone ?? '') }}">
+                <label style="font-size: 0.8rem;">Website</label>
+                <input type="text" name="website" value="{{ old('website', $account->website ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
 
             <div>
-                <label>Currency</label>
-                <select name="currency_code" style="width: 100%; padding: 0.45rem 0.6rem;">
+                <label style="font-size: 0.8rem;" class="required">Email *</label>
+                <input type="email" name="email" value="{{ old('email', $account->email ?? '') }}" required style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
+            </div>
+
+            <div>
+                <label style="font-size: 0.8rem;">Phone</label>
+                <input type="text" name="phone" value="{{ old('phone', $account->phone ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
+            </div>
+
+            <div>
+                <label style="font-size: 0.8rem;">Tax Number</label>
+                <input type="text" name="tax_number" value="{{ old('tax_number', $account->tax_number ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
+            </div>
+
+            <div>
+                <label style="font-size: 0.8rem;">Currency</label>
+                <select name="currency_code" style="font-size: 0.85rem; padding: 0.45rem 0.6rem; width: 100%;">
                     @foreach($currencies as $currency)
                         <option value="{{ $currency->iso }}" {{ old('currency_code', $account->currency_code ?? 'INR') == $currency->iso ? 'selected' : '' }}>
                             {{ $currency->iso }} - {{ $currency->name }}
@@ -173,42 +214,42 @@ label {
             </div>
 
             <div>
-                <label>Timezone</label>
-                <input type="text" name="timezone" value="{{ old('timezone', $account->timezone ?? 'Asia/Kolkata') }}">
+                <label style="font-size: 0.8rem;">Timezone</label>
+                <input type="text" name="timezone" value="{{ old('timezone', $account->timezone ?? 'Asia/Kolkata') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
 
             <div>
-                <label>Address</label>
-                <input type="text" name="address_line_1" value="{{ old('address_line_1', $account->address_line_1 ?? '') }}">
+                <label style="font-size: 0.8rem;">Address</label>
+                <input type="text" name="address_line_1" value="{{ old('address_line_1', $account->address_line_1 ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
 
             <div>
-                <label>Country</label>
-                <select name="country" class="country-select" data-selected="{{ old('country', $account->country ?? '') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
+                <label style="font-size: 0.8rem;">Country</label>
+                <select name="country" class="country-select" data-selected="{{ old('country', $account->country ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem; width: 100%;">
                     <option value="">Select Country</option>
                 </select>
             </div>
 
             <div>
-                <label>State</label>
-                <select name="state" class="state-select" data-selected="{{ old('state', $account->state ?? '') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
+                <label style="font-size: 0.8rem;">State</label>
+                <select name="state" class="state-select" data-selected="{{ old('state', $account->state ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem; width: 100%;">
                     <option value="">Select State</option>
                 </select>
             </div>
 
             <div>
-                <label>City</label>
-                <select name="city" class="city-select" data-selected="{{ old('city', $account->city ?? '') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
+                <label style="font-size: 0.8rem;">City</label>
+                <select name="city" class="city-select" data-selected="{{ old('city', $account->city ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem; width: 100%;">
                     <option value="">Select City</option>
                 </select>
             </div>
 
             <div>
-                <label>Postal Code</label>
-                <input type="text" name="postal_code" value="{{ old('postal_code', $account->postal_code ?? '') }}">
+                <label style="font-size: 0.8rem;">Postal Code</label>
+                <input type="text" name="postal_code" value="{{ old('postal_code', $account->postal_code ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
             <div>
-                <label>FY Start (Day & Month)</label>
+                <label style="font-size: 0.8rem;">FY Start (Day & Month)</label>
                 <div style="display: flex; gap: 0.5rem;">
                     @php
                         $currentFy = old('fy_startdate', $account->fy_startdate ?? '04-01');
@@ -216,22 +257,22 @@ label {
                         $curMonth = $parts[0] ?? '04';
                         $curDay = $parts[1] ?? '01';
                     @endphp
-                    <select name="fy_day" style="width: 80px; padding: 0.45rem 0.6rem;">
+                    <select name="fy_day" style="width: 80px; padding: 0.45rem 0.6rem; font-size: 0.85rem;">
                         @for ($i = 1; $i <= 31; $i++)
                             <option value="{{ sprintf('%02d', $i) }}" {{ $curDay == sprintf('%02d', $i) ? 'selected' : '' }}>{{ $i }}</option>
                         @endfor
                     </select>
-                    <select name="fy_month" style="flex: 1; padding: 0.45rem 0.6rem;">
+                    <select name="fy_month" style="flex: 1; padding: 0.45rem 0.6rem; font-size: 0.85rem;">
                         @foreach(['01'=>'January','02'=>'February','03'=>'March','04'=>'April','05'=>'May','06'=>'June','07'=>'July','08'=>'August','09'=>'September','10'=>'October','11'=>'November','12'=>'December'] as $mVal => $mName)
                             <option value="{{ $mVal }}" {{ $curMonth == $mVal ? 'selected' : '' }}>{{ $mName }}</option>
                         @endforeach
                     </select>
                 </div>
             </div>
-            
 
-            <div class="form-actions">
-                <button type="submit" class="primary-button">Update Profile</button>
+
+            <div class="form-actions" style="grid-column: span 4; margin-top: 0.75rem;">
+                <button type="submit" class="primary-button" style="padding: 0.5rem 1.5rem; font-size: 0.9rem;">Update Profile</button>
             </div>
         </form>
     </section>
@@ -239,91 +280,110 @@ label {
 
 <!-- FINANCIAL YEAR -->
 <div id="financial-year" class="tab-content">
-    <section class="panel-card">
-        <div style="margin-bottom: 1.5rem;">
-            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Add Financial Year</h5>
-            <p style="font-size: 0.85rem; color: #64748b;">Select the start and end years for your financial cycle.</p>
+    <section class="panel-card" style="padding: 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-calendar-alt"></i></div>
+            <div>
+                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Financial Year</h5>
+                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Configure your financial year and serial numbers</p>
+            </div>
         </div>
 
         @if ($errors->any())
-            <div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; margin-bottom: 1rem;">
-                <ul style="margin: 0; padding-left: 20px;">
+            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <strong style="color: #991b1b; font-size: 0.9rem;">Please fix the following errors:</strong>
+                </div>
+                <ul style="margin: 0; padding-left: 1.5rem; color: #b91c1c; font-size: 0.85rem;">
                     @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
+                        <li style="margin-bottom: 0.15rem;">{{ $error }}</li>
                     @endforeach
                 </ul>
             </div>
         @endif
 
-        <form method="POST" action="{{ route('financial-year.update') }}" style="display: flex; align-items: flex-end; gap: 12px; max-width: 500px; background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
-            @csrf
-            <div style="flex: 1;">
-                <label style="font-size: 0.75rem; color: #64748b; margin-bottom: 4px; display: block; font-weight: 600;">Start Year</label>
-                <select name="year_start" id="fy_year_start" required style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
-                    @php $currentYear = date('Y'); @endphp
-                    @for($y = $currentYear - 1; $y <= $currentYear + 1; $y++)
-                        <option value="{{ $y }}" {{ $y == $currentYear ? 'selected' : '' }}>{{ $y }}</option>
-                    @endfor
-                </select>
+        <div style="display: flex; gap: 1.25rem; align-items: flex-start;">
+            <!-- FY Form -->
+            <div style="flex: 0 0 50%;">
+                <h6 style="margin-bottom: 0.75rem; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Add Financial Year</h6>
+                <form method="POST" action="{{ route('financial-year.update') }}" style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+                    @csrf
+                    <div style="display: flex; align-items: flex-end; gap: 8px;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.75rem; color: #64748b; margin-bottom: 4px; display: block; font-weight: 600;">Start Year</label>
+                            <select name="year_start" id="fy_year_start" required style="width: 100%; padding: 0.45rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
+                                @php $currentYear = date('Y'); @endphp
+                                @for($y = $currentYear - 1; $y <= $currentYear + 1; $y++)
+                                    <option value="{{ $y }}" {{ $y == $currentYear ? 'selected' : '' }}>{{ $y }}</option>
+                                @endfor
+                            </select>
+                        </div>
+                        <span style="font-size: 1rem; font-weight: bold; color: #94a3b8;">-</span>
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.75rem; color: #64748b; margin-bottom: 4px; display: block; font-weight: 600;">End Year</label>
+                            <select name="year_end" id="fy_year_end" required style="width: 100%; padding: 0.45rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
+                                @for($y = $currentYear; $y <= $currentYear + 2; $y++)
+                                    <option value="{{ $y }}" {{ $y == $currentYear + 1 ? 'selected' : '' }}>{{ $y }}</option>
+                                @endfor
+                            </select>
+                        </div>
+                        <button type="submit" class="primary-button" style="padding: 0.45rem 1rem; height: 36px; font-size: 0.82rem;">Add</button>
+                    </div>
+                </form>
             </div>
-            <span style="font-size: 1.25rem; font-weight: bold; color: #94a3b8; margin-bottom: 8px;">-</span>
-            <div style="flex: 1;">
-                <label style="font-size: 0.75rem; color: #64748b; margin-bottom: 4px; display: block; font-weight: 600;">End Year</label>
-                <select name="year_end" id="fy_year_end" required style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
-                    @for($y = $currentYear; $y <= $currentYear + 2; $y++)
-                        <option value="{{ $y }}" {{ $y == $currentYear + 1 ? 'selected' : '' }}>{{ $y }}</option>
-                    @endfor
-                </select>
-            </div>
-            <button type="submit" class="primary-button" style="padding: 0.5rem 1.25rem; height: 38px;">Add FY</button>
-        </form>
 
-        <div style="margin-top: 2.5rem;">
-            <h5 style="margin-bottom: 1rem; color: #1e293b;">Recorded Financial Years</h5>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th style="width: 60px;">#</th>
-                        <th>Financial Year</th>
-                        <th>Status</th>
-                        <th style="text-align: right;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($financialYears as $index => $fy)
+            <!-- FY List -->
+            <div style="flex: 0 0 50%;">
+                <h6 style="margin-bottom: 0.75rem; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Recorded Financial Years</h6>
+                <table class="data-table" style="font-size: 0.82rem;">
+                    <thead>
                         <tr>
-                            <td style="color: #64748b; font-size: 0.85rem;">{{ $index + 1 }}</td>
-                            <td style="font-weight: 500;">{{ $fy->financial_year }}</td>
-                            <td>
-                                @if($fy->default)
-                                    <span style="background: #dcfce7; color: #166534; padding: 2px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">Default</span>
-                                @else
-                                    <span style="color: #94a3b8; font-size: 0.85rem;">-</span>
-                                @endif
-                            </td>
-                            <td style="text-align: right;">
-                                @if(!$fy->default)
-                                    <form method="POST" action="{{ route('financial-year.default', $fy->fy_id) }}" style="display: inline;">
-                                        @csrf
-                                        @method('PUT')
-                                        <button type="submit" class="text-link" style="background: none; border: 1px solid #3b82f6; color: #3b82f6; padding: 3px 10px; border-radius: 4px; font-size: 0.75rem; transition: all 0.2s;">Set Default</button>
-                                    </form>
-                                @endif
-                            </td>
+                            <th style="width: 30px;">#</th>
+                            <th>Financial Year</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Action</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" style="text-align: center; color: #94a3b8; padding: 2rem;">No financial years recorded.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @forelse ($financialYears as $index => $fy)
+                            <tr>
+                                <td style="color: #64748b; font-size: 0.78rem;">{{ $index + 1 }}</td>
+                                <td style="font-weight: 500; font-size: 0.83rem;">{{ $fy->financial_year }}</td>
+                                <td>
+                                    @if($fy->default)
+                                        <span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; text-transform: uppercase;">Default</span>
+                                    @else
+                                        <span style="color: #94a3b8; font-size: 0.78rem;">—</span>
+                                    @endif
+                                </td>
+                                <td style="text-align: right;">
+                                    @if(!$fy->default)
+                                        <form method="POST" action="{{ route('financial-year.default', $fy->fy_id) }}" style="display: inline;">
+                                            @csrf
+                                            @method('PUT')
+                                            <button type="submit" class="text-link" style="background: none; border: 1px solid #3b82f6; color: #3b82f6; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">Set Default</button>
+                                        </form>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: #94a3b8; padding: 1.25rem; font-size: 0.8rem;">No financial years yet.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <div style="margin-top: 2rem; border-top: 1px solid #f1f5f9; padding-top: 1.5rem;">
-            <h5 style="margin-bottom: 0.25rem; color: #1e293b; font-size: 1rem;">Serial Number Configuration</h5>
-            <p style="margin-bottom: 1rem; font-size: 0.8rem; color: #64748b;">Configure how your invoice and quotation numbers are generated.</p>
-
+        <!-- Serial Configuration -->
+        <div style="margin-top: 2rem; border-top: 1px solid #e5e7eb; padding-top: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-hashtag"></i></div>
+                <h6 style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #1e293b;">Serial Number Configuration</h6>
+            </div>
+            <p style="margin: 0.25rem 0 1rem 0; font-size: 0.75rem; color: #64748b;">Configure how invoice and quotation numbers are generated.</p>
             @include('settings.serial-config')
         </div>
     </section>
@@ -331,10 +391,13 @@ label {
 
 <!-- CONFIG -->
 <div id="config" class="tab-content">
-    <section class="panel-card">
-        <div style="margin-bottom: 1.5rem;">
-            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Configuration Keys</h5>
-            <p style="font-size: 0.85rem; color: #64748b;">Manage system-wide configuration keys for email and payment gateways.</p>
+    <section class="panel-card" style="padding: 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-cog"></i></div>
+            <div>
+                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Configuration Keys</h5>
+                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Manage system-wide configuration keys</p>
+            </div>
         </div>
 
         <div style="margin-bottom: 2rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
@@ -420,10 +483,13 @@ label {
 
 <!-- BILLING DETAILS TAB -->
 <div id="billing-details" class="tab-content">
-    <section class="panel-card">
-        <div style="margin-bottom: 1.5rem;">
-            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Billing Details</h5>
-            <p style="font-size: 0.85rem; color: #64748b;">Configure the billing information that will appear on your invoices.</p>
+    <section class="panel-card" style="padding: 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-file-invoice-dollar"></i></div>
+            <div>
+                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Billing Details</h5>
+                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Configure billing information that appears on invoices</p>
+            </div>
         </div>
         @if ($errors->any())
             <div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; margin-bottom: 1rem;">
@@ -434,7 +500,7 @@ label {
                 </ul>
             </div>
         @endif
-        <form method="POST" action="{{ route('account.billing.update') }}" enctype="multipart/form-data" class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <form method="POST" action="{{ route('account.billing.update') }}" enctype="multipart/form-data" class="form-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;">
             @csrf
             @if(isset($editingBillingDetail))
                 <input type="hidden" name="account_bdid" value="{{ $editingBillingDetail->account_bdid }}">
@@ -450,9 +516,13 @@ label {
                 <label>Billing From Email</label>
                 <input type="email" name="billing_from_email" value="{{ old('billing_from_email', $editingBillingDetail->billing_from_email ?? '') }}">
             </div>
-            <div style="grid-column: span 2;">
-                <label>Address</label>
-                <textarea name="address" rows="3" style="width: 100%; padding: 0.45rem 0.6rem;">{{ old('address', $editingBillingDetail->address ?? '') }}</textarea>
+            <div>
+                <label>Authorize Signatory</label>
+                <input type="text" name="authorize_signatory" value="{{ old('authorize_signatory', $editingBillingDetail->authorize_signatory ?? '') }}">
+            </div>
+            <div style="grid-column: span 3;">
+                <label style="font-size: 0.8rem;">Address</label>
+                <textarea name="address" rows="2" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">{{ old('address', $editingBillingDetail->address ?? '') }}</textarea>
             </div>
             <div>
                 <label>Country</label>
@@ -485,10 +555,6 @@ label {
                 <input type="text" name="tin" value="{{ old('tin', $editingBillingDetail->tin ?? '') }}">
             </div>
             <div>
-                <label>Authorize Signatory</label>
-                <input type="text" name="authorize_signatory" value="{{ old('authorize_signatory', $editingBillingDetail->authorize_signatory ?? '') }}">
-            </div>
-            <div>
                 <label>Signature Upload</label>
                 <input type="file" name="signature_upload" id="billing-signature-upload" accept="image/*" onchange="previewSignature(this, 'billing-signature-preview')">
                 <small style="color: #64748b; font-size: 0.75rem; display: block; margin-top: 0.25rem;">Max file size: 5MB. Supported formats: JPG, PNG, GIF, SVG</small>
@@ -505,8 +571,8 @@ label {
                 @endif
             </div>
 
-            <div class="form-actions">
-                <button type="submit" class="primary-button">Save Billing Detail</button>
+            <div class="form-actions" style="grid-column: span 3; margin-top: 0.75rem;">
+                <button type="submit" class="primary-button" style="padding: 0.5rem 1.5rem; font-size: 0.9rem;">Save Billing Detail</button>
                 @if(isset($editingBillingDetail) && request('edit_bd'))
                     <a href="{{ route('settings.index') }}#billing-details" class="text-link" style="margin-left: 1rem;">Cancel</a>
                 @endif
@@ -519,10 +585,13 @@ label {
 
 <!-- QUOTATION DETAILS TAB -->
 <div id="quotation-details" class="tab-content">
-    <section class="panel-card">
-        <div style="margin-bottom: 1.5rem;">
-            <h5 style="margin-bottom: 0.5rem; color: #1e293b;">Quotation Details</h5>
-            <p style="font-size: 0.85rem; color: #64748b;">Configure the details that will appear on your quotations.</p>
+    <section class="panel-card" style="padding: 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-file-contract"></i></div>
+            <div>
+                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Quotation Details</h5>
+                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Configure quotation details for quotations</p>
+            </div>
         </div>
         @if ($errors->any())
             <div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; margin-bottom: 1rem;">
@@ -533,7 +602,7 @@ label {
                 </ul>
             </div>
         @endif
-        <form method="POST" action="{{ route('account.quotation.update') }}" enctype="multipart/form-data" class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <form method="POST" action="{{ route('account.quotation.update') }}" enctype="multipart/form-data" class="form-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;">
             @csrf
             @if(isset($editingQuotationDetail))
                 <input type="hidden" name="account_qdid" value="{{ $editingQuotationDetail->account_qdid }}">
@@ -548,9 +617,13 @@ label {
                 <label>Billing From Email</label>
                 <input type="email" name="billing_from_email" value="{{ old('billing_from_email', $editingQuotationDetail->billing_from_email ?? '') }}">
             </div>
-            <div style="grid-column: span 2;">
-                <label>Address</label>
-                <textarea name="address" rows="3" style="width: 100%; padding: 0.45rem 0.6rem;">{{ old('address', $editingQuotationDetail->address ?? '') }}</textarea>
+            <div>
+                <label>Authorize Signatory</label>
+                <input type="text" name="authorize_signatory" value="{{ old('authorize_signatory', $editingQuotationDetail->authorize_signatory ?? '') }}">
+            </div>
+            <div style="grid-column: span 3;">
+                <label style="font-size: 0.8rem;">Address</label>
+                <textarea name="address" rows="2" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">{{ old('address', $editingQuotationDetail->address ?? '') }}</textarea>
             </div>
             <div>
                 <label>Country</label>
@@ -583,10 +656,6 @@ label {
                 <input type="text" name="tin" value="{{ old('tin', $editingQuotationDetail->tin ?? '') }}">
             </div>
             <div>
-                <label>Authorize Signatory</label>
-                <input type="text" name="authorize_signatory" value="{{ old('authorize_signatory', $editingQuotationDetail->authorize_signatory ?? '') }}">
-            </div>
-            <div>
                 <label>Signature Upload</label>
                 <input type="file" name="signature_upload" id="quotation-signature-upload" accept="image/*" onchange="previewSignature(this, 'quotation-signature-preview')">
                 <small style="color: #64748b; font-size: 0.75rem; display: block; margin-top: 0.25rem;">Max file size: 5MB. Supported formats: JPG, PNG, GIF, SVG</small>
@@ -603,8 +672,8 @@ label {
                 @endif
             </div>
 
-            <div class="form-actions">
-                <button type="submit" class="primary-button">Save Quotation Detail</button>
+            <div class="form-actions" style="grid-column: span 3; margin-top: 0.75rem;">
+                <button type="submit" class="primary-button" style="padding: 0.5rem 1.5rem; font-size: 0.9rem;">Save Quotation Detail</button>
                 @if(isset($editingQuotationDetail) && request('edit_qd'))
                     <a href="{{ route('settings.index') }}#quotation-details" class="text-link" style="margin-left: 1rem;">Cancel</a>
                 @endif
@@ -617,10 +686,13 @@ label {
 
 <!-- TERMS & CONDITIONS TAB -->
 <div id="terms-conditions" class="tab-content">
-    <section class="panel-card">
-        <div style="margin-bottom: 1rem;">
-            <h5 style="margin-bottom: 0.25rem; color: #1e293b; font-size: 1rem;">Terms & Conditions</h5>
-            <p style="font-size: 0.8rem; color: #64748b;">Manage reusable terms and conditions for your documents.</p>
+    <section class="panel-card" style="padding: 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-shield-alt"></i></div>
+            <div>
+                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Terms & Conditions</h5>
+                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Manage reusable terms for documents</p>
+            </div>
         </div>
 
         {{-- Add / Edit Form --}}
@@ -1023,6 +1095,25 @@ function previewSignature(input, previewId) {
             previewContainer.style.display = 'block';
         };
         
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function previewLogo(input) {
+    const preview = document.getElementById('logo-preview');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            if (preview.tagName === 'DIV') {
+                const img = document.createElement('img');
+                img.id = 'logo-preview';
+                img.src = e.target.result;
+                img.style.cssText = 'max-width: 120px; max-height: 80px; border-radius: 6px; margin-bottom: 0.5rem; object-fit: contain;';
+                preview.parentNode.replaceChild(img, preview);
+            } else {
+                preview.src = e.target.result;
+            }
+        };
         reader.readAsDataURL(input.files[0]);
     }
 }

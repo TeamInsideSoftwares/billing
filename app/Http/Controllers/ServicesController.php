@@ -28,17 +28,29 @@ class ServicesController extends Controller
         $resultCount = $query->count();
         $records = $query->take(20)->get();
 
-        $addonIds = $records
-            ->flatMap(fn (Service $item) => collect($item->addons ?? []))
-            ->filter(fn ($id) => is_string($id) && $id !== '')
-            ->unique()
-            ->values();
+        $visibleItemIds = $records->pluck('itemid')->all();
 
-        $addonLookup = $addonIds->isEmpty()
-            ? collect()
-            : Service::whereIn('itemid', $addonIds)->pluck('name', 'itemid');
+        // Add-on semantics in this module: current item can be linked "under" other parent items.
+        // For index display, we show the inverse relation: parents list their child add-ons.
+        $addonsByParent = [];
+        Service::query()
+            ->select(['itemid', 'name', 'addons'])
+            ->get()
+            ->each(function (Service $candidate) use (&$addonsByParent, $visibleItemIds) {
+                foreach (collect($candidate->addons ?? [])->filter()->all() as $parentId) {
+                    if (! in_array($parentId, $visibleItemIds, true)) {
+                        continue;
+                    }
 
-        $services = $records->map(function (Service $item) use ($addonLookup) {
+                    $addonsByParent[$parentId] = $addonsByParent[$parentId] ?? [];
+                    $addonsByParent[$parentId][$candidate->itemid] = [
+                        'itemid' => $candidate->itemid,
+                        'name' => $candidate->name,
+                    ];
+                }
+            });
+
+        $services = $records->map(function (Service $item) use ($addonsByParent) {
             $costings = $item->costings->map(function (ServiceCosting $costing) {
                 return [
                     'currency_code' => $costing->currency_code,
@@ -50,12 +62,9 @@ class ServicesController extends Controller
                 ];
             });
 
-            $addons = collect($item->addons ?? [])->map(function (string $addonId) use ($addonLookup) {
-                return [
-                    'itemid' => $addonId,
-                    'name' => $addonLookup[$addonId] ?? $addonId,
-                ];
-            })->values();
+            $addons = collect($addonsByParent[$item->itemid] ?? [])
+                ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+                ->values();
 
             return [
                 'record_id' => $item->itemid,
@@ -189,9 +198,14 @@ class ServicesController extends Controller
     {
         $service->load(['subscriptions', 'category', 'costings']);
 
-        $addonItems = collect($service->addons ?? [])->isEmpty()
-            ? collect()
-            : Service::whereIn('itemid', $service->addons ?? [])->orderBy('name')->get(['itemid', 'name', 'type']);
+        $addonItems = Service::query()
+            ->select(['itemid', 'name', 'type', 'addons'])
+            ->get()
+            ->filter(function (Service $candidate) use ($service) {
+                return in_array($service->itemid, collect($candidate->addons ?? [])->filter()->all(), true);
+            })
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
 
         return view('services.show', [
             'title' => 'Item Details',

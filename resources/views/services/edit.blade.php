@@ -80,8 +80,9 @@
 
         <div style="border-top: 1px solid var(--line); padding-top: 1rem; margin-top: 1rem;">
             <div style="position: relative; max-width: 480px;" id="addons-dropdown-wrap">
+                <span class="checkbox-label" style="font-size: 0.85rem; font-weight: 500;">This item belongs under which parent item(s)?</span>
                 <button type="button" class="secondary-button" id="addons-toggle" style="width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; font-size: 0.82rem;">
-                    <span id="addons-selected-label">Select add-ons</span>
+                    <span id="addons-selected-label">Select parent items</span>
                     <span aria-hidden="true">▾</span>
                 </button>
                 <div id="addons-dropdown" style="display: none; position: absolute; left: 0; right: 0; top: calc(100% + 0.35rem); background: #fff; border: 1px solid var(--line); border-radius: 0.5rem; padding: 0.65rem; max-height: 260px; overflow: auto; z-index: 20;">
@@ -114,11 +115,11 @@
                 <table class="data-table" style="min-width: 600px; font-size: 0.82rem;" id="costings-table">
                     <thead>
                         <tr>
-                            <th>Currency</th>
-                            <th>Cost Price</th>
-                            <th>Selling Price</th>
+                            <th>Currency *</th>
+                            <th>Cost Price *</th>
+                            <th>Selling Price *</th>
                             <th>SAC Code</th>
-                            <th>Tax Type</th>
+                            <th>Tax Type *</th>
                             <th>Tax %</th>
                             <th></th>
                         </tr>
@@ -230,7 +231,7 @@
 
     function refreshAddonLabel() {
         const checked = dropdown.querySelectorAll('.addon-checkbox:checked').length;
-        selectedLabel.textContent = checked > 0 ? `${checked} item(s) selected` : 'Select add-ons';
+        selectedLabel.textContent = checked > 0 ? `${checked} parent item(s) selected` : 'Select parent items';
     }
 
     function renderSavedAddons() {
@@ -241,7 +242,7 @@
             const empty = document.createElement('span');
             empty.style.color = '#64748b';
             empty.style.fontSize = '0.78rem';
-            empty.textContent = 'No add-ons saved yet.';
+            empty.textContent = 'No parent items selected yet.';
             savedAddonsList.appendChild(empty);
             return;
         }
