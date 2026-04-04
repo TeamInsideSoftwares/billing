@@ -6,6 +6,7 @@ use App\Http\Controllers\ClientsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GroupsController;
 use App\Http\Controllers\InvoicesController;
+use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\PaymentsController;
 use App\Http\Controllers\ProductCategoriesController;
 use App\Http\Controllers\QuotationsController;
@@ -107,6 +108,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/groups/{group}/edit', 'groupsEdit')->name('groups.edit');
         Route::put('/groups/{group}', 'groupsUpdate')->name('groups.update');
         Route::delete('/groups/{group}', 'groupsDestroy')->name('groups.destroy');
+    });
+
+    Route::controller(OrdersController::class)->group(function () {
+        Route::get('/orders', 'orders')->name('orders.index');
+        Route::get('/orders/create', 'ordersCreate')->name('orders.create');
+        Route::post('/orders', 'ordersStore')->name('orders.store');
+        Route::get('/orders/{order}', 'ordersShow')->name('orders.show');
+        Route::get('/orders/{order}/edit', 'ordersEdit')->name('orders.edit');
+        Route::put('/orders/{order}', 'ordersUpdate')->name('orders.update');
+        Route::delete('/orders/{order}', 'ordersDestroy')->name('orders.destroy');
     });
 
 Route::controller(SettingsController::class)->group(function () {

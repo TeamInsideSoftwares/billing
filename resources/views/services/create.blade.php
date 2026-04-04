@@ -117,11 +117,11 @@
                         @foreach($existingCostings as $index => $costing)
                             <tr>
                                 <td>
-                                    <select name="costings[{{ $index }}][currency_code]" style="min-width: 150px; padding: 0.3rem;" required>
+                                    <select name="costings[{{ $index }}][currency_code]" style="min-width: 100px; padding: 0.3rem;" required>
                                         <option value="">Select</option>
                                         @foreach($currencies as $currency)
                                             <option value="{{ $currency->iso }}" {{ ($costing['currency_code'] ?? '') === $currency->iso ? 'selected' : '' }}>
-                                                {{ $currency->iso }}
+                                                {{ $currency->iso }} - {{ $currency->name }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -156,7 +156,7 @@
 
         <div class="form-actions" style="margin-top: 1rem;">
             <button type="button" id="save-item-stay-btn" class="primary-button" style="padding: 0.4rem 1rem; font-size: 0.875rem;">Save Item</button>
-            <a href="{{ route('services.index') }}" class="text-link">Back to items</a>
+            <!-- <a href="{{ route('services.index') }}" class="text-link">Back to items</a> -->
         </div>
     </form>
 </section>
@@ -189,7 +189,7 @@
         return `
             <tr>
                 <td>
-                    <select name="costings[${index}][currency_code]" style="min-width: 150px; padding: 0.3rem;" required>
+                    <select name="costings[${index}][currency_code]" style="min-width: 100px; padding: 0.3rem;" required>
                         <option value="">Select</option>
                         ${currencyOptionsHtml}
                     </select>
@@ -305,16 +305,24 @@
     function renderSavedItemRow(item) {
         savedItemsPanel.style.display = 'block';
         const editUrl = editUrlTemplate.replace('__ITEMID__', item.itemid);
-        const currencyCodes = Array.from(new Set((item.costings || [])
-            .map((c) => (c.currency_code || '').trim())
-            .filter((code) => code !== '')));
-        const currencyBadgesHtml = currencyCodes.length
-            ? currencyCodes.map((code) => `<span class="badge" style="display:inline-block;padding:0.2rem 0.45rem;background:#e0e7ff;color:#4338ca;border-radius:0.25rem;font-size:0.75rem;">${code}</span>`).join(' ')
-            : `<span style="color:#64748b;font-size:0.75rem;">No costings</span>`;
+        const costings = item.costings || [];
+        const validCostings = costings.filter((c) => (c.currency_code || '').trim() !== '');
+
+        let costingsHtml;
+        if (validCostings.length === 0) {
+            costingsHtml = '<span style="color:#64748b;font-size:0.75rem;">No costings</span>';
+        } else {
+            costingsHtml = validCostings.map((c) => {
+                const price = c.selling_price ? Number(c.selling_price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0}) : '—';
+                const tax = c.tax_rate ? c.tax_rate + '%' : '';
+                const type = c.tax_included === 'yes' ? '✓' : '';
+                return `<span style="display:inline-block;padding:0.2rem 0.5rem;background:#f1f5f9;color:#475569;border-radius:0.25rem;font-size:0.75rem;">${c.currency_code} ${price}${tax ? ' | Tax: ' + tax : ''}${type ? ' ' + type : ''}</span>`;
+            }).join(' ');
+        }
 
         const row = document.createElement('div');
         row.style.cssText = 'padding: 0.35rem 0.5rem; border: 1px solid var(--line); border-radius: 0.35rem; background: #fff; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; font-size: 0.82rem;';
-        row.innerHTML = `<div style="min-width:0;"><strong>${item.name}</strong><div style="margin-top:0.2rem;display:flex;flex-wrap:wrap;gap:0.3rem;">${currencyBadgesHtml}</div></div><a href="${editUrl}" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>`;
+        row.innerHTML = `<div style="min-width:0;"><strong>${item.name}</strong><div style="margin-top:0.2rem;display:flex;flex-wrap:wrap;gap:0.3rem;">${costingsHtml}</div></div><a href="${editUrl}" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>`;
         savedItemsList.prepend(row);
 
         const count = savedItemsList.children.length;

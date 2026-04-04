@@ -19,6 +19,7 @@ class ClientsController extends Controller
     {
         $query = Client::query();
         $searchTerm = request('search', '');
+        $accountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
@@ -31,19 +32,29 @@ class ClientsController extends Controller
 
         $clients = $query->latest()->take(20)->get()->map(function ($client) {
             $outstanding = Invoice::where('clientid', $client->clientid)->where('status', '!=', 'paid')->sum('grand_total') - Payment::where('clientid', $client->clientid)->sum('amount');
+            $account = Account::find($client->accountid);
+            $cur = $account?->currency_code ?? 'INR';
             return [
                 'record_id' => $client->clientid,
                 'name' => $client->business_name ?? $client->contact_name,
                 'contact' => $client->contact_name,
                 'email' => $client->email,
+                'phone' => $client->phone,
+                'city' => $client->city,
+                'currency' => $cur,
                 'status' => $client->status ?? 'Active',
-                'balance' => 'Rs ' . number_format($outstanding, 2),
+                'balance' => $cur . ' ' . number_format($outstanding, 2),
+                'created_at' => $client->created_at,
+                'invoice_count' => Invoice::where('clientid', $client->clientid)->count(),
             ];
         });
+
+        $groups = Group::where('accountid', $accountId)->orderBy('group_name')->get();
 
         return view('clients.index', [
             'title' => 'Clients',
             'clients' => $clients,
+            'groups' => $groups,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
         ]);

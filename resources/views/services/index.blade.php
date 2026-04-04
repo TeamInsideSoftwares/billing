@@ -24,7 +24,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" style="padding: 1.25rem;">
-                <form id="catForm" method="POST" action="{{ route('product-categories.store') }}" class="mb-4" style="background: var(--bg); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--line);">
+                <!-- Add/Edit Category Form -->
+                <form id="catForm" method="POST" action="{{ route('product-categories.store') }}" style="background: #f8fafc; padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0;">
                     @csrf
                     <div id="methodField"></div>
                     <h6 id="formTitle" class="eyebrow" style="margin-bottom: 0.75rem;">Add New Category</h6>
@@ -48,6 +49,39 @@
                         <button type="button" id="catCancelBtn" class="text-link small" style="display:none;" onclick="resetCatForm()">Cancel</button>
                     </div>
                 </form>
+
+                <!-- Categories List -->
+                <div style="margin-top: 1rem; max-height: 220px; overflow-y: auto;">
+                    <h6 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">{{ count($productCategories) }} Categories</h6>
+                    @forelse($productCategories as $pc)
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 0.25rem; background: #f8fafc;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                    <div style="width: 24px; height: 24px; border-radius: 5px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; flex-shrink: 0;"><i class="fas fa-folder"></i></div>
+                                    <div>
+                                        <strong style="font-size: 0.82rem;">{{ $pc['name'] }}</strong>
+                                        @if($pc['description'])
+                                            <div style="font-size: 0.72rem; color: #64748b;">{{ $pc['description'] }}</div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 0.2rem; align-items: center;">
+                                <span style="font-size: 0.7rem; background: #f1f5f9; padding: 0.1rem 0.4rem; border-radius: 8px; color: #64748b;">Seq: {{ $pc['sequence'] }}</span>
+                                <button type="button" class="icon-action-btn edit" onclick="editCategory('{{ $pc['record_id'] }}', '{{ addslashes($pc['name']) }}', '{{ addslashes($pc['description'] ?? '') }}', '{{ strtolower($pc['status']) }}')" title="Edit" style="padding: 0.25rem 0.4rem; font-size: 0.72rem;"><i class="fas fa-edit"></i></button>
+                                <form method="POST" action="{{ route('product-categories.destroy', $pc['record_id']) }}" class="inline" onsubmit="return confirm('Delete this category?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="icon-action-btn delete" title="Delete" style="padding: 0.25rem 0.4rem; font-size: 0.72rem; border: none; cursor: pointer;"><i class="fas fa-trash"></i></button>
+                                </form>
+                            </div>
+                        </div>
+                    @empty
+                        <div style="text-align: center; padding: 1.25rem; color: #94a3b8;">
+                            <i class="fas fa-folder-open" style="font-size: 1.25rem; margin-bottom: 0.4rem; opacity: 0.3;"></i>
+                            <p style="margin: 0; font-size: 0.82rem;">No categories yet. Create one above!</p>
+                        </div>
+                    @endforelse
+                </div>
             </div>
         </div>
     </div>

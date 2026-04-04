@@ -23,6 +23,7 @@
             ['label' => 'Clients', 'route' => 'clients.index'],
             ['label' => 'Items', 'route' => 'services.index'],
             ['label' => 'Quotations', 'route' => 'quotations.index'],
+            ['label' => 'Orders', 'route' => 'orders.index'],
             ['label' => 'Invoices', 'route' => 'invoices.index'],
             ['label' => 'Payments', 'route' => 'payments.index'],
             ['label' => 'Settings', 'route' => 'settings.index'],
@@ -80,6 +81,7 @@
                             'services' => ['route' => 'services.index', 'placeholder' => 'Search items...'],
                             'invoices' => ['route' => 'invoices.index', 'placeholder' => 'Search invoices...'],
                             'quotations' => ['route' => 'quotations.index', 'placeholder' => 'Search quotations...'],
+                            'orders' => ['route' => 'orders.index', 'placeholder' => 'Search orders...'],
                             'payments' => ['route' => 'payments.index', 'placeholder' => 'Search payments...'],
                             'groups' => ['route' => 'groups.index', 'placeholder' => 'Search groups...'],
                         ];

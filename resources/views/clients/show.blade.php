@@ -4,8 +4,9 @@
 
 <section class="section-bar">
     <div>
-        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Client Details</h3>
-        <a href="{{ route('clients.index') }}" class="text-link">&larr; Back to clients</a>
+        <p class="eyebrow">Clients</p>
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">{{ $client->business_name ?? $client->contact_name }}</h3>
+        <a href="{{ route('clients.index') }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to clients</a>
     </div>
     <div style="display: flex; gap: 0.5rem;">
         <a href="{{ route('clients.edit', $client) }}" class="icon-action-btn edit" title="Edit" style="width: 36px; height: 36px; font-size: 1rem;">
@@ -20,88 +21,112 @@
     </div>
 </section>
 
-<section class="panel-card">
-    <div class="client-header" style="display: flex; gap: 2rem; align-items: center;">
+<section class="panel-card" style="padding: 1.25rem;">
+    <div style="display: flex; gap: 1.5rem; align-items: center;">
         @if($client->logo_path)
-            <div class="client-logo" style="width: 100px; height: 100px; border: 1px solid var(--line); border-radius: 1rem; overflow: hidden; background: white; display: grid; place-items: center;">
+            <div style="width: 64px; height: 64px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 <img src="{{ $client->logo_path }}" alt="Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+            </div>
+        @else
+            <div style="width: 64px; height: 64px; border-radius: 10px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; flex-shrink: 0;">
+                {{ strtoupper(substr($client->business_name ?? $client->contact_name, 0, 2)) }}
             </div>
         @endif
         <div style="flex: 1;">
-            <p class="eyebrow">{{ $client->group_name }}</p>
-            <h1>{{ $client->business_name }}</h1>
-            <p>{{ $client->email }}</p>
-            <span class="status-pill {{ strtolower($client->status ?? 'active') }}">{{ ucfirst($client->status ?? 'Active') }}</span>
+            @if($client->group_name)
+                <p style="margin: 0; font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">{{ $client->group_name }}</p>
+            @endif
+            <h1 style="margin: 0.25rem 0 0.25rem 0; font-size: 1.3rem; font-weight: 700;">{{ $client->business_name }}</h1>
+            <p style="margin: 0; font-size: 0.85rem; color: #64748b;">{{ $client->email }}</p>
+            <span class="status-pill {{ strtolower($client->status ?? 'active') }}" style="margin-top: 0.25rem; display: inline-block;">{{ ucfirst($client->status ?? 'Active') }}</span>
         </div>
-        <div class="client-stats" style="text-align: right;">
-            <p class="eyebrow">Balance</p>
-            <strong style="font-size: 1.5rem; display: block; margin-top: 0.5rem;">{{ $client->currency ?? 'INR' }} {{ number_format($outstanding) }}</strong>
+        <div style="text-align: right;">
+            <p style="margin: 0; font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Balance</p>
+            <strong style="font-size: 1.3rem; display: block; margin-top: 0.25rem;">{{ $client->currency ?? 'INR' }} {{ number_format($outstanding ?? 0) }}</strong>
         </div>
     </div>
 </section>
 
-<div class="content-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
-    <section class="panel-card">
-        <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 0.5rem;">Contact Information</h4>
-        <dl style="display: grid; grid-template-columns: 120px 1fr; gap: 0.75rem;">
-            <dt style="color: var(--text-muted); font-size: 0.9rem;">Contact</dt>
-            <dd style="font-weight: 600;">{{ $client->contact_name }}</dd>
-            
-            <dt style="color: var(--text-muted); font-size: 0.9rem;">Phone</dt>
-            <dd>{{ $client->phone }}</dd>
-            
-            @if($client->whatsapp_number)
-                <dt style="color: var(--text-muted); font-size: 0.9rem;">WhatsApp</dt>
-                <dd>{{ $client->whatsapp_number }}</dd>
-            @endif
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+    <!-- Contact Information -->
+    <section class="panel-card" style="padding: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-address-book"></i></div>
+            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Contact Information</h4>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px 1fr; gap: 0.5rem; font-size: 0.85rem;">
+            <div style="color: #64748b;">Contact</div>
+            <div style="font-weight: 500;">{{ $client->contact_name ?? '—' }}</div>
 
-            <dt style="color: var(--text-muted); font-size: 0.9rem;">Email</dt>
-            <dd>{{ $client->email }}</dd>
-        </dl>
+            <div style="color: #64748b;">Email</div>
+            <div>{{ $client->email ?? '—' }}</div>
+
+            <div style="color: #64748b;">Phone</div>
+            <div>{{ $client->phone ?? '—' }}</div>
+
+            @if($client->whatsapp_number)
+                <div style="color: #64748b;">WhatsApp</div>
+                <div>{{ $client->whatsapp_number }}</div>
+            @endif
+        </div>
     </section>
 
-    <section class="panel-card">
-        <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 0.5rem;">Billing Details</h4>
-        <dl style="display: grid; grid-template-columns: 120px 1fr; gap: 0.75rem;">
-            <dt style="color: var(--text-muted); font-size: 0.9rem;">Billing ID</dt>
-            <dd style="font-weight: 600;">{{ $client->bd_id ?? 'N/A' }}</dd>
+    <!-- Billing Details -->
+    <section class="panel-card" style="padding: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-file-invoice-dollar"></i></div>
+            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Billing Details</h4>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px 1fr; gap: 0.5rem; font-size: 0.85rem;">
+            <div style="color: #64748b;">Business</div>
+            <div style="font-weight: 500;">{{ $client->billingDetail->business_name ?? '—' }}</div>
 
-            <dt style="color: var(--text-muted); font-size: 0.9rem;">Business</dt>
-            <dd>{{ $client->billingDetail->business_name ?? 'N/A' }}</dd>
+            <div style="color: #64748b;">GSTIN</div>
+            <div>{{ $client->billingDetail->gstin ?? '—' }}</div>
 
-            <dt style="color: var(--text-muted); font-size: 0.9rem;">GSTIN</dt>
-            <dd style="font-weight: 600;">{{ $client->billingDetail->gstin ?? 'N/A' }}</dd>
-            
-            <dt style="color: var(--text-muted); font-size: 0.9rem;">Billing Email</dt>
-            <dd>{{ $client->billingDetail->billing_email ?? $client->billing_email ?? 'N/A' }}</dd>
-            
-            <dt style="color: var(--text-muted); font-size: 0.9rem;">Currency</dt>
-            <dd>{{ $client->currency ?? 'INR' }}</dd>
+            <div style="color: #64748b;">Email</div>
+            <div>{{ $client->billingDetail->billing_email ?? $client->billing_email ?? '—' }}</div>
 
-            <dt style="color: var(--text-muted); font-size: 0.9rem;">Address</dt>
-            <dd>
-                {{ $client->billingDetail->address_line_1 ?? '' }}<br>
-                {{ $client->billingDetail->city ?? '' }}, {{ $client->billingDetail->state ?? '' }}<br>
-                {{ $client->billingDetail->country ?? 'India' }} {{ $client->billingDetail->postal_code ?? '' }}
-            </dd>
-        </dl>
+            <div style="color: #64748b;">Currency</div>
+            <div>{{ $client->currency ?? 'INR' }}</div>
+
+            <div style="color: #64748b;">Address</div>
+            <div>
+                {{ trim($client->billingDetail->address_line_1 ?? '') }}<br>
+                {{ trim($client->billingDetail->city ?? '') }}{{ $client->billingDetail->state ? ', ' . $client->billingDetail->state : '' }}<br>
+                {{ trim($client->billingDetail->country ?? 'India') }} {{ trim($client->billingDetail->postal_code ?? '') }}
+            </div>
+        </div>
     </section>
 </div>
 
-@if($client->invoices->count())
-<section class="panel-card">
-    <h3>Invoices ({{ $client->invoices->count() }})</h3>
-    <div class="table-list">
-        @foreach($client->invoices->take(5) as $invoice)
-        <div class="table-row">
-            <div><strong>{{ $invoice->number }}</strong></div>
-            <div>Rs {{ number_format($invoice->total) }}</div>
-            <div><span class="status-pill">{{ $invoice->status }}</span></div>
-        </div>
-        @endforeach
+@if(isset($client->invoices) && $client->invoices->count())
+<section class="panel-card" style="margin-top: 1rem; padding: 1rem;">
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
+        <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-file-invoice"></i></div>
+        <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Invoices ({{ $client->invoices->count() }})</h4>
     </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="font-size: 0.8rem;">Invoice</th>
+                <th style="font-size: 0.8rem;">Total</th>
+                <th style="font-size: 0.8rem;">Status</th>
+                <th style="font-size: 0.8rem;">Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($client->invoices->take(5) as $invoice)
+            <tr>
+                <td style="font-size: 0.85rem;"><strong>{{ $invoice->number }}</strong></td>
+                <td style="font-size: 0.85rem;">{{ $client->currency ?? 'INR' }} {{ number_format($invoice->grand_total ?? 0) }}</td>
+                <td><span class="status-pill {{ strtolower($invoice->status ?? 'draft') }}">{{ ucfirst($invoice->status ?? 'Draft') }}</span></td>
+                <td style="font-size: 0.85rem;">{{ $invoice->created_at?->format('d M Y') ?? '—' }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
 </section>
 @endif
 
 @endsection
-

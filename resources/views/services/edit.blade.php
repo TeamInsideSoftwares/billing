@@ -131,7 +131,7 @@
                                         <option value="">Select</option>
                                         @foreach($currencies as $currency)
                                             <option value="{{ $currency->iso }}" {{ ($costing['currency_code'] ?? '') === $currency->iso ? 'selected' : '' }}>
-                                                {{ $currency->iso }}
+                                                {{ $currency->iso }} - {{ $currency->name }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -158,7 +158,7 @@
 
         <div class="form-actions" style="margin-top: 1rem;">
             <button type="submit" class="primary-button" style="padding: 0.4rem 1rem; font-size: 0.875rem;">Update Item</button>
-            <a href="{{ route('services.index') }}" class="text-link">Back to items</a>
+            <!-- <a href="{{ route('services.index') }}" class="text-link">Back to items</a> -->
         </div>
     </form>
 </section>
