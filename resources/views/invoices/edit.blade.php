@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <td style="padding: 1rem; text-align: right;">
                 <input type="number" class="item-tax" value="${taxRate}" min="0" max="100" step="0.01" style="width: 100px; text-align: right;">
             </td>
-            <td style="padding: 1rem; text-align: right;" class="item-line-total"><strong>Rs ${lineTotal.toFixed(2)}</strong></td>
+            <td style="padding: 1rem; text-align: right;" class="item-line-total"><strong>Rs ${Math.round(lineTotal)}</strong></td>
             <td style="padding: 1rem; text-align: right;">
                 <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove item">
                     <i class="fas fa-trash"></i>
@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 item.tax_rate = parseFloat(row.querySelector('.item-tax').value) || 0;
                 item.line_total = item.quantity * item.unit_price;
                 item.tax_amount = item.line_total * (item.tax_rate / 100);
-                row.querySelector('.item-line-total strong').textContent = `Rs ${item.line_total.toFixed(2)}`;
+                row.querySelector('.item-line-total strong').textContent = `Rs ${Math.round(item.line_total)}`;
                 updateSummary();
             }
         }
@@ -280,9 +280,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const taxTotal = items.reduce((sum, item) => sum + item.tax_amount, 0);
         const grandTotal = subtotal + taxTotal;
 
-        document.getElementById('subtotal').textContent = `Rs ${subtotal.toFixed(2)}`;
-        document.getElementById('taxTotal').textContent = `Rs ${taxTotal.toFixed(2)}`;
-        document.getElementById('grandTotal').textContent = `Rs ${grandTotal.toFixed(2)}`;
+        document.getElementById('subtotal').textContent = `Rs ${Math.round(subtotal)}`;
+        document.getElementById('taxTotal').textContent = `Rs ${Math.round(taxTotal)}`;
+        document.getElementById('grandTotal').textContent = `Rs ${Math.round(grandTotal)}`;
 
         document.getElementById('formSubtotal').value = subtotal;
         document.getElementById('formTaxTotal').value = taxTotal;

@@ -18,6 +18,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'duration',
     'frequency',
     'no_of_users',
+    'start_date',
+    'end_date',
+    'delivery_date',
     'line_total',
     'sort_order',
 ])]
@@ -40,6 +43,9 @@ class OrderItem extends Model
             'tax_rate' => 'decimal:2',
             'no_of_users' => 'integer',
             'line_total' => 'decimal:2',
+            'start_date' => 'date',
+            'end_date' => 'date',
+            'delivery_date' => 'date',
         ];
     }
 

@@ -9,6 +9,9 @@ use App\Models\Service;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class OrdersController extends Controller
 {
@@ -26,9 +29,15 @@ class OrdersController extends Controller
         }
         $resultCount = $query->count();
 
-        $orders = $query->latest()->take(50)->get()->map(function ($order) {
+        $records = $query->latest()->take(50)->get();
+        $salesPersonLookup = $this->getSalesPeopleLookup(
+            $records->pluck('sales_person_id')->filter()->map(fn ($id) => (string) $id)->unique()->values()
+        );
+
+        $orders = $records->map(function ($order) use ($salesPersonLookup) {
             $businessName = $order->client->business_name ?? null;
             $contactName = $order->client->contact_name ?? null;
+            $salesPersonId = (string) ($order->sales_person_id ?? '');
 
             return [
                 'record_id' => $order->orderid,
@@ -44,7 +53,7 @@ class OrdersController extends Controller
                 'delivery_date' => $order->delivery_date?->format('d M Y') ?? 'N/A',
                 'amount' => number_format($order->grand_total ?? 0),
                 'item_count' => $order->items()->count(),
-                'sales_person' => $order->salesPerson->name ?? '—',
+                'sales_person' => $salesPersonLookup[$salesPersonId] ?? ($order->salesPerson->name ?? '-'),
                 'status' => ucfirst($order->status ?? 'Draft'),
             ];
         });
@@ -66,7 +75,7 @@ class OrdersController extends Controller
             'title' => 'Create Order',
             'clients' => Client::all(),
             'services' => Service::with('costings')->orderBy('name')->get(),
-            'users' => User::where('accountid', auth()->user()->accountid ?? 'ACC0000001')->get(),
+            'users' => $this->getSalesPeopleForForm(auth()->user()->accountid ?? 'ACC0000001'),
         ]);
     }
 
@@ -80,7 +89,7 @@ class OrdersController extends Controller
             'delivery_date' => 'nullable|date|after_or_equal:order_date',
             'notes' => 'nullable|string',
             'status' => 'required|in:draft,confirmed,processing,shipped,delivered,cancelled',
-            'sales_person_id' => 'nullable|exists:users,id',
+            'sales_person_id' => 'nullable|string|max:50',
             'subtotal' => 'nullable|numeric|min:0',
             'grand_total' => 'nullable|numeric|min:0',
             'items_data' => 'required|json',
@@ -100,10 +109,12 @@ class OrdersController extends Controller
 
             $service = Service::with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
-            $taxTotal += ($lineTotal * $taxRate) / 100;
+            $taxAmount = ($lineTotal * $taxRate) / 100;
+            $taxTotal += $taxAmount;
         }
         $grandTotal = $subtotal + $taxTotal;
         $validated['subtotal'] = $subtotal;
+        $validated['tax_total'] = $taxTotal;
         $validated['grand_total'] = $grandTotal;
 
         $order = Order::create($validated);
@@ -111,6 +122,12 @@ class OrdersController extends Controller
         foreach ($itemsData as $index => $itemData) {
             $service = Service::with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
+            
+            \Log::info('Order Item Create', [
+                'item' => $itemData['itemid'],
+                'delivery_date' => $itemData['delivery_date'] ?? 'NULL',
+            ]);
+            
             OrderItem::create([
                 'orderid' => $order->orderid,
                 'itemid' => $itemData['itemid'],
@@ -122,6 +139,9 @@ class OrdersController extends Controller
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
                 'no_of_users' => $itemData['no_of_users'] ?? null,
+                'start_date' => $itemData['start_date'] ?? null,
+                'end_date' => $itemData['end_date'] ?? null,
+                'delivery_date' => $itemData['delivery_date'] ?? null,
                 'line_total' => $itemData['line_total'],
                 'sort_order' => $index + 1,
             ]);
@@ -133,7 +153,14 @@ class OrdersController extends Controller
     public function ordersShow(Order $order): View
     {
         $order->load(['client', 'items.item']);
-        return view('orders.show', ['title' => 'Order Details', 'order' => $order]);
+        $salesPersonName = $this->getSalesPeopleLookup(collect([(string) ($order->sales_person_id ?? '')]))[(string) ($order->sales_person_id ?? '')]
+            ?? ($order->salesPerson->name ?? '-');
+
+        return view('orders.show', [
+            'title' => 'Order Details',
+            'order' => $order,
+            'salesPersonName' => $salesPersonName,
+        ]);
     }
 
     public function ordersEdit(Order $order): View
@@ -144,7 +171,7 @@ class OrdersController extends Controller
             'order' => $order,
             'clients' => Client::all(),
             'services' => Service::with('costings')->orderBy('name')->get(),
-            'users' => User::where('accountid', auth()->user()->accountid ?? 'ACC0000001')->get(),
+            'users' => $this->getSalesPeopleForForm(auth()->user()->accountid ?? 'ACC0000001'),
             'items' => $order->items,
         ]);
     }
@@ -159,7 +186,7 @@ class OrdersController extends Controller
             'delivery_date' => 'nullable|date|after_or_equal:order_date',
             'notes' => 'nullable|string',
             'status' => 'required|in:draft,confirmed,processing,shipped,delivered,cancelled',
-            'sales_person_id' => 'nullable|exists:users,id',
+            'sales_person_id' => 'nullable|string|max:50',
             'items_data' => 'required|json',
         ]);
 
@@ -172,7 +199,8 @@ class OrdersController extends Controller
 
             $service = Service::with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
-            $taxTotal += ($lineTotal * $taxRate) / 100;
+            $taxAmount = ($lineTotal * $taxRate) / 100;
+            $taxTotal += $taxAmount;
         }
         $grandTotal = $subtotal + $taxTotal;
 
@@ -186,6 +214,7 @@ class OrdersController extends Controller
             'status' => $validated['status'],
             'sales_person_id' => $validated['sales_person_id'] ?? null,
             'subtotal' => $subtotal,
+            'tax_total' => $taxTotal,
             'grand_total' => $grandTotal,
         ]);
 
@@ -194,6 +223,15 @@ class OrdersController extends Controller
         foreach ($itemsData as $index => $itemData) {
             $service = Service::with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
+            
+            // Log for debugging
+            \Log::info('Order Item Save', [
+                'item' => $itemData['itemid'],
+                'delivery_date' => $itemData['delivery_date'] ?? 'NULL',
+                'start_date' => $itemData['start_date'] ?? 'NULL',
+                'end_date' => $itemData['end_date'] ?? 'NULL',
+            ]);
+            
             OrderItem::create([
                 'orderid' => $order->orderid,
                 'itemid' => $itemData['itemid'],
@@ -205,6 +243,9 @@ class OrdersController extends Controller
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
                 'no_of_users' => $itemData['no_of_users'] ?? null,
+                'start_date' => $itemData['start_date'] ?? null,
+                'end_date' => $itemData['end_date'] ?? null,
+                'delivery_date' => $itemData['delivery_date'] ?? null,
                 'line_total' => $itemData['line_total'],
                 'sort_order' => $index + 1,
             ]);
@@ -230,5 +271,77 @@ class OrdersController extends Controller
         }
 
         return (float) ($itemData['tax_rate'] ?? 0);
+    }
+
+    private function getSalesPeopleForForm(string $accountId): Collection
+    {
+        $salesPeople = $this->getSalesPeople();
+
+        if ($salesPeople->isNotEmpty()) {
+            return $salesPeople;
+        }
+
+        // Fallback so forms remain usable if external DB is unreachable/misconfigured.
+        return User::where('accountid', $accountId)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(function ($user) {
+                return (object) [
+                    'id' => (string) $user->id,
+                    'name' => (string) $user->name,
+                ];
+            });
+    }
+
+    private function getSalesPeopleLookup(Collection $ids): array
+    {
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $external = $this->getSalesPeople($ids);
+        if ($external->isNotEmpty()) {
+            return $external->pluck('name', 'id')->toArray();
+        }
+
+        return User::whereIn('id', $ids->all())
+            ->get(['id', 'name'])
+            ->mapWithKeys(fn ($user) => [(string) $user->id => (string) $user->name])
+            ->all();
+    }
+
+    private function getSalesPeople(?Collection $onlyIds = null): Collection
+    {
+        $connection = (string) config('database.sales_people.connection', 'admin_mysql');
+        $table = (string) config('database.sales_people.table', 'adminlogin');
+        $idColumn = (string) config('database.sales_people.id_column', 'id');
+        $nameColumn = (string) config('database.sales_people.name_column', 'name');
+
+        try {
+            $query = DB::connection($connection)
+                ->table($table)
+                ->select([
+                    DB::raw("`{$idColumn}` as id"),
+                    DB::raw("`{$nameColumn}` as name"),
+                ]);
+
+            if ($onlyIds && $onlyIds->isNotEmpty()) {
+                $query->whereIn($idColumn, $onlyIds->values()->all());
+            }
+
+            return $query
+                ->orderBy($nameColumn)
+                ->get()
+                ->map(function ($row) {
+                    return (object) [
+                        'id' => (string) ($row->id ?? ''),
+                        'name' => (string) ($row->name ?? ''),
+                    ];
+                })
+                ->filter(fn ($row) => $row->id !== '' && $row->name !== '')
+                ->values();
+        } catch (Throwable) {
+            return collect();
+        }
     }
 }

@@ -139,6 +139,10 @@ Route::controller(SettingsController::class)->group(function () {
         Route::delete('/settings/terms-conditions/{term}', 'termsConditionsDestroy')->name('terms-conditions.destroy');
         Route::patch('/settings/terms-conditions/{term}/toggle', 'termsConditionsToggle')->name('terms-conditions.toggle');
         Route::post('/settings/serial-preview', 'generateSerialPreview')->name('serial.preview');
+        Route::post('/settings/taxes', 'taxStore')->name('taxes.store');
+        Route::patch('/settings/taxes/{tax}', 'taxUpdate')->name('taxes.update');
+        Route::delete('/settings/taxes/{tax}', 'taxDestroy')->name('taxes.destroy');
+        Route::patch('/settings/taxes/{tax}/toggle', 'taxToggle')->name('taxes.toggle');
     });
 
     // // Keep terms conditions on legacy controller until moved fully.

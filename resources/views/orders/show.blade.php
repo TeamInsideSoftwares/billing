@@ -59,7 +59,7 @@
             <div>{{ $order->delivery_date?->format('d M Y') ?? '—' }}</div>
 
             <div style="color: #64748b;">Sales Person</div>
-            <div>{{ $order->salesPerson->name ?? '—' }}</div>
+            <div>{{ $salesPersonName ?? '-' }}</div>
 
             <div style="color: #64748b;">Status</div>
             <div><span class="status-pill {{ strtolower($order->status ?? 'draft') }}">{{ ucfirst($order->status ?? 'Draft') }}</span></div>
@@ -108,6 +108,9 @@
                 <th style="font-size: 0.8rem;">Frequency</th>
                 <th style="font-size: 0.8rem;">Duration</th>
                 <th style="font-size: 0.8rem;">Users</th>
+                <th style="font-size: 0.8rem;">Start Date</th>
+                <th style="font-size: 0.8rem;">End Date</th>
+                <th style="font-size: 0.8rem;">Delivery Date</th>
                 <th style="font-size: 0.8rem;">Total</th>
             </tr>
         </thead>
@@ -116,23 +119,26 @@
             <tr>
                 <td style="font-size: 0.85rem;"><strong>{{ $item->item_name }}</strong></td>
                 <td style="font-size: 0.85rem;">{{ $item->quantity }}</td>
-                <td style="font-size: 0.85rem;">{{ number_format($item->unit_price, 2) }}</td>
+                <td style="font-size: 0.85rem;">{{ number_format($item->unit_price, 0) }}</td>
                 <td style="font-size: 0.85rem;">{{ ucfirst($item->frequency ?? '—') }}</td>
                 <td style="font-size: 0.85rem;">{{ $item->duration ?? '—' }}</td>
                 <td style="font-size: 0.85rem;">{{ $item->no_of_users ?? '—' }}</td>
-                <td style="font-size: 0.85rem;"><strong>{{ number_format($item->line_total, 2) }}</strong></td>
+                <td style="font-size: 0.85rem;">{{ $item->start_date ? $item->start_date->format('d M Y') : '—' }}</td>
+                <td style="font-size: 0.85rem;">{{ $item->end_date ? $item->end_date->format('d M Y') : '—' }}</td>
+                <td style="font-size: 0.85rem;">{{ $item->delivery_date ? $item->delivery_date->format('d M Y') : '—' }}</td>
+                <td style="font-size: 0.85rem;"><strong>{{ number_format($item->line_total, 0) }}</strong></td>
             </tr>
             @empty
             <tr>
-                <td colspan="7" style="padding: 2rem; text-align: center; color: #94a3b8; font-style: italic;">No items in this order.</td>
+                <td colspan="10" style="padding: 2rem; text-align: center; color: #94a3b8; font-style: italic;">No items in this order.</td>
             </tr>
             @endforelse
         </tbody>
         @if($order->items->count())
         <tfoot>
             <tr style="background: #f8fafc;">
-                <td colspan="6" style="padding: 0.75rem 0.5rem; text-align: right; font-weight: 700; font-size: 1rem;">Total:</td>
-                <td style="padding: 0.75rem 0.5rem; font-weight: 700; font-size: 1rem;">{{ number_format($order->grand_total, 2) }}</td>
+                <td colspan="9" style="padding: 0.75rem 0.5rem; text-align: right; font-weight: 700; font-size: 1rem;">Total:</td>
+                <td style="padding: 0.75rem 0.5rem; font-weight: 700; font-size: 1rem;">{{ number_format($order->grand_total, 0) }}</td>
             </tr>
         </tfoot>
         @endif

@@ -43,7 +43,7 @@ class ClientsController extends Controller
                 'city' => $client->city,
                 'currency' => $cur,
                 'status' => $client->status ?? 'Active',
-                'balance' => $cur . ' ' . number_format($outstanding, 2),
+                'balance' => $cur . ' ' . number_format($outstanding, 0),
                 'created_at' => $client->created_at,
                 'invoice_count' => Invoice::where('clientid', $client->clientid)->count(),
             ];

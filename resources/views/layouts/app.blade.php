@@ -9,10 +9,47 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+    /* Flatpickr custom styling to match project design */
+    .flatpickr-calendar {
+        border-radius: 10px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        border: 1px solid #e2e8f0;
+        font-family: 'Inter', sans-serif;
+    }
+    .flatpickr-current-month .flatpickr-monthDropdown-months,
+    .flatpickr-current-month input.cur-year {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange {
+        background: #3b82f6;
+        border-color: #3b82f6;
+    }
+    .flatpickr-day.today {
+        border-color: #3b82f6;
+    }
+    .flatpickr-day:hover {
+        background: #f1f5f9;
+        border-color: #e2e8f0;
+    }
+    .flatpickr-day.selected:hover {
+        background: #3b82f6;
+        border-color: #3b82f6;
+    }
+    .flatpickr-months .flatpickr-prev-month:hover svg,
+    .flatpickr-months .flatpickr-next-month:hover svg {
+        fill: #3b82f6;
+    }
+    </style>
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 <script src="//tiny.skoolready.com/tinymce/js/tinymce/tinymce.min.js" referrerpolicy="origin"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ asset('js/location-picker.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
 </head>
 <body class="app-shell">
@@ -219,6 +256,50 @@
             </main>
         </div>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Flatpickr on all date inputs
+        flatpickr('input[type="date"]', {
+            dateFormat: 'Y-m-d',
+            allowInput: true,
+            disableMobile: true,
+        });
+
+        // Also handle dynamically added date inputs using MutationObserver
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) { // Element node
+                        if (node.matches && node.matches('input[type="date"]') && !node._flatpickr) {
+                            flatpickr(node, {
+                                dateFormat: 'Y-m-d',
+                                allowInput: true,
+                                disableMobile: true,
+                            });
+                        }
+                        // Check for date inputs inside added nodes
+                        const dateInputs = node.querySelectorAll ? node.querySelectorAll('input[type="date"]') : [];
+                        dateInputs.forEach(function(input) {
+                            if (!input._flatpickr) {
+                                flatpickr(input, {
+                                    dateFormat: 'Y-m-d',
+                                    allowInput: true,
+                                    disableMobile: true,
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    });
+    </script>
 </body>
 </html>
 

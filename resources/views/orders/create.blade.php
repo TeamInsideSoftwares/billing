@@ -72,9 +72,14 @@
 
         {{-- Items Section --}}
         <div class="items-section" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
-            <h4 style="font-size: 0.95rem; margin-top: 0; margin-bottom: 0.75rem;">Order Items</h4>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <h4 style="margin: 0; font-size: 0.95rem;">Order Items</h4>
+                <span style="font-size: 0.75rem; color: #64748b; font-style: italic;">
+                    <i class="fas fa-info-circle"></i> Items will be saved when you click "Create Order"
+                </span>
+            </div>
 
-            <div class="add-item-row form-grid" style="background: #f9fafb; padding: 0.9rem; border-radius: 6px; margin-bottom: 0.75rem; grid-template-columns: 2fr 0.7fr 1fr 1fr 1fr 0.7fr auto; gap: 0.6rem; align-items: end;">
+            <div class="add-item-row form-grid" style="background: #f9fafb; padding: 0.9rem; border-radius: 6px; margin-bottom: 0.75rem; grid-template-columns: 2fr 0.7fr 1fr 1fr 1fr 0.7fr 1fr 1fr 1fr auto; gap: 0.6rem; align-items: end;">
                 <div>
                     <label for="item_itemid" style="font-size: 0.8rem;">Item *</label>
                     <select id="item_itemid" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
@@ -131,6 +136,18 @@
                     <label for="item_users" style="font-size: 0.8rem;">Users</label>
                     <input type="number" id="item_users" value="1" min="1" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
                 </div>
+                <div>
+                    <label for="item_start_date" style="font-size: 0.8rem;">Start Date</label>
+                    <input type="date" id="item_start_date" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
+                </div>
+                <div>
+                    <label for="item_end_date" style="font-size: 0.8rem;">End Date</label>
+                    <input type="date" id="item_end_date" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
+                </div>
+                <div>
+                    <label for="item_delivery_date" style="font-size: 0.8rem;">Delivery Date</label>
+                    <input type="date" id="item_delivery_date" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
+                </div>
                 <div style="align-self: end;">
                     <button type="button" id="addItemBtn" class="primary-button" style="height: auto; padding: 0.55rem 1.05rem; font-size: 0.9rem;">Add</button>
                 </div>
@@ -145,16 +162,20 @@
                         <th style="padding: 0.65rem 0.55rem; text-align: right; width: 110px; font-size: 0.82rem;">Frequency</th>
                         <th style="padding: 0.65rem 0.55rem; text-align: right; width: 95px; font-size: 0.82rem;">Duration</th>
                         <th style="padding: 0.65rem 0.55rem; text-align: right; width: 80px; font-size: 0.82rem;">Users</th>
+                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 100px; font-size: 0.82rem;">Start Date</th>
+                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 100px; font-size: 0.82rem;">End Date</th>
+                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 100px; font-size: 0.82rem;">Delivery</th>
                         <th style="padding: 0.65rem 0.55rem; text-align: right; width: 110px; font-size: 0.82rem;">Total</th>
-                        <th style="padding: 0.6rem 0.5rem; width: 40px;"></th>
+                        <th style="padding: 0.6rem 0.5rem; width: 80px;"></th>
                     </tr>
                 </thead>
                 <tbody id="itemsTbody">
                 </tbody>
             </table>
 
-            <div id="orderSummary" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem; float: right; width: 250px; margin-left: 1rem;">
+            <div id="orderSummary" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem; float: right; width: 320px; margin-left: 1rem;">
                 <h4 style="margin-top: 0; font-size: 0.9rem;">Summary</h4>
+
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem; font-size: 0.85rem;">
                     <span>Subtotal:</span>
                     <strong id="subtotal">0.00</strong>
@@ -186,6 +207,88 @@ document.addEventListener('DOMContentLoaded', function() {
     let itemCounter = 0;
     const items = [];
     const tbody = document.getElementById('itemsTbody');
+    let editingItemId = null;
+
+    // Helper function to calculate end date based on frequency and duration
+    function calculateEndDate(startDate, frequency, duration) {
+        if (!startDate || !frequency || !duration) return '';
+        
+        const start = new Date(startDate);
+        const durationNum = parseFloat(duration);
+        if (isNaN(durationNum) || durationNum <= 0) return '';
+        
+        let endDate = new Date(start);
+        
+        switch(frequency) {
+            case 'daily':
+                endDate.setDate(endDate.getDate() + durationNum);
+                break;
+            case 'weekly':
+                endDate.setDate(endDate.getDate() + (durationNum * 7));
+                break;
+            case 'bi-weekly':
+                endDate.setDate(endDate.getDate() + (durationNum * 14));
+                break;
+            case 'monthly':
+                endDate.setMonth(endDate.getMonth() + durationNum);
+                break;
+            case 'quarterly':
+                endDate.setMonth(endDate.getMonth() + (durationNum * 3));
+                break;
+            case 'semi-annually':
+                endDate.setMonth(endDate.getMonth() + (durationNum * 6));
+                break;
+            case 'yearly':
+                endDate.setFullYear(endDate.getFullYear() + durationNum);
+                break;
+            case 'one-time':
+            default:
+                return '';
+        }
+        
+        return endDate.toISOString().split('T')[0];
+    }
+
+    // Helper function to calculate line total: qty × price × users
+    // If duration exists, also multiply by duration
+    function calculateLineTotal(qty, unitPrice, users, frequency, duration) {
+        let total = qty * unitPrice * users;
+        
+        // If duration is provided, multiply by duration
+        if (duration && frequency && frequency !== 'one-time') {
+            const durationNum = parseFloat(duration);
+            if (!isNaN(durationNum) && durationNum > 0) {
+                total = total * durationNum;
+            }
+        }
+        
+        return total;
+    }
+
+    // Auto-populate item delivery date when order delivery date changes
+    document.getElementById('delivery_date').addEventListener('change', function() {
+        const orderDeliveryDate = this.value || '';
+        document.getElementById('item_delivery_date').value = orderDeliveryDate;
+        
+        // Update all existing items in the JavaScript array
+        items.forEach(item => {
+            item.delivery_date = orderDeliveryDate;
+        });
+        
+        // Update the delivery date display in the table (column index 8)
+        tbody.querySelectorAll('tr').forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length > 8) {
+                cells[8].textContent = orderDeliveryDate ? orderDeliveryDate.split('-').reverse().join(' ') : '—';
+            }
+        });
+    });
+    
+    // Initialize delivery date on page load
+    const initialOrderDeliveryDate = document.getElementById('delivery_date').value || '';
+    if (initialOrderDeliveryDate) {
+        document.getElementById('item_delivery_date').value = initialOrderDeliveryDate;
+    }
 
     // Item select change
     document.getElementById('item_itemid').addEventListener('change', function() {
@@ -195,6 +298,20 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             document.getElementById('item_unit_price').value = '';
         }
+    });
+
+    // Auto-calculate end date when start date, frequency, or duration changes
+    ['item_start_date', 'item_frequency', 'item_duration'].forEach(fieldId => {
+        document.getElementById(fieldId).addEventListener('change', function() {
+            const startDate = document.getElementById('item_start_date').value;
+            const frequency = document.getElementById('item_frequency').value;
+            const duration = document.getElementById('item_duration').value;
+            
+            if (startDate && frequency && duration) {
+                const endDate = calculateEndDate(startDate, frequency, duration);
+                document.getElementById('item_end_date').value = endDate;
+            }
+        });
     });
 
     // Add Item
@@ -208,7 +325,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const frequency = document.getElementById('item_frequency').value || '';
         const duration = document.getElementById('item_duration').value || '';
         const users = parseInt(document.getElementById('item_users').value) || 1;
-        const lineTotal = qty * unitPrice;
+        const startDate = document.getElementById('item_start_date').value || '';
+        const endDate = document.getElementById('item_end_date').value || '';
+        const deliveryDate = document.getElementById('item_delivery_date').value || '';
+        
+        // Calculate line total with users and duration multiplier
+        const lineTotal = calculateLineTotal(qty, unitPrice, users, frequency, duration);
         const selectedOption = document.getElementById('item_itemid').options[document.getElementById('item_itemid').selectedIndex];
         const taxRate = parseFloat(selectedOption?.dataset?.taxRate || '0') || 0;
         const taxAmount = (lineTotal * taxRate) / 100;
@@ -223,6 +345,9 @@ document.addEventListener('DOMContentLoaded', function() {
             frequency: frequency,
             duration: duration,
             no_of_users: users,
+            start_date: startDate,
+            end_date: endDate,
+            delivery_date: deliveryDate,
             line_total: lineTotal,
             tax_rate: taxRate,
             tax_amount: taxAmount
@@ -231,6 +356,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const freqLabels = {'one-time':'One-Time','daily':'Daily','weekly':'Weekly','bi-weekly':'Bi-Weekly','monthly':'Monthly','quarterly':'Quarterly','semi-annually':'Semi-Annually','yearly':'Yearly'};
         const freqText = frequency ? (freqLabels[frequency] || frequency) : '—';
+        const durationDisplay = duration || '—';
 
         const row = document.createElement('tr');
         row.dataset.itemId = itemCounter;
@@ -239,16 +365,26 @@ document.addEventListener('DOMContentLoaded', function() {
             <td style="padding: 0.45rem 0.55rem; text-align: right;"><input type="number" class="item-qty" value="${qty}" min="0.01" step="0.01" style="width: 72px; text-align: right; font-size: 0.88rem; padding: 0.25rem 0.35rem;"></td>
             <td style="padding: 0.45rem 0.55rem; text-align: right;"><input type="number" class="item-price" value="${unitPrice}" min="0" step="0.01" style="width: 110px; text-align: right; font-size: 0.88rem; padding: 0.25rem 0.35rem;"></td>
             <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
-            <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${duration || '—'}</td>
+            <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>
             <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${users}</td>
-            <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${lineTotal.toFixed(2)}</strong></td>
-            <td style="padding: 0.4rem 0.5rem; text-align: right;"><button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button></td>
+            <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${startDate || '—'}</td>
+            <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${endDate || '—'}</td>
+            <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${deliveryDate || '—'}</td>
+            <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${Math.round(lineTotal)}</strong></td>
+            <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
+                <button type="button" class="edit-item icon-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;"><i class="fas fa-edit"></i></button>
+                <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button>
+            </td>
         `;
         tbody.appendChild(row);
 
         document.getElementById('itemsTable').style.display = 'table';
         updateSummary();
         resetItemInputs();
+
+        // Reset button text if it was changed to "Update"
+        document.getElementById('addItemBtn').textContent = 'Add';
+        editingItemId = null;
     });
 
     // Inline edit
@@ -260,16 +396,42 @@ document.addEventListener('DOMContentLoaded', function() {
             if (item) {
                 item.quantity = parseFloat(row.querySelector('.item-qty').value) || 0;
                 item.unit_price = parseFloat(row.querySelector('.item-price').value) || 0;
-                item.line_total = item.quantity * item.unit_price;
+                item.line_total = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
                 item.tax_amount = (item.line_total * (item.tax_rate || 0)) / 100;
-                row.querySelector('.item-line-total strong').textContent = item.line_total.toFixed(2);
+                row.querySelector('.item-line-total strong').textContent = Math.round(item.line_total);
                 updateSummary();
             }
         }
     });
 
-    // Remove item
+    // Edit item
     tbody.addEventListener('click', function(e) {
+        const editBtn = e.target.closest('.edit-item');
+        if (editBtn) {
+            const itemId = parseInt(editBtn.dataset.id);
+            const item = items.find(i => i.id === itemId);
+            if (item) {
+                // Load item data into form
+                document.getElementById('item_itemid').value = item.itemid;
+                document.getElementById('item_quantity').value = item.quantity;
+                document.getElementById('item_unit_price').value = item.unit_price;
+                document.getElementById('item_frequency').value = item.frequency || '';
+                document.getElementById('item_duration').value = item.duration || '';
+                document.getElementById('item_users').value = item.no_of_users || 1;
+                document.getElementById('item_start_date').value = item.start_date || '';
+                document.getElementById('item_end_date').value = item.end_date || '';
+                document.getElementById('item_delivery_date').value = item.delivery_date || '';
+                
+                // Change button text to indicate update
+                document.getElementById('addItemBtn').textContent = 'Update';
+                editingItemId = itemId;
+                
+                // Scroll to form
+                document.querySelector('.add-item-row').scrollIntoView({ behavior: 'smooth' });
+            }
+            return;
+        }
+
         const btn = e.target.closest('.remove-item');
         if (btn) {
             const itemId = parseInt(btn.dataset.id);
@@ -290,9 +452,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const taxTotal = items.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
         const grandTotal = subtotal + taxTotal;
 
-        document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+        document.getElementById('subtotal').textContent = Math.round(subtotal);
         document.getElementById('taxTotal').textContent = taxTotal.toFixed(2);
-        document.getElementById('grandTotal').textContent = grandTotal.toFixed(2);
+        document.getElementById('grandTotal').textContent = Math.round(grandTotal);
+        
         document.getElementById('formSubtotal').value = subtotal;
         document.getElementById('formTaxTotal').value = taxTotal;
         document.getElementById('formGrandTotal').value = grandTotal;
@@ -303,6 +466,9 @@ document.addEventListener('DOMContentLoaded', function() {
             frequency: item.frequency,
             duration: item.duration,
             no_of_users: item.no_of_users,
+            start_date: item.start_date || null,
+            end_date: item.end_date || null,
+            delivery_date: item.delivery_date || null,
             line_total: item.line_total,
             tax_rate: item.tax_rate || 0
         })));
@@ -317,6 +483,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('item_frequency').value = '';
         document.getElementById('item_duration').value = '';
         document.getElementById('item_users').value = 1;
+        document.getElementById('item_start_date').value = '';
+        document.getElementById('item_end_date').value = '';
+        
+        // Reset delivery date to order's delivery date
+        const orderDeliveryDate = document.getElementById('delivery_date').value || '';
+        document.getElementById('item_delivery_date').value = orderDeliveryDate;
     }
 });
 </script>

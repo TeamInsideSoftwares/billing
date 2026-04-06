@@ -15,6 +15,7 @@
         <button class="tab-button" data-tab="billing-details">Billing Details</button>
         <button class="tab-button" data-tab="quotation-details">Quotation Details</button>
         <button class="tab-button" data-tab="terms-conditions">Terms &amp; Conditions</button>
+        <button class="tab-button" data-tab="taxes">Taxes</button>
     </div>
 </div>
 
@@ -830,7 +831,135 @@ label {
     </section>
 </div>
 
-<!-- JS -->
+<!-- TAXES TAB -->
+<div id="taxes" class="tab-content">
+    <section class="panel-card" style="padding: 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-percent"></i></div>
+            <div>
+                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Tax Management</h5>
+                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Manage tax rates for invoices and quotations</p>
+            </div>
+        </div>
+
+        {{-- Tax Form (add / edit inline) --}}
+        <div id="tax-form-card" style="padding: 0.75rem; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; transition: background 0.2s;">
+            <h6 id="tax-form-title" style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #1e293b; font-weight: 600;">Add New Tax</h6>
+            <form method="POST" id="tax-form" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; align-items: end;">
+                @csrf
+                <div>
+                    <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b;">Rate (%) *</label>
+                    <input type="number" name="rate" id="tax-rate-input" value="{{ old('rate') }}" placeholder="e.g., 18" step="0.01" min="0" max="100" required style="width: 100%; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">
+                </div>
+                <div>
+                    <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b;">Type *</label>
+                    <select name="type" id="tax-type-select" required style="width: 100%; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">
+                        @foreach(['GST' => 'GST', 'VAT' => 'VAT'] as $val => $label)
+                            <option value="{{ $val }}" {{ old('type') == $val ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div style="display: flex; gap: 0.4rem;">
+                    <button type="submit" id="tax-form-btn" class="primary-button" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Add Tax</button>
+                    <button type="button" id="tax-form-cancel" style="display:none;padding:0.4rem 0.8rem;border:1px solid #cbd5e1;border-radius:4px;background:white;color:#64748b;font-size:0.85rem;cursor:pointer;" onclick="cancelEditTax()">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        {{-- Taxes Grouped by Type --}}
+        @php
+            $taxTypes = ['GST', 'VAT', 'Sales Tax', 'Service Tax', 'Other'];
+            $groupedTaxes = $taxes->groupBy('type');
+        @endphp
+        @foreach($taxTypes as $taxType)
+            @php
+                $group = $groupedTaxes->get($taxType, collect());
+            @endphp
+            @if($group->count() > 0)
+            <div style="margin-bottom: 1.5rem;">
+                <h6 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; font-weight: 600; color: #1e293b;">
+                    <span style="background:#f1f5f9;color:#475569;padding:2px 10px;border-radius:10px;font-size:0.75rem;">{{ $taxType }}</span>
+                    — <span style="font-size: 0.78rem; color: #64748b;">{{ $group->count() }} tax{{ $group->count() > 1 ? 'es' : '' }}</span>
+                </h6>
+                <table class="data-table" style="font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; padding: 0.4rem;">Seq</th>
+                            <th>Rate</th>
+                            <th style="width: 70px; padding: 0.4rem;">Status</th>
+                            <th style="width: 80px; text-align: right; padding: 0.4rem;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($group as $index => $tax)
+                            <tr>
+                                <td style="color: #64748b; text-align: center; padding: 0.4rem;">{{ $index + 1 }}</td>
+                                <td style="padding: 0.4rem; font-weight: 500;">{{ $tax->rate }}%</td>
+                                <td style="padding: 0.4rem;">
+                                    @if($tax->is_active)
+                                        <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Active</span>
+                                    @else
+                                        <span style="background: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Inactive</span>
+                                    @endif
+                                </td>
+                                <td style="text-align: right; padding: 0.4rem;">
+                                    <div class="table-actions">
+                                        <form method="POST" action="{{ route('taxes.toggle', $tax) }}" style="display: inline;">
+                                            @csrf @method('PATCH')
+                                            <button type="submit" class="icon-action-btn" style="background: #f59e0b; border: none;" title="Toggle Status"><i class="fas fa-toggle-on" style="color: white;"></i></button>
+                                        </form>
+                                        <a href="javascript:void(0)" class="icon-action-btn edit" title="Edit"
+                                           data-id="{{ $tax->taxid }}"
+                                           data-rate="{{ $tax->rate }}"
+                                           data-type="{{ $tax->type }}"
+                                           data-name="{{ $tax->tax_name }}"
+                                           onclick="startEditTax(this)"><i class="fas fa-edit"></i></a>
+                                        <form method="POST" action="{{ route('taxes.destroy', $tax) }}" style="display: inline;" onsubmit="return confirm('Delete this tax?')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="icon-action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @endif
+        @endforeach
+        @if($taxes->isEmpty())
+            <p style="text-align: center; color: #94a3b8; padding: 1.5rem; font-size: 0.85rem;">No taxes configured yet.</p>
+        @endif
+    </section>
+</div>
+<script>
+function startEditTax(el){
+    var form = document.getElementById('tax-form');
+    form.action = '/settings/taxes/' + el.dataset.id;
+    form.querySelector('input[name="_method"]')?.remove();
+    var input = document.createElement('input');
+    input.type = 'hidden'; input.name = '_method'; input.value = 'PATCH';
+    form.prepend(input);
+    document.getElementById('tax-rate-input').value = el.dataset.rate;
+    document.getElementById('tax-type-select').value = el.dataset.type;
+    document.getElementById('tax-form-title').textContent = 'Edit Tax (' + el.dataset.id + ')';
+    document.getElementById('tax-form-btn').textContent = 'Update';
+    document.getElementById('tax-form-cancel').style.display = 'inline-block';
+    document.getElementById('tax-form-card').style.background = '#eff6ff';
+    form.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function cancelEditTax(){
+    var form = document.getElementById('tax-form');
+    form.action = '{{ route('taxes.store') }}';
+    form.querySelector('input[name="_method"]')?.remove();
+    document.getElementById('tax-rate-input').value = '';
+    document.getElementById('tax-type-select').selectedIndex = 0;
+    document.getElementById('tax-form-title').textContent = 'Add New Tax';
+    document.getElementById('tax-form-btn').textContent = 'Add Tax';
+    document.getElementById('tax-form-cancel').style.display = 'none';
+    document.getElementById('tax-form-card').style.background = '#f8fafc';
+}
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const buttons = document.querySelectorAll('.tab-button');

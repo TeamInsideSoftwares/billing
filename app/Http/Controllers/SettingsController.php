@@ -7,6 +7,7 @@ use App\Models\AccountBillingDetail;
 use App\Models\AccountQuotationDetail;
 use App\Models\FinancialYear;
 use App\Models\Setting;
+use App\Models\Tax;
 use App\Models\TermsCondition;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -67,6 +68,8 @@ class SettingsController extends Controller
             ->where('type', 'quotation')
             ->get();
 
+        $taxes = $account ? $account->taxes()->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect();
+
         $editingTerm = null;
         if ($editId && strlen($editId) === 6 && !str_starts_with($editId, 'SET') && !str_starts_with($editId, 'ABD') && !str_starts_with($editId, 'AQD')) {
             $editingTerm = TermsCondition::query()
@@ -118,6 +121,7 @@ class SettingsController extends Controller
             'billingTerms' => $billingTerms,
             'quotationTerms' => $quotationTerms,
             'editingTerm' => $editingTerm,
+            'taxes' => $taxes,
         ]);
     }
 
@@ -586,6 +590,87 @@ class SettingsController extends Controller
         }
 
         return redirect()->to(route('settings.index') . '#financial-year')->with('success', 'FY Prefix configuration saved successfully.');
+    }
+
+    // ─── Tax Management ───
+
+    public function taxStore(Request $request)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'tax_name' => 'nullable|string|max:100',
+            'rate' => 'required|numeric|min:0|max:100',
+            'type' => 'required|in:GST,VAT,Sales Tax,Service Tax,Other',
+        ]);
+
+        if ($validator->fails()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+            }
+            return redirect()->to(route('settings.index') . '#taxes')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $validated = $validator->validated();
+        $validated['accountid'] = $accountid;
+        $validated['is_active'] = true;
+
+        // Generate tax name if not provided
+        if (empty($validated['tax_name'])) {
+            $validated['tax_name'] = $validated['type'];
+        }
+
+        $maxSequence = Tax::where('accountid', $accountid)->max('sequence') ?? 0;
+        $validated['sequence'] = $maxSequence + 1;
+
+        Tax::create($validated);
+
+        // If coming from services create/edit page, redirect back
+        if ($request->input('redirect_back')) {
+            return redirect()->back()->with('success', 'Tax created successfully.');
+        }
+
+        return redirect()->to(route('settings.index') . '#taxes')->with('success', 'Tax created successfully.');
+    }
+
+    public function taxUpdate(Request $request, Tax $tax)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        if ($tax->accountid !== $accountid) {
+            abort(403, 'Unauthorized');
+        }
+
+        $validated = $request->validate([
+            'tax_name' => 'nullable|string|max:100',
+            'rate' => 'required|numeric|min:0|max:100',
+            'type' => 'required|in:GST,VAT,Sales Tax,Service Tax,Other',
+        ]);
+
+        $tax->update($validated);
+
+        return redirect()->to(route('settings.index') . '#taxes')->with('success', 'Tax updated successfully.');
+    }
+
+    public function taxDestroy(Tax $tax)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        if ($tax->accountid !== $accountid) {
+            abort(403, 'Unauthorized');
+        }
+        $tax->delete();
+        return redirect()->to(route('settings.index') . '#taxes')->with('success', 'Tax deleted successfully.');
+    }
+
+    public function taxToggle(Tax $tax)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        if ($tax->accountid !== $accountid) {
+            abort(403, 'Unauthorized');
+        }
+        $tax->update(['is_active' => !$tax->is_active]);
+        return redirect()->to(route('settings.index') . '#taxes')->with('success', 'Tax status toggled.');
     }
 }
 

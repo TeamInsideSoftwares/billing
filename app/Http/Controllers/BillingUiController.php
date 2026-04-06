@@ -77,7 +77,7 @@ class BillingUiController extends Controller
                 'contact' => $client->contact_name,
                 'email' => $client->email,
                 'status' => $client->status ?? 'Active',
-                'balance' => 'Rs ' . number_format($outstanding, 2),
+                'balance' => number_format($outstanding, 0),
             ];
         });
 

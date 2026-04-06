@@ -94,7 +94,10 @@
                     <p class="eyebrow" style="margin: 0; font-size: 0.75rem;">Item Costings</p>
                     <strong style="font-size: 0.875rem;">Add pricing per currency</strong>
                 </div>
-                <button type="button" class="text-link" id="add-costing-row" style="font-size: 0.82rem;">+ Add currency</button>
+                <div style="display: flex; gap: 0.75rem; align-items: center;">
+                    <button type="button" class="text-link" id="add-costing-row" style="font-size: 0.82rem;">+ Add currency</button>
+                    <a href="#" id="open-tax-modal" style="font-size:13px;" class="text-link">+ Add Tax</a>
+                </div>
             </div>
 
             <p id="costings-empty-state" style="margin: 0 0 0.45rem 0; color: #64748b; font-size: 0.8rem; display:none;">
@@ -102,15 +105,15 @@
             </p>
 
             <div id="costings-table-wrap" style="overflow-x: auto;">
-                <table class="data-table" style="min-width: 600px; font-size: 0.82rem;" id="costings-table">
+                <table class="data-table" style="min-width: 640px; font-size: 0.82rem;" id="costings-table">
                     <thead>
                         <tr>
                             <th>Currency *</th>
                             <th>Cost Price *</th>
                             <th>Selling Price *</th>
                             <th>SAC Code</th>
-                            <th>Tax Type *</th>
-                            <th>Tax %</th>
+                            <th>Tax</th>
+                            <th>Tax Incl. *</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -131,12 +134,26 @@
                                 <td><input type="number" step="0.01" name="costings[{{ $index }}][selling_price]" value="{{ $costing['selling_price'] ?? '' }}" required style="padding: 0.3rem; width: 100px;"></td>
                                 <td><input type="text" maxlength="20" name="costings[{{ $index }}][sac_code]" value="{{ $costing['sac_code'] ?? '' }}" style="padding: 0.3rem; width: 80px;"></td>
                                 <td>
-                                    <select name="costings[{{ $index }}][tax_included]" style="min-width: 100px; padding: 0.3rem;" required>
+                                    <select name="costings[{{ $index }}][taxid]" class="tax-select" style="min-width: 140px; padding: 0.3rem; font-size: 0.82rem;">
+                                        <option value="">— None</option>
+                                        @foreach(['GST','VAT'] as $taxType)
+                                            @php $typeTaxes = $taxes->where('type', $taxType); @endphp
+                                            @if($typeTaxes->isNotEmpty())
+                                                <optgroup label="{{ $taxType }}">
+                                                    @foreach($typeTaxes as $tax)
+                                                        <option value="{{ $tax->taxid }}" data-rate="{{ $tax->rate }}" data-name="{{ $tax->tax_name ?? $tax->type }}" {{ ($costing['taxid'] ?? '') === $tax->taxid ? 'selected' : '' }}>{{ $tax->tax_name ?? $tax->type }} ({{ $tax->rate }}%)</option>
+                                                    @endforeach
+                                                </optgroup>
+                                            @endif
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="costings[{{ $index }}][tax_included]" style="min-width: 80px; padding: 0.3rem;" required>
                                         <option value="no" {{ ($costing['tax_included'] ?? 'no') === 'no' ? 'selected' : '' }}>Excl.</option>
                                         <option value="yes" {{ ($costing['tax_included'] ?? 'no') === 'yes' ? 'selected' : '' }}>Incl.</option>
                                     </select>
                                 </td>
-                                <td><input type="number" step="0.01" min="0" max="100" name="costings[{{ $index }}][tax_rate]" value="{{ $costing['tax_rate'] ?? '' }}" style="padding: 0.3rem; width: 70px;"></td>
                                 <td style="width: 60px; text-align: center;">
                                     <button type="button" class="icon-action-btn delete remove-costing" style="padding: 0.25rem;"><i class="fas fa-trash"></i></button>
                                 </td>
@@ -145,6 +162,7 @@
                     </tbody>
                 </table>
             </div>
+
         </div>
 
         <div id="saved-items-panel" style="border-top: 1px solid var(--line); padding-top: 1rem; margin-top: 1rem; display: none;">
@@ -155,9 +173,46 @@
             <div id="saved-items-list" style="margin-top: 0.45rem; display: flex; flex-direction: column; gap: 0.35rem;"></div>
         </div>
 
+        {{-- Add Tax Modal --}}
+        <div class="modal fade" id="addTaxModal" tabindex="-1">
+            <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
+                <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+                    <div class="modal-header" style="padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
+                        <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;">
+                            <i class="fas fa-receipt" style="margin-right: 0.5rem; color: #64748b;"></i>Add Tax
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" style="padding: 1.25rem;">
+                        <form method="POST" action="{{ route('taxes.store') }}" id="quick-tax-form">
+                            @csrf
+                            <input type="hidden" name="redirect_back" value="1">
+                            <div style="margin-bottom: 0.75rem;">
+                                <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Rate (%)</label>
+                                <input type="number" name="rate" placeholder="18" step="0.01" min="0" max="100" required
+                                       style="padding: 0.4rem 0.75rem; font-size: 0.9rem; width: 100%;">
+                            </div>
+                            <div style="margin-bottom: 0.75rem;">
+                                <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Type</label>
+                                <select name="type" required
+                                        style="padding: 0.4rem 0.75rem; font-size: 0.9rem; width: 100%;">
+                                    @foreach(['GST'=>'GST','VAT'=>'VAT'] as $v=>$l)
+                                        <option value="{{ $v }}">{{ $l }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <button type="submit" class="primary-button small">Add Tax</button>
+                                <button type="button" class="text-link small" data-bs-dismiss="modal">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="form-actions" style="margin-top: 1rem;">
             <button type="button" id="save-item-stay-btn" class="primary-button" style="padding: 0.4rem 1rem; font-size: 0.875rem;">Save Item</button>
-            <!-- <a href="{{ route('services.index') }}" class="text-link">Back to items</a> -->
         </div>
     </form>
 </section>
@@ -172,13 +227,52 @@
     const savedItemsList = document.getElementById('saved-items-list');
     const savedItemsCount = document.getElementById('saved-items-count');
     let costingRowIndex = costingTableBody.rows.length;
-    const editUrlTemplate = @json(route('services.edit', ['service' => '__ITEMID__']));
+    const editUrlTemplate = @json(route('services.edit', 'SERVICEID'));
 
-    const currencyOptionsHtml = @json(
-        collect($currencies)->map(function ($currency) {
+    @php
+        $currencyOptions = collect($currencies)->map(function ($currency) {
             return '<option value="' . e($currency->iso) . '">' . e($currency->iso . ' - ' . $currency->name) . '</option>';
-        })->implode('')
-    );
+        })->implode('');
+
+        $taxGroupsData = $taxes->groupBy('type')->map(function($group, $type) {
+            return $group->map(fn($t) => [
+                'id' => $t->taxid,
+                'name' => $t->tax_name ?? $t->type,
+                'rate' => $t->rate,
+            ])->values()->all();
+        })->filter(fn($group) => count($group) > 0)->all();
+    @endphp
+
+    const currencyOptionsHtml = @json($currencyOptions);
+    const taxGroups = @json($taxGroupsData);
+
+    function _esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    let taxOptionsHtml = '<option value="">— None</option>';
+    for (const type in taxGroups) {
+        if (taxGroups[type].length > 1) {
+            taxOptionsHtml += '<optgroup label="' + _esc(type) + '">';
+            taxGroups[type].forEach(t => {
+                taxOptionsHtml += '<option value="' + t.id + '" data-rate="' + t.rate + '">' + _esc(t.name) + ' (' + t.rate + '%)</option>';
+            });
+            taxOptionsHtml += '</optgroup>';
+        } else {
+            taxGroups[type].forEach(t => {
+                taxOptionsHtml += '<option value="' + t.id + '" data-rate="' + t.rate + '">' + _esc(t.name) + ' (' + t.rate + '%)</option>';
+            });
+        }
+    }
+
+    function taxSelectHtml(i) {
+        return `<select name="costings[${i}][taxid]" class="tax-select" style="min-width:140px;padding:0.3rem;font-size:0.82rem;">${taxOptionsHtml}</select>`;
+    }
+    function taxIncludeHtml(i) {
+        return `<select name="costings[${i}][tax_included]" style="min-width:80px;padding:0.3rem;" required><option value="no" selected>Excl.</option><option value="yes">Incl.</option></select>`;
+    }
 
     function syncCostingTableVisibility() {
         const hasRows = costingTableBody.querySelectorAll('tr').length > 0;
@@ -186,25 +280,20 @@
         costingEmptyState.style.display = hasRows ? 'none' : 'block';
     }
 
-    function costingRowHtml(index) {
+    function costingRowHtml(i) {
         return `
             <tr>
                 <td>
-                    <select name="costings[${index}][currency_code]" style="min-width: 100px; padding: 0.3rem;" required>
+                    <select name="costings[${i}][currency_code]" style="min-width: 100px; padding: 0.3rem;" required>
                         <option value="">Select</option>
                         ${currencyOptionsHtml}
                     </select>
                 </td>
-                <td><input type="number" step="0.01" name="costings[${index}][cost_price]" required style="padding: 0.3rem; width: 100px;"></td>
-                <td><input type="number" step="0.01" name="costings[${index}][selling_price]" required style="padding: 0.3rem; width: 100px;"></td>
-                <td><input type="text" maxlength="20" name="costings[${index}][sac_code]" style="padding: 0.3rem; width: 80px;"></td>
-                <td>
-                    <select name="costings[${index}][tax_included]" style="min-width: 100px; padding: 0.3rem;" required>
-                        <option value="no" selected>Excl.</option>
-                        <option value="yes">Incl.</option>
-                    </select>
-                </td>
-                <td><input type="number" step="0.01" min="0" max="100" name="costings[${index}][tax_rate]" style="padding: 0.3rem; width: 70px;"></td>
+                <td><input type="number" step="0.01" name="costings[${i}][cost_price]" required style="padding: 0.3rem; width: 100px;"></td>
+                <td><input type="number" step="0.01" name="costings[${i}][selling_price]" required style="padding: 0.3rem; width: 100px;"></td>
+                <td><input type="text" maxlength="20" name="costings[${i}][sac_code]" style="padding: 0.3rem; width: 80px;"></td>
+                <td>${taxSelectHtml(i)}</td>
+                <td>${taxIncludeHtml(i)}</td>
                 <td style="width: 60px; text-align: center;">
                     <button type="button" class="icon-action-btn delete remove-costing" style="padding: 0.25rem;"><i class="fas fa-trash"></i></button>
                 </td>
@@ -286,16 +375,16 @@
             const sellingPrice = row.querySelector('input[name*="[selling_price]"]')?.value || '';
             const sacCode = row.querySelector('input[name*="[sac_code]"]')?.value || '';
             const taxIncluded = row.querySelector('select[name*="[tax_included]"]')?.value || 'no';
-            const taxRate = row.querySelector('input[name*="[tax_rate]"]')?.value || '';
+            const taxId = row.querySelector('select[name*="[taxid]"]')?.value || '';
 
-            if (currency || costPrice || sellingPrice || sacCode || taxRate) {
+            if (currency || costPrice || sellingPrice || sacCode || taxId) {
                 costings.push({
                     currency_code: currency,
                     cost_price: costPrice,
                     selling_price: sellingPrice,
                     sac_code: sacCode,
-                    tax_included: taxIncluded,
-                    tax_rate: taxRate
+                    taxid: taxId || null,
+                    tax_included: taxIncluded
                 });
             }
         });
@@ -459,6 +548,23 @@
     syncCostingTableVisibility();
     refreshAddonLabel();
     renderSavedAddons();
+
+    function taxSelectHtml(i) {
+        return `<select name="costings[${i}][taxid]" class="tax-select" style="min-width:140px;padding:0.3rem;font-size:0.82rem;">${taxOptionsHtml}</select>`;
+    }
+    function taxIncludeHtml(i) {
+        return `<select name="costings[${i}][tax_included]" style="min-width:80px;padding:0.3rem;" required><option value="no" selected>Excl.</option><option value="yes">Incl.</option></select>`;
+    }
+
+    // Add Tax modal - just open it, form submits normally
+    const taxModalEl = document.getElementById('addTaxModal');
+    if (taxModalEl) {
+        const taxModal = new bootstrap.Modal(taxModalEl);
+        document.getElementById('open-tax-modal').addEventListener('click', function(e) {
+            e.preventDefault();
+            taxModal.show();
+        });
+    }
 })();
 </script>
 @endsection

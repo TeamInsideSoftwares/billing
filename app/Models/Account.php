@@ -89,4 +89,9 @@ public function quotationDetails(): HasMany
     {
         return $this->hasMany(TermsCondition::class, 'accountid', 'accountid');
     }
+
+    public function taxes(): HasMany
+    {
+        return $this->hasMany(Tax::class, 'accountid', 'accountid');
+    }
 }

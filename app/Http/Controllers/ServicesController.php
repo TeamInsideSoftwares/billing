@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ProductCategory;
 use App\Models\Service;
 use App\Models\ServiceCosting;
+use App\Models\Tax;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -110,13 +111,11 @@ class ServicesController extends Controller
         $categories = ProductCategory::where('status', 'active')->orderBy('sequence')->orderBy('name')->get();
         $currencies = DB::table('currency')->orderBy('iso')->get(['iso', 'name']);
         $accountCurrency = auth()->check() ? (auth()->user()->account->currency_code ?? 'INR') : 'INR';
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $taxes = Tax::where('accountid', $accountid)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get();
 
-        // Get items created in current session to exclude from addon dropdown
-        $sessionSavedItemIds = session()->get('session_saved_item_ids', []);
-        
-        // Available addons exclude items already saved in this session
-        $availableAddonItems = Service::whereNotIn('itemid', $sessionSavedItemIds)
-            ->orderBy('sequence')
+        // Available addons: all items except items being created in current request (via old input)
+        $availableAddonItems = Service::orderBy('sequence')
             ->orderBy('name')
             ->get(['itemid', 'name', 'type']);
 
@@ -127,6 +126,7 @@ class ServicesController extends Controller
             'currencies' => $currencies,
             'nextServiceSequence' => (Service::max('sequence') ?? 0) + 1,
             'availableAddonItems' => $availableAddonItems,
+            'taxes' => $taxes,
         ]);
     }
 
@@ -145,7 +145,7 @@ class ServicesController extends Controller
             'costings.*.cost_price' => 'required|numeric|min:0',
             'costings.*.selling_price' => 'required|numeric|min:0',
             'costings.*.sac_code' => 'nullable|string|max:20',
-            'costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
+            'costings.*.taxid' => 'nullable|string|exists:account_taxes,taxid',
             'costings.*.tax_included' => 'required|in:yes,no',
             'addons' => 'nullable|array',
             'addons.*' => 'required|string|distinct|exists:items,itemid',
@@ -156,12 +156,19 @@ class ServicesController extends Controller
 
         DB::transaction(function () use ($validated) {
             $costings = collect($validated['costings'])->map(function (array $costing) {
+                $taxid = $costing['taxid'] ?? null;
+                $taxRate = 0;
+                if ($taxid) {
+                    $tax = \App\Models\Tax::find($taxid);
+                    $taxRate = $tax ? $tax->rate : 0;
+                }
                 return [
                     'currency_code' => strtoupper($costing['currency_code']),
                     'cost_price' => $costing['cost_price'],
                     'selling_price' => $costing['selling_price'],
                     'sac_code' => $costing['sac_code'] ?? null,
-                    'tax_rate' => $costing['tax_rate'] ?? 0,
+                    'taxid' => $taxid,
+                    'tax_rate' => $taxRate,
                     'tax_included' => $costing['tax_included'],
                 ];
             });
@@ -185,6 +192,7 @@ class ServicesController extends Controller
                     'cost_price' => $costing['cost_price'],
                     'selling_price' => $costing['selling_price'],
                     'sac_code' => $costing['sac_code'],
+                    'taxid' => $costing['taxid'],
                     'tax_rate' => $costing['tax_rate'],
                     'tax_included' => $costing['tax_included'],
                 ]);
@@ -220,6 +228,7 @@ class ServicesController extends Controller
         $currencies = DB::table('currency')->orderBy('iso')->get(['iso', 'name']);
         $service->load(['costings']);
         $accountCurrency = auth()->check() ? (auth()->user()->account->currency_code ?? 'INR') : 'INR';
+        $taxes = Tax::where('accountid', $service->accountid)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get();
 
         return view('services.edit', [
             'title' => 'Edit Item',
@@ -228,6 +237,7 @@ class ServicesController extends Controller
             'defaultCurrency' => $accountCurrency,
             'currencies' => $currencies,
             'availableAddonItems' => Service::where('itemid', '!=', $service->itemid)->orderBy('sequence')->orderBy('name')->get(['itemid', 'name', 'type']),
+            'taxes' => $taxes,
         ]);
     }
 
@@ -245,7 +255,7 @@ class ServicesController extends Controller
             'costings.*.cost_price' => 'required|numeric|min:0',
             'costings.*.selling_price' => 'required|numeric|min:0',
             'costings.*.sac_code' => 'nullable|string|max:20',
-            'costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
+            'costings.*.taxid' => 'nullable|string|exists:account_taxes,taxid',
             'costings.*.tax_included' => 'required|in:yes,no',
             'addons' => 'nullable|array',
             'addons.*' => 'required|string|distinct|exists:items,itemid',
@@ -253,12 +263,19 @@ class ServicesController extends Controller
 
         DB::transaction(function () use ($validated, $service) {
             $costings = collect($validated['costings'])->map(function (array $costing) {
+                $taxid = $costing['taxid'] ?? null;
+                $taxRate = 0;
+                if ($taxid) {
+                    $tax = Tax::find($taxid);
+                    $taxRate = $tax ? $tax->rate : 0;
+                }
                 return [
                     'currency_code' => strtoupper($costing['currency_code']),
                     'cost_price' => $costing['cost_price'],
                     'selling_price' => $costing['selling_price'],
                     'sac_code' => $costing['sac_code'] ?? null,
-                    'tax_rate' => $costing['tax_rate'] ?? 0,
+                    'taxid' => $taxid,
+                    'tax_rate' => $taxRate,
                     'tax_included' => $costing['tax_included'],
                 ];
             });
@@ -283,6 +300,7 @@ class ServicesController extends Controller
                     'cost_price' => $costing['cost_price'],
                     'selling_price' => $costing['selling_price'],
                     'sac_code' => $costing['sac_code'],
+                    'taxid' => $costing['taxid'],
                     'tax_rate' => $costing['tax_rate'],
                     'tax_included' => $costing['tax_included'],
                 ]);
@@ -332,7 +350,7 @@ class ServicesController extends Controller
                 'costings.*.cost_price' => 'required|numeric|min:0',
                 'costings.*.selling_price' => 'required|numeric|min:0',
                 'costings.*.sac_code' => 'nullable|string|max:20',
-                'costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
+                'costings.*.taxid' => 'nullable|string|exists:account_taxes,taxid',
                 'costings.*.tax_included' => 'required|in:yes,no',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -366,24 +384,27 @@ class ServicesController extends Controller
 
                 $item->costings()->delete();
                 foreach ($validated['costings'] as $costing) {
+                    $taxid = $costing['taxid'] ?? null;
+                    $taxRate = 0;
+                    if ($taxid) {
+                        $tax = Tax::find($taxid);
+                        $taxRate = $tax ? $tax->rate : 0;
+                    }
+
                     $item->costings()->create([
                         'accountid' => $userAccountId,
                         'currency_code' => strtoupper($costing['currency_code']),
                         'cost_price' => $costing['cost_price'],
                         'selling_price' => $costing['selling_price'],
                         'sac_code' => $costing['sac_code'] ?? null,
-                        'tax_rate' => $costing['tax_rate'] ?? 0,
+                        'taxid' => $taxid,
+                        'tax_rate' => $taxRate,
                         'tax_included' => $costing['tax_included'],
                     ]);
                 }
 
                 return $item;
             });
-
-            // Track saved item IDs in session to exclude from addon dropdown
-            $sessionSavedItemIds = session()->get('session_saved_item_ids', []);
-            $sessionSavedItemIds[] = $item->itemid;
-            session()->put('session_saved_item_ids', $sessionSavedItemIds);
 
             return response()->json([
                 'success' => true,
