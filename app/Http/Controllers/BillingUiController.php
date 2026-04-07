@@ -364,10 +364,10 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
         if (!empty($validated['tc_id'])) {
             $term = TermsCondition::where('tc_id', $validated['tc_id'])->where('accountid', $accountid)->firstOrFail();
             $term->update($validated);
-            return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'Term updated.');
+            return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'T&C updated.');
         } else {
             TermsCondition::create($validated);
-            return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'Term created.');
+            return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'T&C created.');
         }
     }
 

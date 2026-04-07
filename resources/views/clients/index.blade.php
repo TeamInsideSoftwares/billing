@@ -202,7 +202,7 @@
     <script>
     function editGroup(id, name, email, addr1, addr2, city, state, postal, country) {
         const form = document.getElementById('groupForm');
-        form.action = '/groups/' + id;
+        form.action = '{{ url('groups') }}/' + id;
         document.getElementById('groupId').value = id;
 
         // Handle _method input

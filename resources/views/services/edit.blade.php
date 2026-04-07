@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+{{-- Toast Container --}}
+<div id="toast-container" class="toast-container"></div>
+
 <section class="section-bar">
     <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Edit {{ $service->name }}</h3>
     <a href="{{ route('services.index') }}" class="text-link">&larr; Back to items</a>

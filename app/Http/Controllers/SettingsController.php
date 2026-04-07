@@ -486,7 +486,7 @@ class SettingsController extends Controller
             // Update existing term
             $term = TermsCondition::where('tc_id', $tc_id)->where('accountid', $accountid)->firstOrFail();
             $term->update($validated);
-            $message = 'Term updated successfully.';
+            $message = 'T&C updated successfully.';
         } else {
             // Get the next sequence number for this type
             $maxSequence = TermsCondition::where('accountid', $accountid)

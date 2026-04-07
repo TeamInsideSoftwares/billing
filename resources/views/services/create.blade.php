@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+{{-- Toast Container --}}
+<div id="toast-container" class="toast-container"></div>
+
 <section class="section-bar">
     <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Create New Item</h3>
     <a href="{{ route('services.index') }}" class="text-link">&larr; Back to items</a>
@@ -218,6 +221,28 @@
 </section>
 
 <script>
+// Toast notification function
+function showToast(type, message) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    const icon = type === 'success' ? 'fa-check-circle' : 'fa-times-circle';
+    toast.innerHTML = `<i class="fas ${icon} toast-icon"></i><span>${message}</span>`;
+    
+    container.appendChild(toast);
+    
+    // Auto-dismiss after 3.5 seconds
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.classList.add('toast-leaving');
+            setTimeout(() => {
+                if (toast.parentNode) toast.remove();
+            }, 300);
+        }
+    }, 3500);
+}
+
 (function() {
     const costingTableBody = document.getElementById('costing-rows');
     const costingTableWrap = document.getElementById('costings-table-wrap');
@@ -397,6 +422,9 @@
         const editUrl = editUrlTemplate.replace('__ITEMID__', item.itemid);
         const costings = item.costings || [];
         const validCostings = costings.filter((c) => (c.currency_code || '').trim() !== '');
+        
+        // Get parent items for this item
+        const parentItemNames = Array.from(savedAddons.values());
 
         let costingsHtml;
         if (validCostings.length === 0) {
@@ -409,10 +437,19 @@
                 return `<span style="display:inline-block;padding:0.2rem 0.5rem;background:#f1f5f9;color:#475569;border-radius:0.25rem;font-size:0.75rem;">${c.currency_code} ${price}${tax ? ' | Tax: ' + tax : ''}${type ? ' ' + type : ''}</span>`;
             }).join(' ');
         }
+        
+        // Add parent items display
+        let parentsHtml = '';
+        if (parentItemNames.length > 0) {
+            const parentPills = parentItemNames.map(name => 
+                `<span style="display:inline-block;padding:0.15rem 0.4rem;background:#dbeafe;color:#1e40af;border-radius:0.2rem;font-size:0.7rem;">↖ ${name}</span>`
+            ).join(' ');
+            parentsHtml = `<div style="margin-top:0.25rem;display:flex;flex-wrap:wrap;gap:0.25rem;">${parentPills}</div>`;
+        }
 
         const row = document.createElement('div');
         row.style.cssText = 'padding: 0.35rem 0.5rem; border: 1px solid var(--line); border-radius: 0.35rem; background: #fff; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; font-size: 0.82rem;';
-        row.innerHTML = `<div style="min-width:0;"><strong>${item.name}</strong><div style="margin-top:0.2rem;display:flex;flex-wrap:wrap;gap:0.3rem;">${costingsHtml}</div></div><a href="${editUrl}" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>`;
+        row.innerHTML = `<div style="min-width:0;"><strong>${item.name}</strong><div style="margin-top:0.2rem;display:flex;flex-wrap:wrap;gap:0.3rem;">${costingsHtml}</div>${parentsHtml}</div><a href="${editUrl}" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>`;
         savedItemsList.prepend(row);
 
         const count = savedItemsList.children.length;
@@ -490,15 +527,21 @@
     });
 
     saveItemStayBtn.addEventListener('click', async function () {
+        const addonsArray = Array.from(savedAddons.keys());
+        console.log('Selected addons:', addonsArray);
+        console.log('savedAddons Map:', savedAddons);
+        
         const payload = {
             type: document.getElementById('type').value,
             sync: document.getElementById('sync').checked ? 'yes' : 'no',
             name: document.getElementById('name').value.trim(),
             ps_catid: document.getElementById('ps_catid').value || null,
             description: document.getElementById('description').value.trim(),
-            addons: Array.from(savedAddons.keys()),
+            addons: addonsArray,
             costings: collectCostingsFromRows()
         };
+
+        // console.log('Full payload:', payload);
 
         if (!payload.name) {
             alert('Item name is required.');
@@ -537,8 +580,11 @@
                 costings: payload.costings
             });
             resetAfterQuickSave();
+            
+            // Show success toast
+            showToast('success', 'Item saved successfully!');
         } catch (error) {
-            alert(error.message || 'Unable to save item.');
+            showToast('error', error.message || 'Unable to save item.');
         } finally {
             saveItemStayBtn.disabled = false;
             saveItemStayBtn.textContent = 'Save Item';

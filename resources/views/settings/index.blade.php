@@ -7,7 +7,7 @@
 </section>
 
 <!-- Tabs Wrapper -->
-<div style="padding: 10px 0;">
+<div style="padding: 6px 0;">
     <div class="tabs-nav">
         <button class="tab-button active" data-tab="personal">Business Info</button>
         <button class="tab-button" data-tab="financial-year">Financial Year</button>
@@ -23,23 +23,24 @@
 /* Tabs Container */
 .tabs-nav {
     display: inline-flex; /* KEY FIX */
-    gap: 6px;
-    padding: 6px;
+    gap: 4px;
+    padding: 4px;
     background: #f1f5f9;
-    border-radius: 10px;
+    border-radius: 8px;
     width: fit-content; /* prevents full width */
 }
 
 /* Tab Buttons */
 .tab-button {
     flex: 0 1 auto;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
     border: none;
     background: transparent;
     color: #475569;
     cursor: pointer;
     font-weight: 500;
+    font-size: 0.82rem;
     transition: all 0.2s ease;
     white-space: nowrap;
 }
@@ -58,7 +59,7 @@
 /* Tab Content */
 .tab-content {
     display: none;
-    margin-top: 10px;
+    margin-top: 6px;
 }
 
 .tab-content.active {
@@ -67,10 +68,10 @@
 
 /* Card */
 .panel-card {
-    padding: 1.25rem;
-    border-radius: 12px;
+    padding: 0.85rem;
+    border-radius: 10px;
     background: white;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
 }
 
 /* Form */
@@ -82,7 +83,8 @@
 
 .form-grid input {
     width: 100%;
-    padding: 0.45rem 0.6rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.82rem;
 }
 
 /* Labels */
@@ -105,12 +107,13 @@ label {
 }
 
 .primary-button {
-    padding: 0.6rem 1.2rem;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.82rem;
     background: #3b82f6;
     color: white;
     border: none;
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: 5px;
 }
 
 /* Table */
@@ -132,12 +135,12 @@ label {
 
 <!-- PERSONAL TAB -->
 <div id="personal" class="tab-content active">
-    <section class="panel-card" style="padding: 1.25rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
-            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-building"></i></div>
+    <section class="panel-card" style="padding: 0.85rem;">
+        <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 22px; height: 22px; border-radius: 5px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;"><i class="fas fa-building"></i></div>
             <div>
-                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Business Information</h5>
-                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Manage your public profile and billing details</p>
+                <h5 style="margin: 0; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Business Information</h5>
+                <p style="font-size: 0.7rem; color: #64748b; margin: 0;">Manage your public profile and billing details</p>
             </div>
         </div>
 
@@ -281,12 +284,12 @@ label {
 
 <!-- FINANCIAL YEAR -->
 <div id="financial-year" class="tab-content">
-    <section class="panel-card" style="padding: 1.25rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
-            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-calendar-alt"></i></div>
+    <section class="panel-card" style="padding: 0.85rem;">
+        <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 22px; height: 22px; border-radius: 5px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;"><i class="fas fa-calendar-alt"></i></div>
             <div>
-                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Financial Year</h5>
-                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Configure your financial year and serial numbers</p>
+                <h5 style="margin: 0; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Financial Year</h5>
+                <p style="font-size: 0.7rem; color: #64748b; margin: 0;">Configure your financial year and serial numbers</p>
             </div>
         </div>
 
@@ -381,7 +384,7 @@ label {
         <!-- Serial Configuration -->
         <div style="margin-top: 2rem; border-top: 1px solid #e5e7eb; padding-top: 1.5rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-hashtag"></i></div>
+                <div style="width: 22px; height: 22px; border-radius: 5px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;"><i class="fas fa-hashtag"></i></div>
                 <h6 style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #1e293b;">Serial Number Configuration</h6>
             </div>
             <p style="margin: 0.25rem 0 1rem 0; font-size: 0.75rem; color: #64748b;">Configure how invoice and quotation numbers are generated.</p>
@@ -392,12 +395,12 @@ label {
 
 <!-- CONFIG -->
 <div id="config" class="tab-content">
-    <section class="panel-card" style="padding: 1.25rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
-            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-cog"></i></div>
+    <section class="panel-card" style="padding: 0.85rem;">
+        <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 22px; height: 22px; border-radius: 5px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;"><i class="fas fa-cog"></i></div>
             <div>
-                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Configuration Keys</h5>
-                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Manage system-wide configuration keys</p>
+                <h5 style="margin: 0; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Configuration Keys</h5>
+                <p style="font-size: 0.7rem; color: #64748b; margin: 0;">Manage system-wide configuration keys</p>
             </div>
         </div>
 
@@ -484,12 +487,12 @@ label {
 
 <!-- BILLING DETAILS TAB -->
 <div id="billing-details" class="tab-content">
-    <section class="panel-card" style="padding: 1.25rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
-            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-file-invoice-dollar"></i></div>
+    <section class="panel-card" style="padding: 0.85rem;">
+        <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 22px; height: 22px; border-radius: 5px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;"><i class="fas fa-file-invoice-dollar"></i></div>
             <div>
-                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Billing Details</h5>
-                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Configure billing information that appears on invoices</p>
+                <h5 style="margin: 0; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Billing Details</h5>
+                <p style="font-size: 0.7rem; color: #64748b; margin: 0;">Configure billing information that appears on invoices</p>
             </div>
         </div>
         @if ($errors->any())
@@ -586,12 +589,12 @@ label {
 
 <!-- QUOTATION DETAILS TAB -->
 <div id="quotation-details" class="tab-content">
-    <section class="panel-card" style="padding: 1.25rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
-            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-file-contract"></i></div>
+    <section class="panel-card" style="padding: 0.85rem;">
+        <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 22px; height: 22px; border-radius: 5px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;"><i class="fas fa-file-contract"></i></div>
             <div>
-                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Quotation Details</h5>
-                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Configure quotation details for quotations</p>
+                <h5 style="margin: 0; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Quotation Details</h5>
+                <p style="font-size: 0.7rem; color: #64748b; margin: 0;">Configure quotation details for quotations</p>
             </div>
         </div>
         @if ($errors->any())
@@ -687,12 +690,12 @@ label {
 
 <!-- TERMS & CONDITIONS TAB -->
 <div id="terms-conditions" class="tab-content">
-    <section class="panel-card" style="padding: 1.25rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
-            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-shield-alt"></i></div>
+    <section class="panel-card" style="padding: 0.85rem;">
+        <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 22px; height: 22px; border-radius: 5px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;"><i class="fas fa-shield-alt"></i></div>
             <div>
-                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Terms & Conditions</h5>
-                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Manage reusable terms for documents</p>
+                <h5 style="margin: 0; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Terms & Conditions</h5>
+                <p style="font-size: 0.7rem; color: #64748b; margin: 0;">Manage reusable terms for documents</p>
             </div>
         </div>
 
@@ -729,7 +732,7 @@ label {
 
         {{-- Billing Terms List --}}
         <div style="margin-bottom: 1rem;">
-            <h6 style="margin-bottom: 0.4rem; color: #1e293b; font-weight: 600; font-size: 0.9rem;">Billing Terms</h6>
+            <h6 style="margin-bottom: 0.4rem; color: #1e293b; font-weight: 600; font-size: 0.9rem;">Billing T&C</h6>
             <table class="data-table" style="font-size: 0.85rem;">
                 <thead>
                     <tr>
@@ -772,7 +775,7 @@ label {
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 1.5rem; font-size: 0.85rem;">No billing terms added yet.</td></tr>
+                        <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 1.5rem; font-size: 0.85rem;">No billing T&C added yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -780,7 +783,7 @@ label {
 
         {{-- Quotation Terms List --}}
         <div>
-            <h6 style="margin-bottom: 0.4rem; color: #1e293b; font-weight: 600; font-size: 0.9rem;">Quotation Terms</h6>
+            <h6 style="margin-bottom: 0.4rem; color: #1e293b; font-weight: 600; font-size: 0.9rem;">Quotation T&C</h6>
             <table class="data-table" style="font-size: 0.85rem;">
                 <thead>
                     <tr>
@@ -823,7 +826,7 @@ label {
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 1.5rem; font-size: 0.85rem;">No quotation terms added yet.</td></tr>
+                        <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 1.5rem; font-size: 0.85rem;">No quotation T&C added yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -833,35 +836,35 @@ label {
 
 <!-- TAXES TAB -->
 <div id="taxes" class="tab-content">
-    <section class="panel-card" style="padding: 1.25rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
-            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-percent"></i></div>
+    <section class="panel-card" style="padding: 0.85rem;">
+        <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="width: 22px; height: 22px; border-radius: 5px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;"><i class="fas fa-percent"></i></div>
             <div>
-                <h5 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Tax Management</h5>
-                <p style="font-size: 0.78rem; color: #64748b; margin: 0;">Manage tax rates for invoices and quotations</p>
+                <h5 style="margin: 0; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Tax Management</h5>
+                <p style="font-size: 0.7rem; color: #64748b; margin: 0;">Manage tax rates for invoices and quotations</p>
             </div>
         </div>
 
         {{-- Tax Form (add / edit inline) --}}
-        <div id="tax-form-card" style="padding: 0.75rem; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; transition: background 0.2s;">
-            <h6 id="tax-form-title" style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #1e293b; font-weight: 600;">Add New Tax</h6>
-            <form method="POST" id="tax-form" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; align-items: end;">
+        <div id="tax-form-card" style="padding: 0.5rem 0.6rem; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 0.75rem; transition: background 0.2s;">
+            <h6 id="tax-form-title" style="margin: 0 0 0.4rem 0; font-size: 0.8rem; color: #1e293b; font-weight: 600;">Add New Tax</h6>
+            <form method="POST" id="tax-form" action="{{ route('taxes.store') }}" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.4rem; align-items: end;">
                 @csrf
                 <div>
-                    <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b;">Rate (%) *</label>
-                    <input type="number" name="rate" id="tax-rate-input" value="{{ old('rate') }}" placeholder="e.g., 18" step="0.01" min="0" max="100" required style="width: 100%; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">
+                    <label style="font-size: 0.7rem; margin-bottom: 0.15rem; display: block; color: #64748b;">Rate (%) *</label>
+                    <input type="number" name="rate" id="tax-rate-input" value="{{ old('rate') }}" placeholder="e.g., 18" step="0.01" min="0" max="100" required style="width: 100%; padding: 0.28rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;">
                 </div>
                 <div>
-                    <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b;">Type *</label>
-                    <select name="type" id="tax-type-select" required style="width: 100%; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">
+                    <label style="font-size: 0.7rem; margin-bottom: 0.15rem; display: block; color: #64748b;">Type *</label>
+                    <select name="type" id="tax-type-select" required style="width: 100%; padding: 0.28rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;">
                         @foreach(['GST' => 'GST', 'VAT' => 'VAT'] as $val => $label)
                             <option value="{{ $val }}" {{ old('type') == $val ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div style="display: flex; gap: 0.4rem;">
-                    <button type="submit" id="tax-form-btn" class="primary-button" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Add Tax</button>
-                    <button type="button" id="tax-form-cancel" style="display:none;padding:0.4rem 0.8rem;border:1px solid #cbd5e1;border-radius:4px;background:white;color:#64748b;font-size:0.85rem;cursor:pointer;" onclick="cancelEditTax()">Cancel</button>
+                <div style="display: flex; gap: 0.3rem; align-content: end;">
+                    <button type="submit" id="tax-form-btn" class="primary-button" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Add Tax</button>
+                    <button type="button" id="tax-form-cancel" style="display:none;padding:0.3rem 0.6rem;border:1px solid #cbd5e1;border-radius:4px;background:white;color:#64748b;font-size:0.8rem;cursor:pointer;" onclick="cancelEditTax()">Cancel</button>
                 </div>
             </form>
         </div>
@@ -876,38 +879,40 @@ label {
                 $group = $groupedTaxes->get($taxType, collect());
             @endphp
             @if($group->count() > 0)
-            <div style="margin-bottom: 1.5rem;">
-                <h6 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; font-weight: 600; color: #1e293b;">
-                    <span style="background:#f1f5f9;color:#475569;padding:2px 10px;border-radius:10px;font-size:0.75rem;">{{ $taxType }}</span>
-                    — <span style="font-size: 0.78rem; color: #64748b;">{{ $group->count() }} tax{{ $group->count() > 1 ? 'es' : '' }}</span>
-                </h6>
-                <table class="data-table" style="font-size: 0.85rem;">
+            <div style="margin-bottom: 0.75rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem;">
+                    <h6 style="margin: 0; font-weight: 600; color: #1e293b;">
+                        <span style="background:#f1f5f9;color:#475569;padding:1px 8px;border-radius:8px;font-size:0.72rem;">{{ $taxType }}</span>
+                        — <span style="font-size: 0.72rem; color: #64748b;">{{ $group->count() }} tax{{ $group->count() > 1 ? 'es' : '' }}</span>
+                    </h6>
+                </div>
+                <table class="data-table">
                     <thead>
                         <tr>
-                            <th style="width: 50px; padding: 0.4rem;">Seq</th>
-                            <th>Rate</th>
-                            <th style="width: 70px; padding: 0.4rem;">Status</th>
-                            <th style="width: 80px; text-align: right; padding: 0.4rem;">Action</th>
+                            <th style="width: 35px; padding: 0.25rem; font-size: 0.75rem;">#</th>
+                            <th style="font-size: 0.75rem;">Rate</th>
+                            <th style="width: 60px; padding: 0.25rem; font-size: 0.75rem;">Status</th>
+                            <th style="width: 75px; text-align: right; padding: 0.25rem; font-size: 0.75rem;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($group as $index => $tax)
                             <tr>
-                                <td style="color: #64748b; text-align: center; padding: 0.4rem;">{{ $index + 1 }}</td>
-                                <td style="padding: 0.4rem; font-weight: 500;">{{ $tax->rate }}%</td>
-                                <td style="padding: 0.4rem;">
+                                <td style="color: #94a3b8; text-align: center; padding: 0.25rem; font-size: 0.78rem;">{{ $index + 1 }}</td>
+                                <td style="padding: 0.25rem; font-weight: 500; font-size: 0.8rem;">{{ $tax->rate }}%</td>
+                                <td style="padding: 0.25rem;">
                                     @if($tax->is_active)
-                                        <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Active</span>
+                                        <span style="background: #dcfce7; color: #166534; padding: 1px 6px; border-radius: 8px; font-size: 0.65rem;">Active</span>
                                     @else
-                                        <span style="background: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Inactive</span>
+                                        <span style="background: #f1f5f9; color: #64748b; padding: 1px 6px; border-radius: 8px; font-size: 0.65rem;">Inactive</span>
                                     @endif
                                 </td>
-                                <td style="text-align: right; padding: 0.4rem;">
+                                <td style="text-align: right; padding: 0.25rem;">
                                     <div class="table-actions">
-                                        <form method="POST" action="{{ route('taxes.toggle', $tax) }}" style="display: inline;">
+                                        {{-- <form method="POST" action="{{ route('taxes.toggle', $tax) }}" style="display: inline;">
                                             @csrf @method('PATCH')
                                             <button type="submit" class="icon-action-btn" style="background: #f59e0b; border: none;" title="Toggle Status"><i class="fas fa-toggle-on" style="color: white;"></i></button>
-                                        </form>
+                                        </form> --}}
                                         <a href="javascript:void(0)" class="icon-action-btn edit" title="Edit"
                                            data-id="{{ $tax->taxid }}"
                                            data-rate="{{ $tax->rate }}"
@@ -928,15 +933,16 @@ label {
             @endif
         @endforeach
         @if($taxes->isEmpty())
-            <p style="text-align: center; color: #94a3b8; padding: 1.5rem; font-size: 0.85rem;">No taxes configured yet.</p>
+            <p style="text-align: center; color: #94a3b8; padding: 0.75rem; font-size: 0.78rem;">No taxes configured yet.</p>
         @endif
     </section>
 </div>
 <script>
 function startEditTax(el){
     var form = document.getElementById('tax-form');
-    form.action = '/settings/taxes/' + el.dataset.id;
-    form.querySelector('input[name="_method"]')?.remove();
+    form.action = '{{ url('settings/taxes') }}/' + el.dataset.id;
+    var existingMethod = form.querySelector('input[name="_method"]');
+    if (existingMethod) existingMethod.remove();
     var input = document.createElement('input');
     input.type = 'hidden'; input.name = '_method'; input.value = 'PATCH';
     form.prepend(input);
@@ -951,7 +957,8 @@ function startEditTax(el){
 function cancelEditTax(){
     var form = document.getElementById('tax-form');
     form.action = '{{ route('taxes.store') }}';
-    form.querySelector('input[name="_method"]')?.remove();
+    var existingMethod = form.querySelector('input[name="_method"]');
+    if (existingMethod) existingMethod.remove();
     document.getElementById('tax-rate-input').value = '';
     document.getElementById('tax-type-select').selectedIndex = 0;
     document.getElementById('tax-form-title').textContent = 'Add New Tax';

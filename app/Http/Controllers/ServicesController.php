@@ -352,6 +352,8 @@ class ServicesController extends Controller
                 'costings.*.sac_code' => 'nullable|string|max:20',
                 'costings.*.taxid' => 'nullable|string|exists:account_taxes,taxid',
                 'costings.*.tax_included' => 'required|in:yes,no',
+                'addons' => 'nullable|array',
+                'addons.*' => 'required|string|distinct|exists:items,itemid',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -370,6 +372,7 @@ class ServicesController extends Controller
                     'name' => $validated['name'],
                     'ps_catid' => $validated['ps_catid'] ?? null,
                     'description' => $validated['description'] ?? null,
+                    'addons' => $validated['addons'] ?? [],
                     'accountid' => $userAccountId,
                     'is_active' => true,
                 ];

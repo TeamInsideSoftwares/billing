@@ -250,20 +250,26 @@
                             <input type="text" name="address_line_2" id="groupAddress2" maxlength="150" style="padding: 0.4rem 0.6rem; font-size: 0.85rem; width: 100%;">
                         </div>
                         <div>
-                            <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.2rem;">City</label>
-                            <input type="text" name="city" id="groupCity" maxlength="100" style="padding: 0.4rem 0.6rem; font-size: 0.85rem; width: 100%;">
+                            <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.2rem;">Country</label>
+                            <select id="groupCountry" name="country" class="country-select" data-selected="India" style="padding: 0.4rem 0.6rem; font-size: 0.85rem; width: 100%;">
+                                <option value="">Select Country</option>
+                            </select>
                         </div>
                         <div>
                             <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.2rem;">State</label>
-                            <input type="text" name="state" id="groupState" maxlength="100" style="padding: 0.4rem 0.6rem; font-size: 0.85rem; width: 100%;">
+                            <select id="groupState" name="state" class="state-select" data-selected="" style="padding: 0.4rem 0.6rem; font-size: 0.85rem; width: 100%;">
+                                <option value="">Select State</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.2rem;">City</label>
+                            <select id="groupCity" name="city" class="city-select" data-selected="" style="padding: 0.4rem 0.6rem; font-size: 0.85rem; width: 100%;">
+                                <option value="">Select City</option>
+                            </select>
                         </div>
                         <div>
                             <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.2rem;">Postal Code</label>
                             <input type="text" name="postal_code" id="groupPostalCode" maxlength="20" style="padding: 0.4rem 0.6rem; font-size: 0.85rem; width: 100%;">
-                        </div>
-                        <div>
-                            <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.2rem;">Country</label>
-                            <input type="text" name="country" id="groupCountry" value="{{ old('country', 'India') }}" maxlength="100" style="padding: 0.4rem 0.6rem; font-size: 0.85rem; width: 100%;">
                         </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem;">

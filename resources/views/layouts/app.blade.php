@@ -44,6 +44,63 @@
     .flatpickr-months .flatpickr-next-month:hover svg {
         fill: #3b82f6;
     }
+
+    /* Toast Notifications */
+    .toast-container {
+        position: fixed !important;
+        top: 20px !important;
+        right: 20px !important;
+        z-index: 999999 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        pointer-events: none !important;
+    }
+    .toast {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        padding: 14px 20px !important;
+        border-radius: 10px !important;
+        font-size: 0.9rem !important;
+        font-weight: 600 !important;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+        border: 2px solid !important;
+        pointer-events: auto !important;
+        animation: toastSlideIn 0.4s ease-out !important;
+        cursor: pointer !important;
+        min-width: 300px !important;
+        max-width: 400px !important;
+        backdrop-filter: blur(12px) !important;
+    }
+    .toast.toast-success {
+        background: #ecfdf5 !important;
+        border-color: #34d399 !important;
+        color: #065f46 !important;
+    }
+    .toast.toast-error {
+        background: #fef2f2 !important;
+        border-color: #f87171 !important;
+        color: #991b1b !important;
+    }
+    .toast.toast-leaving {
+        animation: toastSlideOut 0.3s ease-in forwards !important;
+    }
+    .toast .toast-icon {
+        font-size: 1.2rem !important;
+        flex-shrink: 0 !important;
+    }
+    .toast.toast-success .toast-icon { color: #10b981 !important; }
+    .toast.toast-error .toast-icon { color: #ef4444 !important; }
+
+    @keyframes toastSlideIn {
+        from { opacity: 0; transform: translateX(40px); }
+        to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes toastSlideOut {
+        from { opacity: 1; transform: translateX(0); }
+        to   { opacity: 0; transform: translateX(40px); }
+    }
     </style>
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 <script src="//tiny.skoolready.com/tinymce/js/tinymce/tinymce.min.js" referrerpolicy="origin"></script>
@@ -53,6 +110,24 @@
 
 </head>
 <body class="app-shell">
+    {{-- Toast Container (outside layout-grid to avoid clipping) --}}
+    @if (session('success') || session('error'))
+        <div id="toast-container" class="toast-container">
+            @if (session('success'))
+                <div class="toast toast-success" onclick="this.remove()">
+                    <i class="fas fa-check-circle toast-icon"></i>
+                    <span>{{ session('success') }}</span>
+                </div>
+            @endif
+            @if (session('error'))
+                <div class="toast toast-error" onclick="this.remove()">
+                    <i class="fas fa-times-circle toast-icon"></i>
+                    <span>{{ session('error') }}</span>
+                </div>
+            @endif
+        </div>
+    @endif
+
     <!-- ['label' => 'Subscriptions', 'route' => 'subscriptions.index'], -->
     @php
         $navItems = [
@@ -240,17 +315,6 @@
                 </div>
             </header>
 
-            @if (session('success'))
-                <div class="alert success">
-                    {{ session('success') }}
-                </div>
-            @endif
-            @if (session('error'))
-                <div class="alert error">
-                    {{ session('error') }}
-                </div>
-            @endif
-
             <main class="content-panel">
                 @yield('content')
             </main>
@@ -300,6 +364,24 @@
         });
     });
     </script>
+
+    {{-- Auto-dismiss toasts --}}
+    @if (session('success') || session('error'))
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.toast').forEach(function (toast) {
+            setTimeout(function () {
+                if (toast.parentNode) {
+                    toast.classList.add('toast-leaving');
+                    setTimeout(function () {
+                        if (toast.parentNode) toast.remove();
+                    }, 300);
+                }
+            }, 3500);
+        });
+    });
+    </script>
+    @endif
 </body>
 </html>
 
