@@ -15,6 +15,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'quantity',
     'unit_price',
     'tax_rate',
+    'duration',
+    'frequency',
+    'no_of_users',
+    'start_date',
+    'end_date',
     'line_total',
     'sort_order',
 ])]
@@ -36,6 +41,9 @@ class InvoiceItem extends Model
             'unit_price' => 'decimal:2',
             'tax_rate' => 'decimal:2',
             'line_total' => 'decimal:2',
+            'no_of_users' => 'integer',
+            'start_date' => 'date',
+            'end_date' => 'date',
         ];
     }
 

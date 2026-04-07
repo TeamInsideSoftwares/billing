@@ -11,7 +11,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'accountid',
     'clientid',
+    'orderid',
     'invoice_number',
+    'invoice_type',
+    'invoice_for',
     'status',
     'issue_date',
     'due_date',
@@ -67,6 +70,11 @@ protected $primaryKey = 'invoiceid';
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class, 'clientid');
+    }
+
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class, 'orderid');
     }
 
     public function creator(): BelongsTo

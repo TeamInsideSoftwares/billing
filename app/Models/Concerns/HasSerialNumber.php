@@ -6,11 +6,28 @@ trait HasSerialNumber
 {
     public function generateNextSerialNumber(): string
     {
-        $prefix = $this->getPartValue('prefix');
-        $number = $this->getPartValue('number');
-        $suffix = $this->getPartValue('suffix');
+        $parts = [];
 
-        return $prefix . '-' . $number . '-' . $suffix;
+        foreach (['prefix', 'number', 'suffix'] as $index => $part) {
+            $value = trim($this->getPartValue($part));
+
+            if ($value === '') {
+                continue;
+            }
+
+            $parts[] = $value;
+
+            if ($part !== 'suffix') {
+                $separatorField = $part . '_separator';
+                $separator = $this->{$separatorField} ?? 'none';
+
+                if ($separator && $separator !== 'none') {
+                    $parts[] = $separator;
+                }
+            }
+        }
+
+        return implode('', $parts);
     }
 
     protected function getPartValue(string $part): string

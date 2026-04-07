@@ -1,309 +1,493 @@
 @extends('layouts.app')
 
 @section('content')
-
 <section class="section-bar">
     <div>
-        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Edit {{ $invoice->invoice_number }}</h3>
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #475569;">Edit Invoice</h3>
     </div>
     <a href="{{ route('invoices.index') }}" class="text-link">&larr; Back to invoices</a>
 </section>
 
-<section class="panel-card">
-    <form method="POST" action="{{ route('invoices.update', $invoice) }}" class="client-form" id="invoiceForm">
-        @method('PUT')
+<section class="panel-card" style="padding: 1.5rem;">
+    <form method="POST" action="{{ route('invoices.update', $invoice) }}" id="invoiceForm">
         @csrf
-        <div class="form-grid">
-            <div>
-                <label for="clientid">Select Client *</label>
-                <select id="clientid" name="clientid" required>
-                    <option value="">-- Choose Client --</option>
-                    @foreach($clients as $client)
-                        <option value="{{ $client->clientid }}" {{ old('clientid', $invoice->clientid) == $client->clientid ? 'selected' : '' }}>
-                            {{ $client->business_name ?? $client->contact_name }}
-                        </option>
+        @method('PUT')
+
+        @if ($errors->any())
+            <div style="margin-bottom: 1.25rem; padding: 0.9rem 1rem; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; border-radius: 10px;">
+                <strong style="display: block; margin-bottom: 0.4rem;">Fix these issues before updating the invoice:</strong>
+                <ul style="margin: 0; padding-left: 1rem;">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
                     @endforeach
-                </select>
-                @error('clientid') <span class="error">{{ $message }}</span> @enderror
+                </ul>
             </div>
-            <div>
-                <label for="invoice_number">Invoice Number *</label>
-                <input type="text" id="invoice_number" name="invoice_number" value="{{ old('invoice_number', $invoice->invoice_number) }}" required>
-                @error('invoice_number') <span class="error">{{ $message }}</span> @enderror
+        @endif
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="invoice-meta-card">
+                <span class="invoice-meta-label">Invoice Type</span>
+                <strong class="invoice-meta-value">{{ ucfirst($invoice->invoice_type ?? 'proforma') }}</strong>
             </div>
-            <div>
-                <label for="issue_date">Issue Date *</label>
-                <input type="date" id="issue_date" name="issue_date" value="{{ old('issue_date', $invoice->issue_date ? $invoice->issue_date->format('Y-m-d') : '') }}" required>
-                @error('issue_date') <span class="error">{{ $message }}</span> @enderror
+            <div class="invoice-meta-card">
+                <span class="invoice-meta-label">Invoice For</span>
+                <strong class="invoice-meta-value">{{ ucfirst(str_replace('_', ' ', $invoice->invoice_for ?? 'without_orders')) }}</strong>
             </div>
-            <div>
-                <label for="due_date">Due Date *</label>
-                <input type="date" id="due_date" name="due_date" value="{{ old('due_date', $invoice->due_date ? $invoice->due_date->format('Y-m-d') : '') }}" required>
-                @error('due_date') <span class="error">{{ $message }}</span> @enderror
+            <div class="invoice-meta-card">
+                <span class="invoice-meta-label">Current Status</span>
+                <strong class="invoice-meta-value">{{ ucfirst($invoice->status ?? 'draft') }}</strong>
             </div>
-            <div>
-                <label for="status">Status</label>
-                <select id="status" name="status">
-                    <option value="draft" {{ old('status', $invoice->status) == 'draft' ? 'selected' : '' }}>Draft</option>
-                    <option value="sent" {{ old('status', $invoice->status) == 'sent' ? 'selected' : '' }}>Sent</option>
-                    <option value="paid" {{ old('status', $invoice->status) == 'paid' ? 'selected' : '' }}>Paid</option>
-                </select>
-            </div>
-            <div style="grid-column: span 2;">
-                <label for="notes">Notes</label>
-                <textarea id="notes" name="notes" rows="3">{{ old('notes', $invoice->notes) }}</textarea>
+            <div class="invoice-meta-card">
+                <span class="invoice-meta-label">Balance Due</span>
+                <strong class="invoice-meta-value">{{ $invoice->currency_code ?? ($invoice->client->currency ?? 'INR') }} {{ number_format($invoice->balance_due ?? $invoice->grand_total ?? 0, 2) }}</strong>
             </div>
         </div>
 
-        {{-- Items Section --}}
-        <div class="items-section" style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #e5e7eb;">
-            <h4>Invoice Items</h4>
-            
-            {{-- Add Item Row --}}
-            <div class="add-item-row form-grid" style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                <div>
-                    <label for="item_itemid">Item *</label>
-                    <select id="item_itemid">
-                        <option value="">-- Select Item --</option>
-                        @foreach($services as $service)
-                            <option value="{{ $service->itemid }}" 
-                                    data-unit-price="{{ $service->unit_price }}" 
-                                    data-tax-rate="{{ $service->tax_rate ?? 18 }}">
-                                {{ $service->name }} (Rs {{ number_format($service->unit_price, 0) }})
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label for="item_quantity">Quantity</label>
-                    <input type="number" id="item_quantity" value="1" min="0.01" step="0.01">
-                </div>
-                <div>
-                    <label for="item_unit_price">Unit Price (Rs)</label>
-                    <input type="number" id="item_unit_price" min="0" step="0.01">
-                </div>
-                <div>
-                    <label for="item_tax_rate">Tax (%)</label>
-                    <input type="number" id="item_tax_rate" min="0" max="100" step="0.01">
-                </div>
-                <div style="align-self: end;">
-                    <button type="button" id="addItemBtn" class="primary-button" style="height: 100%;">Add Item</button>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div style="grid-column: 1 / -1;">
+                <label for="clientid" class="field-label">Client</label>
+                <div style="display: grid; grid-template-columns: minmax(280px, 420px) minmax(220px, 320px); gap: 1rem; align-items: end;">
+                    <div>
+                        <select id="clientid" name="clientid" required class="form-input">
+                            <option value="">Choose a client</option>
+                            @foreach($clients as $client)
+                                <option value="{{ $client->clientid }}" data-currency="{{ $client->currency ?? 'INR' }}" {{ old('clientid', $invoice->clientid) == $client->clientid ? 'selected' : '' }}>
+                                    {{ $client->business_name ?? $client->contact_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="invoice_number" class="field-label">Invoice Number</label>
+                        <input type="text" id="invoice_number" name="invoice_number" value="{{ old('invoice_number', $invoice->invoice_number) }}" required class="form-input">
+                    </div>
                 </div>
             </div>
 
-            {{-- Items Table --}}
-            <table id="itemsTable" style="width: 100%; border-collapse: collapse; margin-bottom: 1rem;">
-                <thead>
-                    <tr style="background: #f3f4f6;">
-                        <th style="padding: 1rem; text-align: left;">Item</th>
-                        <th style="padding: 1rem; text-align: right; width: 100px;">Qty</th>
-                        <th style="padding: 1rem; text-align: right; width: 120px;">Unit Price</th>
-                        <th style="padding: 1rem; text-align: right; width: 100px;">Tax %</th>
-                        <th style="padding: 1rem; text-align: right; width: 120px;">Line Total</th>
-                        <th style="padding: 1rem; width: 80px;"></th>
-                    </tr>
-                </thead>
-            <tbody id="itemsTbody">
-                    @foreach($items as $item)
-                        <tr data-item-id="{{ $loop->index + 1 }}">
-                            <td style="padding: 1rem;">
-                                {{ $item->item->name ?? 'Custom Item' }}
-                            </td>
-                            <td style="padding: 1rem; text-align: right;">
-                                <input type="number" class="item-qty" value="{{ $item->quantity }}" min="0.01" step="0.01" style="width: 100px; text-align: right;">
-                            </td>
-                            <td style="padding: 1rem; text-align: right;">
-                                <input type="number" class="item-price" value="{{ $item->unit_price }}" min="0" step="0.01" style="width: 100px; text-align: right;">
-                            </td>
-                            <td style="padding: 1rem; text-align: right;">
-                                <input type="number" class="item-tax" value="{{ $item->tax_rate }}" min="0" max="100" step="0.01" style="width: 100px; text-align: right;">
-                            </td>
-                            <td style="padding: 1rem; text-align: right;" class="item-line-total"><strong>Rs {{ number_format($item->line_total, 0) }}</strong></td>
-                            <td style="padding: 1rem; text-align: right;">
-                                <button type="button" class="remove-item icon-action-btn delete" data-id="{{ $loop->index + 1 }}" title="Remove item">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
+            <div>
+                <label for="issue_date" class="field-label">Issue Date</label>
+                <input type="date" id="issue_date" name="issue_date" value="{{ old('issue_date', optional($invoice->issue_date)->format('Y-m-d')) }}" class="form-input" required>
+            </div>
+            <div>
+                <label for="due_date" class="field-label">Due Date</label>
+                <input type="date" id="due_date" name="due_date" value="{{ old('due_date', optional($invoice->due_date)->format('Y-m-d')) }}" class="form-input" required>
+            </div>
+            <div>
+                <label for="status" class="field-label">Status</label>
+                <select id="status" name="status" class="form-input" required>
+                    @foreach(['draft', 'sent', 'paid', 'overdue', 'cancelled'] as $status)
+                        <option value="{{ $status }}" {{ old('status', $invoice->status) === $status ? 'selected' : '' }}>{{ ucfirst($status) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <input type="hidden" name="currency_code" id="currency_code" value="{{ old('currency_code', $invoice->currency_code ?? ($invoice->client->currency ?? 'INR')) }}">
+        </div>
+
+        <input type="hidden" name="items_data" id="items_data" value="">
+
+        <div class="workflow-panel" style="margin-top: 0; padding-top: 0; border-top: 0;">
+            <div class="panel-heading-row" style="display: flex; justify-content: space-between; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <h4 style="margin: 0; font-size: 1rem; color: #334155;">Invoice Items</h4>
+                </div>
+                <button type="button" id="toggleAddItemBtn" class="primary-button">+ Add Item</button>
+            </div>
+
+            <div id="addItemPanel" class="builder-card" style="display: none; margin-bottom: 1rem;">
+                <div class="manual-grid">
+                    <div>
+                        <label for="item_itemid" class="field-label small">Item</label>
+                        <select id="item_itemid" class="form-input">
+                            <option value="">Select item</option>
+                            @php
+                                $groupedServices = $services->groupBy(fn ($service) => $service->category->name ?? 'No Category');
+                            @endphp
+                            @foreach($groupedServices as $categoryName => $categoryServices)
+                                <optgroup label="{{ $categoryName }}">
+                                    @foreach($categoryServices as $service)
+                                        @php
+                                            $defaultCosting = $service->costings->sortBy('currency_code')->first();
+                                        @endphp
+                                        <option value="{{ $service->itemid }}" data-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}">
+                                            {{ $service->name }} ({{ number_format($defaultCosting?->selling_price ?? 0, 0) }})
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="item_quantity" class="field-label small">Qty</label>
+                        <input type="number" id="item_quantity" class="form-input" value="1" min="0.01" step="0.01">
+                    </div>
+                    <div>
+                        <label for="item_unit_price" class="field-label small">Unit Price</label>
+                        <input type="number" id="item_unit_price" class="form-input" min="0" step="0.01">
+                    </div>
+                    <div>
+                        <label for="item_tax_rate" class="field-label small">Tax %</label>
+                        <select id="item_tax_rate" class="form-input">
+                            <option value="0">No Tax</option>
+                            @foreach($taxes as $tax)
+                                <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 2) }}%)</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="item_frequency" class="field-label small">Frequency</label>
+                        <select id="item_frequency" class="form-input">
+                            <option value="">Not recurring</option>
+                            <option value="one-time">One-Time</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="bi-weekly">Bi-Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="semi-annually">Semi-Annually</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="item_duration" class="field-label small">Duration</label>
+                        <input type="number" id="item_duration" class="form-input" min="0" step="1">
+                    </div>
+                    <div>
+                        <label for="item_users" class="field-label small">Users</label>
+                        <input type="number" id="item_users" class="form-input" value="1" min="1" step="1">
+                    </div>
+                    <div>
+                        <label for="item_start_date" class="field-label small">Start Date</label>
+                        <input type="date" id="item_start_date" class="form-input">
+                    </div>
+                    <div>
+                        <label for="item_end_date" class="field-label small">End Date</label>
+                        <input type="date" id="item_end_date" class="form-input">
+                    </div>
+                </div>
+                <div style="margin-top: 1rem; display: flex; gap: 0.75rem;">
+                    <button type="button" id="addItemBtn" class="primary-button">Add Item</button>
+                    <button type="button" id="cancelAddItemBtn" class="secondary-button" style="padding: 0.65rem 1rem;">Cancel</button>
+                </div>
+            </div>
+
+            <div class="table-shell">
+                <table class="data-table" style="margin: 0; font-size: 0.83rem;">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Tax %</th>
+                            <th>Duration</th>
+                            <th>Frequency</th>
+                            <th>Users</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Total</th>
+                            <th></th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody id="itemsBody"></tbody>
+                </table>
+            </div>
 
-            {{-- Summary Panel - Bottom Right --}}
-            <div id="invoiceSummary" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; float: right; width: 300px; margin-left: 2rem;">
-                <h4 style="margin-top: 0;">Invoice Summary</h4>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <span>Subtotal:</span>
-                    <strong id="subtotal">Rs {{ number_format($invoice->subtotal, 0) }}</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <span>Tax:</span>
-                    <strong id="taxTotal">Rs {{ number_format($invoice->tax_total, 0) }}</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 1.2em; font-weight: bold; border-top: 2px solid #e2e8f0; padding-top: 0.5rem; margin-top: 0.5rem;">
-                    <span>Total:</span>
-                    <strong id="grandTotal">Rs {{ number_format($invoice->grand_total, 0) }}</strong>
+            <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+                <div class="totals-card" style="min-width: 320px;">
+                    <div class="total-row"><span>Subtotal</span><strong id="subtotalDisplay">0.00</strong></div>
+                    <div class="total-row"><span>Tax</span><strong id="taxDisplay">0.00</strong></div>
+                    <div class="total-row total-row-grand"><span>Grand Total</span><strong id="grandTotalDisplay">0.00</strong></div>
                 </div>
             </div>
         </div>
 
-        <div class="form-actions" style="clear: both;">
-            <button type="submit" class="primary-button" id="submitBtn">Update Invoice</button>
-            <a href="{{ route('invoices.index') }}" class="text-link">Cancel</a>
-            <input type="hidden" name="subtotal" id="formSubtotal">
-            <input type="hidden" name="tax_total" id="formTaxTotal">
-            <input type="hidden" name="grand_total" id="formGrandTotal">
-            <input type="hidden" name="items_data" id="formItemsData">
+        <div style="margin-top: 1.5rem;">
+            <label for="notes" class="field-label">Notes</label>
+            <textarea id="notes" name="notes" rows="4" class="form-input" style="min-height: 110px;">{{ old('notes', $invoice->notes) }}</textarea>
+        </div>
+
+        <div class="form-actions" style="margin-top: 1rem; display: flex; gap: 0.75rem;">
+            <button type="submit" class="primary-button" id="updateInvoiceBtn">Update Invoice</button>
         </div>
     </form>
 </section>
 
+<style>
+.invoice-meta-card { padding: 0.95rem 1rem; border: 1px solid #e2e8f0; border-radius: 12px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); }
+.invoice-meta-label, .field-label.small { display: block; margin-bottom: 0.35rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #64748b; }
+.invoice-meta-value { color: #1e293b; font-size: 0.95rem; }
+.field-label { display: block; margin-bottom: 0.45rem; font-size: 0.85rem; font-weight: 600; color: #475569; }
+.workflow-panel { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e2e8f0; }
+.panel-heading-row { margin-bottom: 0.8rem; }
+.table-shell { border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #ffffff; }
+.builder-card { padding: 1rem; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; }
+.manual-grid { display: grid; grid-template-columns: 2fr 0.7fr 1fr 0.8fr 1fr 0.8fr 0.8fr 1fr 1fr; gap: 0.75rem; align-items: end; }
+.totals-card { padding: 1rem; border-radius: 14px; background: #f8fafc; border: 1px solid #e2e8f0; }
+.total-row { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.55rem; font-size: 0.9rem; color: #475569; }
+.total-row:last-child { margin-bottom: 0; }
+.total-row-grand { padding-top: 0.7rem; border-top: 1px solid #cbd5e1; font-size: 1rem; font-weight: 700; color: #1e293b; }
+@media (max-width: 1200px) { .manual-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .manual-grid { grid-template-columns: 1fr; } }
+</style>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    let itemCounter = {{ $items->count() }};
-    const items = [
-        @foreach($items as $item)
-            {
-                id: {{ $loop->index + 1 }},
-                itemid: '{{ $item->itemid }}',
-                item_name: '{{ $item->item->name ?? "Custom" }}',
-                quantity: {{ $item->quantity }},
-                unit_price: {{ $item->unit_price }},
-                tax_rate: {{ $item->tax_rate }},
-                line_total: {{ $item->line_total }},
-                tax_amount: {{ $item->line_total * ($item->tax_rate / 100) }}
-            }@if(!$loop->last), @endif
-        @endforeach
-    ];
+(function () {
+    const currencyCodeInput = document.getElementById('currency_code');
+    const clientSelect = document.getElementById('clientid');
+    const itemsBody = document.getElementById('itemsBody');
+    const itemsDataInput = document.getElementById('items_data');
+    const toggleAddItemBtn = document.getElementById('toggleAddItemBtn');
+    const addItemPanel = document.getElementById('addItemPanel');
+    const cancelAddItemBtn = document.getElementById('cancelAddItemBtn');
+    const addItemBtn = document.getElementById('addItemBtn');
+    const updateInvoiceBtn = document.getElementById('updateInvoiceBtn');
 
-    const tbody = document.getElementById('itemsTbody');
-    updateSummary();
+    const frequencyLabels = { 'one-time': 'One-Time', 'daily': 'Daily', 'weekly': 'Weekly', 'bi-weekly': 'Bi-Weekly', 'monthly': 'Monthly', 'quarterly': 'Quarterly', 'semi-annually': 'Semi-Annually', 'yearly': 'Yearly' };
+    const frequencyOptions = ['', 'one-time', 'daily', 'weekly', 'bi-weekly', 'monthly', 'quarterly', 'semi-annually', 'yearly'];
+    const taxOptions = @json(($taxes ?? collect())->map(fn ($tax) => ['name' => $tax->tax_name, 'rate' => (float) $tax->rate])->values());
 
-    // Item select change
-    document.getElementById('item_itemid').addEventListener('change', function() {
-        const option = this.options[this.selectedIndex];
-        if (option.value) {
-            document.getElementById('item_unit_price').value = option.dataset.unitPrice || '0';
-            document.getElementById('item_tax_rate').value = option.dataset.taxRate || '0';
-        } else {
-            document.getElementById('item_unit_price').value = '';
-            document.getElementById('item_tax_rate').value = '';
-        }
-    });
+    let clientCurrency = currencyCodeInput.value || 'INR';
+    @php
+        $itemsData = old('items_data') ? json_decode(old('items_data'), true) : $invoice->items->map(function ($item) {
+            return [
+                'itemid' => $item->itemid,
+                'item_name' => $item->item_name ?? ($item->service->name ?? 'Item'),
+                'quantity' => $item->quantity,
+                'unit_price' => $item->unit_price,
+                'tax_rate' => $item->tax_rate,
+                'duration' => $item->duration,
+                'frequency' => $item->frequency,
+                'no_of_users' => $item->no_of_users,
+                'start_date' => optional($item->start_date)->format('Y-m-d'),
+                'end_date' => optional($item->end_date)->format('Y-m-d'),
+                'line_total' => $item->line_total,
+            ];
+        })->values()->toArray();
+    @endphp
+    let invoiceItems = @json($itemsData);
 
-    // Add Item
-    document.getElementById('addItemBtn').addEventListener('click', function() {
-        const serviceId = document.getElementById('item_itemid').value;
-        if (!serviceId) return alert('Select an item');
-
-        const serviceName = document.getElementById('item_itemid').options[document.getElementById('item_itemid').selectedIndex].text;
-        const qty = parseFloat(document.getElementById('item_quantity').value) || 1;
-        const unitPrice = parseFloat(document.getElementById('item_unit_price').value) || 0;
-        const taxRate = parseFloat(document.getElementById('item_tax_rate').value) || 0;
-        const lineTotal = qty * unitPrice;
-        const taxAmount = lineTotal * (taxRate / 100);
-
-        itemCounter++;
-        const item = {
-            id: itemCounter,
-            itemid: serviceId,
-            item_name: serviceName,
-            quantity: qty,
-            unit_price: unitPrice,
-            tax_rate: taxRate,
-            line_total: lineTotal,
-            tax_amount: taxAmount
-        };
-        items.push(item);
-
-        const row = document.createElement('tr');
-        row.dataset.itemId = itemCounter;
-        row.innerHTML = `
-            <td style="padding: 1rem;">
-                ${serviceName}
-            </td>
-            <td style="padding: 1rem; text-align: right;">
-                <input type="number" class="item-qty" value="${qty}" min="0.01" step="0.01" style="width: 100px; text-align: right;">
-            </td>
-            <td style="padding: 1rem; text-align: right;">
-                <input type="number" class="item-price" value="${unitPrice}" min="0" step="0.01" style="width: 100px; text-align: right;">
-            </td>
-            <td style="padding: 1rem; text-align: right;">
-                <input type="number" class="item-tax" value="${taxRate}" min="0" max="100" step="0.01" style="width: 100px; text-align: right;">
-            </td>
-            <td style="padding: 1rem; text-align: right;" class="item-line-total"><strong>Rs ${Math.round(lineTotal)}</strong></td>
-            <td style="padding: 1rem; text-align: right;">
-                <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove item">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
-
-        updateSummary();
-        resetItemInputs();
-    });
-
-    // Inline edit
-    tbody.addEventListener('input', function(e) {
-        if (e.target.classList.contains('item-qty') || e.target.classList.contains('item-price') || e.target.classList.contains('item-tax')) {
-            const row = e.target.closest('tr');
-            const itemId = parseInt(row.dataset.itemId);
-            const item = items.find(i => i.id === itemId);
-            if (item) {
-                item.quantity = parseFloat(row.querySelector('.item-qty').value) || 0;
-                item.unit_price = parseFloat(row.querySelector('.item-price').value) || 0;
-                item.tax_rate = parseFloat(row.querySelector('.item-tax').value) || 0;
-                item.line_total = item.quantity * item.unit_price;
-                item.tax_amount = item.line_total * (item.tax_rate / 100);
-                row.querySelector('.item-line-total strong').textContent = `Rs ${Math.round(item.line_total)}`;
-                updateSummary();
-            }
-        }
-    });
-
-    // Remove item
-    tbody.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-item')) {
-            const itemId = parseInt(e.target.dataset.id);
-            const index = items.findIndex(item => item.id === itemId);
-            if (index > -1) {
-                items.splice(index, 1);
-                e.target.closest('tr').remove();
-                updateSummary();
-            }
-        }
-    });
-
-    function updateSummary() {
-        const subtotal = items.reduce((sum, item) => sum + item.line_total, 0);
-        const taxTotal = items.reduce((sum, item) => sum + item.tax_amount, 0);
-        const grandTotal = subtotal + taxTotal;
-
-        document.getElementById('subtotal').textContent = `Rs ${Math.round(subtotal)}`;
-        document.getElementById('taxTotal').textContent = `Rs ${Math.round(taxTotal)}`;
-        document.getElementById('grandTotal').textContent = `Rs ${Math.round(grandTotal)}`;
-
-        document.getElementById('formSubtotal').value = subtotal;
-        document.getElementById('formTaxTotal').value = taxTotal;
-        document.getElementById('formGrandTotal').value = grandTotal;
-        document.getElementById('formItemsData').value = JSON.stringify(items.map(item => ({
-            itemid: item.itemid,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            tax_rate: item.tax_rate,
-            line_total: item.line_total
-        })));
+    function formatMoney(amount) {
+        return `${clientCurrency} ${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
-    function resetItemInputs() {
+    function renderTaxSelect(selectedRate, attributes = '') {
+        const normalizedRate = Number(selectedRate || 0);
+        const options = [`<option value="0" ${normalizedRate === 0 ? 'selected' : ''}>No Tax</option>`];
+
+        taxOptions.forEach((tax) => {
+            const rate = Number(tax.rate || 0);
+            options.push(`<option value="${rate}" ${rate === normalizedRate ? 'selected' : ''}>${tax.name} (${rate.toFixed(2)}%)</option>`);
+        });
+
+        const hasMatch = normalizedRate === 0 || taxOptions.some((tax) => Number(tax.rate || 0) === normalizedRate);
+        if (!hasMatch && normalizedRate > 0) {
+            options.push(`<option value="${normalizedRate}" selected>Custom (${normalizedRate.toFixed(2)}%)</option>`);
+        }
+
+        return `<select class="form-input item-input" ${attributes}>${options.join('')}</select>`;
+    }
+
+    function calculateLineTotal(quantity, unitPrice, users, frequency, duration) {
+        let total = (Number(quantity) || 0) * (Number(unitPrice) || 0) * Math.max(1, Number(users) || 1);
+        if (frequency && frequency !== 'one-time' && duration) {
+            const durationNumber = Number(duration) || 0;
+            if (durationNumber > 0) {
+                total *= durationNumber;
+            }
+        }
+        return total;
+    }
+
+    function calculateEndDate(startDate, frequency, duration) {
+        if (!startDate || !frequency || !duration || frequency === 'one-time') {
+            return '';
+        }
+        const start = new Date(startDate);
+        const durationNumber = Number(duration);
+        if (Number.isNaN(start.getTime()) || durationNumber <= 0) {
+            return '';
+        }
+        const end = new Date(start);
+        switch (frequency) {
+            case 'daily': end.setDate(end.getDate() + durationNumber); break;
+            case 'weekly': end.setDate(end.getDate() + (durationNumber * 7)); break;
+            case 'bi-weekly': end.setDate(end.getDate() + (durationNumber * 14)); break;
+            case 'monthly': end.setMonth(end.getMonth() + durationNumber); break;
+            case 'quarterly': end.setMonth(end.getMonth() + (durationNumber * 3)); break;
+            case 'semi-annually': end.setMonth(end.getMonth() + (durationNumber * 6)); break;
+            case 'yearly': end.setFullYear(end.getFullYear() + durationNumber); break;
+            default: return '';
+        }
+        return end.toISOString().split('T')[0];
+    }
+
+    function renderItems() {
+        itemsBody.innerHTML = '';
+        let subtotal = 0;
+        let taxTotal = 0;
+
+        invoiceItems.forEach((item, index) => {
+            item.quantity = Number(item.quantity) || 0;
+            item.unit_price = Number(item.unit_price) || 0;
+            item.tax_rate = Number(item.tax_rate) || 0;
+            item.no_of_users = Math.max(1, Number(item.no_of_users) || 1);
+            item.line_total = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
+            const lineTax = item.line_total * (item.tax_rate / 100);
+            subtotal += item.line_total;
+            taxTotal += lineTax;
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${item.item_name || 'Item'}</strong></td>
+                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="quantity" min="0.01" step="0.01" value="${item.quantity}"></td>
+                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="unit_price" min="0" step="0.01" value="${item.unit_price}"></td>
+                <td>${renderTaxSelect(item.tax_rate, `data-index="${index}" data-field="tax_rate"` )}</td>
+                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="duration" min="0" step="1" value="${item.duration ?? ''}"></td>
+                <td>
+                    <select class="form-input item-input" data-index="${index}" data-field="frequency">
+                        ${frequencyOptions.map((value) => `<option value="${value}" ${item.frequency === value ? 'selected' : ''}>${value ? frequencyLabels[value] : 'Not recurring'}</option>`).join('')}
+                    </select>
+                </td>
+                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="no_of_users" min="1" step="1" value="${item.no_of_users || 1}"></td>
+                <td><input type="date" class="form-input item-input" data-index="${index}" data-field="start_date" value="${item.start_date || ''}"></td>
+                <td><input type="date" class="form-input item-input" data-index="${index}" data-field="end_date" value="${item.end_date || ''}"></td>
+                <td><strong>${formatMoney(item.line_total + lineTax)}</strong></td>
+                <td><button type="button" class="icon-action-btn delete remove-item" data-index="${index}" title="Remove"><i class="fas fa-trash"></i></button></td>
+            `;
+            itemsBody.appendChild(row);
+        });
+
+        document.getElementById('subtotalDisplay').textContent = formatMoney(subtotal);
+        document.getElementById('taxDisplay').textContent = formatMoney(taxTotal);
+        document.getElementById('grandTotalDisplay').textContent = formatMoney(subtotal + taxTotal);
+    }
+
+    function resetAddItemForm() {
         document.getElementById('item_itemid').value = '';
         document.getElementById('item_quantity').value = 1;
         document.getElementById('item_unit_price').value = '';
-        document.getElementById('item_tax_rate').value = '';
+        document.getElementById('item_tax_rate').value = '0';
+        document.getElementById('item_frequency').value = '';
+        document.getElementById('item_duration').value = '';
+        document.getElementById('item_users').value = 1;
+        document.getElementById('item_start_date').value = '';
+        document.getElementById('item_end_date').value = '';
     }
-});
+
+    clientSelect.addEventListener('change', function () {
+        clientCurrency = this.options[this.selectedIndex]?.dataset?.currency || 'INR';
+        currencyCodeInput.value = clientCurrency;
+        renderItems();
+    });
+
+    toggleAddItemBtn.addEventListener('click', function () {
+        addItemPanel.style.display = addItemPanel.style.display === 'none' ? 'block' : 'none';
+    });
+
+    cancelAddItemBtn.addEventListener('click', function () {
+        addItemPanel.style.display = 'none';
+        resetAddItemForm();
+    });
+
+    document.getElementById('item_itemid').addEventListener('change', function () {
+        const option = this.options[this.selectedIndex];
+        document.getElementById('item_unit_price').value = option?.dataset?.price || '';
+        document.getElementById('item_tax_rate').value = option?.dataset?.taxRate || '0';
+    });
+
+    ['item_start_date', 'item_frequency', 'item_duration'].forEach((id) => {
+        document.getElementById(id).addEventListener('change', function () {
+            document.getElementById('item_end_date').value = calculateEndDate(
+                document.getElementById('item_start_date').value,
+                document.getElementById('item_frequency').value,
+                document.getElementById('item_duration').value
+            );
+        });
+    });
+
+    addItemBtn.addEventListener('click', function () {
+        const select = document.getElementById('item_itemid');
+        const option = select.options[select.selectedIndex];
+        if (!select.value) {
+            alert('Select an item first.');
+            return;
+        }
+
+        const item = {
+            itemid: select.value,
+            item_name: (option.text || '').split(' (')[0],
+            quantity: Number(document.getElementById('item_quantity').value) || 1,
+            unit_price: Number(document.getElementById('item_unit_price').value) || 0,
+            tax_rate: Number(document.getElementById('item_tax_rate').value) || 0,
+            duration: document.getElementById('item_duration').value || null,
+            frequency: document.getElementById('item_frequency').value || null,
+            no_of_users: Math.max(1, Number(document.getElementById('item_users').value) || 1),
+            start_date: document.getElementById('item_start_date').value || null,
+            end_date: document.getElementById('item_end_date').value || null,
+        };
+
+        item.line_total = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
+        invoiceItems.push(item);
+        renderItems();
+        resetAddItemForm();
+        addItemPanel.style.display = 'none';
+    });
+
+    itemsBody.addEventListener('input', function (event) {
+        const input = event.target.closest('.item-input');
+        if (!input) {
+            return;
+        }
+
+        const index = Number(input.dataset.index);
+        const field = input.dataset.field;
+        invoiceItems[index][field] = input.type === 'number' ? Number(input.value) : input.value || null;
+
+        if (field === 'start_date' && invoiceItems[index].frequency && invoiceItems[index].duration) {
+            invoiceItems[index].end_date = calculateEndDate(invoiceItems[index].start_date, invoiceItems[index].frequency, invoiceItems[index].duration);
+        }
+
+        if ((field === 'frequency' || field === 'duration') && invoiceItems[index].start_date) {
+            invoiceItems[index].end_date = calculateEndDate(invoiceItems[index].start_date, invoiceItems[index].frequency, invoiceItems[index].duration);
+        }
+
+        renderItems();
+    });
+
+    itemsBody.addEventListener('click', function (event) {
+        const button = event.target.closest('.remove-item');
+        if (!button) {
+            return;
+        }
+        invoiceItems.splice(Number(button.dataset.index), 1);
+        renderItems();
+    });
+
+    document.getElementById('invoiceForm').addEventListener('submit', function (event) {
+        if (!invoiceItems.length) {
+            event.preventDefault();
+            alert('Add at least one invoice item before updating the invoice.');
+            return;
+        }
+
+        itemsDataInput.value = JSON.stringify(invoiceItems.map((item) => ({
+            itemid: item.itemid,
+            item_name: item.item_name,
+            quantity: Number(item.quantity) || 0,
+            unit_price: Number(item.unit_price) || 0,
+            tax_rate: Number(item.tax_rate) || 0,
+            duration: item.duration || null,
+            frequency: item.frequency || null,
+            no_of_users: Math.max(1, Number(item.no_of_users) || 1),
+            start_date: item.start_date || null,
+            end_date: item.end_date || null,
+            line_total: calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration),
+        })));
+
+        updateInvoiceBtn.disabled = true;
+        updateInvoiceBtn.textContent = 'Updating...';
+    });
+
+    renderItems();
+})();
 </script>
 @endsection
-
-

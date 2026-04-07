@@ -431,6 +431,49 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
         return redirect()->to(route('settings.index') . '#quotation-details')->with('success', 'Quotation details updated successfully.');
     }
 
+    /**
+     * Reset serial numbers if reset_on_fy is enabled
+     */
+    private function resetSerialNumbersIfRequired($accountid)
+    {
+        $account = Account::find($accountid);
+        if (!$account || !$account->fy_startdate) {
+            return; // No FY start date configured
+        }
+
+        // Check if it's a standard FY (like April 1 to March 31)
+        $fyParts = explode('-', $account->fy_startdate);
+        $fyMonth = $fyParts[0] ?? '04';
+        $fyDay = $fyParts[1] ?? '01';
+        
+        // If FY starts on 1st of any month, it's a "full year" FY
+        $isFullYearFy = ($fyDay == '01');
+        
+        if (!$isFullYearFy) {
+            return; // Don't reset for non-standard FY
+        }
+
+        // Reset billing serial
+        $billingDetail = AccountBillingDetail::where('accountid', $accountid)->first();
+        if ($billingDetail && $billingDetail->reset_on_fy) {
+            $billingDetail->update([
+                'prefix_value' => null,
+                'number_value' => null,
+                'suffix_value' => null,
+            ]);
+        }
+
+        // Reset quotation serial
+        $quotationDetail = AccountQuotationDetail::where('accountid', $accountid)->first();
+        if ($quotationDetail && $quotationDetail->reset_on_fy) {
+            $quotationDetail->update([
+                'prefix_value' => null,
+                'number_value' => null,
+                'suffix_value' => null,
+            ]);
+        }
+    }
+
     public function financialYearUpdate(Request $request)
         {
         $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
@@ -472,11 +515,21 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
             return redirect()->back()->with('error', 'Unauthorized action.');
         }
 
+        // Check if we're changing the default FY
+        $previousDefault = FinancialYear::where('accountid', $accountid)
+            ->where('default', true)
+            ->first();
+
         // Set all others to false
         FinancialYear::where('accountid', $accountid)->update(['default' => false]);
 
         // Set this one to true
         $financialYear->update(['default' => true]);
+
+        // Reset serials if default FY changed
+        if (!$previousDefault || $previousDefault->fy_id !== $financialYear->fy_id) {
+            $this->resetSerialNumbersIfRequired($accountid);
+        }
 
         return redirect()->to(route('settings.index') . '#financial-year')->with('success', 'Financial Year "' . $financialYear->financial_year . '" set as default.');
         }

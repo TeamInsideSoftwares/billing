@@ -163,6 +163,37 @@ class OrdersController extends Controller
         ]);
     }
 
+    /**
+     * Get order details with items as JSON (for AJAX)
+     */
+    public function getOrderJson(Request $request, Order $order)
+    {
+        $order->load(['items.service']);
+        
+        return response()->json([
+            'orderid' => $order->orderid,
+            'order_number' => $order->order_number,
+            'clientid' => $order->clientid,
+            'grand_total' => $order->grand_total,
+            'items' => $order->items->map(function ($item) {
+                return [
+                    'orderid' => $item->orderid,
+                    'serviceid' => $item->itemid,
+                    'itemid' => $item->itemid,
+                    'quantity' => $item->quantity ?? 1,
+                    'unit_price' => $item->unit_price ?? 0,
+                    'tax_rate' => $item->tax_rate ?? 0,
+                    'line_total' => $item->line_total ?? 0,
+                    'item_name' => $item->item_name ?? '',
+                    'service' => $item->service ? [
+                        'itemid' => $item->service->itemid,
+                        'name' => $item->service->name,
+                    ] : null,
+                ];
+            }),
+        ]);
+    }
+
     public function ordersEdit(Order $order): View
     {
         $order->load(['items.item']);

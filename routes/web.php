@@ -53,6 +53,10 @@ Route::middleware(['auth'])->group(function () {
     Route::controller(InvoicesController::class)->group(function () {
         Route::get('/invoices', 'invoices')->name('invoices.index');
         Route::get('/invoices/create', 'invoicesCreate')->name('invoices.create');
+        Route::post('/invoices/client-orders', 'getClientOrders')->name('invoices.client-orders');
+        Route::post('/invoices/renewal-invoices', 'getRenewalInvoices')->name('invoices.renewal-invoices');
+        Route::get('/invoices/order-items/{orderid}', 'getOrderItems')->name('invoices.order-items');
+        Route::get('/invoices/renewal-items/{invoiceid}', 'getRenewalItems')->name('invoices.renewal-items');
         Route::post('/invoices', 'invoicesStore')->name('invoices.store');
         Route::get('/invoices/{invoice}', 'invoicesShow')->name('invoices.show');
         Route::get('/invoices/{invoice}/edit', 'invoicesEdit')->name('invoices.edit');
@@ -115,6 +119,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/orders/create', 'ordersCreate')->name('orders.create');
         Route::post('/orders', 'ordersStore')->name('orders.store');
         Route::get('/orders/{order}', 'ordersShow')->name('orders.show');
+        Route::get('/orders/{order}/json', 'getOrderJson')->name('orders.json');
         Route::get('/orders/{order}/edit', 'ordersEdit')->name('orders.edit');
         Route::put('/orders/{order}', 'ordersUpdate')->name('orders.update');
         Route::delete('/orders/{order}', 'ordersDestroy')->name('orders.destroy');

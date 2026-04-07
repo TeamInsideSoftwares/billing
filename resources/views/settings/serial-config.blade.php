@@ -30,10 +30,31 @@
                         @endif
                         <input type="hidden" name="accountid" value="{{ $account->accountid }}">
                         
+                        @php
+                            // Generate dynamic billing preview
+                            $billingParts = [];
+                            if ($editingBillingDetail) {
+                                $pType = $editingBillingDetail->prefix_type ?? 'manual text';
+                                $pValue = $editingBillingDetail->prefix_value ?? ($pType == 'manual text' ? 'INV' : '');
+                                $pSep = $editingBillingDetail->prefix_separator ?? '-';
+                                $nType = $editingBillingDetail->number_type ?? 'auto increment';
+                                $nValue = $editingBillingDetail->number_value ?? ($editingBillingDetail->auto_increment_start ?? '1');
+                                $nSep = $editingBillingDetail->number_separator ?? '-';
+                                $sType = $editingBillingDetail->suffix_type ?? 'manual text';
+                                $sValue = $editingBillingDetail->suffix_value ?? '';
+                                
+                                $billingParts[] = $pValue;
+                                if ($pSep !== 'none') $billingParts[] = $pSep;
+                                $billingParts[] = $nValue;
+                                if ($nSep !== 'none') $billingParts[] = $nSep;
+                                $billingParts[] = $sValue;
+                            }
+                            $billingPreview = !empty($editingBillingDetail) ? implode('', array_filter($billingParts)) : 'Configure serial first';
+                        @endphp
                         <div style="margin-bottom: 1rem;">
                             <label style="font-weight: 600; font-size: 0.7rem; color: #64748b; text-transform: uppercase;">Preview</label>
-                            <div id="billing-preview" style="font-family: monospace; font-size: 1rem; font-weight: bold; color: #1e293b; padding: 0.5rem; background: white; border-radius: 6px; border: 2px dashed #cbd5e1; text-align: center; margin-top: 0.25rem;">
-                                INV-1-8596
+                            <div id="billing-preview" style="font-family: monospace; font-size: 1rem; font-weight: bold; color: {{ empty($editingBillingDetail) || (empty($editingBillingDetail->prefix_value) && empty($editingBillingDetail->number_value)) ? '#94a3b8' : '#1e293b' }}; padding: 0.5rem; background: white; border-radius: 6px; border: 2px dashed {{ empty($editingBillingDetail) || (empty($editingBillingDetail->prefix_value) && empty($editingBillingDetail->number_value)) ? '#94a3b8' : '#cbd5e1' }}; text-align: center; margin-top: 0.25rem;">
+                                {{ $billingPreview }}
                             </div>
                         </div>
 
@@ -106,10 +127,31 @@
                         @endif
                         <input type="hidden" name="accountid" value="{{ $account->accountid }}">
 
+                        @php
+                            // Generate dynamic quotation preview
+                            $quotationParts = [];
+                            if ($editingQuotationDetail) {
+                                $pType = $editingQuotationDetail->prefix_type ?? 'manual text';
+                                $pValue = $editingQuotationDetail->prefix_value ?? ($pType == 'manual text' ? 'QUO' : '');
+                                $pSep = $editingQuotationDetail->prefix_separator ?? '-';
+                                $nType = $editingQuotationDetail->number_type ?? 'auto increment';
+                                $nValue = $editingQuotationDetail->number_value ?? ($editingQuotationDetail->auto_increment_start ?? '1');
+                                $nSep = $editingQuotationDetail->number_separator ?? '-';
+                                $sType = $editingQuotationDetail->suffix_type ?? 'manual text';
+                                $sValue = $editingQuotationDetail->suffix_value ?? '';
+                                
+                                $quotationParts[] = $pValue;
+                                if ($pSep !== 'none') $quotationParts[] = $pSep;
+                                $quotationParts[] = $nValue;
+                                if ($nSep !== 'none') $quotationParts[] = $nSep;
+                                $quotationParts[] = $sValue;
+                            }
+                            $quotationPreview = !empty($editingQuotationDetail) ? implode('', array_filter($quotationParts)) : 'Configure serial first';
+                        @endphp
                         <div style="margin-bottom: 1rem;">
                             <label style="font-weight: 600; font-size: 0.7rem; color: #64748b; text-transform: uppercase;">Preview</label>
-                            <div id="quotation-preview" style="font-family: monospace; font-size: 1rem; font-weight: bold; color: #1e293b; padding: 0.5rem; background: white; border-radius: 6px; border: 2px dashed #cbd5e1; text-align: center; margin-top: 0.25rem;">
-                                QUO-1-8512
+                            <div id="quotation-preview" style="font-family: monospace; font-size: 1rem; font-weight: bold; color: {{ empty($editingQuotationDetail) || (empty($editingQuotationDetail->prefix_value) && empty($editingQuotationDetail->number_value)) ? '#94a3b8' : '#1e293b' }}; padding: 0.5rem; background: white; border-radius: 6px; border: 2px dashed {{ empty($editingQuotationDetail) || (empty($editingQuotationDetail->prefix_value) && empty($editingQuotationDetail->number_value)) ? '#94a3b8' : '#cbd5e1' }}; text-align: center; margin-top: 0.25rem;">
+                                {{ $quotationPreview }}
                             </div>
                         </div>
 

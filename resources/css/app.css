@@ -398,6 +398,14 @@ a {
     background: #f1f5f9;
 }
 
+.status-pill.paid { background: #d1fae5; color: #065f46; }
+.status-pill.pending { background: #fef3c7; color: #92400e; }
+.status-pill.partial { background: #dbeafe; color: #1e40af; }
+.status-pill.draft { background: #f1f5f9; color: #475569; }
+.status-pill.sent { background: #e0e7ff; color: #3730a3; }
+.status-pill.overdue { background: #fee2e2; color: #991b1b; }
+.status-pill.cancelled { background: #f3f4f6; color: #6b7280; }
+
 /* Activity List */
 .activity-item {
     padding: 0.875rem 0;
