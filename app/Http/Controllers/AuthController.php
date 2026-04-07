@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    public function showLogin()
+    public function showLogin(Request $request)
     {
         return view('auth.login', ['title' => 'Sign In']);
     }
@@ -22,7 +22,8 @@ class AuthController extends Controller
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            return redirect()->intended(route('dashboard'))->with('success', 'Logged in successfully.');
+            // Always redirect to dashboard after login
+            return redirect()->route('dashboard')->with('success', 'Logged in successfully.');
         }
 
         return back()->withErrors([
@@ -37,6 +38,6 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-return redirect()->route('login')->with('success', 'Logged out successfully.');
+        return redirect()->route('login')->with('success', 'Logged out successfully.');
     }
 }
