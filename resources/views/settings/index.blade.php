@@ -1069,6 +1069,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const date = String(now.getDate()).padStart(2, '0');
 
+        function getSeparator(name) {
+            const field = form.querySelector(`[name="${name}"]`);
+            return field && field.value !== 'none' ? field.value : '';
+        }
+
         function getPartValue(part) {
             const type = form.querySelector(`[name="${part}_type"]`).value;
             const valInputGroup = form.querySelector(`[name="${part}_value"]`).closest('.input-group-val');
@@ -1126,12 +1131,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const number = getPartValue('number');
         const suffix = getPartValue('suffix');
 
-        // Get separators from dropdowns
-        const prefixSepField = form.querySelector('[name="prefix_separator"]');
-        const numberSepField = form.querySelector('[name="number_separator"]');
-        
-        const prefixSep = prefixSepField && prefixSepField.value !== 'none' ? prefixSepField.value : '';
-        const numberSep = numberSepField && numberSepField.value !== 'none' ? numberSepField.value : '';
+        const prefixSep = prefix ? getSeparator('prefix_separator') : '';
+        const numberSep = suffix ? getSeparator('number_separator') : '';
 
         previewDiv.innerText = prefix + prefixSep + number + numberSep + suffix;
     }

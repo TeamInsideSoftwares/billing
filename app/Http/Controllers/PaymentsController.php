@@ -49,7 +49,10 @@ class PaymentsController extends Controller
         return view('payments.create', [
             'title' => 'New Payment',
             'clients' => Client::all(),
-            'invoices' => Invoice::where('status', '!=', 'paid')->get(),
+            'invoices' => Invoice::with('client')
+                ->whereIn('invoice_type', ['tax', 'receipt'])
+                ->where('status', '!=', 'paid')
+                ->get(),
         ]);
     }
 
@@ -64,6 +67,24 @@ class PaymentsController extends Controller
             'paid_at' => 'required|date',
             'notes' => 'nullable|string',
         ]);
+
+        $invoice = null;
+
+        if (!empty($validated['invoiceid'])) {
+            $invoice = Invoice::find($validated['invoiceid']);
+
+            if ($invoice?->isProforma()) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['invoiceid' => 'Payments can only be recorded against tax or receipt invoices. Convert the proforma invoice first.']);
+            }
+
+            if ($invoice && $invoice->clientid !== $validated['clientid']) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['invoiceid' => 'The selected invoice does not belong to the selected client.']);
+            }
+        }
 
         $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
 
@@ -83,9 +104,7 @@ class PaymentsController extends Controller
 
         $payment = Payment::create($paymentData);
 
-        if ($payment->invoiceid) {
-            $invoice = Invoice::find($payment->invoiceid);
-            if ($invoice) {
+        if ($payment->invoiceid && $invoice) {
                 $invoice->balance_due -= $payment->amount;
                 $invoice->amount_paid += $payment->amount;
                 if ($invoice->balance_due <= 0) {
@@ -94,7 +113,6 @@ class PaymentsController extends Controller
                     $invoice->paid_at = now();
                 }
                 $invoice->save();
-            }
         }
 
         return redirect()->route('payments.index')->with('success', 'Payment recorded successfully.');
@@ -115,7 +133,9 @@ class PaymentsController extends Controller
             'title' => 'Edit Payment',
             'payment' => $payment,
             'clients' => Client::all(),
-            'invoices' => Invoice::all(),
+            'invoices' => Invoice::with('client')
+                ->whereIn('invoice_type', ['tax', 'receipt'])
+                ->get(),
         ]);
     }
 
@@ -130,6 +150,22 @@ class PaymentsController extends Controller
             'paid_at' => 'required|date',
             'notes' => 'nullable|string',
         ]);
+
+        if (!empty($validated['invoiceid'])) {
+            $invoice = Invoice::find($validated['invoiceid']);
+
+            if ($invoice?->isProforma()) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['invoiceid' => 'Payments can only be linked to tax or receipt invoices.']);
+            }
+
+            if ($invoice && $invoice->clientid !== $validated['clientid']) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['invoiceid' => 'The selected invoice does not belong to the selected client.']);
+            }
+        }
 
         $payment->update([
             'clientid' => $validated['clientid'],

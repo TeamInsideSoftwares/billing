@@ -38,7 +38,9 @@
                                 $pValue = $editingBillingDetail->prefix_value ?? ($pType == 'manual text' ? 'INV' : '');
                                 $pSep = $editingBillingDetail->prefix_separator ?? '-';
                                 $nType = $editingBillingDetail->number_type ?? 'auto increment';
-                                $nValue = $editingBillingDetail->number_value ?? ($editingBillingDetail->auto_increment_start ?? '1');
+                                $nValue = $nType === 'auto increment'
+                                    ? ($editingBillingDetail->number_value ?? '1')
+                                    : ($editingBillingDetail->number_value ?? '');
                                 $nSep = $editingBillingDetail->number_separator ?? '-';
                                 $sType = $editingBillingDetail->suffix_type ?? 'manual text';
                                 $sValue = $editingBillingDetail->suffix_value ?? '';
@@ -80,7 +82,7 @@
                                                 $valLabel = ($editingBillingDetail->{$part.'_type'} ?? '') == 'auto increment' ? 'Start From' : 'Enter its value';
                                             @endphp
                                             <label class="val-label" style="font-size: 0.65rem; color: #64748b; display: block; margin-bottom: 2px;">{{ $valLabel }}</label>
-                                            <input type="text" name="{{ $part }}_value" value="{{ $editingBillingDetail->{$part.'_value'} ?? ($part == 'number' ? ($editingBillingDetail->auto_increment_start ?? 1) : '') }}" placeholder="Value" style="width: 100%; padding: 0.35rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;">
+                                            <input type="text" name="{{ $part }}_value" value="{{ $part == 'number' && (($editingBillingDetail->{$part.'_type'} ?? 'auto increment') == 'auto increment') ? ($editingBillingDetail->number_value ?? 1) : ($editingBillingDetail->{$part.'_value'} ?? '') }}" placeholder="Value" style="width: 100%; padding: 0.35rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;">
                                         </div>
                                         
                                         <!-- Length input (used for auto generate) -->
@@ -135,7 +137,9 @@
                                 $pValue = $editingQuotationDetail->prefix_value ?? ($pType == 'manual text' ? 'QUO' : '');
                                 $pSep = $editingQuotationDetail->prefix_separator ?? '-';
                                 $nType = $editingQuotationDetail->number_type ?? 'auto increment';
-                                $nValue = $editingQuotationDetail->number_value ?? ($editingQuotationDetail->auto_increment_start ?? '1');
+                                $nValue = $nType === 'auto increment'
+                                    ? ($editingQuotationDetail->number_value ?? '1')
+                                    : ($editingQuotationDetail->number_value ?? '');
                                 $nSep = $editingQuotationDetail->number_separator ?? '-';
                                 $sType = $editingQuotationDetail->suffix_type ?? 'manual text';
                                 $sValue = $editingQuotationDetail->suffix_value ?? '';
@@ -177,7 +181,7 @@
                                                 $valLabel = ($editingQuotationDetail->{$part.'_type'} ?? '') == 'auto increment' ? 'Start From' : 'Enter its value';
                                             @endphp
                                             <label class="val-label" style="font-size: 0.65rem; color: #64748b; display: block; margin-bottom: 2px;">{{ $valLabel }}</label>
-                                            <input type="text" name="{{ $part }}_value" value="{{ $editingQuotationDetail->{$part.'_value'} ?? ($part == 'number' ? ($editingQuotationDetail->auto_increment_start ?? 1) : '') }}" placeholder="Value" style="width: 100%; padding: 0.35rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;">
+                                            <input type="text" name="{{ $part }}_value" value="{{ $part == 'number' && (($editingQuotationDetail->{$part.'_type'} ?? 'auto increment') == 'auto increment') ? ($editingQuotationDetail->number_value ?? 1) : ($editingQuotationDetail->{$part.'_value'} ?? '') }}" placeholder="Value" style="width: 100%; padding: 0.35rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;">
                                         </div>
                                         
                                         <!-- Length input (used for auto generate) -->

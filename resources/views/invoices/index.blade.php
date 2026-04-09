@@ -8,6 +8,18 @@
         <a href="{{ route('invoices.create') }}" class="primary-button">Create Invoice</a>
     </section>
 
+    @if(session('success'))
+        <div style="margin-bottom: 1rem; padding: 0.9rem 1rem; border: 1px solid #bbf7d0; background: #f0fdf4; color: #166534; border-radius: 10px;">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div style="margin-bottom: 1rem; padding: 0.9rem 1rem; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; border-radius: 10px;">
+            {{ session('error') }}
+        </div>
+    @endif
+
     <section class="panel-card" style="padding: 0;">
         <table class="data-table">
             <thead>
@@ -23,21 +35,22 @@
                 </tr>
             </thead>
             <tbody>
-            @php
-                $allInvoices = \App\Models\Invoice::with('client', 'payments', 'items')->latest()->take(50)->get();
-            @endphp
-            @forelse ($allInvoices as $invoice)
+            @forelse ($invoices as $invoice)
                 @php
                     $amountPaid = $invoice->payments->sum('amount');
                     $balanceDue = $invoice->grand_total - $amountPaid;
                     $paymentStatus = $balanceDue <= 0 ? 'paid' : ($amountPaid > 0 ? 'partial' : 'pending');
-                    
+
                     // Get the latest end_date from items
                     $latestEndDate = $invoice->items->max('end_date');
                     $isExpired = $latestEndDate && $latestEndDate < now();
-                    
+
                     // Get client currency
                     $currency = $invoice->client->currency ?? 'INR';
+
+                    // Check if it's a proforma invoice
+                    $isProforma = $invoice->isProforma();
+                    $convertedTaxInvoice = $invoice->convertedTaxInvoice;
                 @endphp
                 <tr>
                     <td>
@@ -88,6 +101,18 @@
                         <a href="{{ route('invoices.show', $invoice->invoiceid) }}" class="icon-action-btn view" title="View">
                             <i class="fas fa-eye"></i>
                         </a>
+                        @if($isProforma && !$convertedTaxInvoice)
+                            <form method="POST" action="{{ route('invoices.convert-to-tax', $invoice->invoiceid) }}" style="display: inline;" onsubmit="return confirm('Convert this proforma invoice to a tax invoice?')">
+                                @csrf
+                                <button type="submit" class="icon-action-btn" style="background: #fef3c7; color: #92400e; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer;" title="Convert to Tax Invoice">
+                                    <i class="fas fa-file-invoice-dollar"></i>
+                                </button>
+                            </form>
+                        @elseif($isProforma && $convertedTaxInvoice)
+                            <a href="{{ route('invoices.show', $convertedTaxInvoice) }}" class="icon-action-btn view" title="View Tax Invoice" style="background: #ecfdf5; color: #047857;">
+                                <i class="fas fa-link"></i>
+                            </a>
+                        @endif
                         <a href="{{ route('invoices.edit', $invoice->invoiceid) }}" class="icon-action-btn edit" title="Edit">
                             <i class="fas fa-edit"></i>
                         </a>

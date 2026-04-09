@@ -6,12 +6,15 @@ use App\Models\Concerns\HasAlphaNumericId;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'accountid',
+    'fy_id',
     'clientid',
     'orderid',
+    'converted_from_invoiceid',
     'invoice_number',
     'invoice_type',
     'invoice_for',
@@ -33,7 +36,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class Invoice extends Model
 {
-protected $primaryKey = 'invoiceid';
+    protected $primaryKey = 'invoiceid';
+    public $incrementing = false;
+    protected $keyType = 'string';
+    public $timestamps = true;
+    
     public function getRouteKeyName(): string
     {
         return 'invoiceid';
@@ -77,6 +84,23 @@ protected $primaryKey = 'invoiceid';
         return $this->belongsTo(Order::class, 'orderid');
     }
 
+    public function convertedFromInvoice(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'converted_from_invoiceid', 'invoiceid');
+    }
+
+    public function convertedTaxInvoices(): HasMany
+    {
+        return $this->hasMany(self::class, 'converted_from_invoiceid', 'invoiceid')
+            ->where('invoice_type', 'tax');
+    }
+
+    public function convertedTaxInvoice(): HasOne
+    {
+        return $this->hasOne(self::class, 'converted_from_invoiceid', 'invoiceid')
+            ->where('invoice_type', 'tax');
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -90,6 +114,21 @@ protected $primaryKey = 'invoiceid';
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'invoiceid');
+    }
+
+    public function isProforma(): bool
+    {
+        return strtolower($this->invoice_type ?? 'proforma') === 'proforma';
+    }
+
+    public function canConvertToTaxInvoice(): bool
+    {
+        return $this->isProforma() && $this->convertedTaxInvoice()->doesntExist();
+    }
+
+    public function hasPaymentsRecorded(): bool
+    {
+        return (float) ($this->amount_paid ?? 0) > 0 || $this->payments()->exists();
     }
 
 }

@@ -192,13 +192,10 @@ class SettingsController extends Controller
             'suffix_type' => 'nullable|string|max:50',
             'suffix_value' => 'nullable|string|max:50',
             'suffix_length' => 'nullable|integer|min:0|max:20',
-            'serial_mode' => 'nullable|in:auto_generate,auto_increment',
             'number_type' => 'nullable|string|max:50',
             'number_value' => 'nullable|string|max:50',
             'number_length' => 'nullable|integer|min:1|max:20',
             'number_separator' => 'nullable|string|max:10',
-            'alphanumeric_length' => 'nullable|integer|in:4,6',
-            'auto_increment_start' => 'nullable|integer|min:1|max:99999',
             'reset_on_fy' => 'boolean',
             'billing_name' => 'nullable|string|max:150',
             'address' => 'nullable|string',
@@ -221,6 +218,7 @@ class SettingsController extends Controller
 
         $validated = $validator->validated();
         $validated['reset_on_fy'] = $request->has('reset_on_fy');
+        $validated = $this->normalizeSerialConfiguration($validated);
 
         // Handle file upload
         if ($request->hasFile('signature_upload') && $request->file('signature_upload')->isValid()) {
@@ -272,13 +270,10 @@ class SettingsController extends Controller
             'suffix_type' => 'nullable|string|max:50',
             'suffix_value' => 'nullable|string|max:50',
             'suffix_length' => 'nullable|integer|min:0|max:20',
-            'serial_mode' => 'nullable|in:auto_generate,auto_increment',
             'number_type' => 'nullable|string|max:50',
             'number_value' => 'nullable|string|max:50',
             'number_length' => 'nullable|integer|min:1|max:20',
             'number_separator' => 'nullable|string|max:10',
-            'alphanumeric_length' => 'nullable|integer|in:4,6',
-            'auto_increment_start' => 'nullable|integer|min:1|max:99999',
             'reset_on_fy' => 'boolean',
             'quotation_name' => 'nullable|string|max:150',
             'address' => 'nullable|string',
@@ -300,6 +295,8 @@ class SettingsController extends Controller
         }
 
         $validated = $validator->validated();
+        $validated['reset_on_fy'] = $request->has('reset_on_fy');
+        $validated = $this->normalizeSerialConfiguration($validated);
 
         // Handle file upload
         if ($request->hasFile('signature_upload') && $request->file('signature_upload')->isValid()) {
@@ -356,9 +353,7 @@ class SettingsController extends Controller
         $billingDetail = AccountBillingDetail::where('accountid', $accountid)->first();
         if ($billingDetail && $billingDetail->reset_on_fy) {
             $billingDetail->update([
-                'prefix_value' => null,
                 'number_value' => null,
-                'suffix_value' => null,
             ]);
         }
 
@@ -366,9 +361,7 @@ class SettingsController extends Controller
         $quotationDetail = AccountQuotationDetail::where('accountid', $accountid)->first();
         if ($quotationDetail && $quotationDetail->reset_on_fy) {
             $quotationDetail->update([
-                'prefix_value' => null,
                 'number_value' => null,
-                'suffix_value' => null,
             ]);
         }
     }
@@ -638,6 +631,20 @@ class SettingsController extends Controller
 
     // ─── Tax Management ───
 
+    protected function normalizeSerialConfiguration(array $validated): array
+    {
+        $validated['prefix_type'] = $validated['prefix_type'] ?? 'manual text';
+        $validated['number_type'] = $validated['number_type'] ?? 'auto increment';
+        $validated['suffix_type'] = $validated['suffix_type'] ?? 'manual text';
+
+        if (($validated['number_type'] ?? null) === 'auto increment') {
+            $start = $validated['number_value'] ?? 1;
+            $validated['number_value'] = (string) max(1, (int) $start);
+        }
+
+        return $validated;
+    }
+
     public function taxStore(Request $request)
     {
         $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
@@ -717,8 +724,3 @@ class SettingsController extends Controller
         return redirect()->to(route('settings.index') . '#taxes')->with('success', 'Tax status toggled.');
     }
 }
-
-
-
-
-

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountBillingDetail;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
@@ -19,14 +20,17 @@ class InvoicesController extends Controller
         $clients = Client::orderBy('business_name')->get();
         $selectedClientId = request('clientid');
 
-        $invoices = collect();
+        $invoiceQuery = Invoice::with(['client', 'payments', 'items'])->latest();
 
         if ($selectedClientId) {
-            $invoices = Invoice::with('client', 'payments')
-                ->where('clientid', $selectedClientId)
-                ->latest()
-                ->get()
-                ->map(function ($invoice) {
+            $invoiceQuery->where('clientid', $selectedClientId);
+        }
+
+        $invoices = $invoiceQuery->take(50)->get();
+
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json([
+                'invoices' => $invoices->map(function ($invoice) {
                     $amountPaid = $invoice->amount_paid ?? 0;
                     $balanceDue = $invoice->balance_due ?? $invoice->grand_total;
                     $currency = $invoice->client->currency ?? 'INR';
@@ -42,12 +46,7 @@ class InvoicesController extends Controller
                         'status' => $invoice->status ?? 'draft',
                         'payment_status' => $balanceDue <= 0 ? 'paid' : ($amountPaid > 0 ? 'partial' : 'pending'),
                     ];
-                });
-        }
-
-        if (request()->wantsJson() || request()->ajax()) {
-            return response()->json([
-                'invoices' => $invoices,
+                }),
                 'selectedClientId' => $selectedClientId,
             ]);
         }
@@ -210,34 +209,79 @@ class InvoicesController extends Controller
     {
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
 
-        $billingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
+        $billingDetail = AccountBillingDetail::where('accountid', $accountid)->first();
 
         if (!$billingDetail) {
-            return 'INV-' . str_pad(Invoice::where('accountid', $accountid)->count() + 1, 4, '0', STR_PAD_LEFT);
+            // Fallback: simple auto-increment if no billing detail configured
+            $count = Invoice::where('accountid', $accountid)->count();
+            $candidate = 'INV-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+            return $this->ensureUniqueInvoiceNumber($candidate, $accountid);
         }
 
-        return $billingDetail->serial_preview ?? 'INV-0001';
+        // Use the billing detail's serial number generation
+        $candidate = $billingDetail->generateNextSerialNumber();
+
+        // Ensure we don't generate an empty string
+        return $this->ensureUniqueInvoiceNumber($candidate !== '' ? $candidate : 'INV-0001', $accountid);
+    }
+
+    protected function ensureUniqueInvoiceNumber(string $candidate, string $accountid): string
+    {
+        $candidate = trim($candidate);
+
+        if ($candidate === '') {
+            $candidate = 'INV-0001';
+        }
+
+        $number = $candidate;
+        $sequence = 2;
+
+        while (Invoice::where('accountid', $accountid)->where('invoice_number', $number)->exists()) {
+            if (preg_match('/^(.*?)(\d+)$/', $candidate, $matches)) {
+                $prefix = $matches[1];
+                $digits = $matches[2];
+                $number = $prefix . str_pad((string) ((int) $digits + $sequence - 1), strlen($digits), '0', STR_PAD_LEFT);
+            } else {
+                $number = $candidate . '-' . $sequence;
+            }
+
+            $sequence++;
+        }
+
+        return $number;
     }
 
     public function invoicesStore(Request $request)
     {
-        $validated = $request->validate([
-            'clientid' => 'required|exists:clients,clientid',
-            'orderid' => 'nullable|exists:orders,orderid',
-            'invoice_number' => 'required|string|unique:invoices,invoice_number',
-            'invoice_type' => 'nullable|string|in:proforma,tax,receipt',
-            'invoice_for' => 'required|string|in:orders,renewal,without_orders',
-            'issue_date' => 'required|date',
-            'due_date' => 'required|date|after_or_equal:issue_date',
-            'notes' => 'nullable|string',
-            'status' => 'required|in:draft,sent,paid,overdue,cancelled',
-            'currency_code' => 'nullable|string|max:10',
-            'subtotal' => 'required|numeric|min:0',
-            'tax_total' => 'required|numeric|min:0',
-            'grand_total' => 'required|numeric|min:0',
-            'items_data' => 'required|json',
-            'accountid' => 'nullable|size:10',
-        ]);
+        try {
+            $validated = $request->validate([
+                'clientid' => 'required|exists:clients,clientid',
+                'orderid' => 'nullable|exists:orders,orderid',
+                'invoice_number' => 'required|string|unique:invoices,invoice_number',
+                'invoice_type' => 'nullable|string|in:proforma,tax,receipt',
+                'invoice_for' => 'required|string|in:orders,renewal,without_orders',
+                'issue_date' => 'required|date',
+                'due_date' => 'required|date|after_or_equal:issue_date',
+                'notes' => 'nullable|string',
+                'status' => 'required|in:draft,sent,paid,overdue,cancelled',
+                'currency_code' => 'nullable|string|max:10',
+                'subtotal' => 'required|numeric|min:0',
+                'tax_total' => 'required|numeric|min:0',
+                'grand_total' => 'required|numeric|min:0',
+                'items_data' => 'required|json',
+                'accountid' => 'nullable|size:10',
+            ]);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error('Invoice validation failed: ' . $e->getMessage(), [
+                'request_data' => $request->except('items_data'),
+                'error' => $e->getMessage(),
+            ]);
+            throw ValidationException::withMessages([
+                'general' => 'Invalid form data. Please check all fields and try again.',
+            ]);
+        }
 
         $itemsData = json_decode($request->items_data, true);
         if (!is_array($itemsData) || empty($itemsData)) {
@@ -269,7 +313,10 @@ class InvoicesController extends Controller
                     'orderid' => 'The selected order already has an invoice.',
                 ]);
             }
+        } elseif ($validated['invoice_for'] === 'renewal') {
+            $validated['orderid'] = null;
         } else {
+            // For without_orders, ensure orderid is null
             $validated['orderid'] = null;
         }
 
@@ -336,28 +383,49 @@ class InvoicesController extends Controller
 
         $invoice = null;
 
-        DB::transaction(function () use ($validated, $preparedItems, &$invoice) {
-            $invoice = Invoice::create($validated);
+        try {
+            DB::transaction(function () use ($validated, $preparedItems, &$invoice) {
+                $invoice = Invoice::create($validated);
 
-            foreach ($preparedItems as $itemData) {
-                $itemData['invoiceid'] = $invoice->invoiceid;
-                InvoiceItem::create($itemData);
-            }
-        });
+                foreach ($preparedItems as $itemData) {
+                    $itemData['invoiceid'] = $invoice->invoiceid;
+                    InvoiceItem::create($itemData);
+                }
+            });
+        } catch (\Exception $e) {
+            \Log::error('Failed to create invoice: ' . $e->getMessage(), [
+                'validated' => $validated,
+                'preparedItems' => $preparedItems,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw ValidationException::withMessages([
+                'general' => 'Failed to create invoice. Please try again or contact support if the issue persists.',
+            ]);
+        }
 
         return redirect()->route('invoices.index')->with('success', 'Invoice created successfully with items.');
     }
 
     public function invoicesShow(Invoice $invoice): View
     {
-        $invoice->load(['client', 'items.service', 'payments']);
+        $invoice->load(['client', 'items.service', 'payments', 'convertedFromInvoice', 'convertedTaxInvoice']);
+        
+        // Load account billing details for preview
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $account = \App\Models\Account::where('accountid', $accountid)->first();
+        $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
 
-        return view('invoices.show', ['title' => 'Invoice Details', 'invoice' => $invoice]);
+        return view('invoices.show', [
+            'title' => 'Invoice Details', 
+            'invoice' => $invoice,
+            'account' => $account,
+            'accountBillingDetail' => $accountBillingDetail,
+        ]);
     }
 
     public function invoicesEdit(Invoice $invoice): View
     {
-        $invoice->load(['items.service']);
+        $invoice->load(['items.service', 'payments', 'convertedTaxInvoice']);
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
 
         return view('invoices.edit', [
@@ -431,5 +499,83 @@ class InvoicesController extends Controller
         $invoice->delete();
 
         return redirect()->route('invoices.index')->with('success', 'Invoice deleted successfully.');
+    }
+
+    public function convertToTaxInvoice(Invoice $invoice)
+    {
+        $invoice->loadMissing(['items', 'payments', 'convertedTaxInvoice']);
+
+        if (!$invoice->isProforma()) {
+            return redirect()->route('invoices.show', $invoice)
+                ->with('error', 'Only proforma invoices can be converted to tax invoices.');
+        }
+
+        if ($invoice->convertedTaxInvoice) {
+            return redirect()->route('invoices.show', $invoice->convertedTaxInvoice)
+                ->with('success', 'A tax invoice has already been created for this proforma invoice.');
+        }
+
+        if ($invoice->items->isEmpty()) {
+            return redirect()->route('invoices.show', $invoice)
+                ->with('error', 'Add at least one invoice item before converting this proforma invoice.');
+        }
+
+        if ($invoice->hasPaymentsRecorded()) {
+            return redirect()->route('invoices.show', $invoice)
+                ->with('error', 'This proforma invoice already has payments recorded. Convert it before recording payments, or reassign those payments manually.');
+        }
+
+        $newInvoiceNumber = $this->generateInvoiceNumber();
+        $taxInvoice = null;
+
+        DB::transaction(function () use ($invoice, $newInvoiceNumber, &$taxInvoice) {
+            $taxInvoice = Invoice::create([
+                'accountid' => $invoice->accountid,
+                'fy_id' => $invoice->fy_id,
+                'clientid' => $invoice->clientid,
+                'orderid' => $invoice->orderid,
+                'converted_from_invoiceid' => $invoice->invoiceid,
+                'invoice_number' => $newInvoiceNumber,
+                'invoice_type' => 'tax',
+                'invoice_for' => $invoice->invoice_for,
+                'status' => 'draft',
+                'issue_date' => now()->toDateString(),
+                'due_date' => ($invoice->due_date && $invoice->due_date->isFuture())
+                    ? $invoice->due_date->toDateString()
+                    : now()->toDateString(),
+                'subtotal' => $invoice->subtotal,
+                'tax_total' => $invoice->tax_total,
+                'discount_total' => $invoice->discount_total ?? 0,
+                'grand_total' => $invoice->grand_total,
+                'amount_paid' => 0,
+                'balance_due' => $invoice->grand_total,
+                'currency_code' => $invoice->currency_code,
+                'notes' => $invoice->notes,
+                'terms' => $invoice->terms,
+                'created_by' => auth()->user()?->userid ?? auth()->user()?->id,
+            ]);
+
+            foreach ($invoice->items as $item) {
+                InvoiceItem::create([
+                    'invoiceid' => $taxInvoice->invoiceid,
+                    'itemid' => $item->itemid,
+                    'item_name' => $item->item_name,
+                    'item_description' => $item->item_description,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'tax_rate' => $item->tax_rate,
+                    'duration' => $item->duration,
+                    'frequency' => $item->frequency,
+                    'no_of_users' => $item->no_of_users,
+                    'start_date' => $item->start_date,
+                    'end_date' => $item->end_date,
+                    'line_total' => $item->line_total,
+                    'sort_order' => $item->sort_order,
+                ]);
+            }
+        });
+
+        return redirect()->route('invoices.show', $taxInvoice)
+            ->with('success', 'Tax invoice created successfully from the selected proforma invoice.');
     }
 }

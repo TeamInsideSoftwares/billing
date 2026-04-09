@@ -22,6 +22,12 @@
                 </ul>
             </div>
         @endif
+        
+        @if ($errors->has('general'))
+            <div style="margin-bottom: 1.25rem; padding: 0.9rem 1rem; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; border-radius: 10px;">
+                <strong>Error:</strong> {{ $errors->first('general') }}
+            </div>
+        @endif
 
         <div class="invoice-meta-card" style="margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem; flex-wrap: wrap;">
@@ -49,14 +55,14 @@
             </div>
         </div>
 
-        <input type="hidden" name="orderid" id="orderid" value="{{ old('orderid') }}">
+        <input type="hidden" name="orderid" id="orderid" value="{{ old('orderid', '') }}">
         <input type="hidden" name="invoice_type" value="proforma">
         <input type="hidden" name="status" value="draft">
         <input type="hidden" name="currency_code" id="currency_code" value="{{ old('currency_code', 'INR') }}">
-        <input type="hidden" name="subtotal" id="subtotal" value="{{ old('subtotal', 0) }}">
-        <input type="hidden" name="tax_total" id="tax_total" value="{{ old('tax_total', 0) }}">
-        <input type="hidden" name="grand_total" id="grand_total" value="{{ old('grand_total', 0) }}">
-        <input type="hidden" name="items_data" id="items_data" value="{{ old('items_data') }}">
+        <input type="hidden" name="subtotal" id="subtotal" value="{{ old('subtotal', '0.00') }}">
+        <input type="hidden" name="tax_total" id="tax_total" value="{{ old('tax_total', '0.00') }}">
+        <input type="hidden" name="grand_total" id="grand_total" value="{{ old('grand_total', '0.00') }}">
+        <input type="hidden" name="items_data" id="items_data" value="{{ old('items_data', '') }}">
 
         <div id="sourceWorkspace" style="display: none;">
             <div style="margin-bottom: 1.5rem;">
@@ -884,7 +890,7 @@
         const invoiceFor = getActiveInvoiceFor();
         if (!invoiceFor) {
             event.preventDefault();
-            alert('Choose how you want to create this invoice.');
+            alert('Choose how you want to create this invoice (Orders, Renewal, or Without Orders).');
             return;
         }
         let itemsToSubmit = [];
@@ -909,6 +915,7 @@
             itemsToSubmit = invoiceItems.map((item) => ({ itemid: item.itemid, item_name: item.item_name, quantity: item.quantity, unit_price: item.unit_price, tax_rate: item.tax_rate || 0, duration: item.duration || null, frequency: item.frequency || null, no_of_users: item.no_of_users || 1, start_date: item.start_date || null, end_date: item.end_date || null, line_total: item.line_total }));
         }
         itemsDataInput.value = JSON.stringify(itemsToSubmit);
+        console.log('Submitting invoice with items:', itemsToSubmit);
         document.querySelectorAll('.create-submit-btn').forEach((button) => { button.disabled = true; button.textContent = 'Creating...'; });
     });
 

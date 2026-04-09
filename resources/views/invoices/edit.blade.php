@@ -24,6 +24,28 @@
             </div>
         @endif
 
+        @if($invoice->isProforma())
+            <div style="margin-bottom: 1.25rem; padding: 0.9rem 1rem; border: 1px solid #bfdbfe; background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); color: #1e40af; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <div>
+                    <strong style="display: block; margin-bottom: 0.25rem;">This is a Proforma Invoice</strong>
+                    @if($invoice->convertedTaxInvoice)
+                        <span style="font-size: 0.85rem;">A tax invoice has already been created for this proforma invoice.</span>
+                    @else
+                        <span style="font-size: 0.85rem;">You can convert this to a tax invoice. A new tax invoice will be created with the same items.</span>
+                    @endif
+                </div>
+                @if($invoice->convertedTaxInvoice)
+                    <a href="{{ route('invoices.show', $invoice->convertedTaxInvoice) }}" class="primary-button" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; padding: 0.65rem 1.2rem; font-size: 0.85rem; font-weight: 600; color: #ffffff; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-link"></i> View Tax Invoice
+                    </a>
+                @else
+                    <button type="submit" form="convertToTaxInvoiceForm" class="primary-button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; padding: 0.65rem 1.2rem; font-size: 0.85rem; font-weight: 600; color: #ffffff; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-file-invoice-dollar"></i> Convert to Tax Invoice
+                    </button>
+                @endif
+            </div>
+        @endif
+
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
             <div class="invoice-meta-card">
                 <span class="invoice-meta-label">Invoice Type</span>
@@ -490,4 +512,10 @@
     renderItems();
 })();
 </script>
+
+@if($invoice->isProforma() && !$invoice->convertedTaxInvoice)
+<form method="POST" action="{{ route('invoices.convert-to-tax', $invoice) }}" id="convertToTaxInvoiceForm" onsubmit="return confirm('Are you sure you want to convert this proforma invoice to a tax invoice? A new tax invoice will be created.')">
+    @csrf
+</form>
+@endif
 @endsection
