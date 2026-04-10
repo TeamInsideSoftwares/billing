@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Service;
+use App\Models\Tax;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -71,11 +72,17 @@ class OrdersController extends Controller
 
     public function ordersCreate(): View
     {
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $account = \App\Models\Account::find($accountid);
+
         return view('orders.create', [
             'title' => 'Create Order',
             'clients' => Client::all(),
             'services' => Service::with('costings')->orderBy('name')->get(),
-            'users' => $this->getSalesPeopleForForm(auth()->user()->accountid ?? 'ACC0000001'),
+            'users' => $this->getSalesPeopleForForm($accountid),
+            'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
+            'account' => $account,
+            'fixedTaxRate' => ($account && !$account->allow_multi_taxation) ? ($account->fixed_tax_rate ?? 0) : 0,
         ]);
     }
 
@@ -197,13 +204,18 @@ class OrdersController extends Controller
     public function ordersEdit(Order $order): View
     {
         $order->load(['items.item']);
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $account = \App\Models\Account::find($accountid);
+
         return view('orders.edit', [
             'title' => 'Edit Order',
             'order' => $order,
             'clients' => Client::all(),
             'services' => Service::with('costings')->orderBy('name')->get(),
-            'users' => $this->getSalesPeopleForForm(auth()->user()->accountid ?? 'ACC0000001'),
+            'users' => $this->getSalesPeopleForForm($accountid),
             'items' => $order->items,
+            'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
+            'account' => $account,
         ]);
     }
 
@@ -294,6 +306,15 @@ class OrdersController extends Controller
 
     private function resolveTaxRate(?Service $service, array $itemData): float
     {
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $account = \App\Models\Account::find($accountid);
+
+        // If multi-taxation is disabled, use the fixed tax rate
+        if ($account && !$account->allow_multi_taxation) {
+            return (float) ($account->fixed_tax_rate ?? 0);
+        }
+
+        // Otherwise, try to get tax from service costing
         if ($service && $service->relationLoaded('costings')) {
             $costingTaxRate = (float) ($service->costings->first()?->tax_rate ?? 0);
             if ($costingTaxRate > 0) {

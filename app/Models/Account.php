@@ -41,6 +41,10 @@ class Account extends Authenticatable
         'postal_code',
         'country',
         'logo_path',
+        'allow_multi_taxation',
+        'have_users',
+        'fixed_tax_rate',
+        'fixed_tax_type',
     ];
 
     protected $hidden = [
@@ -52,6 +56,9 @@ class Account extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'allow_multi_taxation' => 'boolean',
+            'have_users' => 'boolean',
+            'fixed_tax_rate' => 'decimal:2',
         ];
     }
 
@@ -83,6 +90,11 @@ public function billingDetails(): HasMany
 public function quotationDetails(): HasMany
     {
         return $this->hasMany(AccountQuotationDetail::class, 'accountid', 'accountid');
+    }
+
+    public function serialConfigurations(): HasMany
+    {
+        return $this->hasMany(SerialConfiguration::class, 'accountid', 'accountid');
     }
 
     public function termsConditions(): HasMany

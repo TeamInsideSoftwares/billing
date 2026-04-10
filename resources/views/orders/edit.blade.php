@@ -95,7 +95,7 @@
                 </span>
             </div>
 
-            <div class="add-item-row form-grid" style="background: #f9fafb; padding: 0.9rem; border-radius: 6px; margin-bottom: 0.75rem; grid-template-columns: 2fr 0.7fr 1fr 1fr 1fr 0.7fr 1fr 1fr 1fr auto; gap: 0.6rem; align-items: end;">
+            <div class="add-item-row form-grid" style="background: #f9fafb; padding: 0.9rem; border-radius: 6px; margin-bottom: 0.75rem; grid-template-columns: 2fr 0.7fr 1fr @if($account->allow_multi_taxation) 1fr @endif 1fr 0.7fr @if($account->have_users) 1fr @endif 1fr 1fr auto; gap: 0.6rem; align-items: end;">
                 <div>
                     <label for="item_itemid" style="font-size: 0.8rem;">Item *</label>
                     <select id="item_itemid" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
@@ -130,6 +130,19 @@
                     <label for="item_unit_price" style="font-size: 0.8rem;">Price</label>
                     <input type="number" id="item_unit_price" min="0" step="0.01" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
                 </div>
+                @if($account->allow_multi_taxation)
+                <div>
+                    <label for="item_tax_rate" style="font-size: 0.8rem;">Tax % <a href="#" id="open-tax-modal-order-edit" style="font-size:11px;margin-left:4px;" class="text-link">+ Add</a></label>
+                    <select id="item_tax_rate" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
+                        <option value="0">No Tax</option>
+                        @foreach($taxes as $tax)
+                            <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 2) }}%)</option>
+                        @endforeach
+                    </select>
+                </div>
+                @else
+                <input type="hidden" id="item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
+                @endif
                 <div>
                     <label for="item_frequency" style="font-size: 0.8rem;">Frequency</label>
                     <select id="item_frequency" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
@@ -148,10 +161,14 @@
                     <label for="item_duration" style="font-size: 0.8rem;">Duration</label>
                     <input type="text" id="item_duration" placeholder="e.g. 12" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
                 </div>
+                @if($account->have_users)
                 <div>
                     <label for="item_users" style="font-size: 0.8rem;">Users</label>
                     <input type="number" id="item_users" value="1" min="1" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
                 </div>
+                @else
+                <input type="hidden" id="item_users" value="1">
+                @endif
                 <div>
                     <label for="item_start_date" style="font-size: 0.8rem;">Start Date</label>
                     <input type="date" id="item_start_date" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
@@ -175,9 +192,14 @@
                         <th style="padding: 0.65rem 0.8rem; text-align: left; font-size: 0.82rem;">Item</th>
                         <th style="padding: 0.65rem 0.55rem; text-align: right; width: 80px; font-size: 0.82rem;">Qty</th>
                         <th style="padding: 0.65rem 0.55rem; text-align: right; width: 120px; font-size: 0.82rem;">Price</th>
+                        @if($account->allow_multi_taxation)
+                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 80px; font-size: 0.82rem;">Tax %</th>
+                        @endif
                         <th style="padding: 0.65rem 0.55rem; text-align: right; width: 110px; font-size: 0.82rem;">Frequency</th>
                         <th style="padding: 0.65rem 0.55rem; text-align: right; width: 95px; font-size: 0.82rem;">Duration</th>
+                        @if($account->have_users)
                         <th style="padding: 0.65rem 0.55rem; text-align: right; width: 80px; font-size: 0.82rem;">Users</th>
+                        @endif
                         <th style="padding: 0.65rem 0.55rem; text-align: right; width: 100px; font-size: 0.82rem;">Start Date</th>
                         <th style="padding: 0.65rem 0.55rem; text-align: right; width: 100px; font-size: 0.82rem;">End Date</th>
                         <th style="padding: 0.65rem 0.55rem; text-align: right; width: 100px; font-size: 0.82rem;">Delivery</th>
@@ -194,9 +216,14 @@
                             <td style="padding: 0.4rem 0.6rem;">{{ $item->item->name ?? $item->item_name }}</td>
                             <td style="padding: 0.45rem 0.55rem; text-align: right;"><input type="number" class="item-qty" value="{{ $item->quantity }}" min="0.01" step="0.01" style="width: 72px; text-align: right; font-size: 0.88rem; padding: 0.25rem 0.35rem;"></td>
                             <td style="padding: 0.45rem 0.55rem; text-align: right;"><input type="number" class="item-price" value="{{ $item->unit_price }}" min="0" step="0.01" style="width: 110px; text-align: right; font-size: 0.88rem; padding: 0.25rem 0.35rem;"></td>
+                            @if($account->allow_multi_taxation)
+                            <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ number_format($item->tax_rate ?? 0, 2) }}%</td>
+                            @endif
                             <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ ucfirst($item->frequency ?? '—') }}</td>
                             <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ $item->duration ?? '—' }}</td>
+                            @if($account->have_users)
                             <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ $item->no_of_users ?? '—' }}</td>
+                            @endif
                             <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ $item->start_date ? $item->start_date->format('d M Y') : '—' }}</td>
                             <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ $item->end_date ? $item->end_date->format('d M Y') : '—' }}</td>
                             <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ $item->delivery_date ? $item->delivery_date->format('d M Y') : '—' }}</td>
@@ -407,11 +434,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const startDate = document.getElementById('item_start_date').value || '';
         const endDate = document.getElementById('item_end_date').value || '';
         const deliveryDate = document.getElementById('item_delivery_date').value || '';
-        
+
         // Calculate line total with users and duration multiplier
         const lineTotal = calculateLineTotal(qty, unitPrice, users, frequency, duration);
+        
+        // Get tax rate from dropdown if multi-taxation is enabled, otherwise from service costing
+        @if($account->allow_multi_taxation)
+        const taxRate = parseFloat(document.getElementById('item_tax_rate').value) || 0;
+        @else
         const selectedOption = document.getElementById('item_itemid').options[document.getElementById('item_itemid').selectedIndex];
         const taxRate = parseFloat(selectedOption?.dataset?.taxRate || '0') || 0;
+        @endif
         const taxAmount = (lineTotal * taxRate) / 100;
 
         if (editingItemId) {
@@ -442,9 +475,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td style="padding: 0.4rem 0.6rem;">${serviceName}</td>
                         <td style="padding: 0.45rem 0.55rem; text-align: right;"><input type="number" class="item-qty" value="${qty}" min="0.01" step="0.01" style="width: 72px; text-align: right; font-size: 0.88rem; padding: 0.25rem 0.35rem;"></td>
                         <td style="padding: 0.45rem 0.55rem; text-align: right;"><input type="number" class="item-price" value="${unitPrice}" min="0" step="0.01" style="width: 110px; text-align: right; font-size: 0.88rem; padding: 0.25rem 0.35rem;"></td>
+                        @if($account->allow_multi_taxation)
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${taxRate}%</td>
+                        @endif
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>
+                        @if($account->have_users)
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${users}</td>
+                        @endif
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${startDate || '—'}</td>
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${endDate || '—'}</td>
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${deliveryDate || '—'}</td>
@@ -611,4 +649,59 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+{{-- Add Tax Modal --}}
+@if($account->allow_multi_taxation)
+<div class="modal fade" id="addTaxModalOrderEdit" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
+        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header" style="padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
+                <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;">
+                    <i class="fas fa-receipt" style="margin-right: 0.5rem; color: #64748b;"></i>Add Tax
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 1.25rem;">
+                <form method="POST" action="{{ route('taxes.store') }}" id="quick-tax-form-order-edit">
+                    @csrf
+                    <input type="hidden" name="redirect_back" value="1">
+                    <div style="margin-bottom: 0.75rem;">
+                        <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Rate (%)</label>
+                        <input type="number" name="rate" placeholder="18" step="0.01" min="0" max="100" required
+                               style="padding: 0.4rem 0.75rem; font-size: 0.9rem; width: 100%;">
+                    </div>
+                    <div style="margin-bottom: 0.75rem;">
+                        <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Type</label>
+                        <select name="type" required
+                                style="padding: 0.4rem 0.75rem; font-size: 0.9rem; width: 100%;">
+                            @foreach(['GST'=>'GST','VAT'=>'VAT'] as $v=>$l)
+                                <option value="{{ $v }}">{{ $l }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <button type="submit" class="primary-button small">Add Tax</button>
+                        <button type="button" class="text-link small" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const taxModalEl = document.getElementById('addTaxModalOrderEdit');
+    const openTaxModalLink = document.getElementById('open-tax-modal-order-edit');
+    if (taxModalEl && openTaxModalLink) {
+        const taxModal = new bootstrap.Modal(taxModalEl);
+        openTaxModalLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            taxModal.show();
+        });
+    }
+})();
+</script>
+@endif
+
 @endsection

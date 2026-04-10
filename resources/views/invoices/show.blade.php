@@ -98,6 +98,9 @@
                 </h1>
                 <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
                     <p style="margin: 0.3rem 0; font-size: 0.9rem;"><strong>Invoice #:</strong> {{ $invoice->invoice_number }}</p>
+                    @if($invoice->invoice_title)
+                        <p style="margin: 0.3rem 0; font-size: 0.9rem;"><strong>Title:</strong> {{ $invoice->invoice_title }}</p>
+                    @endif
                     <p style="margin: 0.3rem 0; font-size: 0.9rem;"><strong>Issue Date:</strong> {{ $invoice->issue_date?->format('d M Y') }}</p>
                     <p style="margin: 0.3rem 0; font-size: 0.9rem;"><strong>Due Date:</strong> {{ $invoice->due_date?->format('d M Y') }}</p>
                     <p style="margin: 0.3rem 0; font-size: 0.9rem;"><strong>Status:</strong> <span style="text-transform: uppercase; font-weight: 600;">{{ $invoice->status }}</span></p>

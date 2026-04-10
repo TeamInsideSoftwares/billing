@@ -65,15 +65,18 @@ const LocationPicker = (function() {
 
                 const handleCountryChange = async (isInitial = false) => {
                     const country = countrySelect.value;
+                    const savedState = stateSelect.dataset.selected;
+                    const savedCity = citySelect.dataset.selected;
+                    
                     stateSelect.innerHTML = '<option value="">Select State</option>';
                     citySelect.innerHTML = '<option value="">Select City</option>';
-                    
+
                     if (!country) return;
 
                     const states = await fetchStates(country);
                     states.forEach(s => {
                         const opt = new Option(s, s);
-                        if (isInitial && s === stateSelect.dataset.selected) opt.selected = true;
+                        if (isInitial && s === savedState) opt.selected = true;
                         stateSelect.add(opt);
                     });
 

@@ -151,7 +151,19 @@ class SettingsController extends Controller
             'country' => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:20',
             'logo' => 'nullable|image|max:5120',
+            'allow_multi_taxation' => 'nullable|boolean',
+            'have_users' => 'nullable|boolean',
+            'fixed_tax_rate' => 'nullable|numeric|min:0|max:100',
+            'fixed_tax_type' => 'nullable|in:GST,VAT',
         ]);
+
+        // Handle checkbox values (unchecked = not sent, so default to false)
+        $validated['allow_multi_taxation'] = $request->has('allow_multi_taxation');
+        $validated['have_users'] = $request->has('have_users');
+
+        // Set fixed tax rate and type (default to 0 and GST if not provided)
+        $validated['fixed_tax_rate'] = $request->input('fixed_tax_rate', 0);
+        $validated['fixed_tax_type'] = $request->input('fixed_tax_type', 'GST');
 
         if (!empty($validated['fy_month']) && !empty($validated['fy_day'])) {
             $validated['fy_startdate'] = $validated['fy_month'] . '-' . $validated['fy_day'];
@@ -168,7 +180,28 @@ class SettingsController extends Controller
 
         $account->update($validated);
 
-        return redirect()->to(route('settings.index') . '#personal')->with('success', 'Profile updated successfully.');
+        // Determine redirect based on form source
+        $redirectTo = $request->input('from_tax_modal') ? '#personal' : '#personal';
+        return redirect()->to(route('settings.index') . $redirectTo)->with('success', 'Profile updated successfully.');
+    }
+
+    public function fixedTaxUpdate(Request $request)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $account = Account::find($accountid);
+
+        if (! $account) {
+            return redirect()->back()->with('error', 'Account not found.');
+        }
+
+        $validated = $request->validate([
+            'fixed_tax_rate' => 'required|numeric|min:0|max:100',
+            'fixed_tax_type' => 'required|in:GST,VAT',
+        ]);
+
+        $account->update($validated);
+
+        return redirect()->to(route('settings.index') . '#personal')->with('success', 'Fixed tax rate updated successfully.');
     }
 
     public function accountBillingUpdate(Request $request)

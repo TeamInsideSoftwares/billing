@@ -10,6 +10,7 @@ use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\PaymentsController;
 use App\Http\Controllers\ProductCategoriesController;
 use App\Http\Controllers\QuotationsController;
+use App\Http\Controllers\SerialConfigurationsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SubscriptionsController;
@@ -55,6 +56,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/invoices/create', 'invoicesCreate')->name('invoices.create');
         Route::post('/invoices/client-orders', 'getClientOrders')->name('invoices.client-orders');
         Route::post('/invoices/renewal-invoices', 'getRenewalInvoices')->name('invoices.renewal-invoices');
+        Route::post('/invoices/terms/billing', 'storeBillingTerm')->name('invoices.terms.billing.store');
         Route::get('/invoices/order-items/{orderid}', 'getOrderItems')->name('invoices.order-items');
         Route::get('/invoices/renewal-items/{invoiceid}', 'getRenewalItems')->name('invoices.renewal-items');
         Route::post('/invoices', 'invoicesStore')->name('invoices.store');
@@ -130,6 +132,7 @@ Route::controller(SettingsController::class)->group(function () {
         Route::post('/settings/fy-prefix', 'fyPrefixUpdate')->name('settings.fy-prefix.update');
         Route::get('/settings', 'settings')->name('settings.index');
         Route::put('/settings/account', 'accountUpdate')->name('account.update');
+        Route::post('/settings/fixed-tax', 'fixedTaxUpdate')->name('account.fixed-tax.update');
         Route::post('/settings/billing-details', 'accountBillingUpdate')->name('account.billing.update');
         Route::post('/settings/quotation-details', 'accountQuotationUpdate')->name('account.quotation.update');
         Route::get('/settings/create', 'settingsCreate')->name('settings.create');

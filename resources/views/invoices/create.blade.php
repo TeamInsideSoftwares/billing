@@ -29,9 +29,10 @@
             </div>
         @endif
 
-        <div class="invoice-meta-card" style="margin-bottom: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem; flex-wrap: wrap;">
-                <div style="flex: 1 1 620px; display: grid; grid-template-columns: minmax(280px, 420px) minmax(220px, 320px); gap: 1rem; align-items: end;">
+        <!-- Step 1: Client & Source Selection -->
+        <div id="step1">
+            <div class="invoice-meta-card" style="margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; align-items: end;">
                     <div>
                         <label for="clientid" class="field-label">Client</label>
                         <select id="clientid" name="clientid" required class="form-input">
@@ -44,64 +45,25 @@
                         </select>
                     </div>
                     <div>
-                        <label for="invoice_number" class="field-label">Invoice Number</label>
-                        <input type="text" id="invoice_number" name="invoice_number" value="{{ old('invoice_number', $nextInvoiceNumber) }}" readonly class="form-input" style="background: #f8fafc;">
+                        <label for="invoice_title" class="field-label">Invoice Title</label>
+                        <input type="text" id="invoice_title" name="invoice_title" value="{{ old('invoice_title') }}" class="form-input" placeholder="e.g. Website Development - Phase 1">
                     </div>
-                </div>
-                <div style="min-width: 180px; text-align: right;">
-                    <span class="invoice-meta-label">Invoice Type</span>
-                    <strong class="invoice-meta-value">Proforma</strong>
-                </div>
-            </div>
-        </div>
-
-        <input type="hidden" name="orderid" id="orderid" value="{{ old('orderid', '') }}">
-        <input type="hidden" name="invoice_type" value="proforma">
-        <input type="hidden" name="status" value="draft">
-        <input type="hidden" name="currency_code" id="currency_code" value="{{ old('currency_code', 'INR') }}">
-        <input type="hidden" name="subtotal" id="subtotal" value="{{ old('subtotal', '0.00') }}">
-        <input type="hidden" name="tax_total" id="tax_total" value="{{ old('tax_total', '0.00') }}">
-        <input type="hidden" name="grand_total" id="grand_total" value="{{ old('grand_total', '0.00') }}">
-        <input type="hidden" name="items_data" id="items_data" value="{{ old('items_data', '') }}">
-
-        <div id="sourceWorkspace" style="display: none;">
-            <div style="margin-bottom: 1.5rem;">
-                <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.8rem;">
-                    <div>
-                        <h4 style="margin: 0; font-size: 1rem; color: #334155;">Existing Invoices</h4>
-                    </div>
-                </div>
-                <div id="clientInvoicesWrap" class="table-shell">
-                    <table class="data-table" id="clientInvoicesTable" style="font-size: 0.85rem; margin: 0;">
-                        <thead>
-                            <tr>
-                                <th>Invoice #</th>
-                                <th>Type</th>
-                                <th>For</th>
-                                <th>Amount</th>
-                                <th>Paid</th>
-                                <th>Balance</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="clientInvoicesBody"></tbody>
-                    </table>
-                    <div id="noInvoicesMessage" class="empty-state" style="display: none;">No invoices found for this client yet.</div>
                 </div>
             </div>
 
-            <div style="margin-bottom: 1rem; padding: 1rem 1.1rem; border: 1px solid #dbeafe; background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-radius: 12px;">
-                <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center;">
-                    <div>
-                        <p style="margin: 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #1d4ed8;">Current Workflow</p>
-                        <h4 style="margin: 0.3rem 0 0 0; font-size: 1rem; color: #1e293b;">Choose how you want to build this invoice</h4>
-                    </div>
-                    <span id="selectionSummary" style="display: none; padding: 0.5rem 0.75rem; background: #ffffff; border: 1px solid #bfdbfe; border-radius: 999px; color: #1e40af; font-size: 0.82rem; font-weight: 600;"></span>
+            <div id="existingInvoicesSection" style="display: none; margin-bottom: 1.5rem;">
+                <h4 style="margin: 0 0 0.8rem 0; font-size: 1rem; color: #334155;">Existing Invoices</h4>
+                <div id="clientInvoicesAccordion" class="services-accordion-container">
+                    <!-- Accordion items will be injected here -->
                 </div>
+                <div id="noInvoicesMessage" class="empty-state" style="display: none;">No invoices found for this client yet.</div>
             </div>
 
-            <div style="margin-bottom: 1.5rem;">
-                <p class="field-label" style="margin-bottom: 0.75rem;">Invoice Source</p>
+            <div id="sourceSelectionSection" style="display: none; margin-bottom: 1.5rem;">
+                <div style="margin-bottom: 1rem; padding: 1rem 1.1rem; border: 1px solid #dbeafe; background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-radius: 12px;">
+                    <h4 style="margin: 0; font-size: 1rem; color: #1e293b;">Choose Invoice Source</h4>
+                </div>
+                
                 <div class="source-grid">
                     <label class="invoice-source-card">
                         <input type="radio" name="invoice_for" value="orders" {{ old('invoice_for') === 'orders' ? 'checked' : '' }}>
@@ -119,7 +81,32 @@
                         <strong>Without Orders</strong>
                     </label>
                 </div>
+
+                <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+                    <button type="button" id="btnNextToStep2" class="primary-button" style="padding: 0.8rem 2.5rem; font-size: 1rem;">Next Step &rarr;</button>
+                </div>
             </div>
+        </div>
+
+        <!-- Step 2: Items & Details -->
+        <div id="step2" style="display: none;">
+            <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back to Step 1</button>
+                <div style="text-align: right;">
+                    <span class="invoice-meta-label">Invoice Number</span>
+                    <strong class="invoice-meta-value">{{ $nextInvoiceNumber }}</strong>
+                    <input type="hidden" name="invoice_number" value="{{ $nextInvoiceNumber }}">
+                </div>
+            </div>
+
+            <input type="hidden" name="orderid" id="orderid" value="{{ old('orderid', '') }}">
+            <input type="hidden" name="invoice_type" value="proforma">
+            <input type="hidden" name="status" value="draft">
+            <input type="hidden" name="currency_code" id="currency_code" value="{{ old('currency_code', 'INR') }}">
+            <input type="hidden" name="subtotal" id="subtotal" value="{{ old('subtotal', '0.00') }}">
+            <input type="hidden" name="tax_total" id="tax_total" value="{{ old('tax_total', '0.00') }}">
+            <input type="hidden" name="grand_total" id="grand_total" value="{{ old('grand_total', '0.00') }}">
+            <input type="hidden" name="items_data" id="items_data" value="{{ old('items_data', '') }}">
 
             <div id="ordersSection" class="workflow-panel" style="display: none;">
                 <div class="panel-heading-row">
@@ -129,7 +116,7 @@
                     </div>
                 </div>
                 <div class="table-shell">
-                    <table class="data-table" style="font-size: 0.85rem; margin: 0;">
+                    <table class="data-table" id="ordersTable" style="font-size: 0.85rem; margin: 0;">
                         <thead>
                             <tr>
                                 <th>Order #</th>
@@ -153,7 +140,7 @@
                     </div>
                 </div>
                 <div class="table-shell">
-                    <table class="data-table" style="font-size: 0.85rem; margin: 0;">
+                    <table class="data-table" id="renewalTable" style="font-size: 0.85rem; margin: 0;">
                         <thead>
                             <tr>
                                 <th>Invoice #</th>
@@ -174,7 +161,7 @@
                 <div class="panel-heading-row">
                     <div>
                         <h4 style="margin: 0; font-size: 1rem; color: #334155;">Manual Invoice Items</h4>
-                        <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Add the items you want to bill. You can edit quantity and price inline after adding them.</p>
+                        <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Add items to your invoice. You can edit them after adding.</p>
                     </div>
                 </div>
 
@@ -209,8 +196,9 @@
                             <label for="manual_item_unit_price" class="field-label small">Unit Price</label>
                             <input type="number" id="manual_item_unit_price" class="form-input" min="0" step="0.01">
                         </div>
+                        @if($account->allow_multi_taxation)
                         <div>
-                            <label for="manual_item_tax_rate" class="field-label small">Tax</label>
+                            <label for="manual_item_tax_rate" class="field-label small">Tax <a href="#" id="open-tax-modal-invoice" style="font-size:11px;margin-left:4px;" class="text-link">+ Add</a></label>
                             <select id="manual_item_tax_rate" class="form-input">
                                 <option value="0">No Tax</option>
                                 @foreach($taxes as $tax)
@@ -218,10 +206,13 @@
                                 @endforeach
                             </select>
                         </div>
+                        @else
+                        <input type="hidden" id="manual_item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
+                        @endif
                         <div>
-                            <label for="manual_item_frequency" class="field-label small">Frequency</label>
+                            <label for="manual_item_frequency" class="field-label small">Freq</label>
                             <select id="manual_item_frequency" class="form-input">
-                                <option value="">Not recurring</option>
+                                <option value="">None</option>
                                 <option value="one-time">One-Time</option>
                                 <option value="daily">Daily</option>
                                 <option value="weekly">Weekly</option>
@@ -233,23 +224,27 @@
                             </select>
                         </div>
                         <div>
-                            <label for="manual_item_duration" class="field-label small">Duration</label>
+                            <label for="manual_item_duration" class="field-label small">Dur</label>
                             <input type="number" id="manual_item_duration" class="form-input" min="0" step="1" placeholder="e.g. 12">
                         </div>
+                        @if($account->have_users)
                         <div>
                             <label for="manual_item_users" class="field-label small">Users</label>
                             <input type="number" id="manual_item_users" class="form-input" value="1" min="1" step="1">
                         </div>
+                        @else
+                        <input type="hidden" id="manual_item_users" value="1">
+                        @endif
                         <div>
-                            <label for="manual_item_start_date" class="field-label small">Start Date</label>
+                            <label for="manual_item_start_date" class="field-label small">Start</label>
                             <input type="date" id="manual_item_start_date" class="form-input">
                         </div>
                         <div>
-                            <label for="manual_item_end_date" class="field-label small">End Date</label>
+                            <label for="manual_item_end_date" class="field-label small">End</label>
                             <input type="date" id="manual_item_end_date" class="form-input">
                         </div>
                         <div style="display: flex; align-items: end;">
-                            <button type="button" id="addManualItemBtn" class="primary-button" style="width: 100%;">Add Item</button>
+                            <button type="button" id="addManualItemBtn" class="primary-button" style="width: 100%;">Add</button>
                         </div>
                     </div>
                 </div>
@@ -261,8 +256,8 @@
                                 <th>Item</th>
                                 <th>Qty</th>
                                 <th>Price</th>
-                                <th>Frequency</th>
-                                <th>Duration</th>
+                                <th>Freq</th>
+                                <th>Dur</th>
                                 <th>Users</th>
                                 <th>Start</th>
                                 <th>End</th>
@@ -280,17 +275,13 @@
                     <div class="total-row"><span>Tax</span><strong id="manualTaxTotal">0.00</strong></div>
                     <div class="total-row total-row-grand"><span>Total</span><strong id="manualGrandTotal">0.00</strong></div>
                 </div>
-
-                <div style="margin-top: 1rem;">
-                    <button type="submit" class="primary-button create-submit-btn" id="manualSubmitBtn" disabled>Create Invoice</button>
-                </div>
             </div>
 
             <div id="itemsSection" class="workflow-panel" style="display: none;">
                 <div class="panel-heading-row">
                     <div>
                         <h4 style="margin: 0; font-size: 1rem; color: #334155;">Review Invoice Items</h4>
-                        <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Adjust pricing, tax, duration, or dates before creating the invoice.</p>
+                        <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Adjust pricing, tax, duration, or dates before creating.</p>
                     </div>
                 </div>
                 <div class="table-shell">
@@ -301,8 +292,8 @@
                                 <th>Qty</th>
                                 <th>Price</th>
                                 <th>Tax %</th>
-                                <th>Duration</th>
-                                <th>Frequency</th>
+                                <th>Dur</th>
+                                <th>Freq</th>
                                 <th>Users</th>
                                 <th>Start</th>
                                 <th>End</th>
@@ -321,33 +312,46 @@
                         <div class="total-row total-row-grand"><span>Grand Total</span><strong id="grandTotalDisplay">INR 0.00</strong></div>
                     </div>
                 </div>
+            </div>
 
-                <div style="margin-top: 1rem;">
-                    <button type="submit" class="primary-button create-submit-btn" id="itemsSubmitBtn" disabled>Create Invoice</button>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
+                <div>
+                    <label for="issue_date" class="field-label">Issue Date</label>
+                    <input type="date" id="issue_date" name="issue_date" value="{{ old('issue_date', date('Y-m-d')) }}" class="form-input" required>
+                </div>
+                <div>
+                    <label for="due_date" class="field-label">Due Date</label>
+                    <input type="date" id="due_date" name="due_date" value="{{ old('due_date', date('Y-m-d', strtotime('+7 days'))) }}" class="form-input" required>
                 </div>
             </div>
-        </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
-            <div>
-                <label for="issue_date" class="field-label">Issue Date</label>
-                <input type="date" id="issue_date" name="issue_date" value="{{ old('issue_date', date('Y-m-d')) }}" class="form-input" required>
+            <div style="margin-top: 1rem;">
+                <label for="notes" class="field-label">Internal Notes</label>
+                <textarea id="notes" name="notes" rows="4" class="form-input" style="min-height: 110px;">{{ old('notes') }}</textarea>
             </div>
-            <div>
-                <label for="due_date" class="field-label">Due Date</label>
-                <input type="date" id="due_date" name="due_date" value="{{ old('due_date', date('Y-m-d', strtotime('+7 days'))) }}" class="form-input" required>
-            </div>
-        </div>
 
-        <div style="margin-top: 1rem;">
-            <label for="notes" class="field-label">Internal Notes</label>
-            <textarea id="notes" name="notes" rows="4" class="form-input" style="min-height: 110px;">{{ old('notes') }}</textarea>
+            <div style="margin-top: 2rem;">
+                <button type="submit" class="primary-button create-submit-btn" id="finalSubmitBtn" disabled style="width: 100%; padding: 1rem;">Create Invoice</button>
+            </div>
         </div>
     </form>
 </section>
 
+<!-- Modal for Editing Invoices -->
+<div id="editInvoiceModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3 id="modalTitle">Edit Invoice</h3>
+            <button type="button" class="close-modal-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <iframe id="editInvoiceIframe" src="" style="width: 100%; height: 80vh; border: none;"></iframe>
+        </div>
+    </div>
+</div>
+
 <style>
-.invoice-meta-card { padding: 0.95rem 1rem; border: 1px solid #e2e8f0; border-radius: 12px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); }
+.invoice-meta-card { padding: 1.25rem; border: 1px solid #e2e8f0; border-radius: 12px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); }
 .invoice-meta-label, .field-label.small { display: block; margin-bottom: 0.35rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #64748b; }
 .invoice-meta-value { color: #1e293b; font-size: 0.95rem; }
 .field-label { display: block; margin-bottom: 0.45rem; font-size: 0.85rem; font-weight: 600; color: #475569; }
@@ -368,18 +372,39 @@
 .total-row { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.55rem; font-size: 0.9rem; color: #475569; }
 .total-row:last-child { margin-bottom: 0; }
 .total-row-grand { padding-top: 0.7rem; border-top: 1px solid #cbd5e1; font-size: 1rem; font-weight: 700; color: #1e293b; }
+
+.status-pill.paid { background: #dcfce7; color: #166534; }
+.status-pill.unpaid { background: #fee2e2; color: #991b1b; }
+.status-pill.partially-paid { background: #fef3c7; color: #92400e; }
+
+/* Modal Styles */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.modal-container { background: #fff; width: 90%; max-width: 1200px; border-radius: 14px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden; }
+.modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+.modal-header h3 { margin: 0; font-size: 1.1rem; color: #1e293b; }
+.close-modal-btn { background: none; border: none; font-size: 1.75rem; cursor: pointer; color: #64748b; line-height: 1; }
+.close-modal-btn:hover { color: #1e293b; }
+.modal-body { padding: 0; }
+
 @media (max-width: 1100px) { .manual-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .manual-grid { grid-template-columns: 1fr; } }
 </style>
 
 <script>
 (function () {
+    // DOM Elements
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
     const clientSelect = document.getElementById('clientid');
     const invoiceForm = document.getElementById('invoiceForm');
-    const sourceWorkspace = document.getElementById('sourceWorkspace');
-    const clientInvoicesBody = document.getElementById('clientInvoicesBody');
+    const existingInvoicesSection = document.getElementById('existingInvoicesSection');
+    const clientInvoicesAccordion = document.getElementById('clientInvoicesAccordion');
     const noInvoicesMessage = document.getElementById('noInvoicesMessage');
-    const selectionSummary = document.getElementById('selectionSummary');
+    const sourceSelectionSection = document.getElementById('sourceSelectionSection');
+    const btnNextToStep2 = document.getElementById('btnNextToStep2');
+    const btnBackToStep1 = document.getElementById('btnBackToStep1');
+    const sourceRadios = document.querySelectorAll('input[name="invoice_for"]');
+    
     const ordersSection = document.getElementById('ordersSection');
     const ordersBody = document.getElementById('ordersBody');
     const noOrdersMessage = document.getElementById('noOrdersMessage');
@@ -394,9 +419,8 @@
     const manualItemsTable = document.getElementById('manualItemsTable');
     const manualItemsEmpty = document.getElementById('manualItemsEmpty');
     const manualSummary = document.getElementById('manualOrderSummary');
-    const manualSubmitBtn = document.getElementById('manualSubmitBtn');
-    const itemsSubmitBtn = document.getElementById('itemsSubmitBtn');
-    const sourceRadios = document.querySelectorAll('input[name="invoice_for"]');
+    const finalSubmitBtn = document.getElementById('finalSubmitBtn');
+    
     const orderIdInput = document.getElementById('orderid');
     const subtotalInput = document.getElementById('subtotal');
     const taxTotalInput = document.getElementById('tax_total');
@@ -405,18 +429,25 @@
     const currencyCodeInput = document.getElementById('currency_code');
     const addManualItemBtn = document.getElementById('addManualItemBtn');
 
+    // Modals
+    const editInvoiceModal = document.getElementById('editInvoiceModal');
+    const editInvoiceIframe = document.getElementById('editInvoiceIframe');
+    const closeModalBtn = document.querySelector('.close-modal-btn');
+
+    // Constants
     const frequencyOptions = ['one-time', 'daily', 'weekly', 'bi-weekly', 'monthly', 'quarterly', 'semi-annually', 'yearly'];
     const frequencyLabels = { 'one-time': 'One-Time', 'daily': 'Daily', 'weekly': 'Weekly', 'bi-weekly': 'Bi-Weekly', 'monthly': 'Monthly', 'quarterly': 'Quarterly', 'semi-annually': 'Semi-Annually', 'yearly': 'Yearly' };
     const taxOptions = @json(($taxes ?? collect())->map(fn ($tax) => ['name' => $tax->tax_name, 'rate' => (float) $tax->rate])->values());
 
+    // State
     let selectedClientId = clientSelect.value || null;
     let clientCurrency = currencyCodeInput.value || 'INR';
     let invoiceItems = [];
     let manualItems = [];
-    let selectedSourceRecord = null;
     let manualItemCounter = 0;
     let editingManualItemId = null;
 
+    // Helper Functions
     function formatMoney(amount) {
         return `${clientCurrency} ${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
@@ -424,66 +455,27 @@
     function renderTaxSelect(selectedRate, inputClass, attributes = '') {
         const normalizedRate = Number(selectedRate || 0);
         const options = [`<option value="0" ${normalizedRate === 0 ? 'selected' : ''}>No Tax</option>`];
-
         taxOptions.forEach((tax) => {
             const rate = Number(tax.rate || 0);
             options.push(`<option value="${rate}" ${rate === normalizedRate ? 'selected' : ''}>${tax.name} (${rate.toFixed(2)}%)</option>`);
         });
-
-        const hasMatch = normalizedRate === 0 || taxOptions.some((tax) => Number(tax.rate || 0) === normalizedRate);
-        if (!hasMatch && normalizedRate > 0) {
-            options.push(`<option value="${normalizedRate}" selected>Custom (${normalizedRate.toFixed(2)}%)</option>`);
-        }
-
         return `<select class="form-input ${inputClass}" ${attributes}>${options.join('')}</select>`;
-    }
-
-    function getActiveInvoiceFor() {
-        return document.querySelector('input[name="invoice_for"]:checked')?.value || '';
-    }
-
-    function setCurrency(currency) {
-        clientCurrency = currency || 'INR';
-        currencyCodeInput.value = clientCurrency;
-        renderItems();
-        renderManualItems();
-    }
-
-    function setSelectionBadge(text) {
-        if (!text) {
-            selectionSummary.style.display = 'none';
-            selectionSummary.textContent = '';
-            return;
-        }
-        selectionSummary.style.display = 'inline-flex';
-        selectionSummary.textContent = text;
-    }
-
-    function updateSubmitButtons() {
-        manualSubmitBtn.disabled = manualItems.length === 0;
-        itemsSubmitBtn.disabled = invoiceItems.length === 0;
     }
 
     function calculateLineTotal(quantity, unitPrice, users, frequency, duration) {
         let total = (Number(quantity) || 0) * (Number(unitPrice) || 0) * Math.max(1, Number(users) || 1);
         if (frequency && frequency !== 'one-time' && duration) {
             const durationNumber = Number(duration) || 0;
-            if (durationNumber > 0) {
-                total *= durationNumber;
-            }
+            if (durationNumber > 0) total *= durationNumber;
         }
         return total;
     }
 
     function calculateEndDate(startDate, frequency, duration) {
-        if (!startDate || !frequency || !duration || frequency === 'one-time') {
-            return '';
-        }
+        if (!startDate || !frequency || !duration || frequency === 'one-time') return '';
         const start = new Date(startDate);
         const durationNumber = Number(duration);
-        if (Number.isNaN(start.getTime()) || durationNumber <= 0) {
-            return '';
-        }
+        if (Number.isNaN(start.getTime()) || durationNumber <= 0) return '';
         const end = new Date(start);
         switch (frequency) {
             case 'daily': end.setDate(end.getDate() + durationNumber); break;
@@ -496,6 +488,15 @@
             default: return '';
         }
         return end.toISOString().split('T')[0];
+    }
+
+    function updateFinalSubmitButton() {
+        const source = document.querySelector('input[name="invoice_for"]:checked')?.value;
+        if (source === 'without_orders') {
+            finalSubmitBtn.disabled = manualItems.length === 0;
+        } else {
+            finalSubmitBtn.disabled = invoiceItems.length === 0;
+        }
     }
 
     function setTotals(subtotal, taxTotal) {
@@ -511,425 +512,481 @@
         document.getElementById('manualGrandTotal').textContent = formatMoney(grandTotal);
     }
 
-    function resetManualItemInputs() {
-        document.getElementById('manual_item_itemid').value = '';
-        document.getElementById('manual_item_quantity').value = 1;
-        document.getElementById('manual_item_unit_price').value = '';
-        document.getElementById('manual_item_tax_rate').value = '0';
-        document.getElementById('manual_item_frequency').value = '';
-        document.getElementById('manual_item_duration').value = '';
-        document.getElementById('manual_item_users').value = 1;
-        document.getElementById('manual_item_start_date').value = '';
-        document.getElementById('manual_item_end_date').value = '';
+    // Step 1 Functions
+    function loadInvoicesForClient(clientId) {
+        clientInvoicesAccordion.innerHTML = '<div style="padding: 1rem; text-align: center; color: #94a3b8;">Loading invoices...</div>';
+        noInvoicesMessage.style.display = 'none';
+        
+        fetch(`{{ route('invoices.index') }}?clientid=${clientId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then((response) => response.json())
+            .then((data) => {
+                const invoices = data.invoices || [];
+                if (invoices.length === 0) {
+                    clientInvoicesAccordion.innerHTML = '';
+                    noInvoicesMessage.style.display = 'block';
+                    return;
+                }
+
+                let accordionHtml = '';
+                invoices.forEach((invoice) => {
+                    const paymentStatus = invoice.payment_status || 'unpaid';
+                    const paymentStatusClass = paymentStatus.toLowerCase().replace(/\s+/g, '-');
+                    const headerTitle = invoice.title ? `${invoice.title} (${invoice.number || ''})` : (invoice.number || 'Untitled Invoice');
+                    const issueDate = invoice.issue_date || '-';
+                    const dueDate = invoice.due_date || '-';
+                    const itemsHtml = (invoice.items || []).map((item) => `
+                        <div style="padding: 0.6rem 0; border-bottom: 1px dashed #e2e8f0; font-size: 0.8rem;">
+                            <div style="display: flex; justify-content: space-between; gap: 0.75rem;">
+                                <span style="color: #334155; font-weight: 600;">${item.name || 'Item'} (x${item.qty || item.quantity || 1})</span>
+                                <strong style="color: #1e293b;">${item.total || '-'}</strong>
+                            </div>
+                            <div style="margin-top: 0.25rem; color: #64748b; font-size: 0.74rem;">
+                                Unit: ${item.price || '-'} | Tax: ${item.tax_rate ?? 0}% | Users: ${item.users ?? 1} | Freq: ${item.frequency || '-'} | Dur: ${item.duration || '-'}
+                            </div>
+                            <div style="margin-top: 0.18rem; color: #94a3b8; font-size: 0.72rem;">
+                                Start: ${item.start_date || '-'} | End: ${item.end_date || '-'}
+                            </div>
+                        </div>
+                    `).join('') || '<div style="padding: 0.75rem 0; color: #94a3b8; font-style: italic; font-size: 0.82rem;">No items found</div>';
+
+                    accordionHtml += `
+                        <details class="category-accordion">
+                            <summary class="accordion-header" style="padding: 0.65rem 0.9rem;">
+                                <span style="display: inline-flex; flex-direction: column; gap: 0.1rem;">
+                                    <span class="category-title" style="font-size: 0.84rem;">${headerTitle}</span>
+                                    <span style="font-size: 0.72rem; color: #64748b; font-weight: 500;">Issue: ${issueDate}</span>
+                                </span>
+                                <span style="display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end;">
+                                    <span class="service-count">${invoice.amount || '-'}</span>
+                                    <span class="status-pill ${paymentStatusClass}" style="font-size: 0.72rem;">${paymentStatus}</span>
+                                    <span class="accordion-icon"></span>
+                                </span>
+                            </summary>
+                            <div class="accordion-content">
+                                <div style="padding: 0.65rem 0.9rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
+                                    <span style="font-size: 0.74rem; color: #64748b;">Issue: ${issueDate} | Due: ${dueDate} | Type: ${invoice.invoice_type || '-'} | For: ${invoice.invoice_for || '-'}</span>
+                                    <button type="button" class="text-link edit-invoice-btn" data-id="${invoice.record_id}" style="font-size: 0.82rem; font-weight: 600;">Edit Invoice</button>
+                                </div>
+                                <div style="padding: 0.3rem 0.9rem 0.8rem;">
+                                    ${itemsHtml}
+                                </div>
+                            </div>
+                        </details>
+                    `;
+                });
+
+                clientInvoicesAccordion.innerHTML = accordionHtml;
+
+                // Edit invoice button
+                document.querySelectorAll('.edit-invoice-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const invoiceId = btn.dataset.id;
+                        editInvoiceIframe.src = `{{ url('/invoices') }}/${invoiceId}/edit`;
+                        editInvoiceModal.style.display = 'flex';
+                    });
+                });
+            })
+            .catch(() => {
+                clientInvoicesAccordion.innerHTML = '<div style="padding: 1rem; text-align: center; color: #ef4444;">Failed to load invoices.</div>';
+            });
     }
 
-    function resetSourceData(options = {}) {
-        const clearRadio = options.clearRadio ?? true;
-        const keepManualItems = options.keepManualItems ?? false;
-        invoiceItems = [];
-        selectedSourceRecord = null;
-        orderIdInput.value = '';
-        itemsDataInput.value = '';
-        setSelectionBadge('');
-        renewalPicker.innerHTML = '';
-        renewalPicker.style.display = 'none';
-        itemsSection.style.display = 'none';
+    // Modal close
+    closeModalBtn.addEventListener('click', () => {
+        editInvoiceModal.style.display = 'none';
+        editInvoiceIframe.src = '';
+        if (selectedClientId) loadInvoicesForClient(selectedClientId);
+    });
+
+    window.addEventListener('click', (e) => {
+        if (e.target === editInvoiceModal) {
+            editInvoiceModal.style.display = 'none';
+            editInvoiceIframe.src = '';
+            if (selectedClientId) loadInvoicesForClient(selectedClientId);
+        }
+    });
+
+    clientSelect.addEventListener('change', function () {
+        selectedClientId = this.value || null;
+        if (!selectedClientId) {
+            existingInvoicesSection.style.display = 'none';
+            sourceSelectionSection.style.display = 'none';
+            return;
+        }
+        clientCurrency = this.options[this.selectedIndex]?.dataset?.currency || 'INR';
+        currencyCodeInput.value = clientCurrency;
+        existingInvoicesSection.style.display = 'block';
+        sourceSelectionSection.style.display = 'block';
+        loadInvoicesForClient(selectedClientId);
+    });
+
+    btnNextToStep2.addEventListener('click', () => {
+        if (!selectedClientId) {
+            alert('Please select a client first.');
+            return;
+        }
+        const source = document.querySelector('input[name="invoice_for"]:checked')?.value;
+        if (!source) {
+            alert('Please choose an invoice source.');
+            return;
+        }
+
+        step1.style.display = 'none';
+        step2.style.display = 'block';
+        activateSource(source);
+        window.scrollTo(0, 0);
+    });
+
+    btnBackToStep1.addEventListener('click', () => {
+        step2.style.display = 'none';
+        step1.style.display = 'block';
+        window.scrollTo(0, 0);
+    });
+
+    // Step 2 Functions
+    function activateSource(source) {
         ordersSection.style.display = 'none';
         renewalSection.style.display = 'none';
         manualItemsSection.style.display = 'none';
-        if (!keepManualItems) {
-            manualItems = [];
-            manualItemCounter = 0;
-            editingManualItemId = null;
-            resetManualItemInputs();
-            addManualItemBtn.textContent = 'Add Item';
-        }
-        if (clearRadio) {
-            sourceRadios.forEach((radio) => radio.checked = false);
-        }
-        renderItems();
-        renderManualItems();
-        updateSubmitButtons();
-    }
+        itemsSection.style.display = 'none';
 
-    function renderClientInvoices(invoices) {
-        clientInvoicesBody.innerHTML = '';
-        noInvoicesMessage.style.display = invoices.length ? 'none' : 'block';
-        invoices.forEach((invoice) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `<td><strong>${invoice.number}</strong></td><td>${invoice.invoice_type}</td><td>${invoice.invoice_for}</td><td>${invoice.amount}</td><td>${invoice.amount_paid}</td><td>${invoice.balance_due}</td><td><span class="status-pill ${invoice.payment_status}">${invoice.payment_status}</span></td>`;
-            clientInvoicesBody.appendChild(row);
-        });
-    }
-
-    function renderOrders(orders) {
-        ordersBody.innerHTML = '';
-        noOrdersMessage.style.display = orders.length ? 'none' : 'block';
-        orders.forEach((order) => {
-            const isSelected = selectedSourceRecord?.type === 'orders' && selectedSourceRecord.id === order.orderid;
-            const row = document.createElement('tr');
-            row.innerHTML = `<td><strong>${order.order_number}</strong></td><td>${order.order_date}</td><td>${order.currency} ${Number(order.grand_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${order.status}</td><td><button type="button" class="primary-button select-order-btn" data-orderid="${order.orderid}" data-order-number="${order.order_number}" style="padding: 0.45rem 0.9rem; font-size: 0.82rem;">${isSelected ? 'Selected' : 'Use Order'}</button></td>`;
-            ordersBody.appendChild(row);
-        });
-    }
-
-    function renderRenewals(invoices) {
-        renewalBody.innerHTML = '';
-        noRenewalMessage.style.display = invoices.length ? 'none' : 'block';
-        invoices.forEach((invoice) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `<td><strong>${invoice.invoice_number}</strong></td><td style="color: #ef4444; font-weight: 600;">${invoice.expired_items} <span style="text-transform: uppercase; font-size: 0.75rem;">expired</span></td><td>${invoice.currency} ${Number(invoice.grand_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>${invoice.total_items} item(s)</td><td><button type="button" class="primary-button select-renewal-btn" data-invoiceid="${invoice.invoiceid}" data-invoice-number="${invoice.invoice_number}" style="padding: 0.45rem 0.9rem; font-size: 0.82rem;">Review Items</button></td>`;
-            renewalBody.appendChild(row);
-        });
-    }
-
-    function renderItems() {
-        itemsBody.innerHTML = '';
-        let subtotal = 0;
-        let taxTotal = 0;
-        invoiceItems.forEach((item, index) => {
-            item.quantity = Number(item.quantity) || 0;
-            item.unit_price = Number(item.unit_price) || 0;
-            item.tax_rate = Number(item.tax_rate) || 0;
-            item.no_of_users = Math.max(1, Number(item.no_of_users) || 1);
-            item.line_total = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
-            const lineTax = item.line_total * (item.tax_rate / 100);
-            subtotal += item.line_total;
-            taxTotal += lineTax;
-            const row = document.createElement('tr');
-            row.innerHTML = `<td><strong>${item.item_name || 'Item'}</strong></td><td><input type="number" class="form-input invoice-item-input" data-index="${index}" data-field="quantity" min="0.01" step="0.01" value="${item.quantity}"></td><td><input type="number" class="form-input invoice-item-input" data-index="${index}" data-field="unit_price" min="0" step="0.01" value="${item.unit_price}"></td><td>${renderTaxSelect(item.tax_rate, 'invoice-item-input', `data-index="${index}" data-field="tax_rate"` )}</td><td><input type="number" class="form-input invoice-item-input" data-index="${index}" data-field="duration" min="0" step="1" value="${item.duration ?? ''}"></td><td><select class="form-input invoice-item-input" data-index="${index}" data-field="frequency"><option value="">Not recurring</option>${frequencyOptions.map((value) => `<option value="${value}" ${item.frequency === value ? 'selected' : ''}>${frequencyLabels[value]}</option>`).join('')}</select></td><td><input type="number" class="form-input invoice-item-input" data-index="${index}" data-field="no_of_users" min="1" step="1" value="${item.no_of_users || 1}"></td><td><input type="date" class="form-input invoice-item-input" data-index="${index}" data-field="start_date" value="${item.start_date || ''}"></td><td><input type="date" class="form-input invoice-item-input" data-index="${index}" data-field="end_date" value="${item.end_date || ''}"></td><td><strong>${formatMoney(item.line_total + lineTax)}</strong></td><td><button type="button" class="icon-action-btn delete remove-invoice-item" data-index="${index}" title="Remove"><i class="fas fa-trash"></i></button></td>`;
-            itemsBody.appendChild(row);
-        });
-        setTotals(subtotal, taxTotal);
-        itemsSection.style.display = invoiceItems.length ? 'block' : 'none';
-        updateSubmitButtons();
-    }
-
-    function renderManualItems() {
-        manualItemsBody.innerHTML = '';
-        let subtotal = 0;
-        let taxTotal = 0;
-        manualItems.forEach((item) => {
-            item.quantity = Number(item.quantity) || 0;
-            item.unit_price = Number(item.unit_price) || 0;
-            item.tax_rate = Number(item.tax_rate) || 0;
-            item.no_of_users = Math.max(1, Number(item.no_of_users) || 1);
-            item.line_total = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
-            item.tax_amount = item.line_total * (item.tax_rate / 100);
-            subtotal += item.line_total;
-            taxTotal += item.tax_amount;
-            const row = document.createElement('tr');
-            row.innerHTML = `<td>${item.item_name}</td><td><input type="number" class="form-input manual-inline-input" data-id="${item.id}" data-field="quantity" min="0.01" step="0.01" value="${item.quantity}"></td><td><input type="number" class="form-input manual-inline-input" data-id="${item.id}" data-field="unit_price" min="0" step="0.01" value="${item.unit_price}"></td><td>${frequencyLabels[item.frequency] || 'Not recurring'}</td><td>${item.duration || '-'}</td><td>${item.no_of_users || 1}</td><td>${item.start_date || '-'}</td><td>${item.end_date || '-'}</td><td><strong>${formatMoney(item.line_total + item.tax_amount)}</strong></td><td><button type="button" class="icon-action-btn edit edit-manual-item" data-id="${item.id}" title="Edit"><i class="fas fa-edit"></i></button> <button type="button" class="icon-action-btn delete remove-manual-item" data-id="${item.id}" title="Remove"><i class="fas fa-trash"></i></button></td>`;
-            manualItemsBody.appendChild(row);
-        });
-        manualItemsTable.style.display = manualItems.length ? 'table' : 'none';
-        manualItemsEmpty.style.display = manualItems.length ? 'none' : 'block';
-        manualSummary.style.display = manualItems.length ? 'block' : 'none';
-        if (getActiveInvoiceFor() === 'without_orders') {
-            setTotals(subtotal, taxTotal);
-        }
-        updateSubmitButtons();
-    }
-    function readManualItemForm() {
-        const itemSelect = document.getElementById('manual_item_itemid');
-        const selectedOption = itemSelect.options[itemSelect.selectedIndex];
-        const itemid = itemSelect.value;
-        if (!itemid) {
-            alert('Select an item first.');
-            return null;
-        }
-        const item = {
-            id: editingManualItemId || ++manualItemCounter,
-            itemid,
-            item_name: (selectedOption.text || '').split(' (')[0],
-            quantity: Number(document.getElementById('manual_item_quantity').value) || 1,
-            unit_price: Number(document.getElementById('manual_item_unit_price').value) || 0,
-            frequency: document.getElementById('manual_item_frequency').value || null,
-            duration: document.getElementById('manual_item_duration').value || null,
-            no_of_users: Math.max(1, Number(document.getElementById('manual_item_users').value) || 1),
-            start_date: document.getElementById('manual_item_start_date').value || null,
-            end_date: document.getElementById('manual_item_end_date').value || null,
-            tax_rate: Number(document.getElementById('manual_item_tax_rate').value || selectedOption?.dataset?.taxRate || 0),
-        };
-        item.line_total = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
-        item.tax_amount = item.line_total * (item.tax_rate / 100);
-        return item;
-    }
-
-    function loadInvoicesForClient(clientId) {
-        clientInvoicesBody.innerHTML = '<tr><td colspan="7" style="padding: 1rem; text-align: center; color: #94a3b8;">Loading invoices...</td></tr>';
-        noInvoicesMessage.style.display = 'none';
-        fetch(`{{ route('invoices.index') }}?clientid=${clientId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-            .then((response) => response.json())
-            .then((data) => renderClientInvoices(data.invoices || []))
-            .catch(() => { clientInvoicesBody.innerHTML = ''; noInvoicesMessage.style.display = 'block'; });
-    }
-
-    function loadOrders() {
-        if (!selectedClientId) return;
-        ordersBody.innerHTML = '<tr><td colspan="5" style="padding: 1rem; text-align: center; color: #94a3b8;">Loading orders...</td></tr>';
-        noOrdersMessage.style.display = 'none';
-        fetch(`{{ route('invoices.client-orders') }}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ clientid: selectedClientId }),
-        })
-            .then((response) => response.json())
-            .then((orders) => renderOrders(orders || []))
-            .catch(() => { ordersBody.innerHTML = ''; noOrdersMessage.style.display = 'block'; });
-    }
-
-    function loadRenewals() {
-        if (!selectedClientId) return;
-        renewalBody.innerHTML = '<tr><td colspan="5" style="padding: 1rem; text-align: center; color: #94a3b8;">Loading renewal candidates...</td></tr>';
-        noRenewalMessage.style.display = 'none';
-        fetch(`{{ route('invoices.renewal-invoices') }}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ clientid: selectedClientId }),
-        })
-            .then((response) => response.json())
-            .then((invoices) => renderRenewals(invoices || []))
-            .catch(() => { renewalBody.innerHTML = ''; noRenewalMessage.style.display = 'block'; });
-    }
-
-    function showRenewalPicker(invoiceNumber, items) {
-        const expiredItems = (items || []).filter((item) => item.is_expired);
-        if (!expiredItems.length) {
-            renewalPicker.style.display = 'block';
-            renewalPicker.innerHTML = '<div class="empty-state" style="border: 1px solid #e2e8f0; border-radius: 14px;">No expired recurring items were found in this invoice.</div>';
-            return;
-        }
-        renewalPicker.style.display = 'block';
-        renewalPicker.innerHTML = `<div style="border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #fff;"><div style="padding: 1rem 1.1rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc;"><h5 style="margin: 0; font-size: 0.95rem; color: #1e293b;">Renew items from ${invoiceNumber}</h5><p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 0.84rem;">Select the expired items you want to add to the new invoice.</p></div><div style="overflow-x: auto;"><table class="data-table" style="margin: 0; font-size: 0.83rem;"><thead><tr><th></th><th>Item</th><th>Start</th><th>End</th><th>Frequency</th><th>Current Total</th></tr></thead><tbody>${expiredItems.map((item, index) => `<tr><td><label class="custom-checkbox" style="padding: 0.2rem;"><input type="checkbox" class="renewal-item-checkbox" data-index="${index}" checked><span class="checkbox-label" style="display: none;"></span></label></td><td><strong>${item.item_name}</strong></td><td>${item.start_date || '-'}</td><td style="color: #ef4444; font-weight: 600;">${item.end_date || '-'} <span style="font-size: 0.7rem; text-transform: uppercase;">expired</span></td><td>${frequencyLabels[item.frequency] || item.frequency || '-'}</td><td>${formatMoney(item.line_total)}</td></tr>`).join('')}</tbody></table></div><div style="padding: 1rem 1.1rem; border-top: 1px solid #e2e8f0; background: #f8fafc;"><button type="button" id="confirmRenewalBtn" class="primary-button">Add Selected Items</button></div></div>`;
-        document.getElementById('confirmRenewalBtn').addEventListener('click', function () {
-            const selectedIndexes = Array.from(document.querySelectorAll('.renewal-item-checkbox:checked')).map((checkbox) => Number(checkbox.dataset.index));
-            if (!selectedIndexes.length) {
-                alert('Select at least one item to renew.');
-                return;
-            }
-            invoiceItems = selectedIndexes.map((index) => {
-                const item = { ...expiredItems[index] };
-                item.start_date = document.getElementById('issue_date').value || item.start_date || null;
-                if (item.frequency && item.duration && item.start_date) {
-                    item.end_date = calculateEndDate(item.start_date, item.frequency, item.duration);
-                }
-                return item;
-            });
-            selectedSourceRecord = { type: 'renewal', id: invoiceNumber, label: invoiceNumber };
-            setSelectionBadge(`Renewal source: ${invoiceNumber}`);
-            renderItems();
-            itemsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-    }
-
-    function activateSource(source) {
-        const keepManualItems = source === 'without_orders';
-        resetSourceData({ clearRadio: false, keepManualItems });
         if (source === 'orders') {
             ordersSection.style.display = 'block';
             loadOrders();
-            return;
-        }
-        if (source === 'renewal') {
+        } else if (source === 'renewal') {
             renewalSection.style.display = 'block';
             loadRenewals();
-            return;
-        }
-        if (source === 'without_orders') {
+        } else if (source === 'without_orders') {
             manualItemsSection.style.display = 'block';
             renderManualItems();
         }
     }
 
-    clientSelect.addEventListener('change', function () {
-        selectedClientId = this.value || null;
-        if (!selectedClientId) {
-            sourceWorkspace.style.display = 'none';
-            setCurrency('INR');
-            resetSourceData();
-            clientInvoicesBody.innerHTML = '';
-            noInvoicesMessage.style.display = 'none';
-            return;
-        }
-        setCurrency(this.options[this.selectedIndex]?.dataset?.currency || 'INR');
-        sourceWorkspace.style.display = 'block';
-        resetSourceData();
-        loadInvoicesForClient(selectedClientId);
-    });
+    function loadOrders() {
+        ordersBody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading orders...</td></tr>';
+        fetch(`{{ route('invoices.client-orders') }}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify({ clientid: selectedClientId }),
+        })
+            .then(res => res.json())
+            .then(orders => {
+                ordersBody.innerHTML = '';
+                if (orders.length === 0) {
+                    noOrdersMessage.style.display = 'block';
+                    return;
+                }
+                noOrdersMessage.style.display = 'none';
+                orders.forEach(order => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><strong>${order.order_number}</strong></td>
+                        <td>${order.order_date}</td>
+                        <td>${order.currency} ${Number(order.grand_total).toLocaleString()}</td>
+                        <td>${order.status}</td>
+                        <td><button type="button" class="primary-button select-order-btn" data-id="${order.orderid}" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Select</button></td>
+                    `;
+                    ordersBody.appendChild(row);
+                });
+            });
+    }
 
-    sourceRadios.forEach((radio) => radio.addEventListener('change', function () { activateSource(this.value); }));
-
-    ordersBody.addEventListener('click', function (event) {
-        const button = event.target.closest('.select-order-btn');
-        if (!button) return;
-        const orderId = button.dataset.orderid;
-        const orderNumber = button.dataset.orderNumber;
+    ordersBody.addEventListener('click', (e) => {
+        const btn = e.target.closest('.select-order-btn');
+        if (!btn) return;
+        const orderId = btn.dataset.id;
         orderIdInput.value = orderId;
-        fetch(`{{ url('/invoices/order-items') }}/${orderId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-            .then((response) => response.json())
-            .then((data) => {
-                invoiceItems = (data.items || []).map((item) => ({ ...item }));
-                selectedSourceRecord = { type: 'orders', id: orderId, label: orderNumber };
-                setSelectionBadge(`Order source: ${orderNumber}`);
+        fetch(`{{ url('/invoices/order-items') }}/${orderId}`)
+            .then(res => res.json())
+            .then(data => {
+                invoiceItems = data.items || [];
                 renderItems();
-                loadOrders();
-                itemsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            })
-            .catch(() => alert('Unable to load order items right now.'));
+                itemsSection.scrollIntoView({ behavior: 'smooth' });
+            });
     });
 
-    renewalBody.addEventListener('click', function (event) {
-        const button = event.target.closest('.select-renewal-btn');
-        if (!button) return;
-        const invoiceId = button.dataset.invoiceid;
-        const invoiceNumber = button.dataset.invoiceNumber;
-        fetch(`{{ url('/invoices/renewal-items') }}/${invoiceId}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-            .then((response) => response.json())
-            .then((data) => { showRenewalPicker(invoiceNumber, data.items || []); renewalPicker.scrollIntoView({ behavior: 'smooth', block: 'start' }); })
-            .catch(() => alert('Unable to load renewal items right now.'));
+    function loadRenewals() {
+        renewalBody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading renewal candidates...</td></tr>';
+        fetch(`{{ route('invoices.renewal-invoices') }}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify({ clientid: selectedClientId }),
+        })
+            .then(res => res.json())
+            .then(invoices => {
+                renewalBody.innerHTML = '';
+                if (invoices.length === 0) {
+                    noRenewalMessage.style.display = 'block';
+                    return;
+                }
+                noRenewalMessage.style.display = 'none';
+                invoices.forEach(inv => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><strong>${inv.invoice_number}</strong></td>
+                        <td style="color: #ef4444; font-weight: 600;">${inv.expired_items} Expired</td>
+                        <td>${inv.currency} ${Number(inv.grand_total).toLocaleString()}</td>
+                        <td>${inv.total_items} items</td>
+                        <td><button type="button" class="primary-button select-renewal-btn" data-id="${inv.invoiceid}" data-num="${inv.invoice_number}" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Review</button></td>
+                    `;
+                    renewalBody.appendChild(row);
+                });
+            });
+    }
+
+    renewalBody.addEventListener('click', (e) => {
+        const btn = e.target.closest('.select-renewal-btn');
+        if (!btn) return;
+        const invId = btn.dataset.id;
+        fetch(`{{ url('/invoices/renewal-items') }}/${invId}`)
+            .then(res => res.json())
+            .then(data => {
+                showRenewalPicker(btn.dataset.num, data.items || []);
+                renewalPicker.scrollIntoView({ behavior: 'smooth' });
+            });
     });
-    itemsBody.addEventListener('input', function (event) {
-        const input = event.target.closest('.invoice-item-input');
+
+    function showRenewalPicker(invNum, items) {
+        const expired = items.filter(i => i.is_expired);
+        renewalPicker.style.display = 'block';
+        renewalPicker.innerHTML = `
+            <div style="border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; overflow: hidden;">
+                <div style="padding: 1rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                    <h5 style="margin: 0;">Renew from ${invNum}</h5>
+                </div>
+                <table class="data-table" style="margin: 0; font-size: 0.8rem;">
+                    <thead><tr><th></th><th>Item</th><th>End Date</th><th>Price</th></tr></thead>
+                    <tbody>
+                        ${expired.map((i, idx) => `
+                            <tr>
+                                <td><input type="checkbox" class="renewal-check" data-idx="${idx}" checked></td>
+                                <td>${i.item_name}</td>
+                                <td style="color: #ef4444;">${i.end_date}</td>
+                                <td>${formatMoney(i.line_total)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div style="padding: 1rem; border-top: 1px solid #e2e8f0; text-align: right;">
+                    <button type="button" id="btnConfirmRenewal" class="primary-button">Add Selected Items</button>
+                </div>
+            </div>
+        `;
+        document.getElementById('btnConfirmRenewal').addEventListener('click', () => {
+            const checks = document.querySelectorAll('.renewal-check:checked');
+            invoiceItems = Array.from(checks).map(c => {
+                const item = { ...expired[c.dataset.idx] };
+                item.start_date = document.getElementById('issue_date').value;
+                if (item.frequency && item.duration) item.end_date = calculateEndDate(item.start_date, item.frequency, item.duration);
+                return item;
+            });
+            renderItems();
+        });
+    }
+
+    function renderItems() {
+        itemsBody.innerHTML = '';
+        let subtotal = 0, taxTotal = 0;
+        invoiceItems.forEach((item, idx) => {
+            const lineTotal = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
+            const lineTax = lineTotal * (Number(item.tax_rate || 0) / 100);
+            subtotal += lineTotal;
+            taxTotal += lineTax;
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${item.item_name}</strong></td>
+                <td><input type="number" class="form-input item-edit" data-idx="${idx}" data-field="quantity" value="${item.quantity}" min="0.01" step="0.01"></td>
+                <td><input type="number" class="form-input item-edit" data-idx="${idx}" data-field="unit_price" value="${item.unit_price}"></td>
+                <td>${renderTaxSelect(item.tax_rate, 'item-edit', `data-idx="${idx}" data-field="tax_rate"`)}</td>
+                <td><input type="number" class="form-input item-edit" data-idx="${idx}" data-field="duration" value="${item.duration || ''}"></td>
+                <td>
+                    <select class="form-input item-edit" data-idx="${idx}" data-field="frequency">
+                        <option value="">None</option>
+                        ${frequencyOptions.map(f => `<option value="${f}" ${item.frequency === f ? 'selected' : ''}>${frequencyLabels[f] || f}</option>`).join('')}
+                    </select>
+                </td>
+                <td><input type="number" class="form-input item-edit" data-idx="${idx}" data-field="no_of_users" value="${item.no_of_users || 1}"></td>
+                <td><input type="date" class="form-input item-edit" data-idx="${idx}" data-field="start_date" value="${item.start_date || ''}"></td>
+                <td><input type="date" class="form-input item-edit" data-idx="${idx}" data-field="end_date" value="${item.end_date || ''}"></td>
+                <td><strong>${formatMoney(lineTotal + lineTax)}</strong></td>
+                <td><button type="button" class="icon-action-btn delete remove-item" data-idx="${idx}"><i class="fas fa-trash"></i></button></td>
+            `;
+            itemsBody.appendChild(row);
+        });
+        setTotals(subtotal, taxTotal);
+        itemsSection.style.display = invoiceItems.length ? 'block' : 'none';
+        updateFinalSubmitButton();
+    }
+
+    itemsBody.addEventListener('input', (e) => {
+        const input = e.target.closest('.item-edit');
         if (!input) return;
-        const index = Number(input.dataset.index);
+        const idx = input.dataset.idx;
         const field = input.dataset.field;
-        invoiceItems[index][field] = input.type === 'number' ? Number(input.value) : input.value || null;
-        if (field === 'start_date' && invoiceItems[index].frequency && invoiceItems[index].duration) {
-            invoiceItems[index].end_date = calculateEndDate(invoiceItems[index].start_date, invoiceItems[index].frequency, invoiceItems[index].duration);
-        }
-        if ((field === 'frequency' || field === 'duration') && invoiceItems[index].start_date) {
-            invoiceItems[index].end_date = calculateEndDate(invoiceItems[index].start_date, invoiceItems[index].frequency, invoiceItems[index].duration);
+        invoiceItems[idx][field] = input.type === 'number' ? Number(input.value) : input.value;
+        if (['start_date', 'frequency', 'duration'].includes(field)) {
+            invoiceItems[idx].end_date = calculateEndDate(invoiceItems[idx].start_date, invoiceItems[idx].frequency, invoiceItems[idx].duration);
         }
         renderItems();
     });
 
-    itemsBody.addEventListener('click', function (event) {
-        const button = event.target.closest('.remove-invoice-item');
-        if (!button) return;
-        invoiceItems.splice(Number(button.dataset.index), 1);
+    itemsBody.addEventListener('click', (e) => {
+        const btn = e.target.closest('.remove-item');
+        if (!btn) return;
+        invoiceItems.splice(btn.dataset.idx, 1);
         renderItems();
     });
 
-    document.getElementById('manual_item_itemid').addEventListener('change', function () {
-        const option = this.options[this.selectedIndex];
-        document.getElementById('manual_item_unit_price').value = option?.dataset?.sellingPrice || '';
-        document.getElementById('manual_item_tax_rate').value = option?.dataset?.taxRate || '0';
+    // Manual Items
+    document.getElementById('manual_item_itemid').addEventListener('change', function() {
+        const opt = this.options[this.selectedIndex];
+        document.getElementById('manual_item_unit_price').value = opt.dataset.sellingPrice || '';
+        document.getElementById('manual_item_tax_rate').value = opt.dataset.taxRate || '0';
     });
 
-    ['manual_item_start_date', 'manual_item_frequency', 'manual_item_duration'].forEach((id) => {
-        document.getElementById(id).addEventListener('change', function () {
-            const startDate = document.getElementById('manual_item_start_date').value;
-            const frequency = document.getElementById('manual_item_frequency').value;
-            const duration = document.getElementById('manual_item_duration').value;
-            document.getElementById('manual_item_end_date').value = calculateEndDate(startDate, frequency, duration);
+    addManualItemBtn.addEventListener('click', () => {
+        const select = document.getElementById('manual_item_itemid');
+        if (!select.value) return alert('Select an item');
+        const opt = select.options[select.selectedIndex];
+        const item = {
+            id: ++manualItemCounter,
+            itemid: select.value,
+            item_name: opt.text.split(' (')[0],
+            quantity: Number(document.getElementById('manual_item_quantity').value),
+            unit_price: Number(document.getElementById('manual_item_unit_price').value),
+            tax_rate: Number(document.getElementById('manual_item_tax_rate').value),
+            frequency: document.getElementById('manual_item_frequency').value,
+            duration: document.getElementById('manual_item_duration').value,
+            no_of_users: Number(document.getElementById('manual_item_users').value),
+            start_date: document.getElementById('manual_item_start_date').value,
+            end_date: document.getElementById('manual_item_end_date').value,
+        };
+        manualItems.push(item);
+        renderManualItems();
+        // Reset inputs
+        select.value = '';
+        document.getElementById('manual_item_unit_price').value = '';
+    });
+
+    function renderManualItems() {
+        manualItemsBody.innerHTML = '';
+        let subtotal = 0, taxTotal = 0;
+        manualItems.forEach((item, idx) => {
+            const lineTotal = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
+            const lineTax = lineTotal * (item.tax_rate / 100);
+            subtotal += lineTotal;
+            taxTotal += lineTax;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${item.item_name}</td>
+                <td><input type="number" class="form-input manual-edit" data-idx="${idx}" data-field="quantity" value="${item.quantity}"></td>
+                <td><input type="number" class="form-input manual-edit" data-idx="${idx}" data-field="unit_price" value="${item.unit_price}"></td>
+                <td>${item.frequency || '-'}</td><td>${item.duration || '-'}</td><td>${item.no_of_users}</td>
+                <td>${item.start_date || '-'}</td><td>${item.end_date || '-'}</td>
+                <td><strong>${formatMoney(lineTotal + lineTax)}</strong></td>
+                <td><button type="button" class="icon-action-btn delete remove-manual" data-idx="${idx}"><i class="fas fa-trash"></i></button></td>
+            `;
+            manualItemsBody.appendChild(row);
+        });
+        manualItemsTable.style.display = manualItems.length ? 'table' : 'none';
+        manualItemsEmpty.style.display = manualItems.length ? 'none' : 'block';
+        manualSummary.style.display = manualItems.length ? 'block' : 'none';
+        setTotals(subtotal, taxTotal);
+        updateFinalSubmitButton();
+    }
+
+    manualItemsBody.addEventListener('input', (e) => {
+        const input = e.target.closest('.manual-edit');
+        if (!input) return;
+        manualItems[input.dataset.idx][input.dataset.field] = Number(input.value);
+        renderManualItems();
+    });
+
+    manualItemsBody.addEventListener('click', (e) => {
+        const btn = e.target.closest('.remove-manual');
+        if (!btn) return;
+        manualItems.splice(btn.dataset.idx, 1);
+        renderManualItems();
+    });
+
+    invoiceForm.addEventListener('submit', (e) => {
+        const source = document.querySelector('input[name="invoice_for"]:checked').value;
+        const items = source === 'without_orders' ? manualItems : invoiceItems;
+        itemsDataInput.value = JSON.stringify(items.map(i => ({ ...i, line_total: calculateLineTotal(i.quantity, i.unit_price, i.no_of_users, i.frequency, i.duration) })));
+    });
+
+    // Auto-calculate end date for manual form
+    ['manual_item_start_date', 'manual_item_frequency', 'manual_item_duration'].forEach(id => {
+        document.getElementById(id).addEventListener('change', () => {
+            document.getElementById('manual_item_end_date').value = calculateEndDate(
+                document.getElementById('manual_item_start_date').value,
+                document.getElementById('manual_item_frequency').value,
+                document.getElementById('manual_item_duration').value
+            );
         });
     });
 
-    addManualItemBtn.addEventListener('click', function () {
-        const item = readManualItemForm();
-        if (!item) return;
-        const existingIndex = manualItems.findIndex((entry) => entry.id === item.id);
-        if (existingIndex >= 0) {
-            manualItems[existingIndex] = item;
-        } else {
-            manualItems.push(item);
-        }
-        editingManualItemId = null;
-        addManualItemBtn.textContent = 'Add Item';
-        resetManualItemInputs();
-        renderManualItems();
-    });
-
-    manualItemsBody.addEventListener('input', function (event) {
-        const input = event.target.closest('.manual-inline-input');
-        if (!input) return;
-        const item = manualItems.find((entry) => entry.id === Number(input.dataset.id));
-        if (!item) return;
-        item[input.dataset.field] = Number(input.value) || 0;
-        renderManualItems();
-    });
-
-    manualItemsBody.addEventListener('click', function (event) {
-        const editButton = event.target.closest('.edit-manual-item');
-        if (editButton) {
-            const item = manualItems.find((entry) => entry.id === Number(editButton.dataset.id));
-            if (!item) return;
-            editingManualItemId = item.id;
-            document.getElementById('manual_item_itemid').value = item.itemid;
-            document.getElementById('manual_item_quantity').value = item.quantity;
-            document.getElementById('manual_item_unit_price').value = item.unit_price;
-            document.getElementById('manual_item_tax_rate').value = item.tax_rate || 0;
-            document.getElementById('manual_item_frequency').value = item.frequency || '';
-            document.getElementById('manual_item_duration').value = item.duration || '';
-            document.getElementById('manual_item_users').value = item.no_of_users || 1;
-            document.getElementById('manual_item_start_date').value = item.start_date || '';
-            document.getElementById('manual_item_end_date').value = item.end_date || '';
-            addManualItemBtn.textContent = 'Update Item';
-            manualItemsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            return;
-        }
-        const removeButton = event.target.closest('.remove-manual-item');
-        if (!removeButton) return;
-        const itemId = Number(removeButton.dataset.id);
-        manualItems = manualItems.filter((entry) => entry.id !== itemId);
-        if (editingManualItemId === itemId) {
-            editingManualItemId = null;
-            addManualItemBtn.textContent = 'Add Item';
-            resetManualItemInputs();
-        }
-        renderManualItems();
-    });
-
-    invoiceForm.addEventListener('submit', function (event) {
-        if (!selectedClientId) {
-            event.preventDefault();
-            alert('Select a client before creating the invoice.');
-            return;
-        }
-        const invoiceFor = getActiveInvoiceFor();
-        if (!invoiceFor) {
-            event.preventDefault();
-            alert('Choose how you want to create this invoice (Orders, Renewal, or Without Orders).');
-            return;
-        }
-        let itemsToSubmit = [];
-        if (invoiceFor === 'without_orders') {
-            if (!manualItems.length) {
-                event.preventDefault();
-                alert('Add at least one manual item before submitting.');
-                return;
-            }
-            itemsToSubmit = manualItems.map((item) => ({ itemid: item.itemid, item_name: item.item_name, quantity: item.quantity, unit_price: item.unit_price, tax_rate: item.tax_rate || 0, duration: item.duration || null, frequency: item.frequency || null, no_of_users: item.no_of_users || 1, start_date: item.start_date || null, end_date: item.end_date || null, line_total: item.line_total }));
-        } else {
-            if (!invoiceItems.length) {
-                event.preventDefault();
-                alert('Select at least one invoice item before submitting.');
-                return;
-            }
-            if (invoiceFor === 'orders' && !orderIdInput.value) {
-                event.preventDefault();
-                alert('Choose an order before submitting this invoice.');
-                return;
-            }
-            itemsToSubmit = invoiceItems.map((item) => ({ itemid: item.itemid, item_name: item.item_name, quantity: item.quantity, unit_price: item.unit_price, tax_rate: item.tax_rate || 0, duration: item.duration || null, frequency: item.frequency || null, no_of_users: item.no_of_users || 1, start_date: item.start_date || null, end_date: item.end_date || null, line_total: item.line_total }));
-        }
-        itemsDataInput.value = JSON.stringify(itemsToSubmit);
-        console.log('Submitting invoice with items:', itemsToSubmit);
-        document.querySelectorAll('.create-submit-btn').forEach((button) => { button.disabled = true; button.textContent = 'Creating...'; });
-    });
-
     if (selectedClientId) {
-        sourceWorkspace.style.display = 'block';
-        setCurrency(clientSelect.options[clientSelect.selectedIndex]?.dataset?.currency || 'INR');
+        existingInvoicesSection.style.display = 'block';
+        sourceSelectionSection.style.display = 'block';
         loadInvoicesForClient(selectedClientId);
-        if (getActiveInvoiceFor()) {
-            activateSource(getActiveInvoiceFor());
-        }
-    } else {
-        renderItems();
-        renderManualItems();
     }
 })();
 </script>
+
+{{-- Add Tax Modal --}}
+@if($account->allow_multi_taxation)
+<div class="modal fade" id="addTaxModalInvoice" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
+        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header" style="padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
+                <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;">
+                    <i class="fas fa-receipt" style="margin-right: 0.5rem; color: #64748b;"></i>Add Tax
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 1.25rem;">
+                <form method="POST" action="{{ route('taxes.store') }}" id="quick-tax-form-invoice">
+                    @csrf
+                    <input type="hidden" name="redirect_back" value="1">
+                    <div style="margin-bottom: 0.75rem;">
+                        <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Rate (%)</label>
+                        <input type="number" name="rate" placeholder="18" step="0.01" min="0" max="100" required
+                               style="padding: 0.4rem 0.75rem; font-size: 0.9rem; width: 100%;">
+                    </div>
+                    <div style="margin-bottom: 0.75rem;">
+                        <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Type</label>
+                        <select name="type" required
+                                style="padding: 0.4rem 0.75rem; font-size: 0.9rem; width: 100%;">
+                            @foreach(['GST'=>'GST','VAT'=>'VAT'] as $v=>$l)
+                                <option value="{{ $v }}">{{ $l }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <button type="submit" class="primary-button small">Add Tax</button>
+                        <button type="button" class="text-link small" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const taxModalEl = document.getElementById('addTaxModalInvoice');
+    const openTaxModalLink = document.getElementById('open-tax-modal-invoice');
+    if (taxModalEl && openTaxModalLink) {
+        const taxModal = new bootstrap.Modal(taxModalEl);
+        openTaxModalLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            taxModal.show();
+        });
+    }
+})();
+</script>
+@endif
+
 @endsection

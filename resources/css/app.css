@@ -40,6 +40,7 @@ body.app-shell {
     color: var(--text);
     background-color: var(--bg);
     font-family: var(--font-sans);
+    font-size: 17px;
 }
 
 a {

@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'orderid',
     'converted_from_invoiceid',
     'invoice_number',
+    'invoice_title',
     'invoice_type',
     'invoice_for',
     'status',

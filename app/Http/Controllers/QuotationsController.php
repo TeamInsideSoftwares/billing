@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Models\Client;
 use App\Models\Quotation;
+use App\Models\Tax;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
@@ -44,9 +46,14 @@ class QuotationsController extends Controller
 
     public function quotationsCreate(): View
     {
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $account = Account::find($accountid);
+
         return view('quotations.create', [
             'title' => 'New Quotation',
             'clients' => Client::all(),
+            'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
+            'account' => $account,
         ]);
     }
 
@@ -80,10 +87,15 @@ class QuotationsController extends Controller
 
     public function quotationsEdit(Quotation $quotation): View
     {
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $account = Account::find($accountid);
+
         return view('quotations.edit', [
             'title' => 'Edit Quotation',
             'quotation' => $quotation,
             'clients' => Client::all(),
+            'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
+            'account' => $account,
         ]);
     }
 

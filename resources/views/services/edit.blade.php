@@ -116,7 +116,9 @@
                 </div>
                 <div style="display: flex; gap: 0.75rem; align-items: center;">
                     <button type="button" class="text-link" id="add-costing-row" style="font-size: 0.82rem;">+ Add currency</button>
+                    @if($account->allow_multi_taxation)
                     <a href="#" id="open-tax-modal" style="font-size:13px;" class="text-link">+ Add Tax</a>
+                    @endif
                 </div>
             </div>
             <div style="overflow-x: auto;">
@@ -149,6 +151,7 @@
                                 <td><input type="number" step="0.01" name="costings[{{ $index }}][selling_price]" value="{{ $costing['selling_price'] ?? '' }}" required style="padding: 0.3rem; width: 100px;"></td>
                                 <td><input type="text" maxlength="20" name="costings[{{ $index }}][sac_code]" value="{{ $costing['sac_code'] ?? '' }}" style="padding: 0.3rem; width: 80px;"></td>
                                 <td>
+                                    @if($account->allow_multi_taxation)
                                     <select name="costings[{{ $index }}][taxid]" class="tax-select" style="min-width: 140px; padding: 0.3rem; font-size: 0.82rem;">
                                         <option value="">— None</option>
                                         @foreach(['GST','VAT'] as $taxType)
@@ -162,6 +165,12 @@
                                             @endif
                                         @endforeach
                                     </select>
+                                    @else
+                                    <input type="hidden" name="costings[{{ $index }}][taxid]" value="">
+                                    <span style="min-width: 140px; padding: 0.3rem 0.5rem; font-size: 0.82rem; background: #f1f5f9; border-radius: 4px; color: #64748b; display: inline-block;">
+                                        {{ number_format($account->fixed_tax_rate ?? 0, 2) }}%
+                                    </span>
+                                    @endif
                                 </td>
                                 <td>
                                     <select name="costings[{{ $index }}][tax_included]" style="min-width: 80px; padding: 0.3rem;" required>
@@ -186,6 +195,7 @@
 </section>
 
 {{-- Add Tax Modal --}}
+@if($account->allow_multi_taxation)
 <div class="modal fade" id="addTaxModalEdit" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
         <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
@@ -222,14 +232,16 @@
         </div>
     </div>
 </div>
+@endif
 
 <script>
 (function() {
     // Add Tax modal - just open it, form submits normally
     const taxModalEl = document.getElementById('addTaxModalEdit');
-    if (taxModalEl) {
+    const openTaxModalLink = document.getElementById('open-tax-modal');
+    if (taxModalEl && openTaxModalLink) {
         const taxModal = new bootstrap.Modal(taxModalEl);
-        document.getElementById('open-tax-modal').addEventListener('click', function(e) {
+        openTaxModalLink.addEventListener('click', function(e) {
             e.preventDefault();
             taxModal.show();
         });
@@ -246,17 +258,22 @@
         $currencyOptions = collect($currencies)->map(function ($currency) {
             return '<option value="' . e($currency->iso) . '">' . e($currency->iso . ' - ' . $currency->name) . '</option>';
         })->implode('');
-        
-        $taxGroupsData = $taxes->groupBy('type')->map(function($group, $type) {
+
+        $isMultiTax = $account->allow_multi_taxation ?? false;
+        $fixedTaxRate = $account->fixed_tax_rate ?? 0;
+
+        $taxGroupsData = $isMultiTax ? $taxes->groupBy('type')->map(function($group, $type) {
             return $group->map(fn($t) => [
                 'id' => $t->taxid,
                 'name' => $t->tax_name ?? $t->type,
                 'rate' => $t->rate,
             ])->values()->all();
-        })->filter(fn($group) => count($group) > 0)->all();
+        })->filter(fn($group) => count($group) > 0)->all() : [];
     @endphp
 
     const currencyOptionsHtml = @json($currencyOptions);
+    const isMultiTax = @json($isMultiTax);
+    const fixedTaxRate = @json($fixedTaxRate);
     const taxGroups = @json($taxGroupsData);
 
     let taxOptionsHtml = '<option value="">— None</option>';
@@ -281,7 +298,11 @@
     }
 
     function taxSelectHtml(i) {
-        return `<select name="costings[${i}][taxid]" class="tax-select" style="min-width:140px;padding:0.3rem;font-size:0.82rem;">${taxOptionsHtml}</select>`;
+        if (isMultiTax) {
+            return `<select name="costings[${i}][taxid]" class="tax-select" style="min-width:140px;padding:0.3rem;font-size:0.82rem;">${taxOptionsHtml}</select>`;
+        } else {
+            return `<input type="hidden" name="costings[${i}][taxid]" value=""><span style="min-width:140px;padding:0.3rem 0.5rem;font-size:0.82rem;background:#f1f5f9;border-radius:4px;color:#64748b;display:inline-block;">Fixed: ${fixedTaxRate.toFixed(2)}%</span>`;
+        }
     }
     function taxIncludeHtml(i) {
         return `<select name="costings[${i}][tax_included]" style="min-width:80px;padding:0.3rem;" required><option value="no" selected>Excl.</option><option value="yes">Incl.</option></select>`;

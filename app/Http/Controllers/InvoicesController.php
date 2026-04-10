@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Service;
 use App\Models\Tax;
+use App\Models\TermsCondition;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,49 +27,91 @@ class InvoicesController extends Controller
             $invoiceQuery->where('clientid', $selectedClientId);
         }
 
-        $invoices = $invoiceQuery->take(50)->get();
+        $allInvoices = $invoiceQuery->get();
 
         if (request()->wantsJson() || request()->ajax()) {
             return response()->json([
-                'invoices' => $invoices->map(function ($invoice) {
-                    $amountPaid = $invoice->amount_paid ?? 0;
-                    $balanceDue = $invoice->balance_due ?? $invoice->grand_total;
+                'invoices' => $allInvoices->map(function ($invoice) {
+                    $amountPaid = (float) ($invoice->amount_paid ?? 0);
+                    $balanceDue = (float) ($invoice->balance_due ?? $invoice->grand_total);
                     $currency = $invoice->client->currency ?? 'INR';
+
+                    $paymentStatus = 'unpaid';
+                    if ($balanceDue <= 0) {
+                        $paymentStatus = 'paid';
+                    } elseif ($amountPaid > 0) {
+                        $paymentStatus = 'partially paid';
+                    }
 
                     return [
                         'record_id' => $invoice->invoiceid,
                         'number' => $invoice->invoice_number ?? 'INV-' . str_pad($invoice->invoiceid, 4, '0', STR_PAD_LEFT),
+                        'title' => $invoice->invoice_title,
+                        'issue_date' => $invoice->issue_date?->format('d M Y'),
+                        'due_date' => $invoice->due_date?->format('d M Y'),
                         'invoice_type' => ucfirst($invoice->invoice_type ?? 'proforma'),
                         'invoice_for' => ucfirst(str_replace('_', ' ', $invoice->invoice_for ?? 'without orders')),
                         'amount' => $currency . ' ' . number_format($invoice->grand_total ?? 0, 2),
                         'amount_paid' => $currency . ' ' . number_format($amountPaid, 2),
                         'balance_due' => $currency . ' ' . number_format($balanceDue, 2),
                         'status' => $invoice->status ?? 'draft',
-                        'payment_status' => $balanceDue <= 0 ? 'paid' : ($amountPaid > 0 ? 'partial' : 'pending'),
+                        'payment_status' => $paymentStatus,
+                        'items' => $invoice->items->map(function ($item) use ($currency) {
+                            return [
+                                'name' => $item->item_name,
+                                'qty' => $item->quantity,
+                                'price' => $currency . ' ' . number_format($item->unit_price, 2),
+                                'tax_rate' => (float) ($item->tax_rate ?? 0),
+                                'duration' => $item->duration,
+                                'frequency' => $item->frequency,
+                                'users' => (int) ($item->no_of_users ?? 1),
+                                'start_date' => $item->start_date?->format('d M Y'),
+                                'end_date' => $item->end_date?->format('d M Y'),
+                                'total' => $currency . ' ' . number_format($item->line_total, 2),
+                            ];
+                        }),
                     ];
                 }),
                 'selectedClientId' => $selectedClientId,
             ]);
         }
 
+        $groupedInvoices = $allInvoices->groupBy(function ($invoice) {
+            return $invoice->client->business_name ?? $invoice->client->contact_name ?? 'N/A';
+        });
+
         return view('invoices.index', [
             'title' => 'Invoices',
             'clients' => $clients,
-            'invoices' => $invoices,
+            'groupedInvoices' => $groupedInvoices,
             'selectedClientId' => $selectedClientId,
         ]);
     }
 
     public function invoicesCreate(): View
     {
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $user = auth()->user();
+        $accountid = auth()->check() ? ($user?->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $legacyAccountId = $user?->id ? (string) $user->id : null;
+        $account = \App\Models\Account::find($accountid);
+
+        $termAccountIds = array_values(array_filter(array_unique([$accountid, $legacyAccountId])));
+
+        $billingTerms = TermsCondition::query()
+            ->whereIn('accountid', $termAccountIds)
+            ->where('type', 'billing')
+            ->where('is_active', true)
+            ->orderByRaw('COALESCE(sequence, 999999), created_at ASC')
+            ->get();
 
         return view('invoices.create', [
             'title' => 'Create Invoice',
             'clients' => Client::orderBy('business_name')->get(),
             'services' => Service::with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),
-            'taxes' => Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get(),
+            'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'nextInvoiceNumber' => $this->generateInvoiceNumber(),
+            'account' => $account,
+            'billingTerms' => $billingTerms,
         ]);
     }
 
@@ -205,6 +248,39 @@ class InvoicesController extends Controller
         ]);
     }
 
+    public function storeBillingTerm(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'nullable|string|max:255',
+            'content' => 'required|string',
+        ]);
+
+        $user = auth()->user();
+        $accountid = $user?->accountid ?? (string) ($user?->id ?? 'ACC0000001');
+        $maxSequence = TermsCondition::query()
+            ->where('accountid', $accountid)
+            ->where('type', 'billing')
+            ->max('sequence');
+
+        $term = TermsCondition::create([
+            'accountid' => $accountid,
+            'type' => 'billing',
+            'title' => trim((string) ($validated['title'] ?? '')) ?: 'Term',
+            'content' => $validated['content'],
+            'is_active' => true,
+            'sequence' => ((int) ($maxSequence ?? 0)) + 1,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'term' => [
+                'id' => $term->tc_id,
+                'title' => $term->title,
+                'content' => $term->content,
+            ],
+        ]);
+    }
+
     protected function generateInvoiceNumber(): string
     {
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
@@ -258,11 +334,13 @@ class InvoicesController extends Controller
                 'clientid' => 'required|exists:clients,clientid',
                 'orderid' => 'nullable|exists:orders,orderid',
                 'invoice_number' => 'required|string|unique:invoices,invoice_number',
+                'invoice_title' => 'nullable|string|max:255',
                 'invoice_type' => 'nullable|string|in:proforma,tax,receipt',
                 'invoice_for' => 'required|string|in:orders,renewal,without_orders',
                 'issue_date' => 'required|date',
                 'due_date' => 'required|date|after_or_equal:issue_date',
                 'notes' => 'nullable|string',
+                'terms' => 'nullable|string',
                 'status' => 'required|in:draft,sent,paid,overdue,cancelled',
                 'currency_code' => 'nullable|string|max:10',
                 'subtotal' => 'required|numeric|min:0',
@@ -423,19 +501,28 @@ class InvoicesController extends Controller
         ]);
     }
 
-    public function invoicesEdit(Invoice $invoice): View
+    public function invoicesEdit(Invoice $invoice)
     {
         $invoice->load(['items.service', 'payments', 'convertedTaxInvoice']);
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $account = \App\Models\Account::find($accountid);
 
-        return view('invoices.edit', [
+        $viewData = [
             'title' => 'Edit Invoice',
             'invoice' => $invoice,
             'clients' => Client::all(),
             'services' => Service::with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),
-            'taxes' => Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get(),
+            'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'items' => $invoice->items,
-        ]);
+            'account' => $account,
+        ];
+
+        // Return only the edit form for inline editing (AJAX request)
+        if (request('inline')) {
+            return view('invoices._edit_form', array_merge($viewData, ['inline' => true]));
+        }
+
+        return view('invoices.edit', $viewData);
     }
 
     public function invoicesUpdate(Request $request, Invoice $invoice)
@@ -443,6 +530,7 @@ class InvoicesController extends Controller
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
             'invoice_number' => 'required|string|unique:invoices,invoice_number,' . $invoice->invoiceid . ',invoiceid',
+            'invoice_title' => 'nullable|string|max:255',
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
             'notes' => 'nullable|string',
@@ -464,6 +552,7 @@ class InvoicesController extends Controller
         $invoice->update([
             'clientid' => $validated['clientid'],
             'invoice_number' => $validated['invoice_number'],
+            'invoice_title' => $validated['invoice_title'] ?? $invoice->invoice_title,
             'issue_date' => $validated['issue_date'],
             'due_date' => $validated['due_date'],
             'notes' => $validated['notes'],
@@ -489,6 +578,11 @@ class InvoicesController extends Controller
                 'line_total' => $itemData['line_total'],
                 'sort_order' => $index + 1,
             ]);
+        }
+
+        // Return JSON response for AJAX requests
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'message' => 'Invoice updated successfully.']);
         }
 
         return redirect()->route('invoices.index')->with('success', 'Invoice updated successfully.');

@@ -112,7 +112,12 @@ class ServicesController extends Controller
         $currencies = DB::table('currency')->orderBy('iso')->get(['iso', 'name']);
         $accountCurrency = auth()->check() ? (auth()->user()->account->currency_code ?? 'INR') : 'INR';
         $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
-        $taxes = Tax::where('accountid', $accountid)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get();
+        $account = \App\Models\Account::find($accountid);
+        
+        // Only load taxes if multi-taxation is enabled
+        $taxes = ($account && $account->allow_multi_taxation) 
+            ? Tax::where('accountid', $accountid)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() 
+            : collect();
 
         // Available addons: all items except items being created in current request (via old input)
         $availableAddonItems = Service::orderBy('sequence')
@@ -127,6 +132,7 @@ class ServicesController extends Controller
             'nextServiceSequence' => (Service::max('sequence') ?? 0) + 1,
             'availableAddonItems' => $availableAddonItems,
             'taxes' => $taxes,
+            'account' => $account,
         ]);
     }
 
@@ -228,7 +234,13 @@ class ServicesController extends Controller
         $currencies = DB::table('currency')->orderBy('iso')->get(['iso', 'name']);
         $service->load(['costings']);
         $accountCurrency = auth()->check() ? (auth()->user()->account->currency_code ?? 'INR') : 'INR';
-        $taxes = Tax::where('accountid', $service->accountid)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get();
+        $accountid = $service->accountid;
+        $account = \App\Models\Account::find($accountid);
+        
+        // Only load taxes if multi-taxation is enabled
+        $taxes = ($account && $account->allow_multi_taxation) 
+            ? Tax::where('accountid', $accountid)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() 
+            : collect();
 
         return view('services.edit', [
             'title' => 'Edit Item',
@@ -238,6 +250,7 @@ class ServicesController extends Controller
             'currencies' => $currencies,
             'availableAddonItems' => Service::where('itemid', '!=', $service->itemid)->orderBy('sequence')->orderBy('name')->get(['itemid', 'name', 'type']),
             'taxes' => $taxes,
+            'account' => $account,
         ]);
     }
 

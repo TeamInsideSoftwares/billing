@@ -12,10 +12,16 @@
         <button class="tab-button active" data-tab="personal">Business Info</button>
         <button class="tab-button" data-tab="financial-year">Financial Year</button>
 <button class="tab-button" data-tab="config">Configuration Keys</button>
+        @if($account->allow_multi_taxation)
         <button class="tab-button" data-tab="billing-details">Billing Details</button>
         <button class="tab-button" data-tab="quotation-details">Quotation Details</button>
         <button class="tab-button" data-tab="terms-conditions">Terms &amp; Conditions</button>
         <button class="tab-button" data-tab="taxes">Taxes</button>
+        @else
+        <button class="tab-button" data-tab="billing-details">Billing Details</button>
+        <button class="tab-button" data-tab="quotation-details">Quotation Details</button>
+        <button class="tab-button" data-tab="terms-conditions">Terms &amp; Conditions</button>
+        @endif
     </div>
 </div>
 
@@ -131,6 +137,32 @@ label {
     color: #3b82f6;
     cursor: pointer;
 }
+
+/* Toggle Switch Styling */
+.toggle-slider {
+    transition: background-color 0.3s;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .toggle-slider::before {
+    transform: translateX(24px);
+}
+
+input:checked + .toggle-slider {
+    background-color: #059669 !important;
+}
 </style>
 
 <!-- PERSONAL TAB -->
@@ -202,11 +234,6 @@ label {
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;">Tax Number</label>
-                <input type="text" name="tax_number" value="{{ old('tax_number', $account->tax_number ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
-            </div>
-
-            <div>
                 <label style="font-size: 0.8rem;">Currency</label>
                 <select name="currency_code" style="font-size: 0.85rem; padding: 0.45rem 0.6rem; width: 100%;">
                     @foreach($currencies as $currency)
@@ -271,6 +298,64 @@ label {
                             <option value="{{ $mVal }}" {{ $curMonth == $mVal ? 'selected' : '' }}>{{ $mName }}</option>
                         @endforeach
                     </select>
+                </div>
+            </div>
+
+            <!-- Multi-Taxation Toggle -->
+            <div style="grid-column: span 4; margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <label style="font-size: 0.9rem; font-weight: 600; color: #1e293b; margin: 0;">Allow Multi-Taxation</label>
+                        <p style="font-size: 0.75rem; color: #64748b; margin: 0.25rem 0 0 0;">Enable multiple tax rates (GST, VAT, etc.) across invoices, orders, and quotations</p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 0.85rem; color: {{ $account->allow_multi_taxation ? '#059669' : '#64748b' }};">{{ $account->allow_multi_taxation ? 'Yes' : 'No' }}</span>
+                        <label style="position: relative; width: 50px; height: 26px; cursor: pointer;">
+                            <input type="checkbox" name="allow_multi_taxation" value="1" {{ old('allow_multi_taxation', $account->allow_multi_taxation ?? false) ? 'checked' : '' }} style="opacity: 0; width: 0; height: 0;">
+                            <span class="toggle-slider" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: {{ $account->allow_multi_taxation ? '#059669' : '#cbd5e1' }}; border-radius: 26px; transition: 0.3s;"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fixed Tax Rate (shown when multi-taxation is NO) -->
+            <div id="fixed-tax-section" style="grid-column: span 4; margin-top: 0.5rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; display: {{ $account->allow_multi_taxation ? 'none' : 'block' }};">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <label style="font-size: 0.9rem; font-weight: 600; color: #1e293b; margin: 0;">Fixed Tax Rate</label>
+                        <p style="font-size: 0.75rem; color: #64748b; margin: 0.25rem 0 0 0;">
+                            {{ $account->allow_multi_taxation ? 'Enable multi-taxation to configure multiple tax rates' : 'Single tax rate applied to all orders and invoices' }}
+                        </p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        @if(!$account->allow_multi_taxation)
+                        <span style="font-size: 1.1rem; font-weight: 700; color: #1e293b; background: #f1f5f9; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+                            {{ $account->fixed_tax_type ?? 'GST' }} {{ number_format($account->fixed_tax_rate ?? 0, 2) }}%
+                        </span>
+                        <button type="button" id="open-fixed-tax-modal" class="primary-button" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                            <i class="fas fa-edit" style="margin-right: 0.3rem;"></i> {{ ($account->fixed_tax_rate ?? 0) > 0 ? 'Edit Tax' : 'Add Tax' }}
+                        </button>
+                        @else
+                        <span style="font-size: 0.85rem; color: #9ca3af;">Disabled</span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            <!-- Have Users Toggle -->
+            <div style="grid-column: span 4; margin-top: 0.5rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <label style="font-size: 0.9rem; font-weight: 600; color: #1e293b; margin: 0;">Have Users</label>
+                        <p style="font-size: 0.75rem; color: #64748b; margin: 0.25rem 0 0 0;">Enable user-based features (accounts, services, and products can be assigned to specific users)</p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 0.85rem; color: {{ $account->have_users ? '#059669' : '#64748b' }};">{{ $account->have_users ? 'Yes' : 'No' }}</span>
+                        <label style="position: relative; width: 50px; height: 26px; cursor: pointer;">
+                            <input type="checkbox" name="have_users" value="1" {{ old('have_users', $account->have_users ?? false) ? 'checked' : '' }} style="opacity: 0; width: 0; height: 0;">
+                            <span class="toggle-slider" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: {{ $account->have_users ? '#059669' : '#cbd5e1' }}; border-radius: 26px; transition: 0.3s;"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -504,6 +589,15 @@ label {
                 </ul>
             </div>
         @endif
+        {{-- DEBUG: Check if editingBillingDetail exists --}}
+        @php
+            echo '<!-- DEBUG: editingBillingDetail = ' . (isset($editingBillingDetail) ? 'SET' : 'NOT SET') . ' -->';
+            if(isset($editingBillingDetail)) {
+                echo '<!-- DEBUG: billing_name = ' . ($editingBillingDetail->billing_name ?? 'NULL') . ' -->';
+                echo '<!-- DEBUG: country = ' . ($editingBillingDetail->country ?? 'NULL') . ' -->';
+                echo '<!-- DEBUG: gstin = ' . ($editingBillingDetail->gstin ?? 'NULL') . ' -->';
+            }
+        @endphp
         <form method="POST" action="{{ route('account.billing.update') }}" enctype="multipart/form-data" class="form-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;">
             @csrf
             @if(isset($editingBillingDetail))
@@ -937,6 +1031,44 @@ label {
         @endif
     </section>
 </div>
+
+{{-- Fixed Tax Rate Modal --}}
+<div class="modal fade" id="fixedTaxRateModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
+        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header" style="padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
+                <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;">
+                    <i class="fas fa-receipt" style="margin-right: 0.5rem; color: #64748b;"></i>Add Tax
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 1.25rem;">
+                <form method="POST" action="{{ route('account.fixed-tax.update') }}" id="fixed-tax-form">
+                    @csrf
+                    <div style="margin-bottom: 0.75rem;">
+                        <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Rate (%)</label>
+                        <input type="number" name="fixed_tax_rate" placeholder="18" step="0.01" min="0" max="100" value="{{ old('fixed_tax_rate', $account->fixed_tax_rate ?? 0) }}" required
+                               style="padding: 0.4rem 0.75rem; font-size: 0.9rem; width: 100%;">
+                    </div>
+                    <div style="margin-bottom: 0.75rem;">
+                        <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Type</label>
+                        <select name="fixed_tax_type" required
+                                style="padding: 0.4rem 0.75rem; font-size: 0.9rem; width: 100%;">
+                            @foreach(['GST'=>'GST','VAT'=>'VAT'] as $v=>$l)
+                                <option value="{{ $v }}" {{ old('fixed_tax_type', $account->fixed_tax_type ?? 'GST') == $v ? 'selected' : '' }}>{{ $l }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <button type="submit" class="primary-button small">Add Tax</button>
+                        <button type="button" class="text-link small" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function startEditTax(el){
     var form = document.getElementById('tax-form');
@@ -1142,7 +1274,7 @@ document.addEventListener('DOMContentLoaded', function () {
         el.addEventListener('input', function() {
             const form = this.closest('form');
             const target = form.id ? form.id.split('-')[0] : null;
-            if (target && (target === 'billing' || target === 'quotation')) {
+            if (target && (target === 'proforma' || target === 'billing' || target === 'quotation')) {
                 updateSerialPreview(target);
             }
         });
@@ -1180,11 +1312,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     // Initialize previews
+    updateSerialPreview('proforma');
     updateSerialPreview('billing');
     updateSerialPreview('quotation');
 
     // Initialize field visibility on page load
-    ['billing', 'quotation'].forEach(target => {
+    ['proforma', 'billing', 'quotation'].forEach(target => {
         ['prefix', 'number', 'suffix'].forEach(part => {
             const form = document.getElementById(`${target}-serial-form`);
             if (!form) return;
@@ -1254,6 +1387,38 @@ function previewLogo(input) {
         reader.readAsDataURL(input.files[0]);
     }
 }
+
+// Toggle fixed tax rate visibility based on multi-taxation toggle
+document.addEventListener('DOMContentLoaded', function() {
+    const multiTaxationCheckbox = document.querySelector('input[name="allow_multi_taxation"]');
+    const fixedTaxSection = document.getElementById('fixed-tax-section');
+    const openFixedTaxBtn = document.getElementById('open-fixed-tax-modal');
+    
+    if (multiTaxationCheckbox && fixedTaxSection) {
+        multiTaxationCheckbox.addEventListener('change', function() {
+            const isEnabled = this.checked;
+            
+            if (isEnabled) {
+                // Multi-taxation enabled - hide fixed tax field
+                fixedTaxSection.style.display = 'none';
+            } else {
+                // Multi-taxation disabled - show fixed tax field
+                fixedTaxSection.style.display = 'block';
+            }
+        });
+    }
+    
+    // Open fixed tax rate modal using Bootstrap
+    if (openFixedTaxBtn) {
+        const fixedTaxModalEl = document.getElementById('fixedTaxRateModal');
+        if (fixedTaxModalEl) {
+            const fixedTaxModal = new bootstrap.Modal(fixedTaxModalEl);
+            openFixedTaxBtn.addEventListener('click', function() {
+                fixedTaxModal.show();
+            });
+        }
+    }
+});
 </script>
 
 @endsection
