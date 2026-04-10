@@ -133,6 +133,7 @@ Route::controller(SettingsController::class)->group(function () {
         Route::get('/settings', 'settings')->name('settings.index');
         Route::put('/settings/account', 'accountUpdate')->name('account.update');
         Route::post('/settings/fixed-tax', 'fixedTaxUpdate')->name('account.fixed-tax.update');
+        Route::post('/settings/serial-config', 'serialConfigUpdate')->name('serial.config.update');
         Route::post('/settings/billing-details', 'accountBillingUpdate')->name('account.billing.update');
         Route::post('/settings/quotation-details', 'accountQuotationUpdate')->name('account.quotation.update');
         Route::get('/settings/create', 'settingsCreate')->name('settings.create');

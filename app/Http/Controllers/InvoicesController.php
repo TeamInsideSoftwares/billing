@@ -6,6 +6,8 @@ use App\Models\AccountBillingDetail;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\ProformaInvoice;
+use App\Models\ProformaInvoiceItem;
 use App\Models\Service;
 use App\Models\Tax;
 use App\Models\TermsCondition;
@@ -21,7 +23,7 @@ class InvoicesController extends Controller
         $clients = Client::orderBy('business_name')->get();
         $selectedClientId = request('clientid');
 
-        $invoiceQuery = Invoice::with(['client', 'payments', 'items'])->latest();
+        $invoiceQuery = ProformaInvoice::with(['client', 'items', 'convertedTaxInvoice'])->latest();
 
         if ($selectedClientId) {
             $invoiceQuery->where('clientid', $selectedClientId);
@@ -44,12 +46,14 @@ class InvoicesController extends Controller
                     }
 
                     return [
-                        'record_id' => $invoice->invoiceid,
-                        'number' => $invoice->invoice_number ?? 'INV-' . str_pad($invoice->invoiceid, 4, '0', STR_PAD_LEFT),
+                        'record_id' => $invoice->proformaid,
+                        'number' => $invoice->invoice_number,
                         'title' => $invoice->invoice_title,
+                        'clientid' => $invoice->clientid,
                         'issue_date' => $invoice->issue_date?->format('d M Y'),
+                        'issue_date_raw' => $invoice->issue_date?->format('Y-m-d'),
                         'due_date' => $invoice->due_date?->format('d M Y'),
-                        'invoice_type' => ucfirst($invoice->invoice_type ?? 'proforma'),
+                        'due_date_raw' => $invoice->due_date?->format('Y-m-d'),
                         'invoice_for' => ucfirst(str_replace('_', ' ', $invoice->invoice_for ?? 'without orders')),
                         'amount' => $currency . ' ' . number_format($invoice->grand_total ?? 0, 2),
                         'amount_paid' => $currency . ' ' . number_format($amountPaid, 2),
@@ -58,16 +62,22 @@ class InvoicesController extends Controller
                         'payment_status' => $paymentStatus,
                         'items' => $invoice->items->map(function ($item) use ($currency) {
                             return [
+                                'itemid' => $item->itemid ?? $item->proformaitemid ?? '',
                                 'name' => $item->item_name,
+                                'item_name' => $item->item_name,
                                 'qty' => $item->quantity,
+                                'quantity' => $item->quantity,
                                 'price' => $currency . ' ' . number_format($item->unit_price, 2),
+                                'unit_price' => (float) $item->unit_price,
                                 'tax_rate' => (float) ($item->tax_rate ?? 0),
                                 'duration' => $item->duration,
                                 'frequency' => $item->frequency,
                                 'users' => (int) ($item->no_of_users ?? 1),
-                                'start_date' => $item->start_date?->format('d M Y'),
-                                'end_date' => $item->end_date?->format('d M Y'),
+                                'no_of_users' => (int) ($item->no_of_users ?? 1),
+                                'start_date' => $item->start_date?->format('Y-m-d'),
+                                'end_date' => $item->end_date?->format('Y-m-d'),
                                 'total' => $currency . ' ' . number_format($item->line_total, 2),
+                                'line_total' => (float) $item->line_total,
                             ];
                         }),
                     ];
@@ -111,6 +121,7 @@ class InvoicesController extends Controller
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'nextInvoiceNumber' => $this->generateInvoiceNumber(),
             'account' => $account,
+            'accountBillingDetail' => AccountBillingDetail::where('accountid', $accountid)->first(),
             'billingTerms' => $billingTerms,
         ]);
     }
@@ -125,15 +136,17 @@ class InvoicesController extends Controller
 
         $orders = \App\Models\Order::where('clientid', $clientId)
             ->whereDoesntHave('invoices')
+            ->whereDoesntHave('proformaInvoices')
             ->with('client')
             ->orderBy('order_date', 'desc')
-            ->get(['orderid', 'order_number', 'order_date', 'grand_total', 'status', 'clientid'])
+            ->get(['orderid', 'order_number', 'order_title', 'order_date', 'grand_total', 'status', 'clientid'])
             ->map(function ($order) {
                 $currency = $order->client->currency ?? 'INR';
 
                 return [
                     'orderid' => $order->orderid,
                     'order_number' => $order->order_number,
+                    'order_title' => $order->order_title,
                     'order_date' => $order->order_date?->format('d M Y') ?? 'N/A',
                     'grand_total' => $order->grand_total ?? '0.00',
                     'currency' => $currency,
@@ -152,7 +165,7 @@ class InvoicesController extends Controller
             return response()->json([]);
         }
 
-        $invoices = Invoice::where('clientid', $clientId)
+        $invoices = ProformaInvoice::where('clientid', $clientId)
             ->whereHas('items', function ($query) {
                 $query->where('end_date', '<', now())
                     ->whereIn('frequency', ['monthly', 'yearly', 'quarterly', 'semi-annually']);
@@ -170,7 +183,7 @@ class InvoicesController extends Controller
                 $currency = $invoice->client->currency ?? 'INR';
 
                 return [
-                    'invoiceid' => $invoice->invoiceid,
+                    'proformaid' => $invoice->proformaid,
                     'invoice_number' => $invoice->invoice_number,
                     'grand_total' => $invoice->grand_total ?? '0.00',
                     'currency' => $currency,
@@ -215,7 +228,7 @@ class InvoicesController extends Controller
 
     public function getRenewalItems(Request $request, $invoiceid)
     {
-        $invoice = Invoice::with('items')->findOrFail($invoiceid);
+        $invoice = ProformaInvoice::with('items')->findOrFail($invoiceid);
 
         $items = $invoice->items->map(function ($item) {
             $isExpired = $item->end_date
@@ -240,7 +253,7 @@ class InvoicesController extends Controller
 
         return response()->json([
             'invoice' => [
-                'invoiceid' => $invoice->invoiceid,
+                'invoiceid' => $invoice->proformaid,
                 'invoice_number' => $invoice->invoice_number,
                 'grand_total' => $invoice->grand_total,
             ],
@@ -285,23 +298,44 @@ class InvoicesController extends Controller
     {
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
 
+        // First, check for SerialConfiguration (from Financial Year tab settings)
+        $serialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)
+            ->where('document_type', 'proforma_invoice')
+            ->first();
+
+        if ($serialConfig) {
+            // Use the SerialConfiguration from Financial Year tab
+            $candidate = $serialConfig->generateNextSerialNumber();
+            return $this->ensureUniqueDocumentNumber($candidate !== '' ? $candidate : 'INV-0001', $accountid);
+        }
+
+        // Fallback: Check AccountBillingDetail (legacy configuration)
         $billingDetail = AccountBillingDetail::where('accountid', $accountid)->first();
 
         if (!$billingDetail) {
-            // Fallback: simple auto-increment if no billing detail configured
-            $count = Invoice::where('accountid', $accountid)->count();
+            // Fallback: simple auto-increment if no configuration exists
+            $count = ProformaInvoice::where('accountid', $accountid)->count();
             $candidate = 'INV-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
-            return $this->ensureUniqueInvoiceNumber($candidate, $accountid);
+            return $this->ensureUniqueDocumentNumber($candidate, $accountid);
         }
 
-        // Use the billing detail's serial number generation
+        // Use the billing detail's serial number generation (legacy)
         $candidate = $billingDetail->generateNextSerialNumber();
 
         // Ensure we don't generate an empty string
-        return $this->ensureUniqueInvoiceNumber($candidate !== '' ? $candidate : 'INV-0001', $accountid);
+        return $this->ensureUniqueDocumentNumber($candidate !== '' ? $candidate : 'INV-0001', $accountid);
     }
 
-    protected function ensureUniqueInvoiceNumber(string $candidate, string $accountid): string
+    protected function generateTaxInvoiceNumber(): string
+    {
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $count = Invoice::where('accountid', $accountid)->count();
+        $candidate = 'TAX-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+
+        return $this->ensureUniqueDocumentNumber($candidate, $accountid);
+    }
+
+    protected function ensureUniqueDocumentNumber(string $candidate, string $accountid): string
     {
         $candidate = trim($candidate);
 
@@ -312,7 +346,10 @@ class InvoicesController extends Controller
         $number = $candidate;
         $sequence = 2;
 
-        while (Invoice::where('accountid', $accountid)->where('invoice_number', $number)->exists()) {
+        while (
+            Invoice::where('accountid', $accountid)->where('invoice_number', $number)->exists()
+            || ProformaInvoice::where('accountid', $accountid)->where('invoice_number', $number)->exists()
+        ) {
             if (preg_match('/^(.*?)(\d+)$/', $candidate, $matches)) {
                 $prefix = $matches[1];
                 $digits = $matches[2];
@@ -333,9 +370,8 @@ class InvoicesController extends Controller
             $validated = $request->validate([
                 'clientid' => 'required|exists:clients,clientid',
                 'orderid' => 'nullable|exists:orders,orderid',
-                'invoice_number' => 'required|string|unique:invoices,invoice_number',
+                'invoice_number' => 'required|string|unique:proforma_invoices,invoice_number',
                 'invoice_title' => 'nullable|string|max:255',
-                'invoice_type' => 'nullable|string|in:proforma,tax,receipt',
                 'invoice_for' => 'required|string|in:orders,renewal,without_orders',
                 'issue_date' => 'required|date',
                 'due_date' => 'required|date|after_or_equal:issue_date',
@@ -368,6 +404,8 @@ class InvoicesController extends Controller
             ]);
         }
 
+        $this->assertDocumentNumberAvailable($validated['invoice_number'], null, ProformaInvoice::class);
+
         if ($validated['invoice_for'] === 'orders') {
             if (empty($validated['orderid'])) {
                 throw ValidationException::withMessages([
@@ -375,7 +413,7 @@ class InvoicesController extends Controller
                 ]);
             }
 
-            $order = \App\Models\Order::with('invoices')
+            $order = \App\Models\Order::with(['invoices', 'proformaInvoices'])
                 ->where('orderid', $validated['orderid'])
                 ->where('clientid', $validated['clientid'])
                 ->first();
@@ -386,7 +424,7 @@ class InvoicesController extends Controller
                 ]);
             }
 
-            if ($order->invoices->isNotEmpty()) {
+            if ($order->invoices->isNotEmpty() || $order->proformaInvoices->isNotEmpty()) {
                 throw ValidationException::withMessages([
                     'orderid' => 'The selected order already has an invoice.',
                 ]);
@@ -401,7 +439,6 @@ class InvoicesController extends Controller
         $user = auth()->user();
         $client = Client::findOrFail($validated['clientid']);
         $validated['accountid'] = $validated['accountid'] ?? ($user->accountid ?? 'ACC0000001');
-        $validated['invoice_type'] = $validated['invoice_type'] ?? 'proforma';
         $validated['currency_code'] = $validated['currency_code'] ?? ($client->currency ?? 'INR');
         $validated['created_by'] = $user?->userid ?? $user?->id;
         unset($validated['items_data']);
@@ -416,6 +453,7 @@ class InvoicesController extends Controller
             $quantity = (float) ($itemData['quantity'] ?? 0);
             $unitPrice = (float) ($itemData['unit_price'] ?? 0);
             $taxRate = (float) ($itemData['tax_rate'] ?? 0);
+            $taxid = $itemData['taxid'] ?? null;
             $users = max(1, (int) ($itemData['no_of_users'] ?? 1));
             $lineTotal = (float) ($itemData['line_total'] ?? 0);
 
@@ -435,13 +473,14 @@ class InvoicesController extends Controller
             $taxTotal += $lineTotal * ($taxRate / 100);
 
             $preparedItems[] = [
-                'invoiceid' => null,
+                'proformaid' => null,
                 'itemid' => $itemId,
                 'item_name' => $itemData['item_name'] ?? ($service?->name ?? 'Custom Item'),
                 'item_description' => null,
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
                 'tax_rate' => $taxRate,
+                'taxid' => $taxid,
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
                 'no_of_users' => $users,
@@ -463,11 +502,11 @@ class InvoicesController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $preparedItems, &$invoice) {
-                $invoice = Invoice::create($validated);
+                $invoice = ProformaInvoice::create($validated);
 
                 foreach ($preparedItems as $itemData) {
-                    $itemData['invoiceid'] = $invoice->invoiceid;
-                    InvoiceItem::create($itemData);
+                    $itemData['proformaid'] = $invoice->proformaid;
+                    ProformaInvoiceItem::create($itemData);
                 }
             });
         } catch (\Exception $e) {
@@ -484,9 +523,17 @@ class InvoicesController extends Controller
         return redirect()->route('invoices.index')->with('success', 'Invoice created successfully with items.');
     }
 
-    public function invoicesShow(Invoice $invoice): View
+    public function invoicesShow(string $invoice): View
     {
-        $invoice->load(['client', 'items.service', 'payments', 'convertedFromInvoice', 'convertedTaxInvoice']);
+        $invoice = $this->resolveInvoiceDocument($invoice);
+        $invoice->loadMissing(['client', 'items.service']);
+
+        if ($invoice instanceof ProformaInvoice) {
+            $invoice->loadMissing('convertedTaxInvoice');
+            $invoice->setRelation('payments', collect());
+        } else {
+            $invoice->loadMissing(['convertedFromInvoice', 'payments']);
+        }
         
         // Load account billing details for preview
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
@@ -501,11 +548,20 @@ class InvoicesController extends Controller
         ]);
     }
 
-    public function invoicesEdit(Invoice $invoice)
+    public function invoicesEdit(string $invoice)
     {
-        $invoice->load(['items.service', 'payments', 'convertedTaxInvoice']);
+        $invoice = $this->resolveInvoiceDocument($invoice);
+        $invoice->load(['items.service', 'items']);
+        if ($invoice instanceof ProformaInvoice) {
+            $invoice->load('convertedTaxInvoice');
+        } else {
+            $invoice->load(['convertedFromInvoice', 'payments']);
+        }
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $account = \App\Models\Account::find($accountid);
+
+        // Determine document type
+        $documentType = $invoice->isProforma() ? 'Proforma' : 'Tax';
 
         $viewData = [
             'title' => 'Edit Invoice',
@@ -515,21 +571,26 @@ class InvoicesController extends Controller
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'items' => $invoice->items,
             'account' => $account,
+            'documentType' => $documentType,
         ];
 
-        // Return only the edit form for inline editing (AJAX request)
+        // Return inline edit view with PDF preview for AJAX/inline requests
         if (request('inline')) {
-            return view('invoices._edit_form', array_merge($viewData, ['inline' => true]));
+            return view('invoices._inline-edit', array_merge($viewData, ['inline' => true]));
         }
 
         return view('invoices.edit', $viewData);
     }
 
-    public function invoicesUpdate(Request $request, Invoice $invoice)
+    public function invoicesUpdate(Request $request, string $invoice)
     {
+        $invoice = $this->resolveInvoiceDocument($invoice);
+        $invoiceTable = $invoice instanceof ProformaInvoice ? 'proforma_invoices' : 'tax_invoices';
+        $itemModel = $invoice instanceof ProformaInvoice ? ProformaInvoiceItem::class : InvoiceItem::class;
+
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'invoice_number' => 'required|string|unique:invoices,invoice_number,' . $invoice->invoiceid . ',invoiceid',
+            'invoice_number' => 'required|string|unique:' . $invoiceTable . ',invoice_number,' . ($invoice instanceof ProformaInvoice ? $invoice->proformaid : $invoice->invoiceid) . ',' . ($invoice instanceof ProformaInvoice ? 'proformaid' : 'invoiceid'),
             'invoice_title' => 'nullable|string|max:255',
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
@@ -542,9 +603,12 @@ class InvoicesController extends Controller
         $subtotal = 0;
         $taxTotal = 0;
 
+        $this->assertDocumentNumberAvailable($validated['invoice_number'], $invoice instanceof ProformaInvoice ? $invoice->proformaid : $invoice->invoiceid, $invoice::class);
+
         foreach ($itemsData as $itemData) {
-            $subtotal += $itemData['line_total'];
-            $taxTotal += $itemData['line_total'] * ($itemData['tax_rate'] / 100);
+            $lineTotal = (float) ($itemData['line_total'] ?? 0);
+            $subtotal += $lineTotal;
+            $taxTotal += $lineTotal * ((float) ($itemData['tax_rate'] ?? 0) / 100);
         }
 
         $grandTotal = $subtotal + $taxTotal;
@@ -566,18 +630,30 @@ class InvoicesController extends Controller
         $invoice->items()->delete();
 
         foreach ($itemsData as $index => $itemData) {
-            $service = Service::find($itemData['itemid']);
-            InvoiceItem::create([
-                'invoiceid' => $invoice->invoiceid,
-                'itemid' => $itemData['itemid'],
-                'item_name' => $service?->name ?? 'Custom Item',
+            $service = Service::find($itemData['itemid'] ?? null);
+            $payload = [
+                'itemid'           => $itemData['itemid'] ?: null,
+                'item_name'        => $itemData['item_name'] ?? ($service?->name ?? 'Custom Item'),
                 'item_description' => null,
-                'quantity' => $itemData['quantity'],
-                'unit_price' => $itemData['unit_price'],
-                'tax_rate' => $itemData['tax_rate'],
-                'line_total' => $itemData['line_total'],
-                'sort_order' => $index + 1,
-            ]);
+                'quantity'         => $itemData['quantity'],
+                'unit_price'       => $itemData['unit_price'],
+                'tax_rate'         => $itemData['tax_rate'] ?? 0,
+                'duration'         => $itemData['duration'] ?? null,
+                'frequency'        => $itemData['frequency'] ?? null,
+                'no_of_users'      => $itemData['no_of_users'] ?? 1,
+                'start_date'       => $itemData['start_date'] ?: null,
+                'end_date'         => $itemData['end_date'] ?: null,
+                'line_total'       => $itemData['line_total'],
+                'sort_order'       => $index + 1,
+            ];
+
+            if ($invoice instanceof ProformaInvoice) {
+                $payload['proformaid'] = $invoice->proformaid;
+            } else {
+                $payload['invoiceid'] = $invoice->invoiceid;
+            }
+
+            $itemModel::create($payload);
         }
 
         // Return JSON response for AJAX requests
@@ -588,16 +664,17 @@ class InvoicesController extends Controller
         return redirect()->route('invoices.index')->with('success', 'Invoice updated successfully.');
     }
 
-    public function invoicesDestroy(Invoice $invoice)
+    public function invoicesDestroy(string $invoice)
     {
+        $invoice = $this->resolveInvoiceDocument($invoice);
         $invoice->delete();
 
         return redirect()->route('invoices.index')->with('success', 'Invoice deleted successfully.');
     }
 
-    public function convertToTaxInvoice(Invoice $invoice)
+    public function convertToTaxInvoice(ProformaInvoice $invoice)
     {
-        $invoice->loadMissing(['items', 'payments', 'convertedTaxInvoice']);
+        $invoice->loadMissing(['items', 'convertedTaxInvoice']);
 
         if (!$invoice->isProforma()) {
             return redirect()->route('invoices.show', $invoice)
@@ -614,12 +691,7 @@ class InvoicesController extends Controller
                 ->with('error', 'Add at least one invoice item before converting this proforma invoice.');
         }
 
-        if ($invoice->hasPaymentsRecorded()) {
-            return redirect()->route('invoices.show', $invoice)
-                ->with('error', 'This proforma invoice already has payments recorded. Convert it before recording payments, or reassign those payments manually.');
-        }
-
-        $newInvoiceNumber = $this->generateInvoiceNumber();
+        $newInvoiceNumber = $this->generateTaxInvoiceNumber();
         $taxInvoice = null;
 
         DB::transaction(function () use ($invoice, $newInvoiceNumber, &$taxInvoice) {
@@ -628,9 +700,9 @@ class InvoicesController extends Controller
                 'fy_id' => $invoice->fy_id,
                 'clientid' => $invoice->clientid,
                 'orderid' => $invoice->orderid,
-                'converted_from_invoiceid' => $invoice->invoiceid,
+                'proformaid' => $invoice->proformaid,
                 'invoice_number' => $newInvoiceNumber,
-                'invoice_type' => 'tax',
+                'invoice_title' => $invoice->invoice_title,
                 'invoice_for' => $invoice->invoice_for,
                 'status' => 'draft',
                 'issue_date' => now()->toDateString(),
@@ -658,6 +730,7 @@ class InvoicesController extends Controller
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
                     'tax_rate' => $item->tax_rate,
+                    'taxid' => $item->taxid,
                     'duration' => $item->duration,
                     'frequency' => $item->frequency,
                     'no_of_users' => $item->no_of_users,
@@ -671,5 +744,32 @@ class InvoicesController extends Controller
 
         return redirect()->route('invoices.show', $taxInvoice)
             ->with('success', 'Tax invoice created successfully from the selected proforma invoice.');
+    }
+
+    protected function resolveInvoiceDocument(string $invoiceid): ProformaInvoice|Invoice
+    {
+        return ProformaInvoice::with('convertedTaxInvoice')->find($invoiceid)
+            ?? Invoice::with('convertedFromInvoice')->findOrFail($invoiceid);
+    }
+
+    protected function assertDocumentNumberAvailable(string $invoiceNumber, ?string $ignoreInvoiceId, string $currentModel): void
+    {
+        $proformaExists = ProformaInvoice::where('invoice_number', $invoiceNumber)
+            ->when($currentModel === ProformaInvoice::class && $ignoreInvoiceId, function ($query) use ($ignoreInvoiceId) {
+                $query->where('proformaid', '!=', $ignoreInvoiceId);
+            })
+            ->exists();
+
+        $taxExists = Invoice::where('invoice_number', $invoiceNumber)
+            ->when($currentModel === Invoice::class && $ignoreInvoiceId, function ($query) use ($ignoreInvoiceId) {
+                $query->where('invoiceid', '!=', $ignoreInvoiceId);
+            })
+            ->exists();
+
+        if ($proformaExists || $taxExists) {
+            throw ValidationException::withMessages([
+                'invoice_number' => 'The invoice number must be unique across proforma and tax invoices.',
+            ]);
+        }
     }
 }

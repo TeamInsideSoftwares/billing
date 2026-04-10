@@ -80,8 +80,7 @@ class SerialConfiguration extends Model
 
     protected function getTaxInvoiceCount(?string $fyId): int
     {
-        $query = Invoice::where('accountid', $this->accountid)
-            ->where('invoice_type', 'tax');
+        $query = Invoice::where('accountid', $this->accountid);
 
         if ($this->reset_on_fy && $fyId) {
             $query->where('fy_id', $fyId);
@@ -92,8 +91,7 @@ class SerialConfiguration extends Model
 
     protected function getProformaInvoiceCount(?string $fyId): int
     {
-        $query = Invoice::where('accountid', $this->accountid)
-            ->where('invoice_type', 'proforma');
+        $query = ProformaInvoice::where('accountid', $this->accountid);
 
         if ($this->reset_on_fy && $fyId) {
             $query->where('fy_id', $fyId);
@@ -143,7 +141,6 @@ class SerialConfiguration extends Model
     {
         $query = Invoice::query()
             ->where('accountid', $this->accountid)
-            ->where('invoice_type', 'tax')
             ->whereNotNull('invoice_number');
 
         if ($this->reset_on_fy && $fyId) {
@@ -155,9 +152,8 @@ class SerialConfiguration extends Model
 
     protected function getProformaInvoiceNumbers(?string $fyId): Collection
     {
-        $query = Invoice::query()
+        $query = ProformaInvoice::query()
             ->where('accountid', $this->accountid)
-            ->where('invoice_type', 'proforma')
             ->whereNotNull('invoice_number');
 
         if ($this->reset_on_fy && $fyId) {

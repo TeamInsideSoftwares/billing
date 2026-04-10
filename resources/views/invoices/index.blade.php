@@ -10,18 +10,6 @@
         </div>
     </section>
 
-    @if(session('success'))
-        <div style="margin-bottom: 1rem; padding: 0.9rem 1rem; border: 1px solid #bbf7d0; background: #f0fdf4; color: #166534; border-radius: 10px;">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div style="margin-bottom: 1rem; padding: 0.9rem 1rem; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; border-radius: 10px;">
-            {{ session('error') }}
-        </div>
-    @endif
-
     <style>
         .inline-edit-row { display: none; background: #f8fafc; }
         .inline-edit-row.active { display: table-row; }
@@ -73,7 +61,9 @@
                     <tbody>
                     @foreach ($clientInvoices as $invoice)
                         @php
-                            $amountPaid = $invoice->payments->sum('amount');
+                            $documentId = $invoice->proformaid ?? $invoice->invoiceid;
+                            $documentType = $invoice->isProforma() ? 'Proforma' : 'Tax';
+                            $amountPaid = (float) ($invoice->amount_paid ?? 0);
                             $balanceDue = $invoice->grand_total - $amountPaid;
                             $paymentStatus = $balanceDue <= 0 ? 'paid' : ($amountPaid > 0 ? 'partially paid' : 'unpaid');
 
@@ -106,18 +96,11 @@
                             </td>
                             <td>
                                 @php
-                                    $typeBadgeColor = '#dbeafe';
-                                    $typeBadgeTextColor = '#1e40af';
-                                    if (strtolower($invoice->invoice_type ?? 'proforma') === 'tax') {
-                                        $typeBadgeColor = '#fef3c7';
-                                        $typeBadgeTextColor = '#92400e';
-                                    } elseif (strtolower($invoice->invoice_type ?? 'proforma') === 'receipt') {
-                                        $typeBadgeColor = '#d1fae5';
-                                        $typeBadgeTextColor = '#065f46';
-                                    }
+                            $typeBadgeColor = $isProforma ? '#dbeafe' : '#fef3c7';
+                            $typeBadgeTextColor = $isProforma ? '#1e40af' : '#92400e';
                                 @endphp
                                 <span style="display: inline-block; padding: 0.25rem 0.6rem; background: {{ $typeBadgeColor }}; color: {{ $typeBadgeTextColor }}; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
-                                    {{ ucfirst($invoice->invoice_type ?? 'proforma') }}
+                                    {{ $documentType }}
                                 </span>
                             </td>
                             <td>
@@ -143,11 +126,11 @@
                             </td>
                             <td class="table-actions">
                                 <div style="display: flex; gap: 0.4rem; align-items: center;">
-                                    <a href="{{ route('invoices.show', $invoice->invoiceid) }}" class="icon-action-btn view" title="View">
+                                    <a href="{{ route('invoices.show', $documentId) }}" class="icon-action-btn view" title="View">
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     @if($isProforma && !$convertedTaxInvoice)
-                                        <form method="POST" action="{{ route('invoices.convert-to-tax', $invoice->invoiceid) }}" style="display: inline;" onsubmit="return confirm('Convert this proforma invoice to a tax invoice?')">
+                                        <form method="POST" action="{{ route('invoices.convert-to-tax', $documentId) }}" style="display: inline;" onsubmit="return confirm('Convert this proforma invoice to a tax invoice?')">
                                             @csrf
                                             <button type="submit" class="icon-action-btn" style="background: #fef3c7; color: #92400e; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer;" title="Convert to Tax Invoice">
                                                 <i class="fas fa-file-invoice-dollar"></i>
@@ -158,10 +141,10 @@
                                             <i class="fas fa-link"></i>
                                         </a>
                                     @endif
-                                    <button type="button" class="icon-action-btn edit edit-toggle-btn" title="Edit" onclick="toggleInlineEdit({{ $invoice->invoiceid }})">
+                                    <a href="{{ route('invoices.edit', $invoice) }}" class="icon-action-btn edit" title="Edit" style="width: 36px; height: 36px; font-size: 1rem;">
                                         <i class="fas fa-edit"></i>
-                                    </button>
-                                    <form method="POST" action="{{ route('invoices.destroy', $invoice->invoiceid) }}" class="inline-delete" onsubmit="return confirm('Delete this invoice?')">
+                                    </a>
+                                    <form method="POST" action="{{ route('invoices.destroy', $documentId) }}" class="inline-delete" onsubmit="return confirm('Delete this invoice?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="icon-action-btn delete" title="Delete">
@@ -171,16 +154,16 @@
                                 </div>
                             </td>
                         </tr>
-                        <tr class="inline-edit-row" id="inline-edit-row-{{ $invoice->invoiceid }}">
+                        <tr class="inline-edit-row" id="inline-edit-row-{{ $documentId }}">
                             <td colspan="7" style="padding: 0; border-top: 2px solid #3b82f6;">
                                 <div class="inline-edit-container">
                                     <div class="inline-edit-header">
                                         <h4><i class="fas fa-edit" style="margin-right: 0.5rem; color: #3b82f6;"></i> Editing Invoice: {{ $invoice->invoice_number }}</h4>
-                                        <button type="button" class="cancel-edit-btn" onclick="toggleInlineEdit({{ $invoice->invoiceid }})">
+                                        <button type="button" class="cancel-edit-btn" onclick="toggleInlineEdit('{{ $documentId }}')">
                                             <i class="fas fa-times" style="margin-right: 0.5rem;"></i> Cancel
                                         </button>
                                     </div>
-                                    <div id="inline-edit-content-{{ $invoice->invoiceid }}" style="text-align: center; padding: 2rem;">
+                                    <div id="inline-edit-content-{{ $documentId }}" style="text-align: center; padding: 2rem;">
                                         <p style="color: #64748b;">Loading editor...</p>
                                     </div>
                                 </div>

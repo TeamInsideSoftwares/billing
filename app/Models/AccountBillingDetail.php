@@ -72,7 +72,7 @@ class AccountBillingDetail extends Model
         }
 
         // Count existing invoices for this account
-        $query = Invoice::where('accountid', $this->accountid);
+        $query = ProformaInvoice::where('accountid', $this->accountid);
         
         // If reset_on_fy is enabled, only count invoices from current FY
         if ($this->reset_on_fy && $currentFyId) {
@@ -89,7 +89,7 @@ class AccountBillingDetail extends Model
 
     protected function getExistingSerialNumbers(): Collection
     {
-        $query = Invoice::query()
+        $query = ProformaInvoice::query()
             ->where('accountid', $this->accountid)
             ->whereNotNull('invoice_number');
 

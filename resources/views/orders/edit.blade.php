@@ -143,6 +143,14 @@
                 @else
                 <input type="hidden" id="item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
                 @endif
+                @if($account->have_users)
+                <div>
+                    <label for="item_users" style="font-size: 0.8rem;">Users</label>
+                    <input type="number" id="item_users" value="1" min="1" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
+                </div>
+                @else
+                <input type="hidden" id="item_users" value="1">
+                @endif
                 <div>
                     <label for="item_frequency" style="font-size: 0.8rem;">Frequency</label>
                     <select id="item_frequency" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
@@ -161,14 +169,6 @@
                     <label for="item_duration" style="font-size: 0.8rem;">Duration</label>
                     <input type="text" id="item_duration" placeholder="e.g. 12" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
                 </div>
-                @if($account->have_users)
-                <div>
-                    <label for="item_users" style="font-size: 0.8rem;">Users</label>
-                    <input type="number" id="item_users" value="1" min="1" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
-                </div>
-                @else
-                <input type="hidden" id="item_users" value="1">
-                @endif
                 <div>
                     <label for="item_start_date" style="font-size: 0.8rem;">Start Date</label>
                     <input type="date" id="item_start_date" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
@@ -406,6 +406,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Handle frequency change - hide/show start and end date for one-time
+    document.getElementById('item_frequency').addEventListener('change', function() {
+        const frequency = this.value;
+        const startDateField = document.getElementById('item_start_date').closest('div');
+        const endDateField = document.getElementById('item_end_date').closest('div');
+        
+        if (frequency === 'one-time' || frequency === '') {
+            // Hide start and end date for one-time or no frequency
+            if (startDateField) startDateField.style.display = 'none';
+            if (endDateField) endDateField.style.display = 'none';
+            // Clear the values
+            document.getElementById('item_start_date').value = '';
+            document.getElementById('item_end_date').value = '';
+        } else {
+            // Show start and end date for recurring frequencies
+            if (startDateField) startDateField.style.display = 'block';
+            if (endDateField) endDateField.style.display = 'block';
+        }
+    });
+
     // Auto-calculate end date when start date, frequency, or duration changes
     ['item_start_date', 'item_frequency', 'item_duration'].forEach(fieldId => {
         document.getElementById(fieldId).addEventListener('change', function() {
@@ -580,6 +600,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('item_start_date').value = item.start_date || '';
                 document.getElementById('item_end_date').value = item.end_date || '';
                 document.getElementById('item_delivery_date').value = item.delivery_date || '';
+                
+                // Hide/show start and end date based on frequency
+                const frequency = item.frequency || '';
+                const startDateField = document.getElementById('item_start_date').closest('div');
+                const endDateField = document.getElementById('item_end_date').closest('div');
+                
+                if (frequency === 'one-time' || frequency === '') {
+                    if (startDateField) startDateField.style.display = 'none';
+                    if (endDateField) endDateField.style.display = 'none';
+                } else {
+                    if (startDateField) startDateField.style.display = 'block';
+                    if (endDateField) endDateField.style.display = 'block';
+                }
                 
                 // Change button text to indicate update
                 document.getElementById('addItemBtn').textContent = 'Update';

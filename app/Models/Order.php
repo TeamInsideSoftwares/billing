@@ -82,4 +82,9 @@ class Order extends Model
     {
         return $this->hasMany(Invoice::class, 'orderid');
     }
+
+    public function proformaInvoices(): HasMany
+    {
+        return $this->hasMany(ProformaInvoice::class, 'orderid');
+    }
 }

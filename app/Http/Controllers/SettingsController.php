@@ -56,6 +56,11 @@ class SettingsController extends Controller
 
         $editingQuotationDetail = ($editId && str_starts_with($editId, 'AQD')) ? AccountQuotationDetail::where('account_qdid', $editId)->where('accountid', $accountid)->first() : ($account->quotationDetails()->first());
 
+        // Serial configurations from dedicated table
+        $proformaSerialConfig   = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'proforma_invoice')->first();
+        $taxInvoiceSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'tax_invoice')->first();
+        $quotationSerialConfig  = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'quotation')->first();
+
         $termsQuery = TermsCondition::query()
             ->where('accountid', $accountid)
             ->orderByRaw('COALESCE(sequence, 999999), created_at DESC');
@@ -113,6 +118,9 @@ class SettingsController extends Controller
             'quotationDetails' => $quotationDetails,
             'editingBillingDetail' => $editingBillingDetail,
             'editingQuotationDetail' => $editingQuotationDetail,
+            'proformaSerialConfig' => $proformaSerialConfig,
+            'taxInvoiceSerialConfig' => $taxInvoiceSerialConfig,
+            'quotationSerialConfig' => $quotationSerialConfig,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
             'editingSetting' => $editingSetting,
@@ -204,6 +212,46 @@ class SettingsController extends Controller
         return redirect()->to(route('settings.index') . '#personal')->with('success', 'Fixed tax rate updated successfully.');
     }
 
+    public function serialConfigUpdate(Request $request)
+    {
+        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+
+        $validated = $request->validate([
+            'document_type'   => 'required|in:proforma_invoice,tax_invoice,quotation',
+            'serial_configid' => 'nullable|string|size:6|exists:serial_configurations,serial_configid',
+            'prefix_type'     => 'nullable|string|max:50',
+            'prefix_value'    => 'nullable|string|max:50',
+            'prefix_length'   => 'nullable|integer|min:0|max:20',
+            'prefix_separator'=> 'nullable|string|max:10',
+            'number_type'     => 'nullable|string|max:50',
+            'number_value'    => 'nullable|string|max:50',
+            'number_length'   => 'nullable|integer|min:0|max:20',
+            'number_separator'=> 'nullable|string|max:10',
+            'suffix_type'     => 'nullable|string|max:50',
+            'suffix_value'    => 'nullable|string|max:50',
+            'suffix_length'   => 'nullable|integer|min:0|max:20',
+            'reset_on_fy'     => 'boolean',
+        ]);
+
+        $validated['reset_on_fy'] = $request->has('reset_on_fy');
+        $validated = $this->normalizeSerialConfiguration($validated);
+
+        $configId = $validated['serial_configid'] ?? null;
+        unset($validated['serial_configid']);
+
+        if ($configId) {
+            \App\Models\SerialConfiguration::where('serial_configid', $configId)
+                ->where('accountid', $accountid)
+                ->update($validated);
+        } else {
+            $validated['accountid'] = $accountid;
+            \App\Models\SerialConfiguration::create($validated);
+        }
+
+        return redirect()->to(route('settings.index') . '#financial-year')
+            ->with('success', ucfirst(str_replace('_', ' ', $validated['document_type'])) . ' serial configuration saved.');
+    }
+
     public function accountBillingUpdate(Request $request)
     {
         $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
@@ -214,32 +262,17 @@ class SettingsController extends Controller
         }
 
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'account_bdid' => 'nullable|string|size:6|exists:account_billing_details,account_bdid',
-            'serial_number' => 'nullable|string|max:20',
-            'prefix' => 'nullable|string|max:50',
-            'prefix_type' => 'nullable|string|max:50',
-            'prefix_value' => 'nullable|string|max:50',
-            'prefix_length' => 'nullable|integer|min:0|max:20',
-            'prefix_separator' => 'nullable|string|max:10',
-            'suffix' => 'nullable|string|max:50',
-            'suffix_type' => 'nullable|string|max:50',
-            'suffix_value' => 'nullable|string|max:50',
-            'suffix_length' => 'nullable|integer|min:0|max:20',
-            'number_type' => 'nullable|string|max:50',
-            'number_value' => 'nullable|string|max:50',
-            'number_length' => 'nullable|integer|min:1|max:20',
-            'number_separator' => 'nullable|string|max:10',
-            'reset_on_fy' => 'boolean',
-            'billing_name' => 'nullable|string|max:150',
-            'address' => 'nullable|string',
-            'city' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
-            'country' => 'nullable|string|max:100',
-            'postal_code' => 'nullable|string|max:20',
-            'gstin' => 'nullable|string|max:50',
-            'tin' => 'nullable|string|max:50',
-            'authorize_signatory' => 'nullable|string|max:255',
-            'signature_upload' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
+            'account_bdid'       => 'nullable|string|size:6|exists:account_billing_details,account_bdid',
+            'billing_name'       => 'nullable|string|max:150',
+            'address'            => 'nullable|string',
+            'city'               => 'nullable|string|max:100',
+            'state'              => 'nullable|string|max:100',
+            'country'            => 'nullable|string|max:100',
+            'postal_code'        => 'nullable|string|max:20',
+            'gstin'              => 'nullable|string|max:50',
+            'tin'                => 'nullable|string|max:50',
+            'authorize_signatory'=> 'nullable|string|max:255',
+            'signature_upload'   => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
             'billing_from_email' => 'nullable|email|max:255',
         ]);
 
@@ -250,8 +283,6 @@ class SettingsController extends Controller
         }
 
         $validated = $validator->validated();
-        $validated['reset_on_fy'] = $request->has('reset_on_fy');
-        $validated = $this->normalizeSerialConfiguration($validated);
 
         // Handle file upload
         if ($request->hasFile('signature_upload') && $request->file('signature_upload')->isValid()) {
@@ -266,7 +297,6 @@ class SettingsController extends Controller
                     ->withInput();
             }
         } else {
-            // Remove signature_upload from validated if no new file uploaded
             unset($validated['signature_upload']);
         }
 
@@ -292,32 +322,17 @@ class SettingsController extends Controller
         }
 
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'account_qdid' => 'nullable|string|size:6|exists:account_quotation_details,account_qdid',
-            'serial_number' => 'nullable|string|max:20',
-            'prefix' => 'nullable|string|max:50',
-            'prefix_type' => 'nullable|string|max:50',
-            'prefix_value' => 'nullable|string|max:50',
-            'prefix_length' => 'nullable|integer|min:0|max:20',
-            'prefix_separator' => 'nullable|string|max:10',
-            'suffix' => 'nullable|string|max:50',
-            'suffix_type' => 'nullable|string|max:50',
-            'suffix_value' => 'nullable|string|max:50',
-            'suffix_length' => 'nullable|integer|min:0|max:20',
-            'number_type' => 'nullable|string|max:50',
-            'number_value' => 'nullable|string|max:50',
-            'number_length' => 'nullable|integer|min:1|max:20',
-            'number_separator' => 'nullable|string|max:10',
-            'reset_on_fy' => 'boolean',
-            'quotation_name' => 'nullable|string|max:150',
-            'address' => 'nullable|string',
-            'city' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
-            'country' => 'nullable|string|max:100',
-            'postal_code' => 'nullable|string|max:20',
-            'gstin' => 'nullable|string|max:50',
-            'tin' => 'nullable|string|max:50',
-            'authorize_signatory' => 'nullable|string|max:255',
-            'signature_upload' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
+            'account_qdid'       => 'nullable|string|size:6|exists:account_quotation_details,account_qdid',
+            'quotation_name'     => 'nullable|string|max:150',
+            'address'            => 'nullable|string',
+            'city'               => 'nullable|string|max:100',
+            'state'              => 'nullable|string|max:100',
+            'country'            => 'nullable|string|max:100',
+            'postal_code'        => 'nullable|string|max:20',
+            'gstin'              => 'nullable|string|max:50',
+            'tin'                => 'nullable|string|max:50',
+            'authorize_signatory'=> 'nullable|string|max:255',
+            'signature_upload'   => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
             'billing_from_email' => 'nullable|email|max:255',
         ]);
 
@@ -328,8 +343,6 @@ class SettingsController extends Controller
         }
 
         $validated = $validator->validated();
-        $validated['reset_on_fy'] = $request->has('reset_on_fy');
-        $validated = $this->normalizeSerialConfiguration($validated);
 
         // Handle file upload
         if ($request->hasFile('signature_upload') && $request->file('signature_upload')->isValid()) {
@@ -344,7 +357,6 @@ class SettingsController extends Controller
                     ->withInput();
             }
         } else {
-            // Remove signature_upload from validated if no new file uploaded
             unset($validated['signature_upload']);
         }
 

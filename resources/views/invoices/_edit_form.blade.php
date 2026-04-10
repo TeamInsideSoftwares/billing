@@ -1,4 +1,8 @@
-<form method="POST" action="{{ route('invoices.update', $invoice) }}" id="invoiceForm">
+@php
+    $documentId = $invoice->proformaid ?? $invoice->invoiceid;
+    $documentType = $invoice->isProforma() ? 'Proforma' : 'Tax';
+@endphp
+<form method="POST" action="{{ route('invoices.update', $invoice) }}" id="{{ isset($inline) && $inline ? 'inline-edit-form-' . $documentId : 'invoiceForm' }}">
     @csrf
     @method('PUT')
 
@@ -14,7 +18,7 @@
     @endif
 
     @if($invoice->isProforma())
-        <div style="margin-bottom: 1.25rem; padding: 0.9rem 1rem; border: 1px solid #bfdbfe; background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); color: #1e40af; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <!-- <div style="margin-bottom: 1.25rem; padding: 0.9rem 1rem; border: 1px solid #bfdbfe; background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); color: #1e40af; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
             <div>
                 <strong style="display: block; margin-bottom: 0.25rem;">This is a Proforma Invoice</strong>
                 @if($invoice->convertedTaxInvoice)
@@ -32,13 +36,13 @@
                     <i class="fas fa-file-invoice-dollar"></i> Convert to Tax Invoice
                 </button>
             @endif
-        </div>
+        </div> -->
     @endif
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
         <div class="invoice-meta-card">
             <span class="invoice-meta-label">Invoice Type</span>
-            <strong class="invoice-meta-value">{{ ucfirst($invoice->invoice_type ?? 'proforma') }}</strong>
+            <strong class="invoice-meta-value">{{ $documentType }}</strong>
         </div>
         <div class="invoice-meta-card">
             <span class="invoice-meta-label">Invoice For</span>
@@ -142,7 +146,7 @@
                 </div>
                 @if($account->allow_multi_taxation)
                 <div>
-                    <label for="item_tax_rate" class="field-label small">Tax % <a href="#" id="open-tax-modal-invoice-edit" style="font-size:11px;margin-left:4px;" class="text-link">+ Add</a></label>
+                    <label for="item_tax_rate" class="field-label small">Tax % @if(!isset($inline) || !$inline)<a href="#" id="open-tax-modal-invoice-edit" style="font-size:11px;margin-left:4px;" class="text-link">+ Add</a>@endif</label>
                     <select id="item_tax_rate" class="form-input">
                         <option value="0">No Tax</option>
                         @foreach($taxes as $tax)
@@ -152,6 +156,14 @@
                 </div>
                 @else
                 <input type="hidden" id="item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
+                @endif
+                @if($account->have_users)
+                <div>
+                    <label for="item_users" class="field-label small">Users</label>
+                    <input type="number" id="item_users" class="form-input" value="1" min="1" step="1">
+                </div>
+                @else
+                <input type="hidden" id="item_users" value="1">
                 @endif
                 <div>
                     <label for="item_frequency" class="field-label small">Frequency</label>
@@ -171,14 +183,6 @@
                     <label for="item_duration" class="field-label small">Duration</label>
                     <input type="number" id="item_duration" class="form-input" min="0" step="1">
                 </div>
-                @if($account->have_users)
-                <div>
-                    <label for="item_users" class="field-label small">Users</label>
-                    <input type="number" id="item_users" class="form-input" value="1" min="1" step="1">
-                </div>
-                @else
-                <input type="hidden" id="item_users" value="1">
-                @endif
                 <div>
                     <label for="item_start_date" class="field-label small">Start Date</label>
                     <input type="date" id="item_start_date" class="form-input">
@@ -204,11 +208,11 @@
                         @if($account->allow_multi_taxation)
                         <th>Tax %</th>
                         @endif
-                        <th>Duration</th>
-                        <th>Frequency</th>
                         @if($account->have_users)
                         <th>Users</th>
                         @endif
+                        <th>Frequency</th>
+                        <th>Duration</th>
                         <th>Start</th>
                         <th>End</th>
                         <th>Total</th>
@@ -235,10 +239,10 @@
 
     @if(isset($inline) && $inline)
     <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: flex-end;">
-        <button type="button" id="cancel-inline-edit-{{ $invoice->invoiceid }}" class="cancel-edit-btn" onclick="toggleInlineEdit({{ $invoice->invoiceid }})">
+        <button type="button" id="cancel-inline-edit-{{ $documentId }}" class="cancel-edit-btn" onclick="toggleInlineEdit('{{ $documentId }}')">
             <i class="fas fa-times" style="margin-right: 0.5rem;"></i> Cancel
         </button>
-        <button type="submit" id="save-inline-edit-{{ $invoice->invoiceid }}" class="save-edit-btn">
+        <button type="submit" id="save-inline-edit-{{ $documentId }}" class="save-edit-btn">
             <i class="fas fa-save" style="margin-right: 0.5rem;"></i> Save Changes
         </button>
     </div>
@@ -268,11 +272,14 @@
     let clientCurrency = currencyCodeInput.value || 'INR';
     @php
         $itemsData = old('items_data') ? json_decode(old('items_data'), true) : $invoice->items->map(function ($item) {
+            // Get default selling price from service costing if unit_price is missing
+            $defaultPrice = $item->service?->costings?->sortBy('currency_code')->first()?->selling_price ?? 0;
+            
             return [
                 'itemid' => $item->itemid,
                 'item_name' => $item->item_name ?? ($item->service->name ?? 'Item'),
                 'quantity' => $item->quantity,
-                'unit_price' => $item->unit_price,
+                'unit_price' => $item->unit_price ?? $defaultPrice ?? 0,
                 'tax_rate' => $item->tax_rate,
                 'duration' => $item->duration,
                 'frequency' => $item->frequency,
@@ -282,8 +289,15 @@
                 'line_total' => $item->line_total,
             ];
         })->values()->toArray();
+
+        // Debug: Log items for inline edit
+        if (isset($inline) && $inline) {
+            echo '<script>console.log("Items from server:", ' . json_encode($itemsData) . ')</script>';
+        }
     @endphp
     let invoiceItems = @json($itemsData);
+
+    console.log('Loaded invoice items:', invoiceItems);
 
     function formatMoney(amount) {
         return `${clientCurrency} ${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -348,6 +362,14 @@
         itemsBody.innerHTML = '';
         let subtotal = 0;
         let taxTotal = 0;
+        let anyItemHasRecurringFrequency = false;
+
+        // First pass: check if any item has recurring frequency
+        invoiceItems.forEach((item) => {
+            if (item.frequency && item.frequency !== 'one-time') {
+                anyItemHasRecurringFrequency = true;
+            }
+        });
 
         invoiceItems.forEach((item, index) => {
             item.quantity = Number(item.quantity) || 0;
@@ -359,25 +381,38 @@
             subtotal += item.line_total;
             taxTotal += lineTax;
 
+            // Only show dates if there's a recurring frequency
+            const showDates = item.frequency && item.frequency !== 'one-time';
+
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td><strong>${item.item_name || 'Item'}</strong></td>
                 <td><input type="number" class="form-input item-input" data-index="${index}" data-field="quantity" min="0.01" step="0.01" value="${item.quantity}"></td>
                 <td><input type="number" class="form-input item-input" data-index="${index}" data-field="unit_price" min="0" step="0.01" value="${item.unit_price}"></td>
-                <td>${renderTaxSelect(item.tax_rate, `data-index="${index}" data-field="tax_rate"` )}</td>
-                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="duration" min="0" step="1" value="${item.duration ?? ''}"></td>
+                ${renderTaxSelect(item.tax_rate, `data-index="${index}" data-field="tax_rate"` )}
+                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="no_of_users" min="1" step="1" value="${item.no_of_users || 1}"></td>
                 <td>
                     <select class="form-input item-input" data-index="${index}" data-field="frequency">
                         ${frequencyOptions.map((value) => `<option value="${value}" ${item.frequency === value ? 'selected' : ''}>${value ? frequencyLabels[value] : 'Not recurring'}</option>`).join('')}
                     </select>
                 </td>
-                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="no_of_users" min="1" step="1" value="${item.no_of_users || 1}"></td>
-                <td><input type="date" class="form-input item-input" data-index="${index}" data-field="start_date" value="${item.start_date || ''}"></td>
-                <td><input type="date" class="form-input item-input" data-index="${index}" data-field="end_date" value="${item.end_date || ''}"></td>
+                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="duration" min="0" step="1" value="${item.duration ?? ''}"></td>
+                <td style="display: ${showDates && anyItemHasRecurringFrequency ? '' : 'none'}"><input type="date" class="form-input item-input" data-index="${index}" data-field="start_date" value="${item.start_date || ''}" ${showDates ? '' : 'disabled'}></td>
+                <td style="display: ${showDates && anyItemHasRecurringFrequency ? '' : 'none'}"><input type="date" class="form-input item-input" data-index="${index}" data-field="end_date" value="${item.end_date || ''}" ${showDates ? '' : 'disabled'}></td>
                 <td><strong>${formatMoney(item.line_total + lineTax)}</strong></td>
                 <td><button type="button" class="icon-action-btn delete remove-item" data-index="${index}" title="Remove"><i class="fas fa-trash"></i></button></td>
             `;
             itemsBody.appendChild(row);
+        });
+
+        // Show/hide Start/End column headers based on frequencies
+        const headerRow = itemsBody.closest('table').querySelector('thead tr');
+        const headers = headerRow.querySelectorAll('th');
+        // Find Start and End headers by their text content
+        headers.forEach((th) => {
+            if (th.textContent.trim() === 'Start' || th.textContent.trim() === 'End') {
+                th.style.display = anyItemHasRecurringFrequency ? '' : 'none';
+            }
         });
 
         document.getElementById('subtotalDisplay').textContent = formatMoney(subtotal);
@@ -416,6 +451,26 @@
         const option = this.options[this.selectedIndex];
         document.getElementById('item_unit_price').value = option?.dataset?.price || '';
         document.getElementById('item_tax_rate').value = option?.dataset?.taxRate || '0';
+    });
+
+    // Handle frequency change - hide/show start and end date for one-time
+    document.getElementById('item_frequency').addEventListener('change', function() {
+        const frequency = this.value;
+        const startDateField = document.getElementById('item_start_date').closest('div');
+        const endDateField = document.getElementById('item_end_date').closest('div');
+        
+        if (frequency === 'one-time' || frequency === '') {
+            // Hide start and end date for one-time or no frequency
+            if (startDateField) startDateField.style.display = 'none';
+            if (endDateField) endDateField.style.display = 'none';
+            // Clear the values
+            document.getElementById('item_start_date').value = '';
+            document.getElementById('item_end_date').value = '';
+        } else {
+            // Show start and end date for recurring frequencies
+            if (startDateField) startDateField.style.display = 'block';
+            if (endDateField) endDateField.style.display = 'block';
+        }
     });
 
     ['item_start_date', 'item_frequency', 'item_duration'].forEach((id) => {
@@ -466,6 +521,13 @@
         const field = input.dataset.field;
         invoiceItems[index][field] = input.type === 'number' ? Number(input.value) : input.value || null;
 
+        // Clear dates when frequency is one-time or empty
+        if (field === 'frequency' && (!input.value || input.value === 'one-time')) {
+            invoiceItems[index].start_date = null;
+            invoiceItems[index].end_date = null;
+        }
+
+        // Recalculate end date
         if (field === 'start_date' && invoiceItems[index].frequency && invoiceItems[index].duration) {
             invoiceItems[index].end_date = calculateEndDate(invoiceItems[index].start_date, invoiceItems[index].frequency, invoiceItems[index].duration);
         }
@@ -473,6 +535,18 @@
         if ((field === 'frequency' || field === 'duration') && invoiceItems[index].start_date) {
             invoiceItems[index].end_date = calculateEndDate(invoiceItems[index].start_date, invoiceItems[index].frequency, invoiceItems[index].duration);
         }
+
+        // Check if any item now has recurring frequency
+        let anyItemHasRecurringFrequency = invoiceItems.some(item => item.frequency && item.frequency !== 'one-time');
+        
+        // Show/hide Start/End column headers
+        const headerRow = itemsBody.closest('table').querySelector('thead tr');
+        const headers = headerRow.querySelectorAll('th');
+        headers.forEach((th) => {
+            if (th.textContent.trim() === 'Start' || th.textContent.trim() === 'End') {
+                th.style.display = anyItemHasRecurringFrequency ? '' : 'none';
+            }
+        });
 
         renderItems();
     });
@@ -531,7 +605,6 @@
             <div class="modal-body" style="padding: 1.25rem;">
                 <form method="POST" action="{{ route('taxes.store') }}" id="quick-tax-form-invoice-edit">
                     @csrf
-                    <input type="hidden" name="redirect_back" value="1">
                     <div style="margin-bottom: 0.75rem;">
                         <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Rate (%)</label>
                         <input type="number" name="rate" placeholder="18" step="0.01" min="0" max="100" required

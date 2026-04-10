@@ -14,18 +14,20 @@
 
         @if ($errors->any())
             <div style="margin-bottom: 1.25rem; padding: 0.9rem 1rem; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; border-radius: 10px;">
-                <strong style="display: block; margin-bottom: 0.4rem;">Fix these issues before creating the invoice:</strong>
+                <strong style="display: block; margin-bottom: 0.4rem;">
+                    @if($errors->has('general'))
+                        Error: {{ $errors->first('general') }}
+                    @else
+                        Fix these issues before creating the invoice:
+                    @endif
+                </strong>
+                @unless($errors->has('general'))
                 <ul style="margin: 0; padding-left: 1rem;">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
-            </div>
-        @endif
-        
-        @if ($errors->has('general'))
-            <div style="margin-bottom: 1.25rem; padding: 0.9rem 1rem; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; border-radius: 10px;">
-                <strong>Error:</strong> {{ $errors->first('general') }}
+                @endunless
             </div>
         @endif
 
@@ -100,7 +102,6 @@
             </div>
 
             <input type="hidden" name="orderid" id="orderid" value="{{ old('orderid', '') }}">
-            <input type="hidden" name="invoice_type" value="proforma">
             <input type="hidden" name="status" value="draft">
             <input type="hidden" name="currency_code" id="currency_code" value="{{ old('currency_code', 'INR') }}">
             <input type="hidden" name="subtotal" id="subtotal" value="{{ old('subtotal', '0.00') }}">
@@ -119,7 +120,7 @@
                     <table class="data-table" id="ordersTable" style="font-size: 0.85rem; margin: 0;">
                         <thead>
                             <tr>
-                                <th>Order #</th>
+                                <th>Order</th>
                                 <th>Date</th>
                                 <th>Amount</th>
                                 <th>Status</th>
@@ -180,7 +181,7 @@
                                             @php
                                                 $defaultCosting = $service->costings->sortBy('currency_code')->first();
                                             @endphp
-                                            <option value="{{ $service->itemid }}" data-selling-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}">
+                                            <option value="{{ $service->itemid }}" data-selling-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}" data-taxid="{{ $defaultCosting?->taxid ?? '' }}">
                                                 {{ $service->name }} ({{ number_format($defaultCosting?->selling_price ?? 0, 0) }})
                                             </option>
                                         @endforeach
@@ -200,14 +201,22 @@
                         <div>
                             <label for="manual_item_tax_rate" class="field-label small">Tax <a href="#" id="open-tax-modal-invoice" style="font-size:11px;margin-left:4px;" class="text-link">+ Add</a></label>
                             <select id="manual_item_tax_rate" class="form-input">
-                                <option value="0">No Tax</option>
+                                <option value="0" data-taxid="">No Tax</option>
                                 @foreach($taxes as $tax)
-                                    <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 2) }}%)</option>
+                                    <option value="{{ $tax->rate }}" data-taxid="{{ $tax->taxid }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 2) }}%)</option>
                                 @endforeach
                             </select>
                         </div>
                         @else
                         <input type="hidden" id="manual_item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
+                        @endif
+                        @if($account->have_users)
+                        <div>
+                            <label for="manual_item_users" class="field-label small">Users</label>
+                            <input type="number" id="manual_item_users" class="form-input" value="1" min="1" step="1">
+                        </div>
+                        @else
+                        <input type="hidden" id="manual_item_users" value="1">
                         @endif
                         <div>
                             <label for="manual_item_frequency" class="field-label small">Freq</label>
@@ -227,20 +236,12 @@
                             <label for="manual_item_duration" class="field-label small">Dur</label>
                             <input type="number" id="manual_item_duration" class="form-input" min="0" step="1" placeholder="e.g. 12">
                         </div>
-                        @if($account->have_users)
-                        <div>
-                            <label for="manual_item_users" class="field-label small">Users</label>
-                            <input type="number" id="manual_item_users" class="form-input" value="1" min="1" step="1">
-                        </div>
-                        @else
-                        <input type="hidden" id="manual_item_users" value="1">
-                        @endif
-                        <div>
-                            <label for="manual_item_start_date" class="field-label small">Start</label>
+                        <div id="manual_item_start_date_wrap" style="display: none;">
+                            <label for="manual_item_start_date" class="field-label small">Start Date</label>
                             <input type="date" id="manual_item_start_date" class="form-input">
                         </div>
-                        <div>
-                            <label for="manual_item_end_date" class="field-label small">End</label>
+                        <div id="manual_item_end_date_wrap" style="display: none;">
+                            <label for="manual_item_end_date" class="field-label small">End Date</label>
                             <input type="date" id="manual_item_end_date" class="form-input">
                         </div>
                         <div style="display: flex; align-items: end;">
@@ -256,18 +257,23 @@
                                 <th>Item</th>
                                 <th>Qty</th>
                                 <th>Price</th>
+                                @if($account->allow_multi_taxation)
+                                <th>Tax %</th>
+                                @endif
+                                @if($account->have_users)
+                                <th>Users</th>
+                                @endif
                                 <th>Freq</th>
                                 <th>Dur</th>
-                                <th>Users</th>
-                                <th>Start</th>
-                                <th>End</th>
+                                <th id="manualHeaderStart">Start</th>
+                                <th id="manualHeaderEnd">End</th>
                                 <th>Total</th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody id="manualItemsBody"></tbody>
                     </table>
-                    <div id="manualItemsEmpty" class="empty-state">No manual items added yet.</div>
+                    <div id="manualItemsEmpty" class="empty-state">No items added yet. Add an item above to get started.</div>
                 </div>
 
                 <div id="manualOrderSummary" class="totals-card" style="display: none; margin-top: 1rem;">
@@ -283,6 +289,9 @@
                         <h4 style="margin: 0; font-size: 1rem; color: #334155;">Review Invoice Items</h4>
                         <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Adjust pricing, tax, duration, or dates before creating.</p>
                     </div>
+                    <button type="button" id="saveStateBtn" class="primary-button" style="padding: 0.6rem 1.5rem; font-size: 0.9rem;">
+                        <i class="fas fa-save" style="margin-right: 0.4rem;"></i>Save Progress
+                    </button>
                 </div>
                 <div class="table-shell">
                     <table class="data-table" style="margin: 0; font-size: 0.83rem;">
@@ -291,12 +300,16 @@
                                 <th>Item</th>
                                 <th>Qty</th>
                                 <th>Price</th>
+                                @if($account->allow_multi_taxation)
                                 <th>Tax %</th>
-                                <th>Dur</th>
-                                <th>Freq</th>
+                                @endif
+                                @if($account->have_users)
                                 <th>Users</th>
-                                <th>Start</th>
-                                <th>End</th>
+                                @endif
+                                <th>Freq</th>
+                                <th>Dur</th>
+                                <th id="headerStart">Start</th>
+                                <th id="headerEnd">End</th>
                                 <th>Total</th>
                                 <th></th>
                             </tr>
@@ -314,7 +327,8 @@
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
+            {{-- Issue/Due date hidden for now --}}
+            {{-- <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
                 <div>
                     <label for="issue_date" class="field-label">Issue Date</label>
                     <input type="date" id="issue_date" name="issue_date" value="{{ old('issue_date', date('Y-m-d')) }}" class="form-input" required>
@@ -323,34 +337,75 @@
                     <label for="due_date" class="field-label">Due Date</label>
                     <input type="date" id="due_date" name="due_date" value="{{ old('due_date', date('Y-m-d', strtotime('+7 days'))) }}" class="form-input" required>
                 </div>
-            </div>
+            </div> --}}
+            {{-- Keep hidden inputs so the form still submits valid dates --}}
+            <input type="hidden" id="issue_date" name="issue_date" value="{{ old('issue_date', date('Y-m-d')) }}">
+            <input type="hidden" id="due_date" name="due_date" value="{{ old('due_date', date('Y-m-d', strtotime('+7 days'))) }}">
 
-            <div style="margin-top: 1rem;">
+            {{-- Internal Notes hidden for now --}}
+            {{-- <div style="margin-top: 1rem;">
                 <label for="notes" class="field-label">Internal Notes</label>
                 <textarea id="notes" name="notes" rows="4" class="form-input" style="min-height: 110px;">{{ old('notes') }}</textarea>
-            </div>
+            </div> --}}
+            <input type="hidden" id="notes" name="notes" value="{{ old('notes') }}">
 
             <div style="margin-top: 2rem;">
-                <button type="submit" class="primary-button create-submit-btn" id="finalSubmitBtn" disabled style="width: 100%; padding: 1rem;">Create Invoice</button>
+                <button type="button" class="primary-button" id="btnNextToStep3" disabled style="width: 100%; padding: 1rem;">Review & Terms &rarr;</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Terms & Preview -->
+        <div id="step3" style="display: none;">
+            <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" id="btnBackToStep2" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back to Step 2</button>
+                <h4 style="margin: 0; font-size: 1.1rem; color: #334155;">Final Review</h4>
+            </div>
+
+            <!-- Proforma Invoice Preview -->
+            <div class="panel-card" style="padding: 0; border: 1px solid #e2e8f0; overflow: hidden; background: #fff; margin-bottom: 1.5rem;">
+                <div style="background: #f8fafc; padding: 0.75rem 1.25rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                    <h5 style="margin: 0; font-size: 0.95rem; color: #1e293b;"><i class="fas fa-file-pdf" style="color: #ef4444; margin-right: 0.5rem;"></i> Invoice Preview</h5>
+                    <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Live Preview</span>
+                </div>
+                <div id="invoicePreviewContainer" style="padding: 2rem; background: #94a3b8; max-height: 750px; overflow-y: auto;">
+                    <div id="previewContent" style="background: white; padding: 2.5rem; width: 100%; min-height: 842px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border-radius: 4px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b;">
+                        <!-- Preview will be dynamically injected here -->
+                        <div style="text-align: center; color: #64748b; padding-top: 100px;">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                            <p>Generating preview...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terms & Conditions Below -->
+            <div class="panel-card" style="padding: 1rem; border: 1px solid #e2e8f0; background: #fff;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid #e2e8f0;">
+                    <h5 style="margin: 0; font-size: 0.9rem; color: #1e293b;">Terms & Conditions</h5>
+                    <button type="button" id="btnAddTC" class="text-link" style="font-size: 0.75rem; font-weight: 600;">+ Add</button>
+                </div>
+                <div id="termsList" style="max-height: 400px; overflow-y: auto; padding-right: 0.25rem;">
+                    @foreach($billingTerms as $term)
+                    <div style="margin-bottom: 0.4rem; padding: 0.5rem; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; transition: all 0.2s;" class="term-item-row">
+                        <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" class="term-checkbox" data-tc-id="{{ $term->tc_id }}" data-content="{{ $term->content }}" value="{{ $term->content }}" style="margin-top: 0.15rem; width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
+                            <div style="flex: 1;">
+                                <p style="margin: 0; font-size: 0.78rem; color: #475569; line-height: 1.4;">{{ $term->content }}</p>
+                            </div>
+                        </label>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+                <button type="submit" class="primary-button create-submit-btn" id="finalSubmitBtnStep3" disabled style="padding: 1rem 4rem; font-size: 1.1rem; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4);">Create & Save Invoice</button>
             </div>
         </div>
     </form>
 </section>
 
-<!-- Modal for Editing Invoices -->
-<div id="editInvoiceModal" class="modal-overlay" style="display: none;">
-    <div class="modal-container">
-        <div class="modal-header">
-            <h3 id="modalTitle">Edit Invoice</h3>
-            <button type="button" class="close-modal-btn">&times;</button>
-        </div>
-        <div class="modal-body">
-            <iframe id="editInvoiceIframe" src="" style="width: 100%; height: 80vh; border: none;"></iframe>
-        </div>
-    </div>
-</div>
-
-<style>
+    <style>
 .invoice-meta-card { padding: 1.25rem; border: 1px solid #e2e8f0; border-radius: 12px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); }
 .invoice-meta-label, .field-label.small { display: block; margin-bottom: 0.35rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #64748b; }
 .invoice-meta-value { color: #1e293b; font-size: 0.95rem; }
@@ -367,7 +422,7 @@
 .table-shell { border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #ffffff; }
 .empty-state { padding: 1.4rem; text-align: center; color: #64748b; font-size: 0.88rem; }
 .builder-card { padding: 1rem; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; }
-.manual-grid { display: grid; grid-template-columns: 2fr 0.7fr 1fr 1fr 1fr 0.8fr 0.8fr 1fr 1fr auto; gap: 0.75rem; align-items: end; }
+.manual-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; align-items: end; }
 .totals-card { padding: 1rem; border-radius: 14px; background: #f8fafc; border: 1px solid #e2e8f0; }
 .total-row { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.55rem; font-size: 0.9rem; color: #475569; }
 .total-row:last-child { margin-bottom: 0; }
@@ -376,15 +431,6 @@
 .status-pill.paid { background: #dcfce7; color: #166534; }
 .status-pill.unpaid { background: #fee2e2; color: #991b1b; }
 .status-pill.partially-paid { background: #fef3c7; color: #92400e; }
-
-/* Modal Styles */
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-.modal-container { background: #fff; width: 90%; max-width: 1200px; border-radius: 14px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden; }
-.modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
-.modal-header h3 { margin: 0; font-size: 1.1rem; color: #1e293b; }
-.close-modal-btn { background: none; border: none; font-size: 1.75rem; cursor: pointer; color: #64748b; line-height: 1; }
-.close-modal-btn:hover { color: #1e293b; }
-.modal-body { padding: 0; }
 
 @media (max-width: 1100px) { .manual-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .manual-grid { grid-template-columns: 1fr; } }
@@ -395,6 +441,7 @@
     // DOM Elements
     const step1 = document.getElementById('step1');
     const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
     const clientSelect = document.getElementById('clientid');
     const invoiceForm = document.getElementById('invoiceForm');
     const existingInvoicesSection = document.getElementById('existingInvoicesSection');
@@ -403,8 +450,8 @@
     const sourceSelectionSection = document.getElementById('sourceSelectionSection');
     const btnNextToStep2 = document.getElementById('btnNextToStep2');
     const btnBackToStep1 = document.getElementById('btnBackToStep1');
-    const sourceRadios = document.querySelectorAll('input[name="invoice_for"]');
-    
+    const btnNextToStep3 = document.getElementById('btnNextToStep3');
+    const btnBackToStep2 = document.getElementById('btnBackToStep2');
     const ordersSection = document.getElementById('ordersSection');
     const ordersBody = document.getElementById('ordersBody');
     const noOrdersMessage = document.getElementById('noOrdersMessage');
@@ -419,8 +466,7 @@
     const manualItemsTable = document.getElementById('manualItemsTable');
     const manualItemsEmpty = document.getElementById('manualItemsEmpty');
     const manualSummary = document.getElementById('manualOrderSummary');
-    const finalSubmitBtn = document.getElementById('finalSubmitBtn');
-    
+
     const orderIdInput = document.getElementById('orderid');
     const subtotalInput = document.getElementById('subtotal');
     const taxTotalInput = document.getElementById('tax_total');
@@ -428,16 +474,36 @@
     const itemsDataInput = document.getElementById('items_data');
     const currencyCodeInput = document.getElementById('currency_code');
     const addManualItemBtn = document.getElementById('addManualItemBtn');
+    const termCheckboxes = document.querySelectorAll('.term-checkbox');
+    const previewContent = document.getElementById('previewContent');
 
-    // Modals
-    const editInvoiceModal = document.getElementById('editInvoiceModal');
-    const editInvoiceIframe = document.getElementById('editInvoiceIframe');
-    const closeModalBtn = document.querySelector('.close-modal-btn');
+    @php
+        $accountDataArr = [
+            'name' => optional($account)->name,
+            'logo' => ($account && $account->logo_path) ? asset($account->logo_path) : null,
+            'billing' => [
+                'name' => optional($accountBillingDetail)->billing_name ?? optional($account)->name,
+                'address' => optional($accountBillingDetail)->address ?? '',
+                'city' => optional($accountBillingDetail)->city ?? '',
+                'state' => optional($accountBillingDetail)->state ?? '',
+                'postal_code' => optional($accountBillingDetail)->postal_code ?? '',
+                'country' => optional($accountBillingDetail)->country ?? '',
+                'gstin' => optional($accountBillingDetail)->gstin ?? '',
+                'signatory' => optional($accountBillingDetail)->authorize_signatory ?? '',
+                'signature' => (optional($accountBillingDetail)->signature_upload) ? asset($accountBillingDetail->signature_upload) : null,
+            ]
+        ];
+    @endphp
+    const accountData = {!! json_encode($accountDataArr) !!};
 
     // Constants
     const frequencyOptions = ['one-time', 'daily', 'weekly', 'bi-weekly', 'monthly', 'quarterly', 'semi-annually', 'yearly'];
     const frequencyLabels = { 'one-time': 'One-Time', 'daily': 'Daily', 'weekly': 'Weekly', 'bi-weekly': 'Bi-Weekly', 'monthly': 'Monthly', 'quarterly': 'Quarterly', 'semi-annually': 'Semi-Annually', 'yearly': 'Yearly' };
-    const taxOptions = @json(($taxes ?? collect())->map(fn ($tax) => ['name' => $tax->tax_name, 'rate' => (float) $tax->rate])->values());
+    
+    @php
+        $taxOptionsArr = ($taxes ?? collect())->map(fn ($tax) => ['name' => $tax->tax_name, 'rate' => (float) $tax->rate])->values();
+    @endphp
+    const taxOptions = {!! json_encode($taxOptionsArr) !!};
 
     // State
     let selectedClientId = clientSelect.value || null;
@@ -446,6 +512,108 @@
     let manualItems = [];
     let manualItemCounter = 0;
     let editingManualItemId = null;
+    const STORAGE_KEY = 'invoice_create_state';
+
+    // Load state from localStorage - ONLY restore if user explicitly saved
+    function loadState() {
+        try {
+            const savedState = localStorage.getItem(STORAGE_KEY);
+            if (!savedState) return;
+            
+            const state = JSON.parse(savedState);
+            if (!state.clientId || !state.explicitlySaved) return;
+            
+            // Restore client selection
+            selectedClientId = state.clientId;
+            clientSelect.value = state.clientId;
+            clientCurrency = state.clientCurrency || 'INR';
+            currencyCodeInput.value = clientCurrency;
+            existingInvoicesSection.style.display = 'block';
+            sourceSelectionSection.style.display = 'block';
+            loadInvoicesForClient(state.clientId);
+
+            // Restore source selection
+            if (state.invoiceFor) {
+                const radio = document.querySelector(`input[name="invoice_for"][value="${state.invoiceFor}"]`);
+                if (radio) radio.checked = true;
+            }
+
+            // Only restore step 2 if user was there and had items
+            if (state.currentStep === 2 && state.invoiceFor) {
+                step1.style.display = 'none';
+                step2.style.display = 'block';
+                setTimeout(() => activateSource(state.invoiceFor), 100);
+
+                if (state.orderId) orderIdInput.value = state.orderId;
+
+                if (state.manualItems && state.manualItems.length > 0) {
+                    manualItems = state.manualItems;
+                    manualItemCounter = state.manualItemCounter || manualItems.length;
+                    renderManualItems();
+                }
+                if (state.invoiceItems && state.invoiceItems.length > 0) {
+                    invoiceItems = state.invoiceItems;
+                    renderItems();
+                }
+            }
+        } catch (e) {
+            console.warn('Could not restore invoice state:', e);
+        }
+    }
+
+    // Save state - only called when user explicitly clicks Save Progress
+    function saveState() {
+        try {
+            const currentStep = step2.style.display === 'block' ? 2 : 1;
+            const invoiceFor = document.querySelector('input[name="invoice_for"]:checked')?.value || '';
+            
+            const state = {
+                explicitlySaved: true,
+                currentStep,
+                clientId: selectedClientId,
+                clientCurrency,
+                invoiceFor,
+                orderId: orderIdInput.value,
+                manualItems: currentStep === 2 && invoiceFor === 'without_orders' ? manualItems : [],
+                invoiceItems: currentStep === 2 && invoiceFor !== 'without_orders' ? invoiceItems : [],
+                manualItemCounter
+            };
+            
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            showSaveSuccess();
+        } catch (e) {
+            console.warn('Could not save invoice state:', e);
+        }
+    }
+    
+    // Show save success on button
+    function showSaveSuccess() {
+        const saveBtn = document.getElementById('saveStateBtn');
+        if (!saveBtn) return;
+        
+        const originalHTML = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<i class="fas fa-check" style="margin-right: 0.4rem;"></i>Saved!';
+        saveBtn.style.background = '#10b981';
+        
+        setTimeout(() => {
+            saveBtn.innerHTML = originalHTML;
+            saveBtn.style.background = '';
+        }, 2000);
+    }
+    
+    // Manual save button handler
+    document.getElementById('saveStateBtn').addEventListener('click', function() {
+        saveState();
+    });
+
+    // Clear state on successful form submission
+    function clearState() {
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+        } catch (e) {
+            // Ignore
+        }
+    }
 
     // Helper Functions
     function formatMoney(amount) {
@@ -492,11 +660,124 @@
 
     function updateFinalSubmitButton() {
         const source = document.querySelector('input[name="invoice_for"]:checked')?.value;
+        let hasItems = false;
         if (source === 'without_orders') {
-            finalSubmitBtn.disabled = manualItems.length === 0;
+            hasItems = manualItems.length > 0;
+        } else if (source === 'orders' || source === 'renewal') {
+            hasItems = invoiceItems.length > 0;
         } else {
-            finalSubmitBtn.disabled = invoiceItems.length === 0;
+            // Fallback: enable if either list has items
+            hasItems = manualItems.length > 0 || invoiceItems.length > 0;
         }
+        btnNextToStep3.disabled = !hasItems;
+    }
+
+    function updateInvoicePreview() {
+        const clientOption = clientSelect.options[clientSelect.selectedIndex];
+        const clientName = clientOption ? clientOption.text : 'Client Name';
+        const invoiceTitle = document.getElementById('invoice_title').value;
+        const invoiceNumber = '{{ $nextInvoiceNumber }}';
+        const issueDate = document.getElementById('issue_date').value;
+        const dueDate = document.getElementById('due_date').value;
+        const source = document.querySelector('input[name="invoice_for"]:checked')?.value;
+        const items = source === 'without_orders' ? manualItems : invoiceItems;
+        const subtotal = Number(subtotalInput.value);
+        const taxTotal = Number(taxTotalInput.value);
+        const grandTotal = Number(grandTotalInput.value);
+        const notes = document.getElementById('notes').value;
+        
+        // Get terms from checked checkboxes
+        const terms = Array.from(document.querySelectorAll('.term-checkbox'))
+            .filter(cb => cb.checked)
+            .map(cb => cb.value.replace(/\n/g, '<br>'))
+            .join('<br><br>');
+
+        let itemsHtml = '';
+        items.forEach((item, index) => {
+            const qty = Number(item.quantity) || 0;
+            const price = Number(item.unit_price) || 0;
+            const users = Number(item.no_of_users) || 1;
+            const lineTotal = calculateLineTotal(qty, price, users, item.frequency, item.duration);
+
+            itemsHtml += `
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 0.75rem 0.5rem; border-right: 1px solid #e5e7eb;">${index + 1}</td>
+                    <td style="padding: 0.75rem 0.5rem; border-right: 1px solid #e5e7eb;">
+                        <strong style="display: block;">${item.item_name}</strong>
+                        ${item.frequency && item.frequency !== 'one-time' ? `<div style="font-size: 0.72rem; color: #64748b; margin-top: 0.2rem;">${frequencyLabels[item.frequency] || item.frequency} × ${item.duration || 1}</div>` : ''}
+                    </td>
+                    <td style="padding: 0.75rem 0.5rem; text-align: center; border-right: 1px solid #e5e7eb;">${qty.toLocaleString()}</td>
+                    <td style="padding: 0.75rem 0.5rem; text-align: right; border-right: 1px solid #e5e7eb;">${clientCurrency} ${price.toLocaleString()}</td>
+                    <td style="padding: 0.75rem 0.5rem; text-align: right; font-weight: 600;">${clientCurrency} ${lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+            `;
+        });
+
+        const previewHtml = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 3px solid #2563eb;">
+                <div style="flex: 1;">
+                    ${accountData.logo ? `<div style="margin-bottom: 1rem;"><img src="${accountData.logo}" style="max-width: 150px; max-height: 60px; object-fit: contain;"></div>` : ''}
+                    <h2 style="margin: 0; font-size: 1.25rem;">${accountData.billing.name}</h2>
+                    <p style="margin: 0.2rem 0; font-size: 0.8rem; color: #64748b;">${accountData.billing.address}</p>
+                    <p style="margin: 0.2rem 0; font-size: 0.8rem; color: #64748b;">${accountData.billing.city}, ${accountData.billing.state} ${accountData.billing.postal_code}</p>
+                    ${accountData.billing.gstin ? `<p style="margin: 0.5rem 0 0.2rem 0; font-size: 0.8rem;"><strong>GSTIN:</strong> ${accountData.billing.gstin}</p>` : ''}
+                </div>
+                <div style="text-align: right; min-width: 200px;">
+                    <h1 style="margin: 0; font-size: 1.75rem; color: #2563eb; font-weight: 700;">PROFORMA</h1>
+                    <div style="background: #f8fafc; padding: 0.75rem; border-radius: 8px; margin-top: 1rem; text-align: right; display: inline-block;">
+                        <p style="margin: 0.2rem 0; font-size: 0.85rem;"><strong>Invoice #:</strong> ${invoiceNumber}</p>
+                        <p style="margin: 0.2rem 0; font-size: 0.85rem;"><strong>Date:</strong> ${issueDate}</p>
+                        <p style="margin: 0.2rem 0; font-size: 0.85rem;"><strong>Due:</strong> ${dueDate}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: #64748b; text-transform: uppercase;">Bill To:</h3>
+                <h4 style="margin: 0; font-size: 1.1rem;">${clientName}</h4>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.85rem;">
+                <thead>
+                    <tr style="background: #2563eb; color: white;">
+                        <th style="padding: 0.5rem; text-align: left;">#</th>
+                        <th style="padding: 0.5rem; text-align: left;">Description</th>
+                        <th style="padding: 0.5rem; text-align: center;">Qty</th>
+                        <th style="padding: 0.5rem; text-align: right;">Price</th>
+                        <th style="padding: 0.5rem; text-align: right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>${itemsHtml}</tbody>
+            </table>
+
+            <div style="display: flex; justify-content: flex-end;">
+                <div style="min-width: 250px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;"><span>Subtotal</span><strong>${clientCurrency} ${subtotal.toLocaleString()}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;"><span>Tax</span><strong>${clientCurrency} ${taxTotal.toLocaleString()}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 2px solid #2563eb; font-size: 1.1rem; font-weight: 700; color: #2563eb;">
+                        <span>Total</span><span>${clientCurrency} ${grandTotal.toLocaleString()}</span>
+                    </div>
+                </div>
+            </div>
+
+            ${notes ? `<div style="margin-top: 2rem;"><h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem;">Notes:</h4><p style="margin: 0; font-size: 0.85rem; color: #64748b;">${notes}</p></div>` : ''}
+            
+            ${terms ? `<div style="margin-top: 2rem; padding: 1.25rem; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <h4 style="margin: 0 0 0.75rem 0; font-size: 0.95rem; color: #1e293b; border-bottom: 1px solid #cbd5e1; padding-bottom: 0.4rem;">Terms & Conditions</h4>
+                <div style="margin: 0; font-size: 0.82rem; color: #475569; line-height: 1.5;">${terms}</div>
+            </div>` : ''}
+
+            ${accountData.billing.signatory ? `
+                <div style="margin-top: 3rem; text-align: right;">
+                    ${accountData.billing.signature ? `<img src="${accountData.billing.signature}" style="max-width: 120px; max-height: 50px; margin-bottom: 0.5rem;">` : ''}
+                    <div style="border-top: 1px solid #1e293b; display: inline-block; padding-top: 0.5rem; min-width: 180px;">
+                        <p style="margin: 0; font-weight: 600;">${accountData.billing.signatory}</p>
+                        <p style="margin: 0; font-size: 0.8rem; color: #64748b;">Authorized Signatory</p>
+                    </div>
+                </div>
+            ` : ''}
+        `;
+        previewContent.innerHTML = previewHtml;
     }
 
     function setTotals(subtotal, taxTotal) {
@@ -504,12 +785,18 @@
         subtotalInput.value = subtotal.toFixed(2);
         taxTotalInput.value = taxTotal.toFixed(2);
         grandTotalInput.value = grandTotal.toFixed(2);
-        document.getElementById('subtotalDisplay').textContent = formatMoney(subtotal);
-        document.getElementById('taxDisplay').textContent = formatMoney(taxTotal);
-        document.getElementById('grandTotalDisplay').textContent = formatMoney(grandTotal);
-        document.getElementById('manualSubtotal').textContent = formatMoney(subtotal);
-        document.getElementById('manualTaxTotal').textContent = formatMoney(taxTotal);
-        document.getElementById('manualGrandTotal').textContent = formatMoney(grandTotal);
+        const sd = document.getElementById('subtotalDisplay');
+        const td = document.getElementById('taxDisplay');
+        const gd = document.getElementById('grandTotalDisplay');
+        if (sd) sd.textContent = formatMoney(subtotal);
+        if (td) td.textContent = formatMoney(taxTotal);
+        if (gd) gd.textContent = formatMoney(grandTotal);
+        const ms = document.getElementById('manualSubtotal');
+        const mt = document.getElementById('manualTaxTotal');
+        const mg = document.getElementById('manualGrandTotal');
+        if (ms) ms.textContent = formatMoney(subtotal);
+        if (mt) mt.textContent = formatMoney(taxTotal);
+        if (mg) mg.textContent = formatMoney(grandTotal);
     }
 
     // Step 1 Functions
@@ -534,20 +821,29 @@
                     const headerTitle = invoice.title ? `${invoice.title} (${invoice.number || ''})` : (invoice.number || 'Untitled Invoice');
                     const issueDate = invoice.issue_date || '-';
                     const dueDate = invoice.due_date || '-';
-                    const itemsHtml = (invoice.items || []).map((item) => `
+                    const itemsHtml = (invoice.items || []).map((item) => {
+                        // Build details only for fields that have values
+                        const details = [];
+                        if (item.price && item.price !== '0.00') details.push(`Unit: ${item.price}`);
+                        if (item.tax_rate) details.push(`Tax: ${item.tax_rate}%`);
+                        if (item.users && item.users > 1) details.push(`Users: ${item.users}`);
+                        if (item.frequency) details.push(`Freq: ${item.frequency}`);
+                        if (item.duration) details.push(`Dur: ${item.duration}`);
+
+                        const dates = [];
+                        if (item.start_date) dates.push(`Start: ${item.start_date}`);
+                        if (item.end_date) dates.push(`End: ${item.end_date}`);
+
+                        return `
                         <div style="padding: 0.6rem 0; border-bottom: 1px dashed #e2e8f0; font-size: 0.8rem;">
                             <div style="display: flex; justify-content: space-between; gap: 0.75rem;">
                                 <span style="color: #334155; font-weight: 600;">${item.name || 'Item'} (x${item.qty || item.quantity || 1})</span>
                                 <strong style="color: #1e293b;">${item.total || '-'}</strong>
                             </div>
-                            <div style="margin-top: 0.25rem; color: #64748b; font-size: 0.74rem;">
-                                Unit: ${item.price || '-'} | Tax: ${item.tax_rate ?? 0}% | Users: ${item.users ?? 1} | Freq: ${item.frequency || '-'} | Dur: ${item.duration || '-'}
-                            </div>
-                            <div style="margin-top: 0.18rem; color: #94a3b8; font-size: 0.72rem;">
-                                Start: ${item.start_date || '-'} | End: ${item.end_date || '-'}
-                            </div>
-                        </div>
-                    `).join('') || '<div style="padding: 0.75rem 0; color: #94a3b8; font-style: italic; font-size: 0.82rem;">No items found</div>';
+                            ${details.length ? `<div style="margin-top: 0.25rem; color: #64748b; font-size: 0.74rem;">${details.join(' | ')}</div>` : ''}
+                            ${dates.length ? `<div style="margin-top: 0.18rem; color: #94a3b8; font-size: 0.72rem;">${dates.join(' | ')}</div>` : ''}
+                        </div>`;
+                    }).join('') || '<div style="padding: 0.75rem 0; color: #94a3b8; font-style: italic; font-size: 0.82rem;">No items found</div>';
 
                     accordionHtml += `
                         <details class="category-accordion">
@@ -563,12 +859,36 @@
                                 </span>
                             </summary>
                             <div class="accordion-content">
-                                <div style="padding: 0.65rem 0.9rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
-                                    <span style="font-size: 0.74rem; color: #64748b;">Issue: ${issueDate} | Due: ${dueDate} | Type: ${invoice.invoice_type || '-'} | For: ${invoice.invoice_for || '-'}</span>
-                                    <button type="button" class="text-link edit-invoice-btn" data-id="${invoice.record_id}" style="font-size: 0.82rem; font-weight: 600;">Edit Invoice</button>
+                                <div style="padding: 0.65rem 0.9rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; flex-wrap: wrap; background: #f8fafc;">
+                                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                        <span style="font-size: 0.74rem; color: #64748b;">Issue: ${issueDate} | Due: ${dueDate}</span>
+                                        <span style="font-size: 0.7rem; padding: 0.2rem 0.5rem; background: #dbeafe; color: #1e40af; border-radius: 4px; font-weight: 600;">Proforma</span>
+                                        <span style="font-size: 0.74rem; color: #64748b;">For: ${invoice.invoice_for || '-'}</span>
+                                    </div>
+                                    <div style="display: flex; gap: 0.4rem; align-items: center;">
+                                        <button type="button" class="edit-invoice-btn" data-id="${invoice.record_id}" data-invoice='${JSON.stringify(invoice).replace(/'/g, "&#39;")}' style="font-size: 0.8rem; padding: 0.35rem 0.7rem; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                    </div>
                                 </div>
-                                <div style="padding: 0.3rem 0.9rem 0.8rem;">
+                                <div style="padding: 0.3rem 0.9rem 0.8rem;" class="items-display">
                                     ${itemsHtml}
+                                </div>
+                                <div class="inline-edit-section" id="inline-edit-section-${invoice.record_id}" style="display: none; padding: 1rem 0.9rem;">
+                                    <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                                        <h5 style="margin: 0; font-size: 0.95rem; color: #334155; font-weight: 600;">
+                                            <i class="fas fa-edit" style="margin-right: 0.4rem; color: #3b82f6;"></i>Edit Items
+                                        </h5>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <button type="button" class="update-inline-btn" data-id="${invoice.record_id}" style="font-size: 0.78rem; padding: 0.35rem 0.8rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                                <i class="fas fa-save"></i> Update
+                                            </button>
+                                            <button type="button" class="close-inline-edit" data-id="${invoice.record_id}" style="background: none; border: none; color: #64748b; cursor: pointer; font-size: 1.1rem;">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="inline-items-container"></div>
                                 </div>
                             </div>
                         </details>
@@ -576,33 +896,336 @@
                 });
 
                 clientInvoicesAccordion.innerHTML = accordionHtml;
-
-                // Edit invoice button
-                document.querySelectorAll('.edit-invoice-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        const invoiceId = btn.dataset.id;
-                        editInvoiceIframe.src = `{{ url('/invoices') }}/${invoiceId}/edit`;
-                        editInvoiceModal.style.display = 'flex';
-                    });
-                });
+                
             })
             .catch(() => {
                 clientInvoicesAccordion.innerHTML = '<div style="padding: 1rem; text-align: center; color: #ef4444;">Failed to load invoices.</div>';
             });
     }
 
-    // Modal close
-    closeModalBtn.addEventListener('click', () => {
-        editInvoiceModal.style.display = 'none';
-        editInvoiceIframe.src = '';
-        if (selectedClientId) loadInvoicesForClient(selectedClientId);
+    // Inline Edit - Show editable items table directly in the accordion
+    function showInlineEdit(invoiceData) {
+        const invoiceId = invoiceData.record_id;
+        const editSection = document.getElementById(`inline-edit-section-${invoiceId}`);
+        const itemsContainer = editSection.querySelector('.inline-items-container');
+        const editBtn = document.querySelector(`.edit-invoice-btn[data-id="${invoiceId}"]`);
+
+        // Toggle visibility
+        if (editSection.style.display === 'block') {
+            // Hide
+            editSection.style.display = 'none';
+            editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
+            return;
+        }
+
+        // Show the edit section
+        editSection.style.display = 'block';
+        editBtn.innerHTML = '<i class="fas fa-check"></i> Editing...';
+
+        // Map invoice items to editable format - handle various field name variations
+        const items = (invoiceData.items || []).map((item, index) => {
+
+            // Safely parse numeric values
+            const parseNumber = (value, defaultValue = 0) => {
+                if (value === null || value === undefined || value === '') return defaultValue;
+                const num = Number(value);
+                return isNaN(num) ? defaultValue : num;
+            };
+
+            const mappedItem = {
+                index: index,
+                itemid: item.itemid || item.service_id || item.item_id || '',
+                item_name: item.item_name || item.service_name || item.name || item.description || 'Item',
+                quantity: parseNumber(item.quantity || item.qty || item.q, 1),
+                unit_price: parseNumber(item.unit_price || item.price || item.rate || item.selling_price, 0),
+                tax_rate: parseNumber(item.tax_rate || item.tax || item.tax_percentage, 0),
+                frequency: item.frequency || item.freq || item.billing_frequency || '',
+                duration: (item.duration !== null && item.duration !== undefined) ? item.duration : '',
+                no_of_users: parseNumber(item.no_of_users || item.users || item.user_count, 1),
+                start_date: item.start_date || item.start || '',
+                end_date: item.end_date || item.end || '',
+            };
+
+            return mappedItem;
+        });
+
+        // Build editable items table
+        const allowMultiTax = @json($account->allow_multi_taxation);
+        const haveUsers = @json($account->have_users);
+        
+        let html = `
+            <div class="table-shell" style="margin-bottom: 1rem;">
+                <table class="data-table" style="margin: 0; font-size: 0.8rem;">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 150px;">Item</th>
+                            <th style="width: 70px;">Qty</th>
+                            <th style="width: 90px;">Price</th>
+                            ${allowMultiTax ? '<th style="width: 70px;">Tax%</th>' : ''}
+                            ${haveUsers ? '<th style="width: 60px;">Users</th>' : ''}
+                            <th style="width: 100px;">Freq</th>
+                            <th style="width: 70px;">Dur</th>
+                            <th style="width: 90px;">Start</th>
+                            <th style="width: 90px;">End</th>
+                            <th style="width: 100px;">Total</th>
+                            <th style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="inline-items-body" data-invoice-id="${invoiceId}">
+        `;
+
+        items.forEach((item, idx) => {
+            const lineTotal = (item.quantity || 0) * (item.unit_price || 0) * Math.max(1, item.no_of_users || 1);
+            const showDates = item.frequency && item.frequency !== 'one-time';
+            
+            // Validate and format dates properly for HTML date inputs
+            const formatDateForInput = (dateValue) => {
+                if (!dateValue || dateValue === 'null' || dateValue === 'undefined') return '';
+                // Check if it's already in YYYY-MM-DD format
+                if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return dateValue;
+                // Try to parse other formats
+                try {
+                    const d = new Date(dateValue);
+                    if (isNaN(d.getTime())) return '';
+                    return d.toISOString().split('T')[0];
+                } catch (e) {
+                    return '';
+                }
+            };
+            
+            const startDateValue = formatDateForInput(item.start_date);
+            const endDateValue = formatDateForInput(item.end_date);
+            const durationValue = (item.duration !== null && item.duration !== undefined && item.duration !== '') ? item.duration : '';
+
+            html += `
+                <tr data-idx="${idx}">
+                    <td><strong>${item.item_name}</strong></td>
+                    <td><input type="number" class="form-input inline-edit-field" data-idx="${idx}" data-field="quantity" value="${item.quantity}" min="0.01" step="0.01" style="padding: 0.3rem; font-size: 0.78rem;"></td>
+                    <td><input type="number" class="form-input inline-edit-field" data-idx="${idx}" data-field="unit_price" value="${item.unit_price}" min="0" step="0.01" style="padding: 0.3rem; font-size: 0.78rem;"></td>
+                    ${allowMultiTax ? `<td><input type="number" class="form-input inline-edit-field" data-idx="${idx}" data-field="tax_rate" value="${item.tax_rate}" min="0" step="0.01" style="padding: 0.3rem; font-size: 0.78rem;"></td>` : ''}
+                    ${haveUsers ? `<td><input type="number" class="form-input inline-edit-field" data-idx="${idx}" data-field="no_of_users" value="${item.no_of_users}" min="1" step="1" style="padding: 0.3rem; font-size: 0.78rem;"></td>` : ''}
+                    <td>
+                        <select class="form-input inline-edit-field" data-idx="${idx}" data-field="frequency" style="padding: 0.3rem; font-size: 0.78rem;">
+                            <option value="">None</option>
+                            <option value="one-time" ${item.frequency === 'one-time' ? 'selected' : ''}>One-Time</option>
+                            <option value="daily" ${item.frequency === 'daily' ? 'selected' : ''}>Daily</option>
+                            <option value="weekly" ${item.frequency === 'weekly' ? 'selected' : ''}>Weekly</option>
+                            <option value="bi-weekly" ${item.frequency === 'bi-weekly' ? 'selected' : ''}>Bi-Weekly</option>
+                            <option value="monthly" ${item.frequency === 'monthly' ? 'selected' : ''}>Monthly</option>
+                            <option value="quarterly" ${item.frequency === 'quarterly' ? 'selected' : ''}>Quarterly</option>
+                            <option value="semi-annually" ${item.frequency === 'semi-annually' ? 'selected' : ''}>Semi-Annually</option>
+                            <option value="yearly" ${item.frequency === 'yearly' ? 'selected' : ''}>Yearly</option>
+                        </select>
+                    </td>
+                    <td><input type="number" class="form-input inline-edit-field" data-idx="${idx}" data-field="duration" value="${durationValue}" min="0" step="1" style="padding: 0.3rem; font-size: 0.78rem;"></td>
+                    <td><input type="date" class="form-input inline-edit-field" data-idx="${idx}" data-field="start_date" value="${startDateValue}" ${!showDates || !startDateValue ? 'disabled' : ''} style="padding: 0.3rem; font-size: 0.78rem;"></td>
+                    <td><input type="date" class="form-input inline-edit-field" data-idx="${idx}" data-field="end_date" value="${endDateValue}" ${!showDates || !endDateValue ? 'disabled' : ''} style="padding: 0.3rem; font-size: 0.78rem;"></td>
+                    <td><strong class="line-total" data-idx="${idx}">${clientCurrency} ${lineTotal.toFixed(2)}</strong></td>
+                    <td><button type="button" class="icon-action-btn delete remove-inline-item" data-idx="${idx}" style="padding: 0.25rem; font-size: 0.75rem;"><i class="fas fa-trash"></i></button></td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 0.5rem;">
+                <div style="padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; gap: 2rem; font-size: 0.85rem; margin-bottom: 0.3rem;">
+                        <span>Subtotal:</span><strong class="inline-subtotal">${clientCurrency} 0.00</strong>
+                    </div>
+                    ${allowMultiTax ? `<div style="display: flex; justify-content: space-between; gap: 2rem; font-size: 0.85rem; margin-bottom: 0.3rem;"><span>Tax:</span><strong class="inline-tax">${clientCurrency} 0.00</strong></div>` : ''}
+                    <div style="display: flex; justify-content: space-between; gap: 2rem; font-size: 0.95rem; font-weight: 700; border-top: 1px solid #cbd5e1; padding-top: 0.5rem;">
+                        <span>Grand Total:</span><strong class="inline-grand-total">${clientCurrency} 0.00</strong>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        itemsContainer.innerHTML = html;
+
+        // Store items data and invoice ID for later update
+        editSection.dataset.items = JSON.stringify(items);
+        editSection.dataset.invoiceId = invoiceId;
+
+        // Calculate initial totals
+        recalcInlineEditTotals(editSection);
+
+        // Scroll to editor
+        editSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Recalculate totals for an inline edit section
+    function recalcInlineEditTotals(editSection) {
+        const items = JSON.parse(editSection.dataset.items || '[]');
+        let subtotal = 0, taxTotal = 0;
+
+        items.forEach((item, idx) => {
+            const lineTotal = (item.quantity || 0) * (item.unit_price || 0) * Math.max(1, item.no_of_users || 1);
+            const lineTax = lineTotal * ((item.tax_rate || 0) / 100);
+            subtotal += lineTotal;
+            taxTotal += lineTax;
+            const el = editSection.querySelector(`.line-total[data-idx="${idx}"]`);
+            if (el) el.textContent = `${clientCurrency} ${(lineTotal + lineTax).toFixed(2)}`;
+        });
+
+        const s = editSection.querySelector('.inline-subtotal');
+        const t = editSection.querySelector('.inline-tax');
+        const g = editSection.querySelector('.inline-grand-total');
+        if (s) s.textContent = `${clientCurrency} ${subtotal.toFixed(2)}`;
+        if (t) t.textContent = `${clientCurrency} ${taxTotal.toFixed(2)}`;
+        if (g) g.textContent = `${clientCurrency} ${(subtotal + taxTotal).toFixed(2)}`;
+    }
+
+    // Handle inline edit field changes via event delegation
+    document.addEventListener('input', function(e) {
+        const field = e.target.closest('.inline-edit-field');
+        if (!field) return;
+
+        const editSection = field.closest('.inline-edit-section');
+        if (!editSection) return;
+
+        const idx = parseInt(field.dataset.idx);
+        const fieldName = field.dataset.field;
+        const value = field.type === 'number' ? Number(field.value) : field.value;
+
+        const items = JSON.parse(editSection.dataset.items || '[]');
+        if (!items[idx]) return;
+        items[idx][fieldName] = value;
+
+        // Handle frequency change - disable dates for one-time
+        if (fieldName === 'frequency') {
+            const itemsBody = editSection.querySelector('.inline-items-body');
+            const showDates = value && value !== 'one-time';
+            const startField = itemsBody.querySelector(`input[data-idx="${idx}"][data-field="start_date"]`);
+            const endField = itemsBody.querySelector(`input[data-idx="${idx}"][data-field="end_date"]`);
+            if (startField) { startField.disabled = !showDates; if (!showDates) { startField.value = ''; items[idx].start_date = ''; } }
+            if (endField) { endField.disabled = !showDates; if (!showDates) { endField.value = ''; items[idx].end_date = ''; } }
+        }
+
+        editSection.dataset.items = JSON.stringify(items);
+        recalcInlineEditTotals(editSection);
     });
 
-    window.addEventListener('click', (e) => {
-        if (e.target === editInvoiceModal) {
-            editInvoiceModal.style.display = 'none';
-            editInvoiceIframe.src = '';
-            if (selectedClientId) loadInvoicesForClient(selectedClientId);
+    // Event delegation for Edit Invoice buttons
+    document.addEventListener('click', function(e) {
+        // Edit button click
+        if (e.target.closest('.edit-invoice-btn')) {
+            const btn = e.target.closest('.edit-invoice-btn');
+            const invoiceData = JSON.parse(btn.dataset.invoice);
+            showInlineEdit(invoiceData);
+        }
+        
+        // Close button click
+        if (e.target.closest('.close-inline-edit')) {
+            const btn = e.target.closest('.close-inline-edit');
+            const invoiceId = btn.dataset.id;
+            const editSection = document.getElementById(`inline-edit-section-${invoiceId}`);
+            const editBtn = document.querySelector(`.edit-invoice-btn[data-id="${invoiceId}"]`);
+            
+            editSection.style.display = 'none';
+            editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
+        }
+        
+        // Update button click
+        if (e.target.closest('.update-inline-btn')) {
+            const btn = e.target.closest('.update-inline-btn');
+            const invoiceId = btn.dataset.id;
+            const editSection = document.getElementById(`inline-edit-section-${invoiceId}`);
+            const items = JSON.parse(editSection.dataset.items || '[]');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            // Calculate totals
+            let subtotal = 0, taxTotal = 0;
+            const preparedItems = items.map(item => {
+                const qty = Number(item.quantity) || 0;
+                const price = Number(item.unit_price) || 0;
+                const users = Math.max(1, Number(item.no_of_users) || 1);
+                const freq = item.frequency || '';
+                const dur = Number(item.duration) || 0;
+                let lineTotal = qty * price * users;
+                if (freq && freq !== 'one-time' && dur > 0) lineTotal *= dur;
+                const lineTax = lineTotal * ((Number(item.tax_rate) || 0) / 100);
+                subtotal += lineTotal;
+                taxTotal += lineTax;
+                return {
+                    itemid: item.itemid || '',
+                    item_name: item.item_name || 'Item',
+                    quantity: qty,
+                    unit_price: price,
+                    tax_rate: Number(item.tax_rate) || 0,
+                    duration: item.duration || null,
+                    frequency: item.frequency || null,
+                    no_of_users: users,
+                    start_date: item.start_date || null,
+                    end_date: item.end_date || null,
+                    line_total: lineTotal
+                };
+            });
+
+            const grandTotal = subtotal + taxTotal;
+
+            // Get invoice meta from stored data attribute on the edit button
+            const invoiceDataEl = document.querySelector(`.edit-invoice-btn[data-id="${invoiceId}"]`);
+            const invoiceData = invoiceDataEl ? JSON.parse(invoiceDataEl.dataset.invoice || '{}') : {};
+
+            const formData = new FormData();
+            formData.append('_token', '{{ csrf_token() }}');
+            formData.append('_method', 'PUT');
+            formData.append('clientid', invoiceData.clientid || '');
+            formData.append('invoice_number', invoiceData.number || '');
+            formData.append('invoice_title', invoiceData.title || '');
+            formData.append('issue_date', invoiceData.issue_date_raw || '');
+            formData.append('due_date', invoiceData.due_date_raw || '');
+            formData.append('status', invoiceData.status || 'draft');
+            formData.append('notes', '');
+            formData.append('items_data', JSON.stringify(preparedItems));
+            formData.append('subtotal', subtotal.toFixed(2));
+            formData.append('tax_total', taxTotal.toFixed(2));
+            formData.append('grand_total', grandTotal.toFixed(2));
+
+            fetch(`{{ url('/invoices') }}/${invoiceId}`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(async response => {
+                const text = await response.text();
+                
+                if (response.ok) {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-save"></i> Update';
+                        editSection.style.display = 'none';
+                        const editBtn = document.querySelector(`.edit-invoice-btn[data-id="${invoiceId}"]`);
+                        if (editBtn) editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
+                        if (selectedClientId) loadInvoicesForClient(selectedClientId);
+                    }, 800);
+                } else {
+                    try {
+                        const json = JSON.parse(text);
+                        const errors = json.errors ? Object.values(json.errors).flat().join('\n') : json.message || 'Unknown error';
+                        alert('Error:\n' + errors);
+                    } catch(e) {
+                        // Show first 300 chars of HTML error
+                        const match = text.match(/\<title\>(.*?)\<\/title\>/);
+                        const match2 = text.match(/message.*?:\s*"(.*?)"/);
+                        alert('Error ' + response.status + ': ' + (match2?.[1] || match?.[1] || 'Check console'));
+                    }
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save"></i> Update';
+                }
+            })
+            .catch(error => {
+                console.error('Update error:', error);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Update';
+                alert('Network error: ' + error.message);
+            });
         }
     });
 
@@ -643,6 +1266,29 @@
         window.scrollTo(0, 0);
     });
 
+    btnNextToStep3.addEventListener('click', () => {
+        step2.style.display = 'none';
+        step3.style.display = 'block';
+        updateInvoicePreview();
+        window.scrollTo(0, 0);
+    });
+
+    btnBackToStep2.addEventListener('click', () => {
+        step3.style.display = 'none';
+        step2.style.display = 'block';
+        window.scrollTo(0, 0);
+    });
+
+    // Use event delegation for terms checkboxes
+    document.getElementById('termsList').addEventListener('change', (e) => {
+        if (e.target.classList.contains('term-checkbox')) {
+            updateInvoicePreview();
+            const allCheckboxes = document.querySelectorAll('.term-checkbox');
+            const anyChecked = Array.from(allCheckboxes).some(cb => cb.checked);
+            document.getElementById('finalSubmitBtnStep3').disabled = !anyChecked;
+        }
+    });
+
     // Step 2 Functions
     function activateSource(source) {
         ordersSection.style.display = 'none';
@@ -679,8 +1325,14 @@
                 noOrdersMessage.style.display = 'none';
                 orders.forEach(order => {
                     const row = document.createElement('tr');
+                    const orderDisplay = order.order_title ? `${order.order_title}` : order.order_number;
+                    const numberDisplay = order.order_title ? `<div style="font-size: 0.75rem; color: #64748b; margin-top: 0.15rem;">${order.order_number}</div>` : '';
+                    
                     row.innerHTML = `
-                        <td><strong>${order.order_number}</strong></td>
+                        <td>
+                            <strong>${orderDisplay}</strong>
+                            ${numberDisplay}
+                        </td>
                         <td>${order.order_date}</td>
                         <td>${order.currency} ${Number(order.grand_total).toLocaleString()}</td>
                         <td>${order.status}</td>
@@ -727,7 +1379,7 @@
                         <td style="color: #ef4444; font-weight: 600;">${inv.expired_items} Expired</td>
                         <td>${inv.currency} ${Number(inv.grand_total).toLocaleString()}</td>
                         <td>${inv.total_items} items</td>
-                        <td><button type="button" class="primary-button select-renewal-btn" data-id="${inv.invoiceid}" data-num="${inv.invoice_number}" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Review</button></td>
+                        <td><button type="button" class="primary-button select-renewal-btn" data-id="${inv.proformaid}" data-num="${inv.invoice_number}" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Review</button></td>
                     `;
                     renewalBody.appendChild(row);
                 });
@@ -787,28 +1439,50 @@
     function renderItems() {
         itemsBody.innerHTML = '';
         let subtotal = 0, taxTotal = 0;
+        let anyItemHasRecurringFrequency = false;
+        
+        // Check if any item has a recurring frequency
+        invoiceItems.forEach((item) => {
+            if (item.frequency && item.frequency !== 'one-time') {
+                anyItemHasRecurringFrequency = true;
+            }
+        });
+        
+        // Show/hide Start/End column headers based on frequencies
+        const headerStart = document.getElementById('headerStart');
+        const headerEnd = document.getElementById('headerEnd');
+        if (headerStart) headerStart.style.display = anyItemHasRecurringFrequency ? '' : 'none';
+        if (headerEnd) headerEnd.style.display = anyItemHasRecurringFrequency ? '' : 'none';
+        
         invoiceItems.forEach((item, idx) => {
             const lineTotal = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
             const lineTax = lineTotal * (Number(item.tax_rate || 0) / 100);
             subtotal += lineTotal;
             taxTotal += lineTax;
-            
+
+            // Check if we should show date fields for this item
+            const showDates = item.frequency && item.frequency !== 'one-time';
+
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td><strong>${item.item_name}</strong></td>
                 <td><input type="number" class="form-input item-edit" data-idx="${idx}" data-field="quantity" value="${item.quantity}" min="0.01" step="0.01"></td>
                 <td><input type="number" class="form-input item-edit" data-idx="${idx}" data-field="unit_price" value="${item.unit_price}"></td>
+                @if($account->allow_multi_taxation)
                 <td>${renderTaxSelect(item.tax_rate, 'item-edit', `data-idx="${idx}" data-field="tax_rate"`)}</td>
-                <td><input type="number" class="form-input item-edit" data-idx="${idx}" data-field="duration" value="${item.duration || ''}"></td>
+                @endif
+                @if($account->have_users)
+                <td><input type="number" class="form-input item-edit" data-idx="${idx}" data-field="no_of_users" value="${item.no_of_users || 1}"></td>
+                @endif
                 <td>
                     <select class="form-input item-edit" data-idx="${idx}" data-field="frequency">
                         <option value="">None</option>
                         ${frequencyOptions.map(f => `<option value="${f}" ${item.frequency === f ? 'selected' : ''}>${frequencyLabels[f] || f}</option>`).join('')}
                     </select>
                 </td>
-                <td><input type="number" class="form-input item-edit" data-idx="${idx}" data-field="no_of_users" value="${item.no_of_users || 1}"></td>
-                <td><input type="date" class="form-input item-edit" data-idx="${idx}" data-field="start_date" value="${item.start_date || ''}"></td>
-                <td><input type="date" class="form-input item-edit" data-idx="${idx}" data-field="end_date" value="${item.end_date || ''}"></td>
+                <td><input type="number" class="form-input item-edit" data-idx="${idx}" data-field="duration" value="${item.duration || ''}"></td>
+                <td class="date-cell" style="display: ${showDates ? '' : 'none'}"><input type="date" class="form-input item-edit date-field" data-idx="${idx}" data-field="start_date" value="${item.start_date || ''}" ${showDates ? '' : 'disabled'}></td>
+                <td class="date-cell" style="display: ${showDates ? '' : 'none'}"><input type="date" class="form-input item-edit date-field" data-idx="${idx}" data-field="end_date" value="${item.end_date || ''}" ${showDates ? '' : 'disabled'}></td>
                 <td><strong>${formatMoney(lineTotal + lineTax)}</strong></td>
                 <td><button type="button" class="icon-action-btn delete remove-item" data-idx="${idx}"><i class="fas fa-trash"></i></button></td>
             `;
@@ -825,6 +1499,13 @@
         const idx = input.dataset.idx;
         const field = input.dataset.field;
         invoiceItems[idx][field] = input.type === 'number' ? Number(input.value) : input.value;
+        
+        // Clear start_date and end_date when frequency is set to one-time
+        if (field === 'frequency' && (input.value === 'one-time' || input.value === '')) {
+            invoiceItems[idx].start_date = '';
+            invoiceItems[idx].end_date = '';
+        }
+        
         if (['start_date', 'frequency', 'duration'].includes(field)) {
             invoiceItems[idx].end_date = calculateEndDate(invoiceItems[idx].start_date, invoiceItems[idx].frequency, invoiceItems[idx].duration);
         }
@@ -842,102 +1523,240 @@
     document.getElementById('manual_item_itemid').addEventListener('change', function() {
         const opt = this.options[this.selectedIndex];
         document.getElementById('manual_item_unit_price').value = opt.dataset.sellingPrice || '';
-        document.getElementById('manual_item_tax_rate').value = opt.dataset.taxRate || '0';
+
+        const taxRateEl = document.getElementById('manual_item_tax_rate');
+        if (!taxRateEl || taxRateEl.tagName !== 'SELECT') return;
+
+        const taxRate = opt.dataset.taxRate || '0';
+        const serviceTaxid = opt.dataset.taxid || '';
+
+        let found = false;
+        for (let i = 0; i < taxRateEl.options.length; i++) {
+            if (taxRateEl.options[i].dataset.taxid && taxRateEl.options[i].dataset.taxid === serviceTaxid) {
+                taxRateEl.selectedIndex = i;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            for (let i = 0; i < taxRateEl.options.length; i++) {
+                if (taxRateEl.options[i].value === taxRate) {
+                    taxRateEl.selectedIndex = i;
+                    break;
+                }
+            }
+        }
     });
+
+    // Show/hide start+end date fields in the add form based on frequency
+    document.getElementById('manual_item_frequency').addEventListener('change', function () {
+        const showDates = this.value && this.value !== 'one-time';
+        document.getElementById('manual_item_start_date_wrap').style.display = showDates ? '' : 'none';
+        document.getElementById('manual_item_end_date_wrap').style.display = showDates ? '' : 'none';
+        if (!showDates) {
+            document.getElementById('manual_item_start_date').value = '';
+            document.getElementById('manual_item_end_date').value = '';
+        }
+    });
+
+    // Auto-calculate end date in the add form when start/duration/frequency change
+    function recalcAddFormEndDate() {
+        const freq = document.getElementById('manual_item_frequency').value;
+        const dur = document.getElementById('manual_item_duration').value;
+        const start = document.getElementById('manual_item_start_date').value;
+        if (freq && freq !== 'one-time' && start && dur) {
+            document.getElementById('manual_item_end_date').value = calculateEndDate(start, freq, dur);
+        }
+    }
+    document.getElementById('manual_item_start_date').addEventListener('change', recalcAddFormEndDate);
+    document.getElementById('manual_item_duration').addEventListener('input', recalcAddFormEndDate);
 
     addManualItemBtn.addEventListener('click', () => {
         const select = document.getElementById('manual_item_itemid');
         if (!select.value) return alert('Select an item');
         const opt = select.options[select.selectedIndex];
-        const item = {
-            id: ++manualItemCounter,
+        const taxRateEl = document.getElementById('manual_item_tax_rate');
+        const taxRate = Number(taxRateEl.value) || 0;
+        const taxid = (taxRateEl.tagName === 'SELECT' && taxRateEl.selectedIndex >= 0)
+            ? (taxRateEl.options[taxRateEl.selectedIndex].dataset.taxid || null)
+            : null;
+        const freq = document.getElementById('manual_item_frequency').value;
+
+        const itemData = {
             itemid: select.value,
             item_name: opt.text.split(' (')[0],
-            quantity: Number(document.getElementById('manual_item_quantity').value),
-            unit_price: Number(document.getElementById('manual_item_unit_price').value),
-            tax_rate: Number(document.getElementById('manual_item_tax_rate').value),
-            frequency: document.getElementById('manual_item_frequency').value,
+            quantity: Number(document.getElementById('manual_item_quantity').value) || 1,
+            unit_price: Number(document.getElementById('manual_item_unit_price').value) || 0,
+            tax_rate: taxRate,
+            taxid: taxid,
+            frequency: freq,
             duration: document.getElementById('manual_item_duration').value,
-            no_of_users: Number(document.getElementById('manual_item_users').value),
-            start_date: document.getElementById('manual_item_start_date').value,
-            end_date: document.getElementById('manual_item_end_date').value,
+            no_of_users: Number(document.getElementById('manual_item_users').value) || 1,
+            start_date: document.getElementById('manual_item_start_date').value || '',
+            end_date: document.getElementById('manual_item_end_date').value || '',
         };
-        manualItems.push(item);
+
+        if (editingManualItemId !== null) {
+            const idx = manualItems.findIndex(i => i.id === editingManualItemId);
+            if (idx > -1) manualItems[idx] = { ...manualItems[idx], ...itemData };
+        } else {
+            manualItems.push({ id: ++manualItemCounter, ...itemData });
+        }
+
+        resetManualForm();
         renderManualItems();
-        // Reset inputs
-        select.value = '';
-        document.getElementById('manual_item_unit_price').value = '';
+        updateFinalSubmitButton();
     });
 
     function renderManualItems() {
         manualItemsBody.innerHTML = '';
         let subtotal = 0, taxTotal = 0;
+        let anyItemHasRecurringFrequency = false;
+        
+        // Check if any item has a recurring frequency
+        manualItems.forEach((item) => {
+            if (item.frequency && item.frequency !== 'one-time') {
+                anyItemHasRecurringFrequency = true;
+            }
+        });
+        
+        const manualHeaderStart = document.getElementById('manualHeaderStart');
+        const manualHeaderEnd = document.getElementById('manualHeaderEnd');
+        if (manualHeaderStart) manualHeaderStart.style.display = anyItemHasRecurringFrequency ? '' : 'none';
+        if (manualHeaderEnd) manualHeaderEnd.style.display = anyItemHasRecurringFrequency ? '' : 'none';
+
+        const freqLabels = { 'one-time': 'One-Time', 'daily': 'Daily', 'weekly': 'Weekly', 'bi-weekly': 'Bi-Weekly', 'monthly': 'Monthly', 'quarterly': 'Quarterly', 'semi-annually': 'Semi-Annually', 'yearly': 'Yearly' };
+
         manualItems.forEach((item, idx) => {
             const lineTotal = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
             const lineTax = lineTotal * (item.tax_rate / 100);
             subtotal += lineTotal;
             taxTotal += lineTax;
+
+            const showDates = item.frequency && item.frequency !== 'one-time';
+            const isEditing = editingManualItemId === item.id;
+
             const row = document.createElement('tr');
+            if (isEditing) row.style.background = '#eff6ff';
+            row.dataset.itemId = item.id;
             row.innerHTML = `
-                <td>${item.item_name}</td>
-                <td><input type="number" class="form-input manual-edit" data-idx="${idx}" data-field="quantity" value="${item.quantity}"></td>
-                <td><input type="number" class="form-input manual-edit" data-idx="${idx}" data-field="unit_price" value="${item.unit_price}"></td>
-                <td>${item.frequency || '-'}</td><td>${item.duration || '-'}</td><td>${item.no_of_users}</td>
-                <td>${item.start_date || '-'}</td><td>${item.end_date || '-'}</td>
-                <td><strong>${formatMoney(lineTotal + lineTax)}</strong></td>
-                <td><button type="button" class="icon-action-btn delete remove-manual" data-idx="${idx}"><i class="fas fa-trash"></i></button></td>
+                <td><strong>${item.item_name}</strong></td>
+                <td style="text-align:right;">${item.quantity}</td>
+                <td style="text-align:right;">${formatMoney(item.unit_price)}</td>
+                @if($account->allow_multi_taxation)
+                <td style="text-align:right;">${item.tax_rate ? item.tax_rate + '%' : '0%'}</td>
+                @endif
+                @if($account->have_users)
+                <td style="text-align:right;">${item.no_of_users || 1}</td>
+                @endif
+                <td>${freqLabels[item.frequency] || item.frequency || '—'}</td>
+                <td style="text-align:right;">${item.duration || '—'}</td>
+                <td class="date-cell" style="display: ${showDates ? '' : 'none'}">${item.start_date || '—'}</td>
+                <td class="date-cell" style="display: ${showDates ? '' : 'none'}">${item.end_date || '—'}</td>
+                <td style="text-align:right;"><strong>${formatMoney(lineTotal + lineTax)}</strong></td>
+                <td style="white-space:nowrap;">
+                    <button type="button" class="icon-action-btn edit edit-manual" data-idx="${idx}" title="Edit" style="margin-right:0.2rem;"><i class="fas fa-edit"></i></button>
+                    <button type="button" class="icon-action-btn delete remove-manual" data-idx="${idx}" title="Remove"><i class="fas fa-trash"></i></button>
+                </td>
             `;
             manualItemsBody.appendChild(row);
         });
         manualItemsTable.style.display = manualItems.length ? 'table' : 'none';
         manualItemsEmpty.style.display = manualItems.length ? 'none' : 'block';
-        manualSummary.style.display = manualItems.length ? 'block' : 'none';
+        if (manualSummary) manualSummary.style.display = manualItems.length ? 'block' : 'none';
         setTotals(subtotal, taxTotal);
         updateFinalSubmitButton();
     }
 
-    manualItemsBody.addEventListener('input', (e) => {
-        const input = e.target.closest('.manual-edit');
-        if (!input) return;
-        manualItems[input.dataset.idx][input.dataset.field] = Number(input.value);
-        renderManualItems();
-    });
+    function resetManualForm() {
+        document.getElementById('manual_item_itemid').value = '';
+        document.getElementById('manual_item_quantity').value = 1;
+        document.getElementById('manual_item_unit_price').value = '';
+        document.getElementById('manual_item_frequency').value = '';
+        document.getElementById('manual_item_duration').value = '';
+        document.getElementById('manual_item_start_date').value = '';
+        document.getElementById('manual_item_end_date').value = '';
+        document.getElementById('manual_item_start_date_wrap').style.display = 'none';
+        document.getElementById('manual_item_end_date_wrap').style.display = 'none';
+        const taxRateEl = document.getElementById('manual_item_tax_rate');
+        if (taxRateEl && taxRateEl.tagName === 'SELECT') taxRateEl.selectedIndex = 0;
+        const usersEl = document.getElementById('manual_item_users');
+        if (usersEl && usersEl.type !== 'hidden') usersEl.value = 1;
+        editingManualItemId = null;
+        addManualItemBtn.textContent = 'Add';
+        addManualItemBtn.classList.add('primary-button');
+        addManualItemBtn.classList.remove('secondary-button');
+    }
 
     manualItemsBody.addEventListener('click', (e) => {
-        const btn = e.target.closest('.remove-manual');
-        if (!btn) return;
-        manualItems.splice(btn.dataset.idx, 1);
-        renderManualItems();
+        // Edit
+        const editBtn = e.target.closest('.edit-manual');
+        if (editBtn) {
+            const idx = parseInt(editBtn.dataset.idx);
+            const item = manualItems[idx];
+            if (!item) return;
+
+            editingManualItemId = item.id;
+
+            document.getElementById('manual_item_itemid').value = item.itemid;
+            document.getElementById('manual_item_quantity').value = item.quantity;
+            document.getElementById('manual_item_unit_price').value = item.unit_price;
+            document.getElementById('manual_item_frequency').value = item.frequency || '';
+            document.getElementById('manual_item_duration').value = item.duration || '';
+            const usersEl = document.getElementById('manual_item_users');
+            if (usersEl) usersEl.value = item.no_of_users || 1;
+
+            const showDates = item.frequency && item.frequency !== 'one-time';
+            document.getElementById('manual_item_start_date_wrap').style.display = showDates ? '' : 'none';
+            document.getElementById('manual_item_end_date_wrap').style.display = showDates ? '' : 'none';
+            document.getElementById('manual_item_start_date').value = item.start_date || '';
+            document.getElementById('manual_item_end_date').value = item.end_date || '';
+
+            const taxRateEl = document.getElementById('manual_item_tax_rate');
+            if (taxRateEl && taxRateEl.tagName === 'SELECT') {
+                for (let i = 0; i < taxRateEl.options.length; i++) {
+                    if (Number(taxRateEl.options[i].value) === Number(item.tax_rate)) {
+                        taxRateEl.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            addManualItemBtn.textContent = 'Update Item';
+            addManualItemBtn.classList.remove('primary-button');
+            addManualItemBtn.classList.add('secondary-button');
+
+            renderManualItems();
+            document.querySelector('.builder-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            return;
+        }
+
+        // Delete
+        const delBtn = e.target.closest('.remove-manual');
+        if (delBtn) {
+            const idx = parseInt(delBtn.dataset.idx);
+            if (editingManualItemId === manualItems[idx]?.id) resetManualForm();
+            manualItems.splice(idx, 1);
+            renderManualItems();
+        }
     });
 
     invoiceForm.addEventListener('submit', (e) => {
         const source = document.querySelector('input[name="invoice_for"]:checked').value;
         const items = source === 'without_orders' ? manualItems : invoiceItems;
         itemsDataInput.value = JSON.stringify(items.map(i => ({ ...i, line_total: calculateLineTotal(i.quantity, i.unit_price, i.no_of_users, i.frequency, i.duration) })));
+        clearState(); // Clear state on successful submission
     });
 
-    // Auto-calculate end date for manual form
-    ['manual_item_start_date', 'manual_item_frequency', 'manual_item_duration'].forEach(id => {
-        document.getElementById(id).addEventListener('change', () => {
-            document.getElementById('manual_item_end_date').value = calculateEndDate(
-                document.getElementById('manual_item_start_date').value,
-                document.getElementById('manual_item_frequency').value,
-                document.getElementById('manual_item_duration').value
-            );
-        });
-    });
-
-    if (selectedClientId) {
-        existingInvoicesSection.style.display = 'block';
-        sourceSelectionSection.style.display = 'block';
-        loadInvoicesForClient(selectedClientId);
-    }
+    // Load saved state on page load
+    loadState();
 })();
 </script>
 
 {{-- Add Tax Modal --}}
 @if($account->allow_multi_taxation)
 <div class="modal fade" id="addTaxModalInvoice" tabindex="-1">
+    {{-- ... existing tax modal ... --}}
     <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
         <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
             <div class="modal-header" style="padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
@@ -973,20 +1792,134 @@
         </div>
     </div>
 </div>
+@endif
+
+{{-- Add Term Modal --}}
+<div class="modal fade" id="addTCModal" tabindex="-1">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 14px; overflow: hidden; border: none; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+            <div class="modal-header" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                <h5 class="modal-title" style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">
+                    <i class="fas fa-file-contract" style="margin-right: 0.6rem; color: #3b82f6;"></i>Add Billing Term
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem;">
+                <form id="quick-tc-form">
+                    @csrf
+                    <input type="hidden" name="type" value="billing">
+                    <div style="margin-bottom: 1.25rem;">
+                        <label class="field-label" style="font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Terms and Condition *</label>
+                        <textarea name="content" id="tc_content" rows="5" placeholder="Enter terms and condition..." required class="form-input" style="width: 100%; min-height: 140px; font-size: 0.9rem;"></textarea>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+                        <button type="button" class="secondary-button" data-bs-dismiss="modal" style="padding: 0.65rem 1.25rem;">Cancel</button>
+                        <button type="submit" class="primary-button" id="btnSaveTC" style="padding: 0.65rem 2rem;">Save Term</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
 (function() {
+    // Modal instances
     const taxModalEl = document.getElementById('addTaxModalInvoice');
-    const openTaxModalLink = document.getElementById('open-tax-modal-invoice');
-    if (taxModalEl && openTaxModalLink) {
-        const taxModal = new bootstrap.Modal(taxModalEl);
-        openTaxModalLink.addEventListener('click', function(e) {
+    const tcModalEl = document.getElementById('addTCModal');
+    let taxModal = null;
+    let tcModal = null;
+    
+    if (taxModalEl) taxModal = new bootstrap.Modal(taxModalEl);
+    if (tcModalEl) tcModal = new bootstrap.Modal(tcModalEl);
+
+    // Open Tax Modal
+    const openTaxLink = document.getElementById('open-tax-modal-invoice');
+    if (openTaxLink) {
+        openTaxLink.addEventListener('click', (e) => {
             e.preventDefault();
             taxModal.show();
         });
     }
+
+    // Open T&C Modal
+    const btnAddTC = document.getElementById('btnAddTC');
+    if (btnAddTC) {
+        btnAddTC.addEventListener('click', () => {
+            tcModal.show();
+        });
+    }
+
+    // Handle T&C Save via AJAX
+    const quickTCForm = document.getElementById('quick-tc-form');
+    if (quickTCForm) {
+        quickTCForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const btnSave = document.getElementById('btnSaveTC');
+            const originalText = btnSave.textContent;
+            
+            btnSave.disabled = true;
+            btnSave.textContent = 'Saving...';
+
+            const formData = new FormData(quickTCForm);
+            
+            fetch("{{ route('invoices.terms.billing.store') }}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': "{{ csrf_token() }}"
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    // Add new term to the list
+                    const termsList = document.getElementById('termsList');
+                    const newTermHtml = `
+                        <div style="margin-bottom: 0.5rem; padding: 0.75rem; border-radius: 8px; border: 1px solid #dcfce7; background: #f0fdf4; transition: all 0.2s;" class="term-item-row">
+                            <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+                                <input type="checkbox" class="term-checkbox" data-tc-id="${data.term.id}" data-content="${data.term.content}" value="${data.term.content}" style="margin-top: 0.2rem; width: 16px; height: 16px; cursor: pointer;">
+                                <div style="flex: 1;">
+                                    <p style="margin: 0; font-size: 0.85rem; color: #475569; line-height: 1.5;">${data.term.content}</p>
+                                </div>
+                            </label>
+                        </div>
+                    `;
+                    termsList.insertAdjacentHTML('afterbegin', newTermHtml);
+                    
+                    // Attach change listener to the new checkbox
+                    const newCheckbox = termsList.querySelector('.term-checkbox');
+                    newCheckbox.addEventListener('change', () => {
+                        if (typeof updateInvoicePreview === 'function') updateInvoicePreview();
+                        const allCheckboxes = document.querySelectorAll('.term-checkbox');
+                        const anyChecked = Array.from(allCheckboxes).some(cb => cb.checked);
+                        document.getElementById('finalSubmitBtnStep3').disabled = !anyChecked;
+                    });
+
+                    // Success state
+                    btnSave.textContent = 'Saved!';
+                    setTimeout(() => {
+                        tcModal.hide();
+                        quickTCForm.reset();
+                        btnSave.disabled = false;
+                        btnSave.textContent = originalText;
+                    }, 800);
+                } else {
+                    alert('Failed to save term. Please try again.');
+                    btnSave.disabled = false;
+                    btnSave.textContent = originalText;
+                }
+            })
+            .catch(err => {
+                console.error('Error saving term:', err);
+                alert('An error occurred. Check the console for details.');
+                btnSave.disabled = false;
+                btnSave.textContent = originalText;
+            });
+        });
+    }
 })();
 </script>
-@endif
 
 @endsection

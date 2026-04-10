@@ -100,11 +100,11 @@
     </section>
 </div>
 
-@if(isset($client->invoices) && $client->invoices->count())
+@if(isset($allInvoices) && $allInvoices->count())
 <section class="panel-card" style="margin-top: 1rem; padding: 1rem;">
     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;">
         <div style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;"><i class="fas fa-file-invoice"></i></div>
-        <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Invoices ({{ $client->invoices->count() }})</h4>
+        <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Invoices ({{ $allInvoices->count() }})</h4>
     </div>
     <table class="data-table">
         <thead>
@@ -116,9 +116,9 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($client->invoices->take(5) as $invoice)
+            @foreach($allInvoices->take(5) as $invoice)
             <tr>
-                <td style="font-size: 0.85rem;"><strong>{{ $invoice->number }}</strong></td>
+                <td style="font-size: 0.85rem;"><strong>{{ $invoice->invoice_number }}</strong></td>
                 <td style="font-size: 0.85rem;">{{ $client->currency ?? 'INR' }} {{ number_format($invoice->grand_total ?? 0) }}</td>
                 <td><span class="status-pill {{ strtolower($invoice->status ?? 'draft') }}">{{ ucfirst($invoice->status ?? 'Draft') }}</span></td>
                 <td style="font-size: 0.85rem;">{{ $invoice->created_at?->format('d M Y') ?? '—' }}</td>

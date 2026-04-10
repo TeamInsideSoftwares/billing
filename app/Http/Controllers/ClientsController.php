@@ -8,6 +8,7 @@ use App\Models\ClientBillingDetail;
 use App\Models\Group;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\ProformaInvoice;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,7 +46,7 @@ class ClientsController extends Controller
                 'status' => $client->status ?? 'Active',
                 'balance' => $cur . ' ' . number_format($outstanding, 0),
                 'created_at' => $client->created_at,
-                'invoice_count' => Invoice::where('clientid', $client->clientid)->count(),
+                'invoice_count' => Invoice::where('clientid', $client->clientid)->count() + ProformaInvoice::where('clientid', $client->clientid)->count(),
             ];
         });
 
@@ -180,13 +181,18 @@ class ClientsController extends Controller
 
     public function clientsShow(Client $client): View
     {
-        $client->load(['invoices', 'payments', 'subscriptions']);
-        $outstanding = ($client->invoices->sum('total') ?? 0) - ($client->payments->sum('amount') ?? 0);
+        $client->load(['invoices', 'proformaInvoices', 'payments', 'subscriptions']);
+        $outstanding = ($client->invoices->sum('grand_total') ?? 0) - ($client->payments->sum('amount') ?? 0);
+        $allInvoices = $client->proformaInvoices
+            ->concat($client->invoices)
+            ->sortByDesc('created_at')
+            ->values();
 
         return view('clients.show', [
             'title' => 'Client Details',
             'client' => $client,
             'outstanding' => $outstanding,
+            'allInvoices' => $allInvoices,
         ]);
     }
 
@@ -326,4 +332,3 @@ class ClientsController extends Controller
         return redirect()->route('clients.index')->with('success', 'Client deleted successfully.');
     }
 }
-

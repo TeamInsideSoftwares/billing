@@ -346,7 +346,7 @@ input:checked + .toggle-slider {
             <div style="grid-column: span 4; margin-top: 0.5rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div>
-                        <label style="font-size: 0.9rem; font-weight: 600; color: #1e293b; margin: 0;">Have Users</label>
+                        <label style="font-size: 0.9rem; font-weight: 600; color: #1e293b; margin: 0;">Does your Products/Services are with the No. of Users?</label>
                         <p style="font-size: 0.75rem; color: #64748b; margin: 0.25rem 0 0 0;">Enable user-based features (accounts, services, and products can be assigned to specific users)</p>
                     </div>
                     <div style="display: flex; align-items: center; gap: 0.5rem;">

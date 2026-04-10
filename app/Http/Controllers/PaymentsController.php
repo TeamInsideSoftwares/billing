@@ -50,7 +50,6 @@ class PaymentsController extends Controller
             'title' => 'New Payment',
             'clients' => Client::all(),
             'invoices' => Invoice::with('client')
-                ->whereIn('invoice_type', ['tax', 'receipt'])
                 ->where('status', '!=', 'paid')
                 ->get(),
         ]);
@@ -60,7 +59,7 @@ class PaymentsController extends Controller
     {
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'invoiceid' => 'nullable|exists:invoices,invoiceid',
+            'invoiceid' => 'nullable|exists:tax_invoices,invoiceid',
             'reference' => 'nullable|string|max:255',
             'amount' => 'required|numeric|min:0.01',
             'method' => 'required|string',
@@ -72,12 +71,6 @@ class PaymentsController extends Controller
 
         if (!empty($validated['invoiceid'])) {
             $invoice = Invoice::find($validated['invoiceid']);
-
-            if ($invoice?->isProforma()) {
-                return redirect()->back()
-                    ->withInput()
-                    ->withErrors(['invoiceid' => 'Payments can only be recorded against tax or receipt invoices. Convert the proforma invoice first.']);
-            }
 
             if ($invoice && $invoice->clientid !== $validated['clientid']) {
                 return redirect()->back()
@@ -134,7 +127,6 @@ class PaymentsController extends Controller
             'payment' => $payment,
             'clients' => Client::all(),
             'invoices' => Invoice::with('client')
-                ->whereIn('invoice_type', ['tax', 'receipt'])
                 ->get(),
         ]);
     }
@@ -143,7 +135,7 @@ class PaymentsController extends Controller
     {
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'invoiceid' => 'nullable|exists:invoices,invoiceid',
+            'invoiceid' => 'nullable|exists:tax_invoices,invoiceid',
             'reference' => 'nullable|string|max:255',
             'amount' => 'required|numeric|min:0.01',
             'method' => 'required|string',
@@ -153,12 +145,6 @@ class PaymentsController extends Controller
 
         if (!empty($validated['invoiceid'])) {
             $invoice = Invoice::find($validated['invoiceid']);
-
-            if ($invoice?->isProforma()) {
-                return redirect()->back()
-                    ->withInput()
-                    ->withErrors(['invoiceid' => 'Payments can only be linked to tax or receipt invoices.']);
-            }
 
             if ($invoice && $invoice->clientid !== $validated['clientid']) {
                 return redirect()->back()

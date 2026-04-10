@@ -56,3 +56,7 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+
+
+{php artisan tinker --execute="DB::statement('SET FOREIGN_KEY_CHECKS=0'); Schema::dropIfExists('ti_items'); Schema::dropIfExists('pi_items'); Schema::dropIfExists('tax_invoices'); Schema::dropIfExists('proforma_invoices'); DB::statement('SET FOREIGN_KEY_CHECKS=1'); echo 'Tables dropped successfully';"}

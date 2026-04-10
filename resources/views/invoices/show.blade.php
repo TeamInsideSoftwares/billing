@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $documentType = $invoice->isProforma() ? 'Proforma' : 'Tax';
+@endphp
 <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Invoice Details</h3>
 
 <section class="section-bar">
@@ -94,7 +97,7 @@
             <!-- Invoice Details -->
             <div style="text-align: right; min-width: 250px;">
                 <h1 style="margin: 0 0 0.5rem 0; font-size: 2rem; color: #2563eb; font-weight: 700; text-transform: uppercase;">
-                    {{ strtoupper($invoice->invoice_type ?? 'proforma') }} INVOICE
+                    {{ strtoupper($documentType) }} INVOICE
                 </h1>
                 <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
                     <p style="margin: 0.3rem 0; font-size: 0.9rem;"><strong>Invoice #:</strong> {{ $invoice->invoice_number }}</p>
@@ -285,8 +288,8 @@
         <div>
             <h1 style="margin: 0 0 0.5rem 0; font-size: 1.5em;">{{ $invoice->invoice_number }}</h1>
             <div style="margin-top: 0.5rem;">
-                <span style="display: inline-block; padding: 0.3rem 0.7rem; background: {{ strtolower($invoice->invoice_type ?? 'proforma') === 'tax' ? '#fef3c7' : '#dbeafe' }}; color: {{ strtolower($invoice->invoice_type ?? 'proforma') === 'tax' ? '#92400e' : '#1e40af' }}; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
-                    {{ ucfirst($invoice->invoice_type ?? 'proforma') }} Invoice
+                <span style="display: inline-block; padding: 0.3rem 0.7rem; background: {{ $invoice->isProforma() ? '#dbeafe' : '#fef3c7' }}; color: {{ $invoice->isProforma() ? '#1e40af' : '#92400e' }}; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
+                    {{ $documentType }} Invoice
                 </span>
             </div>
         </div>

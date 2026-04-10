@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'invoiceid',
+    'proformaid',
     'itemid',
     'item_name',
     'item_description',
@@ -24,17 +24,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'line_total',
     'sort_order',
 ])]
-class InvoiceItem extends Model
+class ProformaInvoiceItem extends Model
 {
-    protected $table = 'ti_items';
-    protected $primaryKey = 'invoiceitemid';
+    use HasAlphaNumericId;
+
+    protected $table = 'pi_items';
+    protected $primaryKey = 'proformaitemid';
 
     protected function idLength(): int
     {
         return 6;
     }
-
-    use HasAlphaNumericId;
 
     protected function casts(): array
     {
@@ -51,7 +51,7 @@ class InvoiceItem extends Model
 
     public function invoice(): BelongsTo
     {
-        return $this->belongsTo(Invoice::class, 'invoiceid');
+        return $this->belongsTo(ProformaInvoice::class, 'proformaid');
     }
 
     public function item(): BelongsTo

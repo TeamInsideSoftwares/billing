@@ -1698,6 +1698,7 @@ $serviceData = [
                 'quantity' => $itemData['quantity'],
                 'unit_price' => $itemData['unit_price'],
                 'tax_rate' => $itemData['tax_rate'],
+                'taxid' => $itemData['taxid'] ?? null,
                 'line_total' => $itemData['line_total'],
                 'sort_order' => $index + 1,
             ]);
@@ -1976,6 +1977,7 @@ public function invoicesEdit(Invoice $invoice): View
                 'quantity' => $itemData['quantity'],
                 'unit_price' => $itemData['unit_price'],
                 'tax_rate' => $itemData['tax_rate'],
+                'taxid' => $itemData['taxid'] ?? null,
                 'line_total' => $itemData['line_total'],
                 'sort_order' => $index + 1,
             ]);
