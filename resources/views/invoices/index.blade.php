@@ -6,7 +6,9 @@
             <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">All Invoices</h3>
         </div>
         <div>
-            <a href="{{ route('invoices.create') }}" class="primary-button">Create Invoice</a>
+            <a href="{{ route('invoices.create') }}" class="primary-button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <i class="fas fa-file-invoice" style="margin-right: 0.5rem;"></i>Create Proforma Invoice
+            </a>
         </div>
     </section>
 

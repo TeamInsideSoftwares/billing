@@ -3,12 +3,40 @@
 @section('content')
 <section class="section-bar">
     <div>
-        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #475569;">Create Invoice</h3>
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #475569;">
+            <i class="fas fa-file-invoice" style="color: #f59e0b; margin-right: 0.5rem;"></i>
+            Create Proforma Invoice
+        </h3>
+        <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: #64748b;">
+            <i class="fas fa-info-circle" style="margin-right: 0.3rem;"></i>
+            This will create a Proforma Invoice. You can convert it to a Tax Invoice later.
+        </p>
     </div>
     <a href="{{ route('invoices.index') }}" class="text-link">&larr; Back to invoices</a>
 </section>
 
+{{-- 
+    MULTI-STEP INVOICE FORM ARCHITECTURE
+    ====================================
+    This form uses the InvoiceStepManager class for modular, extensible step navigation.
+    
+    Current Steps:
+    - Step 1: Client & Source Selection (steps/step1-client-source.blade.php)
+    - Step 2: Items & Details (steps/step2-items.blade.php)
+    - Step 3: Terms & Preview (steps/step3-terms.blade.php)
+    
+    To add Step 4, 5, etc.:
+    1. Create partial: steps/step4-{name}.blade.php
+    2. Include it below
+    3. Update InvoiceStepManager totalSteps parameter
+    4. Add validation in validateStep() method
+    5. See ADDING_STEPS.md for detailed instructions
+--}}
+
 <section class="panel-card" style="padding: 1.5rem;">
+    {{-- Optional: Step Indicator (uncomment to enable) --}}
+    {{-- @include('invoices.components.step-indicator', ['totalSteps' => 3]) --}}
+
     <form method="POST" action="{{ route('invoices.store') }}" id="invoiceForm">
         @csrf
 
@@ -31,381 +59,48 @@
             </div>
         @endif
 
-        <!-- Step 1: Client & Source Selection -->
-        <div id="step1">
-            <div class="invoice-meta-card" style="margin-bottom: 1.5rem;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; align-items: end;">
-                    <div>
-                        <label for="clientid" class="field-label">Client</label>
-                        <select id="clientid" name="clientid" required class="form-input">
-                            <option value="">Choose a client</option>
-                            @foreach($clients as $client)
-                                <option value="{{ $client->clientid }}" data-currency="{{ $client->currency ?? 'INR' }}" {{ old('clientid') == $client->clientid ? 'selected' : '' }}>
-                                    {{ $client->business_name ?? $client->contact_name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label for="invoice_title" class="field-label">Invoice Title</label>
-                        <input type="text" id="invoice_title" name="invoice_title" value="{{ old('invoice_title') }}" class="form-input" placeholder="e.g. Website Development - Phase 1">
-                    </div>
-                </div>
-            </div>
+        {{-- STEP 1: Client & Source Selection --}}
+        @include('invoices.steps.step1-client-source')
 
-            <div id="existingInvoicesSection" style="display: none; margin-bottom: 1.5rem;">
-                <h4 style="margin: 0 0 0.8rem 0; font-size: 1rem; color: #334155;">Existing Invoices</h4>
-                <div id="clientInvoicesAccordion" class="services-accordion-container">
-                    <!-- Accordion items will be injected here -->
-                </div>
-                <div id="noInvoicesMessage" class="empty-state" style="display: none;">No invoices found for this client yet.</div>
-            </div>
+        {{-- STEP 2: Items & Details --}}
+        @include('invoices.steps.step2-items')
 
-            <div id="sourceSelectionSection" style="display: none; margin-bottom: 1.5rem;">
-                <div style="margin-bottom: 1rem; padding: 1rem 1.1rem; border: 1px solid #dbeafe; background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-radius: 12px;">
-                    <h4 style="margin: 0; font-size: 1rem; color: #1e293b;">Choose Invoice Source</h4>
-                </div>
-                
-                <div class="source-grid">
-                    <label class="invoice-source-card">
-                        <input type="radio" name="invoice_for" value="orders" {{ old('invoice_for') === 'orders' ? 'checked' : '' }}>
-                        <span class="source-icon"><i class="fas fa-shopping-cart"></i></span>
-                        <strong>From Orders</strong>
-                    </label>
-                    <label class="invoice-source-card">
-                        <input type="radio" name="invoice_for" value="renewal" {{ old('invoice_for') === 'renewal' ? 'checked' : '' }}>
-                        <span class="source-icon"><i class="fas fa-sync-alt"></i></span>
-                        <strong>Renewal</strong>
-                    </label>
-                    <label class="invoice-source-card">
-                        <input type="radio" name="invoice_for" value="without_orders" {{ old('invoice_for') === 'without_orders' ? 'checked' : '' }}>
-                        <span class="source-icon"><i class="fas fa-pen-ruler"></i></span>
-                        <strong>Without Orders</strong>
-                    </label>
-                </div>
+        {{-- STEP 3: Terms & Preview --}}
+        @include('invoices.steps.step3-terms')
 
-                <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
-                    <button type="button" id="btnNextToStep2" class="primary-button" style="padding: 0.8rem 2.5rem; font-size: 1rem;">Next Step &rarr;</button>
-                </div>
-            </div>
-        </div>
+        {{-- 
+            TO ADD STEP 4:
+            1. Create: resources/views/invoices/steps/step4-{name}.blade.php
+            2. Uncomment the line below
+            3. Update InvoiceStepManager totalSteps to 4
+            4. Add navigation buttons in your step4 partial
+        --}}
+        {{-- @include('invoices.steps.step4-{name}') --}}
 
-        <!-- Step 2: Items & Details -->
-        <div id="step2" style="display: none;">
-            <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-                <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back to Step 1</button>
-                <div style="text-align: right;">
-                    <span class="invoice-meta-label">Invoice Number</span>
-                    <strong class="invoice-meta-value">{{ $nextInvoiceNumber }}</strong>
-                    <input type="hidden" name="invoice_number" value="{{ $nextInvoiceNumber }}">
-                </div>
-            </div>
+        {{-- 
+            TO ADD STEP 5:
+            Follow the same pattern as Step 4
+        --}}
+        {{-- @include('invoices.steps.step5-{name}') --}}
 
-            <input type="hidden" name="orderid" id="orderid" value="{{ old('orderid', '') }}">
-            <input type="hidden" name="status" value="draft">
-            <input type="hidden" name="currency_code" id="currency_code" value="{{ old('currency_code', 'INR') }}">
-            <input type="hidden" name="subtotal" id="subtotal" value="{{ old('subtotal', '0.00') }}">
-            <input type="hidden" name="tax_total" id="tax_total" value="{{ old('tax_total', '0.00') }}">
-            <input type="hidden" name="grand_total" id="grand_total" value="{{ old('grand_total', '0.00') }}">
-            <input type="hidden" name="items_data" id="items_data" value="{{ old('items_data', '') }}">
-
-            <div id="ordersSection" class="workflow-panel" style="display: none;">
-                <div class="panel-heading-row">
-                    <div>
-                        <h4 style="margin: 0; font-size: 1rem; color: #334155;">Available Orders</h4>
-                        <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Choose a pending order to pull its items into the invoice.</p>
-                    </div>
-                </div>
-                <div class="table-shell">
-                    <table class="data-table" id="ordersTable" style="font-size: 0.85rem; margin: 0;">
-                        <thead>
-                            <tr>
-                                <th>Order</th>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ordersBody"></tbody>
-                    </table>
-                    <div id="noOrdersMessage" class="empty-state" style="display: none;">No uninvoiced orders are available for this client.</div>
-                </div>
-            </div>
-
-            <div id="renewalSection" class="workflow-panel" style="display: none;">
-                <div class="panel-heading-row">
-                    <div>
-                        <h4 style="margin: 0; font-size: 1rem; color: #334155;">Renewal Candidates</h4>
-                        <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Pick a previous invoice, then select the expired recurring items to renew.</p>
-                    </div>
-                </div>
-                <div class="table-shell">
-                    <table class="data-table" id="renewalTable" style="font-size: 0.85rem; margin: 0;">
-                        <thead>
-                            <tr>
-                                <th>Invoice #</th>
-                                <th>Expired Items</th>
-                                <th>Amount</th>
-                                <th>Total Items</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="renewalBody"></tbody>
-                    </table>
-                    <div id="noRenewalMessage" class="empty-state" style="display: none;">No renewal-ready invoices were found for this client.</div>
-                </div>
-                <div id="renewalPicker" style="display: none; margin-top: 1rem;"></div>
-            </div>
-
-            <div id="manualItemsSection" class="workflow-panel" style="display: none;">
-                <div class="panel-heading-row">
-                    <div>
-                        <h4 style="margin: 0; font-size: 1rem; color: #334155;">Manual Invoice Items</h4>
-                        <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Add items to your invoice. You can edit them after adding.</p>
-                    </div>
-                </div>
-
-                <div class="builder-card">
-                    <div class="manual-grid">
-                        <div>
-                            <label for="manual_item_itemid" class="field-label small">Item</label>
-                            <select id="manual_item_itemid" class="form-input">
-                                <option value="">Select item</option>
-                                @php
-                                    $groupedServices = $services->groupBy(fn ($service) => $service->category->name ?? 'No Category');
-                                @endphp
-                                @foreach($groupedServices as $categoryName => $categoryServices)
-                                    <optgroup label="{{ $categoryName }}">
-                                        @foreach($categoryServices as $service)
-                                            @php
-                                                $defaultCosting = $service->costings->sortBy('currency_code')->first();
-                                            @endphp
-                                            <option value="{{ $service->itemid }}" data-selling-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}" data-taxid="{{ $defaultCosting?->taxid ?? '' }}">
-                                                {{ $service->name }} ({{ number_format($defaultCosting?->selling_price ?? 0, 0) }})
-                                            </option>
-                                        @endforeach
-                                    </optgroup>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label for="manual_item_quantity" class="field-label small">Qty</label>
-                            <input type="number" id="manual_item_quantity" class="form-input" value="1" min="0.01" step="0.01">
-                        </div>
-                        <div>
-                            <label for="manual_item_unit_price" class="field-label small">Unit Price</label>
-                            <input type="number" id="manual_item_unit_price" class="form-input" min="0" step="0.01">
-                        </div>
-                        @if($account->allow_multi_taxation)
-                        <div>
-                            <label for="manual_item_tax_rate" class="field-label small">Tax <a href="#" id="open-tax-modal-invoice" style="font-size:11px;margin-left:4px;" class="text-link">+ Add</a></label>
-                            <select id="manual_item_tax_rate" class="form-input">
-                                <option value="0" data-taxid="">No Tax</option>
-                                @foreach($taxes as $tax)
-                                    <option value="{{ $tax->rate }}" data-taxid="{{ $tax->taxid }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 2) }}%)</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        @else
-                        <input type="hidden" id="manual_item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
-                        @endif
-                        @if($account->have_users)
-                        <div>
-                            <label for="manual_item_users" class="field-label small">Users</label>
-                            <input type="number" id="manual_item_users" class="form-input" value="1" min="1" step="1">
-                        </div>
-                        @else
-                        <input type="hidden" id="manual_item_users" value="1">
-                        @endif
-                        <div>
-                            <label for="manual_item_frequency" class="field-label small">Freq</label>
-                            <select id="manual_item_frequency" class="form-input">
-                                <option value="">None</option>
-                                <option value="one-time">One-Time</option>
-                                <option value="daily">Daily</option>
-                                <option value="weekly">Weekly</option>
-                                <option value="bi-weekly">Bi-Weekly</option>
-                                <option value="monthly">Monthly</option>
-                                <option value="quarterly">Quarterly</option>
-                                <option value="semi-annually">Semi-Annually</option>
-                                <option value="yearly">Yearly</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="manual_item_duration" class="field-label small">Dur</label>
-                            <input type="number" id="manual_item_duration" class="form-input" min="0" step="1" placeholder="e.g. 12">
-                        </div>
-                        <div id="manual_item_start_date_wrap" style="display: none;">
-                            <label for="manual_item_start_date" class="field-label small">Start Date</label>
-                            <input type="date" id="manual_item_start_date" class="form-input">
-                        </div>
-                        <div id="manual_item_end_date_wrap" style="display: none;">
-                            <label for="manual_item_end_date" class="field-label small">End Date</label>
-                            <input type="date" id="manual_item_end_date" class="form-input">
-                        </div>
-                        <div style="display: flex; align-items: end;">
-                            <button type="button" id="addManualItemBtn" class="primary-button" style="width: 100%;">Add</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="table-shell" style="margin-top: 1rem;">
-                    <table class="data-table" id="manualItemsTable" style="display: none; margin: 0; font-size: 0.84rem;">
-                        <thead>
-                            <tr>
-                                <th>Item</th>
-                                <th>Qty</th>
-                                <th>Price</th>
-                                @if($account->allow_multi_taxation)
-                                <th>Tax %</th>
-                                @endif
-                                @if($account->have_users)
-                                <th>Users</th>
-                                @endif
-                                <th>Freq</th>
-                                <th>Dur</th>
-                                <th id="manualHeaderStart">Start</th>
-                                <th id="manualHeaderEnd">End</th>
-                                <th>Total</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="manualItemsBody"></tbody>
-                    </table>
-                    <div id="manualItemsEmpty" class="empty-state">No items added yet. Add an item above to get started.</div>
-                </div>
-
-                <div id="manualOrderSummary" class="totals-card" style="display: none; margin-top: 1rem;">
-                    <div class="total-row"><span>Subtotal</span><strong id="manualSubtotal">0.00</strong></div>
-                    <div class="total-row"><span>Tax</span><strong id="manualTaxTotal">0.00</strong></div>
-                    <div class="total-row total-row-grand"><span>Total</span><strong id="manualGrandTotal">0.00</strong></div>
-                </div>
-            </div>
-
-            <div id="itemsSection" class="workflow-panel" style="display: none;">
-                <div class="panel-heading-row">
-                    <div>
-                        <h4 style="margin: 0; font-size: 1rem; color: #334155;">Review Invoice Items</h4>
-                        <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Adjust pricing, tax, duration, or dates before creating.</p>
-                    </div>
-                    <button type="button" id="saveStateBtn" class="primary-button" style="padding: 0.6rem 1.5rem; font-size: 0.9rem;">
-                        <i class="fas fa-save" style="margin-right: 0.4rem;"></i>Save Progress
-                    </button>
-                </div>
-                <div class="table-shell">
-                    <table class="data-table" style="margin: 0; font-size: 0.83rem;">
-                        <thead>
-                            <tr>
-                                <th>Item</th>
-                                <th>Qty</th>
-                                <th>Price</th>
-                                @if($account->allow_multi_taxation)
-                                <th>Tax %</th>
-                                @endif
-                                @if($account->have_users)
-                                <th>Users</th>
-                                @endif
-                                <th>Freq</th>
-                                <th>Dur</th>
-                                <th id="headerStart">Start</th>
-                                <th id="headerEnd">End</th>
-                                <th>Total</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="itemsBody"></tbody>
-                    </table>
-                </div>
-
-                <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
-                    <div class="totals-card" style="min-width: 320px;">
-                        <div class="total-row"><span>Subtotal</span><strong id="subtotalDisplay">INR 0.00</strong></div>
-                        <div class="total-row"><span>Tax</span><strong id="taxDisplay">INR 0.00</strong></div>
-                        <div class="total-row total-row-grand"><span>Grand Total</span><strong id="grandTotalDisplay">INR 0.00</strong></div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Issue/Due date hidden for now --}}
-            {{-- <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
-                <div>
-                    <label for="issue_date" class="field-label">Issue Date</label>
-                    <input type="date" id="issue_date" name="issue_date" value="{{ old('issue_date', date('Y-m-d')) }}" class="form-input" required>
-                </div>
-                <div>
-                    <label for="due_date" class="field-label">Due Date</label>
-                    <input type="date" id="due_date" name="due_date" value="{{ old('due_date', date('Y-m-d', strtotime('+7 days'))) }}" class="form-input" required>
-                </div>
-            </div> --}}
-            {{-- Keep hidden inputs so the form still submits valid dates --}}
-            <input type="hidden" id="issue_date" name="issue_date" value="{{ old('issue_date', date('Y-m-d')) }}">
-            <input type="hidden" id="due_date" name="due_date" value="{{ old('due_date', date('Y-m-d', strtotime('+7 days'))) }}">
-
-            {{-- Internal Notes hidden for now --}}
-            {{-- <div style="margin-top: 1rem;">
-                <label for="notes" class="field-label">Internal Notes</label>
-                <textarea id="notes" name="notes" rows="4" class="form-input" style="min-height: 110px;">{{ old('notes') }}</textarea>
-            </div> --}}
-            <input type="hidden" id="notes" name="notes" value="{{ old('notes') }}">
-
-            <div style="margin-top: 2rem;">
-                <button type="button" class="primary-button" id="btnNextToStep3" disabled style="width: 100%; padding: 1rem;">Review & Terms &rarr;</button>
-            </div>
-        </div>
-
-        <!-- Step 3: Terms & Preview -->
-        <div id="step3" style="display: none;">
-            <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-                <button type="button" id="btnBackToStep2" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back to Step 2</button>
-                <h4 style="margin: 0; font-size: 1.1rem; color: #334155;">Final Review</h4>
-            </div>
-
-            <!-- Proforma Invoice Preview -->
-            <div class="panel-card" style="padding: 0; border: 1px solid #e2e8f0; overflow: hidden; background: #fff; margin-bottom: 1.5rem;">
-                <div style="background: #f8fafc; padding: 0.75rem 1.25rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-                    <h5 style="margin: 0; font-size: 0.95rem; color: #1e293b;"><i class="fas fa-file-pdf" style="color: #ef4444; margin-right: 0.5rem;"></i> Invoice Preview</h5>
-                    <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Live Preview</span>
-                </div>
-                <div id="invoicePreviewContainer" style="padding: 2rem; background: #94a3b8; max-height: 750px; overflow-y: auto;">
-                    <div id="previewContent" style="background: white; padding: 2.5rem; width: 100%; min-height: 842px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border-radius: 4px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b;">
-                        <!-- Preview will be dynamically injected here -->
-                        <div style="text-align: center; color: #64748b; padding-top: 100px;">
-                            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                            <p>Generating preview...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Terms & Conditions Below -->
-            <div class="panel-card" style="padding: 1rem; border: 1px solid #e2e8f0; background: #fff;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid #e2e8f0;">
-                    <h5 style="margin: 0; font-size: 0.9rem; color: #1e293b;">Terms & Conditions</h5>
-                    <button type="button" id="btnAddTC" class="text-link" style="font-size: 0.75rem; font-weight: 600;">+ Add</button>
-                </div>
-                <div id="termsList" style="max-height: 400px; overflow-y: auto; padding-right: 0.25rem;">
-                    @foreach($billingTerms as $term)
-                    <div style="margin-bottom: 0.4rem; padding: 0.5rem; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; transition: all 0.2s;" class="term-item-row">
-                        <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer;">
-                            <input type="checkbox" class="term-checkbox" data-tc-id="{{ $term->tc_id }}" data-content="{{ $term->content }}" value="{{ $term->content }}" style="margin-top: 0.15rem; width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
-                            <div style="flex: 1;">
-                                <p style="margin: 0; font-size: 0.78rem; color: #475569; line-height: 1.4;">{{ $term->content }}</p>
-                            </div>
-                        </label>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-
-            <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
-                <button type="submit" class="primary-button create-submit-btn" id="finalSubmitBtnStep3" disabled style="padding: 1rem 4rem; font-size: 1.1rem; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4);">Create & Save Invoice</button>
-            </div>
-        </div>
     </form>
 </section>
 
     <style>
+/* Step-specific styles */
+.invoice-step {
+    transition: opacity 0.3s ease;
+}
+
+.invoice-step[style*="display: none"] {
+    opacity: 0;
+}
+
+.invoice-step:not([style*="display: none"]) {
+    opacity: 1;
+}
+
+/* Existing styles */
 .invoice-meta-card { padding: 1.25rem; border: 1px solid #e2e8f0; border-radius: 12px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); }
 .invoice-meta-label, .field-label.small { display: block; margin-bottom: 0.35rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #64748b; }
 .invoice-meta-value { color: #1e293b; font-size: 0.95rem; }
@@ -499,7 +194,7 @@
     // Constants
     const frequencyOptions = ['one-time', 'daily', 'weekly', 'bi-weekly', 'monthly', 'quarterly', 'semi-annually', 'yearly'];
     const frequencyLabels = { 'one-time': 'One-Time', 'daily': 'Daily', 'weekly': 'Weekly', 'bi-weekly': 'Bi-Weekly', 'monthly': 'Monthly', 'quarterly': 'Quarterly', 'semi-annually': 'Semi-Annually', 'yearly': 'Yearly' };
-    
+
     @php
         $taxOptionsArr = ($taxes ?? collect())->map(fn ($tax) => ['name' => $tax->tax_name, 'rate' => (float) $tax->rate])->values();
     @endphp
@@ -514,15 +209,135 @@
     let editingManualItemId = null;
     const STORAGE_KEY = 'invoice_create_state';
 
+    // ============================================
+    // STEP NAVIGATION WITH URL HASH (PERSISTENT)
+    // ============================================
+    
+    /**
+     * Show a specific step and hide others
+     * Updates URL hash for persistence across refresh
+     */
+    function showStep(stepNumber) {
+        // Hide all steps
+        step1.style.display = 'none';
+        step2.style.display = 'none';
+        step3.style.display = 'none';
+
+        // Show the requested step
+        let targetStep = null;
+        switch(stepNumber) {
+            case 1: targetStep = step1; break;
+            case 2: targetStep = step2; break;
+            case 3: targetStep = step3; break;
+            default: targetStep = step1; stepNumber = 1;
+        }
+
+        if (targetStep) {
+            targetStep.style.display = 'block';
+            
+            // Update URL hash for persistence
+            const newHash = `#step-${stepNumber}`;
+            if (window.location.hash !== newHash) {
+                history.replaceState(null, '', newHash);
+            }
+
+            // Step-specific initialization
+            if (stepNumber === 2) {
+                // Activate the selected source when showing Step 2
+                const source = document.querySelector('input[name="invoice_for"]:checked')?.value;
+                console.log('Step 2: activating source:', source);
+                if (source) {
+                    activateSource(source);
+                } else {
+                    console.warn('Step 2: No source selected!');
+                }
+            } else if (stepNumber === 3) {
+                updateInvoicePreview();
+            }
+
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+    }
+
+    /**
+     * Get current step from URL hash
+     */
+    function getCurrentStepFromHash() {
+        const hash = window.location.hash;
+        const match = hash.match(/^#step-(\d+)$/);
+        if (match) {
+            const step = parseInt(match[1]);
+            if (step >= 1 && step <= 3) {
+                return step;
+            }
+        }
+        return 1; // Default to step 1
+    }
+
+    /**
+     * Navigate to next step with validation
+     */
+    function navigateToStep(stepNumber) {
+        // Validate before moving forward
+        if (stepNumber > getCurrentStepFromHash()) {
+            if (!validateCurrentStep()) {
+                return;
+            }
+        }
+
+        showStep(stepNumber);
+    }
+
+    /**
+     * Validate current step before proceeding
+     */
+    function validateCurrentStep() {
+        const currentStep = getCurrentStepFromHash();
+        
+        if (currentStep === 1) {
+            if (!selectedClientId) {
+                alert('Please select a client first.');
+                return false;
+            }
+            const source = document.querySelector('input[name="invoice_for"]:checked')?.value;
+            if (!source) {
+                alert('Please choose an invoice source.');
+                return false;
+            }
+        } else if (currentStep === 2) {
+            const source = document.querySelector('input[name="invoice_for"]:checked')?.value;
+            let hasItems = false;
+            if (source === 'without_orders') {
+                hasItems = manualItems.length > 0;
+            } else if (source === 'orders' || source === 'renewal') {
+                hasItems = invoiceItems.length > 0;
+            }
+            
+            if (!hasItems) {
+                alert('Please add at least one item before proceeding.');
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    // ============================================
+    // END STEP NAVIGATION FUNCTIONS
+    // ============================================
+
     // Load state from localStorage - ONLY restore if user explicitly saved
     function loadState() {
         try {
             const savedState = localStorage.getItem(STORAGE_KEY);
-            if (!savedState) return;
-            
+            if (!savedState) return null;
+
             const state = JSON.parse(savedState);
-            if (!state.clientId || !state.explicitlySaved) return;
-            
+            if (!state.clientId || !state.explicitlySaved) return null;
+
+            console.log('Restoring saved state:', state);
+
             // Restore client selection
             selectedClientId = state.clientId;
             clientSelect.value = state.clientId;
@@ -538,26 +353,24 @@
                 if (radio) radio.checked = true;
             }
 
-            // Only restore step 2 if user was there and had items
-            if (state.currentStep === 2 && state.invoiceFor) {
-                step1.style.display = 'none';
-                step2.style.display = 'block';
-                setTimeout(() => activateSource(state.invoiceFor), 100);
-
-                if (state.orderId) orderIdInput.value = state.orderId;
-
-                if (state.manualItems && state.manualItems.length > 0) {
-                    manualItems = state.manualItems;
-                    manualItemCounter = state.manualItemCounter || manualItems.length;
-                    renderManualItems();
-                }
-                if (state.invoiceItems && state.invoiceItems.length > 0) {
-                    invoiceItems = state.invoiceItems;
-                    renderItems();
-                }
+            // Restore items
+            if (state.manualItems && state.manualItems.length > 0) {
+                manualItems = state.manualItems;
+                manualItemCounter = state.manualItemCounter || manualItems.length;
+                renderManualItems();
             }
+            if (state.invoiceItems && state.invoiceItems.length > 0) {
+                invoiceItems = state.invoiceItems;
+                renderItems();
+            }
+            if (state.orderId) {
+                orderIdInput.value = state.orderId;
+            }
+
+            return state;
         } catch (e) {
             console.warn('Could not restore invoice state:', e);
+            return null;
         }
     }
 
@@ -1243,7 +1056,7 @@
         loadInvoicesForClient(selectedClientId);
     });
 
-    btnNextToStep2.addEventListener('click', () => {
+    btnNextToStep2.addEventListener('click', async () => {
         if (!selectedClientId) {
             alert('Please select a client first.');
             return;
@@ -1254,29 +1067,36 @@
             return;
         }
 
-        step1.style.display = 'none';
-        step2.style.display = 'block';
-        activateSource(source);
-        window.scrollTo(0, 0);
+        // Save draft to DB
+        const invoiceTitle = document.getElementById('invoice_title')?.value || '';
+        try {
+            const resp = await fetch("{{ route('invoices.save-draft') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ clientid: selectedClientId, invoice_title: invoiceTitle, invoice_for: source }),
+            });
+            const data = await resp.json();
+            if (data.ok) {
+                document.getElementById('proformaid').value = data.proformaid;
+                console.log('Draft saved:', data.proformaid);
+            }
+        } catch (e) {
+            console.warn('Could not save draft:', e);
+        }
+
+        navigateToStep(2);
     });
 
     btnBackToStep1.addEventListener('click', () => {
-        step2.style.display = 'none';
-        step1.style.display = 'block';
-        window.scrollTo(0, 0);
+        showStep(1);
     });
 
     btnNextToStep3.addEventListener('click', () => {
-        step2.style.display = 'none';
-        step3.style.display = 'block';
-        updateInvoicePreview();
-        window.scrollTo(0, 0);
+        navigateToStep(3);
     });
 
     btnBackToStep2.addEventListener('click', () => {
-        step3.style.display = 'none';
-        step2.style.display = 'block';
-        window.scrollTo(0, 0);
+        showStep(2);
     });
 
     // Use event delegation for terms checkboxes
@@ -1291,20 +1111,27 @@
 
     // Step 2 Functions
     function activateSource(source) {
+        console.log('=== activateSource called ===', source);
+        
         ordersSection.style.display = 'none';
         renewalSection.style.display = 'none';
         manualItemsSection.style.display = 'none';
         itemsSection.style.display = 'none';
 
         if (source === 'orders') {
+            console.log('Showing Orders section');
             ordersSection.style.display = 'block';
             loadOrders();
         } else if (source === 'renewal') {
+            console.log('Showing Renewal section');
             renewalSection.style.display = 'block';
             loadRenewals();
         } else if (source === 'without_orders') {
+            console.log('Showing Manual Items section');
             manualItemsSection.style.display = 'block';
             renderManualItems();
+        } else {
+            console.warn('Unknown source:', source);
         }
     }
 
@@ -1359,30 +1186,54 @@
 
     function loadRenewals() {
         renewalBody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading renewal candidates...</td></tr>';
+        noRenewalMessage.style.display = 'none';
+        
+        const daysFilter = document.getElementById('renewalDaysFilter')?.value || 1;
+        
+        console.log('Loading renewals for client:', selectedClientId, 'days filter:', daysFilter);
+        
         fetch(`{{ route('invoices.renewal-invoices') }}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ clientid: selectedClientId }),
+            body: JSON.stringify({ clientid: selectedClientId, days: daysFilter }),
         })
             .then(res => res.json())
             .then(invoices => {
+                console.log('=== RENEWAL RESPONSE ===');
+                console.log('Invoices count:', invoices.length);
+                console.log('Invoices:', invoices);
+                
                 renewalBody.innerHTML = '';
                 if (invoices.length === 0) {
                     noRenewalMessage.style.display = 'block';
+                    noRenewalMessage.innerHTML = `
+                        <strong>No items to renew</strong><br>
+                        <small style="color: #94a3b8;">All items are either active or already renewed.</small>
+                    `;
                     return;
                 }
                 noRenewalMessage.style.display = 'none';
                 invoices.forEach(inv => {
                     const row = document.createElement('tr');
+                    const expiredText = inv.expired_items > 0 
+                        ? `<span style="color: #ef4444; font-weight: 600;">${inv.expired_items} Expired</span>`
+                        : '';
+                    const upcomingText = inv.upcoming_items > 0 
+                        ? `<span style="color: #f59e0b; font-weight: 600; margin-left: 0.5rem;">${inv.upcoming_items} Expiring Soon</span>`
+                        : '';
                     row.innerHTML = `
                         <td><strong>${inv.invoice_number}</strong></td>
-                        <td style="color: #ef4444; font-weight: 600;">${inv.expired_items} Expired</td>
+                        <td>${expiredText}${upcomingText}</td>
                         <td>${inv.currency} ${Number(inv.grand_total).toLocaleString()}</td>
                         <td>${inv.total_items} items</td>
                         <td><button type="button" class="primary-button select-renewal-btn" data-id="${inv.proformaid}" data-num="${inv.invoice_number}" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Review</button></td>
                     `;
                     renewalBody.appendChild(row);
                 });
+            })
+            .catch(err => {
+                console.error('Error loading renewals:', err);
+                renewalBody.innerHTML = '<tr><td colspan="5" class="empty-state" style="color: #ef4444;">Error loading renewals. Check console.</td></tr>';
             });
     }
 
@@ -1390,7 +1241,8 @@
         const btn = e.target.closest('.select-renewal-btn');
         if (!btn) return;
         const invId = btn.dataset.id;
-        fetch(`{{ url('/invoices/renewal-items') }}/${invId}`)
+        const daysFilter = document.getElementById('renewalDaysFilter')?.value || 1;
+        fetch(`{{ url('/invoices/renewal-items') }}/${invId}?days=${daysFilter}`)
             .then(res => res.json())
             .then(data => {
                 showRenewalPicker(btn.dataset.num, data.items || []);
@@ -1398,40 +1250,86 @@
             });
     });
 
+    // Reload renewals when days filter changes
+    document.getElementById('renewalDaysFilter')?.addEventListener('change', () => {
+        if (selectedClientId) {
+            loadRenewals();
+        }
+    });
+
     function showRenewalPicker(invNum, items) {
-        const expired = items.filter(i => i.is_expired);
+        // Only show items that are expired or upcoming AND not renewed
+        const renewableItems = items.filter(i => (i.is_expired || i.is_upcoming) && !i.renewed_to_proformaid);
+        const expired = renewableItems.filter(i => i.is_expired);
+        const upcoming = renewableItems.filter(i => i.is_upcoming);
+        const renewed = items.filter(i => i.renewed_to_proformaid);
+        
+        console.log('Renewal picker - Total:', items.length, 'Expired:', expired.length, 'Upcoming:', upcoming.length, 'Renewed:', renewed.length);
+        
+        // Group all renewable items together, expired first
+        const allRenewable = [...expired, ...upcoming];
+        
         renewalPicker.style.display = 'block';
         renewalPicker.innerHTML = `
             <div style="border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; overflow: hidden;">
                 <div style="padding: 1rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
                     <h5 style="margin: 0;">Renew from ${invNum}</h5>
+                    <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #64748b;">
+                        ${expired.length > 0 ? `${expired.length} expired` : ''}${expired.length > 0 && upcoming.length > 0 ? ', ' : ''}${upcoming.length > 0 ? `${upcoming.length} expiring soon` : ''}
+                    </p>
                 </div>
                 <table class="data-table" style="margin: 0; font-size: 0.8rem;">
-                    <thead><tr><th></th><th>Item</th><th>End Date</th><th>Price</th></tr></thead>
+                    <thead><tr><th></th><th>Item</th><th>End Date</th><th>Status</th><th>Price</th></tr></thead>
                     <tbody>
-                        ${expired.map((i, idx) => `
+                        ${allRenewable.length > 0 ? allRenewable.map((i, idx) => {
+                            const statusBadge = i.is_expired 
+                                ? '<span style="padding: 0.15rem 0.5rem; background: #fee2e2; color: #991b1b; border-radius: 8px; font-size: 0.68rem; font-weight: 600;">Expired</span>'
+                                : '<span style="padding: 0.15rem 0.5rem; background: #fef3c7; color: #92400e; border-radius: 8px; font-size: 0.68rem; font-weight: 600;">Expiring Soon</span>';
+                            const dateColor = i.is_expired ? '#ef4444' : '#f59e0b';
+                            return `
                             <tr>
-                                <td><input type="checkbox" class="renewal-check" data-idx="${idx}" checked></td>
+                                <td>
+                                    <label class="custom-checkbox">
+                                        <input type="checkbox" 
+                                            class="renewal-check" 
+                                            data-idx="${idx}" 
+                                            checked>
+                                        <span class="checkbox-label"></span>
+                                    </label>
+                                </td>
                                 <td>${i.item_name}</td>
-                                <td style="color: #ef4444;">${i.end_date}</td>
+                                <td style="color: ${dateColor};">${i.end_date}</td>
+                                <td>${statusBadge}</td>
                                 <td>${formatMoney(i.line_total)}</td>
-                            </tr>
-                        `).join('')}
+                            </tr>`;
+                        }).join('') : '<tr><td colspan="5" style="padding: 1rem; text-align: center; color: #64748b;">No items to renew</td></tr>'}
                     </tbody>
                 </table>
                 <div style="padding: 1rem; border-top: 1px solid #e2e8f0; text-align: right;">
-                    <button type="button" id="btnConfirmRenewal" class="primary-button">Add Selected Items</button>
+                    <button type="button" id="btnConfirmRenewal" class="primary-button" ${allRenewable.length === 0 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>Add Selected Items</button>
                 </div>
             </div>
         `;
         document.getElementById('btnConfirmRenewal').addEventListener('click', () => {
             const checks = document.querySelectorAll('.renewal-check:checked');
+            const originalItemIds = Array.from(checks).map(c => allRenewable[c.dataset.idx].proformaitemid);
+            
+            console.log('Renewing proforma items:', originalItemIds);
+            
+            // Store original item IDs for marking as renewed
+            window.renewalOriginalItemIds = originalItemIds;
+            
             invoiceItems = Array.from(checks).map(c => {
-                const item = { ...expired[c.dataset.idx] };
+                const item = { ...allRenewable[c.dataset.idx] };
                 item.start_date = document.getElementById('issue_date').value;
+                // Store the original proformaitemid for tracing
+                item.renewed_from_proformaitemid = item.proformaitemid;
                 if (item.frequency && item.duration) item.end_date = calculateEndDate(item.start_date, item.frequency, item.duration);
                 return item;
             });
+            
+            console.log('Renewing items:', invoiceItems.map(i => ({ name: i.item_name, original_id: i.renewed_from_proformaitemid })));
+            
             renderItems();
         });
     }
@@ -1741,15 +1639,93 @@
         }
     });
 
-    invoiceForm.addEventListener('submit', (e) => {
+    invoiceForm.addEventListener('submit', async (e) => {
         const source = document.querySelector('input[name="invoice_for"]:checked').value;
         const items = source === 'without_orders' ? manualItems : invoiceItems;
         itemsDataInput.value = JSON.stringify(items.map(i => ({ ...i, line_total: calculateLineTotal(i.quantity, i.unit_price, i.no_of_users, i.frequency, i.duration) })));
+        
+        // If this is a renewal, add the original item IDs to a hidden field
+        if (source === 'renewal' && window.renewalOriginalItemIds && window.renewalOriginalItemIds.length > 0) {
+            let renewalIdsInput = document.querySelector('input[name="renewed_item_ids"]');
+            if (!renewalIdsInput) {
+                renewalIdsInput = document.createElement('input');
+                renewalIdsInput.type = 'hidden';
+                renewalIdsInput.name = 'renewed_item_ids';
+                invoiceForm.appendChild(renewalIdsInput);
+            }
+            renewalIdsInput.value = JSON.stringify(window.renewalOriginalItemIds);
+            console.log('Submitting renewal for items:', window.renewalOriginalItemIds);
+        }
+        
+        // If we have a draft proformaid, the store endpoint will update it
+        const draftId = document.getElementById('proformaid').value;
+        if (draftId) {
+            console.log('Submitting with draft ID:', draftId);
+        }
+        
         clearState(); // Clear state on successful submission
     });
 
-    // Load saved state on page load
-    loadState();
+    // ============================================
+    // INITIALIZATION: Restore step from URL hash
+    // ============================================
+    
+    console.log('=== INITIALIZING ===');
+    console.log('URL hash:', window.location.hash);
+    
+    // Check for saved draft in DB first
+    if (selectedClientId) {
+        fetch("{{ url('/invoices/draft') }}/" + selectedClientId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok && data.draft) {
+                    console.log('Restoring draft:', data.draft);
+                    document.getElementById('proformaid').value = data.draft.proformaid;
+                    
+                    // Restore Step 1 data
+                    if (data.draft.invoice_title) {
+                        document.getElementById('invoice_title').value = data.draft.invoice_title;
+                    }
+                    if (data.draft.invoice_for) {
+                        const radio = document.querySelector(`input[name="invoice_for"][value="${data.draft.invoice_for}"]`);
+                        if (radio) radio.checked = true;
+                    }
+                    
+                    // Restore Step 2 data
+                    if (data.draft.items && data.draft.items.length > 0) {
+                        invoiceItems = data.draft.items;
+                        renderItems();
+                    }
+                    
+                    // Navigate to Step 2 if draft has progress
+                    showStep(2);
+                } else {
+                    loadState();
+                    const initialStep = getCurrentStepFromHash();
+                    showStep(initialStep);
+                }
+            })
+            .catch(() => {
+                loadState();
+                const initialStep = getCurrentStepFromHash();
+                showStep(initialStep);
+            });
+    } else {
+        loadState();
+        showStep(getCurrentStepFromHash());
+    }
+
+    // Listen for browser back/forward buttons
+    window.addEventListener('hashchange', () => {
+        const stepFromHash = getCurrentStepFromHash();
+        if (stepFromHash) {
+            showStep(stepFromHash);
+        }
+    });
+
+    // ============================================
+    // END INITIALIZATION
+    // ============================================
 })();
 </script>
 

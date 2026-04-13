@@ -95,8 +95,8 @@
         <div>
             <label for="status" class="field-label">Status</label>
             <select id="status" name="status" class="form-input" required>
-                @foreach(['draft', 'sent', 'paid', 'overdue', 'cancelled'] as $status)
-                    <option value="{{ $status }}" {{ old('status', $invoice->status) === $status ? 'selected' : '' }}>{{ ucfirst($status) }}</option>
+                @foreach(['unpaid' => 'Unpaid', 'paid' => 'Paid', 'partially-paid' => 'Partially Paid'] as $value => $label)
+                    <option value="{{ $value }}" {{ old('status', $invoice->status) === $value ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>
         </div>

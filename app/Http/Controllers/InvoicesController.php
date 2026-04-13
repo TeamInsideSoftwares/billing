@@ -160,38 +160,92 @@ class InvoicesController extends Controller
     public function getRenewalInvoices(Request $request)
     {
         $clientId = $request->input('clientid');
+        $daysFilter = (int) $request->input('days', 1);
 
         if (!$clientId) {
             return response()->json([]);
         }
 
+        \Log::info('getRenewalInvoices', ['clientid' => $clientId, 'days_filter' => $daysFilter]);
+
+        // Get all invoices for this client
         $invoices = ProformaInvoice::where('clientid', $clientId)
-            ->whereHas('items', function ($query) {
-                $query->where('end_date', '<', now())
-                    ->whereIn('frequency', ['monthly', 'yearly', 'quarterly', 'semi-annually']);
-            })
             ->with('items', 'client')
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($invoice) {
-                $expiredCount = $invoice->items->filter(function ($item) {
-                    return $item->end_date
-                        && $item->end_date < now()
-                        && in_array($item->frequency, ['monthly', 'yearly', 'quarterly', 'semi-annually'], true);
-                })->count();
+            ->map(function ($invoice) use ($daysFilter) {
+                $today = now()->startOfDay();
+                $upcomingThreshold = now()->addDays($daysFilter)->endOfDay();
+                
+                // Check for expired recurring items (includes today, not renewed)
+                $expiredItems = $invoice->items->filter(function ($item) use ($today) {
+                    if (!$item->end_date || $item->renewed_to_proformaid) {
+                        return false;
+                    }
+                    
+                    $itemEndDate = $item->end_date instanceof \Carbon\Carbon 
+                        ? $item->end_date 
+                        : \Carbon\Carbon::parse($item->end_date);
+                    
+                    $isExpired = $itemEndDate <= $today;
+                    $hasRecurringFrequency = in_array($item->frequency, ['daily', 'weekly', 'bi-weekly', 'monthly', 'yearly', 'quarterly', 'semi-annually'], true);
+                    
+                    \Log::info('Item check (expired):', [
+                        'item_name' => $item->item_name,
+                        'end_date' => $itemEndDate->toDateTimeString(),
+                        'frequency' => $item->frequency,
+                        'is_expired' => $isExpired,
+                        'has_recurring' => $hasRecurringFrequency,
+                        'is_renewed' => (bool) $item->renewed_to_proformaid,
+                    ]);
+                    
+                    return $isExpired && $hasRecurringFrequency;
+                });
+                
+                // Check for upcoming expiring items (within 30 days, not renewed, not already expired)
+                $upcomingItems = $invoice->items->filter(function ($item) use ($today, $upcomingThreshold) {
+                    if (!$item->end_date || $item->renewed_to_proformaid) {
+                        return false;
+                    }
+                    
+                    $itemEndDate = $item->end_date instanceof \Carbon\Carbon 
+                        ? $item->end_date 
+                        : \Carbon\Carbon::parse($item->end_date);
+                    
+                    // Not expired yet but will expire within 30 days
+                    $isUpcoming = $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
+                    $hasRecurringFrequency = in_array($item->frequency, ['daily', 'weekly', 'bi-weekly', 'monthly', 'yearly', 'quarterly', 'semi-annually'], true);
+                    
+                    return $isUpcoming && $hasRecurringFrequency;
+                });
 
-                $currency = $invoice->client->currency ?? 'INR';
-
-                return [
+                $result = [
                     'proformaid' => $invoice->proformaid,
                     'invoice_number' => $invoice->invoice_number,
                     'grand_total' => $invoice->grand_total ?? '0.00',
-                    'currency' => $currency,
+                    'currency' => $invoice->client->currency ?? 'INR',
                     'total_items' => $invoice->items->count(),
-                    'expired_items' => $expiredCount,
+                    'expired_items' => $expiredItems->count(),
+                    'upcoming_items' => $upcomingItems->count(),
+                    'has_expired' => $expiredItems->count() > 0,
+                    'has_upcoming' => $upcomingItems->count() > 0,
                 ];
+
+                \Log::info('Invoice result:', [
+                    'invoice_number' => $result['invoice_number'],
+                    'expired_items' => $result['expired_items'],
+                    'upcoming_items' => $result['upcoming_items'],
+                ]);
+
+                return $result;
+            })
+            ->filter(function ($invoice) {
+                // Return invoices with expired OR upcoming items
+                return $invoice['has_expired'] || $invoice['has_upcoming'];
             })
             ->values();
+
+        \Log::info('Renewal invoices found:', ['count' => $invoices->count()]);
 
         return response()->json($invoices);
     }
@@ -229,13 +283,32 @@ class InvoicesController extends Controller
     public function getRenewalItems(Request $request, $invoiceid)
     {
         $invoice = ProformaInvoice::with('items')->findOrFail($invoiceid);
+        $daysFilter = (int) $request->input('days', 1);
+        
+        $today = now()->startOfDay();
+        $upcomingThreshold = now()->addDays($daysFilter)->endOfDay();
 
-        $items = $invoice->items->map(function ($item) {
-            $isExpired = $item->end_date
-                && $item->end_date < now()
-                && in_array($item->frequency, ['monthly', 'yearly', 'quarterly', 'semi-annually'], true);
+        \Log::info('getRenewalItems', [
+            'invoiceid' => $invoiceid,
+            'invoice_number' => $invoice->invoice_number,
+            'total_items' => $invoice->items->count(),
+        ]);
+
+        $items = $invoice->items->map(function ($item) use ($today, $upcomingThreshold) {
+            if (!$item->end_date || $item->renewed_to_proformaid) {
+                $isExpired = false;
+                $isUpcoming = false;
+            } else {
+                $itemEndDate = $item->end_date instanceof \Carbon\Carbon 
+                    ? $item->end_date 
+                    : \Carbon\Carbon::parse($item->end_date);
+                
+                $isExpired = $itemEndDate <= $today;
+                $isUpcoming = !$isExpired && $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
+            }
 
             return [
+                'proformaitemid' => $item->proformaitemid,
                 'itemid' => $item->itemid,
                 'item_name' => $item->item_name,
                 'quantity' => $item->quantity,
@@ -248,6 +321,8 @@ class InvoicesController extends Controller
                 'end_date' => $item->end_date?->format('Y-m-d'),
                 'line_total' => $item->line_total,
                 'is_expired' => $isExpired,
+                'is_upcoming' => $isUpcoming,
+                'renewed_to_proformaid' => $item->renewed_to_proformaid,
             ];
         })->values();
 
@@ -368,30 +443,28 @@ class InvoicesController extends Controller
     {
         try {
             $validated = $request->validate([
+                'proformaid' => 'nullable|exists:proforma_invoices,proformaid',
                 'clientid' => 'required|exists:clients,clientid',
                 'orderid' => 'nullable|exists:orders,orderid',
-                'invoice_number' => 'required|string|unique:proforma_invoices,invoice_number',
+                'invoice_number' => 'nullable|string',
                 'invoice_title' => 'nullable|string|max:255',
                 'invoice_for' => 'required|string|in:orders,renewal,without_orders',
                 'issue_date' => 'required|date',
                 'due_date' => 'required|date|after_or_equal:issue_date',
                 'notes' => 'nullable|string',
                 'terms' => 'nullable|string',
-                'status' => 'required|in:draft,sent,paid,overdue,cancelled',
+                'status' => 'nullable|in:unpaid,paid,partially-paid',
                 'currency_code' => 'nullable|string|max:10',
                 'subtotal' => 'required|numeric|min:0',
                 'tax_total' => 'required|numeric|min:0',
                 'grand_total' => 'required|numeric|min:0',
                 'items_data' => 'required|json',
                 'accountid' => 'nullable|size:10',
+                'renewed_item_ids' => 'nullable|string',
             ]);
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {
-            \Log::error('Invoice validation failed: ' . $e->getMessage(), [
-                'request_data' => $request->except('items_data'),
-                'error' => $e->getMessage(),
-            ]);
             throw ValidationException::withMessages([
                 'general' => 'Invalid form data. Please check all fields and try again.',
             ]);
@@ -404,6 +477,9 @@ class InvoicesController extends Controller
             ]);
         }
 
+        // Set default status if not provided
+        $validated['status'] = $validated['status'] ?? 'unpaid';
+        
         $this->assertDocumentNumberAvailable($validated['invoice_number'], null, ProformaInvoice::class);
 
         if ($validated['invoice_for'] === 'orders') {
@@ -442,7 +518,29 @@ class InvoicesController extends Controller
         $validated['currency_code'] = $validated['currency_code'] ?? ($client->currency ?? 'INR');
         $validated['created_by'] = $user?->userid ?? $user?->id;
         unset($validated['items_data']);
+        
+        // Check if we're updating an existing draft
+        $existingDraft = null;
+        if (!empty($validated['proformaid'])) {
+            $existingDraft = ProformaInvoice::whereIn('status', ['unpaid', 'partially-paid'])
+                ->find($validated['proformaid']);
+            if ($existingDraft) {
+                // Use draft's invoice_number
+                $validated['invoice_number'] = $existingDraft->invoice_number;
+            }
+        } else {
+            // Generate new number
+            $validated['invoice_number'] = $this->generateInvoiceNumber();
+            $this->assertDocumentNumberAvailable($validated['invoice_number'], null, ProformaInvoice::class);
+        }
 
+        $itemsData = json_decode($request->items_data, true);
+        if (!is_array($itemsData) || empty($itemsData)) {
+            throw ValidationException::withMessages([
+                'items_data' => 'Add at least one invoice item before submitting.',
+            ]);
+        }
+        
         $subtotal = 0;
         $taxTotal = 0;
         $preparedItems = [];
@@ -488,6 +586,7 @@ class InvoicesController extends Controller
                 'end_date' => $itemData['end_date'] ?? null,
                 'line_total' => $lineTotal,
                 'sort_order' => $index + 1,
+                'renewed_from_proformaitemid' => $itemData['renewed_from_proformaitemid'] ?? null,
             ];
         }
 
@@ -501,12 +600,53 @@ class InvoicesController extends Controller
         $invoice = null;
 
         try {
-            DB::transaction(function () use ($validated, $preparedItems, &$invoice) {
-                $invoice = ProformaInvoice::create($validated);
+            DB::transaction(function () use ($validated, $preparedItems, &$invoice, $request, $existingDraft) {
+                if ($existingDraft) {
+                    // Update existing draft
+                    $existingDraft->update($validated);
+                    $invoice = $existingDraft;
+                    
+                    // Delete existing items
+                    ProformaInvoiceItem::where('proformaid', $invoice->proformaid)->delete();
+                } else {
+                    // Create new invoice
+                    $invoice = ProformaInvoice::create($validated);
+                }
 
                 foreach ($preparedItems as $itemData) {
                     $itemData['proformaid'] = $invoice->proformaid;
                     ProformaInvoiceItem::create($itemData);
+                }
+
+                // If this is a renewal, mark the original items as renewed
+                if ($validated['invoice_for'] === 'renewal') {
+                    $renewedItemIdsRaw = $request->input('renewed_item_ids');
+                    $renewedItemIds = json_decode($renewedItemIdsRaw ?? '[]', true);
+                    
+                    \Log::info('Renewal submission check', [
+                        'invoice_for' => $validated['invoice_for'],
+                        'renewed_item_ids_raw' => $renewedItemIdsRaw,
+                        'renewed_item_ids_parsed' => $renewedItemIds,
+                        'new_invoice_id' => $invoice->proformaid,
+                    ]);
+                    
+                    if (!empty($renewedItemIds)) {
+                        \Log::info('Marking proforma items as renewed', [
+                            'invoice_id' => $invoice->proformaid,
+                            'renewed_proformaitem_ids' => $renewedItemIds,
+                        ]);
+
+                        $updated = ProformaInvoiceItem::whereIn('proformaitemid', $renewedItemIds)
+                            ->whereNull('renewed_to_proformaid')
+                            ->update([
+                                'renewed_to_proformaid' => $invoice->proformaid,
+                                'renewed_at' => now(),
+                            ]);
+                            
+                        \Log::info('Updated items count:', ['updated' => $updated]);
+                    } else {
+                        \Log::warning('No renewed_item_ids found for renewal invoice');
+                    }
                 }
             });
         } catch (\Exception $e) {
@@ -521,6 +661,101 @@ class InvoicesController extends Controller
         }
 
         return redirect()->route('invoices.index')->with('success', 'Invoice created successfully with items.');
+    }
+
+    public function invoicesSaveDraft(Request $request)
+    {
+        $validated = $request->validate([
+            'clientid' => 'required|exists:clients,clientid',
+            'invoice_title' => 'nullable|string|max:255',
+            'invoice_for' => 'nullable|string|in:orders,renewal,without_orders',
+                'status' => 'nullable|in:unpaid,paid,partially-paid',
+        ]);
+
+        $user = auth()->user();
+        $client = Client::findOrFail($validated['clientid']);
+
+        // Check if draft already exists for this client
+        $draft = ProformaInvoice::where('clientid', $validated['clientid'])
+            ->whereIn('status', ['unpaid', 'partially-paid'])
+            ->where('created_by', $user?->userid ?? $user?->id)
+            ->where('updated_at', '>', now()->subHours(24))
+            ->first();
+
+        if ($draft) {
+            // Update existing draft
+            $draft->update([
+                'invoice_title' => $validated['invoice_title'] ?? $draft->invoice_title,
+                'invoice_for' => $validated['invoice_for'] ?? $draft->invoice_for,
+            ]);
+        } else {
+            // Create new draft
+            $draft = ProformaInvoice::create([
+                'accountid' => $user->accountid ?? 'ACC0000001',
+                'clientid' => $validated['clientid'],
+                'invoice_number' => $this->generateInvoiceNumber(),
+                'invoice_title' => $validated['invoice_title'] ?? '',
+                'invoice_for' => $validated['invoice_for'] ?? 'without_orders',
+                'status' => 'unpaid',
+                'issue_date' => now(),
+                'due_date' => now()->addDays(7),
+                'currency_code' => $client->currency ?? 'INR',
+                'subtotal' => 0,
+                'tax_total' => 0,
+                'grand_total' => 0,
+                'amount_paid' => 0,
+                'balance_due' => 0,
+                'created_by' => $user?->userid ?? $user?->id,
+            ]);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'proformaid' => $draft->proformaid,
+            'invoice_number' => $draft->invoice_number,
+        ]);
+    }
+
+    public function invoicesGetDraft($clientid)
+    {
+        $user = auth()->user();
+        
+        $draft = ProformaInvoice::where('clientid', $clientid)
+            ->whereIn('status', ['unpaid', 'partially-paid'])
+            ->where('created_by', $user?->userid ?? $user?->id)
+            ->where('updated_at', '>', now()->subHours(24))
+            ->with('items')
+            ->first();
+
+        if (!$draft) {
+            return response()->json(['ok' => false]);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'draft' => [
+                'proformaid' => $draft->proformaid,
+                'invoice_number' => $draft->invoice_number,
+                'invoice_title' => $draft->invoice_title,
+                'invoice_for' => $draft->invoice_for,
+                'status' => $draft->status,
+                'items' => $draft->items->map(fn($i) => [
+                    'proformaitemid' => $i->proformaitemid,
+                    'itemid' => $i->itemid,
+                    'item_name' => $i->item_name,
+                    'quantity' => $i->quantity,
+                    'unit_price' => $i->unit_price,
+                    'tax_rate' => $i->tax_rate,
+                    'duration' => $i->duration,
+                    'frequency' => $i->frequency,
+                    'no_of_users' => $i->no_of_users,
+                    'start_date' => $i->start_date?->format('Y-m-d'),
+                    'end_date' => $i->end_date?->format('Y-m-d'),
+                    'line_total' => $i->line_total,
+                    'renewed_from_proformaitemid' => $i->renewed_from_proformaitemid,
+                ]),
+            ],
+        ]);
     }
 
     public function invoicesShow(string $invoice): View
@@ -595,7 +830,7 @@ class InvoicesController extends Controller
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
             'notes' => 'nullable|string',
-            'status' => 'required|in:draft,sent,paid,overdue,cancelled',
+            'status' => 'required|in:unpaid,paid,partially-paid',
             'items_data' => 'required|json',
         ]);
 

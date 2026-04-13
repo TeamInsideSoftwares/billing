@@ -23,6 +23,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'end_date',
     'line_total',
     'sort_order',
+    'renewed_to_proformaid',
+    'renewed_at',
+    'renewed_from_proformaitemid',
 ])]
 class ProformaInvoiceItem extends Model
 {
