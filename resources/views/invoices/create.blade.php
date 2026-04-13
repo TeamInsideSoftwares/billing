@@ -12,7 +12,7 @@
             This will create a Proforma Invoice. You can convert it to a Tax Invoice later.
         </p>
     </div>
-    <a href="{{ route('invoices.index') }}" class="text-link">&larr; Back to invoices</a>
+    <a href="{{ $clientId ? route('orders.index', ['c' => $clientId]) : route('invoices.index') }}" class="text-link">&larr; Back</a>
 </section>
 
 {{-- 
@@ -208,6 +208,34 @@
     let manualItemCounter = 0;
     let editingManualItemId = null;
     const STORAGE_KEY = 'invoice_create_state';
+
+    // Auto-select client and order from URL parameters
+    @if($clientId)
+        selectedClientId = '{{ $clientId }}';
+        clientSelect.value = '{{ $clientId }}';
+        clientSelect.dispatchEvent(new Event('change'));
+    @endif
+
+    @if($orderId)
+        // Wait a bit for client change to process, then auto-select order
+        setTimeout(() => {
+            // Set invoice source to "From Orders"
+            const ordersRadio = document.querySelector('input[name="invoice_for"][value="orders"]');
+            if (ordersRadio) {
+                ordersRadio.checked = true;
+                ordersRadio.dispatchEvent(new Event('change'));
+            }
+
+            // Auto-select the order after orders load
+            setTimeout(() => {
+                const orderCheckbox = document.querySelector(`input[name="selected_orders[]"][value="{{ $orderId }}"]`);
+                if (orderCheckbox) {
+                    orderCheckbox.checked = true;
+                    orderCheckbox.dispatchEvent(new Event('change'));
+                }
+            }, 500);
+        }, 300);
+    @endif
 
     // ============================================
     // STEP NAVIGATION WITH URL HASH (PERSISTENT)

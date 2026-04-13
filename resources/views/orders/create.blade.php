@@ -6,11 +6,11 @@
     <div>
         <h3 style="margin: 0; font-size: 1rem; font-weight: 600; color: #64748b;">Create New Order</h3>
     </div>
-    <a href="{{ route('orders.index') }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to orders</a>
+    <a href="{{ route('orders.index', ['c' => $preSelectedClientId]) }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to orders</a>
 </section>
 
 <section class="panel-card" style="padding: 1rem;">
-    <form method="POST" action="{{ route('orders.store') }}" class="client-form" id="orderForm">
+    <form method="POST" action="{{ route('orders.store', ['c' => $preSelectedClientId]) }}" class="client-form" id="orderForm">
         @csrf
         <div class="form-grid" style="grid-template-columns: repeat(4, 1fr); gap: 0.75rem;">
             <div>
@@ -18,7 +18,7 @@
                 <select id="clientid" name="clientid" required style="font-size: 0.85rem; padding: 0.4rem 0.5rem;">
                     <option value="">-- Choose Client --</option>
                     @foreach($clients as $client)
-                        <option value="{{ $client->clientid }}" {{ old('clientid') == $client->clientid ? 'selected' : '' }}>
+                        <option value="{{ $client->clientid }}" {{ (old('clientid', $preSelectedClientId ?? '') == $client->clientid) ? 'selected' : '' }}>
                             {{ $client->business_name ?? $client->contact_name }}
                         </option>
                     @endforeach

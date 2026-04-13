@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    // Mobile: Toggle sidebar visibility
     toggle.addEventListener('click', () => {
         sidebar.classList.toggle('is-open');
     });

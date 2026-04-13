@@ -104,6 +104,8 @@ class InvoicesController extends Controller
         $accountid = auth()->check() ? ($user?->accountid ?? 'ACC0000001') : 'ACC0000001';
         $legacyAccountId = $user?->id ? (string) $user->id : null;
         $account = \App\Models\Account::find($accountid);
+        $orderId = request('order_id');
+        $clientId = request('c');
 
         $termAccountIds = array_values(array_filter(array_unique([$accountid, $legacyAccountId])));
 
@@ -123,6 +125,8 @@ class InvoicesController extends Controller
             'account' => $account,
             'accountBillingDetail' => AccountBillingDetail::where('accountid', $accountid)->first(),
             'billingTerms' => $billingTerms,
+            'orderId' => $orderId,
+            'clientId' => $clientId,
         ]);
     }
 

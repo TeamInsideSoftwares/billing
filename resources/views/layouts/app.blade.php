@@ -146,26 +146,41 @@
     <div class="layout-grid">
         <aside class="sidebar" data-sidebar>
             <div class="brand-block">
-                <!-- <div class="brand-mark">SR</div> -->
-                <div>
+                <div class="brand-mark">SR</div>
+                <div class="brand-text">
                     <p class="eyebrow">Billing</p>
                     <h5>Control Center</h5>
                 </div>
             </div>
 
             <nav class="nav-list">
+                @php
+                    $navIcons = [
+                        'dashboard' => 'fa-tachometer-alt',
+                        'clients' => 'fa-users',
+                        'services' => 'fa-box',
+                        'orders' => 'fa-shopping-cart',
+                        'quotations' => 'fa-file-alt',
+                        'invoices' => 'fa-file-invoice-dollar',
+                        'payments' => 'fa-money-bill-wave',
+                        'settings' => 'fa-cog',
+                    ];
+                @endphp
                 @foreach ($navItems as $item)
                     @php
                         // Extract the base route name (e.g., 'services' from 'services.index')
                         $baseRoute = explode('.', $item['route'])[0];
                         // Check if current route starts with the base route name
                         $isActive = request()->routeIs($baseRoute . '.*') || request()->routeIs($item['route']);
+                        $icon = $navIcons[$baseRoute] ?? 'fa-circle';
                     @endphp
                     <a
                         href="{{ route($item['route']) }}"
                         class="nav-link {{ $isActive ? 'is-active' : '' }}"
+                        data-tooltip="{{ $item['label'] }}"
                     >
-                        {{ $item['label'] }}
+                        <i class="fas {{ $icon }} nav-icon"></i>
+                        <span class="nav-text">{{ $item['label'] }}</span>
                     </a>
                 @endforeach
             </nav>
@@ -176,12 +191,17 @@
                 <span>Prioritize 6 accounts due this week.</span>
             </div> -->
 
-            <div style="margin-top: auto; padding: 1.5rem; border-top: 1px solid var(--slate-800);">
-                <strong>{{ auth()->user()->name }}</strong>
-                <form action="{{ route('logout') }}" method="POST" style="margin-top: 0.5rem;">
-                    @csrf
-                    <button type="submit" class="text-link danger" style="font-size: 0.9rem;">Sign Out</button>
-                </form>
+            <div class="user-section" style="margin-top: auto; padding: 1.25rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                <div class="user-avatar" style="width: 32px; height: 32px; border-radius: 50%; background: #3b82f6; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.85rem; flex-shrink: 0;">
+                    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                </div>
+                <div class="user-text">
+                    <strong style="display: block; font-size: 0.9rem;">{{ auth()->user()->name }}</strong>
+                    <form action="{{ route('logout') }}" method="POST" style="margin-top: 0.25rem;">
+                        @csrf
+                        <button type="submit" class="text-link danger" style="font-size: 0.8rem; padding: 0; background: none; border: none; cursor: pointer;">Sign Out</button>
+                    </form>
+                </div>
             </div>
         </aside>
 

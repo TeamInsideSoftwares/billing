@@ -120,6 +120,8 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::controller(OrdersController::class)->group(function () {
+        Route::get('/orders/select-client', 'selectClient')->name('orders.select-client');
+        Route::get('/orders/json', 'getOrderJsonByNumber')->name('orders.json-by-number');
         Route::get('/orders', 'orders')->name('orders.index');
         Route::get('/orders/create', 'ordersCreate')->name('orders.create');
         Route::post('/orders', 'ordersStore')->name('orders.store');

@@ -6,11 +6,11 @@
     <div>
         <h3 style="margin: 0; font-size: 1rem; font-weight: 600; color: #64748b;">Edit {{ $order->order_number }}</h3>
     </div>
-    <a href="{{ route('orders.index') }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to orders</a>
+    <a href="{{ route('orders.index', ['c' => $order->clientid]) }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to orders</a>
 </section>
 
 <section class="panel-card" style="padding: 1rem;">
-    <form method="POST" action="{{ route('orders.update', $order) }}" class="client-form" id="orderForm">
+    <form method="POST" action="{{ route('orders.update', ['order' => $order, 'c' => $clientId]) }}" class="client-form" id="orderForm">
         @method('PUT')
         @csrf
 
@@ -257,7 +257,7 @@
 
         <div class="form-actions" style="clear: both; margin-top: 0.75rem;">
             <button type="submit" class="primary-button" id="submitBtn" style="padding: 0.5rem 1.25rem; font-size: 0.9rem;">Update Order</button>
-            <a href="{{ route('orders.index') }}" class="text-link" style="font-size: 0.85rem;">Cancel</a>
+            <a href="{{ route('orders.index', ['c' => $clientId]) }}" class="text-link" style="font-size: 0.85rem;">Cancel</a>
             <input type="hidden" name="subtotal" id="formSubtotal">
             <input type="hidden" name="tax_total" id="formTaxTotal">
             <input type="hidden" name="grand_total" id="formGrandTotal">

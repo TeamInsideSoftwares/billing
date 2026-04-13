@@ -16,9 +16,31 @@ use Throwable;
 
 class OrdersController extends Controller
 {
+    public function selectClient(): View
+    {
+        $clients = Client::orderBy('business_name')
+            ->orderBy('contact_name')
+            ->get();
+
+        return view('orders.select-client', [
+            'title' => 'Select Client - Orders',
+            'clients' => $clients,
+        ]);
+    }
+
     public function orders(): View
     {
+        $clientId = request('c');
+        $selectedClient = null;
+        
         $query = Order::with('client');
+        
+        // Filter by client if client_id is provided
+        if ($clientId) {
+            $query->where('clientid', $clientId);
+            $selectedClient = Client::find($clientId);
+        }
+        
         $searchTerm = request('search', '');
 
         if ($searchTerm) {
@@ -50,6 +72,7 @@ class OrdersController extends Controller
                 'client_email' => $order->client->email,
                 'client_phone' => $order->client->phone,
                 'client_city' => $order->client->city,
+                'clientid' => $order->clientid,
                 'order_date' => $order->order_date?->format('d M Y') ?? 'N/A',
                 'delivery_date' => $order->delivery_date?->format('d M Y') ?? 'N/A',
                 'amount' => number_format($order->grand_total ?? 0),
@@ -59,7 +82,12 @@ class OrdersController extends Controller
             ];
         });
 
-        $groupedOrders = $orders->groupBy('client')->sortBy(fn($g, $k) => strtolower($k));
+        // Group by client only if no specific client is selected
+        if ($clientId) {
+            $groupedOrders = ['All Orders' => $orders->sortByDesc('order_date')];
+        } else {
+            $groupedOrders = $orders->groupBy('client')->sortBy(fn($g, $k) => strtolower($k));
+        }
 
         return view('orders.index', [
             'title' => 'Orders',
@@ -67,6 +95,9 @@ class OrdersController extends Controller
             'groupedOrders' => $groupedOrders,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
+            'selectedClient' => $selectedClient,
+            'clientId' => $clientId,
+            'allClients' => Client::orderBy('business_name')->orderBy('contact_name')->get(),
         ]);
     }
 
@@ -74,6 +105,7 @@ class OrdersController extends Controller
     {
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $account = \App\Models\Account::find($accountid);
+        $preSelectedClientId = request('c');
 
         return view('orders.create', [
             'title' => 'Create Order',
@@ -83,6 +115,7 @@ class OrdersController extends Controller
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'account' => $account,
             'fixedTaxRate' => ($account && !$account->allow_multi_taxation) ? ($account->fixed_tax_rate ?? 0) : 0,
+            'preSelectedClientId' => $preSelectedClientId,
         ]);
     }
 
@@ -154,7 +187,7 @@ class OrdersController extends Controller
             ]);
         }
 
-        return redirect()->route('orders.index')->with('success', 'Order created successfully with items.');
+        return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order created successfully with items.');
     }
 
     public function ordersShow(Order $order): View
@@ -176,7 +209,7 @@ class OrdersController extends Controller
     public function getOrderJson(Request $request, Order $order)
     {
         $order->load(['items.service']);
-        
+
         return response()->json([
             'orderid' => $order->orderid,
             'order_number' => $order->order_number,
@@ -201,6 +234,50 @@ class OrdersController extends Controller
         ]);
     }
 
+    public function getOrderJsonByNumber(Request $request)
+    {
+        $orderId = $request->input('order_id');
+        
+        if (!$orderId) {
+            return response()->json(['error' => 'Order ID required'], 400);
+        }
+
+        try {
+            $order = Order::where('orderid', $orderId)
+                ->orWhere('order_number', $orderId)
+                ->with('items')
+                ->first();
+
+            if (!$order) {
+                return response()->json(['error' => 'Order not found'], 404);
+            }
+
+            $items = $order->items->map(function ($item) {
+                return [
+                    'orderid' => $item->orderid,
+                    'itemid' => $item->itemid,
+                    'quantity' => $item->quantity ?? 1,
+                    'unit_price' => number_format($item->unit_price ?? 0, 2),
+                    'tax_rate' => number_format($item->tax_rate ?? 0, 2),
+                    'line_total' => number_format($item->line_total ?? 0, 2),
+                    'item_name' => $item->item_name ?? 'Item',
+                    'service' => null,
+                ];
+            });
+
+            return response()->json([
+                'orderid' => $order->orderid,
+                'order_number' => $order->order_number,
+                'clientid' => $order->clientid,
+                'grand_total' => number_format($order->grand_total ?? 0, 2),
+                'items' => $items,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Order JSON error: ' . $e->getMessage());
+            return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function ordersEdit(Order $order): View
     {
         $order->load(['items.item']);
@@ -216,6 +293,7 @@ class OrdersController extends Controller
             'items' => $order->items,
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'account' => $account,
+            'clientId' => request('c'),
         ]);
     }
 
@@ -294,14 +372,14 @@ class OrdersController extends Controller
             ]);
         }
 
-        return redirect()->route('orders.index')->with('success', 'Order updated successfully.');
+        return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order updated successfully.');
     }
 
     public function ordersDestroy(Order $order)
     {
         $order->delete();
 
-        return redirect()->route('orders.index')->with('success', 'Order deleted successfully.');
+        return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order deleted successfully.');
     }
 
     private function resolveTaxRate(?Service $service, array $itemData): float
