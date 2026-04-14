@@ -5,37 +5,34 @@
         {{-- Client Selection View --}}
         <section class="section-bar">
             <div>
-                <h3 style="margin: 0; font-size: 1rem; font-weight: 600; color: #64748b;">Select Client for Orders</h3>
+                <h3 style="margin: 0; font-size: 1rem; font-weight: 600; color: #0f172a;">Orders</h3>
                 <p style="margin: 0.2rem 0 0 0; font-size: 0.75rem; color: #64748b;">
-                    Choose a client to view their orders
+                    Select a client to manage their orders
                 </p>
             </div>
         </section>
 
-        <div class="panel-card" style="padding: 1.5rem;">
-            <div style="max-width: 450px; margin: 0 auto; text-align: center;">
-                <label for="client-select" style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: #0f172a;">
-                    Select Client
-                </label>
-                <select 
-                    id="client-select" 
-                    onchange="if(this.value) window.location.href='{{ route('orders.index') }}?c=' + this.value"
-                    style="width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.875rem; background: white; cursor: pointer; transition: all 0.2s;"
-                    onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 2px rgba(59, 130, 246, 0.1)';"
-                    onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none';"
-                >
-                    <option value="">-- Choose a Client --</option>
-                    @foreach($allClients as $client)
-                        <option value="{{ $client->clientid }}">
-                            {{ $client->business_name ?? $client->contact_name }}
-                            @if($client->email)
-                                ({{ $client->email }})
-                            @endif
-                        </option>
-                    @endforeach
-                </select>
-                <p style="margin-top: 0.75rem; font-size: 0.8rem; color: #64748b;">
-                    Select a client to view their orders
+        <div style="max-width: 600px; margin: 2rem auto;">
+            <div class="panel-card" style="padding: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0;">
+                    <i class="fas fa-building" style="color: #3b82f6; font-size: 0.9rem;"></i>
+                    <span style="font-size: 0.85rem; font-weight: 600; color: #0f172a;">Client Selection</span>
+                </div>
+                <form action="{{ route('orders.index') }}" method="GET">
+                    <select name="c" id="client-select" class="form-control" style="width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; background: #fafbfc; transition: all 0.2s ease;" autofocus onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.08)'; this.style.background='white';" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'; this.style.background='#fafbfc';">
+                        <option value="" selected disabled>-- Select a Client --</option>
+                        @foreach($allClients as $client)
+                            <option value="{{ $client->clientid }}">
+                                {{ $client->business_name ?? $client->contact_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <button type="submit" style="width: 100%; margin-top: 0.75rem; padding: 0.65rem; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='#2563eb';" onmouseout="this.style.background='#3b82f6';">
+                        <i class="fas fa-arrow-right" style="margin-right: 0.4rem;"></i> View Orders
+                    </button>
+                </form>
+                <p style="margin-top: 0.75rem; font-size: 0.75rem; color: #94a3b8; text-align: center;">
+                    {{ $allClients->count() }} client(s) available
                 </p>
             </div>
         </div>
@@ -88,22 +85,26 @@
                                 <span style="font-size: 0.8rem;">{{ $order['order_date'] }}</span>
                             </td>
                             <td>
-                                <span style="font-size: 0.8rem; color: {{ ($order['discount_total'] ?? 0) > 0 ? '#dc2626' : '#94a3b8' }};">{{ ($order['discount_total'] ?? 0) > 0 ? number_format($order['discount_total'], 0) : '-' }}</span>
+                                <span style="font-size: 0.8rem; color: {{ ($order['discount'] ?? 0) > 0 ? '#dc2626' : '#94a3b8' }};">{{ ($order['discount'] ?? 0) > 0 ? number_format($order['discount'], 2) : '-' }}</span>
                             </td>
                             <td>
                                 <strong style="font-size: 0.85rem;">{{ $order['amount'] }}</strong>
                             </td>
                             <td>
-                                <span class="status-pill {{ strtolower($order['status']) }}">{{ $order['status'] }}</span>
+                                <span style="font-size: 0.8rem; padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 500; background: {{ $order['verified'] ? '#dcfce7' : '#fef3c7' }}; color: {{ $order['verified'] ? '#16a34a' : '#d97706' }};">
+                                    {{ $order['is_verified'] }}
+                                </span>
                             </td>
                             <td class="table-actions" style="vertical-align: middle; white-space: nowrap; width: 1%;">
                                 <div style="display: flex; gap: 0.375rem; align-items: center;">
                                     <a href="{{ route('orders.show', ['order' => $order['record_id'], 'c' => $clientId]) }}" class="icon-action-btn view" title="View">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    @if($order['verified'])
                                     <a href="{{ route('invoices.create', ['o' => $order['record_id'], 'c' => $clientId]) }}" class="icon-action-btn" style="color: #8b5cf6; border-color: #ddd6fe;" title="Create PI" onmouseover="this.style.background='#f5f3ff'; this.style.borderColor='#8b5cf6'; this.style.transform='scale(1.1)';" onmouseout="this.style.background='white'; this.style.borderColor='#ddd6fe'; this.style.transform='scale(1)';">
                                         <i class="fas fa-file-invoice"></i>
                                     </a>
+                                    @endif
                                     <a href="{{ route('orders.edit', ['order' => $order['record_id'], 'c' => $clientId]) }}" class="icon-action-btn edit" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>

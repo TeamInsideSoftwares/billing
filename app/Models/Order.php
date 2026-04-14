@@ -21,8 +21,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'frequency',
     'no_of_users',
     'subtotal',
+    'discount_total',
     'tax_total',
     'grand_total',
+    'is_verified',
     'notes',
     'terms',
     'created_by',
@@ -60,6 +62,7 @@ class Order extends Model
             'no_of_users' => 'integer',
             'subtotal' => 'decimal:2',
             'tax_total' => 'decimal:2',
+            'discount_total' => 'decimal:2',
             'grand_total' => 'decimal:2',
         ];
     }

@@ -76,10 +76,12 @@ class OrdersController extends Controller
                 'clientid' => $order->clientid,
                 'order_date' => $order->order_date?->format('d M Y') ?? 'N/A',
                 'delivery_date' => $order->delivery_date?->format('d M Y') ?? 'N/A',
-                'amount' => number_format($order->grand_total ?? 0),
+                'amount' => number_format($order->grand_total ?? 0, 2),
+                'discount' => $order->discount_total ?? 0,
                 'item_count' => $order->items()->count(),
                 'sales_person' => $salesPersonLookup[$salesPersonId] ?? ($order->salesPerson->name ?? '-'),
-                'status' => ucfirst($order->status ?? 'Draft'),
+                'is_verified' => ($order->is_verified ?? 'no') === 'yes' ? 'Verified' : 'Unverified',
+                'verified' => ($order->is_verified ?? 'no') === 'yes',
             ];
         });
 
@@ -178,7 +180,6 @@ class OrdersController extends Controller
                 'order_date' => $validated['order_date'],
                 'delivery_date' => $validated['delivery_date'] ?? null,
                 'notes' => $validated['notes'],
-                'status' => 'unverified',
                 'sales_person_id' => $validated['sales_person_id'] ?? null,
                 'subtotal' => $subtotal,
                 'discount_total' => $discountTotal,
@@ -445,17 +446,21 @@ class OrdersController extends Controller
 
         $itemsData = json_decode($request->items_data, true) ?: [];
         $subtotal = 0;
+        $discountTotal = 0;
         $taxTotal = 0;
         foreach ($itemsData as $itemData) {
             $lineTotal = (float) ($itemData['line_total'] ?? 0);
+            $discountAmount = (float) ($itemData['discount_amount'] ?? 0);
             $subtotal += $lineTotal;
+            $discountTotal += $discountAmount;
 
             $service = Service::with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
-            $taxAmount = ($lineTotal * $taxRate) / 100;
+            $taxableAmount = $lineTotal - $discountAmount;
+            $taxAmount = ($taxableAmount * $taxRate) / 100;
             $taxTotal += $taxAmount;
         }
-        $grandTotal = $subtotal + $taxTotal;
+        $grandTotal = $subtotal - $discountTotal + $taxTotal;
 
         // Handle PO file upload
         if ($request->hasFile('po_file')) {
@@ -482,9 +487,9 @@ class OrdersController extends Controller
             'order_date' => $validated['order_date'],
             'delivery_date' => $validated['delivery_date'] ?? null,
             'notes' => $validated['notes'],
-            'status' => 'unverified', // Always set to unverified
             'sales_person_id' => $validated['sales_person_id'] ?? null,
             'subtotal' => $subtotal,
+            'discount_total' => $discountTotal,
             'tax_total' => $taxTotal,
             'grand_total' => $grandTotal,
             'po_number' => $validated['po_number'] ?? null,
@@ -517,6 +522,9 @@ class OrdersController extends Controller
                 'quantity' => $itemData['quantity'],
                 'unit_price' => $itemData['unit_price'],
                 'tax_rate' => $taxRate,
+                'tax_included' => $itemData['tax_included'] ?? 'no',
+                'discount_percent' => $itemData['discount_percent'] ?? 0,
+                'discount_amount' => $itemData['discount_amount'] ?? 0,
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
                 'no_of_users' => $itemData['no_of_users'] ?? null,
@@ -685,7 +693,6 @@ class OrdersController extends Controller
                     'delivery_date' => $validated['delivery_date'] ?? null,
                     'sales_person_id' => $validated['sales_person_id'] ?? null,
                     'notes' => $validated['notes'] ?? null,
-                    'status' => 'unverified',
                     'po_number' => $validated['po_number'] ?? null,
                     'po_date' => $validated['po_date'] ?? null,
                     'po_file' => $validated['po_file'] ?? $existingOrder->po_file,
