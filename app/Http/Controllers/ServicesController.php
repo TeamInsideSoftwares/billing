@@ -161,13 +161,25 @@ class ServicesController extends Controller
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
 
         DB::transaction(function () use ($validated) {
-            $costings = collect($validated['costings'])->map(function (array $costing) {
+            $account = \App\Models\Account::find($validated['accountid']);
+            $isMultiTax = $account && $account->allow_multi_taxation;
+            $fixedTaxRate = $account ? ($account->fixed_tax_rate ?? 0) : 0;
+
+            $costings = collect($validated['costings'])->map(function (array $costing) use ($isMultiTax, $fixedTaxRate) {
                 $taxid = $costing['taxid'] ?? null;
                 $taxRate = 0;
-                if ($taxid) {
-                    $tax = \App\Models\Tax::find($taxid);
-                    $taxRate = $tax ? $tax->rate : 0;
+
+                if ($isMultiTax) {
+                    // Multi-taxation mode: look up tax rate from taxid
+                    if ($taxid) {
+                        $tax = \App\Models\Tax::find($taxid);
+                        $taxRate = $tax ? $tax->rate : 0;
+                    }
+                } else {
+                    // Fixed tax mode: use fixed_tax_rate from accounts table
+                    $taxRate = $fixedTaxRate;
                 }
+
                 return [
                     'currency_code' => strtoupper($costing['currency_code']),
                     'cost_price' => $costing['cost_price'],
@@ -275,13 +287,25 @@ class ServicesController extends Controller
         ]);
 
         DB::transaction(function () use ($validated, $service) {
-            $costings = collect($validated['costings'])->map(function (array $costing) {
+            $account = \App\Models\Account::find($service->accountid);
+            $isMultiTax = $account && $account->allow_multi_taxation;
+            $fixedTaxRate = $account ? ($account->fixed_tax_rate ?? 0) : 0;
+
+            $costings = collect($validated['costings'])->map(function (array $costing) use ($isMultiTax, $fixedTaxRate) {
                 $taxid = $costing['taxid'] ?? null;
                 $taxRate = 0;
-                if ($taxid) {
-                    $tax = Tax::find($taxid);
-                    $taxRate = $tax ? $tax->rate : 0;
+
+                if ($isMultiTax) {
+                    // Multi-taxation mode: look up tax rate from taxid
+                    if ($taxid) {
+                        $tax = Tax::find($taxid);
+                        $taxRate = $tax ? $tax->rate : 0;
+                    }
+                } else {
+                    // Fixed tax mode: use fixed_tax_rate from accounts table
+                    $taxRate = $fixedTaxRate;
                 }
+
                 return [
                     'currency_code' => strtoupper($costing['currency_code']),
                     'cost_price' => $costing['cost_price'],
@@ -399,12 +423,23 @@ class ServicesController extends Controller
                 }
 
                 $item->costings()->delete();
+                $account = \App\Models\Account::find($userAccountId);
+                $isMultiTax = $account && $account->allow_multi_taxation;
+                $fixedTaxRate = $account ? ($account->fixed_tax_rate ?? 0) : 0;
+
                 foreach ($validated['costings'] as $costing) {
                     $taxid = $costing['taxid'] ?? null;
                     $taxRate = 0;
-                    if ($taxid) {
-                        $tax = Tax::find($taxid);
-                        $taxRate = $tax ? $tax->rate : 0;
+
+                    if ($isMultiTax) {
+                        // Multi-taxation mode: look up tax rate from taxid
+                        if ($taxid) {
+                            $tax = Tax::find($taxid);
+                            $taxRate = $tax ? $tax->rate : 0;
+                        }
+                    } else {
+                        // Fixed tax mode: use fixed_tax_rate from accounts table
+                        $taxRate = $fixedTaxRate;
                     }
 
                     $item->costings()->create([

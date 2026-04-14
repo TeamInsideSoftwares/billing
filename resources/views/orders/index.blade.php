@@ -64,10 +64,9 @@
                     <thead>
                         <tr>
                             <th style="width: 5%;"></th>
-                            <th style="width: 12%;">Order #</th>
-                            <th style="width: 25%;">Title</th>
+                            <th style="width: 30%;">Order Title</th>
                             <th style="width: 12%;">Order Date</th>
-                            <th style="width: 12%;">Delivery</th>
+                            <th style="width: 10%;">Discount</th>
                             <th style="width: 10%;">Amount</th>
                             <th style="width: 8%;">Status</th>
                             <th style="width: 16%;">Actions</th>
@@ -82,16 +81,14 @@
                                 </button>
                             </td>
                             <td>
-                                <strong style="font-size: 0.85rem;">{{ $order['number'] }}</strong>
-                            </td>
-                            <td>
-                                <span style="font-size: 0.85rem;">{{ $order['order_title'] ?? '-' }}</span>
+                                <span style="font-size: 0.85rem;"><b>{{ $order['order_title'] ?? '-' }}</b></span>
+                                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.1rem;">{{ $order['number'] }}</div>
                             </td>
                             <td>
                                 <span style="font-size: 0.8rem;">{{ $order['order_date'] }}</span>
                             </td>
                             <td>
-                                <span style="font-size: 0.8rem;">{{ $order['delivery_date'] }}</span>
+                                <span style="font-size: 0.8rem; color: {{ ($order['discount_total'] ?? 0) > 0 ? '#dc2626' : '#94a3b8' }};">{{ ($order['discount_total'] ?? 0) > 0 ? number_format($order['discount_total'], 0) : '-' }}</span>
                             </td>
                             <td>
                                 <strong style="font-size: 0.85rem;">{{ $order['amount'] }}</strong>
@@ -104,7 +101,7 @@
                                     <a href="{{ route('orders.show', ['order' => $order['record_id'], 'c' => $clientId]) }}" class="icon-action-btn view" title="View">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href="{{ route('invoices.create', ['order_id' => $order['record_id'], 'c' => $clientId]) }}" class="icon-action-btn" style="color: #8b5cf6; border-color: #ddd6fe;" title="Create PI" onmouseover="this.style.background='#f5f3ff'; this.style.borderColor='#8b5cf6'; this.style.transform='scale(1.1)';" onmouseout="this.style.background='white'; this.style.borderColor='#ddd6fe'; this.style.transform='scale(1)';">
+                                    <a href="{{ route('invoices.create', ['o' => $order['record_id'], 'c' => $clientId]) }}" class="icon-action-btn" style="color: #8b5cf6; border-color: #ddd6fe;" title="Create PI" onmouseover="this.style.background='#f5f3ff'; this.style.borderColor='#8b5cf6'; this.style.transform='scale(1.1)';" onmouseout="this.style.background='white'; this.style.borderColor='#ddd6fe'; this.style.transform='scale(1)';">
                                         <i class="fas fa-file-invoice"></i>
                                     </a>
                                     <a href="{{ route('orders.edit', ['order' => $order['record_id'], 'c' => $clientId]) }}" class="icon-action-btn edit" title="Edit">
@@ -122,7 +119,7 @@
                         </tr>
                         {{-- Order Items Row (Hidden by default) --}}
                         <tr class="order-items-row" id="items-{{ $order['record_id'] }}" style="display: none;">
-                            <td colspan="8" style="padding: 0; background: #f8fafc; border-left: 3px solid #3b82f6;">
+                            <td colspan="7" style="padding: 0; background: #f8fafc; border-left: 3px solid #3b82f6;">
                                 <div style="padding: 0.875rem 1rem;">
                                     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.625rem;">
                                         <i class="fas fa-box-open" style="color: #3b82f6; font-size: 0.85rem;"></i>
@@ -136,7 +133,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" style="padding: 2.5rem; text-align: center; color: #94a3b8;">
+                            <td colspan="7" style="padding: 2.5rem; text-align: center; color: #94a3b8;">
                                 <i class="fas fa-receipt" style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.3;"></i>
                                 <p style="margin: 0; font-size: 0.9rem; font-weight: 500;">No orders found for this client</p>
                                 <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem;">Get started by creating your first order.</p>
@@ -162,7 +159,7 @@
                 // Load items via AJAX if not already loaded
                 if (contentDiv.innerHTML.includes('Loading items...')) {
                     // Use a relative URL that works with subdirectory installations
-                    const fetchUrl = `orders/json?order_id=${encodeURIComponent(orderRecordId)}`;
+                    const fetchUrl = `orders/json?o=${encodeURIComponent(orderRecordId)}`;
                     // console.log('Fetching:', fetchUrl);
                     
                     fetch(fetchUrl)

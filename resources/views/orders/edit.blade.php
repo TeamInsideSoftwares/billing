@@ -10,255 +10,334 @@
 </section>
 
 <section class="panel-card" style="padding: 1rem;">
-    <form method="POST" action="{{ route('orders.update', ['order' => $order, 'c' => $clientId]) }}" class="client-form" id="orderForm">
+    <form method="POST" action="{{ route('orders.update', ['order' => $order, 'c' => $clientId]) }}" class="client-form" id="orderForm" enctype="multipart/form-data">
         @method('PUT')
         @csrf
 
         @if ($errors->any())
-            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    <strong style="color: #991b1b; font-size: 0.9rem;">Please fix the following errors:</strong>
-                </div>
-                <ul style="margin: 0; padding-left: 1.5rem; color: #b91c1c; font-size: 0.85rem;">
+            <div class="alert alert-danger alert-sm" style="margin-bottom: 1rem;">
+                <strong>Please fix the following errors:</strong>
+                <ul style="margin: 0.5rem 0 0 0; padding-left: 1.5rem;">
                     @foreach ($errors->all() as $error)
-                        <li style="margin-bottom: 0.15rem;">{{ $error }}</li>
+                        <li>{{ $error }}</li>
                     @endforeach
                 </ul>
             </div>
         @endif
 
-        <div class="form-grid" style="grid-template-columns: repeat(4, 1fr); gap: 0.75rem;">
-            <div>
-                <label for="clientid" style="font-size: 0.8rem;">Client *</label>
-                <select id="clientid" name="clientid" required style="font-size: 0.85rem; padding: 0.4rem 0.5rem;">
-                    <option value="">-- Choose Client --</option>
-                    @foreach($clients as $client)
-                        <option value="{{ $client->clientid }}" {{ old('clientid', $order->clientid) == $client->clientid ? 'selected' : '' }}>
-                            {{ $client->business_name ?? $client->contact_name }}
-                        </option>
-                    @endforeach
-                </select>
-                @error('clientid') <span class="error">{{ $message }}</span> @enderror
-            </div>
-            <div>
-                <label for="order_number" style="font-size: 0.8rem;">Order Number *</label>
-                <input type="text" id="order_number" name="order_number" value="{{ old('order_number', $order->order_number) }}" required style="font-size: 0.85rem; padding: 0.4rem 0.5rem;">
-                @error('order_number') <span class="error">{{ $message }}</span> @enderror
-            </div>
-            <div>
-                <label for="order_title" style="font-size: 0.8rem;">Order Title</label>
-                <input type="text" id="order_title" name="order_title" value="{{ old('order_title', $order->order_title) }}" style="font-size: 0.85rem; padding: 0.4rem 0.5rem;">
-            </div>
-            <div>
-                <label for="status" style="font-size: 0.8rem;">Status *</label>
-                <select id="status" name="status" style="font-size: 0.85rem; padding: 0.4rem 0.5rem;">
-                    <option value="draft" {{ old('status', $order->status) == 'draft' ? 'selected' : '' }}>Draft</option>
-                    <option value="confirmed" {{ old('status', $order->status) == 'confirmed' ? 'selected' : '' }}>Confirmed</option>
-                    <option value="processing" {{ old('status', $order->status) == 'processing' ? 'selected' : '' }}>Processing</option>
-                    <option value="shipped" {{ old('status', $order->status) == 'shipped' ? 'selected' : '' }}>Shipped</option>
-                    <option value="delivered" {{ old('status', $order->status) == 'delivered' ? 'selected' : '' }}>Delivered</option>
-                </select>
-            </div>
-            <div>
-                <label for="order_date" style="font-size: 0.8rem;">Order Date *</label>
-                <input type="date" id="order_date" name="order_date" value="{{ old('order_date', $order->order_date ? $order->order_date->format('Y-m-d') : '') }}" required style="font-size: 0.85rem; padding: 0.4rem 0.5rem;">
-                @error('order_date') <span class="error">{{ $message }}</span> @enderror
-            </div>
-            <div>
-                <label for="delivery_date" style="font-size: 0.8rem;">Delivery Date</label>
-                <input type="date" id="delivery_date" name="delivery_date" value="{{ old('delivery_date', $order->delivery_date ? $order->delivery_date->format('Y-m-d') : '') }}" style="font-size: 0.85rem; padding: 0.4rem 0.5rem;">
-            </div>
-            <div>
-                <label for="sales_person_id" style="font-size: 0.8rem;">Sales Person</label>
-                <select id="sales_person_id" name="sales_person_id" style="font-size: 0.85rem; padding: 0.4rem 0.5rem;">
-                    <option value="">-- Select --</option>
-                    @foreach($users as $user)
-                        <option value="{{ $user->id }}" {{ old('sales_person_id', $order->sales_person_id) == $user->id ? 'selected' : '' }}>
-                            {{ $user->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <div style="grid-column: span 2;">
-                <label for="notes" style="font-size: 0.8rem;">Notes</label>
-                <textarea id="notes" name="notes" rows="2" style="font-size: 0.85rem; padding: 0.4rem 0.5rem;">{{ old('notes', $order->notes) }}</textarea>
-            </div>
-        </div>
+        <div class="row">
+            {{-- LEFT COLUMN: Order Details (narrower) --}}
+            <div class="col-3">
+                <div style="position: sticky; top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.75rem; margin-bottom: 1rem;">
 
-        {{-- Items Section --}}
-        <div class="items-section" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                <h4 style="margin: 0; font-size: 0.95rem;">Order Items</h4>
-                <span style="font-size: 0.75rem; color: #64748b; font-style: italic;">
-                    <i class="fas fa-info-circle"></i> Changes will be saved when you click "Update Order"
-                </span>
+                        <h5 style="margin: 0; font-size: 1rem; font-weight: 600; color: #0f172a;">
+                            <i class="fas fa-clipboard-list" style="color: #3b82f6; font-size: 1.1rem; margin-right: 0.5rem;"></i>
+                            Order Details
+                        </h5>
+
+                        <div style="background: #f1f5f9; padding: 0.4rem 0.7rem; border-radius: 6px; font-size: 0.85rem;">
+                            <span style="color: #0f172a; font-weight: 500;">
+                                {{ old('order_number', $order->order_number) }}
+                            </span>
+                        </div>
+
+                    </div>
+
+                    <div class="mb-3">
+                        <select id="clientid" name="clientid_disabled" disabled class="form-control form-control-sm">
+                            <option value="">-- Choose Client --</option>
+                            @foreach($clients as $client)
+                                <option value="{{ $client->clientid }}" {{ old('clientid', $order->clientid) == $client->clientid ? 'selected' : '' }}>
+                                    {{ $client->business_name ?? $client->contact_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('clientid') <span class="error">{{ $message }}</span> @enderror
+                        <input type="hidden" name="clientid" value="{{ old('clientid', $order->clientid) }}">
+                        <input type="hidden" name="order_number" value="{{ old('order_number', $order->order_number) }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <input type="text" id="order_title" name="order_title" value="{{ old('order_title', $order->order_title) }}" class="form-control form-control-sm" placeholder="Order Title/Details">
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <input type="date" id="order_date" name="order_date" value="{{ old('order_date', $order->order_date ? $order->order_date->format('Y-m-d') : '') }}" required class="form-control form-control-sm">
+                            @error('order_date') <span class="error">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="col-6 mb-3">
+                            <input type="date" id="delivery_date" name="delivery_date" value="{{ old('delivery_date', $order->delivery_date ? $order->delivery_date->format('Y-m-d') : '') }}" class="form-control form-control-sm">
+                        </div>
+                    </div>
+
+
+                    <div class="mb-3">
+                        <select id="sales_person_id" name="sales_person_id" class="form-control form-control-sm">
+                            <option value="">-- Select Sales Person --</option>
+                            @foreach($users as $user)
+                                <option value="{{ $user->id }}" {{ old('sales_person_id', $order->sales_person_id) == $user->id ? 'selected' : '' }}>
+                                    {{ $user->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Purchase Order Section --}}
+                    <div style="border-top: 1px solid #e2e8f0; padding-top: 0.75rem; margin-top: 0.75rem; margin-bottom: 0.75rem;">
+                        <h6 style="font-size: 0.85rem; font-weight: 600; color: #64748b; margin-bottom: 0.75rem;">Purchase Order</h6>
+                        
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <input type="text" id="po_number" name="po_number" value="{{ old('po_number', $order->po_number) }}" class="form-control form-control-sm" placeholder="PO Number">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <input type="date" id="po_date" name="po_date" value="{{ old('po_date', $order->po_date ? $order->po_date->format('Y-m-d') : '') }}" class="form-control form-control-sm" placeholder="PO Date">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label style="font-size: 0.75rem; color: #64748b; display: block; margin-bottom: 0.25rem;">PO Upload</label>
+                            @if($order->po_file)
+                                <div style="font-size: 0.75rem; margin-bottom: 0.25rem;">
+                                    <a href="{{ asset('storage/' . $order->po_file) }}" target="_blank" class="text-link">
+                                        <i class="fas fa-file"></i> View Current File
+                                    </a>
+                                </div>
+                            @endif
+                            <input type="file" id="po_file" name="po_file" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                            <small style="font-size: 0.7rem; color: #94a3b8;">Leave empty to keep existing file</small>
+                        </div>
+                    </div>
+
+                    {{-- Agreement Section --}}
+                    <div style="border-top: 1px solid #e2e8f0; padding-top: 0.75rem; margin-bottom: 0.75rem;">
+                        <h6 style="font-size: 0.85rem; font-weight: 600; color: #64748b; margin-bottom: 0.75rem;">Agreement</h6>
+                        
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <input type="text" id="agreement_ref" name="agreement_ref" value="{{ old('agreement_ref', $order->agreement_ref) }}" class="form-control form-control-sm" placeholder="Agreement Ref">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <input type="date" id="agreement_date" name="agreement_date" value="{{ old('agreement_date', $order->agreement_date ? $order->agreement_date->format('Y-m-d') : '') }}" class="form-control form-control-sm" placeholder="Agreement Date">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label style="font-size: 0.75rem; color: #64748b; display: block; margin-bottom: 0.25rem;">Agreement Upload</label>
+                            @if($order->agreement_file)
+                                <div style="font-size: 0.75rem; margin-bottom: 0.25rem;">
+                                    <a href="{{ asset('storage/' . $order->agreement_file) }}" target="_blank" class="text-link">
+                                        <i class="fas fa-file"></i> View Current File
+                                    </a>
+                                </div>
+                            @endif
+                            <input type="file" id="agreement_file" name="agreement_file" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                            <small style="font-size: 0.7rem; color: #94a3b8;">Leave empty to keep existing file</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <textarea id="notes" name="notes" rows="3" class="form-control form-control-sm" placeholder="Notes">{{ old('notes', $order->notes) }}</textarea>
+                    </div>
+                </div>
             </div>
 
-            <div class="add-item-row form-grid" style="background: #f9fafb; padding: 0.9rem; border-radius: 6px; margin-bottom: 0.75rem; grid-template-columns: 2fr 0.7fr 1fr @if($account->allow_multi_taxation) 1fr @endif 1fr 0.7fr @if($account->have_users) 1fr @endif 1fr 1fr auto; gap: 0.6rem; align-items: end;">
-                <div>
-                    <label for="item_itemid" style="font-size: 0.8rem;">Item *</label>
-                    <select id="item_itemid" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
-                        <option value="">-- Select Item --</option>
-                        @php
-                            $groupedServices = $services->groupBy(fn($s) => $s->category->name ?? 'No Category');
-                        @endphp
-                        @foreach($groupedServices as $catName => $catServices)
-                            <optgroup label="{{ $catName }}">
-                                @foreach($catServices as $service)
-                                    @php
-                                        $costings = $service->costings->sortBy('currency_code');
-                                        $defaultCosting = $costings->first();
-                                        $sellingPrice = $defaultCosting?->selling_price ?? 0;
-                                        $taxRate = $defaultCosting?->tax_rate ?? 0;
-                                    @endphp
-                                    <option value="{{ $service->itemid }}"
-                                            data-selling-price="{{ $sellingPrice }}"
-                                            data-tax-rate="{{ $taxRate }}">
-                                        {{ $service->name }} ({{ number_format($sellingPrice, 0) }})
-                                    </option>
+            {{-- RIGHT COLUMN: Order Items (wider) --}}
+            <div class="col-9">
+
+                {{-- Items Section --}}
+                <div class="items-section">
+                    <!-- <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <p style="margin: 0; font-size: 0.85rem; color: #64748b;">
+                            <i class="fas fa-info-circle" style="margin-right: 0.35rem;"></i>
+                            Changes will be saved when you click "Update Order"
+                        </p>
+                    </div> -->
+
+                    <div class="add-item-row form-grid" style="background: #f9fafb; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; flex-wrap: nowrap; gap: 0.5rem; align-items: end;">
+                        <div style="flex: 2; min-width: 150px;">
+                            <label style="font-size: 0.75rem;">Item</label>
+                            <select id="item_itemid" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                                <option value="">-- Select Item --</option>
+                                @php
+                                    $groupedServices = $services->groupBy(fn($s) => $s->category->name ?? 'No Category');
+                                @endphp
+                                @foreach($groupedServices as $catName => $catServices)
+                                    <optgroup label="{{ $catName }}">
+                                        @foreach($catServices as $service)
+                                            @php
+                                                $costings = $service->costings->sortBy('currency_code');
+                                                $defaultCosting = $costings->first();
+                                                $sellingPrice = $defaultCosting?->selling_price ?? 0;
+                                                $taxRate = $defaultCosting?->tax_rate ?? 0;
+                                                $taxIncluded = $defaultCosting?->tax_included ?? 'no';
+                                            @endphp
+                                            <option value="{{ $service->itemid }}"
+                                                    data-selling-price="{{ $sellingPrice }}"
+                                                    data-tax-rate="{{ $taxRate }}"
+                                                    data-tax-included="{{ $taxIncluded }}">
+                                                {{ $service->name }} ({{ number_format($sellingPrice, 0) }})
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
                                 @endforeach
-                            </optgroup>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label for="item_quantity" style="font-size: 0.8rem;">Qty</label>
-                    <input type="number" id="item_quantity" value="1" min="0.01" step="0.01" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
-                </div>
-                <div>
-                    <label for="item_unit_price" style="font-size: 0.8rem;">Price</label>
-                    <input type="number" id="item_unit_price" min="0" step="0.01" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
-                </div>
-                @if($account->allow_multi_taxation)
-                <div>
-                    <label for="item_tax_rate" style="font-size: 0.8rem;">Tax % <a href="#" id="open-tax-modal-order-edit" style="font-size:11px;margin-left:4px;" class="text-link">+ Add</a></label>
-                    <select id="item_tax_rate" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
-                        <option value="0">No Tax</option>
-                        @foreach($taxes as $tax)
-                            <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 2) }}%)</option>
-                        @endforeach
-                    </select>
-                </div>
-                @else
-                <input type="hidden" id="item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
-                @endif
-                @if($account->have_users)
-                <div>
-                    <label for="item_users" style="font-size: 0.8rem;">Users</label>
-                    <input type="number" id="item_users" value="1" min="1" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
-                </div>
-                @else
-                <input type="hidden" id="item_users" value="1">
-                @endif
-                <div>
-                    <label for="item_frequency" style="font-size: 0.8rem;">Frequency</label>
-                    <select id="item_frequency" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
-                        <option value="">--</option>
-                        <option value="one-time">One-Time</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="bi-weekly">Bi-Weekly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="quarterly">Quarterly</option>
-                        <option value="semi-annually">Semi-Annually</option>
-                        <option value="yearly">Yearly</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="item_duration" style="font-size: 0.8rem;">Duration</label>
-                    <input type="text" id="item_duration" placeholder="e.g. 12" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
-                </div>
-                <div>
-                    <label for="item_start_date" style="font-size: 0.8rem;">Start Date</label>
-                    <input type="date" id="item_start_date" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
-                </div>
-                <div>
-                    <label for="item_end_date" style="font-size: 0.8rem;">End Date</label>
-                    <input type="date" id="item_end_date" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
-                </div>
-                <div>
-                    <label for="item_delivery_date" style="font-size: 0.8rem;">Delivery Date</label>
-                    <input type="date" id="item_delivery_date" style="font-size: 0.9rem; padding: 0.45rem 0.55rem;">
-                </div>
-                <div style="align-self: end;">
-                    <button type="button" id="addItemBtn" class="primary-button" style="height: auto; padding: 0.55rem 1.05rem; font-size: 0.9rem;">Add</button>
-                </div>
-            </div>
-
-            <table id="itemsTable" style="width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.9rem;">
-                <thead>
-                    <tr style="background: #f3f4f6;">
-                        <th style="padding: 0.65rem 0.8rem; text-align: left; font-size: 0.82rem;">Item</th>
-                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 80px; font-size: 0.82rem;">Qty</th>
-                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 120px; font-size: 0.82rem;">Price</th>
+                            </select>
+                        </div>
+                        <div style="flex: 0.6; min-width: 60px;">
+                            <label style="font-size: 0.75rem;">Qty</label>
+                            <input type="number" id="item_quantity" value="1" min="0.01" step="0.01" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                        </div>
+                        <div style="flex: 0.8; min-width: 80px;">
+                            <label style="font-size: 0.75rem;">Price</label>
+                            <input type="number" id="item_unit_price" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                        </div>
                         @if($account->allow_multi_taxation)
-                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 80px; font-size: 0.82rem;">Tax %</th>
+                        <div style="flex: 0.8; min-width: 80px;">
+                            <label style="font-size: 0.75rem;">Tax% <a href="#" id="open-tax-modal-order-edit" style="font-size:10px;margin-left:2px;" class="text-link">+</a></label>
+                            <select id="item_tax_rate" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                                <option value="0">No Tax</option>
+                                @foreach($taxes as $tax)
+                                    <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 2) }}%)</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @else
+                        <input type="hidden" id="item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
                         @endif
-                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 110px; font-size: 0.82rem;">Frequency</th>
-                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 95px; font-size: 0.82rem;">Duration</th>
                         @if($account->have_users)
-                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 80px; font-size: 0.82rem;">Users</th>
+                        <div style="flex: 0.6; min-width: 55px;">
+                            <label style="font-size: 0.75rem;">Users</label>
+                            <input type="number" id="item_users" value="1" min="1" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                        </div>
+                        @else
+                        <input type="hidden" id="item_users" value="1">
                         @endif
-                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 100px; font-size: 0.82rem;">Start Date</th>
-                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 100px; font-size: 0.82rem;">End Date</th>
-                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 100px; font-size: 0.82rem;">Delivery</th>
-                        <th style="padding: 0.65rem 0.55rem; text-align: right; width: 110px; font-size: 0.82rem;">Total</th>
-                        <th style="padding: 0.6rem 0.5rem; width: 80px;"></th>
-                    </tr>
-                </thead>
-                <tbody id="itemsTbody">
-                    @foreach($items as $item)
-                        @php
-                            $lineTotal = (float) ($item->line_total ?? 0);
-                        @endphp
-                        <tr data-item-id="{{ $loop->index + 1 }}">
-                            <td style="padding: 0.4rem 0.6rem;">{{ $item->item->name ?? $item->item_name }}</td>
-                            <td style="padding: 0.45rem 0.55rem; text-align: right;"><input type="number" class="item-qty" value="{{ $item->quantity }}" min="0.01" step="0.01" style="width: 72px; text-align: right; font-size: 0.88rem; padding: 0.25rem 0.35rem;"></td>
-                            <td style="padding: 0.45rem 0.55rem; text-align: right;"><input type="number" class="item-price" value="{{ $item->unit_price }}" min="0" step="0.01" style="width: 110px; text-align: right; font-size: 0.88rem; padding: 0.25rem 0.35rem;"></td>
-                            @if($account->allow_multi_taxation)
-                            <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ number_format($item->tax_rate ?? 0, 2) }}%</td>
-                            @endif
-                            <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ ucfirst($item->frequency ?? '—') }}</td>
-                            <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ $item->duration ?? '—' }}</td>
-                            @if($account->have_users)
-                            <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ $item->no_of_users ?? '—' }}</td>
-                            @endif
-                            <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ $item->start_date ? $item->start_date->format('d M Y') : '—' }}</td>
-                            <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ $item->end_date ? $item->end_date->format('d M Y') : '—' }}</td>
-                            <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">{{ $item->delivery_date ? $item->delivery_date->format('d M Y') : '—' }}</td>
-                            <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>{{ number_format($lineTotal, 0) }}</strong></td>
-                            <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
-                                <button type="button" class="edit-item icon-action-btn edit" data-id="{{ $loop->index + 1 }}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;"><i class="fas fa-edit"></i></button>
-                                <button type="button" class="remove-item icon-action-btn delete" data-id="{{ $loop->index + 1 }}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                        <div style="flex: 0.6; min-width: 70px;">
+                            <label style="font-size: 0.75rem;">Disc%</label>
+                            <input type="number" id="item_discount" value="0" min="0" max="100" step="0.01" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                        </div>
+                        <div style="flex: 0.8; min-width: 80px;">
+                            <label style="font-size: 0.75rem;">Freq</label>
+                            <select id="item_frequency" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                                <option value="">--</option>
+                                <option value="one-time">One-Time</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="bi-weekly">Bi-Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="semi-annually">Semi-Annually</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </div>
+                        <div style="flex: 0.6; min-width: 60px;">
+                            <label style="font-size: 0.75rem;">Dur</label>
+                            <input type="text" id="item_duration" placeholder="12" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                        </div>
+                        <div style="flex: 0.8; min-width: 90px;">
+                            <label style="font-size: 0.75rem;">Start</label>
+                            <input type="date" id="item_start_date" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                        </div>
+                        <div style="flex: 0.8; min-width: 90px;">
+                            <label style="font-size: 0.75rem;">End</label>
+                            <input type="date" id="item_end_date" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                        </div>
+                        <div style="flex: 0.8; min-width: 90px;">
+                            <label style="font-size: 0.75rem;">Delivery</label>
+                            <input type="date" id="item_delivery_date" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                        </div>
+                        <div style="flex-shrink: 0;">
+                            <button type="button" id="addItemBtn" class="btn btn-sm btn-primary" style="padding: 0.35rem 0.85rem; font-size: 0.8rem; white-space: nowrap;">Add</button>
+                        </div>
+                    </div>
 
-            <div id="orderSummary" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem; float: right; width: 320px; margin-left: 1rem;">
-                <h4 style="margin-top: 0; font-size: 0.9rem;">Summary</h4>
-                
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem; font-size: 0.85rem;">
-                    <span>Subtotal:</span>
-                    <strong id="subtotal">{{ number_format($order->subtotal, 0) }}</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem; font-size: 0.85rem;">
-                    <span>Tax:</span>
-                    <strong id="taxTotal">0.00</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 1rem; font-weight: bold; border-top: 2px solid #e2e8f0; padding-top: 0.35rem; margin-top: 0.35rem;">
-                    <span>Total:</span>
-                    <strong id="grandTotal">{{ number_format($order->grand_total, 0) }}</strong>
+                    <table id="itemsTable" style="width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; font-size: 0.9rem;">
+                        <thead>
+                            <tr style="background: #f3f4f6;">
+                                <th style="padding: 0.75rem 0.85rem; text-align: left; font-size: 0.82rem; font-weight: 600;">Item</th>
+                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 85px; font-size: 0.82rem; font-weight: 600;">Qty</th>
+                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 120px; font-size: 0.82rem; font-weight: 600;">Price</th>
+                                @if($account->allow_multi_taxation)
+                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 85px; font-size: 0.82rem; font-weight: 600;">Tax %</th>
+                                @endif
+                                @if($account->have_users)
+                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 85px; font-size: 0.82rem; font-weight: 600;">Users</th>
+                                @endif
+                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 75px; font-size: 0.82rem; font-weight: 600;">Disc%</th>
+                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 115px; font-size: 0.82rem; font-weight: 600;">Freq</th>
+                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 100px; font-size: 0.82rem; font-weight: 600;">Dur</th>
+                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 105px; font-size: 0.82rem; font-weight: 600;">Start</th>
+                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 105px; font-size: 0.82rem; font-weight: 600;">End</th>
+                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 90px; font-size: 0.82rem; font-weight: 600;">Delivery</th>
+                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 115px; font-size: 0.82rem; font-weight: 600;">Total</th>
+                                <th style="padding: 0.7rem 0.55rem; width: 85px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsTbody">
+                            @foreach($items as $item)
+                                @php
+                                    $lineTotal = (float) ($item->line_total ?? 0);
+                                @endphp
+                                <tr data-item-id="{{ $loop->index + 1 }}">
+                                    <td style="padding: 0.5rem 0.65rem;">{{ $item->item->name ?? $item->item_name }}</td>
+                                    <td style="padding: 0.5rem 0.6rem; text-align: right; font-size: 0.82rem;">{{ $item->quantity }}</td>
+                                    <td style="padding: 0.5rem 0.6rem; text-align: right; font-size: 0.82rem;">{{ $item->unit_price }}</td>
+                                    @if($account->allow_multi_taxation)
+                                    <td style="padding: 0.5rem 0.55rem; text-align: right; font-size: 0.78rem;">{{ number_format($item->tax_rate ?? 0, 2) }}%</td>
+                                    @endif
+                                    @if($account->have_users)
+                                    <td style="padding: 0.5rem 0.55rem; text-align: right; font-size: 0.78rem;">{{ $item->no_of_users ?? '—' }}</td>
+                                    @endif
+                                    <td style="padding: 0.5rem 0.55rem; text-align: right; font-size: 0.78rem;">{{ ($item->discount_percent ?? 0) > 0 ? number_format($item->discount_percent, 0) . '%' : '—' }}</td>
+                                    <td style="padding: 0.5rem 0.55rem; text-align: right; font-size: 0.78rem;">{{ ucfirst($item->frequency ?? '—') }}</td>
+                                    <td style="padding: 0.5rem 0.55rem; text-align: right; font-size: 0.78rem;">{{ $item->duration ?? '—' }}</td>
+                                    <td style="padding: 0.5rem 0.55rem; text-align: right; font-size: 0.78rem;">{{ $item->start_date ? $item->start_date->format('d M Y') : '—' }}</td>
+                                    <td style="padding: 0.5rem 0.55rem; text-align: right; font-size: 0.78rem;">{{ $item->end_date ? $item->end_date->format('d M Y') : '—' }}</td>
+                                    <td style="padding: 0.5rem 0.55rem; text-align: right; font-size: 0.78rem;">{{ $item->delivery_date ? $item->delivery_date->format('d M Y') : '—' }}</td>
+                                    <td style="padding: 0.5rem 0.55rem; text-align: right;" class="item-line-total"><strong>{{ number_format($lineTotal, 0) }}</strong></td>
+                                    <td style="padding: 0.5rem 0.55rem; text-align: right; white-space: nowrap;">
+                                        <button type="button" class="edit-item icon-action-btn edit" data-id="{{ $loop->index + 1 }}" title="Edit" style="padding: 0.2rem 0.35rem; font-size: 0.75rem; margin-right: 0.25rem;"><i class="fas fa-edit"></i></button>
+                                        <button type="button" class="remove-item icon-action-btn delete" data-id="{{ $loop->index + 1 }}" title="Remove" style="padding: 0.2rem 0.35rem; font-size: 0.75rem;"><i class="fas fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+
+                    <div id="orderSummary" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; max-width: 350px; margin-left: auto;">
+                        <h4 style="margin-top: 0; margin-bottom: 0.75rem; font-size: 0.95rem; font-weight: 600;">Order Summary</h4>
+
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                            <span style="color: #64748b;">Subtotal:</span>
+                            <strong id="subtotal">{{ number_format($order->subtotal, 0) }}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                            <span style="color: #64748b;">Discount:</span>
+                            <strong id="discountTotal" style="color: #dc2626;">{{ number_format($order->discount_total ?? 0, 0) }}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                            <span style="color: #64748b;">Tax:</span>
+                            <strong id="taxTotal">0.00</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: 700; border-top: 2px solid #e2e8f0; padding-top: 0.5rem; margin-top: 0.5rem;">
+                            <span>Total:</span>
+                            <strong id="grandTotal" style="color: #3b82f6;">{{ number_format($order->grand_total, 0) }}</strong>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="form-actions" style="clear: both; margin-top: 0.75rem;">
-            <button type="submit" class="primary-button" id="submitBtn" style="padding: 0.5rem 1.25rem; font-size: 0.9rem;">Update Order</button>
-            <a href="{{ route('orders.index', ['c' => $clientId]) }}" class="text-link" style="font-size: 0.85rem;">Cancel</a>
+        <div class="form-actions" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+            <button type="submit" class="btn btn-primary btn-sm" id="submitBtn">
+                <i class="fas fa-save" style="margin-right: 0.35rem;"></i>Update Order
+            </button>
+            <a href="{{ route('orders.index', ['c' => $clientId]) }}" class="btn btn-secondary btn-sm" style="margin-left: 0.5rem;">
+                <i class="fas fa-times" style="margin-right: 0.35rem;"></i>Cancel
+            </a>
             <input type="hidden" name="subtotal" id="formSubtotal">
+            <input type="hidden" name="discount_total" id="formDiscountTotal">
             <input type="hidden" name="tax_total" id="formTaxTotal">
             <input type="hidden" name="grand_total" id="formGrandTotal">
             <input type="hidden" name="items_data" id="formItemsData">
@@ -274,10 +353,13 @@ document.addEventListener('DOMContentLoaded', function() {
             @php
                 $lineTotal = (float) ($item->line_total ?? 0);
                 $taxRate = (float) ($item->tax_rate ?? 0);
+                $discountPercent = (float) ($item->discount_percent ?? 0);
+                $discountAmount = (float) ($item->discount_amount ?? 0);
                 $taxAmount = ($lineTotal * $taxRate) / 100;
             @endphp
             {
                 id: {{ $loop->index + 1 }},
+                order_item_id: '{{ $item->orderitemid }}',
                 itemid: '{{ $item->itemid }}',
                 item_name: '{{ $item->item->name ?? $item->item_name }}',
                 quantity: {{ $item->quantity }},
@@ -289,6 +371,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 end_date: '{{ $item->end_date ? $item->end_date->format("Y-m-d") : "" }}',
                 delivery_date: '{{ $item->delivery_date ? $item->delivery_date->format("Y-m-d") : "" }}',
                 line_total: {{ $lineTotal }},
+                discount_percent: {{ $discountPercent }},
+                discount_amount: {{ $discountAmount }},
                 tax_rate: {{ $taxRate }},
                 tax_amount: {{ $taxAmount }}
             }@if(!$loop->last), @endif
@@ -337,40 +421,44 @@ document.addEventListener('DOMContentLoaded', function() {
     // Helper function to calculate end date based on frequency and duration
     function calculateEndDate(startDate, frequency, duration) {
         if (!startDate || !frequency || !duration) return '';
-        
+
         const start = new Date(startDate);
         const durationNum = parseFloat(duration);
         if (isNaN(durationNum) || durationNum <= 0) return '';
-        
+
         let endDate = new Date(start);
-        
+
         switch(frequency) {
             case 'daily':
-                endDate.setDate(endDate.getDate() + durationNum);
+                endDate.setDate(endDate.getDate() + durationNum - 1);
                 break;
             case 'weekly':
-                endDate.setDate(endDate.getDate() + (durationNum * 7));
+                endDate.setDate(endDate.getDate() + (durationNum * 7) - 1);
                 break;
             case 'bi-weekly':
-                endDate.setDate(endDate.getDate() + (durationNum * 14));
+                endDate.setDate(endDate.getDate() + (durationNum * 14) - 1);
                 break;
             case 'monthly':
                 endDate.setMonth(endDate.getMonth() + durationNum);
+                endDate.setDate(endDate.getDate() - 1);
                 break;
             case 'quarterly':
                 endDate.setMonth(endDate.getMonth() + (durationNum * 3));
+                endDate.setDate(endDate.getDate() - 1);
                 break;
             case 'semi-annually':
                 endDate.setMonth(endDate.getMonth() + (durationNum * 6));
+                endDate.setDate(endDate.getDate() - 1);
                 break;
             case 'yearly':
                 endDate.setFullYear(endDate.getFullYear() + durationNum);
+                endDate.setDate(endDate.getDate() - 1);
                 break;
             case 'one-time':
             default:
                 return '';
         }
-        
+
         return endDate.toISOString().split('T')[0];
     }
 
@@ -445,7 +533,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const serviceId = document.getElementById('item_itemid').value;
         if (!serviceId) return alert('Select an item');
 
-        const serviceName = document.getElementById('item_itemid').options[document.getElementById('item_itemid').selectedIndex].text.split(' (')[0];
+        const serviceOption = document.getElementById('item_itemid').options[document.getElementById('item_itemid').selectedIndex];
+        const serviceName = serviceOption.text.split(' (')[0];
+        const taxIncluded = serviceOption.dataset.taxIncluded || 'no';
+        
         const qty = parseFloat(document.getElementById('item_quantity').value) || 1;
         const unitPrice = parseFloat(document.getElementById('item_unit_price').value) || 0;
         const frequency = document.getElementById('item_frequency').value || '';
@@ -457,20 +548,129 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Calculate line total with users and duration multiplier
         const lineTotal = calculateLineTotal(qty, unitPrice, users, frequency, duration);
-        
-        // Get tax rate from dropdown if multi-taxation is enabled, otherwise from service costing
+        const discountPercent = parseFloat(document.getElementById('item_discount').value) || 0;
+        const discountAmount = (lineTotal * discountPercent) / 100;
+
+        // Get tax rate from dropdown if multi-taxation is enabled, otherwise use fixed tax rate
         @if($account->allow_multi_taxation)
         const taxRate = parseFloat(document.getElementById('item_tax_rate').value) || 0;
         @else
-        const selectedOption = document.getElementById('item_itemid').options[document.getElementById('item_itemid').selectedIndex];
-        const taxRate = parseFloat(selectedOption?.dataset?.taxRate || '0') || 0;
+        const taxRate = {{ $account->fixed_tax_rate ?? 0 }};
         @endif
-        const taxAmount = (lineTotal * taxRate) / 100;
+        
+        // Calculate tax based on whether it's included or excluded
+        let taxAmount = 0;
+        let lineTotalWithoutTax = lineTotal - discountAmount;
+        
+        if (taxIncluded === 'yes') {
+            // Tax is included in the price - extract the tax amount
+            taxAmount = (lineTotalWithoutTax * taxRate) / (100 + taxRate);
+        } else {
+            // Tax is excluded - add tax on top
+            taxAmount = (lineTotalWithoutTax * taxRate) / 100;
+        }
 
         if (editingItemId) {
-            // Update existing item
+            // Update existing item via AJAX
             const item = items.find(i => i.id === editingItemId);
-            if (item) {
+            if (item && item.order_item_id) {
+                // Disable button during save
+                const btn = document.getElementById('addItemBtn');
+                btn.disabled = true;
+                btn.textContent = 'Updating...';
+
+                // Update item via AJAX
+                fetch(`{{ url('/orders') }}/{{ $order->orderid }}/update-item/${item.order_item_id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        itemid: serviceId,
+                        quantity: qty,
+                        unit_price: unitPrice,
+                        frequency: frequency,
+                        duration: duration,
+                        no_of_users: users,
+                        start_date: startDate,
+                        end_date: endDate,
+                        delivery_date: deliveryDate,
+                        line_total: lineTotal,
+                        discount_percent: discountPercent,
+                        discount_amount: discountAmount,
+                        tax_rate: taxRate
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update local item data
+                        item.itemid = serviceId;
+                        item.item_name = serviceName;
+                        item.quantity = qty;
+                        item.unit_price = unitPrice;
+                        item.frequency = frequency;
+                        item.duration = duration;
+                        item.no_of_users = users;
+                        item.start_date = startDate;
+                        item.end_date = endDate;
+                        item.delivery_date = deliveryDate;
+                        item.line_total = lineTotal;
+                        item.discount_percent = discountPercent;
+                        item.discount_amount = discountAmount;
+                        item.tax_rate = taxRate;
+                        item.tax_amount = taxAmount;
+
+                        const freqLabels = {'one-time':'One-Time','daily':'Daily','weekly':'Weekly','bi-weekly':'Bi-Weekly','monthly':'Monthly','quarterly':'Quarterly','semi-annually':'Semi-Annually','yearly':'Yearly'};
+                        const freqText = frequency ? (freqLabels[frequency] || frequency) : '—';
+                        const durationDisplay = duration || '—';
+
+                        const row = tbody.querySelector(`[data-item-id="${editingItemId}"]`);
+                        if (row) {
+                            row.innerHTML = `
+                                <td style="padding: 0.4rem 0.6rem;">${serviceName}</td>
+                                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${qty}</td>
+                                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${unitPrice}</td>
+                                @if($account->allow_multi_taxation)
+                                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${taxRate}%</td>
+                                @endif
+                                @if($account->have_users)
+                                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${users}</td>
+                                @endif
+                                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${discountPercent > 0 ? discountPercent + '%' : '—'}</td>
+                                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
+                                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>
+                                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${startDate || '—'}</td>
+                                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${endDate || '—'}</td>
+                                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${deliveryDate || '—'}</td>
+                                <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${Math.round(lineTotal)}</strong></td>
+                                <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
+                                    <button type="button" class="edit-item icon-action-btn edit" data-id="${editingItemId}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;"><i class="fas fa-edit"></i></button>
+                                    <button type="button" class="remove-item icon-action-btn delete" data-id="${editingItemId}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button>
+                                </td>
+                            `;
+                        }
+
+                        updateSummary();
+                        resetItemInputs();
+                        editingItemId = null;
+                        btn.textContent = 'Add';
+                        btn.disabled = false;
+                        
+                        showToast('success', 'Item updated successfully');
+                    } else {
+                        throw new Error(data.message || 'Failed to update item');
+                    }
+                })
+                .catch(error => {
+                    btn.disabled = false;
+                    btn.textContent = 'Update';
+                    alert('Error: ' + error.message);
+                });
+            } else {
+                // Item not yet saved to database, just update locally
                 item.itemid = serviceId;
                 item.item_name = serviceName;
                 item.quantity = qty;
@@ -493,16 +693,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (row) {
                     row.innerHTML = `
                         <td style="padding: 0.4rem 0.6rem;">${serviceName}</td>
-                        <td style="padding: 0.45rem 0.55rem; text-align: right;"><input type="number" class="item-qty" value="${qty}" min="0.01" step="0.01" style="width: 72px; text-align: right; font-size: 0.88rem; padding: 0.25rem 0.35rem;"></td>
-                        <td style="padding: 0.45rem 0.55rem; text-align: right;"><input type="number" class="item-price" value="${unitPrice}" min="0" step="0.01" style="width: 110px; text-align: right; font-size: 0.88rem; padding: 0.25rem 0.35rem;"></td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${qty}</td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${unitPrice}</td>
                         @if($account->allow_multi_taxation)
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${taxRate}%</td>
                         @endif
-                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
-                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>
                         @if($account->have_users)
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${users}</td>
                         @endif
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${startDate || '—'}</td>
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${endDate || '—'}</td>
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${deliveryDate || '—'}</td>
@@ -513,73 +713,109 @@ document.addEventListener('DOMContentLoaded', function() {
                         </td>
                     `;
                 }
-            }
-            editingItemId = null;
-            document.getElementById('addItemBtn').textContent = 'Add';
-        } else {
-            // Add new item
-            itemCounter++;
-            const item = {
-                id: itemCounter,
-                itemid: serviceId,
-                item_name: serviceName,
-                quantity: qty,
-                unit_price: unitPrice,
-                frequency: frequency,
-                duration: duration,
-                no_of_users: users,
-                start_date: startDate,
-                end_date: endDate,
-                delivery_date: deliveryDate,
-                line_total: lineTotal,
-                tax_rate: taxRate,
-                tax_amount: taxAmount
-            };
-            items.push(item);
-
-            const freqLabels = {'one-time':'One-Time','daily':'Daily','weekly':'Weekly','bi-weekly':'Bi-Weekly','monthly':'Monthly','quarterly':'Quarterly','semi-annually':'Semi-Annually','yearly':'Yearly'};
-            const freqText = frequency ? (freqLabels[frequency] || frequency) : '—';
-            const durationDisplay = duration || '—';
-
-            const row = document.createElement('tr');
-            row.dataset.itemId = itemCounter;
-            row.innerHTML = `
-                <td style="padding: 0.4rem 0.6rem;">${serviceName}</td>
-                <td style="padding: 0.45rem 0.55rem; text-align: right;"><input type="number" class="item-qty" value="${qty}" min="0.01" step="0.01" style="width: 72px; text-align: right; font-size: 0.88rem; padding: 0.25rem 0.35rem;"></td>
-                <td style="padding: 0.45rem 0.55rem; text-align: right;"><input type="number" class="item-price" value="${unitPrice}" min="0" step="0.01" style="width: 110px; text-align: right; font-size: 0.88rem; padding: 0.25rem 0.35rem;"></td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${users}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${startDate || '—'}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${endDate || '—'}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${deliveryDate || '—'}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${Math.round(lineTotal)}</strong></td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
-                    <button type="button" class="edit-item icon-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;"><i class="fas fa-edit"></i></button>
-                    <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        }
-
-        updateSummary();
-        resetItemInputs();
-    });
-
-    // Inline edit
-    tbody.addEventListener('input', function(e) {
-        if (e.target.classList.contains('item-qty') || e.target.classList.contains('item-price')) {
-            const row = e.target.closest('tr');
-            const itemId = parseInt(row.dataset.itemId);
-            const item = items.find(i => i.id === itemId);
-            if (item) {
-                item.quantity = parseFloat(row.querySelector('.item-qty').value) || 0;
-                item.unit_price = parseFloat(row.querySelector('.item-price').value) || 0;
-                item.line_total = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
-                item.tax_amount = (item.line_total * (item.tax_rate || 0)) / 100;
-                row.querySelector('.item-line-total strong').textContent = Math.round(item.line_total);
+                editingItemId = null;
+                document.getElementById('addItemBtn').textContent = 'Add';
                 updateSummary();
+                resetItemInputs();
             }
+        } else {
+            // Add new item - save to database via AJAX
+            const btn = document.getElementById('addItemBtn');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            fetch(`{{ url('/orders') }}/{{ $order->orderid }}/add-item`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    itemid: serviceId,
+                    quantity: qty,
+                    unit_price: unitPrice,
+                    frequency: frequency,
+                    duration: duration,
+                    no_of_users: users,
+                    start_date: startDate,
+                    end_date: endDate,
+                    delivery_date: deliveryDate,
+                    line_total: lineTotal,
+                    discount_percent: discountPercent,
+                    discount_amount: discountAmount,
+                    tax_rate: taxRate
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    itemCounter++;
+                    const item = {
+                        id: itemCounter,
+                        order_item_id: data.order_item_id,
+                        itemid: serviceId,
+                        item_name: serviceName,
+                        quantity: qty,
+                        unit_price: unitPrice,
+                        frequency: frequency,
+                        duration: duration,
+                        no_of_users: users,
+                        start_date: startDate,
+                        end_date: endDate,
+                        delivery_date: deliveryDate,
+                        line_total: lineTotal,
+                        discount_percent: discountPercent,
+                        discount_amount: discountAmount,
+                        tax_rate: taxRate,
+                        tax_amount: taxAmount
+                    };
+                    items.push(item);
+
+                    const freqLabels = {'one-time':'One-Time','daily':'Daily','weekly':'Weekly','bi-weekly':'Bi-Weekly','monthly':'Monthly','quarterly':'Quarterly','semi-annually':'Semi-Annually','yearly':'Yearly'};
+                    const freqText = frequency ? (freqLabels[frequency] || frequency) : '—';
+                    const durationDisplay = duration || '—';
+
+                    const row = document.createElement('tr');
+                    row.dataset.itemId = itemCounter;
+                    row.innerHTML = `
+                        <td style="padding: 0.4rem 0.6rem;">${serviceName}</td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${qty}</td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${unitPrice}</td>
+                        @if($account->allow_multi_taxation)
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${taxRate}%</td>
+                        @endif
+                        @if($account->have_users)
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${users}</td>
+                        @endif
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${discountPercent > 0 ? discountPercent + '%' : '—'}</td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${startDate || '—'}</td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${endDate || '—'}</td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${deliveryDate || '—'}</td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${lineTotal.toFixed(2)}</strong></td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
+                            <button type="button" class="edit-item icon-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;"><i class="fas fa-edit"></i></button>
+                            <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                    updateSummary();
+                    resetItemInputs();
+                    
+                    btn.disabled = false;
+                    btn.textContent = 'Add';
+                    document.getElementById('itemsTable').style.display = 'table';
+                } else {
+                    throw new Error(data.message || 'Failed to add item');
+                }
+            })
+            .catch(error => {
+                btn.disabled = false;
+                btn.textContent = 'Add';
+                alert('Error: ' + error.message);
+            });
         }
     });
 
@@ -597,6 +833,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('item_frequency').value = item.frequency || '';
                 document.getElementById('item_duration').value = item.duration || '';
                 document.getElementById('item_users').value = item.no_of_users || 1;
+                document.getElementById('item_discount').value = item.discount_percent || 0;
                 document.getElementById('item_start_date').value = item.start_date || '';
                 document.getElementById('item_end_date').value = item.end_date || '';
                 document.getElementById('item_delivery_date').value = item.delivery_date || '';
@@ -641,14 +878,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateSummary() {
         const subtotal = items.reduce((sum, item) => sum + item.line_total, 0);
+        const discountTotal = items.reduce((sum, item) => sum + (item.discount_amount || 0), 0);
         const taxTotal = items.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
-        const grandTotal = subtotal + taxTotal;
+        const grandTotal = subtotal - discountTotal + taxTotal;
 
-        document.getElementById('subtotal').textContent = Math.round(subtotal);
+        document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+        document.getElementById('discountTotal').textContent = discountTotal.toFixed(2);
         document.getElementById('taxTotal').textContent = taxTotal.toFixed(2);
-        document.getElementById('grandTotal').textContent = Math.round(grandTotal);
-        
+        document.getElementById('grandTotal').textContent = grandTotal.toFixed(2);
+
         document.getElementById('formSubtotal').value = subtotal;
+        document.getElementById('formDiscountTotal').value = discountTotal;
         document.getElementById('formTaxTotal').value = taxTotal;
         document.getElementById('formGrandTotal').value = grandTotal;
         document.getElementById('formItemsData').value = JSON.stringify(items.map(item => ({
@@ -662,6 +902,8 @@ document.addEventListener('DOMContentLoaded', function() {
             end_date: item.end_date || null,
             delivery_date: item.delivery_date || null,
             line_total: item.line_total,
+            discount_percent: item.discount_percent || 0,
+            discount_amount: item.discount_amount || 0,
             tax_rate: item.tax_rate || 0
         })));
     }
@@ -673,6 +915,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('item_frequency').value = '';
         document.getElementById('item_duration').value = '';
         document.getElementById('item_users').value = 1;
+        document.getElementById('item_discount').value = 0;
         document.getElementById('item_start_date').value = '';
         document.getElementById('item_end_date').value = '';
         
@@ -680,8 +923,35 @@ document.addEventListener('DOMContentLoaded', function() {
         const orderDeliveryDate = document.getElementById('delivery_date').value || '';
         document.getElementById('item_delivery_date').value = orderDeliveryDate;
     }
+
+    // Toast notification function
+    function showToast(type, message) {
+        const container = document.getElementById('toast-container') || document.body;
+        const toast = document.createElement('div');
+        toast.style.cssText = `position: fixed; top: 20px; right: 20px; background: ${type === 'success' ? '#10b981' : '#ef4444'}; color: white; padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.9rem; z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.1); animation: slideIn 0.3s ease;`;
+        toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'times-circle'}" style="margin-right: 0.5rem;"></i>${message}`;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
 });
 </script>
+
+<style>
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+</style>
+
+<div id="toast-container"></div>
 
 {{-- Add Tax Modal --}}
 @if($account->allow_multi_taxation)

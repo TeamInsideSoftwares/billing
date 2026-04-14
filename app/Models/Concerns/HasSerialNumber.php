@@ -9,6 +9,12 @@ trait HasSerialNumber
         $parts = [];
 
         foreach (['prefix', 'number', 'suffix'] as $index => $part) {
+            // Check if this part is enabled
+            $showValue = $this->getAttribute($part . '_show');
+            if ($showValue !== null && !$showValue) {
+                continue;
+            }
+
             $value = trim($this->getPartValue($part));
 
             if ($value === '') {
@@ -183,6 +189,13 @@ trait HasSerialNumber
 
     protected function partHasOutput(string $part): bool
     {
+        // Check if this part is enabled via show field
+        $showField = $part . '_show';
+        $showValue = $this->getAttribute($showField);
+        if ($showValue !== null && !$showValue) {
+            return false;
+        }
+
         $type = $this->getPartType($part);
 
         if (in_array($type, ['auto increment', 'auto generate'], true)) {

@@ -120,14 +120,21 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::controller(OrdersController::class)->group(function () {
+        // Specific routes first
         Route::get('/orders/select-client', 'selectClient')->name('orders.select-client');
         Route::get('/orders/json', 'getOrderJsonByNumber')->name('orders.json-by-number');
         Route::get('/orders', 'orders')->name('orders.index');
         Route::get('/orders/create', 'ordersCreate')->name('orders.create');
-        Route::post('/orders', 'ordersStore')->name('orders.store');
+        // AJAX routes (before parameterized routes)
+        Route::post('/orders/save-order', 'saveOrderAjax')->name('orders.save-ajax');
+        Route::post('/orders/{order}/add-item', 'addOrderItemAjax')->name('orders.items.add');
+        Route::post('/orders/{order}/update-item/{orderItemId}', 'updateOrderItemAjax')->name('orders.items.update');
+        Route::delete('/orders/{order}/remove-item/{orderItemId}', 'deleteOrderItemAjax')->name('orders.items.delete');
+        // Parameterized routes
         Route::get('/orders/{order}', 'ordersShow')->name('orders.show');
         Route::get('/orders/{order}/json', 'getOrderJson')->name('orders.json');
         Route::get('/orders/{order}/edit', 'ordersEdit')->name('orders.edit');
+        Route::post('/orders', 'ordersStore')->name('orders.store');
         Route::put('/orders/{order}', 'ordersUpdate')->name('orders.update');
         Route::delete('/orders/{order}', 'ordersDestroy')->name('orders.destroy');
     });

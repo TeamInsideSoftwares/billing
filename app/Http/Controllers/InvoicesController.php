@@ -104,7 +104,7 @@ class InvoicesController extends Controller
         $accountid = auth()->check() ? ($user?->accountid ?? 'ACC0000001') : 'ACC0000001';
         $legacyAccountId = $user?->id ? (string) $user->id : null;
         $account = \App\Models\Account::find($accountid);
-        $orderId = request('order_id');
+        $orderId = request('o');
         $clientId = request('c');
 
         $termAccountIds = array_values(array_filter(array_unique([$accountid, $legacyAccountId])));

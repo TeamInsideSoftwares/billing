@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\HasAlphaNumericId;
 use App\Models\Concerns\HasSerialNumber;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Order;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
 
@@ -30,18 +31,24 @@ class SerialConfiguration extends Model
         'prefix_value',
         'prefix_length',
         'prefix_separator',
+        'prefix_show',
         'number_type',
         'number_value',
         'number_length',
         'number_separator',
+        'number_show',
         'suffix_type',
         'suffix_value',
         'suffix_length',
+        'suffix_show',
         'reset_on_fy',
     ];
 
     protected $casts = [
         'reset_on_fy' => 'boolean',
+        'prefix_show' => 'boolean',
+        'number_show' => 'boolean',
+        'suffix_show' => 'boolean',
     ];
 
     public function account(): BelongsTo
@@ -57,11 +64,26 @@ class SerialConfiguration extends Model
     /**
      * Get the current serial count based on existing documents
      */
+    protected function getOrderCount(?string $fyId): int
+    {
+        $query = Order::where('accountid', $this->accountid);
+
+        if ($this->reset_on_fy && $fyId) {
+            $query->where('fy_id', $fyId);
+        }
+
+        return $query->count();
+    }
+
     protected function getCurrentSerialCount(): int
     {
         $currentFyId = $this->fy_id ?? FinancialYear::where('accountid', $this->accountid)
             ->where('default', true)
             ->value('fy_id');
+
+        if ($this->document_type === 'order') {
+            return $this->getOrderCount($currentFyId);
+        }
 
         if ($this->document_type === 'tax_invoice') {
             return $this->getTaxInvoiceCount($currentFyId);
@@ -116,11 +138,27 @@ class SerialConfiguration extends Model
         return $this->extractMaxConfiguredNumber($this->getExistingSerialNumbers(), $part);
     }
 
+    protected function getOrderNumbers(?string $fyId): Collection
+    {
+        $query = Order::where('accountid', $this->accountid)
+            ->whereNotNull('order_number');
+
+        if ($this->reset_on_fy && $fyId) {
+            $query->where('fy_id', $fyId);
+        }
+
+        return $query->pluck('order_number');
+    }
+
     protected function getExistingSerialNumbers(): Collection
     {
         $currentFyId = $this->fy_id ?? FinancialYear::where('accountid', $this->accountid)
             ->where('default', true)
             ->value('fy_id');
+
+        if ($this->document_type === 'order') {
+            return $this->getOrderNumbers($currentFyId);
+        }
 
         if ($this->document_type === 'tax_invoice') {
             return $this->getTaxInvoiceNumbers($currentFyId);

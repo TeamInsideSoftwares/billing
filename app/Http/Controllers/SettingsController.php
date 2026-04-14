@@ -56,10 +56,11 @@ class SettingsController extends Controller
 
         $editingQuotationDetail = ($editId && str_starts_with($editId, 'AQD')) ? AccountQuotationDetail::where('account_qdid', $editId)->where('accountid', $accountid)->first() : ($account->quotationDetails()->first());
 
-        // Serial configurations from dedicated table
+// Serial configurations from dedicated table
         $proformaSerialConfig   = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'proforma_invoice')->first();
         $taxInvoiceSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'tax_invoice')->first();
         $quotationSerialConfig  = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'quotation')->first();
+        $orderSerialConfig      = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'order')->first();
 
         $termsQuery = TermsCondition::query()
             ->where('accountid', $accountid)
@@ -121,6 +122,7 @@ class SettingsController extends Controller
             'proformaSerialConfig' => $proformaSerialConfig,
             'taxInvoiceSerialConfig' => $taxInvoiceSerialConfig,
             'quotationSerialConfig' => $quotationSerialConfig,
+            'orderSerialConfig' => $orderSerialConfig,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
             'editingSetting' => $editingSetting,
@@ -217,8 +219,11 @@ class SettingsController extends Controller
         $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
 
         $validated = $request->validate([
-            'document_type'   => 'required|in:proforma_invoice,tax_invoice,quotation',
+            'document_type'   => 'required|in:proforma_invoice,tax_invoice,quotation,order',
             'serial_configid' => 'nullable|string|size:6|exists:serial_configurations,serial_configid',
+            'prefix_show'     => 'boolean',
+            'number_show'     => 'boolean',
+            'suffix_show'     => 'boolean',
             'prefix_type'     => 'nullable|string|max:50',
             'prefix_value'    => 'nullable|string|max:50',
             'prefix_length'   => 'nullable|integer|min:0|max:20',
@@ -232,6 +237,11 @@ class SettingsController extends Controller
             'suffix_length'   => 'nullable|integer|min:0|max:20',
             'reset_on_fy'     => 'boolean',
         ]);
+
+        // Normalize checkbox values (1/0)
+        $validated['prefix_show'] = $request->has('prefix_show') ? 1 : 0;
+        $validated['number_show'] = $request->has('number_show') ? 1 : 0;
+        $validated['suffix_show'] = $request->has('suffix_show') ? 1 : 0;
 
         $validated['reset_on_fy'] = $request->has('reset_on_fy');
         $validated = $this->normalizeSerialConfiguration($validated);

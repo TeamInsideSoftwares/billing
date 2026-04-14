@@ -9,7 +9,7 @@
         <a href="{{ route('orders.index', ['c' => $order->clientid]) }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to orders</a>
     </div>
     <div style="display: flex; gap: 0.5rem;">
-        <a href="{{ route('invoices.create', ['order_id' => $order->orderid, 'c' => $order->clientid]) }}" class="icon-action-btn" style="color: #8b5cf6; border-color: #ddd6fe; width: 36px; height: 36px; font-size: 1rem;" title="Create PI" onmouseover="this.style.background='#f5f3ff'; this.style.borderColor='#8b5cf6';" onmouseout="this.style.background='white'; this.style.borderColor='#ddd6fe';">
+        <a href="{{ route('invoices.create', ['o' => $order->orderid, 'c' => $order->clientid]) }}" class="icon-action-btn" style="color: #8b5cf6; border-color: #ddd6fe; width: 36px; height: 36px; font-size: 1rem;" title="Create PI" onmouseover="this.style.background='#f5f3ff'; this.style.borderColor='#8b5cf6';" onmouseout="this.style.background='white'; this.style.borderColor='#ddd6fe';">
             <i class="fas fa-file-invoice"></i>
         </a>
         <a href="{{ route('orders.edit', ['order' => $order->orderid, 'c' => $order->clientid]) }}" class="icon-action-btn edit" title="Edit" style="width: 36px; height: 36px; font-size: 1rem;">

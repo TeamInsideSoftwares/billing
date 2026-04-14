@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'accountid',
+    'fy_id',
     'clientid',
     'order_number',
     'order_title',
@@ -20,11 +21,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'frequency',
     'no_of_users',
     'subtotal',
+    'tax_total',
     'grand_total',
     'notes',
     'terms',
     'created_by',
     'sales_person_id',
+    'po_number',
+    'po_date',
+    'po_file',
+    'agreement_ref',
+    'agreement_date',
+    'agreement_file',
 ])]
 class Order extends Model
 {
@@ -47,8 +55,11 @@ class Order extends Model
         return [
             'order_date' => 'date',
             'delivery_date' => 'date',
+            'po_date' => 'date',
+            'agreement_date' => 'date',
             'no_of_users' => 'integer',
             'subtotal' => 'decimal:2',
+            'tax_total' => 'decimal:2',
             'grand_total' => 'decimal:2',
         ];
     }
@@ -56,6 +67,11 @@ class Order extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class, 'accountid');
+    }
+
+    public function financialYear(): BelongsTo
+    {
+        return $this->belongsTo(FinancialYear::class, 'fy_id', 'fy_id');
     }
 
     public function client(): BelongsTo
