@@ -55,7 +55,6 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
             $table->index(['accountid', 'status']);
         });
 
@@ -71,7 +70,6 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
             $table->index(['accountid', 'billing_type']);
         });
 
@@ -97,9 +95,6 @@ return new class extends Migration
             $table->string('created_by', 10)->nullable();
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
-            $table->foreign('clientid')->references('clientid')->on('clients')->onDelete('restrict');
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
             $table->index(['accountid', 'status']);
         });
 
@@ -116,8 +111,6 @@ return new class extends Migration
             $table->unsignedInteger('sort_order')->default(1);
             $table->timestamps();
 
-            $table->foreign('invoiceid')->references('invoiceid')->on('invoices')->onDelete('cascade');
-            $table->foreign('serviceid')->references('serviceid')->on('services')->onDelete('set null');
         });
 
         Schema::create('payments', function (Blueprint $table) {
@@ -137,10 +130,6 @@ return new class extends Migration
             $table->string('received_by', 10)->nullable();
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
-            $table->foreign('clientid')->references('clientid')->on('clients')->onDelete('restrict');
-            $table->foreign('invoiceid')->references('invoiceid')->on('invoices')->onDelete('set null');
-            $table->foreign('received_by')->references('id')->on('users')->onDelete('set null');
             $table->index(['accountid', 'status']);
         });
 
@@ -160,10 +149,6 @@ return new class extends Migration
             $table->string('created_by', 10)->nullable();
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
-            $table->foreign('clientid')->references('clientid')->on('clients')->onDelete('restrict');
-            $table->foreign('serviceid')->references('serviceid')->on('services')->onDelete('restrict');
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
             $table->index(['accountid', 'status']);
         });
 
@@ -185,10 +170,6 @@ return new class extends Migration
             $table->string('created_by', 10)->nullable();
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
-            $table->foreign('clientid')->references('clientid')->on('clients')->onDelete('restrict');
-            $table->foreign('invoiceid')->references('invoiceid')->on('invoices')->onDelete('set null');
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
             $table->index(['accountid', 'status']);
         });
 
@@ -205,8 +186,6 @@ return new class extends Migration
             $table->unsignedInteger('sort_order')->default(1);
             $table->timestamps();
 
-            $table->foreign('estimateid')->references('estimateid')->on('estimates')->onDelete('cascade');
-            $table->foreign('serviceid')->references('serviceid')->on('services')->onDelete('set null');
         });
 
         Schema::create('settings', function (Blueprint $table) {
@@ -216,7 +195,6 @@ return new class extends Migration
             $table->text('setting_value')->nullable();
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
             $table->unique(['accountid', 'setting_key']);
         });
     }
@@ -238,4 +216,3 @@ return new class extends Migration
         Schema::dropIfExists('accounts');
     }
 };
-

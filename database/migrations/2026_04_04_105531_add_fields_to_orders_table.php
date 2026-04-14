@@ -16,14 +16,12 @@ return new class extends Migration
             $table->string('sales_person_id', 10)->nullable()->after('created_by');
             $table->dropColumn(['tax_total', 'currency_code']);
             
-            $table->foreign('sales_person_id')->references('id')->on('users')->onDelete('set null');
         });
     }
 
     public function down(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->dropForeign(['sales_person_id']);
             $table->dropColumn(['order_title', 'duration', 'frequency', 'no_of_users', 'sales_person_id']);
             $table->decimal('tax_total', 12, 2)->default(0)->after('subtotal');
             $table->string('currency_code', 3)->default('INR')->after('grand_total');

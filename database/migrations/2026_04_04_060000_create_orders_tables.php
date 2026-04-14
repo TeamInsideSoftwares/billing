@@ -29,9 +29,6 @@ return new class extends Migration
             $table->string('created_by', 10)->nullable();
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
-            $table->foreign('clientid')->references('clientid')->on('clients')->onDelete('restrict');
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
             $table->index(['accountid', 'status']);
         });
 
@@ -48,8 +45,6 @@ return new class extends Migration
             $table->unsignedInteger('sort_order')->default(1);
             $table->timestamps();
 
-            $table->foreign('orderid')->references('orderid')->on('orders')->onDelete('cascade');
-            $table->foreign('itemid')->references('itemid')->on('items')->onDelete('set null');
         });
     }
 

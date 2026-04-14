@@ -16,7 +16,6 @@ return new class extends Migration
             $table->string('status', 20)->default('active');
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
             $table->index(['accountid', 'status']);
         });
     }

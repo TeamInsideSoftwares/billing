@@ -22,7 +22,6 @@ return new class extends Migration
             $table->text('terms_conditions')->nullable();
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
             $table->index('accountid');
         });
 
@@ -37,7 +36,6 @@ return new class extends Migration
             $table->text('terms_conditions')->nullable();
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
             $table->index('accountid');
         });
     }

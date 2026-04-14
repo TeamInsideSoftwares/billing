@@ -25,7 +25,6 @@ return new class extends Migration
             $table->string('gstin', 20)->nullable();
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
         });
     }
 

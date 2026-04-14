@@ -39,7 +39,6 @@ return new class extends Migration
             
             $table->timestamps();
             
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
         });
     }
 

@@ -23,8 +23,6 @@ return new class extends Migration
             $table->string('tax_included', 3)->default('no');
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
-            $table->foreign('addonid')->references('addonid')->on('service_addons')->onDelete('cascade');
             $table->unique(['addonid', 'currency_code']);
             $table->index(['accountid', 'addonid']);
         });

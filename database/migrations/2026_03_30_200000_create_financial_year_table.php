@@ -18,7 +18,6 @@ return new class extends Migration
             $table->boolean('default')->default(false);
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
             $table->index(['accountid', 'financial_year']);
         });
     }

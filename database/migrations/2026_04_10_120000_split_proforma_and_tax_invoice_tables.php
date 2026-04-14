@@ -11,7 +11,6 @@ return new class extends Migration
     {
         // Rename old tables if they exist
         if (Schema::hasTable('invoices')) {
-            $this->dropForeignIfExists('invoices', 'converted_from_invoiceid');
             Schema::rename('invoices', 'tax_invoices');
         }
 
@@ -47,9 +46,6 @@ return new class extends Migration
                 $table->string('created_by', 10)->nullable();
                 $table->timestamps();
 
-                $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
-                $table->foreign('clientid')->references('clientid')->on('clients')->onDelete('restrict');
-                $table->foreign('orderid')->references('orderid')->on('orders')->onDelete('set null');
                 $table->index(['accountid', 'status']);
             });
         }
@@ -83,10 +79,6 @@ return new class extends Migration
                 $table->string('created_by', 10)->nullable();
                 $table->timestamps();
 
-                $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
-                $table->foreign('clientid')->references('clientid')->on('clients')->onDelete('restrict');
-                $table->foreign('orderid')->references('orderid')->on('orders')->onDelete('set null');
-                $table->foreign('proformaid')->references('proformaid')->on('proforma_invoices')->onDelete('set null');
                 $table->index(['accountid', 'status']);
                 $table->index('proformaid');
             });
@@ -113,8 +105,6 @@ return new class extends Migration
                 $table->unsignedInteger('sort_order')->default(1);
                 $table->timestamps();
 
-                $table->foreign('proformaid')->references('proformaid')->on('proforma_invoices')->onDelete('cascade');
-                $table->foreign('itemid')->references('itemid')->on('items')->onDelete('set null');
             });
         }
 
@@ -139,8 +129,6 @@ return new class extends Migration
                 $table->unsignedInteger('sort_order')->default(1);
                 $table->timestamps();
 
-                $table->foreign('invoiceid')->references('invoiceid')->on('tax_invoices')->onDelete('cascade');
-                $table->foreign('itemid')->references('itemid')->on('items')->onDelete('set null');
             });
         }
     }
@@ -216,22 +204,6 @@ return new class extends Migration
 
         if (Schema::hasTable('tax_invoices')) {
             Schema::rename('tax_invoices', 'invoices');
-        }
-    }
-
-    private function dropForeignIfExists(string $table, string $column): void
-    {
-        $database = DB::getDatabaseName();
-
-        $constraint = DB::table('information_schema.KEY_COLUMN_USAGE')
-            ->where('TABLE_SCHEMA', $database)
-            ->where('TABLE_NAME', $table)
-            ->where('COLUMN_NAME', $column)
-            ->whereNotNull('REFERENCED_TABLE_NAME')
-            ->value('CONSTRAINT_NAME');
-
-        if ($constraint) {
-            DB::statement("ALTER TABLE `{$table}` DROP FOREIGN KEY `{$constraint}`");
         }
     }
 };

@@ -20,16 +20,6 @@ return new class extends Migration
             && ! Schema::hasColumn('client_billing_details', 'id');
 
         if (! $alreadyRestructured) {
-            if (Schema::hasColumn('client_billing_details', 'clientid')) {
-                try {
-                    Schema::table('client_billing_details', function (Blueprint $table) {
-                        $table->dropForeign(['clientid']);
-                    });
-                } catch (\Throwable $e) {
-                    // FK may not exist on older/custom environments.
-                }
-            }
-
             if (Schema::hasColumn('client_billing_details', 'id')) {
                 Schema::table('client_billing_details', function (Blueprint $table) {
                     $table->dropColumn('id');
@@ -60,13 +50,6 @@ return new class extends Migration
                 });
             }
 
-            try {
-                Schema::table('client_billing_details', function (Blueprint $table) {
-                    $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
-                });
-            } catch (\Throwable $e) {
-                // FK may already exist.
-            }
         }
 
         if (Schema::hasTable('clients') && ! Schema::hasColumn('clients', 'bd_id')) {
@@ -75,15 +58,6 @@ return new class extends Migration
             });
         }
 
-        if (Schema::hasTable('clients') && Schema::hasColumn('clients', 'bd_id')) {
-            try {
-                Schema::table('clients', function (Blueprint $table) {
-                    $table->foreign('bd_id')->references('bd_id')->on('client_billing_details')->onDelete('set null');
-                });
-            } catch (\Throwable $e) {
-                // FK may already exist or existing data may not satisfy it.
-            }
-        }
     }
 
     /**
@@ -93,14 +67,6 @@ return new class extends Migration
     {
         if (Schema::hasTable('client_billing_details')) {
             if (Schema::hasColumn('client_billing_details', 'accountid')) {
-                try {
-                    Schema::table('client_billing_details', function (Blueprint $table) {
-                        $table->dropForeign(['accountid']);
-                    });
-                } catch (\Throwable $e) {
-                    // Ignore when FK does not exist.
-                }
-
                 Schema::table('client_billing_details', function (Blueprint $table) {
                     $table->dropColumn('accountid');
                 });
@@ -118,24 +84,9 @@ return new class extends Migration
                 });
             }
 
-            try {
-                Schema::table('client_billing_details', function (Blueprint $table) {
-                    $table->foreign('clientid')->references('clientid')->on('clients')->onDelete('cascade');
-                });
-            } catch (\Throwable $e) {
-                // FK may already exist.
-            }
         }
 
         if (Schema::hasTable('clients') && Schema::hasColumn('clients', 'bd_id')) {
-            try {
-                Schema::table('clients', function (Blueprint $table) {
-                    $table->dropForeign(['bd_id']);
-                });
-            } catch (\Throwable $e) {
-                // Ignore when FK does not exist.
-            }
-
             Schema::table('clients', function (Blueprint $table) {
                 $table->dropColumn('bd_id');
             });

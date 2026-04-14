@@ -21,8 +21,6 @@ return new class extends Migration
             $table->decimal('tax_rate', 5, 2)->default(0);
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
-            $table->foreign('serviceid')->references('serviceid')->on('services')->onDelete('cascade');
             $table->unique(['serviceid', 'currency_code']);
             $table->index(['accountid', 'serviceid']);
         });

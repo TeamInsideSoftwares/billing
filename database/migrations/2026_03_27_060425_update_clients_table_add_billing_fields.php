@@ -31,7 +31,6 @@ return new class extends Migration
             $table->string('country', 100)->default('India');
             $table->timestamps();
 
-            $table->foreign('clientid')->references('clientid')->on('clients')->onDelete('cascade');
         });
     }
 

@@ -22,8 +22,6 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
-            $table->foreign('serviceid')->references('serviceid')->on('services')->onDelete('cascade');
             $table->index(['accountid', 'serviceid']);
             $table->index(['serviceid', 'sequence']);
         });

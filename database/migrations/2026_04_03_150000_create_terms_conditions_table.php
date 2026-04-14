@@ -18,7 +18,6 @@ return new class extends Migration
             $table->integer('sequence')->default(0);
             $table->timestamps();
 
-            $table->foreign('accountid')->references('accountid')->on('accounts')->onDelete('cascade');
             $table->index(['accountid', 'type']);
         });
     }
