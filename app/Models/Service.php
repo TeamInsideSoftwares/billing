@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'service_code',
     'type',
     'sync',
+    'user_wise',
     'name',
     'sequence',
     'description',
@@ -41,6 +42,7 @@ class Service extends Model
     {
         return [
             'sequence' => 'integer',
+            'user_wise' => 'boolean',
             'addons' => 'array',
             'is_active' => 'boolean',
         ];

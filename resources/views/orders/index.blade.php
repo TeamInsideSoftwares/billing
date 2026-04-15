@@ -63,7 +63,7 @@
                             <th style="width: 5%;"></th>
                             <th style="width: 30%;">Order Title</th>
                             <th style="width: 12%;">Order Date</th>
-                            <th style="width: 10%;">Discount</th>
+                            <!-- <th style="width: 10%;">Discount</th> -->
                             <th style="width: 10%;">Amount</th>
                             <th style="width: 8%;">Status</th>
                             <th style="width: 16%;">Actions</th>
@@ -84,9 +84,9 @@
                             <td>
                                 <span style="font-size: 0.8rem;">{{ $order['order_date'] }}</span>
                             </td>
-                            <td>
+                            <!-- <td>
                                 <span style="font-size: 0.8rem; color: {{ ($order['discount'] ?? 0) > 0 ? '#dc2626' : '#94a3b8' }};">{{ ($order['discount'] ?? 0) > 0 ? number_format($order['discount'], 2) : '-' }}</span>
-                            </td>
+                            </td> -->
                             <td>
                                 <strong style="font-size: 0.85rem;">{{ $order['amount'] }}</strong>
                             </td>
@@ -127,7 +127,41 @@
                                         <strong style="font-size: 0.8rem; color: #0f172a;">Order Items</strong>
                                     </div>
                                     <div id="order-items-content-{{ $order['record_id'] }}" style="font-size: 0.8rem; color: #64748b;">
-                                        <em>Loading items...</em>
+                                        @if(!empty($order['items']))
+                                            <div style="display: grid; gap: 0.5rem;">
+                                                @foreach($order['items'] as $item)
+                                                    <div style="background: white; padding: 0.625rem; border-radius: 4px; border: 1px solid #e2e8f0;">
+                                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                                                            <div>
+                                                                <strong style="color: #0f172a;">{{ $item['item_name'] }}</strong>
+                                                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.15rem;">
+                                                                    Qty: {{ number_format($item['quantity'], 2) }}
+                                                                    | Price: {{ number_format($item['unit_price'], 2) }}
+                                                                    @if(($item['tax_rate'] ?? 0) > 0)
+                                                                        | Tax: {{ number_format($item['tax_rate'], 2) }}%
+                                                                    @endif
+                                                                    @if(($item['discount_percent'] ?? 0) > 0)
+                                                                        | Disc: {{ number_format($item['discount_percent'], 2) }}%
+                                                                    @endif
+                                                                    @if(!empty($item['frequency']))
+                                                                        | Freq: {{ $item['frequency'] }}
+                                                                    @endif
+                                                                    @if(!empty($item['duration']))
+                                                                        | Dur: {{ $item['duration'] }}
+                                                                    @endif
+                                                                    @if(!empty($item['delivery_date']))
+                                                                        | Delivery: {{ $item['delivery_date'] }}
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                            <strong style="color: #0f172a; font-size: 0.85rem;">{{ number_format($item['line_total'], 2) }}</strong>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <em style="color: #94a3b8;">No items in this order</em>
+                                        @endif
                                     </div>
                                 </div>
                             </td>
@@ -147,10 +181,10 @@
         </div>
 
         <script>
-        function toggleOrderItems(orderRecordId, clientId) {
+        function toggleOrderItems(orderRecordId) {
             const itemsRow = document.getElementById('items-' + orderRecordId);
             const icon = document.getElementById('icon-' + orderRecordId);
-            const contentDiv = document.getElementById('order-items-content-' + orderRecordId);
+            const contentDiv = { innerHTML: '' };
             
             if (itemsRow.style.display === 'none') {
                 // Show items

@@ -31,6 +31,14 @@
                 </label>
                 @error('sync') <span class="error">{{ $message }}</span> @enderror
             </div>
+            <div>
+                <label for="user_wise" style="font-size: 0.82rem;">User-wise</label>
+                <label class="custom-checkbox" style="display: flex; align-items: center; margin-top: 0.25rem; cursor: pointer;">
+                    <input type="hidden" name="user_wise" value="0">
+                    <input type="checkbox" name="user_wise" value="1" id="user_wise" {{ old('user_wise', $service->user_wise ?? false) ? 'checked' : '' }}>
+                </label>
+                @error('user_wise') <span class="error">{{ $message }}</span> @enderror
+            </div>
             <div style="grid-column: span 2;">
                 <label for="ps_catid" style="font-size: 0.82rem;">Category</label>
                 <select id="ps_catid" name="ps_catid" style="padding: 0.4rem 0.5rem; font-size: 0.875rem;">
@@ -273,7 +281,7 @@
 
     const currencyOptionsHtml = @json($currencyOptions);
     const isMultiTax = @json($isMultiTax);
-    const fixedTaxRate = @json($fixedTaxRate);
+    const fixedTaxRate = parseFloat(@json($fixedTaxRate)) || 0;
     const taxGroups = @json($taxGroupsData);
 
     let taxOptionsHtml = '<option value="">— None</option>';
@@ -301,7 +309,7 @@
         if (isMultiTax) {
             return `<select name="costings[${i}][taxid]" class="tax-select" style="min-width:140px;padding:0.3rem;font-size:0.82rem;">${taxOptionsHtml}</select>`;
         } else {
-            return `<input type="hidden" name="costings[${i}][taxid]" value=""><span style="min-width:140px;padding:0.3rem 0.5rem;font-size:0.82rem;background:#f1f5f9;border-radius:4px;color:#64748b;display:inline-block;">Fixed: ${fixedTaxRate.toFixed(2)}%</span>`;
+            return `<input type="hidden" name="costings[${i}][taxid]" value=""><span style="min-width:140px;padding:0.3rem 0.5rem;font-size:0.82rem;background:#f1f5f9;border-radius:4px;color:#64748b;display:inline-block;">${fixedTaxRate.toFixed(2)}%</span>`;
         }
     }
     function taxIncludeHtml(i) {

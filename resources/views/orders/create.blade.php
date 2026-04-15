@@ -32,7 +32,7 @@
 
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-2">
                         <select id="clientid" name="clientid" required class="form-control form-control-sm" placeholder="Client">
                             <option value="">-- Choose Client --</option>
                             @foreach($clients as $client)
@@ -45,16 +45,19 @@
                         <input type="hidden" id="order_number" name="order_number" value="{{ $nextOrderNumber }}">
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-2">
+                        <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Order Title</label>
                         <input type="text" id="order_title" name="order_title" required value="{{ old('order_title') }}" class="form-control form-control-sm" placeholder="Order Title/Details">
                     </div>
 
                     <div class="row">
-                        <div class="col-6 mb-3">
+                        <div class="col-6 mb-2">
+                            <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Order Date</label>
                             <input type="date" id="order_date" name="order_date" value="{{ old('order_date', date('Y-m-d')) }}" required class="form-control form-control-sm" placeholder="Order Date">
                             @error('order_date') <span class="error">{{ $message }}</span> @enderror
                         </div>
-                        <div class="col-6 mb-3">
+                        <div class="col-6 mb-2">
+                            <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Delivery Date</label>
                             <input type="date" id="delivery_date" name="delivery_date" value="{{ old('delivery_date') }}" class="form-control form-control-sm" placeholder="Delivery Date">
                         </div>
                     </div>
@@ -71,47 +74,55 @@
                         </select>
                     </div>
 
-                    {{-- Purchase Order Section --}}
-                    <div style="border-top: 1px solid #e2e8f0; padding-top: 0.75rem; margin-top: 0.75rem; margin-bottom: 0.75rem;">
-                        <h6 style="font-size: 0.85rem; font-weight: 600; color: #64748b; margin-bottom: 0.75rem;">Purchase Order</h6>
-                        
-                        <div class="row">
-                            <div class="col-6 mb-3">
-                                <input type="text" id="po_number" name="po_number" value="{{ old('po_number') }}" class="form-control form-control-sm" placeholder="PO Number">
-                            </div>
-                            <div class="col-6 mb-3">
-                                <input type="date" id="po_date" name="po_date" value="{{ old('po_date') }}" class="form-control form-control-sm" placeholder="PO Date">
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label style="font-size: 0.75rem; color: #64748b; display: block; margin-bottom: 0.25rem;">PO Upload</label>
-                            <input type="file" id="po_file" name="po_file" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                        </div>
-                    </div>
-
-                    {{-- Agreement Section --}}
-                    <div style="border-top: 1px solid #e2e8f0; padding-top: 0.75rem; margin-bottom: 0.75rem;">
-                        <h6 style="font-size: 0.85rem; font-weight: 600; color: #64748b; margin-bottom: 0.75rem;">Agreement</h6>
-                        
-                        <div class="row">
-                            <div class="col-6 mb-3">
-                                <input type="text" id="agreement_ref" name="agreement_ref" value="{{ old('agreement_ref') }}" class="form-control form-control-sm" placeholder="Agreement Ref">
-                            </div>
-                            <div class="col-6 mb-3">
-                                <input type="date" id="agreement_date" name="agreement_date" value="{{ old('agreement_date') }}" class="form-control form-control-sm" placeholder="Agreement Date">
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label style="font-size: 0.75rem; color: #64748b; display: block; margin-bottom: 0.25rem;">Agreement Upload</label>
-                            <input type="file" id="agreement_file" name="agreement_file" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                        </div>
-                    </div>
-
                     <div class="mb-3">
                         <textarea id="notes" name="notes" rows="3" class="form-control form-control-sm" placeholder="Notes">{{ old('notes') }}</textarea>
                     </div>
+
+                    <details style="border-top: 1px solid #e2e8f0; padding-top: 0.65rem; margin-top: 0.65rem; margin-bottom: 0.65rem;" {{ (old('po_number') || old('po_date')) ? 'open' : '' }}>
+                        <summary style="font-size: 0.85rem; font-weight: 600; color: #64748b; cursor: pointer; list-style: none;">
+                            <i class="fas fa-file-alt" style="margin-right: 0.4rem; color: #94a3b8;"></i>Purchase Order
+                        </summary>
+                        <div style="margin-top: 0.5rem;">
+                            <div class="row" style="row-gap: 0.35rem;">
+                                <div class="col-6 mb-2">
+                                    <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">PO Number</label>
+                                    <input type="text" id="po_number" name="po_number" value="{{ old('po_number') }}" class="form-control form-control-sm" placeholder="PO Number">
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">PO Date</label>
+                                    <input type="date" id="po_date" name="po_date" value="{{ old('po_date') }}" class="form-control form-control-sm" placeholder="PO Date">
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">PO Upload</label>
+                                <input type="file" id="po_file" name="po_file" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                            </div>
+                        </div>
+                    </details>
+
+                    <details style="border-top: 1px solid #e2e8f0; padding-top: 0.65rem; margin-bottom: 0.65rem;" {{ (old('agreement_ref') || old('agreement_date')) ? 'open' : '' }}>
+                        <summary style="font-size: 0.85rem; font-weight: 600; color: #64748b; cursor: pointer; list-style: none;">
+                            <i class="fas fa-file-signature" style="margin-right: 0.4rem; color: #94a3b8;"></i>Agreement
+                        </summary>
+                        <div style="margin-top: 0.5rem;">
+                            <div class="row" style="row-gap: 0.35rem;">
+                                <div class="col-6 mb-2">
+                                    <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Agreement Ref</label>
+                                    <input type="text" id="agreement_ref" name="agreement_ref" value="{{ old('agreement_ref') }}" class="form-control form-control-sm" placeholder="Agreement Ref">
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Agreement Date</label>
+                                    <input type="date" id="agreement_date" name="agreement_date" value="{{ old('agreement_date') }}" class="form-control form-control-sm" placeholder="Agreement Date">
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Agreement Upload</label>
+                                <input type="file" id="agreement_file" name="agreement_file" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                            </div>
+                        </div>
+                    </details>
 
                     <button type="button" id="saveOrderBtn" class="btn btn-sm btn-primary w-100">
                         <i class="fas fa-save" style="margin-right: 0.35rem;"></i>Save Order & Continue
@@ -159,7 +170,8 @@
                                             <option value="{{ $service->itemid }}"
                                                     data-selling-price="{{ $sellingPrice }}"
                                                     data-tax-rate="{{ $taxRate }}"
-                                                    data-tax-included="{{ $taxIncluded }}">
+                                                    data-tax-included="{{ $taxIncluded }}"
+                                                    data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
                                                 {{ $service->name }} ({{ number_format($sellingPrice, 0) }})
                                             </option>
                                         @endforeach
@@ -189,7 +201,7 @@
                         <input type="hidden" id="item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
                         @endif
                         @if($account->have_users)
-                        <div style="flex: 0.6; min-width: 55px;">
+                        <div id="item_users_wrapper" style="flex: 0.6; min-width: 55px; display: none;">
                             <label style="font-size: 0.75rem;">Users</label>
                             <input type="number" id="item_users" value="1" min="1" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                         </div>
@@ -214,15 +226,15 @@
                                 <option value="yearly">Yearly</option>
                             </select>
                         </div>
-                        <div style="flex: 0.6; min-width: 60px;">
+                        <div id="item_duration_wrapper" style="flex: 0.6; min-width: 60px;">
                             <label style="font-size: 0.75rem;">Dur</label>
                             <input type="text" id="item_duration" placeholder="12" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                         </div>
-                        <div style="flex: 0.8; min-width: 90px;">
+                        <div id="item_start_date_wrapper" style="flex: 0.8; min-width: 90px;">
                             <label style="font-size: 0.75rem;">Start</label>
                             <input type="date" id="item_start_date" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                         </div>
-                        <div style="flex: 0.8; min-width: 90px;">
+                        <div id="item_end_date_wrapper" style="flex: 0.8; min-width: 90px;">
                             <label style="font-size: 0.75rem;">End</label>
                             <input type="date" id="item_end_date" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                         </div>
@@ -285,10 +297,15 @@
             </div>
         </div>
 
-        <div class="form-actions" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; display: none;" id="finalActions">
-            <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? '']) }}" class="btn btn-secondary btn-sm">
-                <i class="fas fa-times" style="margin-right: 0.35rem;"></i>Done
+        <div class="form-actions text-end" 
+            style="border-top: 1px solid #e2e8f0; display: none; justify-content: flex-end;" 
+            id="finalActions">
+
+            <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? '']) }}" 
+            class="btn btn-primary btn-sm">
+                Confirm & Exit
             </a>
+
             <input type="hidden" name="orderid" id="savedOrderId">
         </div>
     </form>
@@ -371,11 +388,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Helper function to set date value and notify flatpickr
+    function setDateValue(fieldId, value) {
+        const el = document.getElementById(fieldId);
+        if (!el) return;
+        el.value = value;
+        if (el._flatpickr) {
+            el._flatpickr.setDate(value, false);
+        }
+    }
+
     // Helper function to calculate end date based on frequency and duration
     function calculateEndDate(startDate, frequency, duration) {
         if (!startDate || !frequency || !duration) return '';
 
-        const start = new Date(startDate);
+        const parts = startDate.split('-');
+        const start = new Date(parts[0], parts[1] - 1, parts[2]); // Parse as local
         const durationNum = parseFloat(duration);
         if (isNaN(durationNum) || durationNum <= 0) return '';
 
@@ -412,7 +440,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 return '';
         }
 
-        return endDate.toISOString().split('T')[0];
+        const y = endDate.getFullYear();
+        const m = String(endDate.getMonth() + 1).padStart(2, '0');
+        const d = String(endDate.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
     }
 
     // Helper function to calculate line total: qty × price × users
@@ -431,29 +462,22 @@ document.addEventListener('DOMContentLoaded', function() {
         return total;
     }
 
-    // Auto-populate item delivery date when order delivery date changes
+    // When order delivery date changes, update the input field for the next item
     document.getElementById('delivery_date').addEventListener('change', function() {
         const orderDeliveryDate = this.value || '';
-        document.getElementById('item_delivery_date').value = orderDeliveryDate;
-        
-        // Update all existing items in the JavaScript array
-        items.forEach(item => {
-            item.delivery_date = orderDeliveryDate;
-        });
-        
-        // Update the delivery date display in the table (column index 8)
-        tbody.querySelectorAll('tr').forEach(row => {
-            const cells = row.querySelectorAll('td');
-            if (cells.length > 8) {
-                cells[8].textContent = orderDeliveryDate ? orderDeliveryDate.split('-').reverse().join(' ') : '—';
+        const itemDeliveryInput = document.getElementById('item_delivery_date');
+        if (itemDeliveryInput) {
+            itemDeliveryInput.value = orderDeliveryDate;
+            if (itemDeliveryInput._flatpickr) {
+                itemDeliveryInput._flatpickr.setDate(orderDeliveryDate, false);
             }
-        });
+        }
     });
     
     // Initialize delivery date on page load
     const initialOrderDeliveryDate = document.getElementById('delivery_date').value || '';
     if (initialOrderDeliveryDate) {
-        document.getElementById('item_delivery_date').value = initialOrderDeliveryDate;
+        setDateValue('item_delivery_date', initialOrderDeliveryDate);
     }
 
     // Item select change
@@ -464,27 +488,56 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             document.getElementById('item_unit_price').value = '';
         }
+        @if($account->have_users)
+        toggleUsersField();
+        @endif
     });
 
-    // Handle frequency change - hide/show start and end date for one-time
-    document.getElementById('item_frequency').addEventListener('change', function() {
-        const frequency = this.value;
-        const startDateField = document.getElementById('item_start_date').closest('div');
-        const endDateField = document.getElementById('item_end_date').closest('div');
-        
-        if (frequency === 'one-time' || frequency === '') {
-            // Hide start and end date for one-time or no frequency
-            if (startDateField) startDateField.style.display = 'none';
-            if (endDateField) endDateField.style.display = 'none';
-            // Clear the values
+    @if($account->have_users)
+    function isSelectedItemUserWise() {
+        const itemSelect = document.getElementById('item_itemid');
+        const option = itemSelect?.options[itemSelect.selectedIndex];
+        return option?.dataset?.userWise === '1';
+    }
+
+    function toggleUsersField() {
+        const wrapper = document.getElementById('item_users_wrapper');
+        const usersInput = document.getElementById('item_users');
+        if (!wrapper || !usersInput) return;
+
+        const show = isSelectedItemUserWise();
+        wrapper.style.display = show ? 'block' : 'none';
+        if (!show) {
+            usersInput.value = 1;
+        }
+    }
+    @endif
+
+    function toggleRecurringFields(frequency) {
+        const isRecurring = frequency && frequency !== 'one-time';
+        const durationField = document.getElementById('item_duration_wrapper');
+        const startDateField = document.getElementById('item_start_date_wrapper');
+        const endDateField = document.getElementById('item_end_date_wrapper');
+
+        if (durationField) durationField.style.display = isRecurring ? 'block' : 'none';
+        if (startDateField) startDateField.style.display = isRecurring ? 'block' : 'none';
+        if (endDateField) endDateField.style.display = isRecurring ? 'block' : 'none';
+
+        if (!isRecurring) {
+            document.getElementById('item_duration').value = '';
             document.getElementById('item_start_date').value = '';
             document.getElementById('item_end_date').value = '';
-        } else {
-            // Show start and end date for recurring frequencies
-            if (startDateField) startDateField.style.display = 'block';
-            if (endDateField) endDateField.style.display = 'block';
         }
+    }
+
+    document.getElementById('item_frequency').addEventListener('change', function() {
+        toggleRecurringFields(this.value);
     });
+
+    toggleRecurringFields(document.getElementById('item_frequency').value || '');
+    @if($account->have_users)
+    toggleUsersField();
+    @endif
 
     // Auto-calculate end date when start date, frequency, or duration changes
     ['item_start_date', 'item_frequency', 'item_duration'].forEach(fieldId => {
@@ -495,7 +548,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (startDate && frequency && duration) {
                 const endDate = calculateEndDate(startDate, frequency, duration);
-                document.getElementById('item_end_date').value = endDate;
+                setDateValue('item_end_date', endDate);
             }
         });
     });
@@ -581,7 +634,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${taxRate}%</td>
                     @endif
                     @if($account->have_users)
-                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${users}</td>
+                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${users ?? '—'}</td>
                     @endif
                     <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${discountPercent > 0 ? discountPercent + '%' : '—'}</td>
                     <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
@@ -632,7 +685,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const unitPrice = parseFloat(document.getElementById('item_unit_price').value) || 0;
         const frequency = document.getElementById('item_frequency').value || '';
         const duration = document.getElementById('item_duration').value || '';
+        @if($account->have_users)
+        const isUserWiseItem = isSelectedItemUserWise();
+        const users = isUserWiseItem ? (parseInt(document.getElementById('item_users').value) || 1) : 1;
+        const usersForStorage = isUserWiseItem ? users : null;
+        @else
         const users = parseInt(document.getElementById('item_users').value) || 1;
+        const usersForStorage = users;
+        @endif
         const startDate = document.getElementById('item_start_date').value || '';
         const endDate = document.getElementById('item_end_date').value || '';
         const deliveryDate = document.getElementById('item_delivery_date').value || '';
@@ -681,7 +741,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     editingItemId = null;
                     document.getElementById('addItemBtn').textContent = 'Add';
-                    addNewItem(serviceId, serviceName, qty, unitPrice, frequency, duration, users, startDate, endDate, deliveryDate, lineTotal, taxRate, taxAmount);
+                    addNewItem(serviceId, serviceName, qty, unitPrice, frequency, duration, usersForStorage, startDate, endDate, deliveryDate, lineTotal, discountPercent, discountAmount, taxRate, taxAmount);
                 })
                 .catch(error => {
                     alert('Error updating item: ' + error.message);
@@ -690,7 +750,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        addNewItem(serviceId, serviceName, qty, unitPrice, frequency, duration, users, startDate, endDate, deliveryDate, lineTotal, taxRate, taxAmount);
+        addNewItem(serviceId, serviceName, qty, unitPrice, frequency, duration, usersForStorage, startDate, endDate, deliveryDate, lineTotal, discountPercent, discountAmount, taxRate, taxAmount);
     });
 
     // Edit and Remove items
@@ -708,9 +768,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('item_frequency').value = item.frequency || '';
                 document.getElementById('item_duration').value = item.duration || '';
                 document.getElementById('item_users').value = item.no_of_users || 1;
-                document.getElementById('item_start_date').value = item.start_date || '';
-                document.getElementById('item_end_date').value = item.end_date || '';
-                document.getElementById('item_delivery_date').value = item.delivery_date || '';
+                @if($account->have_users)
+                toggleUsersField();
+                @endif
+                document.getElementById('item_discount').value = item.discount_percent || 0;
+                document.getElementById('item_tax_rate').value = item.tax_rate || 0;
+                
+                setDateValue('item_start_date', item.start_date || '');
+                setDateValue('item_end_date', item.end_date || '');
+                // Use item's delivery date, or fall back to order's delivery date if item's is empty
+                const orderDeliveryDate = document.getElementById('delivery_date')?.value || '';
+                setDateValue('item_delivery_date', item.delivery_date || orderDeliveryDate);
+                
+                toggleRecurringFields(item.frequency || '');
 
                 // Change button text to indicate update
                 document.getElementById('addItemBtn').textContent = 'Update';
@@ -783,22 +853,33 @@ document.addEventListener('DOMContentLoaded', function() {
             'item_itemid': '',
             'item_quantity': 1,
             'item_unit_price': '',
+            'item_discount': 0,
             'item_frequency': '',
             'item_duration': '',
-            'item_users': 1,
-            'item_start_date': '',
-            'item_end_date': ''
+            'item_users': 1
         };
         
         for (const [id, value] of Object.entries(fields)) {
             const el = document.getElementById(id);
             if (el) el.value = value;
         }
+        @if($account->have_users)
+        toggleUsersField();
+        @endif
+
+        setDateValue('item_start_date', '');
+        setDateValue('item_end_date', '');
+
+        toggleRecurringFields('');
+
+        const itemTaxRate = document.getElementById('item_tax_rate');
+        if (itemTaxRate) {
+            itemTaxRate.value = {{ $account->allow_multi_taxation ? '0' : ($account->fixed_tax_rate ?? 0) }};
+        }
 
         // Reset delivery date to order's delivery date
         const orderDeliveryDate = document.getElementById('delivery_date')?.value || '';
-        const itemDeliveryDate = document.getElementById('item_delivery_date');
-        if (itemDeliveryDate) itemDeliveryDate.value = orderDeliveryDate;
+        setDateValue('item_delivery_date', orderDeliveryDate);
     }
 
     // Load order details from database
@@ -889,7 +970,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 unit_price: itemData.unit_price,
                 frequency: itemData.frequency || '',
                 duration: itemData.duration || '',
-                no_of_users: itemData.no_of_users || 1,
+                no_of_users: itemData.no_of_users ?? null,
                 start_date: itemData.start_date || '',
                 end_date: itemData.end_date || '',
                 delivery_date: itemData.delivery_date || '',
@@ -914,7 +995,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.tax_rate}%</td>
                 @endif
                 @if($account->have_users)
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.no_of_users}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.no_of_users ?? '—'}</td>
                 @endif
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>

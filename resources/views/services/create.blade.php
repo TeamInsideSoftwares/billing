@@ -30,6 +30,14 @@
                 </label>
                 @error('sync') <span class="error">{{ $message }}</span> @enderror
             </div>
+            <div>
+                <label for="user_wise" style="font-size: 0.82rem;">User-wise</label>
+                <label class="custom-checkbox" style="display: flex; align-items: center; margin-top: 0.25rem; cursor: pointer;">
+                    <input type="hidden" name="user_wise" value="0">
+                    <input type="checkbox" name="user_wise" value="1" id="user_wise" {{ old('user_wise') ? 'checked' : '' }}>
+                </label>
+                @error('user_wise') <span class="error">{{ $message }}</span> @enderror
+            </div>
             <div style="grid-column: span 2;">
                 <label for="ps_catid" style="font-size: 0.82rem;">Category</label>
                 <select id="ps_catid" name="ps_catid" style="padding: 0.4rem 0.5rem; font-size: 0.875rem;">
@@ -225,8 +233,9 @@
         </div>
         @endif
 
-        <div class="form-actions" style="margin-top: 1rem;">
+        <div class="form-actions" style="margin-top: 1rem; display: flex; gap: 0.75rem; align-items: center;">
             <button type="button" id="save-item-stay-btn" class="primary-button" style="padding: 0.4rem 1rem; font-size: 0.875rem;">Save Item</button>
+            <a href="{{ route('services.index') }}" id="finish-btn" class="secondary-button" style="display: none; padding: 0.4rem 1rem; font-size: 0.875rem; text-decoration: none;">Finish</a>
         </div>
     </form>
 </section>
@@ -284,7 +293,7 @@ function showToast(type, message) {
 
     const currencyOptionsHtml = @json($currencyOptions);
     const isMultiTax = @json($isMultiTax);
-    const fixedTaxRate = @json($fixedTaxRate);
+    const fixedTaxRate = parseFloat(@json($fixedTaxRate)) || 0;
     const taxGroups = @json($taxGroupsData);
 
     function _esc(s) {
@@ -312,7 +321,7 @@ function showToast(type, message) {
         if (isMultiTax) {
             return `<select name="costings[${i}][taxid]" class="tax-select" style="min-width:140px;padding:0.3rem;font-size:0.82rem;">${taxOptionsHtml}</select>`;
         } else {
-            return `<input type="hidden" name="costings[${i}][taxid]" value=""><span style="min-width:140px;padding:0.3rem 0.5rem;font-size:0.82rem;background:#f1f5f9;border-radius:4px;color:#64748b;display:inline-block;">Fixed: ${fixedTaxRate.toFixed(2)}%</span>`;
+            return `<input type="hidden" name="costings[${i}][taxid]" value=""><span style="min-width:140px;padding:0.3rem 0.5rem;font-size:0.82rem;background:#f1f5f9;border-radius:4px;color:#64748b;display:inline-block;">${fixedTaxRate.toFixed(2)}%</span>`;
         }
     }
     function taxIncludeHtml(i) {
@@ -439,7 +448,8 @@ function showToast(type, message) {
 
     function renderSavedItemRow(item) {
         savedItemsPanel.style.display = 'block';
-        const editUrl = editUrlTemplate.replace('__ITEMID__', item.itemid);
+        // Correctly replace the placeholder used in the template
+        const editUrl = editUrlTemplate.replace('SERVICEID', item.itemid);
         const costings = item.costings || [];
         const validCostings = costings.filter((c) => (c.currency_code || '').trim() !== '');
         
@@ -451,10 +461,10 @@ function showToast(type, message) {
             costingsHtml = '<span style="color:#64748b;font-size:0.75rem;">No costings</span>';
         } else {
             costingsHtml = validCostings.map((c) => {
-                const price = c.selling_price ? Number(c.selling_price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0}) : '—';
-                const tax = c.tax_rate ? c.tax_rate + '%' : '';
-                const type = c.tax_included === 'yes' ? '✓' : '';
-                return `<span style="display:inline-block;padding:0.2rem 0.5rem;background:#f1f5f9;color:#475569;border-radius:0.25rem;font-size:0.75rem;">${c.currency_code} ${price}${tax ? ' | Tax: ' + tax : ''}${type ? ' ' + type : ''}</span>`;
+                const price = c.selling_price ? Number(c.selling_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—';
+                const tax = c.tax_rate ? c.tax_rate + '%' : (c.taxid ? 'Taxed' : '');
+                const type = c.tax_included === 'yes' ? 'Incl.' : 'Excl.';
+                return `<span style="display:inline-block;padding:0.2rem 0.5rem;background:#f1f5f9;color:#475569;border-radius:0.25rem;font-size:0.75rem;border:1px solid #e2e8f0;">${c.currency_code} ${price} <small style="opacity:0.7;">(${type}${tax ? ' | ' + tax : ''})</small></span>`;
             }).join(' ');
         }
         
@@ -464,12 +474,30 @@ function showToast(type, message) {
             const parentPills = parentItemNames.map(name => 
                 `<span style="display:inline-block;padding:0.15rem 0.4rem;background:#dbeafe;color:#1e40af;border-radius:0.2rem;font-size:0.7rem;">↖ ${name}</span>`
             ).join(' ');
-            parentsHtml = `<div style="margin-top:0.25rem;display:flex;flex-wrap:wrap;gap:0.25rem;">${parentPills}</div>`;
+            parentsHtml = `<div style="margin-top:0.35rem;display:flex;flex-wrap:wrap;gap:0.25rem;">${parentPills}</div>`;
         }
 
+        // Get category label
+        const catSelect = document.getElementById('ps_catid');
+        const catName = catSelect.options[catSelect.selectedIndex]?.text || '';
+        const catHtml = (catName && !catName.includes('--')) ? `<span style="font-size:0.7rem; color:#94a3b8; margin-left:0.5rem;">in ${catName}</span>` : '';
+
         const row = document.createElement('div');
-        row.style.cssText = 'padding: 0.35rem 0.5rem; border: 1px solid var(--line); border-radius: 0.35rem; background: #fff; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; font-size: 0.82rem;';
-        row.innerHTML = `<div style="min-width:0;"><strong>${item.name}</strong><div style="margin-top:0.2rem;display:flex;flex-wrap:wrap;gap:0.3rem;">${costingsHtml}</div>${parentsHtml}</div><a href="${editUrl}" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>`;
+        row.style.cssText = 'padding: 0.65rem 0.85rem; border: 1px solid var(--line); border-radius: 0.5rem; background: #fff; display: flex; justify-content: space-between; align-items: center; gap: 1rem; font-size: 0.85rem; box-shadow: var(--shadow-sm); transition: transform 0.2s;';
+        row.innerHTML = `
+            <div style="min-width:0; flex:1;">
+                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.35rem;">
+                    <span style="font-size:0.65rem; text-transform:uppercase; font-weight:700; padding:0.1rem 0.4rem; border-radius:4px; background:#f1f5f9; color:#64748b; letter-spacing:0.02em;">${item.type}</span>
+                    <strong style="color:#0f172a; font-size:0.9rem;">${item.name}</strong>
+                    ${catHtml}
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">${costingsHtml}</div>
+                ${parentsHtml}
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+                <a href="${editUrl}" class="icon-action-btn edit" title="Edit Item"><i class="fas fa-edit"></i></a>
+            </div>
+        `;
         savedItemsList.prepend(row);
 
         const count = savedItemsList.children.length;
@@ -500,6 +528,9 @@ function showToast(type, message) {
         });
         renderSavedAddons();
         refreshAddonLabel();
+
+        // Show the Finish button after first save
+        document.getElementById('finish-btn').style.display = 'inline-block';
 
         document.getElementById('name').focus();
     }

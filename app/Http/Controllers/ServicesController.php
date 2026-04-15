@@ -141,6 +141,7 @@ class ServicesController extends Controller
         $validated = $request->validate([
             'type' => 'required|in:product,service',
             'sync' => 'required|in:yes,no',
+            'user_wise' => 'nullable|boolean',
             'name' => 'required|string|max:255',
             'ps_catid' => 'nullable|exists:ps_categories,ps_catid',
             'description' => 'nullable|string',
@@ -159,6 +160,7 @@ class ServicesController extends Controller
 
         $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
+        $validated['user_wise'] = $request->boolean('user_wise');
 
         DB::transaction(function () use ($validated) {
             $account = \App\Models\Account::find($validated['accountid']);
@@ -194,6 +196,7 @@ class ServicesController extends Controller
             $item = Service::create([
                 'type' => $validated['type'],
                 'sync' => $validated['sync'],
+                'user_wise' => $validated['user_wise'],
                 'name' => $validated['name'],
                 'ps_catid' => $validated['ps_catid'] ?? null,
                 'description' => $validated['description'] ?? null,
@@ -271,6 +274,7 @@ class ServicesController extends Controller
         $validated = $request->validate([
             'type' => 'required|in:product,service',
             'sync' => 'required|in:yes,no',
+            'user_wise' => 'nullable|boolean',
             'name' => 'required|string|max:255',
             'ps_catid' => 'nullable|exists:ps_categories,ps_catid',
             'description' => 'nullable|string',
@@ -285,6 +289,8 @@ class ServicesController extends Controller
             'addons' => 'nullable|array',
             'addons.*' => 'required|string|distinct|exists:items,itemid',
         ]);
+
+        $validated['user_wise'] = $request->boolean('user_wise');
 
         DB::transaction(function () use ($validated, $service) {
             $account = \App\Models\Account::find($service->accountid);
@@ -320,6 +326,7 @@ class ServicesController extends Controller
             $service->update([
                 'type' => $validated['type'],
                 'sync' => $validated['sync'],
+                'user_wise' => $validated['user_wise'],
                 'name' => $validated['name'],
                 'ps_catid' => $validated['ps_catid'] ?? null,
                 'description' => $validated['description'] ?? null,
@@ -379,6 +386,7 @@ class ServicesController extends Controller
                 'itemid' => 'nullable|string|exists:items,itemid',
                 'type' => 'required|in:product,service',
                 'sync' => 'required|in:yes,no',
+                'user_wise' => 'nullable|boolean',
                 'name' => 'required|string|max:255',
                 'ps_catid' => 'nullable|exists:ps_categories,ps_catid',
                 'description' => 'nullable|string',
@@ -402,10 +410,12 @@ class ServicesController extends Controller
         $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
 
         try {
+            $validated['user_wise'] = $request->boolean('user_wise');
             $item = DB::transaction(function () use ($validated, $userAccountId) {
                 $itemData = [
                     'type' => $validated['type'],
                     'sync' => $validated['sync'],
+                    'user_wise' => $validated['user_wise'],
                     'name' => $validated['name'],
                     'ps_catid' => $validated['ps_catid'] ?? null,
                     'description' => $validated['description'] ?? null,

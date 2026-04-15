@@ -4,14 +4,16 @@
 
 <section class="section-bar">
     <div>
-        <p class="eyebrow">Orders</p>
-        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">{{ $order->order_number }}</h3>
+        <p class="eyebrow">View</p>
+        <!-- <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">{{ $order->order_number }}</h3> -->
         <a href="{{ route('orders.index', ['c' => $order->clientid]) }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to orders</a>
     </div>
     <div style="display: flex; gap: 0.5rem;">
+        @if(($order->is_verified ?? 'no') === 'yes')
         <a href="{{ route('invoices.create', ['o' => $order->orderid, 'c' => $order->clientid]) }}" class="icon-action-btn" style="color: #8b5cf6; border-color: #ddd6fe; width: 36px; height: 36px; font-size: 1rem;" title="Create PI" onmouseover="this.style.background='#f5f3ff'; this.style.borderColor='#8b5cf6';" onmouseout="this.style.background='white'; this.style.borderColor='#ddd6fe';">
             <i class="fas fa-file-invoice"></i>
         </a>
+        @endif
         <a href="{{ route('orders.edit', ['order' => $order->orderid, 'c' => $order->clientid]) }}" class="icon-action-btn edit" title="Edit" style="width: 36px; height: 36px; font-size: 1rem;">
             <i class="fas fa-edit"></i>
         </a>
@@ -35,11 +37,11 @@
             @endif
             <h1 style="margin: 0.25rem 0 0.25rem 0; font-size: 1.3rem; font-weight: 700;">{{ $order->client->business_name ?? $order->client->contact_name }}</h1>
             <p style="margin: 0; font-size: 0.85rem; color: #64748b;">{{ $order->client->email }}</p>
-            <span class="status-pill {{ strtolower($order->status ?? 'draft') }}" style="margin-top: 0.25rem; display: inline-block;">{{ ucfirst($order->status ?? 'Draft') }}</span>
+            <!-- <span class="status-pill {{ strtolower($order->status ?? 'draft') }}" style="margin-top: 0.25rem; display: inline-block;">{{ ucfirst($order->status ?? 'Draft') }}</span> -->
         </div>
         <div style="text-align: right;">
-            <p style="margin: 0; font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Total</p>
-            <strong style="font-size: 1.3rem; display: block; margin-top: 0.25rem;">{{ number_format($order->grand_total ?? 0) }}</strong>
+            <p style="margin: 0; font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Grand Total</p>
+            <strong style="font-size: 1.4rem; color: #0f172a; margin-top: 0.25rem; display: block;">{{ number_format($order->grand_total ?? 0, 2) }}</strong>
         </div>
     </div>
 </section>
@@ -64,10 +66,28 @@
             <div style="color: #64748b;">Sales Person</div>
             <div>{{ $salesPersonName ?? '-' }}</div>
 
-            <div style="color: #64748b;">Status</div>
-            <div><span class="status-pill {{ strtolower($order->status ?? 'draft') }}">{{ ucfirst($order->status ?? 'Draft') }}</span></div>
+            @if($order->po_number)
+            <div style="color: #64748b;">PO Number</div>
+            <div style="font-weight: 500;">{{ $order->po_number }} {{ $order->po_date ? '(' . $order->po_date->format('d M Y') . ')' : '' }}</div>
+            @endif
+
+            @if($order->agreement_ref)
+            <div style="color: #64748b;">Agreement Ref</div>
+            <div style="font-weight: 500;">{{ $order->agreement_ref }} {{ $order->agreement_date ? '(' . $order->agreement_date->format('d M Y') . ')' : '' }}</div>
+            @endif
+
+            <div style="color: #64748b;">Verified Status</div>
+            <div>
+                <span style="font-size: 0.8rem; padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 500; background: {{ ($order->is_verified ?? 'no') === 'yes' ? '#dcfce7' : '#fef3c7' }}; color: {{ ($order->is_verified ?? 'no') === 'yes' ? '#16a34a' : '#d97706' }};">
+                    {{ ($order->is_verified ?? 'no') === 'yes' ? 'Verified' : 'Unverified' }}
+                </span>
+            </div>
+
+            <!-- <div style="color: #64748b;">Status</div>
+            <div><span class="status-pill {{ strtolower($order->status ?? 'draft') }}">{{ ucfirst($order->status ?? 'Draft') }}</span></div> -->
 
             @if($order->notes)
+
                 <div style="color: #64748b;">Notes</div>
                 <div>{{ $order->notes }}</div>
             @endif
@@ -106,42 +126,76 @@
         <thead>
             <tr>
                 <th style="font-size: 0.8rem;">Item</th>
-                <th style="font-size: 0.8rem;">Qty</th>
-                <th style="font-size: 0.8rem;">Price</th>
-                <th style="font-size: 0.8rem;">Frequency</th>
-                <th style="font-size: 0.8rem;">Duration</th>
-                <th style="font-size: 0.8rem;">Users</th>
-                <th style="font-size: 0.8rem;">Start Date</th>
-                <th style="font-size: 0.8rem;">End Date</th>
-                <th style="font-size: 0.8rem;">Delivery Date</th>
-                <th style="font-size: 0.8rem;">Total</th>
+                <th style="font-size: 0.8rem; text-align: center;">Qty</th>
+                <th style="font-size: 0.8rem; text-align: right;">Price</th>
+                <th style="font-size: 0.8rem; text-align: right;">Tax %</th>
+                <th style="font-size: 0.8rem; text-align: right;">Discount</th>
+                <th style="font-size: 0.8rem;">Frequency / Duration</th>
+                <th style="font-size: 0.8rem; text-align: center;">Users</th>
+                <th style="font-size: 0.8rem;">Dates</th>
+                <th style="font-size: 0.8rem; text-align: right;">Total</th>
             </tr>
         </thead>
         <tbody>
             @forelse($order->items as $item)
             <tr>
                 <td style="font-size: 0.85rem;"><strong>{{ $item->item_name }}</strong></td>
-                <td style="font-size: 0.85rem;">{{ $item->quantity }}</td>
-                <td style="font-size: 0.85rem;">{{ number_format($item->unit_price, 0) }}</td>
-                <td style="font-size: 0.85rem;">{{ ucfirst($item->frequency ?? '—') }}</td>
-                <td style="font-size: 0.85rem;">{{ $item->duration ?? '—' }}</td>
-                <td style="font-size: 0.85rem;">{{ $item->no_of_users ?? '—' }}</td>
-                <td style="font-size: 0.85rem;">{{ $item->start_date ? $item->start_date->format('d M Y') : '—' }}</td>
-                <td style="font-size: 0.85rem;">{{ $item->end_date ? $item->end_date->format('d M Y') : '—' }}</td>
-                <td style="font-size: 0.85rem;">{{ $item->delivery_date ? $item->delivery_date->format('d M Y') : '—' }}</td>
-                <td style="font-size: 0.85rem;"><strong>{{ number_format($item->line_total, 0) }}</strong></td>
+                <td style="font-size: 0.85rem; text-align: center;">{{ number_format($item->quantity, 0) }}</td>
+                <td style="font-size: 0.85rem; text-align: right;">{{ number_format($item->unit_price, 2) }}</td>
+                <td style="font-size: 0.85rem; text-align: right;">{{ number_format($item->tax_rate, 2) }}%</td>
+                <td style="font-size: 0.85rem; text-align: right;">
+                    @if(($item->discount_amount ?? 0) > 0)
+                        {{ number_format($item->discount_amount, 2) }}
+                        @if(($item->discount_percent ?? 0) > 0)
+                            <div style="font-size: 0.7rem; color: #64748b;">({{ number_format($item->discount_percent, 1) }}%)</div>
+                        @endif
+                    @else
+                        —
+                    @endif
+                </td>
+                <td style="font-size: 0.85rem;">
+                    {{ ucfirst($item->frequency ?? '—') }}
+                    @if($item->duration)
+                        <br><span style="font-size: 0.75rem; color: #64748b;">{{ $item->duration }}</span>
+                    @endif
+                </td>
+                <td style="font-size: 0.85rem; text-align: center;">{{ $item->no_of_users ?? '—' }}</td>
+                <td style="font-size: 0.85rem;">
+                    <div style="font-size: 0.75rem;">
+                        @if($item->start_date) <div>S: {{ $item->start_date->format('d M y') }}</div> @endif
+                        @if($item->end_date) <div>E: {{ $item->end_date->format('d M y') }}</div> @endif
+                        @if($item->delivery_date) <div style="color: #8b5cf6;">D: {{ $item->delivery_date->format('d M y') }}</div> @endif
+                    </div>
+                </td>
+                <td style="font-size: 0.85rem; text-align: right;"><strong>{{ number_format($item->line_total, 2) }}</strong></td>
             </tr>
             @empty
             <tr>
-                <td colspan="10" style="padding: 2rem; text-align: center; color: #94a3b8; font-style: italic;">No items in this order.</td>
+                <td colspan="9" style="padding: 2rem; text-align: center; color: #94a3b8; font-style: italic;">No items in this order.</td>
             </tr>
             @endforelse
         </tbody>
         @if($order->items->count())
         <tfoot>
+            <tr style="background: #f8fafc; border-top: 2px solid #e5e7eb;">
+                <td colspan="8" style="padding: 0.5rem; text-align: right; font-weight: 600; font-size: 0.85rem; color: #64748b;">Subtotal:</td>
+                <td style="padding: 0.5rem; font-weight: 600; font-size: 0.85rem; text-align: right; color: #1e293b;">{{ number_format($order->subtotal ?? 0, 2) }}</td>
+            </tr>
+            @if(($order->discount_total ?? 0) > 0)
             <tr style="background: #f8fafc;">
-                <td colspan="9" style="padding: 0.75rem 0.5rem; text-align: right; font-weight: 700; font-size: 1rem;">Total:</td>
-                <td style="padding: 0.75rem 0.5rem; font-weight: 700; font-size: 1rem;">{{ number_format($order->grand_total, 0) }}</td>
+                <td colspan="8" style="padding: 0.5rem; text-align: right; font-weight: 600; font-size: 0.85rem; color: #64748b;">Discount:</td>
+                <td style="padding: 0.5rem; font-weight: 600; font-size: 0.85rem; text-align: right; color: #ef4444;">-{{ number_format($order->discount_total, 2) }}</td>
+            </tr>
+            @endif
+            @if(($order->tax_total ?? 0) > 0)
+            <tr style="background: #f8fafc;">
+                <td colspan="8" style="padding: 0.5rem; text-align: right; font-weight: 600; font-size: 0.85rem; color: #64748b;">Tax:</td>
+                <td style="padding: 0.5rem; font-weight: 600; font-size: 0.85rem; text-align: right; color: #1e293b;">{{ number_format($order->tax_total, 2) }}</td>
+            </tr>
+            @endif
+            <tr style="background: #f1f5f9;">
+                <td colspan="8" style="padding: 0.75rem 0.5rem; text-align: right; font-weight: 700; font-size: 1rem; color: #0f172a;">Grand Total:</td>
+                <td style="padding: 0.75rem 0.5rem; font-weight: 700; font-size: 1.1rem; text-align: right; color: #0f172a;">{{ number_format($order->grand_total ?? 0, 2) }}</td>
             </tr>
         </tfoot>
         @endif

@@ -128,7 +128,7 @@
                                     @php
                                         $defaultCosting = $service->costings->sortBy('currency_code')->first();
                                     @endphp
-                                    <option value="{{ $service->itemid }}" data-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}">
+                                    <option value="{{ $service->itemid }}" data-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}" data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
                                         {{ $service->name }} ({{ number_format($defaultCosting?->selling_price ?? 0, 0) }})
                                     </option>
                                 @endforeach
@@ -158,7 +158,7 @@
                 <input type="hidden" id="item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
                 @endif
                 @if($account->have_users)
-                <div>
+                <div id="item_users_wrap" style="display: none;">
                     <label for="item_users" class="field-label small">Users</label>
                     <input type="number" id="item_users" class="form-input" value="1" min="1" step="1">
                 </div>
@@ -428,6 +428,9 @@
         document.getElementById('item_frequency').value = '';
         document.getElementById('item_duration').value = '';
         document.getElementById('item_users').value = 1;
+        @if($account->have_users)
+        toggleAddFormUsersField();
+        @endif
         document.getElementById('item_start_date').value = '';
         document.getElementById('item_end_date').value = '';
     }
@@ -451,7 +454,28 @@
         const option = this.options[this.selectedIndex];
         document.getElementById('item_unit_price').value = option?.dataset?.price || '';
         document.getElementById('item_tax_rate').value = option?.dataset?.taxRate || '0';
+        @if($account->have_users)
+        toggleAddFormUsersField();
+        @endif
     });
+
+    @if($account->have_users)
+    function isAddFormItemUserWise() {
+        const select = document.getElementById('item_itemid');
+        const option = select?.options[select.selectedIndex];
+        return option?.dataset?.userWise === '1';
+    }
+
+    function toggleAddFormUsersField() {
+        const wrap = document.getElementById('item_users_wrap');
+        const users = document.getElementById('item_users');
+        if (!wrap || !users) return;
+        const show = isAddFormItemUserWise();
+        wrap.style.display = show ? '' : 'none';
+        if (!show) users.value = 1;
+    }
+    toggleAddFormUsersField();
+    @endif
 
     // Handle frequency change - hide/show start and end date for one-time
     document.getElementById('item_frequency').addEventListener('change', function() {
@@ -499,7 +523,11 @@
             tax_rate: Number(document.getElementById('item_tax_rate').value) || 0,
             duration: document.getElementById('item_duration').value || null,
             frequency: document.getElementById('item_frequency').value || null,
+            @if($account->have_users)
+            no_of_users: isAddFormItemUserWise() ? Math.max(1, Number(document.getElementById('item_users').value) || 1) : null,
+            @else
             no_of_users: Math.max(1, Number(document.getElementById('item_users').value) || 1),
+            @endif
             start_date: document.getElementById('item_start_date').value || null,
             end_date: document.getElementById('item_end_date').value || null,
         };

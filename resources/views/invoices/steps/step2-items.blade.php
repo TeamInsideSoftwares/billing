@@ -111,7 +111,7 @@
                                     @php
                                         $defaultCosting = $service->costings->sortBy('currency_code')->first();
                                     @endphp
-                                    <option value="{{ $service->itemid }}" data-selling-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}" data-taxid="{{ $defaultCosting?->taxid ?? '' }}">
+                                    <option value="{{ $service->itemid }}" data-selling-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}" data-taxid="{{ $defaultCosting?->taxid ?? '' }}" data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
                                         {{ $service->name }} ({{ number_format($defaultCosting?->selling_price ?? 0, 0) }})
                                     </option>
                                 @endforeach
@@ -141,7 +141,7 @@
                 <input type="hidden" id="manual_item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
                 @endif
                 @if($account->have_users)
-                <div>
+                <div id="manual_item_users_wrap" style="display: none;">
                     <label for="manual_item_users" class="field-label small">Users</label>
                     <input type="number" id="manual_item_users" class="form-input" value="1" min="1" step="1">
                 </div>

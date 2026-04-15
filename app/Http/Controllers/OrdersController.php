@@ -34,7 +34,7 @@ class OrdersController extends Controller
         $clientId = request('c');
         $selectedClient = null;
         
-        $query = Order::with('client');
+        $query = Order::with(['client', 'items.item']);
         
         // Filter by client if client_id is provided
         if ($clientId) {
@@ -78,7 +78,24 @@ class OrdersController extends Controller
                 'delivery_date' => $order->delivery_date?->format('d M Y') ?? 'N/A',
                 'amount' => number_format($order->grand_total ?? 0, 2),
                 'discount' => $order->discount_total ?? 0,
-                'item_count' => $order->items()->count(),
+                'item_count' => $order->items->count(),
+                'items' => $order->items->map(function ($item) {
+                    return [
+                        'item_name' => $item->item_name ?: ($item->item->name ?? 'Item'),
+                        'quantity' => (float) ($item->quantity ?? 1),
+                        'unit_price' => (float) ($item->unit_price ?? 0),
+                        'tax_rate' => (float) ($item->tax_rate ?? 0),
+                        'line_total' => (float) ($item->line_total ?? 0),
+                        'discount_percent' => (float) ($item->discount_percent ?? 0),
+                        'discount_amount' => (float) ($item->discount_amount ?? 0),
+                        'frequency' => (string) ($item->frequency ?? ''),
+                        'duration' => (string) ($item->duration ?? ''),
+                        'no_of_users' => $item->no_of_users,
+                        'start_date' => $item->start_date?->format('Y-m-d'),
+                        'end_date' => $item->end_date?->format('Y-m-d'),
+                        'delivery_date' => $item->delivery_date?->format('Y-m-d'),
+                    ];
+                })->values()->all(),
                 'sales_person' => $salesPersonLookup[$salesPersonId] ?? ($order->salesPerson->name ?? '-'),
                 'is_verified' => ($order->is_verified ?? 'no') === 'yes' ? 'Verified' : 'Unverified',
                 'verified' => ($order->is_verified ?? 'no') === 'yes',
@@ -551,12 +568,14 @@ class OrdersController extends Controller
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $account = \App\Models\Account::find($accountid);
 
-        // If multi-taxation is disabled, use the fixed tax rate
         if ($account && !$account->allow_multi_taxation) {
             return (float) ($account->fixed_tax_rate ?? 0);
         }
 
-        // Otherwise, try to get tax from service costing
+        if (array_key_exists('tax_rate', $itemData) && $itemData['tax_rate'] !== null && $itemData['tax_rate'] !== '') {
+            return (float) $itemData['tax_rate'];
+        }
+
         if ($service && $service->relationLoaded('costings')) {
             $costingTaxRate = (float) ($service->costings->first()?->tax_rate ?? 0);
             if ($costingTaxRate > 0) {

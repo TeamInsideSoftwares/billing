@@ -119,7 +119,7 @@
                                         @php
                                             $defaultCosting = $service->costings->sortBy('currency_code')->first();
                                         @endphp
-                                        <option value="{{ $service->itemid }}" data-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}">
+                                        <option value="{{ $service->itemid }}" data-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}" data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
                                             {{ $service->name }}
                                         </option>
                                     @endforeach
@@ -149,7 +149,7 @@
                     <input type="hidden" id="inline_item_tax_{{ $documentId }}" value="{{ $account->fixed_tax_rate ?? 0 }}">
                     @endif
                     @if($account->have_users)
-                    <div>
+                    <div id="inline_item_users_wrap_{{ $documentId }}" style="display: none;">
                         <label class="field-label small">Users</label>
                         <input type="number" id="inline_item_users_{{ $documentId }}" class="form-input" value="1" min="1" step="1">
                     </div>
@@ -399,6 +399,9 @@
         document.getElementById(`inline_item_freq_${documentId}`).value = '';
         document.getElementById(`inline_item_dur_${documentId}`).value = '';
         document.getElementById(`inline_item_users_${documentId}`).value = 1;
+        @if($account->have_users)
+        toggleInlineAddUsersField();
+        @endif
     }
 
     clientSelect.addEventListener('change', function () {
@@ -420,7 +423,28 @@
         const option = this.options[this.selectedIndex];
         document.getElementById(`inline_item_price_${documentId}`).value = option?.dataset?.price || '';
         document.getElementById(`inline_item_tax_${documentId}`).value = option?.dataset?.taxRate || '0';
+        @if($account->have_users)
+        toggleInlineAddUsersField();
+        @endif
     });
+
+    @if($account->have_users)
+    function isInlineAddItemUserWise() {
+        const select = document.getElementById(`inline_item_select_${documentId}`);
+        const option = select?.options[select.selectedIndex];
+        return option?.dataset?.userWise === '1';
+    }
+
+    function toggleInlineAddUsersField() {
+        const wrap = document.getElementById(`inline_item_users_wrap_${documentId}`);
+        const users = document.getElementById(`inline_item_users_${documentId}`);
+        if (!wrap || !users) return;
+        const show = isInlineAddItemUserWise();
+        wrap.style.display = show ? '' : 'none';
+        if (!show) users.value = 1;
+    }
+    toggleInlineAddUsersField();
+    @endif
 
     addBtn.addEventListener('click', function () {
         const select = document.getElementById(`inline_item_select_${documentId}`);
@@ -438,7 +462,11 @@
             tax_rate: Number(document.getElementById(`inline_item_tax_${documentId}`).value) || 0,
             duration: document.getElementById(`inline_item_dur_${documentId}`).value || null,
             frequency: document.getElementById(`inline_item_freq_${documentId}`).value || null,
+            @if($account->have_users)
+            no_of_users: isInlineAddItemUserWise() ? Math.max(1, Number(document.getElementById(`inline_item_users_${documentId}`).value) || 1) : null,
+            @else
             no_of_users: Math.max(1, Number(document.getElementById(`inline_item_users_${documentId}`).value) || 1),
+            @endif
             start_date: null,
             end_date: null,
         };

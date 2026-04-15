@@ -139,11 +139,12 @@ class InvoicesController extends Controller
         }
 
         $orders = \App\Models\Order::where('clientid', $clientId)
+            ->where('is_verified', 'yes') 
             ->whereDoesntHave('invoices')
             ->whereDoesntHave('proformaInvoices')
             ->with('client')
             ->orderBy('order_date', 'desc')
-            ->get(['orderid', 'order_number', 'order_title', 'order_date', 'grand_total', 'status', 'clientid'])
+            ->get(['orderid', 'order_number', 'order_title', 'order_date', 'grand_total', 'status', 'clientid', 'is_verified'])
             ->map(function ($order) {
                 $currency = $order->client->currency ?? 'INR';
 
@@ -155,6 +156,7 @@ class InvoicesController extends Controller
                     'grand_total' => $order->grand_total ?? '0.00',
                     'currency' => $currency,
                     'status' => $order->status ?? 'draft',
+                    'is_verified' => $order->is_verified ?? 'no',
                 ];
             });
 

@@ -44,7 +44,7 @@
 
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-2">
                         <select id="clientid" name="clientid_disabled" disabled class="form-control form-control-sm">
                             <option value="">-- Choose Client --</option>
                             @foreach($clients as $client)
@@ -58,15 +58,18 @@
                         <input type="hidden" name="order_number" value="{{ old('order_number', $order->order_number) }}">
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-2">
+                        <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Order Title</label>
                         <input type="text" id="order_title" name="order_title" value="{{ old('order_title', $order->order_title) }}" class="form-control form-control-sm" placeholder="Order Title/Details">
                     </div>
                     <div class="row">
-                        <div class="col-6 mb-3">
+                        <div class="col-6 mb-2">
+                            <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Order Date</label>
                             <input type="date" id="order_date" name="order_date" value="{{ old('order_date', $order->order_date ? $order->order_date->format('Y-m-d') : '') }}" required class="form-control form-control-sm">
                             @error('order_date') <span class="error">{{ $message }}</span> @enderror
                         </div>
-                        <div class="col-6 mb-3">
+                        <div class="col-6 mb-2">
+                            <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Delivery Date</label>
                             <input type="date" id="delivery_date" name="delivery_date" value="{{ old('delivery_date', $order->delivery_date ? $order->delivery_date->format('Y-m-d') : '') }}" class="form-control form-control-sm">
                         </div>
                     </div>
@@ -83,63 +86,71 @@
                         </select>
                     </div>
 
-                    {{-- Purchase Order Section --}}
-                    <div style="border-top: 1px solid #e2e8f0; padding-top: 0.75rem; margin-top: 0.75rem; margin-bottom: 0.75rem;">
-                        <h6 style="font-size: 0.85rem; font-weight: 600; color: #64748b; margin-bottom: 0.75rem;">Purchase Order</h6>
-                        
-                        <div class="row">
-                            <div class="col-6 mb-3">
-                                <input type="text" id="po_number" name="po_number" value="{{ old('po_number', $order->po_number) }}" class="form-control form-control-sm" placeholder="PO Number">
-                            </div>
-                            <div class="col-6 mb-3">
-                                <input type="date" id="po_date" name="po_date" value="{{ old('po_date', $order->po_date ? $order->po_date->format('Y-m-d') : '') }}" class="form-control form-control-sm" placeholder="PO Date">
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label style="font-size: 0.75rem; color: #64748b; display: block; margin-bottom: 0.25rem;">PO Upload</label>
-                            @if($order->po_file)
-                                <div style="font-size: 0.75rem; margin-bottom: 0.25rem;">
-                                    <a href="{{ asset('storage/' . $order->po_file) }}" target="_blank" class="text-link">
-                                        <i class="fas fa-file"></i> View Current File
-                                    </a>
-                                </div>
-                            @endif
-                            <input type="file" id="po_file" name="po_file" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                            <small style="font-size: 0.7rem; color: #94a3b8;">Leave empty to keep existing file</small>
-                        </div>
-                    </div>
-
-                    {{-- Agreement Section --}}
-                    <div style="border-top: 1px solid #e2e8f0; padding-top: 0.75rem; margin-bottom: 0.75rem;">
-                        <h6 style="font-size: 0.85rem; font-weight: 600; color: #64748b; margin-bottom: 0.75rem;">Agreement</h6>
-                        
-                        <div class="row">
-                            <div class="col-6 mb-3">
-                                <input type="text" id="agreement_ref" name="agreement_ref" value="{{ old('agreement_ref', $order->agreement_ref) }}" class="form-control form-control-sm" placeholder="Agreement Ref">
-                            </div>
-                            <div class="col-6 mb-3">
-                                <input type="date" id="agreement_date" name="agreement_date" value="{{ old('agreement_date', $order->agreement_date ? $order->agreement_date->format('Y-m-d') : '') }}" class="form-control form-control-sm" placeholder="Agreement Date">
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label style="font-size: 0.75rem; color: #64748b; display: block; margin-bottom: 0.25rem;">Agreement Upload</label>
-                            @if($order->agreement_file)
-                                <div style="font-size: 0.75rem; margin-bottom: 0.25rem;">
-                                    <a href="{{ asset('storage/' . $order->agreement_file) }}" target="_blank" class="text-link">
-                                        <i class="fas fa-file"></i> View Current File
-                                    </a>
-                                </div>
-                            @endif
-                            <input type="file" id="agreement_file" name="agreement_file" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                            <small style="font-size: 0.7rem; color: #94a3b8;">Leave empty to keep existing file</small>
-                        </div>
-                    </div>
-
                     <div class="mb-3">
                         <textarea id="notes" name="notes" rows="3" class="form-control form-control-sm" placeholder="Notes">{{ old('notes', $order->notes) }}</textarea>
                     </div>
+
+                    <details style="border-top: 1px solid #e2e8f0; padding-top: 0.65rem; margin-top: 0.65rem; margin-bottom: 0.65rem;" {{ ($order->po_number || $order->po_date || $order->po_file) ? 'open' : '' }}>
+                        <summary style="font-size: 0.85rem; font-weight: 600; color: #64748b; cursor: pointer; list-style: none;">
+                            <i class="fas fa-file-alt" style="margin-right: 0.4rem; color: #94a3b8;"></i>Purchase Order
+                        </summary>
+                        <div style="margin-top: 0.5rem;">
+                            <div class="row" style="row-gap: 0.35rem;">
+                                <div class="col-6 mb-2">
+                                    <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">PO Number</label>
+                                    <input type="text" id="po_number" name="po_number" value="{{ old('po_number', $order->po_number) }}" class="form-control form-control-sm" placeholder="PO Number">
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">PO Date</label>
+                                    <input type="date" id="po_date" name="po_date" value="{{ old('po_date', $order->po_date ? $order->po_date->format('Y-m-d') : '') }}" class="form-control form-control-sm" placeholder="PO Date">
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">PO Upload</label>
+                                @if($order->po_file)
+                                    <div style="font-size: 0.75rem; margin-bottom: 0.25rem;">
+                                        <a href="{{ asset('storage/' . $order->po_file) }}" target="_blank" class="text-link">
+                                            <i class="fas fa-file"></i> View Current File
+                                        </a>
+                                    </div>
+                                @endif
+                                <input type="file" id="po_file" name="po_file" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                                <small style="font-size: 0.7rem; color: #94a3b8;">Leave empty to keep existing file</small>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details style="border-top: 1px solid #e2e8f0; padding-top: 0.65rem; margin-bottom: 0.65rem;" {{ ($order->agreement_ref || $order->agreement_date || $order->agreement_file) ? 'open' : '' }}>
+                        <summary style="font-size: 0.85rem; font-weight: 600; color: #64748b; cursor: pointer; list-style: none;">
+                            <i class="fas fa-file-signature" style="margin-right: 0.4rem; color: #94a3b8;"></i>Agreement
+                        </summary>
+                        <div style="margin-top: 0.5rem;">
+                            <div class="row" style="row-gap: 0.35rem;">
+                                <div class="col-6 mb-2">
+                                    <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Agreement Ref</label>
+                                    <input type="text" id="agreement_ref" name="agreement_ref" value="{{ old('agreement_ref', $order->agreement_ref) }}" class="form-control form-control-sm" placeholder="Agreement Ref">
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Agreement Date</label>
+                                    <input type="date" id="agreement_date" name="agreement_date" value="{{ old('agreement_date', $order->agreement_date ? $order->agreement_date->format('Y-m-d') : '') }}" class="form-control form-control-sm" placeholder="Agreement Date">
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Agreement Upload</label>
+                                @if($order->agreement_file)
+                                    <div style="font-size: 0.75rem; margin-bottom: 0.25rem;">
+                                        <a href="{{ asset('storage/' . $order->agreement_file) }}" target="_blank" class="text-link">
+                                            <i class="fas fa-file"></i> View Current File
+                                        </a>
+                                    </div>
+                                @endif
+                                <input type="file" id="agreement_file" name="agreement_file" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                                <small style="font-size: 0.7rem; color: #94a3b8;">Leave empty to keep existing file</small>
+                            </div>
+                        </div>
+                    </details>
                 </div>
             </div>
 
@@ -176,7 +187,8 @@
                                             <option value="{{ $service->itemid }}"
                                                     data-selling-price="{{ $sellingPrice }}"
                                                     data-tax-rate="{{ $taxRate }}"
-                                                    data-tax-included="{{ $taxIncluded }}">
+                                                    data-tax-included="{{ $taxIncluded }}"
+                                                    data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
                                                 {{ $service->name }} ({{ number_format($sellingPrice, 0) }})
                                             </option>
                                         @endforeach
@@ -206,7 +218,7 @@
                         <input type="hidden" id="item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
                         @endif
                         @if($account->have_users)
-                        <div style="flex: 0.6; min-width: 55px;">
+                        <div id="item_users_wrapper" style="flex: 0.6; min-width: 55px; display: none;">
                             <label style="font-size: 0.75rem;">Users</label>
                             <input type="number" id="item_users" value="1" min="1" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                         </div>
@@ -231,15 +243,15 @@
                                 <option value="yearly">Yearly</option>
                             </select>
                         </div>
-                        <div style="flex: 0.6; min-width: 60px;">
+                        <div id="item_duration_wrapper" style="flex: 0.6; min-width: 60px;">
                             <label style="font-size: 0.75rem;">Dur</label>
                             <input type="text" id="item_duration" placeholder="12" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                         </div>
-                        <div style="flex: 0.8; min-width: 90px;">
+                        <div id="item_start_date_wrapper" style="flex: 0.8; min-width: 90px;">
                             <label style="font-size: 0.75rem;">Start</label>
                             <input type="date" id="item_start_date" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                         </div>
-                        <div style="flex: 0.8; min-width: 90px;">
+                        <div id="item_end_date_wrapper" style="flex: 0.8; min-width: 90px;">
                             <label style="font-size: 0.75rem;">End</label>
                             <input type="date" id="item_end_date" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                         </div>
@@ -329,13 +341,18 @@
             </div>
         </div>
 
-        <div class="form-actions" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+        <div class="form-actions" 
+            style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px;">
+            
+            <a href="{{ route('orders.index', ['c' => $clientId]) }}" 
+            class="btn btn-secondary btn-sm">
+                <i class="fas fa-times" style="margin-right: 0.35rem;"></i>Cancel
+            </a>
+
             <button type="submit" class="btn btn-primary btn-sm" id="submitBtn">
                 <i class="fas fa-save" style="margin-right: 0.35rem;"></i>Update Order
             </button>
-            <a href="{{ route('orders.index', ['c' => $clientId]) }}" class="btn btn-secondary btn-sm" style="margin-left: 0.5rem;">
-                <i class="fas fa-times" style="margin-right: 0.35rem;"></i>Cancel
-            </a>
+
             <input type="hidden" name="subtotal" id="formSubtotal">
             <input type="hidden" name="discount_total" id="formDiscountTotal">
             <input type="hidden" name="tax_total" id="formTaxTotal">
@@ -366,7 +383,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 unit_price: {{ $item->unit_price }},
                 frequency: '{{ $item->frequency ?? '' }}',
                 duration: '{{ $item->duration ?? '' }}',
-                no_of_users: {{ $item->no_of_users ?? 1 }},
+                no_of_users: {{ $item->no_of_users ?? 'null' }},
                 start_date: '{{ $item->start_date ? $item->start_date->format("Y-m-d") : "" }}',
                 end_date: '{{ $item->end_date ? $item->end_date->format("Y-m-d") : "" }}',
                 delivery_date: '{{ $item->delivery_date ? $item->delivery_date->format("Y-m-d") : "" }}',
@@ -383,46 +400,40 @@ document.addEventListener('DOMContentLoaded', function() {
     let editingItemId = null;
     updateSummary();
 
-    // Initialize: Set item delivery date to match order delivery date on load
+    // Initialize: Set item delivery date input to match order delivery date on load
     const orderDeliveryDate = document.getElementById('delivery_date').value || '';
     if (orderDeliveryDate) {
-        document.getElementById('item_delivery_date').value = orderDeliveryDate;
-        
-        // Also update any existing items that don't have a delivery date
-        items.forEach(item => {
-            if (!item.delivery_date) {
-                item.delivery_date = orderDeliveryDate;
-            }
-        });
+        setDateValue('item_delivery_date', orderDeliveryDate);
     }
     
-    // When order delivery date changes, update all items
+    // When order delivery date changes, update the input field for the next item
     document.getElementById('delivery_date').addEventListener('change', function() {
         const newDeliveryDate = this.value || '';
-        document.getElementById('item_delivery_date').value = newDeliveryDate;
-
-        // Update all existing items in the JavaScript array
-        items.forEach(item => {
-            item.delivery_date = newDeliveryDate;
-        });
-
-        // Update the delivery date display in the table (column index 8)
-        tbody.querySelectorAll('tr').forEach(row => {
-            const cells = row.querySelectorAll('td');
-            if (cells.length > 8) {
-                cells[8].textContent = newDeliveryDate ? newDeliveryDate.split('-').reverse().join(' ') : '—';
+        const itemDeliveryInput = document.getElementById('item_delivery_date');
+        if (itemDeliveryInput) {
+            itemDeliveryInput.value = newDeliveryDate;
+            if (itemDeliveryInput._flatpickr) {
+                itemDeliveryInput._flatpickr.setDate(newDeliveryDate, false);
             }
-        });
-        
-        // Update the hidden form field to ensure it's submitted
-        updateSummary();
+        }
     });
+
+    // Helper function to set date value and notify flatpickr
+    function setDateValue(fieldId, value) {
+        const el = document.getElementById(fieldId);
+        if (!el) return;
+        el.value = value;
+        if (el._flatpickr) {
+            el._flatpickr.setDate(value, false);
+        }
+    }
 
     // Helper function to calculate end date based on frequency and duration
     function calculateEndDate(startDate, frequency, duration) {
         if (!startDate || !frequency || !duration) return '';
 
-        const start = new Date(startDate);
+        const parts = startDate.split('-');
+        const start = new Date(parts[0], parts[1] - 1, parts[2]); // Parse as local
         const durationNum = parseFloat(duration);
         if (isNaN(durationNum) || durationNum <= 0) return '';
 
@@ -459,7 +470,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 return '';
         }
 
-        return endDate.toISOString().split('T')[0];
+        const y = endDate.getFullYear();
+        const m = String(endDate.getMonth() + 1).padStart(2, '0');
+        const d = String(endDate.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
     }
 
     // Helper function to calculate line total: qty × price × users
@@ -478,12 +492,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return total;
     }
 
-    // Auto-populate item delivery date when order delivery date changes
-    document.getElementById('delivery_date').addEventListener('change', function() {
-        const orderDeliveryDate = this.value || '';
-        document.getElementById('item_delivery_date').value = orderDeliveryDate;
-    });
-
     // Item select change - auto-fill price
     document.getElementById('item_itemid').addEventListener('change', function() {
         const option = this.options[this.selectedIndex];
@@ -492,27 +500,56 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             document.getElementById('item_unit_price').value = '';
         }
+        @if($account->have_users)
+        toggleUsersField();
+        @endif
     });
 
-    // Handle frequency change - hide/show start and end date for one-time
-    document.getElementById('item_frequency').addEventListener('change', function() {
-        const frequency = this.value;
-        const startDateField = document.getElementById('item_start_date').closest('div');
-        const endDateField = document.getElementById('item_end_date').closest('div');
-        
-        if (frequency === 'one-time' || frequency === '') {
-            // Hide start and end date for one-time or no frequency
-            if (startDateField) startDateField.style.display = 'none';
-            if (endDateField) endDateField.style.display = 'none';
-            // Clear the values
+    function toggleRecurringFields(frequency) {
+        const isRecurring = frequency && frequency !== 'one-time';
+        const durationField = document.getElementById('item_duration_wrapper');
+        const startDateField = document.getElementById('item_start_date_wrapper');
+        const endDateField = document.getElementById('item_end_date_wrapper');
+
+        if (durationField) durationField.style.display = isRecurring ? 'block' : 'none';
+        if (startDateField) startDateField.style.display = isRecurring ? 'block' : 'none';
+        if (endDateField) endDateField.style.display = isRecurring ? 'block' : 'none';
+
+        if (!isRecurring) {
+            document.getElementById('item_duration').value = '';
             document.getElementById('item_start_date').value = '';
             document.getElementById('item_end_date').value = '';
-        } else {
-            // Show start and end date for recurring frequencies
-            if (startDateField) startDateField.style.display = 'block';
-            if (endDateField) endDateField.style.display = 'block';
         }
+    }
+
+    document.getElementById('item_frequency').addEventListener('change', function() {
+        toggleRecurringFields(this.value);
     });
+
+    toggleRecurringFields(document.getElementById('item_frequency').value || '');
+    @if($account->have_users)
+    toggleUsersField();
+    @endif
+
+    @if($account->have_users)
+    function isSelectedItemUserWise() {
+        const itemSelect = document.getElementById('item_itemid');
+        const option = itemSelect?.options[itemSelect.selectedIndex];
+        return option?.dataset?.userWise === '1';
+    }
+
+    function toggleUsersField() {
+        const wrapper = document.getElementById('item_users_wrapper');
+        const usersInput = document.getElementById('item_users');
+        if (!wrapper || !usersInput) return;
+
+        const show = isSelectedItemUserWise();
+        wrapper.style.display = show ? 'block' : 'none';
+        if (!show) {
+            usersInput.value = 1;
+        }
+    }
+    @endif
 
     // Auto-calculate end date when start date, frequency, or duration changes
     ['item_start_date', 'item_frequency', 'item_duration'].forEach(fieldId => {
@@ -523,7 +560,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (startDate && frequency && duration) {
                 const endDate = calculateEndDate(startDate, frequency, duration);
-                document.getElementById('item_end_date').value = endDate;
+                setDateValue('item_end_date', endDate);
             }
         });
     });
@@ -541,7 +578,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const unitPrice = parseFloat(document.getElementById('item_unit_price').value) || 0;
         const frequency = document.getElementById('item_frequency').value || '';
         const duration = document.getElementById('item_duration').value || '';
+        @if($account->have_users)
+        const isUserWiseItem = isSelectedItemUserWise();
+        const users = isUserWiseItem ? (parseInt(document.getElementById('item_users').value) || 1) : 1;
+        const usersForStorage = isUserWiseItem ? users : null;
+        @else
         const users = parseInt(document.getElementById('item_users').value) || 1;
+        const usersForStorage = users;
+        @endif
         const startDate = document.getElementById('item_start_date').value || '';
         const endDate = document.getElementById('item_end_date').value || '';
         const deliveryDate = document.getElementById('item_delivery_date').value || '';
@@ -593,7 +637,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         unit_price: unitPrice,
                         frequency: frequency,
                         duration: duration,
-                        no_of_users: users,
+                        no_of_users: usersForStorage,
                         start_date: startDate,
                         end_date: endDate,
                         delivery_date: deliveryDate,
@@ -613,7 +657,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         item.unit_price = unitPrice;
                         item.frequency = frequency;
                         item.duration = duration;
-                        item.no_of_users = users;
+                        item.no_of_users = usersForStorage;
                         item.start_date = startDate;
                         item.end_date = endDate;
                         item.delivery_date = deliveryDate;
@@ -637,7 +681,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${taxRate}%</td>
                                 @endif
                                 @if($account->have_users)
-                                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${users}</td>
+                                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${usersForStorage ?? '—'}</td>
                                 @endif
                                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${discountPercent > 0 ? discountPercent + '%' : '—'}</td>
                                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
@@ -677,7 +721,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 item.unit_price = unitPrice;
                 item.frequency = frequency;
                 item.duration = duration;
-                item.no_of_users = users;
+                item.no_of_users = usersForStorage;
                 item.start_date = startDate;
                 item.end_date = endDate;
                 item.delivery_date = deliveryDate;
@@ -699,7 +743,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${taxRate}%</td>
                         @endif
                         @if($account->have_users)
-                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${users}</td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${usersForStorage ?? '—'}</td>
                         @endif
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>
@@ -737,7 +781,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     unit_price: unitPrice,
                     frequency: frequency,
                     duration: duration,
-                    no_of_users: users,
+                    no_of_users: usersForStorage,
                     start_date: startDate,
                     end_date: endDate,
                     delivery_date: deliveryDate,
@@ -760,7 +804,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         unit_price: unitPrice,
                         frequency: frequency,
                         duration: duration,
-                        no_of_users: users,
+                        no_of_users: usersForStorage,
                         start_date: startDate,
                         end_date: endDate,
                         delivery_date: deliveryDate,
@@ -786,7 +830,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${taxRate}%</td>
                         @endif
                         @if($account->have_users)
-                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${users}</td>
+                        <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${usersForStorage ?? '—'}</td>
                         @endif
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${discountPercent > 0 ? discountPercent + '%' : '—'}</td>
                         <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
@@ -833,23 +877,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('item_frequency').value = item.frequency || '';
                 document.getElementById('item_duration').value = item.duration || '';
                 document.getElementById('item_users').value = item.no_of_users || 1;
+                @if($account->have_users)
+                toggleUsersField();
+                @endif
                 document.getElementById('item_discount').value = item.discount_percent || 0;
-                document.getElementById('item_start_date').value = item.start_date || '';
-                document.getElementById('item_end_date').value = item.end_date || '';
-                document.getElementById('item_delivery_date').value = item.delivery_date || '';
                 
-                // Hide/show start and end date based on frequency
-                const frequency = item.frequency || '';
-                const startDateField = document.getElementById('item_start_date').closest('div');
-                const endDateField = document.getElementById('item_end_date').closest('div');
+                setDateValue('item_start_date', item.start_date || '');
+                setDateValue('item_end_date', item.end_date || '');
+                // Use item's delivery date, or fall back to order's delivery date if item's is empty
+                const orderDeliveryDate = document.getElementById('delivery_date')?.value || '';
+                setDateValue('item_delivery_date', item.delivery_date || orderDeliveryDate);
                 
-                if (frequency === 'one-time' || frequency === '') {
-                    if (startDateField) startDateField.style.display = 'none';
-                    if (endDateField) endDateField.style.display = 'none';
-                } else {
-                    if (startDateField) startDateField.style.display = 'block';
-                    if (endDateField) endDateField.style.display = 'block';
-                }
+                toggleRecurringFields(item.frequency || '');
                 
                 // Change button text to indicate update
                 document.getElementById('addItemBtn').textContent = 'Update';
@@ -915,13 +954,19 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('item_frequency').value = '';
         document.getElementById('item_duration').value = '';
         document.getElementById('item_users').value = 1;
+        @if($account->have_users)
+        toggleUsersField();
+        @endif
         document.getElementById('item_discount').value = 0;
-        document.getElementById('item_start_date').value = '';
-        document.getElementById('item_end_date').value = '';
+        
+        setDateValue('item_start_date', '');
+        setDateValue('item_end_date', '');
+        
+        toggleRecurringFields('');
         
         // Reset delivery date to order's delivery date
         const orderDeliveryDate = document.getElementById('delivery_date').value || '';
-        document.getElementById('item_delivery_date').value = orderDeliveryDate;
+        setDateValue('item_delivery_date', orderDeliveryDate);
     }
 
     // Toast notification function
