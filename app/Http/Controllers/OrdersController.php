@@ -194,18 +194,17 @@ class OrdersController extends Controller
             $discountTotal = 0;
             $taxTotal = 0;
             foreach ($itemsData as $itemData) {
-                $lineTotal = (float) ($itemData['line_total'] ?? 0);
-                $discountAmount = (float) ($itemData['discount_amount'] ?? 0);
-                $subtotal += $lineTotal;
-                $discountTotal += $discountAmount;
-
                 $service = Service::with('costings')->find($itemData['itemid'] ?? null);
                 $taxRate = $this->resolveTaxRate($service, $itemData);
-                $taxableAmount = $lineTotal - $discountAmount;
-                $taxAmount = ($taxableAmount * $taxRate) / 100;
-                $taxTotal += $taxAmount;
+                $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
+                $subtotal += $amounts['line_total'];
+                $discountTotal += $amounts['discount_amount'];
+                $taxTotal += $amounts['tax_amount'];
             }
-            $grandTotal = $subtotal - $discountTotal + $taxTotal;
+            $subtotal = round($subtotal, 2);
+            $discountTotal = round($discountTotal, 2);
+            $taxTotal = round($taxTotal, 2);
+            $grandTotal = round($subtotal - $discountTotal + $taxTotal, 2);
 
             $existingOrder->update([
                 'clientid' => $validated['clientid'],
@@ -227,6 +226,7 @@ class OrdersController extends Controller
             foreach ($itemsData as $index => $itemData) {
                 $service = Service::with('costings')->find($itemData['itemid'] ?? null);
                 $taxRate = $this->resolveTaxRate($service, $itemData);
+                $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
 
                 OrderItem::create([
                     'orderid' => $existingOrder->orderid,
@@ -236,15 +236,15 @@ class OrdersController extends Controller
                     'quantity' => $itemData['quantity'],
                     'unit_price' => $itemData['unit_price'],
                     'tax_rate' => $taxRate,
-                    'discount_percent' => $itemData['discount_percent'] ?? 0,
-                    'discount_amount' => $itemData['discount_amount'] ?? 0,
+                    'discount_percent' => (float) ($itemData['discount_percent'] ?? 0),
+                    'discount_amount' => $amounts['discount_amount'],
                     'duration' => $itemData['duration'] ?? null,
                     'frequency' => $itemData['frequency'] ?? null,
                     'no_of_users' => $itemData['no_of_users'] ?? null,
                     'start_date' => $itemData['start_date'] ?? null,
                     'end_date' => $itemData['end_date'] ?? null,
                     'delivery_date' => $itemData['delivery_date'] ?? null,
-                    'line_total' => $itemData['line_total'],
+                    'line_total' => $amounts['line_total'],
                     'sort_order' => $index + 1,
                 ]);
             }
@@ -277,18 +277,17 @@ class OrdersController extends Controller
         $discountTotal = 0;
         $taxTotal = 0;
         foreach ($itemsData as $itemData) {
-            $lineTotal = (float) ($itemData['line_total'] ?? 0);
-            $discountAmount = (float) ($itemData['discount_amount'] ?? 0);
-            $subtotal += $lineTotal;
-            $discountTotal += $discountAmount;
-
             $service = Service::with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
-            $taxableAmount = $lineTotal - $discountAmount;
-            $taxAmount = ($taxableAmount * $taxRate) / 100;
-            $taxTotal += $taxAmount;
+            $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
+            $subtotal += $amounts['line_total'];
+            $discountTotal += $amounts['discount_amount'];
+            $taxTotal += $amounts['tax_amount'];
         }
-        $grandTotal = $subtotal - $discountTotal + $taxTotal;
+        $subtotal = round($subtotal, 2);
+        $discountTotal = round($discountTotal, 2);
+        $taxTotal = round($taxTotal, 2);
+        $grandTotal = round($subtotal - $discountTotal + $taxTotal, 2);
         $validated['subtotal'] = $subtotal;
         $validated['discount_total'] = $discountTotal;
         $validated['tax_total'] = $taxTotal;
@@ -299,6 +298,7 @@ class OrdersController extends Controller
         foreach ($itemsData as $index => $itemData) {
             $service = Service::with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
+            $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
 
             \Log::info('Order Item Create', [
                 'item' => $itemData['itemid'],
@@ -313,15 +313,15 @@ class OrdersController extends Controller
                 'quantity' => $itemData['quantity'],
                 'unit_price' => $itemData['unit_price'],
                 'tax_rate' => $taxRate,
-                'discount_percent' => $itemData['discount_percent'] ?? 0,
-                'discount_amount' => $itemData['discount_amount'] ?? 0,
+                'discount_percent' => (float) ($itemData['discount_percent'] ?? 0),
+                'discount_amount' => $amounts['discount_amount'],
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
                 'no_of_users' => $itemData['no_of_users'] ?? null,
                 'start_date' => $itemData['start_date'] ?? null,
                 'end_date' => $itemData['end_date'] ?? null,
                 'delivery_date' => $itemData['delivery_date'] ?? null,
-                'line_total' => $itemData['line_total'],
+                'line_total' => $amounts['line_total'],
                 'sort_order' => $index + 1,
             ]);
         }
@@ -384,6 +384,8 @@ class OrdersController extends Controller
                     'unit_price' => $item->unit_price ?? 0,
                     'tax_rate' => $item->tax_rate ?? 0,
                     'line_total' => $item->line_total ?? 0,
+                    'discount_percent' => $item->discount_percent ?? 0,
+                    'discount_amount' => $item->discount_amount ?? 0,
                     'item_name' => $item->item_name ?? '',
                     'frequency' => $item->frequency,
                     'duration' => $item->duration,
@@ -422,6 +424,8 @@ class OrdersController extends Controller
                     'unit_price' => number_format($item->unit_price ?? 0, 2),
                     'tax_rate' => number_format($item->tax_rate ?? 0, 2),
                     'line_total' => number_format($item->line_total ?? 0, 2),
+                    'discount_percent' => number_format($item->discount_percent ?? 0, 2),
+                    'discount_amount' => number_format($item->discount_amount ?? 0, 2),
                     'item_name' => $item->item_name ?? 'Item',
                     'service' => null,
                 ];
@@ -483,18 +487,17 @@ class OrdersController extends Controller
         $discountTotal = 0;
         $taxTotal = 0;
         foreach ($itemsData as $itemData) {
-            $lineTotal = (float) ($itemData['line_total'] ?? 0);
-            $discountAmount = (float) ($itemData['discount_amount'] ?? 0);
-            $subtotal += $lineTotal;
-            $discountTotal += $discountAmount;
-
             $service = Service::with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
-            $taxableAmount = $lineTotal - $discountAmount;
-            $taxAmount = ($taxableAmount * $taxRate) / 100;
-            $taxTotal += $taxAmount;
+            $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
+            $subtotal += $amounts['line_total'];
+            $discountTotal += $amounts['discount_amount'];
+            $taxTotal += $amounts['tax_amount'];
         }
-        $grandTotal = $subtotal - $discountTotal + $taxTotal;
+        $subtotal = round($subtotal, 2);
+        $discountTotal = round($discountTotal, 2);
+        $taxTotal = round($taxTotal, 2);
+        $grandTotal = round($subtotal - $discountTotal + $taxTotal, 2);
 
         // Handle PO file upload
         if ($request->hasFile('po_file')) {
@@ -539,6 +542,7 @@ class OrdersController extends Controller
         foreach ($itemsData as $index => $itemData) {
             $service = Service::with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
+            $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
             
             // Log for debugging
             \Log::info('Order Item Save', [
@@ -556,16 +560,15 @@ class OrdersController extends Controller
                 'quantity' => $itemData['quantity'],
                 'unit_price' => $itemData['unit_price'],
                 'tax_rate' => $taxRate,
-                'tax_included' => $itemData['tax_included'] ?? 'no',
-                'discount_percent' => $itemData['discount_percent'] ?? 0,
-                'discount_amount' => $itemData['discount_amount'] ?? 0,
+                'discount_percent' => (float) ($itemData['discount_percent'] ?? 0),
+                'discount_amount' => $amounts['discount_amount'],
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
                 'no_of_users' => $itemData['no_of_users'] ?? null,
                 'start_date' => $itemData['start_date'] ?? null,
                 'end_date' => $itemData['end_date'] ?? null,
                 'delivery_date' => $itemData['delivery_date'] ?? null,
-                'line_total' => $itemData['line_total'],
+                'line_total' => $amounts['line_total'],
                 'sort_order' => $index + 1,
             ]);
         }
@@ -601,6 +604,21 @@ class OrdersController extends Controller
         }
 
         return (float) ($itemData['tax_rate'] ?? 0);
+    }
+
+    private function calculateOrderItemAmounts(array $itemData, float $taxRate): array
+    {
+        $lineTotal = (float) ($itemData['line_total'] ?? 0);
+        $discountPercent = (float) ($itemData['discount_percent'] ?? 0);
+        $discountAmount = ($lineTotal * $discountPercent) / 100;
+        $taxableAmount = max(0, $lineTotal - $discountAmount);
+        $taxAmount = ($taxableAmount * $taxRate) / 100;
+
+        return [
+            'line_total' => round($lineTotal, 2),
+            'discount_amount' => round($discountAmount, 2),
+            'tax_amount' => round($taxAmount, 2),
+        ];
     }
 
     private function getSalesPeopleForForm(string $accountId): Collection
@@ -890,10 +908,9 @@ class OrdersController extends Controller
                 'tax_rate' => 'required|numeric|min:0',
             ]);
 
-            $service = Service::find($validated['itemid']);
-            $discountAmount = $validated['discount_amount'] ?? 0;
-            $taxableAmount = $validated['line_total'] - $discountAmount;
-            $taxAmount = ($taxableAmount * $validated['tax_rate']) / 100;
+            $service = Service::with('costings')->find($validated['itemid']);
+            $taxRate = $this->resolveTaxRate($service, $validated);
+            $amounts = $this->calculateOrderItemAmounts($validated, $taxRate);
 
             $orderItem = OrderItem::create([
                 'orderid' => $order->orderid,
@@ -902,16 +919,16 @@ class OrdersController extends Controller
                 'item_description' => null,
                 'quantity' => $validated['quantity'],
                 'unit_price' => $validated['unit_price'],
-                'tax_rate' => $validated['tax_rate'],
-                'discount_percent' => $validated['discount_percent'] ?? 0,
-                'discount_amount' => $discountAmount,
+                'tax_rate' => $taxRate,
+                'discount_percent' => (float) ($validated['discount_percent'] ?? 0),
+                'discount_amount' => $amounts['discount_amount'],
                 'duration' => $validated['duration'] ?? null,
                 'frequency' => $validated['frequency'] ?? null,
                 'no_of_users' => $validated['no_of_users'] ?? null,
                 'start_date' => $validated['start_date'] ?? null,
                 'end_date' => $validated['end_date'] ?? null,
                 'delivery_date' => $validated['delivery_date'] ?? null,
-                'line_total' => $validated['line_total'],
+                'line_total' => $amounts['line_total'],
                 'sort_order' => $order->items()->count() + 1,
             ]);
 
@@ -998,26 +1015,25 @@ class OrdersController extends Controller
                 'tax_rate' => 'required|numeric|min:0',
             ]);
 
-            $service = Service::find($validated['itemid']);
-            $discountAmount = $validated['discount_amount'] ?? 0;
-            $taxableAmount = $validated['line_total'] - $discountAmount;
-            $taxAmount = ($taxableAmount * $validated['tax_rate']) / 100;
+            $service = Service::with('costings')->find($validated['itemid']);
+            $taxRate = $this->resolveTaxRate($service, $validated);
+            $amounts = $this->calculateOrderItemAmounts($validated, $taxRate);
 
             $orderItem->update([
                 'itemid' => $validated['itemid'],
                 'item_name' => $service?->name ?? 'Custom Item',
                 'quantity' => $validated['quantity'],
                 'unit_price' => $validated['unit_price'],
-                'tax_rate' => $validated['tax_rate'],
-                'discount_percent' => $validated['discount_percent'] ?? 0,
-                'discount_amount' => $discountAmount,
+                'tax_rate' => $taxRate,
+                'discount_percent' => (float) ($validated['discount_percent'] ?? 0),
+                'discount_amount' => $amounts['discount_amount'],
                 'duration' => $validated['duration'] ?? null,
                 'frequency' => $validated['frequency'] ?? null,
                 'no_of_users' => $validated['no_of_users'] ?? null,
                 'start_date' => $validated['start_date'] ?? null,
                 'end_date' => $validated['end_date'] ?? null,
                 'delivery_date' => $validated['delivery_date'] ?? null,
-                'line_total' => $validated['line_total'],
+                'line_total' => $amounts['line_total'],
             ]);
 
             // Update order totals
@@ -1064,7 +1080,7 @@ class OrdersController extends Controller
             $discountAmount = (float) ($item->discount_amount ?? 0);
             $subtotal += $lineTotal;
             $discountTotal += $discountAmount;
-            $taxableAmount = $lineTotal - $discountAmount;
+            $taxableAmount = max(0, $lineTotal - $discountAmount);
             $taxTotal += ($taxableAmount * $taxRate) / 100;
         }
 

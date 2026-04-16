@@ -59,7 +59,6 @@ class ServicesController extends Controller
                     'selling_price' => $costing->selling_price,
                     'sac_code' => $costing->sac_code,
                     'tax_rate' => $costing->tax_rate,
-                    'tax_included' => $costing->tax_included,
                 ];
             });
 
@@ -153,7 +152,6 @@ class ServicesController extends Controller
             'costings.*.selling_price' => 'required|numeric|min:0',
             'costings.*.sac_code' => 'nullable|string|max:20',
             'costings.*.taxid' => 'nullable|string|exists:account_taxes,taxid',
-            'costings.*.tax_included' => 'required|in:yes,no',
             'addons' => 'nullable|array',
             'addons.*' => 'required|string|distinct|exists:items,itemid',
         ]);
@@ -189,7 +187,6 @@ class ServicesController extends Controller
                     'sac_code' => $costing['sac_code'] ?? null,
                     'taxid' => $taxid,
                     'tax_rate' => $taxRate,
-                    'tax_included' => $costing['tax_included'],
                 ];
             });
 
@@ -215,7 +212,6 @@ class ServicesController extends Controller
                     'sac_code' => $costing['sac_code'],
                     'taxid' => $costing['taxid'],
                     'tax_rate' => $costing['tax_rate'],
-                    'tax_included' => $costing['tax_included'],
                 ]);
             });
         });
@@ -285,7 +281,6 @@ class ServicesController extends Controller
             'costings.*.selling_price' => 'required|numeric|min:0',
             'costings.*.sac_code' => 'nullable|string|max:20',
             'costings.*.taxid' => 'nullable|string|exists:account_taxes,taxid',
-            'costings.*.tax_included' => 'required|in:yes,no',
             'addons' => 'nullable|array',
             'addons.*' => 'required|string|distinct|exists:items,itemid',
         ]);
@@ -319,7 +314,6 @@ class ServicesController extends Controller
                     'sac_code' => $costing['sac_code'] ?? null,
                     'taxid' => $taxid,
                     'tax_rate' => $taxRate,
-                    'tax_included' => $costing['tax_included'],
                 ];
             });
 
@@ -346,7 +340,6 @@ class ServicesController extends Controller
                     'sac_code' => $costing['sac_code'],
                     'taxid' => $costing['taxid'],
                     'tax_rate' => $costing['tax_rate'],
-                    'tax_included' => $costing['tax_included'],
                 ]);
             });
         });
@@ -396,7 +389,6 @@ class ServicesController extends Controller
                 'costings.*.selling_price' => 'required|numeric|min:0',
                 'costings.*.sac_code' => 'nullable|string|max:20',
                 'costings.*.taxid' => 'nullable|string|exists:account_taxes,taxid',
-                'costings.*.tax_included' => 'required|in:yes,no',
                 'addons' => 'nullable|array',
                 'addons.*' => 'required|string|distinct|exists:items,itemid',
             ]);
@@ -460,7 +452,6 @@ class ServicesController extends Controller
                         'sac_code' => $costing['sac_code'] ?? null,
                         'taxid' => $taxid,
                         'tax_rate' => $taxRate,
-                        'tax_included' => $costing['tax_included'],
                     ]);
                 }
 

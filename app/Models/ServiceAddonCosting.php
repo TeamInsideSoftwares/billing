@@ -26,7 +26,6 @@ class ServiceAddonCosting extends Model
         'selling_price',
         'sac_code',
         'tax_rate',
-        'tax_included',
     ];
 
     protected $casts = [

@@ -165,12 +165,10 @@
                                                 $defaultCosting = $costings->first();
                                                 $sellingPrice = $defaultCosting?->selling_price ?? 0;
                                                 $taxRate = $defaultCosting?->tax_rate ?? 0;
-                                                $taxIncluded = $defaultCosting?->tax_included ?? 'no';
                                             @endphp
                                             <option value="{{ $service->itemid }}"
                                                     data-selling-price="{{ $sellingPrice }}"
                                                     data-tax-rate="{{ $taxRate }}"
-                                                    data-tax-included="{{ $taxIncluded }}"
                                                     data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
                                                 {{ $service->name }} ({{ number_format($sellingPrice, 0) }})
                                             </option>
@@ -462,6 +460,31 @@ document.addEventListener('DOMContentLoaded', function() {
         return total;
     }
 
+    // Normalize amounts so line_total always represents amount before tax.
+    function round2(value) {
+        return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+    }
+
+    function calculateTaxBreakdown(lineTotalInput, discountPercent, taxRate) {
+        const rate = Number(taxRate) || 0;
+        const lineTotal = Number(lineTotalInput) || 0;
+
+        const discountAmount = (lineTotal * (Number(discountPercent) || 0)) / 100;
+        const taxableAmount = Math.max(0, lineTotal - discountAmount);
+        const taxAmount = (taxableAmount * rate) / 100;
+
+        return {
+            lineTotal: round2(lineTotal),
+            discountAmount: round2(discountAmount),
+            taxAmount: round2(taxAmount)
+        };
+    }
+
+    function renderLineTotalHtml(lineTotal) {
+        const base = Number(lineTotal || 0).toFixed(2);
+        return `<strong>${base}</strong>`;
+    }
+
     // When order delivery date changes, update the input field for the next item
     document.getElementById('delivery_date').addEventListener('change', function() {
         const orderDeliveryDate = this.value || '';
@@ -642,7 +665,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${startDate || '—'}</td>
                     <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${endDate || '—'}</td>
                     <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${deliveryDate || '—'}</td>
-                    <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${Math.round(lineTotal)}</strong></td>
+                    <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total">${renderLineTotalHtml(lineTotal)}</td>
                     <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
                         <button type="button" class="edit-item icon-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;"><i class="fas fa-edit"></i></button>
                         <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button>
@@ -679,7 +702,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const serviceOption = document.getElementById('item_itemid').options[document.getElementById('item_itemid').selectedIndex];
         const serviceName = serviceOption.text.split(' (')[0];
-        const taxIncluded = serviceOption.dataset.taxIncluded || 'no';
         
         const qty = parseFloat(document.getElementById('item_quantity').value) || 1;
         const unitPrice = parseFloat(document.getElementById('item_unit_price').value) || 0;
@@ -697,9 +719,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const endDate = document.getElementById('item_end_date').value || '';
         const deliveryDate = document.getElementById('item_delivery_date').value || '';
 
-        const lineTotal = calculateLineTotal(qty, unitPrice, users, frequency, duration);
         const discountPercent = parseFloat(document.getElementById('item_discount').value) || 0;
-        const discountAmount = (lineTotal * discountPercent) / 100;
+        const lineInputTotal = calculateLineTotal(qty, unitPrice, users, frequency, duration);
 
         @if($account->allow_multi_taxation)
         const taxRate = parseFloat(document.getElementById('item_tax_rate').value) || 0;
@@ -707,17 +728,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const taxRate = {{ $account->fixed_tax_rate ?? 0 }};
         @endif
         
-        // Calculate tax based on whether it's included or excluded
-        let taxAmount = 0;
-        let lineTotalWithoutTax = lineTotal - discountAmount;
-        
-        if (taxIncluded === 'yes') {
-            // Tax is included in the price - extract the tax amount
-            taxAmount = (lineTotalWithoutTax * taxRate) / (100 + taxRate);
-        } else {
-            // Tax is excluded - add tax on top
-            taxAmount = (lineTotalWithoutTax * taxRate) / 100;
-        }
+        const { lineTotal, discountAmount, taxAmount } = calculateTaxBreakdown(lineInputTotal, discountPercent, taxRate);
 
         if (editingItemId) {
             const item = items.find(i => i.id === editingItemId);
@@ -834,10 +845,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function updateSummary() {
-        const subtotal = items.reduce((sum, item) => sum + item.line_total, 0);
-        const discountTotal = items.reduce((sum, item) => sum + (item.discount_amount || 0), 0);
-        const taxTotal = items.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
-        const grandTotal = subtotal - discountTotal + taxTotal;
+        const subtotal = round2(items.reduce((sum, item) => sum + Number(item.line_total || 0), 0));
+        const discountTotal = round2(items.reduce((sum, item) => sum + Number(item.discount_amount || 0), 0));
+        const taxTotal = round2(items.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0));
+        const grandTotal = round2(subtotal - discountTotal + taxTotal);
 
         document.getElementById('subtotal').textContent = subtotal.toFixed(2);
         document.getElementById('discountTotal').textContent = discountTotal.toFixed(2);
@@ -975,8 +986,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 end_date: itemData.end_date || '',
                 delivery_date: itemData.delivery_date || '',
                 line_total: itemData.line_total,
+                discount_percent: itemData.discount_percent || 0,
+                discount_amount: itemData.discount_amount || 0,
                 tax_rate: itemData.tax_rate || 0,
-                tax_amount: (itemData.line_total * (itemData.tax_rate || 0)) / 100
+                tax_amount: (Math.max(0, (itemData.line_total || 0) - (itemData.discount_amount || 0)) * (itemData.tax_rate || 0)) / 100
             };
             items.push(item);
 

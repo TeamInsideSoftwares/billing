@@ -152,7 +152,6 @@
                 'selling_price' => '',
                 'sac_code' => '',
                 'tax_rate' => '',
-                'tax_included' => 'no',
             ]]))->values()->all();
             $selectedAddonIds = collect(old('addons', []))->values()->all();
         @endphp
@@ -209,7 +208,6 @@
                             <th>Selling Price *</th>
                             <th>SAC Code</th>
                             <th>Tax</th>
-                            <th>Tax Incl. *</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -250,12 +248,6 @@
                                         {{ number_format($account->fixed_tax_rate ?? 0, 2) }}%
                                     </span>
                                     @endif
-                                </td>
-                                <td>
-                                    <select name="costings[{{ $index }}][tax_included]" style="min-width: 80px; padding: 0.3rem;" required>
-                                        <option value="no" {{ ($costing['tax_included'] ?? 'no') === 'no' ? 'selected' : '' }}>Excl.</option>
-                                        <option value="yes" {{ ($costing['tax_included'] ?? 'no') === 'yes' ? 'selected' : '' }}>Incl.</option>
-                                    </select>
                                 </td>
                                 <td style="width: 60px; text-align: center;">
                                     <button type="button" class="icon-action-btn delete remove-costing" style="padding: 0.25rem;"><i class="fas fa-trash"></i></button>
@@ -407,10 +399,6 @@ function showToast(type, message) {
             return `<input type="hidden" name="costings[${i}][taxid]" value=""><span style="min-width:140px;padding:0.3rem 0.5rem;font-size:0.82rem;background:#f1f5f9;border-radius:4px;color:#64748b;display:inline-block;">${fixedTaxRate.toFixed(2)}%</span>`;
         }
     }
-    function taxIncludeHtml(i) {
-        return `<select name="costings[${i}][tax_included]" style="min-width:80px;padding:0.3rem;" required><option value="no" selected>Excl.</option><option value="yes">Incl.</option></select>`;
-    }
-
     function syncCostingTableVisibility() {
         const hasRows = costingTableBody.querySelectorAll('tr').length > 0;
         costingTableWrap.style.display = hasRows ? 'block' : 'none';
@@ -430,7 +418,6 @@ function showToast(type, message) {
                 <td><input type="number" step="0.01" name="costings[${i}][selling_price]" required style="padding: 0.3rem; width: 100px;"></td>
                 <td><input type="text" maxlength="20" name="costings[${i}][sac_code]" style="padding: 0.3rem; width: 80px;"></td>
                 <td>${taxSelectHtml(i)}</td>
-                <td>${taxIncludeHtml(i)}</td>
                 <td style="width: 60px; text-align: center;">
                     <button type="button" class="icon-action-btn delete remove-costing" style="padding: 0.25rem;"><i class="fas fa-trash"></i></button>
                 </td>
@@ -511,7 +498,6 @@ function showToast(type, message) {
             const costPrice = row.querySelector('input[name*="[cost_price]"]')?.value || '';
             const sellingPrice = row.querySelector('input[name*="[selling_price]"]')?.value || '';
             const sacCode = row.querySelector('input[name*="[sac_code]"]')?.value || '';
-            const taxIncluded = row.querySelector('select[name*="[tax_included]"]')?.value || 'no';
             const taxId = row.querySelector('select[name*="[taxid]"]')?.value || '';
 
             if (currency || costPrice || sellingPrice || sacCode || taxId) {
@@ -520,8 +506,7 @@ function showToast(type, message) {
                     cost_price: costPrice,
                     selling_price: sellingPrice,
                     sac_code: sacCode,
-                    taxid: taxId || null,
-                    tax_included: taxIncluded
+                    taxid: taxId || null
                 });
             }
         });
@@ -546,8 +531,7 @@ function showToast(type, message) {
             costingsHtml = validCostings.map((c) => {
                 const price = c.selling_price ? Number(c.selling_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—';
                 const tax = c.tax_rate ? c.tax_rate + '%' : (c.taxid ? 'Taxed' : '');
-                const type = c.tax_included === 'yes' ? 'Incl.' : 'Excl.';
-                return `<span style="display:inline-block;padding:0.2rem 0.5rem;background:#f1f5f9;color:#475569;border-radius:0.25rem;font-size:0.75rem;border:1px solid #e2e8f0;">${c.currency_code} ${price} <small style="opacity:0.7;">(${type}${tax ? ' | ' + tax : ''})</small></span>`;
+                return `<span style="display:inline-block;padding:0.2rem 0.5rem;background:#f1f5f9;color:#475569;border-radius:0.25rem;font-size:0.75rem;border:1px solid #e2e8f0;">${c.currency_code} ${price} <small style="opacity:0.7;">(${tax || 'No Tax'})</small></span>`;
             }).join(' ');
         }
         

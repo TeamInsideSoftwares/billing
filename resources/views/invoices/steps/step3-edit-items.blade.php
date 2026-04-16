@@ -192,6 +192,29 @@
         return normalizedItem;
     }
 
+    function calculateLineInputTotal(item) {
+        const qty = Number(item.quantity || 0);
+        const price = Number(item.unit_price || 0);
+        const users = itemSupportsUserFields(item) ? Math.max(1, Number(item.no_of_users || 1)) : 1;
+        const durationMultiplier = (item.frequency && item.frequency !== 'one-time' && Number(item.duration || 0) > 0)
+            ? Number(item.duration || 0)
+            : 1;
+        return qty * price * users * durationMultiplier;
+    }
+
+    function normalizeItemAmounts(item) {
+        const taxRate = Number(item.tax_rate || 0);
+        const discountPercent = Math.min(100, Math.max(0, Number(item.discount_percent || 0)));
+        const lineTotal = calculateLineInputTotal(item);
+        const discountAmount = lineTotal * (discountPercent / 100);
+        const taxAmount = Math.max(0, lineTotal - discountAmount) * (taxRate / 100);
+
+        item.line_total = lineTotal;
+        item.discount_percent = discountPercent;
+        item.discount_amount = discountAmount;
+        item.tax_amount = taxAmount;
+    }
+
     function syncConditionalHeaders() {
         const showUserColumns = invoiceItems.some(itemSupportsUserFields);
         const showDateColumns = invoiceItems.some(itemHasRecurringFrequency);
@@ -285,8 +308,9 @@
         syncConditionalHeaders();
 
         invoiceItems.forEach((item, index) => {
+            normalizeItemAmounts(item);
             const lineDiscount = Number(item.discount_amount || 0);
-            const lineTax = Math.max(0, item.line_total - lineDiscount) * ((item.tax_rate || 0) / 100);
+            const lineTax = Number(item.tax_amount || 0);
             subtotal += item.line_total;
             discountTotal += lineDiscount;
             taxTotal += lineTax;
@@ -401,18 +425,7 @@
                     invoiceItems[index].duration
                 );
             }
-
-            const qty = invoiceItems[index].quantity || 0;
-            const price = invoiceItems[index].unit_price || 0;
-            const users = itemSupportsUserFields(invoiceItems[index])
-                ? Math.max(1, invoiceItems[index].no_of_users || 1)
-                : 1;
-            const freq = invoiceItems[index].frequency;
-            const dur = invoiceItems[index].duration || 0;
-
-            invoiceItems[index].line_total = qty * price * users * (freq && freq !== 'one-time' && dur > 0 ? dur : 1);
-            invoiceItems[index].discount_percent = Math.min(100, Math.max(0, Number(invoiceItems[index].discount_percent || 0)));
-            invoiceItems[index].discount_amount = invoiceItems[index].line_total * (invoiceItems[index].discount_percent / 100);
+            normalizeItemAmounts(invoiceItems[index]);
         });
 
         renderItems();

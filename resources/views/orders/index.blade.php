@@ -334,8 +334,8 @@
                                     <strong class="order-amount">{{ $order['currency'] ?? 'INR' }} {{ $order['amount'] ?? number_format(0, 2) }}</strong>
                                 </td>
                                 <td>
-                                    <span class="status-pill {{ ($order['verified'] ?? false) ? 'verified' : 'pending' }}">
-                                        {{ ($order['verified'] ?? false) ? 'Verified' : 'Pending' }}
+                                    <span class="status-pill {{ ($order['verified'] ?? false) ? 'verified' : 'unverified' }}">
+                                        {{ ($order['verified'] ?? false) ? 'Verified' : 'Unverified' }}
                                     </span>
                                 </td>
                                 <td class="table-actions">

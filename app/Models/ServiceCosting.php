@@ -27,7 +27,6 @@ class ServiceCosting extends Model
         'sac_code',
         'taxid',
         'tax_rate',
-        'tax_included',
     ];
 
     protected $casts = [

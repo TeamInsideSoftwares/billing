@@ -263,15 +263,17 @@ class InvoicesController extends Controller
 
     public function getOrderItems(Request $request, $orderid)
     {
-        $order = \App\Models\Order::with(['items.item', 'client', 'salesPerson'])->findOrFail($orderid);
+        $order = \App\Models\Order::with(['items.item.costings', 'client', 'salesPerson'])->findOrFail($orderid);
 
         $items = $order->items->map(function ($item) {
+            $taxRate = (float) ($item->tax_rate ?? 0);
+            $lineTotal = (float) ($item->line_total ?? 0);
             return [
                 'itemid' => $item->itemid,
                 'item_name' => $item->item_name,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
-                'tax_rate' => $item->tax_rate,
+                'tax_rate' => $taxRate,
                 'discount_percent' => $item->discount_percent ?? 0,
                 'discount_amount' => $item->discount_amount ?? 0,
                 'duration' => $item->duration,
@@ -280,7 +282,7 @@ class InvoicesController extends Controller
                 'start_date' => $item->start_date?->format('Y-m-d'),
                 'end_date' => $item->end_date?->format('Y-m-d'),
                 'delivery_date' => $item->delivery_date?->format('Y-m-d'),
-                'line_total' => $item->line_total,
+                'line_total' => $lineTotal,
                 'requires_user_fields' => (bool) ($item->item?->user_wise ?? false),
             ];
         })->values();
@@ -329,19 +331,24 @@ class InvoicesController extends Controller
                 $isUpcoming = !$isExpired && $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
             }
 
+            $taxRate = (float) ($item->tax_rate ?? 0);
+            $lineTotal = (float) ($item->line_total ?? 0);
+
             return [
                 'proformaitemid' => $item->proformaitemid,
                 'itemid' => $item->itemid,
                 'item_name' => $item->item_name,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
-                'tax_rate' => $item->tax_rate,
+                'tax_rate' => $taxRate,
+                'discount_percent' => $item->discount_percent ?? 0,
+                'discount_amount' => $item->discount_amount ?? 0,
                 'duration' => $item->duration,
                 'frequency' => $item->frequency,
                 'no_of_users' => $item->no_of_users,
                 'start_date' => $item->start_date?->format('Y-m-d'),
                 'end_date' => $item->end_date?->format('Y-m-d'),
-                'line_total' => $item->line_total,
+                'line_total' => $lineTotal,
                 'is_expired' => $isExpired,
                 'is_upcoming' => $isUpcoming,
                 'renewed_to_proformaid' => $item->renewed_to_proformaid,
@@ -356,6 +363,23 @@ class InvoicesController extends Controller
             ],
             'items' => $items,
         ]);
+    }
+
+    private function calculateInvoiceItemAmounts(array $itemData, float $taxRate): array
+    {
+        $lineTotal = (float) ($itemData['line_total'] ?? 0);
+        $discountPercent = min(100, max(0, (float) ($itemData['discount_percent'] ?? 0)));
+
+        $discountAmount = ($lineTotal * $discountPercent) / 100;
+        $taxableAmount = max(0, $lineTotal - $discountAmount);
+        $taxAmount = ($taxableAmount * $taxRate) / 100;
+
+        return [
+            'line_total' => round($lineTotal, 2),
+            'discount_percent' => $discountPercent,
+            'discount_amount' => round($discountAmount, 2),
+            'tax_amount' => round($taxAmount, 2),
+        ];
     }
 
     public function storeBillingTerm(Request $request)
@@ -578,13 +602,12 @@ class InvoicesController extends Controller
             $quantity = (float) ($itemData['quantity'] ?? 0);
             $unitPrice = (float) ($itemData['unit_price'] ?? 0);
             $taxRate = (float) ($itemData['tax_rate'] ?? 0);
-            $discountPercent = min(100, max(0, (float) ($itemData['discount_percent'] ?? 0)));
-            $discountAmount = max(0, (float) ($itemData['discount_amount'] ?? 0));
+            $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
             $taxid = $itemData['taxid'] ?? null;
             $isUserWiseItem = $accountHasUsers && (bool) ($service?->user_wise ?? false);
             $hasRecurringFrequency = filled($itemData['frequency'] ?? null) && ($itemData['frequency'] ?? null) !== 'one-time';
             $users = $isUserWiseItem ? max(1, (int) ($itemData['no_of_users'] ?? 1)) : null;
-            $lineTotal = (float) ($itemData['line_total'] ?? 0);
+            $lineTotal = $amounts['line_total'];
 
             if ($quantity <= 0) {
                 throw ValidationException::withMessages([
@@ -599,8 +622,8 @@ class InvoicesController extends Controller
             }
 
             $subtotal += $lineTotal;
-            $discountTotal += $discountAmount;
-            $taxTotal += max(0, $lineTotal - $discountAmount) * ($taxRate / 100);
+            $discountTotal += $amounts['discount_amount'];
+            $taxTotal += $amounts['tax_amount'];
 
             $preparedItems[] = [
                 'proformaid' => null,
@@ -610,8 +633,8 @@ class InvoicesController extends Controller
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
                 'tax_rate' => $taxRate,
-                'discount_percent' => $discountPercent,
-                'discount_amount' => $discountAmount,
+                'discount_percent' => $amounts['discount_percent'],
+                'discount_amount' => $amounts['discount_amount'],
                 'taxid' => $taxid,
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
@@ -880,11 +903,11 @@ class InvoicesController extends Controller
         $this->assertDocumentNumberAvailable($validated['invoice_number'], $invoice instanceof ProformaInvoice ? $invoice->proformaid : $invoice->invoiceid, $invoice::class);
 
         foreach ($itemsData as $itemData) {
-            $lineTotal = (float) ($itemData['line_total'] ?? 0);
-            $discountAmount = max(0, (float) ($itemData['discount_amount'] ?? 0));
-            $subtotal += $lineTotal;
-            $discountTotal += $discountAmount;
-            $taxTotal += max(0, $lineTotal - $discountAmount) * ((float) ($itemData['tax_rate'] ?? 0) / 100);
+            $taxRate = (float) ($itemData['tax_rate'] ?? 0);
+            $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
+            $subtotal += $amounts['line_total'];
+            $discountTotal += $amounts['discount_amount'];
+            $taxTotal += $amounts['tax_amount'];
         }
 
         $grandTotal = $subtotal - $discountTotal + $taxTotal;
@@ -912,6 +935,8 @@ class InvoicesController extends Controller
 
         foreach ($itemsData as $index => $itemData) {
             $service = Service::find($itemData['itemid'] ?? null);
+            $taxRate = (float) ($itemData['tax_rate'] ?? 0);
+            $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
             $isUserWiseItem = $accountHasUsers && (bool) ($service?->user_wise ?? false);
             $hasRecurringFrequency = filled($itemData['frequency'] ?? null) && ($itemData['frequency'] ?? null) !== 'one-time';
             $payload = [
@@ -920,15 +945,15 @@ class InvoicesController extends Controller
                 'item_description' => null,
                 'quantity'         => $itemData['quantity'],
                 'unit_price'       => $itemData['unit_price'],
-                'tax_rate'         => $itemData['tax_rate'] ?? 0,
-                'discount_percent' => min(100, max(0, (float) ($itemData['discount_percent'] ?? 0))),
-                'discount_amount' => max(0, (float) ($itemData['discount_amount'] ?? 0)),
+                'tax_rate'         => $taxRate,
+                'discount_percent' => $amounts['discount_percent'],
+                'discount_amount' => $amounts['discount_amount'],
                 'duration'         => $itemData['duration'] ?? null,
                 'frequency'        => $itemData['frequency'] ?? null,
                 'no_of_users'      => $isUserWiseItem ? max(1, (int) ($itemData['no_of_users'] ?? 1)) : null,
                 'start_date'       => $hasRecurringFrequency ? ($itemData['start_date'] ?: null) : null,
                 'end_date'         => $hasRecurringFrequency ? ($itemData['end_date'] ?: null) : null,
-                'line_total'       => $itemData['line_total'],
+                'line_total'       => $amounts['line_total'],
                 'sort_order'       => $index + 1,
             ];
 

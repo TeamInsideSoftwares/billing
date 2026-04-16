@@ -155,7 +155,6 @@
                     'sac_code' => $c->sac_code,
                     'taxid' => $c->taxid,
                     'tax_rate' => $c->tax_rate,
-                    'tax_included' => $c->tax_included,
                 ];
             })->toArray());
 
@@ -167,7 +166,6 @@
                     'sac_code' => '',
                     'taxid' => '',
                     'tax_rate' => '',
-                    'tax_included' => 'no',
                 ]];
             }
 
@@ -221,7 +219,6 @@
                             <th>Selling Price *</th>
                             <th>SAC Code *</th>
                             <th>Tax</th>
-                            <th>Tax Incl. *</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -262,12 +259,6 @@
                                         {{ number_format($account->fixed_tax_rate ?? 0, 2) }}%
                                     </span>
                                     @endif
-                                </td>
-                                <td>
-                                    <select name="costings[{{ $index }}][tax_included]" style="min-width: 80px; padding: 0.3rem;" required>
-                                        <option value="no" {{ ($costing['tax_included'] ?? 'no') === 'no' ? 'selected' : '' }}>Excl.</option>
-                                        <option value="yes" {{ ($costing['tax_included'] ?? 'no') === 'yes' ? 'selected' : '' }}>Incl.</option>
-                                    </select>
                                 </td>
                                 <td style="width: 60px; text-align: center;">
                                     <button type="button" class="icon-action-btn delete remove-costing" style="padding: 0.25rem;"><i class="fas fa-trash"></i></button>
@@ -395,9 +386,6 @@
             return `<input type="hidden" name="costings[${i}][taxid]" value=""><span style="min-width:140px;padding:0.3rem 0.5rem;font-size:0.82rem;background:#f1f5f9;border-radius:4px;color:#64748b;display:inline-block;">${fixedTaxRate.toFixed(2)}%</span>`;
         }
     }
-    function taxIncludeHtml(i) {
-        return `<select name="costings[${i}][tax_included]" style="min-width:80px;padding:0.3rem;" required><option value="no" selected>Excl.</option><option value="yes">Incl.</option></select>`;
-    }
     function costingRowHtml(i) {
         return `
             <tr>
@@ -411,7 +399,6 @@
                 <td><input type="number" step="0.01" name="costings[${i}][selling_price]" required style="padding: 0.3rem; width: 100px;"></td>
                 <td><input type="text" maxlength="20" name="costings[${i}][sac_code]" style="padding: 0.3rem; width: 80px;"></td>
                 <td>${taxSelectHtml(i)}</td>
-                <td>${taxIncludeHtml(i)}</td>
                 <td style="width: 60px; text-align: center;">
                     <button type="button" class="icon-action-btn delete remove-costing" style="padding: 0.25rem;"><i class="fas fa-trash"></i></button>
                 </td>
@@ -524,4 +511,3 @@
 })();
 </script>
 @endsection
-
