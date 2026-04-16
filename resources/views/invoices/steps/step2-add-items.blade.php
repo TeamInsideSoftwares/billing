@@ -1,22 +1,20 @@
+@php($selectedClientCurrency = optional($clients->firstWhere('clientid', request('clientid')))->currency ?? 'INR')
 <!-- Step 2: Add Items (Without Orders) -->
 <div id="step2" class="invoice-step">
-    <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-        <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back to Step 1</button>
-        <div style="display: flex; align-items: center; gap: 1rem;">
-            <span style="font-size: 0.75rem; padding: 0.3rem 0.7rem; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #92400e; border-radius: 20px; font-weight: 600; border: 1px solid #f59e0b;">
-                <i class="fas fa-file-invoice" style="margin-right: 0.3rem;"></i>Proforma Invoice
-            </span>
-            <div style="text-align: right;">
-                <span class="invoice-meta-label">Invoice Number</span>
-                <strong class="invoice-meta-value">{{ $nextInvoiceNumber }}</strong>
-                <input type="hidden" name="invoice_number" value="{{ $nextInvoiceNumber }}">
-            </div>
+    <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back</button>
+        <div class="invoice-side-meta">
+            <span class="invoice-meta-label">PI</span>
+            <strong class="invoice-meta-value">{{ $nextInvoiceNumber }}</strong>
+            <input type="hidden" name="invoice_number" value="{{ $nextInvoiceNumber }}">
         </div>
     </div>
 
-    <div style="margin-bottom: 1.5rem;">
+    <div class="invoice-grid-4" style="margin-bottom: 1rem;">
+        <div class="invoice-span-3">
         <label for="invoice_title" class="field-label">Invoice Title</label>
         <input type="text" id="invoice_title" name="invoice_title" class="form-input" placeholder="e.g. Website Development - Monthly Subscription">
+        </div>
     </div>
 
     <input type="hidden" name="clientid" value="{{ request('clientid') }}">
@@ -24,7 +22,7 @@
     <input type="hidden" name="tax_total" id="tax_total" value="0.00">
     <input type="hidden" name="grand_total" id="grand_total" value="0.00">
     <input type="hidden" name="items_data" id="items_data" value="">
-    <input type="hidden" name="currency_code" id="currency_code" value="INR">
+    <input type="hidden" name="currency_code" id="currency_code" value="{{ $selectedClientCurrency }}">
 
     <div id="manualItemsSection" class="workflow-panel">
         <div class="panel-heading-row">
@@ -36,7 +34,7 @@
 
         <div class="builder-card">
             <div class="manual-grid">
-                <div>
+                <div class="invoice-span-2">
                     <label for="manual_item_itemid" class="field-label small">Item</label>
                     <select id="manual_item_itemid" class="form-input">
                         <option value="">Select item</option>
@@ -156,10 +154,16 @@
     const btnNextToStep3 = document.getElementById('btnNextToStep3');
     const btnBackToStep1 = document.getElementById('btnBackToStep1');
     const itemsDataInput = document.getElementById('items_data');
+    const currencyCodeInput = document.getElementById('currency_code');
 
     const frequencyLabels = { 'one-time': 'One-Time', 'daily': 'Daily', 'weekly': 'Weekly', 'bi-weekly': 'Bi-Weekly', 'monthly': 'Monthly', 'quarterly': 'Quarterly', 'semi-annually': 'Semi-Annually', 'yearly': 'Yearly' };
 
     let manualItems = [];
+
+    function formatCurrency(amount) {
+        const currency = currencyCodeInput.value || '{{ $selectedClientCurrency }}';
+        return `${currency} ${Number(amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
 
     // Auto-fill price when item selected
     document.getElementById('manual_item_itemid').addEventListener('change', function() {
@@ -273,7 +277,7 @@
             row.innerHTML = `
                 <td>${item.item_name}</td>
                 <td style="text-align: center;">${item.quantity}</td>
-                <td style="text-align: right;">INR ${item.unit_price.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td style="text-align: right;">${formatCurrency(item.unit_price)}</td>
                 @if($account->allow_multi_taxation)
                 <td style="text-align: center;">${item.tax_rate}%</td>
                 @endif
@@ -282,7 +286,7 @@
                 @endif
                 <td>${item.frequency ? (frequencyLabels[item.frequency] || item.frequency) : '-'}</td>
                 <td>${item.duration || '-'}</td>
-                <td style="text-align: right; font-weight: 600;">INR ${item.line_total.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td style="text-align: right; font-weight: 600;">${formatCurrency(item.line_total)}</td>
                 <td><button type="button" class="remove-item-btn" data-index="${index}" style="background: none; border: none; color: #ef4444; cursor: pointer;"><i class="fas fa-trash"></i></button></td>
             `;
             manualItemsBody.appendChild(row);
@@ -296,9 +300,9 @@
             });
         });
 
-        document.getElementById('manualSubtotal').textContent = `INR ${subtotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-        document.getElementById('manualTaxTotal').textContent = `INR ${taxTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-        document.getElementById('manualGrandTotal').textContent = `INR ${(subtotal + taxTotal).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('manualSubtotal').textContent = formatCurrency(subtotal);
+        document.getElementById('manualTaxTotal').textContent = formatCurrency(taxTotal);
+        document.getElementById('manualGrandTotal').textContent = formatCurrency(subtotal + taxTotal);
 
         document.getElementById('subtotal').value = subtotal.toFixed(2);
         document.getElementById('tax_total').value = taxTotal.toFixed(2);

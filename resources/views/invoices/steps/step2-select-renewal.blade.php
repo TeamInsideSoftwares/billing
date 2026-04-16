@@ -1,15 +1,10 @@
 <!-- Step 2: Select Renewal Items -->
 <div id="step2" class="invoice-step">
-    <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-        <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back to Step 1</button>
-        <div style="display: flex; align-items: center; gap: 1rem;">
-            <span style="font-size: 0.75rem; padding: 0.3rem 0.7rem; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #92400e; border-radius: 20px; font-weight: 600; border: 1px solid #f59e0b;">
-                <i class="fas fa-file-invoice" style="margin-right: 0.3rem;"></i>Proforma Invoice
-            </span>
-            <div style="text-align: right;">
-                <span class="invoice-meta-label">Invoice Number</span>
-                <strong class="invoice-meta-value">{{ $nextInvoiceNumber }}</strong>
-            </div>
+    <div class="invoice-step-toolbar">
+        <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back</button>
+        <div class="invoice-side-meta">
+            <span class="invoice-meta-label">PI</span>
+            <strong class="invoice-meta-value">{{ $nextInvoiceNumber }}</strong>
         </div>
     </div>
 
@@ -21,11 +16,11 @@
     <div id="renewalSection" class="workflow-panel">
         <div class="panel-heading-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div>
-                <h4 style="margin: 0; font-size: 1rem; color: #334155;">Renewal Candidates</h4>
-                <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Select items from previous invoices to renew.</p>
+                <h4 style="margin: 0; font-size: 1rem; color: #111827;">Renewal Candidates</h4>
+                <p style="margin: 0.2rem 0 0 0; color: #6b7280; font-size: 0.85rem;">Select items from previous invoices to renew.</p>
             </div>
             <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <label style="font-size: 0.82rem; color: #64748b; font-weight: 500;">Show upcoming:</label>
+                <label style="font-size: 0.82rem; color: #6b7280; font-weight: 500;">Show upcoming:</label>
                 <select id="renewalDaysFilter" class="form-input" style="width: auto; min-width: 160px;">
                     <option value="1" selected>Tomorrow</option>
                     <option value="7">Next 7 Days</option>
@@ -92,11 +87,12 @@
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td style="text-align: center;">
-                        <input type="checkbox" class="renewal-checkbox" 
-                               data-invoice-id="${invoice.proformaid}" 
-                               data-items='${JSON.stringify(invoice.items || [])}' 
-                               style="cursor: pointer;">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" class="renewal-checkbox" data-invoice-id="${invoice.proformaid}" data-items='${JSON.stringify(invoice.items || [])}' 
+                            style="cursor: pointer;">
+                        </label>
                     </td>
+
                     <td>${invoice.invoice_number}</td>
                     <td>${invoice.expired_items} expired, ${invoice.upcoming_items} upcoming</td>
                     <td>${invoice.currency} ${Number(invoice.grand_total).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>

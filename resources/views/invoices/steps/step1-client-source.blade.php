@@ -1,8 +1,8 @@
 <!-- Step 1: Client & Source Selection -->
 <div id="step1" class="invoice-step">
-    <div class="invoice-meta-card" style="margin-bottom: 1.5rem;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; align-items: end;">
-            <div>
+    <div class="invoice-meta-card" style="margin-bottom: 1rem;">
+        <div class="invoice-grid-4">
+            <div class="invoice-span-2">
                 <label for="clientid" class="field-label">Client</label>
                 <select id="clientid" name="clientid" required class="form-input">
                     <option value="">Choose a client</option>
@@ -16,15 +16,16 @@
         </div>
     </div>
 
-    <div id="existingInvoicesSection" style="display: none; margin-bottom: 1.5rem;">
+    <div id="existingInvoicesSection" style="display: none; margin-bottom: 1rem;">
         <h4 style="margin: 0 0 0.8rem 0; font-size: 1rem; color: #334155;">Existing Invoices</h4>
         <div id="clientInvoicesAccordion" class="services-accordion-container"></div>
         <div id="noInvoicesMessage" class="empty-state" style="display: none;">No invoices found for this client yet.</div>
     </div>
 
-    <div id="sourceSelectionSection" style="display: none; margin-bottom: 1.5rem;">
-        <div style="margin-bottom: 1rem; padding: 1rem 1.1rem; border: 1px solid #dbeafe; background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-radius: 12px;">
-            <h4 style="margin: 0; font-size: 1rem; color: #1e293b;">Choose PI Invoice Source</h4>
+    <div id="sourceSelectionSection" style="display: none; margin-bottom: 1rem;">
+        <div class="section-title-card">
+            <h4>Choose Invoice Source</h4>
+            <p>Pick how this proforma invoice should be created.</p>
         </div>
 
         <div class="source-grid">
@@ -45,8 +46,8 @@
             </label>
         </div>
 
-        <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
-            <button type="button" id="btnNextToStep2" class="primary-button" style="padding: 0.8rem 2.5rem; font-size: 1rem;">Next Step &rarr;</button>
+        <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
+            <button type="button" id="btnNextToStep2" class="primary-button" style="padding: 0.65rem 1.6rem; font-size: 0.9rem;">Next Step &rarr;</button>
         </div>
     </div>
 </div>
@@ -84,7 +85,7 @@
     }
 
     async function loadInvoices(clientId) {
-        accordion.innerHTML = '<div style="padding: 1rem; text-align: center; color: #94a3b8;">Loading...</div>';
+        accordion.innerHTML = '<div style="padding: 1rem; text-align: center; color: #9ca3af;">Loading...</div>';
         noMsg.style.display = 'none';
 
         try {
@@ -118,34 +119,34 @@
                     if (item.end_date) dates.push(`End: ${item.end_date}`);
 
                     return `
-                        <div style="padding: 0.4rem 0; border-bottom: 1px dashed #e2e8f0; font-size: 0.78rem;">
+                        <div style="padding: 0.55rem 0; border-bottom: 1px dashed #e5e7eb; font-size: 0.78rem;">
                             <div style="display: flex; justify-content: space-between; gap: 0.75rem;">
-                                <span style="color: #334155; font-weight: 600;">${item.name || 'Item'} (x${item.qty || item.quantity || 1})</span>
-                                <strong style="color: #1e293b;">${item.total || '-'}</strong>
+                                <span style="color: #374151; font-weight: 600;">${item.name || 'Item'} (x${item.qty || item.quantity || 1})</span>
+                                <strong style="color: #111827;">${item.total || '-'}</strong>
                             </div>
-                            ${details.length ? `<div style="margin-top: 0.15rem; color: #64748b; font-size: 0.72rem;">${details.join(' | ')}</div>` : ''}
-                            ${dates.length ? `<div style="margin-top: 0.1rem; color: #94a3b8; font-size: 0.7rem;">${dates.join(' | ')}</div>` : ''}
+                            ${details.length ? `<div style="margin-top: 0.15rem; color: #6b7280; font-size: 0.72rem;">${details.join(' | ')}</div>` : ''}
+                            ${dates.length ? `<div style="margin-top: 0.1rem; color: #9ca3af; font-size: 0.7rem;">${dates.join(' | ')}</div>` : ''}
                         </div>`;
-                }).join('') || '<div style="padding: 0.5rem 0; color: #94a3b8; font-style: italic; font-size: 0.78rem;">No items found</div>';
+                }).join('') || '<div style="padding: 0.5rem 0; color: #9ca3af; font-style: italic; font-size: 0.78rem;">No items found</div>';
 
                 return `
-                    <details class="category-accordion" style="border-bottom: 1px solid #e5e7eb;">
+                    <details class="category-accordion">
                         <summary class="category-accordion-header" 
-                            style="padding: 0.55rem 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                            style="padding: 0.8rem 1rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
                             <span style="display: inline-flex; flex-direction: column; gap: 0.05rem;">
-                                <span style="font-size: 0.82rem; font-weight: 600;">${title}</span>
-                                <span style="font-size: 0.7rem; color: #64748b;">Issue: ${inv.issue_date || '-'} | Due: ${inv.due_date || '-'}</span>
+                                <span style="font-size: 0.84rem; font-weight: 600; color: #111827;">${title}</span>
+                                <span style="font-size: 0.72rem; color: #6b7280;">Issue: ${inv.issue_date || '-'} | Due: ${inv.due_date || '-'}</span>
                             </span>
                             <span style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
-                                <a href="{{ url('invoices') }}/${inv.record_id}/edit" style="font-size: 0.72rem; padding: 0.2rem 0.5rem; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 4px; font-weight: 500; display: inline-flex; align-items: center; gap: 0.2rem; text-decoration: none;">
+                                <a href="{{ url('invoices') }}/${inv.record_id}/edit" style="font-size: 0.72rem; padding: 0.28rem 0.56rem; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 6px; font-weight: 500; display: inline-flex; align-items: center; gap: 0.2rem; text-decoration: none;">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <span style="font-size: 0.62rem; padding: 0.12rem 0.35rem; background: #dbeafe; color: #1e40af; border-radius: 3px; font-weight: 600;">Proforma</span>
+                                <span style="font-size: 0.62rem; padding: 0.16rem 0.42rem; background: #f3f4f6; color: #374151; border-radius: 999px; font-weight: 600;">Proforma</span>
                                 <span class="status-pill ${status}" style="font-size: 0.65rem; padding: 0.12rem 0.4rem;">${inv.payment_status || 'unpaid'}</span>
-                                <span style="font-size: 0.75rem; font-weight: 600;">${inv.amount || '-'}</span>
+                                <span style="font-size: 0.75rem; font-weight: 600; color: #111827;">${inv.amount || '-'}</span>
                             </span>
                         </summary>
-                        <div class="accordion-content" style="padding: 0.45rem 0.85rem 0.65rem; background: #f8fafc; border-top: 1px solid #e5e7eb;">
+                        <div class="accordion-content" style="padding: 0.5rem 1rem 0.75rem; background: #fbfcfe; border-top: 1px solid #e5e7eb;">
                             <div style="padding: 0.2rem 0;" class="items-display">
                                 ${itemsHtml}
                             </div>

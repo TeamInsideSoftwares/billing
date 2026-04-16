@@ -70,6 +70,8 @@ class InvoicesController extends Controller
                                 'price' => $currency . ' ' . number_format($item->unit_price, 2),
                                 'unit_price' => (float) $item->unit_price,
                                 'tax_rate' => (float) ($item->tax_rate ?? 0),
+                                'discount_percent' => (float) ($item->discount_percent ?? 0),
+                                'discount_amount' => (float) ($item->discount_amount ?? 0),
                                 'duration' => $item->duration,
                                 'frequency' => $item->frequency,
                                 'users' => (int) ($item->no_of_users ?? 1),
@@ -142,9 +144,9 @@ class InvoicesController extends Controller
             ->where('is_verified', 'yes') 
             ->whereDoesntHave('invoices')
             ->whereDoesntHave('proformaInvoices')
-            ->with('client')
+            ->with(['client', 'items', 'salesPerson'])
             ->orderBy('order_date', 'desc')
-            ->get(['orderid', 'order_number', 'order_title', 'order_date', 'grand_total', 'status', 'clientid', 'is_verified'])
+            ->get(['orderid', 'order_number', 'order_title', 'order_date', 'delivery_date', 'grand_total', 'status', 'clientid', 'is_verified', 'sales_person_id'])
             ->map(function ($order) {
                 $currency = $order->client->currency ?? 'INR';
 
@@ -153,10 +155,13 @@ class InvoicesController extends Controller
                     'order_number' => $order->order_number,
                     'order_title' => $order->order_title,
                     'order_date' => $order->order_date?->format('d M Y') ?? 'N/A',
+                    'delivery_date' => $order->delivery_date?->format('d M Y') ?? 'N/A',
                     'grand_total' => $order->grand_total ?? '0.00',
                     'currency' => $currency,
                     'status' => $order->status ?? 'draft',
                     'is_verified' => $order->is_verified ?? 'no',
+                    'sales_person' => $order->salesPerson->name ?? '-',
+                    'item_count' => $order->items->count(),
                 ];
             });
 
@@ -258,7 +263,7 @@ class InvoicesController extends Controller
 
     public function getOrderItems(Request $request, $orderid)
     {
-        $order = \App\Models\Order::with('items.item')->findOrFail($orderid);
+        $order = \App\Models\Order::with(['items.item', 'client', 'salesPerson'])->findOrFail($orderid);
 
         $items = $order->items->map(function ($item) {
             return [
@@ -267,12 +272,16 @@ class InvoicesController extends Controller
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
                 'tax_rate' => $item->tax_rate,
+                'discount_percent' => $item->discount_percent ?? 0,
+                'discount_amount' => $item->discount_amount ?? 0,
                 'duration' => $item->duration,
                 'frequency' => $item->frequency,
                 'no_of_users' => $item->no_of_users,
                 'start_date' => $item->start_date?->format('Y-m-d'),
                 'end_date' => $item->end_date?->format('Y-m-d'),
+                'delivery_date' => $item->delivery_date?->format('Y-m-d'),
                 'line_total' => $item->line_total,
+                'requires_user_fields' => (bool) ($item->item?->user_wise ?? false),
             ];
         })->values();
 
@@ -280,7 +289,14 @@ class InvoicesController extends Controller
             'order' => [
                 'orderid' => $order->orderid,
                 'order_number' => $order->order_number,
+                'order_title' => $order->order_title,
+                'order_date' => $order->order_date?->format('d M Y') ?? 'N/A',
+                'delivery_date' => $order->delivery_date?->format('d M Y') ?? 'N/A',
                 'grand_total' => $order->grand_total,
+                'currency' => $order->client->currency ?? 'INR',
+                'sales_person' => $order->salesPerson->name ?? '-',
+                'is_verified' => $order->is_verified ?? 'no',
+                'item_count' => $order->items->count(),
             ],
             'items' => $items,
         ]);
@@ -549,7 +565,12 @@ class InvoicesController extends Controller
         
         $subtotal = 0;
         $taxTotal = 0;
+        $discountTotal = 0;
         $preparedItems = [];
+
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $account = \App\Models\Account::find($accountid);
+        $accountHasUsers = (bool) ($account?->have_users ?? false);
 
         foreach ($itemsData as $index => $itemData) {
             $itemId = $itemData['itemid'] ?? null;
@@ -557,8 +578,12 @@ class InvoicesController extends Controller
             $quantity = (float) ($itemData['quantity'] ?? 0);
             $unitPrice = (float) ($itemData['unit_price'] ?? 0);
             $taxRate = (float) ($itemData['tax_rate'] ?? 0);
+            $discountPercent = min(100, max(0, (float) ($itemData['discount_percent'] ?? 0)));
+            $discountAmount = max(0, (float) ($itemData['discount_amount'] ?? 0));
             $taxid = $itemData['taxid'] ?? null;
-            $users = max(1, (int) ($itemData['no_of_users'] ?? 1));
+            $isUserWiseItem = $accountHasUsers && (bool) ($service?->user_wise ?? false);
+            $hasRecurringFrequency = filled($itemData['frequency'] ?? null) && ($itemData['frequency'] ?? null) !== 'one-time';
+            $users = $isUserWiseItem ? max(1, (int) ($itemData['no_of_users'] ?? 1)) : null;
             $lineTotal = (float) ($itemData['line_total'] ?? 0);
 
             if ($quantity <= 0) {
@@ -574,7 +599,8 @@ class InvoicesController extends Controller
             }
 
             $subtotal += $lineTotal;
-            $taxTotal += $lineTotal * ($taxRate / 100);
+            $discountTotal += $discountAmount;
+            $taxTotal += max(0, $lineTotal - $discountAmount) * ($taxRate / 100);
 
             $preparedItems[] = [
                 'proformaid' => null,
@@ -584,21 +610,24 @@ class InvoicesController extends Controller
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
                 'tax_rate' => $taxRate,
+                'discount_percent' => $discountPercent,
+                'discount_amount' => $discountAmount,
                 'taxid' => $taxid,
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
                 'no_of_users' => $users,
-                'start_date' => $itemData['start_date'] ?? null,
-                'end_date' => $itemData['end_date'] ?? null,
+                'start_date' => $hasRecurringFrequency ? ($itemData['start_date'] ?? null) : null,
+                'end_date' => $hasRecurringFrequency ? ($itemData['end_date'] ?? null) : null,
                 'line_total' => $lineTotal,
                 'sort_order' => $index + 1,
                 'renewed_from_proformaitemid' => $itemData['renewed_from_proformaitemid'] ?? null,
             ];
         }
 
-        $grandTotal = $subtotal + $taxTotal;
+        $grandTotal = $subtotal - $discountTotal + $taxTotal;
         $validated['subtotal'] = round($subtotal, 2);
         $validated['tax_total'] = round($taxTotal, 2);
+        $validated['discount_total'] = round($discountTotal, 2);
         $validated['grand_total'] = round($grandTotal, 2);
         $validated['amount_paid'] = 0;
         $validated['balance_due'] = round($grandTotal, 2);
@@ -730,7 +759,7 @@ class InvoicesController extends Controller
             ->whereIn('status', ['unpaid', 'partially-paid'])
             ->where('created_by', $user?->userid ?? $user?->id)
             ->where('updated_at', '>', now()->subHours(24))
-            ->with('items')
+            ->with('items.item')
             ->first();
 
         if (!$draft) {
@@ -752,6 +781,8 @@ class InvoicesController extends Controller
                     'quantity' => $i->quantity,
                     'unit_price' => $i->unit_price,
                     'tax_rate' => $i->tax_rate,
+                    'discount_percent' => $i->discount_percent ?? 0,
+                    'discount_amount' => $i->discount_amount ?? 0,
                     'duration' => $i->duration,
                     'frequency' => $i->frequency,
                     'no_of_users' => $i->no_of_users,
@@ -759,6 +790,7 @@ class InvoicesController extends Controller
                     'end_date' => $i->end_date?->format('Y-m-d'),
                     'line_total' => $i->line_total,
                     'renewed_from_proformaitemid' => $i->renewed_from_proformaitemid,
+                    'requires_user_fields' => (bool) ($i->item?->user_wise ?? false),
                 ]),
             ],
         ]);
@@ -843,16 +875,19 @@ class InvoicesController extends Controller
         $itemsData = json_decode($request->items_data, true);
         $subtotal = 0;
         $taxTotal = 0;
+        $discountTotal = 0;
 
         $this->assertDocumentNumberAvailable($validated['invoice_number'], $invoice instanceof ProformaInvoice ? $invoice->proformaid : $invoice->invoiceid, $invoice::class);
 
         foreach ($itemsData as $itemData) {
             $lineTotal = (float) ($itemData['line_total'] ?? 0);
+            $discountAmount = max(0, (float) ($itemData['discount_amount'] ?? 0));
             $subtotal += $lineTotal;
-            $taxTotal += $lineTotal * ((float) ($itemData['tax_rate'] ?? 0) / 100);
+            $discountTotal += $discountAmount;
+            $taxTotal += max(0, $lineTotal - $discountAmount) * ((float) ($itemData['tax_rate'] ?? 0) / 100);
         }
 
-        $grandTotal = $subtotal + $taxTotal;
+        $grandTotal = $subtotal - $discountTotal + $taxTotal;
 
         $invoice->update([
             'clientid' => $validated['clientid'],
@@ -864,14 +899,21 @@ class InvoicesController extends Controller
             'status' => $validated['status'],
             'subtotal' => $subtotal,
             'tax_total' => $taxTotal,
+            'discount_total' => $discountTotal,
             'grand_total' => $grandTotal,
             'balance_due' => $grandTotal,
         ]);
 
         $invoice->items()->delete();
 
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $account = \App\Models\Account::find($accountid);
+        $accountHasUsers = (bool) ($account?->have_users ?? false);
+
         foreach ($itemsData as $index => $itemData) {
             $service = Service::find($itemData['itemid'] ?? null);
+            $isUserWiseItem = $accountHasUsers && (bool) ($service?->user_wise ?? false);
+            $hasRecurringFrequency = filled($itemData['frequency'] ?? null) && ($itemData['frequency'] ?? null) !== 'one-time';
             $payload = [
                 'itemid'           => $itemData['itemid'] ?: null,
                 'item_name'        => $itemData['item_name'] ?? ($service?->name ?? 'Custom Item'),
@@ -879,11 +921,13 @@ class InvoicesController extends Controller
                 'quantity'         => $itemData['quantity'],
                 'unit_price'       => $itemData['unit_price'],
                 'tax_rate'         => $itemData['tax_rate'] ?? 0,
+                'discount_percent' => min(100, max(0, (float) ($itemData['discount_percent'] ?? 0))),
+                'discount_amount' => max(0, (float) ($itemData['discount_amount'] ?? 0)),
                 'duration'         => $itemData['duration'] ?? null,
                 'frequency'        => $itemData['frequency'] ?? null,
-                'no_of_users'      => $itemData['no_of_users'] ?? 1,
-                'start_date'       => $itemData['start_date'] ?: null,
-                'end_date'         => $itemData['end_date'] ?: null,
+                'no_of_users'      => $isUserWiseItem ? max(1, (int) ($itemData['no_of_users'] ?? 1)) : null,
+                'start_date'       => $hasRecurringFrequency ? ($itemData['start_date'] ?: null) : null,
+                'end_date'         => $hasRecurringFrequency ? ($itemData['end_date'] ?: null) : null,
                 'line_total'       => $itemData['line_total'],
                 'sort_order'       => $index + 1,
             ];
@@ -971,6 +1015,8 @@ class InvoicesController extends Controller
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
                     'tax_rate' => $item->tax_rate,
+                    'discount_percent' => $item->discount_percent,
+                    'discount_amount' => $item->discount_amount,
                     'taxid' => $item->taxid,
                     'duration' => $item->duration,
                     'frequency' => $item->frequency,

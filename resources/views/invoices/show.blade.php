@@ -3,6 +3,7 @@
 @section('content')
 @php
     $documentType = $invoice->isProforma() ? 'Proforma' : 'Tax';
+    $currency = $invoice->currency_code ?? ($invoice->client->currency ?? 'INR');
 @endphp
 <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Invoice Details</h3>
 
@@ -186,9 +187,9 @@
                         @endif
                     </td>
                     <td style="padding: 0.75rem 0.5rem; text-align: center; border-right: 1px solid #e5e7eb;">{{ number_format($item->quantity, 2) }}</td>
-                    <td style="padding: 0.75rem 0.5rem; text-align: right; border-right: 1px solid #e5e7eb;">{{ $invoice->currency_code ?? 'INR' }} {{ number_format($item->unit_price, 2) }}</td>
+                    <td style="padding: 0.75rem 0.5rem; text-align: right; border-right: 1px solid #e5e7eb;">{{ $currency }} {{ number_format($item->unit_price, 2) }}</td>
                     <td style="padding: 0.75rem 0.5rem; text-align: right; border-right: 1px solid #e5e7eb;">{{ number_format($item->tax_rate, 2) }}%</td>
-                    <td style="padding: 0.75rem 0.5rem; text-align: right; font-weight: 600;">{{ $invoice->currency_code ?? 'INR' }} {{ number_format($item->line_total, 2) }}</td>
+                    <td style="padding: 0.75rem 0.5rem; text-align: right; font-weight: 600;">{{ $currency }} {{ number_format($item->line_total, 2) }}</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -199,30 +200,30 @@
             <div style="min-width: 320px; background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 2px solid #2563eb;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.95rem;">
                     <span style="color: #64748b;">Subtotal</span>
-                    <strong>{{ $invoice->currency_code ?? 'INR' }} {{ number_format($invoice->subtotal ?? 0, 2) }}</strong>
+                    <strong>{{ $currency }} {{ number_format($invoice->subtotal ?? 0, 2) }}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.95rem;">
                     <span style="color: #64748b;">Tax</span>
-                    <strong>{{ $invoice->currency_code ?? 'INR' }} {{ number_format($invoice->tax_total ?? 0, 2) }}</strong>
+                    <strong>{{ $currency }} {{ number_format($invoice->tax_total ?? 0, 2) }}</strong>
                 </div>
                 @if($invoice->discount_total > 0)
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.95rem; color: #16a34a;">
                     <span>Discount</span>
-                    <strong>-{{ $invoice->currency_code ?? 'INR' }} {{ number_format($invoice->discount_total ?? 0, 2) }}</strong>
+                    <strong>-{{ $currency }} {{ number_format($invoice->discount_total ?? 0, 2) }}</strong>
                 </div>
                 @endif
                 <div style="display: flex; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 2px solid #2563eb; font-size: 1.2rem; font-weight: 700; color: #2563eb;">
                     <span>Grand Total</span>
-                    <span>{{ $invoice->currency_code ?? 'INR' }} {{ number_format($invoice->grand_total ?? 0, 2) }}</span>
+                    <span>{{ $currency }} {{ number_format($invoice->grand_total ?? 0, 2) }}</span>
                 </div>
                 @if($invoice->amount_paid > 0)
                 <div style="display: flex; justify-content: space-between; margin-top: 0.75rem; font-size: 0.9rem; color: #16a34a;">
                     <span>Amount Paid</span>
-                    <strong>-{{ $invoice->currency_code ?? 'INR' }} {{ number_format($invoice->amount_paid ?? 0, 2) }}</strong>
+                    <strong>-{{ $currency }} {{ number_format($invoice->amount_paid ?? 0, 2) }}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.95rem; color: #dc2626; font-weight: 600;">
                     <span>Balance Due</span>
-                    <span>{{ $invoice->currency_code ?? 'INR' }} {{ number_format($invoice->balance_due ?? 0, 2) }}</span>
+                    <span>{{ $currency }} {{ number_format($invoice->balance_due ?? 0, 2) }}</span>
                 </div>
                 @endif
             </div>
@@ -294,7 +295,7 @@
             </div>
         </div>
         <div style="text-align: right;">
-            <div style="font-size: 1.5em; font-weight: bold; margin-bottom: 0.25rem;">Rs {{ number_format($invoice->grand_total ?? 0, 0) }}</div>
+            <div style="font-size: 1.5em; font-weight: bold; margin-bottom: 0.25rem;">{{ $currency }} {{ number_format($invoice->grand_total ?? 0, 0) }}</div>
             <div>{{ $invoice->issue_date?->format('d M Y') }} due {{ $invoice->due_date?->format('d M Y') }}</div>
         </div>
     </div>
@@ -387,10 +388,10 @@ Invoice Items Table
                     {{ number_format($item->quantity, 0) }}
                 </td>
                 <td style="padding: 0.75rem 0.5rem 0.75rem 0; text-align: right;">
-                    Rs {{ number_format($item->unit_price, 0) }}
+                    {{ $currency }} {{ number_format($item->unit_price, 0) }}
                 </td>
                 <td style="padding: 0.75rem 0.5rem 0.75rem 0; text-align: right; font-weight: 600;">
-                    Rs {{ number_format($item->line_total, 0) }}
+                    {{ $currency }} {{ number_format($item->line_total, 0) }}
                 </td>
             </tr>
             @empty
@@ -405,15 +406,15 @@ Invoice Items Table
         <tfoot>
             <tr style="border-top: 2px solid #e5e7eb; font-weight: 600;">
                 <td colspan="3" style="padding: 1rem 0.5rem; text-align: right;">Subtotal:</td>
-                <td style="padding: 1rem 0.5rem; text-align: right;">Rs {{ number_format($invoice->subtotal ?? 0, 0) }}</td>
+                <td style="padding: 1rem 0.5rem; text-align: right;">{{ $currency }} {{ number_format($invoice->subtotal ?? 0, 0) }}</td>
             </tr>
             <tr style="font-weight: 600;">
                 <td colspan="3" style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">Tax:</td>
-                <td style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">Rs {{ number_format($invoice->tax_total ?? 0, 0) }}</td>
+                <td style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">{{ $currency }} {{ number_format($invoice->tax_total ?? 0, 0) }}</td>
             </tr>
             <tr style="background: #f8fafc; font-size: 1.1em; font-weight: bold;">
                 <td colspan="3" style="padding: 1rem 0.5rem; text-align: right;">Grand Total:</td>
-                <td style="padding: 1rem 0.5rem; text-align: right;">Rs {{ number_format($invoice->grand_total ?? 0, 0) }}</td>
+                <td style="padding: 1rem 0.5rem; text-align: right;">{{ $currency }} {{ number_format($invoice->grand_total ?? 0, 0) }}</td>
             </tr>
         </tfoot>
         @endif
@@ -438,18 +439,18 @@ Invoice Items Table
                 <td style="padding: 0.75rem 0.5rem;">{{ $payment->paid_at instanceof \DateTime ? $payment->paid_at->format('d M Y') : $payment->paid_at }}</td>
                 <td style="padding: 0.75rem 0.5rem;">{{ $payment->method }}</td>
                 <td style="padding: 0.75rem 0.5rem;">{{ $payment->reference ?? 'N/A' }}</td>
-                <td style="padding: 0.75rem 0.5rem; text-align: right;"><strong>Rs {{ number_format($payment->amount, 0) }}</strong></td>
+                <td style="padding: 0.75rem 0.5rem; text-align: right;"><strong>{{ $currency }} {{ number_format($payment->amount, 0) }}</strong></td>
             </tr>
             @endforeach
         </tbody>
         <tfoot style="border-top: 2px solid #e5e7eb;">
             <tr>
                 <td colspan="3" style="padding: 1rem 0.5rem 0.5rem; text-align: right;"><strong>Total Paid:</strong></td>
-                <td style="padding: 1rem 0.5rem 0.5rem; text-align: right;"><strong>Rs {{ number_format($invoice->payments->sum('amount'), 0) }}</strong></td>
+                <td style="padding: 1rem 0.5rem 0.5rem; text-align: right;"><strong>{{ $currency }} {{ number_format($invoice->payments->sum('amount'), 0) }}</strong></td>
             </tr>
             <tr>
                 <td colspan="3" style="padding: 0.5rem; text-align: right;"><strong>Balance Due:</strong></td>
-                <td style="padding: 0.5rem; text-align: right; color: #ef4444;"><strong>Rs {{ number_format($invoice->balance_due, 0) }}</strong></td>
+                <td style="padding: 0.5rem; text-align: right; color: #ef4444;"><strong>{{ $currency }} {{ number_format($invoice->balance_due, 0) }}</strong></td>
             </tr>
         </tfoot>
     </table>

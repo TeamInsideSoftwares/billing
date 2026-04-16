@@ -74,6 +74,7 @@ class OrdersController extends Controller
                 'client_phone' => $order->client->phone,
                 'client_city' => $order->client->city,
                 'clientid' => $order->clientid,
+                'currency' => $order->client->currency ?? 'INR',
                 'order_date' => $order->order_date?->format('d M Y') ?? 'N/A',
                 'delivery_date' => $order->delivery_date?->format('d M Y') ?? 'N/A',
                 'amount' => number_format($order->grand_total ?? 0, 2),
@@ -103,10 +104,26 @@ class OrdersController extends Controller
         });
 
         // Group by client only if no specific client is selected
+        // if ($clientId) {
+        //     $groupedOrders = ['business_name' => $orders->sortByDesc('order_date')];
+        // } else {
+        //     $groupedOrders = $orders->groupBy('client')->sortBy(fn($g, $k) => strtolower($k));
+        // }
         if ($clientId) {
-            $groupedOrders = ['All Orders' => $orders->sortByDesc('order_date')];
+            $groupedOrders = [
+                ($selectedClient->business_name 
+                    ?? $selectedClient->contact_name 
+                    ?? 'Client') 
+                => $orders->sortByDesc('order_date')
+            ];
         } else {
-            $groupedOrders = $orders->groupBy('client')->sortBy(fn($g, $k) => strtolower($k));
+            $groupedOrders = $orders
+                ->groupBy(fn($order) => 
+                    $order['client_business_name'] 
+                    ?? $order['client_contact_name'] 
+                    ?? 'Client'
+                )
+                ->sortBy(fn($g, $k) => strtolower($k));
         }
 
         return view('orders.index', [

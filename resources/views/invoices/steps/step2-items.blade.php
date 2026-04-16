@@ -1,6 +1,6 @@
 <!-- Step 2: Items & Details -->
 <div id="step2" class="invoice-step" style="display: none;">
-    <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+    <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
         <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back to Step 1</button>
         <div style="display: flex; align-items: center; gap: 1rem;">
             <span style="font-size: 0.75rem; padding: 0.3rem 0.7rem; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #92400e; border-radius: 20px; font-weight: 600; border: 1px solid #f59e0b;">
@@ -14,9 +14,11 @@
         </div>
     </div>
 
-    <div style="margin-bottom: 1.5rem;">
+    <div class="invoice-grid-4" style="margin-bottom: 1rem;">
+        <div class="invoice-span-3">
         <label for="invoice_title" class="field-label">Invoice Title</label>
         <input type="text" id="invoice_title" name="invoice_title" value="{{ old('invoice_title') }}" class="form-input" placeholder="e.g. Website Development - Monthly Subscription">
+        </div>
     </div>
 
     <input type="hidden" name="proformaid" id="proformaid" value="">
@@ -98,7 +100,7 @@
 
         <div class="builder-card">
             <div class="manual-grid">
-                <div>
+                <div class="invoice-span-2">
                     <label for="manual_item_itemid" class="field-label small">Item</label>
                     <select id="manual_item_itemid" class="form-input">
                         <option value="">Select item</option>

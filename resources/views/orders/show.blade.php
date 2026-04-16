@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+@php($currency = $order->client->currency ?? 'INR')
 
 <section class="section-bar">
     <div>
@@ -41,7 +42,7 @@
         </div>
         <div style="text-align: right;">
             <p style="margin: 0; font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Grand Total</p>
-            <strong style="font-size: 1.4rem; color: #0f172a; margin-top: 0.25rem; display: block;">{{ number_format($order->grand_total ?? 0, 2) }}</strong>
+            <strong style="font-size: 1.4rem; color: #0f172a; margin-top: 0.25rem; display: block;">{{ $currency }} {{ number_format($order->grand_total ?? 0, 2) }}</strong>
         </div>
     </div>
 </section>
@@ -141,11 +142,11 @@
             <tr>
                 <td style="font-size: 0.85rem;"><strong>{{ $item->item_name }}</strong></td>
                 <td style="font-size: 0.85rem; text-align: center;">{{ number_format($item->quantity, 0) }}</td>
-                <td style="font-size: 0.85rem; text-align: right;">{{ number_format($item->unit_price, 2) }}</td>
+                <td style="font-size: 0.85rem; text-align: right;">{{ $currency }} {{ number_format($item->unit_price, 2) }}</td>
                 <td style="font-size: 0.85rem; text-align: right;">{{ number_format($item->tax_rate, 2) }}%</td>
                 <td style="font-size: 0.85rem; text-align: right;">
                     @if(($item->discount_amount ?? 0) > 0)
-                        {{ number_format($item->discount_amount, 2) }}
+                        {{ $currency }} {{ number_format($item->discount_amount, 2) }}
                         @if(($item->discount_percent ?? 0) > 0)
                             <div style="font-size: 0.7rem; color: #64748b;">({{ number_format($item->discount_percent, 1) }}%)</div>
                         @endif
@@ -167,7 +168,7 @@
                         @if($item->delivery_date) <div style="color: #8b5cf6;">D: {{ $item->delivery_date->format('d M y') }}</div> @endif
                     </div>
                 </td>
-                <td style="font-size: 0.85rem; text-align: right;"><strong>{{ number_format($item->line_total, 2) }}</strong></td>
+                <td style="font-size: 0.85rem; text-align: right;"><strong>{{ $currency }} {{ number_format($item->line_total, 2) }}</strong></td>
             </tr>
             @empty
             <tr>
@@ -179,23 +180,23 @@
         <tfoot>
             <tr style="background: #f8fafc; border-top: 2px solid #e5e7eb;">
                 <td colspan="8" style="padding: 0.5rem; text-align: right; font-weight: 600; font-size: 0.85rem; color: #64748b;">Subtotal:</td>
-                <td style="padding: 0.5rem; font-weight: 600; font-size: 0.85rem; text-align: right; color: #1e293b;">{{ number_format($order->subtotal ?? 0, 2) }}</td>
+                <td style="padding: 0.5rem; font-weight: 600; font-size: 0.85rem; text-align: right; color: #1e293b;">{{ $currency }} {{ number_format($order->subtotal ?? 0, 2) }}</td>
             </tr>
             @if(($order->discount_total ?? 0) > 0)
             <tr style="background: #f8fafc;">
                 <td colspan="8" style="padding: 0.5rem; text-align: right; font-weight: 600; font-size: 0.85rem; color: #64748b;">Discount:</td>
-                <td style="padding: 0.5rem; font-weight: 600; font-size: 0.85rem; text-align: right; color: #ef4444;">-{{ number_format($order->discount_total, 2) }}</td>
+                <td style="padding: 0.5rem; font-weight: 600; font-size: 0.85rem; text-align: right; color: #ef4444;">-{{ $currency }} {{ number_format($order->discount_total, 2) }}</td>
             </tr>
             @endif
             @if(($order->tax_total ?? 0) > 0)
             <tr style="background: #f8fafc;">
                 <td colspan="8" style="padding: 0.5rem; text-align: right; font-weight: 600; font-size: 0.85rem; color: #64748b;">Tax:</td>
-                <td style="padding: 0.5rem; font-weight: 600; font-size: 0.85rem; text-align: right; color: #1e293b;">{{ number_format($order->tax_total, 2) }}</td>
+                <td style="padding: 0.5rem; font-weight: 600; font-size: 0.85rem; text-align: right; color: #1e293b;">{{ $currency }} {{ number_format($order->tax_total, 2) }}</td>
             </tr>
             @endif
             <tr style="background: #f1f5f9;">
                 <td colspan="8" style="padding: 0.75rem 0.5rem; text-align: right; font-weight: 700; font-size: 1rem; color: #0f172a;">Grand Total:</td>
-                <td style="padding: 0.75rem 0.5rem; font-weight: 700; font-size: 1.1rem; text-align: right; color: #0f172a;">{{ number_format($order->grand_total ?? 0, 2) }}</td>
+                <td style="padding: 0.75rem 0.5rem; font-weight: 700; font-size: 1.1rem; text-align: right; color: #0f172a;">{{ $currency }} {{ number_format($order->grand_total ?? 0, 2) }}</td>
             </tr>
         </tfoot>
         @endif

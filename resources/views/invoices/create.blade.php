@@ -23,17 +23,16 @@
     $totalSteps = $invoiceFor === 'without_orders' ? 3 : 4;
 @endphp
 
-<section class="panel-card" style="padding: 1.5rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 0.85rem; border-bottom: 1px solid #e5e7eb;">
+<section class="panel-card invoice-create-shell" style="padding: 1.25rem;">
+    <div class="invoice-create-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb;">
         <div>
-            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #475569;">
-                <i class="fas fa-file-invoice" style="color: #f59e0b; margin-right: 0.5rem;"></i> Create Proforma Invoice
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #111827;">
+                <i class="fas fa-file-invoice" style="color: #4f46e5; margin-right: 0.5rem;"></i> Create Proforma Invoice
             </h3>
-            <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: #64748b;">
-                <i class="fas fa-info-circle" style="margin-right: 0.3rem;"></i> {{ $currentLabels[$currentStep] ?? '' }}
-            </p>
         </div>
+        @if($currentStep === 1)
         <a href="{{ $clientId ? route('orders.index', ['c' => $clientId]) : route('invoices.index') }}" class="text-link">&larr; Back</a>
+        @endif
     </div>
 
     @if ($errors->any())
@@ -76,31 +75,89 @@
 </section>
 
 <style>
-.invoice-meta-card { padding: 1.25rem; border: 1px solid #e2e8f0; border-radius: 12px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); }
-.invoice-meta-label, .field-label.small { display: block; margin-bottom: 0.35rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #64748b; }
+.invoice-create-shell {
+    max-width: 100%;
+}
+.invoice-create-header {
+    gap: 1rem;
+}
+#invoiceForm .form-input,
+#invoiceForm input[type="text"],
+#invoiceForm input[type="number"],
+#invoiceForm input[type="date"],
+#invoiceForm select,
+#invoiceForm textarea {
+    width: 100%;
+    min-width: 0;
+    padding: 0.7rem 0.85rem;
+    font-size: 0.87rem;
+}
+.invoice-meta-card { padding: 1rem; border: 1px solid #e5e7eb; border-radius: 12px; background: #ffffff; }
+.invoice-meta-label, .field-label.small { display: block; margin-bottom: 0.35rem; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; }
 .invoice-meta-value { color: #1e293b; font-size: 0.95rem; }
-.field-label { display: block; margin-bottom: 0.45rem; font-size: 0.85rem; font-weight: 600; color: #475569; }
-.source-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
-.invoice-source-card { position: relative; display: flex; flex-direction: column; gap: 0.45rem; padding: 1rem 1.1rem; border: 1px solid #dbe4ee; border-radius: 14px; background: #ffffff; cursor: pointer; transition: 0.2s ease; }
-.invoice-source-card:hover { border-color: #93c5fd; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05); }
+.field-label { display: block; margin-bottom: 0.45rem; font-size: 0.82rem; font-weight: 600; color: #374151; }
+.invoice-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; align-items: end; }
+.invoice-span-2 { grid-column: span 2; }
+.invoice-span-3 { grid-column: span 3; }
+.source-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.invoice-source-card { position: relative; display: flex; flex-direction: column; gap: 0.55rem; padding: 1rem 1.1rem; border: 1px solid #e5e7eb; border-radius: 12px; background: #ffffff; cursor: pointer; transition: 0.2s ease; }
+.invoice-source-card:hover { border-color: #c7d2fe; background: #fafbff; }
 .invoice-source-card input { position: absolute; opacity: 0; pointer-events: none; }
-.invoice-source-card:has(input:checked) { border-color: #2563eb; background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%); box-shadow: 0 12px 32px rgba(37, 99, 235, 0.12); }
-.source-icon { width: 42px; height: 42px; border-radius: 12px; background: #eff6ff; color: #2563eb; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; }
+.invoice-source-card:has(input:checked) { border-color: #4f46e5; background: #f8faff; }
+.source-icon { width: 40px; height: 40px; border-radius: 10px; background: #eef2ff; color: #4f46e5; display: inline-flex; align-items: center; justify-content: center; font-size: 0.95rem; }
 .invoice-source-card strong { color: #1e293b; }
-.workflow-panel { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e2e8f0; }
-.panel-heading-row { margin-bottom: 0.8rem; }
-.table-shell { border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #ffffff; }
-.empty-state { padding: 1.4rem; text-align: center; color: #64748b; font-size: 0.88rem; }
-.builder-card { padding: 1rem; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; }
-.manual-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; align-items: end; }
-.totals-card { padding: 1rem; border-radius: 14px; background: #f8fafc; border: 1px solid #e2e8f0; }
-.total-row { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.55rem; font-size: 0.9rem; color: #475569; }
+.workflow-panel { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
+.panel-heading-row { margin-bottom: 0.65rem; }
+.table-shell { border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background: #ffffff; }
+.empty-state { padding: 1.4rem; text-align: center; color: #6b7280; font-size: 0.88rem; }
+.builder-card { padding: 0.85rem; border: 1px solid #e5e7eb; border-radius: 12px; background: #f9fafb; }
+.manual-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.7rem; align-items: end; }
+.totals-card { padding: 1rem; border-radius: 12px; background: #f9fafb; border: 1px solid #e5e7eb; }
+.total-row { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.55rem; font-size: 0.9rem; color: #4b5563; }
 .total-row:last-child { margin-bottom: 0; }
-.total-row-grand { padding-top: 0.7rem; border-top: 1px solid #cbd5e1; font-size: 1rem; font-weight: 700; color: #1e293b; }
+.total-row-grand { padding-top: 0.7rem; border-top: 1px solid #d1d5db; font-size: 1rem; font-weight: 700; color: #111827; }
 .status-pill.paid { background: #dcfce7; color: #166534; }
 .status-pill.unpaid { background: #fee2e2; color: #991b1b; }
 .status-pill.partially-paid { background: #fef3c7; color: #92400e; }
-@media (max-width: 1100px) { .manual-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 720px) { .manual-grid { grid-template-columns: 1fr; } }
+.invoice-step-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+.invoice-step-badge { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.45rem 0.75rem; border: 1px solid #e5e7eb; border-radius: 999px; background: #f9fafb; color: #374151; font-size: 0.76rem; font-weight: 600; }
+.invoice-step-badge i { color: #4f46e5; }
+.invoice-side-meta { text-align: right; }
+.section-note { margin: 0.25rem 0 0; color: #6b7280; font-size: 0.84rem; }
+.section-title-card { margin-bottom: 0.95rem; padding: 0.9rem 1rem; border: 1px solid #e5e7eb; background: #f9fafb; border-radius: 12px; }
+.section-title-card h4 { margin: 0; font-size: 0.95rem; color: #111827; }
+.section-title-card p { margin: 0.3rem 0 0; color: #6b7280; font-size: 0.82rem; }
+@media (max-width: 1200px) {
+    .source-grid,
+    .manual-grid,
+    .invoice-grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .invoice-span-3 {
+        grid-column: span 2;
+    }
+}
+@media (max-width: 720px) {
+    .invoice-create-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .invoice-step-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .invoice-side-meta {
+        text-align: left;
+    }
+    .source-grid,
+    .manual-grid,
+    .invoice-grid-4 {
+        grid-template-columns: 1fr;
+    }
+    .invoice-span-2,
+    .invoice-span-3 {
+        grid-column: span 1;
+    }
+}
 </style>
 @endsection

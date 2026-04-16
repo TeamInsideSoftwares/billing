@@ -4,43 +4,110 @@
 {{-- Toast Container --}}
 <div id="toast-container" class="toast-container"></div>
 
+<style>
+    #item-form .service-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.9rem 1rem;
+        margin-bottom: 0.9rem;
+        align-items: start;
+    }
+    #item-form .service-span-2 {
+        grid-column: span 2;
+    }
+    #item-form .service-span-4 {
+        grid-column: span 4;
+    }
+    #item-form .service-field label,
+    #item-form .service-toggle > label:first-child {
+        display: block;
+        margin-bottom: 0.35rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #475569;
+    }
+    #item-form input[type="text"],
+    #item-form input[type="number"],
+    #item-form select,
+    #item-form textarea {
+        width: 100%;
+        min-width: 0;
+        padding: 0.58rem 0.72rem !important;
+        font-size: 0.9rem !important;
+    }
+    #item-form textarea {
+        min-height: 84px;
+        resize: vertical;
+    }
+    #item-form .service-toggle .custom-checkbox {
+        min-height: 44px;
+        margin-top: 0;
+        padding: 0.58rem 0.72rem;
+        border: 1px solid var(--line);
+        border-radius: 0.7rem;
+        background: #fff;
+    }
+    #item-form .section-divider {
+        border-top: 1px solid var(--line);
+        padding-top: 0.95rem;
+        margin-top: 0.95rem;
+    }
+    #item-form #addons-dropdown-wrap {
+        max-width: 640px !important;
+    }
+    #item-form #saved-addons-list {
+        margin-top: 0.45rem !important;
+        gap: 0.35rem !important;
+    }
+    #item-form #costings-table th,
+    #item-form #costings-table td {
+        padding: 0.55rem 0.6rem;
+        vertical-align: middle;
+    }
+    #item-form .form-actions {
+        margin-top: 1rem !important;
+        gap: 0.65rem !important;
+    }
+    @media (max-width: 1100px) {
+        #item-form .service-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        #item-form .service-span-4 {
+            grid-column: span 2;
+        }
+    }
+    @media (max-width: 720px) {
+        #item-form .service-grid {
+            grid-template-columns: 1fr;
+        }
+        #item-form .service-span-2,
+        #item-form .service-span-4 {
+            grid-column: span 1;
+        }
+    }
+</style>
+
 <section class="section-bar">
     <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Edit {{ $service->name }}</h3>
-    <a href="{{ route('services.index') }}" class="text-link">&larr; Back to items</a>
+    <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? '']) }}" class="text-link">&larr; Back to items</a>
 </section>
 
-<section class="panel-card" style="padding: 1.25rem;">
+<section class="panel-card" style="padding: 1.1rem;">
     <form method="POST" action="{{ route('services.update', $service) }}" class="service-form" id="item-form">
         @method('PUT')
         @csrf
 
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
-            <div>
-                <label for="type" style="font-size: 0.82rem;">Type *</label>
+        <div class="service-grid">
+            <div class="service-field">
+                <label for="type">Type *</label>
                 <select id="type" name="type" required style="padding: 0.4rem 0.5rem; font-size: 0.875rem;">
                     <option value="product" {{ old('type', $service->type ?? 'service') == 'product' ? 'selected' : '' }}>Product</option>
                     <option value="service" {{ old('type', $service->type ?? 'service') == 'service' ? 'selected' : '' }}>Service</option>
                 </select>
                 @error('type') <span class="error">{{ $message }}</span> @enderror
             </div>
-            <div>
-                <label for="sync" style="font-size: 0.82rem;">Sync</label>
-                <label class="custom-checkbox" style="display: flex; align-items: center; margin-top: 0.25rem; cursor: pointer;">
-                    <input type="hidden" name="sync" value="no">
-                    <input type="checkbox" name="sync" value="yes" id="sync" {{ old('sync', $service->sync ?? 'no') == 'yes' ? 'checked' : '' }}>
-                </label>
-                @error('sync') <span class="error">{{ $message }}</span> @enderror
-            </div>
-            <div>
-                <label for="user_wise" style="font-size: 0.82rem;">User-wise</label>
-                <label class="custom-checkbox" style="display: flex; align-items: center; margin-top: 0.25rem; cursor: pointer;">
-                    <input type="hidden" name="user_wise" value="0">
-                    <input type="checkbox" name="user_wise" value="1" id="user_wise" {{ old('user_wise', $service->user_wise ?? false) ? 'checked' : '' }}>
-                </label>
-                @error('user_wise') <span class="error">{{ $message }}</span> @enderror
-            </div>
-            <div style="grid-column: span 2;">
-                <label for="ps_catid" style="font-size: 0.82rem;">Category</label>
+            <div class="service-field">
+                <label for="ps_catid">Category</label>
                 <select id="ps_catid" name="ps_catid" style="padding: 0.4rem 0.5rem; font-size: 0.875rem;">
                     <option value="">-- No Category --</option>
                     @foreach($categories as $category)
@@ -51,13 +118,29 @@
                 </select>
                 @error('ps_catid') <span class="error">{{ $message }}</span> @enderror
             </div>
-            <div style="grid-column: span 2;">
-                <label for="name" style="font-size: 0.82rem;">Item Name *</label>
+            <div class="service-toggle">
+                <label for="sync">Sync</label>
+                <label class="custom-checkbox" style="display: flex; align-items: center; margin-top: 0.25rem; cursor: pointer;">
+                    <input type="hidden" name="sync" value="no">
+                    <input type="checkbox" name="sync" value="yes" id="sync" {{ old('sync', $service->sync ?? 'no') == 'yes' ? 'checked' : '' }}>
+                </label>
+                @error('sync') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div class="service-toggle">
+                <label for="user_wise">User-wise</label>
+                <label class="custom-checkbox" style="display: flex; align-items: center; margin-top: 0.25rem; cursor: pointer;">
+                    <input type="hidden" name="user_wise" value="0">
+                    <input type="checkbox" name="user_wise" value="1" id="user_wise" {{ old('user_wise', $service->user_wise ?? false) ? 'checked' : '' }}>
+                </label>
+                @error('user_wise') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div class="service-field service-span-2">
+                <label for="name">Item Name *</label>
                 <input type="text" id="name" name="name" value="{{ old('name', $service->name) }}" required style="padding: 0.4rem 0.5rem; font-size: 0.875rem;">
                 @error('name') <span class="error">{{ $message }}</span> @enderror
             </div>
-            <div style="grid-column: span 2;">
-                <label for="description" style="font-size: 0.82rem;">Description</label>
+            <div class="service-field service-span-2">
+                <label for="description">Description</label>
                 <textarea id="description" name="description" rows="2" style="padding: 0.4rem 0.5rem; font-size: 0.875rem;">{{ old('description', $service->description) }}</textarea>
                 @error('description') <span class="error">{{ $message }}</span> @enderror
             </div>
@@ -91,12 +174,12 @@
             $selectedAddonIds = collect(old('addons', $service->addons ?? []))->values()->all();
         @endphp
 
-        <div style="border-top: 1px solid var(--line); padding-top: 1rem; margin-top: 1rem;">
+        <div class="section-divider">
             <div style="position: relative; max-width: 480px;" id="addons-dropdown-wrap">
                 <span class="checkbox-label" style="font-size: 0.85rem; font-weight: 500;">This item belongs under which parent item(s)?</span>
                 <button type="button" class="secondary-button" id="addons-toggle" style="width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; font-size: 0.82rem;">
                     <span id="addons-selected-label">Select parent items</span>
-                    <span aria-hidden="true">▾</span>
+                    <span aria-hidden="true">&#9662;</span>
                 </button>
                 <div id="addons-dropdown" style="display: none; position: absolute; left: 0; right: 0; top: calc(100% + 0.35rem); background: #fff; border: 1px solid var(--line); border-radius: 0.5rem; padding: 0.65rem; max-height: 260px; overflow: auto; z-index: 20;">
                     @forelse($availableAddonItems as $item)
@@ -116,7 +199,7 @@
             @error('addons.*') <span class="error">{{ $message }}</span> @enderror
         </div>
 
-        <div style="border-top: 1px solid var(--line); padding-top: 1rem; margin-top: 1rem;">
+        <div class="section-divider">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                 <div>
                     <p class="eyebrow" style="margin: 0; font-size: 0.75rem;">Item Costings</p>
@@ -161,7 +244,7 @@
                                 <td>
                                     @if($account->allow_multi_taxation)
                                     <select name="costings[{{ $index }}][taxid]" class="tax-select" style="min-width: 140px; padding: 0.3rem; font-size: 0.82rem;">
-                                        <option value="">— None</option>
+                                        <option value="">-- None --</option>
                                         @foreach(['GST','VAT'] as $taxType)
                                             @php $typeTaxes = $taxes->where('type', $taxType); @endphp
                                             @if($typeTaxes->isNotEmpty())
@@ -284,7 +367,7 @@
     const fixedTaxRate = parseFloat(@json($fixedTaxRate)) || 0;
     const taxGroups = @json($taxGroupsData);
 
-    let taxOptionsHtml = '<option value="">— None</option>';
+    let taxOptionsHtml = '<option value="">-- None --</option>';
     for (const type in taxGroups) {
         if (taxGroups[type].length > 1) {
             taxOptionsHtml += '<optgroup label="' + _esc(type) + '">';
@@ -441,3 +524,4 @@
 })();
 </script>
 @endsection
+
