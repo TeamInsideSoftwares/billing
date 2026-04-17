@@ -32,7 +32,7 @@
     })->all();
 @endphp
 
-<section class="section-bar" style="padding: 0.5rem 1rem;">
+<section class="section-bar order-create-header" style="padding: 0.5rem 1rem;">
     <div>
         <p class="eyebrow" style="margin: 0;">{{ $isEditMode ? 'Edit' : 'Create' }}</p>
         <h3 style="margin: 0.2rem 0 0 0; font-size: 1.05rem; font-weight: 700; color: #0f172a;">
@@ -43,7 +43,7 @@
 </section>
 
 
-<section class="panel-card" style="padding: 1rem;">
+<section class="order-create-shell" style="padding: 0;">
     <form method="POST" action="{{ route('orders.store') }}" class="client-form" id="orderForm" enctype="multipart/form-data">
         @csrf
 
@@ -192,7 +192,7 @@
 
         <div class="order-items-shell" style="position: relative;">
                 {{-- Disabled overlay until order is saved --}}
-                <div id="itemsDisabledOverlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(241, 245, 249, 0.9); display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 8px;">
+                <div id="itemsDisabledOverlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.9); display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 8px;">
                     <div style="text-align: center; color: #64748b;">
                         <i class="fas fa-lock" style="font-size: 2rem; margin-bottom: 0.5rem; color: #94a3b8;"></i>
                         <p style="margin: 0; font-size: 0.9rem;">{{ $isEditMode ? 'Loading order details...' : 'Save order details first to add items' }}</p>
@@ -1268,10 +1268,21 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+.order-create-shell {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+.order-create-header {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
 .order-top-summary {
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    background: #f8fafc;
+    background: #ffffff;
     padding: 1rem;
     margin-bottom: 1rem;
     display: flex;
@@ -1397,6 +1408,14 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 .order-items-shell {
     margin-top: 1rem;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+}
+.order-items-shell .items-section {
+    background: #ffffff;
+    border-radius: 10px;
 }
 @media (max-width: 1199px) {
     .order-top-summary__fields {
