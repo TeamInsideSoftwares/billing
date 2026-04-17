@@ -114,10 +114,11 @@
                 </select>
             </div>
             <div>
-                <label for="state" style="font-size: 0.8rem;">State</label>
-                <select id="state" name="state" class="state-select" data-selected="{{ old('state', $client->state) }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
+                <label for="state" style="font-size: 0.8rem;">State *</label>
+                <select id="state" name="state" required class="state-select" data-selected="{{ old('state', $client->state) }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
                     <option value="">Select</option>
                 </select>
+                @error('state') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="city" style="font-size: 0.8rem;">City</label>
@@ -193,10 +194,11 @@
                     </select>
                 </div>
                 <div>
-                    <label for="billing_state" style="font-size: 0.8rem;">State</label>
-                    <select id="billing_state" name="billing_state" class="state-select" data-selected="{{ old('billing_state', $client->billingDetail->state ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
+                    <label for="billing_state" style="font-size: 0.8rem;">State *</label>
+                    <select id="billing_state" name="billing_state" class="state-select" data-selected="{{ old('billing_state', $client->billingDetail->state ?? '') }}" required style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
                         <option value="">Select</option>
                     </select>
+                    @error('billing_state') <span class="error">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <label for="billing_city" style="font-size: 0.8rem;">City</label>

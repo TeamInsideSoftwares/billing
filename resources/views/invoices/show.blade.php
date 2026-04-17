@@ -2,8 +2,16 @@
 
 @section('content')
 @php
+    $normalizeTaxState = static fn ($value) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $value)));
     $documentType = $invoice->isProforma() ? 'Proforma' : 'Tax';
     $currency = $invoice->currency_code ?? ($invoice->client->currency ?? 'INR');
+    $clientState = $normalizeTaxState($invoice->client->state ?? '');
+    $accountState = $normalizeTaxState($account->state ?? '');
+    $sameStateGst = $clientState !== '' && $accountState !== '' && $clientState === $accountState;
+    $invoiceTaxTotal = (float) ($invoice->tax_total ?? 0);
+    $cgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 2) : 0;
+    $sgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 2) : 0;
+    $igstAmount = $sameStateGst ? 0 : round($invoiceTaxTotal, 2);
 @endphp
 <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Invoice Details</h3>
 
@@ -202,10 +210,12 @@
                     <span style="color: #64748b;">Subtotal</span>
                     <strong>{{ $currency }} {{ number_format($invoice->subtotal ?? 0, 2) }}</strong>
                 </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.95rem;">
-                    <span style="color: #64748b;">Tax</span>
-                    <strong>{{ $currency }} {{ number_format($invoice->tax_total ?? 0, 2) }}</strong>
-                </div>
+                @if($invoiceTaxTotal > 0)
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.95rem;">
+                        <span style="color: #64748b;">{{ $sameStateGst ? 'Tax (CGST 50% + SGST 50%)' : 'Tax (IGST 100%)' }}</span>
+                        <strong>{{ $currency }} {{ number_format($invoiceTaxTotal, 2) }}</strong>
+                    </div>
+                @endif
                 @if($invoice->discount_total > 0)
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.95rem; color: #16a34a;">
                     <span>Discount</span>
@@ -408,10 +418,12 @@ Invoice Items Table
                 <td colspan="3" style="padding: 1rem 0.5rem; text-align: right;">Subtotal:</td>
                 <td style="padding: 1rem 0.5rem; text-align: right;">{{ $currency }} {{ number_format($invoice->subtotal ?? 0, 0) }}</td>
             </tr>
-            <tr style="font-weight: 600;">
-                <td colspan="3" style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">Tax:</td>
-                <td style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">{{ $currency }} {{ number_format($invoice->tax_total ?? 0, 0) }}</td>
-            </tr>
+            @if($invoiceTaxTotal > 0)
+                <tr style="font-weight: 600;">
+                    <td colspan="3" style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">{{ $sameStateGst ? 'Tax (CGST 50% + SGST 50%):' : 'Tax (IGST 100%):' }}</td>
+                    <td style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">{{ $currency }} {{ number_format($invoiceTaxTotal, 0) }}</td>
+                </tr>
+            @endif
             <tr style="background: #f8fafc; font-size: 1.1em; font-weight: bold;">
                 <td colspan="3" style="padding: 1rem 0.5rem; text-align: right;">Grand Total:</td>
                 <td style="padding: 1rem 0.5rem; text-align: right;">{{ $currency }} {{ number_format($invoice->grand_total ?? 0, 0) }}</td>

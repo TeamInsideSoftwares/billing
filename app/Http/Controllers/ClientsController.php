@@ -41,6 +41,7 @@ class ClientsController extends Controller
                 'contact' => $client->contact_name,
                 'email' => $client->email,
                 'phone' => $client->phone,
+                'state' => $client->state,
                 'city' => $client->city,
                 'currency' => $cur,
                 'status' => $client->status ?? 'Active',
@@ -97,7 +98,7 @@ class ClientsController extends Controller
             'status' => 'in:active,review,inactive',
             'currency' => 'required|string|size:3|exists:currency,iso',
             'country' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
+            'state' => 'required|string|max:100',
             'city' => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:20',
             'address_line_1' => 'nullable|string|max:150',
@@ -106,7 +107,7 @@ class ClientsController extends Controller
             'billing_gstin' => 'nullable|string|max:20',
             'billing_email' => 'nullable|email',
             'billing_city' => 'nullable|string|max:100',
-            'billing_state' => 'nullable|string|max:100',
+            'billing_state' => 'required|string|max:100',
             'billing_country' => 'nullable|string|max:100',
             'billing_postal_code' => 'nullable|string|max:20',
             'billing_address_line_1' => 'nullable|string|max:150',
@@ -181,7 +182,7 @@ class ClientsController extends Controller
 
     public function clientsShow(Client $client): View
     {
-        $client->load(['invoices', 'proformaInvoices', 'payments', 'subscriptions']);
+        $client->load(['invoices', 'proformaInvoices', 'payments', 'subscriptions', 'billingDetail']);
         $outstanding = ($client->invoices->sum('grand_total') ?? 0) - ($client->payments->sum('amount') ?? 0);
         $allInvoices = $client->proformaInvoices
             ->concat($client->invoices)
@@ -230,7 +231,7 @@ class ClientsController extends Controller
             'status' => 'in:active,review,inactive',
             'currency' => 'required|string|size:3|exists:currency,iso',
             'country' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
+            'state' => 'required|string|max:100',
             'city' => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:20',
             'address_line_1' => 'nullable|string|max:150',
@@ -239,7 +240,7 @@ class ClientsController extends Controller
             'billing_gstin' => 'nullable|string|max:20',
             'billing_email' => 'nullable|email',
             'billing_city' => 'nullable|string|max:100',
-            'billing_state' => 'nullable|string|max:100',
+            'billing_state' => 'required|string|max:100',
             'billing_country' => 'nullable|string|max:100',
             'billing_postal_code' => 'nullable|string|max:20',
             'billing_address_line_1' => 'nullable|string|max:150',

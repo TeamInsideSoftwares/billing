@@ -22,7 +22,7 @@
                 <tr>
                     <th style="width: 30%;">Client</th>
                     <th style="width: 18%;">Contact</th>
-                    <th style="width: 14%;">Location</th>
+                    <th style="width: 14%;">State</th>
                     <th style="width: 12%;">Outstanding</th>
                     <th style="width: 8%;">Invoices</th>
                     <th style="width: 10%;">Status</th>
@@ -52,7 +52,7 @@
                         @endif
                     </td>
                     <td>
-                        <div style="font-size: 0.85rem;">{{ $client['city'] ?? '—' }}</div>
+                        <div style="font-size: 0.85rem;">{{ $client['state'] ?? '—' }}</div>
                         <div style="font-size: 0.75rem; color: #64748b;">{{ $client['currency'] }}</div>
                     </td>
                     <td>
@@ -261,3 +261,5 @@
     document.getElementById('manageGroupsModal').addEventListener('hidden.bs.modal', resetGroupForm);
     </script>
 @endsection
+
+

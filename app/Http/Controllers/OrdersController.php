@@ -142,6 +142,7 @@ class OrdersController extends Controller
     {
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $account = \App\Models\Account::find($accountid);
+        $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
         $preSelectedClientId = request('c');
         
         // Get default financial year
@@ -159,9 +160,12 @@ class OrdersController extends Controller
             'users' => $this->getSalesPeopleForForm($accountid),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'account' => $account,
+            'accountBillingDetail' => $accountBillingDetail,
             'fixedTaxRate' => ($account && !$account->allow_multi_taxation) ? ($account->fixed_tax_rate ?? 0) : 0,
             'preSelectedClientId' => $preSelectedClientId,
             'nextOrderNumber' => $nextOrderNumber,
+            'isEditMode' => false,
+            'order' => null,
         ]);
     }
 
@@ -343,11 +347,16 @@ class OrdersController extends Controller
         $order->load(['client', 'items.item']);
         $salesPersonName = $this->getSalesPeopleLookup(collect([(string) ($order->sales_person_id ?? '')]))[(string) ($order->sales_person_id ?? '')]
             ?? ($order->salesPerson->name ?? '-');
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $account = \App\Models\Account::where('accountid', $accountid)->first();
+        $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
 
         return view('orders.show', [
             'title' => 'Order Details',
             'order' => $order,
             'salesPersonName' => $salesPersonName,
+            'account' => $account,
+            'accountBillingDetail' => $accountBillingDetail,
         ]);
     }
 
@@ -373,6 +382,10 @@ class OrdersController extends Controller
                 'delivery_date' => $orderModel->delivery_date ? $orderModel->delivery_date->format('Y-m-d') : null,
                 'sales_person_id' => $orderModel->sales_person_id,
                 'notes' => $orderModel->notes,
+                'po_number' => $orderModel->po_number,
+                'po_date' => $orderModel->po_date ? $orderModel->po_date->format('Y-m-d') : null,
+                'agreement_ref' => $orderModel->agreement_ref,
+                'agreement_date' => $orderModel->agreement_date ? $orderModel->agreement_date->format('Y-m-d') : null,
                 'grand_total' => $orderModel->grand_total,
             ],
             'items' => $orderModel->items->map(function ($item) {
@@ -449,8 +462,9 @@ class OrdersController extends Controller
         $order->load(['items.item']);
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $account = \App\Models\Account::find($accountid);
+        $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
 
-        return view('orders.edit', [
+        return view('orders.create', [
             'title' => 'Edit Order',
             'order' => $order,
             'clients' => Client::all(),
@@ -459,7 +473,46 @@ class OrdersController extends Controller
             'items' => $order->items,
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'account' => $account,
-            'clientId' => request('c'),
+            'accountBillingDetail' => $accountBillingDetail,
+            'fixedTaxRate' => ($account && !$account->allow_multi_taxation) ? ($account->fixed_tax_rate ?? 0) : 0,
+            'preSelectedClientId' => $order->clientid,
+            'nextOrderNumber' => $order->order_number,
+            'isEditMode' => true,
+            'initialOrderPayload' => [
+                'orderid' => $order->orderid,
+                'order_number' => $order->order_number,
+                'clientid' => $order->clientid,
+                'order_title' => $order->order_title,
+                'order_date' => $order->order_date ? $order->order_date->format('Y-m-d') : null,
+                'delivery_date' => $order->delivery_date ? $order->delivery_date->format('Y-m-d') : null,
+                'sales_person_id' => $order->sales_person_id,
+                'notes' => $order->notes,
+                'po_number' => $order->po_number,
+                'po_date' => $order->po_date ? $order->po_date->format('Y-m-d') : null,
+                'agreement_ref' => $order->agreement_ref,
+                'agreement_date' => $order->agreement_date ? $order->agreement_date->format('Y-m-d') : null,
+                'grand_total' => $order->grand_total,
+            ],
+            'initialItemsPayload' => $order->items->map(function ($item) {
+                return [
+                    'orderid' => $item->orderid,
+                    'orderitemid' => $item->orderitemid,
+                    'itemid' => $item->itemid,
+                    'quantity' => $item->quantity ?? 1,
+                    'unit_price' => $item->unit_price ?? 0,
+                    'tax_rate' => $item->tax_rate ?? 0,
+                    'line_total' => $item->line_total ?? 0,
+                    'discount_percent' => $item->discount_percent ?? 0,
+                    'discount_amount' => $item->discount_amount ?? 0,
+                    'item_name' => $item->item_name ?? '',
+                    'frequency' => $item->frequency,
+                    'duration' => $item->duration,
+                    'no_of_users' => $item->no_of_users,
+                    'start_date' => $item->start_date ? $item->start_date->format('Y-m-d') : null,
+                    'end_date' => $item->end_date ? $item->end_date->format('Y-m-d') : null,
+                    'delivery_date' => $item->delivery_date ? $item->delivery_date->format('Y-m-d') : null,
+                ];
+            })->values(),
         ]);
     }
 

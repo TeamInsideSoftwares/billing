@@ -1,4 +1,11 @@
-@php($selectedClientCurrency = optional($clients->firstWhere('clientid', request('clientid')))->currency ?? 'INR')
+@php
+    $normalizeTaxState = static fn ($value) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $value)));
+    $selectedInvoiceClient = $clients->firstWhere('clientid', request('clientid'));
+    $selectedClientCurrency = optional($selectedInvoiceClient)->currency ?? 'INR';
+    $invoiceClientState = $normalizeTaxState(optional($selectedInvoiceClient)->state ?? '');
+    $invoiceAccountState = $normalizeTaxState(optional($account)->state ?? '');
+    $sameStateGstForInvoice = $invoiceClientState !== '' && $invoiceAccountState !== '' && $invoiceClientState === $invoiceAccountState;
+@endphp
 <!-- Step 4: Preview & Terms (For Orders & Renewal, and Without Orders Step 3) -->
 <div id="step4" class="invoice-step">
     <div class="invoice-step-toolbar">
@@ -85,6 +92,7 @@
     const termsList = document.getElementById('termsList');
     const itemsDataInput = document.getElementById('items_data');
     const currencyCodeInput = document.getElementById('currency_code');
+    const sameStateGstForInvoice = @json($sameStateGstForInvoice);
 
     @php
         $accountDataArr = [
@@ -179,6 +187,17 @@
             taxTotal += (Math.max(0, lineTotal - lineDiscount) * (parseFloat(item.tax_rate || 0) / 100));
         });
         grandTotal = subtotal - discountTotal + taxTotal;
+        const taxRowsHtml = sameStateGstForInvoice
+            ? `
+                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+                        <span>Tax (CGST 50% + SGST 50%):</span><strong>${currency} ${taxTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                    </div>
+              `
+            : `
+                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+                        <span>Tax (IGST 100%):</span><strong>${currency} ${taxTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                    </div>
+              `;
 
         previewContent.innerHTML = `
             <div style="display: flex; justify-content: space-between; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #e5e7eb;">
@@ -220,9 +239,7 @@
                     <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb; color: #dc2626;">
                         <span>Discount:</span><strong>-${currency} ${discountTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
                     </div>
-                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
-                        <span>Tax:</span><strong>${currency} ${taxTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
-                    </div>
+                    ${taxRowsHtml}
                     <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; font-size: 1.2rem; font-weight: 700; color: #111827;">
                         <span>Grand Total:</span><span>${currency} ${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
                     </div>

@@ -12,12 +12,9 @@
     </div>
 
     @if($clientId)
-        <div style="display: flex; gap: 0.5rem;">
+        <div style="display: flex; gap: 0.5rem; align-items: end; flex-wrap: wrap;">
             <a href="{{ route('orders.create', ['c' => $clientId]) }}" class="primary-button">
                 <i class="fas fa-receipt" style="margin-right: 0.5rem;"></i>Create Order
-            </a>
-            <a href="{{ route('orders.index') }}" class="secondary-button">
-                Change Client
             </a>
         </div>
     @endif
@@ -286,8 +283,27 @@
             @endphp
             <details class="category-accordion order-group" open>
                 <summary class="accordion-header">
-                    <span class="order-client-meta">
-                        <span class="category-title">{{ $clientName }}</span>
+                    <span class="order-client-meta" onclick="event.stopPropagation();">
+                        @if($clientId)
+                            <form action="{{ route('orders.index') }}" method="GET" style="margin: 0;">
+                                <select
+                                    name="c"
+                                    class="form-control form-control"
+                                    style="min-width: 260px; min-height: 34px;"
+                                    onchange="this.form.submit()"
+                                    onclick="event.stopPropagation();"
+                                >
+                                    @foreach($allClients as $clientOption)
+                                        @php($optionName = $clientOption->business_name ?? $clientOption->contact_name ?? 'Client')
+                                        <option value="{{ $clientOption->clientid }}" {{ (string) $clientId === (string) $clientOption->clientid ? 'selected' : '' }}>
+                                            {{ $optionName }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </form>
+                        @else
+                            <span class="category-title">{{ $clientName }}</span>
+                        @endif
                         @if($clientEmailForGroup)
                             <span class="order-client-email">{{ $clientEmailForGroup }}</span>
                         @endif

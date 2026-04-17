@@ -1,7 +1,17 @@
 @extends('layouts.app')
 
 @section('content')
-@php($currency = $order->client->currency ?? 'INR')
+@php
+    $normalizeTaxState = static fn ($value) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $value)));
+    $currency = $order->client->currency ?? 'INR';
+    $clientState = $normalizeTaxState($order->client->state ?? '');
+    $accountState = $normalizeTaxState($account->state ?? '');
+    $sameStateGst = $clientState !== '' && $accountState !== '' && $clientState === $accountState;
+    $orderTaxTotal = (float) ($order->tax_total ?? 0);
+    $cgstAmount = $sameStateGst ? round($orderTaxTotal / 2, 2) : 0;
+    $sgstAmount = $sameStateGst ? round($orderTaxTotal / 2, 2) : 0;
+    $igstAmount = $sameStateGst ? 0 : round($orderTaxTotal, 2);
+@endphp
 
 <section class="section-bar">
     <div>
@@ -188,11 +198,13 @@
                 <td style="padding: 0.5rem; font-weight: 600; font-size: 0.85rem; text-align: right; color: #ef4444;">-{{ $currency }} {{ number_format($order->discount_total, 2) }}</td>
             </tr>
             @endif
-            @if(($order->tax_total ?? 0) > 0)
-            <tr style="background: #f8fafc;">
-                <td colspan="8" style="padding: 0.5rem; text-align: right; font-weight: 600; font-size: 0.85rem; color: #64748b;">Tax:</td>
-                <td style="padding: 0.5rem; font-weight: 600; font-size: 0.85rem; text-align: right; color: #1e293b;">{{ $currency }} {{ number_format($order->tax_total, 2) }}</td>
-            </tr>
+            @if($orderTaxTotal > 0)
+                <tr style="background: #f8fafc;">
+                    <td colspan="8" style="padding: 0.5rem; text-align: right; font-weight: 600; font-size: 0.85rem; color: #64748b;">
+                        {{ $sameStateGst ? 'Tax (CGST 50% + SGST 50%):' : 'Tax (IGST 100%):' }}
+                    </td>
+                    <td style="padding: 0.5rem; font-weight: 600; font-size: 0.85rem; text-align: right; color: #1e293b;">{{ $currency }} {{ number_format($orderTaxTotal, 2) }}</td>
+                </tr>
             @endif
             <tr style="background: #f1f5f9;">
                 <td colspan="8" style="padding: 0.75rem 0.5rem; text-align: right; font-weight: 700; font-size: 1rem; color: #0f172a;">Grand Total:</td>

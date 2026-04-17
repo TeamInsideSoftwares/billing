@@ -262,10 +262,11 @@ input:checked + .toggle-slider {
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;">State</label>
-                <select name="state" class="state-select" data-selected="{{ old('state', $account->state ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem; width: 100%;">
+                <label style="font-size: 0.8rem;">State *</label>
+                <select name="state" required class="state-select" data-selected="{{ old('state', $account->state ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem; width: 100%;">
                     <option value="">Select State</option>
                 </select>
+                @error('state') <span class="error">{{ $message }}</span> @enderror
             </div>
 
             <div>
@@ -629,10 +630,11 @@ input:checked + .toggle-slider {
                 </select>
             </div>
             <div>
-                <label>State</label>
-                <select name="state" class="state-select" data-selected="{{ old('state', $editingBillingDetail->state ?? '') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
+                <label>State *</label>
+                <select name="state" required class="state-select" data-selected="{{ old('state', $editingBillingDetail->state ?? '') }}" style="width: 100%; padding: 0.45rem 0.6rem;">
                     <option value="">Select State</option>
                 </select>
+                @error('state') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label>City</label>

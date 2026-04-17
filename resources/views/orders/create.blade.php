@@ -1,142 +1,201 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $isEditMode = (bool) ($isEditMode ?? false);
+    $editingOrder = $order ?? null;
+    $clientFallback = $isEditMode ? ($editingOrder->clientid ?? '') : ($preSelectedClientId ?? request('c') ?? '');
+    $displayOrderNumber = old('order_number', $isEditMode ? ($editingOrder->order_number ?? $nextOrderNumber) : $nextOrderNumber);
+    $defaultOrderDate = $isEditMode
+        ? ($editingOrder?->order_date?->format('Y-m-d') ?? date('Y-m-d'))
+        : date('Y-m-d');
+    $defaultDeliveryDate = $isEditMode ? ($editingOrder?->delivery_date?->format('Y-m-d') ?? '') : '';
+    $defaultSalesPersonId = $isEditMode ? ($editingOrder->sales_person_id ?? null) : null;
+    $defaultNotes = $isEditMode ? ($editingOrder->notes ?? '') : '';
+    $defaultPoNumber = $isEditMode ? ($editingOrder->po_number ?? '') : '';
+    $defaultPoDate = $isEditMode ? ($editingOrder?->po_date?->format('Y-m-d') ?? '') : '';
+    $defaultAgreementRef = $isEditMode ? ($editingOrder->agreement_ref ?? '') : '';
+    $defaultAgreementDate = $isEditMode ? ($editingOrder?->agreement_date?->format('Y-m-d') ?? '') : '';
+    $selectedClientId = old('clientid', $clientFallback);
+    $selectedClient = collect($clients ?? [])->firstWhere('clientid', $selectedClientId);
+    $selectedClientName = $selectedClient->business_name ?? $selectedClient->contact_name ?? 'Select client';
+    $selectedClientEmail = $selectedClient->email ?? 'No client email';
+    $accountStateForGst = strtoupper(trim((string) ($account->state ?? '')));
+    $clientDirectoryPayload = collect($clients ?? [])->mapWithKeys(function ($client) {
+        return [
+            (string) ($client->clientid ?? '') => [
+                'name' => (string) ($client->business_name ?? $client->contact_name ?? 'Select client'),
+                'email' => (string) ($client->email ?? ''),
+                'state' => strtoupper(trim((string) ($client->state ?? ''))),
+            ],
+        ];
+    })->all();
+@endphp
 
 <section class="section-bar" style="padding: 0.5rem 1rem;">
     <div>
-        <h3 style="margin: 0; font-size: 1rem; font-weight: 600; color: #64748b;">Create Order</h3>
+        <p class="eyebrow" style="margin: 0;">{{ $isEditMode ? 'Edit' : 'Create' }}</p>
+        <h3 style="margin: 0.2rem 0 0 0; font-size: 1.05rem; font-weight: 700; color: #0f172a;">
+            {{ $displayOrderNumber }}
+        </h3>
     </div>
-    <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? '']) }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to orders</a>
+    <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? $clientFallback]) }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to orders</a>
 </section>
+
 
 <section class="panel-card" style="padding: 1rem;">
     <form method="POST" action="{{ route('orders.store') }}" class="client-form" id="orderForm" enctype="multipart/form-data">
         @csrf
 
-        <div class="row">
-            {{-- LEFT COLUMN: Order Details (narrower) --}}
-            <div class="col-3">
-                <div style="position: sticky; top: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.75rem; margin-bottom: 1rem;">
-    
-                        <h5 style="margin: 0; font-size: 1rem; font-weight: 600; color: #0f172a;">
-                            <i class="fas fa-clipboard-list" style="color: #3b82f6; font-size: 1.1rem; margin-right: 0.5rem;"></i>
-                            Order Details
-                        </h5>
-
-                        <div style="background: #f1f5f9; padding: 0.4rem 0.7rem; border-radius: 6px; font-size: 0.85rem;">
-                            <span style="color: #0f172a; font-weight: 500;">
-                                {{ $nextOrderNumber }}
-                            </span>
-                        </div>
-
-                    </div>
-
-                    <div class="mb-2">
-                        <select id="clientid" name="clientid" required class="form-control form-control-sm" placeholder="Client">
-                            <option value="">-- Choose Client --</option>
-                            @foreach($clients as $client)
-                                <option value="{{ $client->clientid }}" {{ (old('clientid', request('c') ?? '') == $client->clientid) ? 'selected' : '' }}>
-                                    {{ $client->business_name ?? $client->contact_name }}
-                                </option>
-                            @endforeach
-                        </select>
+        <div class="order-top-summary order-lockable">
+            <div class="order-top-summary__client">
+                <div class="order-top-summary__icon">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <div>
+                    <p class="order-top-summary__eyebrow">{{ $isEditMode ? 'Editing Order' : '' }}</p>
+                    <p class="order-top-summary__client-name" id="summaryClientName">{{ $selectedClientName }}</p>
+                    <p class="order-top-summary__client-email" id="summaryClientEmail">{{ $selectedClientEmail ?: 'No client email' }}</p>
+                    <div style="margin-top: 0.5rem; min-width: 240px;">
+                        <!-- <label class="order-label">Client</label>
+                        <div class="form-control form-control-sm" style="background: #f8fafc;" id="clientDisplayName">
+                            {{ $selectedClientName }}
+                        </div> -->
+                        <input type="hidden" id="clientid" name="clientid" required value="{{ old('clientid', $clientFallback) }}">
                         @error('clientid') <span class="error">{{ $message }}</span> @enderror
-                        <input type="hidden" id="order_number" name="order_number" value="{{ $nextOrderNumber }}">
+                        <input type="hidden" id="order_number" name="order_number" value="{{ $displayOrderNumber }}">
                     </div>
-
-                    <div class="mb-2">
-                        <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Order Title</label>
-                        <input type="text" id="order_title" name="order_title" required value="{{ old('order_title') }}" class="form-control form-control-sm" placeholder="Order Title/Details">
-                    </div>
-
-                    <div class="row">
-                        <div class="col-6 mb-2">
-                            <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Order Date</label>
-                            <input type="date" id="order_date" name="order_date" value="{{ old('order_date', date('Y-m-d')) }}" required class="form-control form-control-sm" placeholder="Order Date">
-                            @error('order_date') <span class="error">{{ $message }}</span> @enderror
-                        </div>
-                        <div class="col-6 mb-2">
-                            <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Delivery Date</label>
-                            <input type="date" id="delivery_date" name="delivery_date" value="{{ old('delivery_date') }}" class="form-control form-control-sm" placeholder="Delivery Date">
-                        </div>
-                    </div>
-
-
-                    <div class="mb-3">
-                        <select id="sales_person_id" name="sales_person_id" class="form-control form-control-sm">
-                            <option value="">-- Select Sales Person --</option>
-                            @foreach($users as $user)
-                                <option value="{{ $user->id }}" {{ old('sales_person_id') == $user->id ? 'selected' : '' }}>
-                                    {{ $user->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <textarea id="notes" name="notes" rows="3" class="form-control form-control-sm" placeholder="Notes">{{ old('notes') }}</textarea>
-                    </div>
-
-                    <details style="border-top: 1px solid #e2e8f0; padding-top: 0.65rem; margin-top: 0.65rem; margin-bottom: 0.65rem;" {{ (old('po_number') || old('po_date')) ? 'open' : '' }}>
-                        <summary style="font-size: 0.85rem; font-weight: 600; color: #64748b; cursor: pointer; list-style: none;">
-                            <i class="fas fa-file-alt" style="margin-right: 0.4rem; color: #94a3b8;"></i>Purchase Order
-                        </summary>
-                        <div style="margin-top: 0.5rem;">
-                            <div class="row" style="row-gap: 0.35rem;">
-                                <div class="col-6 mb-2">
-                                    <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">PO Number</label>
-                                    <input type="text" id="po_number" name="po_number" value="{{ old('po_number') }}" class="form-control form-control-sm" placeholder="PO Number">
-                                </div>
-                                <div class="col-6 mb-2">
-                                    <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">PO Date</label>
-                                    <input type="date" id="po_date" name="po_date" value="{{ old('po_date') }}" class="form-control form-control-sm" placeholder="PO Date">
-                                </div>
-                            </div>
-
-                            <div class="mb-2">
-                                <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">PO Upload</label>
-                                <input type="file" id="po_file" name="po_file" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                            </div>
-                        </div>
-                    </details>
-
-                    <details style="border-top: 1px solid #e2e8f0; padding-top: 0.65rem; margin-bottom: 0.65rem;" {{ (old('agreement_ref') || old('agreement_date')) ? 'open' : '' }}>
-                        <summary style="font-size: 0.85rem; font-weight: 600; color: #64748b; cursor: pointer; list-style: none;">
-                            <i class="fas fa-file-signature" style="margin-right: 0.4rem; color: #94a3b8;"></i>Agreement
-                        </summary>
-                        <div style="margin-top: 0.5rem;">
-                            <div class="row" style="row-gap: 0.35rem;">
-                                <div class="col-6 mb-2">
-                                    <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Agreement Ref</label>
-                                    <input type="text" id="agreement_ref" name="agreement_ref" value="{{ old('agreement_ref') }}" class="form-control form-control-sm" placeholder="Agreement Ref">
-                                </div>
-                                <div class="col-6 mb-2">
-                                    <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Agreement Date</label>
-                                    <input type="date" id="agreement_date" name="agreement_date" value="{{ old('agreement_date') }}" class="form-control form-control-sm" placeholder="Agreement Date">
-                                </div>
-                            </div>
-
-                            <div class="mb-2">
-                                <label style="font-size: 0.68rem; color: #64748b; display: block; margin-bottom: 0.15rem;">Agreement Upload</label>
-                                <input type="file" id="agreement_file" name="agreement_file" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                            </div>
-                        </div>
-                    </details>
-
-                    <button type="button" id="saveOrderBtn" class="btn btn-sm btn-primary w-100">
-                        <i class="fas fa-save" style="margin-right: 0.35rem;"></i>Save Order & Continue
-                    </button>
                 </div>
             </div>
+            <div class="order-top-summary__fields">
+                <div>
+                    <label class="order-label" for="order_title">Order Title</label>
+                    <input type="text" id="order_title" name="order_title" required value="{{ old('order_title', $isEditMode ? ($editingOrder->order_title ?? '') : '') }}" class="form-control form-control-sm" placeholder="Order Title/Details">
+                </div>
+                <div>
+                    <label class="order-label" for="delivery_date">Delivery Date</label>
+                    <input type="date" id="delivery_date" name="delivery_date" value="{{ old('delivery_date', $defaultDeliveryDate) }}" class="form-control form-control-sm" placeholder="Delivery Date">
+                </div>
+                <div>
+                    <label class="order-label" for="sales_person_id">Sales Person</label>
+                    <select id="sales_person_id" name="sales_person_id" class="form-control form-control-sm">
+                        <option value="">-- Select Sales Person --</option>
+                        @foreach($users as $user)
+                            <option value="{{ $user->id }}" {{ old('sales_person_id', $defaultSalesPersonId) == $user->id ? 'selected' : '' }}>
+                                {{ $user->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="order-label" for="order_date">Order Date</label>
+                    <input type="date" id="order_date" name="order_date" value="{{ old('order_date', $defaultOrderDate) }}" required class="form-control form-control-sm" placeholder="Order Date">
+                    @error('order_date') <span class="error">{{ $message }}</span> @enderror
+                </div>
+            </div>
+        </div>
 
-            {{-- RIGHT COLUMN: Order Items (wider) --}}
-            <div class="col-9" style="position: relative;">
+        
+
+        <div class="row g-3 order-lockable">
+            {{-- PO --}}
+            <div class="col-12 col-lg-6">
+                <details class="order-accordion" {{ (old('po_number', $defaultPoNumber) || old('po_date', $defaultPoDate)) ? 'open' : '' }}>
+                    <summary>
+                        <span><i class="fas fa-file-alt" style="margin-right: 0.4rem; color: #94a3b8;"></i>Purchase Order</span>
+                    </summary>
+                    <div class="order-accordion__content">
+                        
+                        <div class="row">
+                            <div class="col-6 mb-2">
+                                <label class="order-label">PO Number</label>
+                                <input type="text" id="po_number" name="po_number"
+                                    value="{{ old('po_number', $defaultPoNumber) }}"
+                                    class="form-control form-control-sm">
+                            </div>
+
+                            <div class="col-6 mb-2">
+                                <label class="order-label">PO Date</label>
+                                <input type="date" id="po_date" name="po_date"
+                                    value="{{ old('po_date', $defaultPoDate) }}"
+                                    class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="order-label">PO Upload</label>
+                            @if($isEditMode && !empty($editingOrder?->po_file))
+                                <div style="font-size: 0.75rem; margin-bottom: 0.25rem;">
+                                    <a href="{{ asset('storage/' . $editingOrder->po_file) }}" target="_blank" class="text-link">
+                                        <i class="fas fa-file"></i> View Current File
+                                    </a>
+                                </div>
+                            @endif
+                            <input type="file" id="po_file" name="po_file"
+                                class="form-control form-control-sm"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                        </div>
+
+                    </div>
+                </details>
+            </div>
+
+            {{-- AGREEMENT --}}
+            <div class="col-12 col-lg-6">
+                <details class="order-accordion" {{ (old('agreement_ref', $defaultAgreementRef) || old('agreement_date', $defaultAgreementDate)) ? 'open' : '' }}>
+                    <summary>
+                        <span><i class="fas fa-file-signature" style="margin-right: 0.4rem; color: #94a3b8;"></i>Agreement</span>
+                    </summary>
+                    <div class="order-accordion__content">
+
+                        <div class="row">
+                            <div class="col-6 mb-2">
+                                <label class="order-label">Agreement Ref</label>
+                                <input type="text" id="agreement_ref" name="agreement_ref"
+                                    value="{{ old('agreement_ref', $defaultAgreementRef) }}"
+                                    class="form-control form-control-sm">
+                            </div>
+
+                            <div class="col-6 mb-2">
+                                <label class="order-label">Agreement Date</label>
+                                <input type="date" id="agreement_date" name="agreement_date"
+                                    value="{{ old('agreement_date', $defaultAgreementDate) }}"
+                                    class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="order-label">Agreement Upload</label>
+                            @if($isEditMode && !empty($editingOrder?->agreement_file))
+                                <div style="font-size: 0.75rem; margin-bottom: 0.25rem;">
+                                    <a href="{{ asset('storage/' . $editingOrder->agreement_file) }}" target="_blank" class="text-link">
+                                        <i class="fas fa-file"></i> View Current File
+                                    </a>
+                                </div>
+                            @endif
+                            <input type="file" id="agreement_file" name="agreement_file"
+                                class="form-control form-control-sm"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                        </div>
+
+                    </div>
+                </details>
+            </div>
+
+        </div>
+
+        <div class="order-save-row">
+            <button type="button" id="saveOrderBtn" class="btn btn-sm btn-primary">
+                <i class="fas fa-save" style="margin-right: 0.35rem;"></i>{{ $isEditMode ? 'Update Order & Continue' : 'Save Order & Continue' }}
+            </button>
+        </div>
+
+        <div class="order-items-shell" style="position: relative;">
                 {{-- Disabled overlay until order is saved --}}
                 <div id="itemsDisabledOverlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(241, 245, 249, 0.9); display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 8px;">
                     <div style="text-align: center; color: #64748b;">
                         <i class="fas fa-lock" style="font-size: 2rem; margin-bottom: 0.5rem; color: #94a3b8;"></i>
-                        <p style="margin: 0; font-size: 0.9rem;">Save order details first to add items</p>
+                        <p style="margin: 0; font-size: 0.9rem;">{{ $isEditMode ? 'Loading order details...' : 'Save order details first to add items' }}</p>
                     </div>
                 </div>
 
@@ -282,8 +341,8 @@
                             <span style="color: #64748b;">Discount:</span>
                             <strong id="discountTotal" style="color: #dc2626;">0.00</strong>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
-                            <span style="color: #64748b;">Tax:</span>
+                        <div id="taxIgstRow" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                            <span id="taxLabel" style="color: #64748b;">Tax (IGST 100%):</span>
                             <strong id="taxTotal">0.00</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: 700; border-top: 2px solid #e2e8f0; padding-top: 0.5rem; margin-top: 0.5rem;">
@@ -293,13 +352,12 @@
                     </div>
                 </div>
             </div>
-        </div>
 
         <div class="form-actions text-end" 
             style="border-top: 1px solid #e2e8f0; display: none; justify-content: flex-end;" 
             id="finalActions">
 
-            <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? '']) }}" 
+            <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? $clientFallback]) }}" 
             class="btn btn-primary btn-sm">
                 Confirm & Exit
             </a>
@@ -311,16 +369,56 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const clientDirectory = @json($clientDirectoryPayload);
+    const accountStateForGst = @json($accountStateForGst ?? '');
+
+    const isEditMode = @json($isEditMode);
+    const serverExistingOrderId = @json($isEditMode ? (string) ($editingOrder->orderid ?? '') : '');
+    const editUrlTemplate = @json(route('orders.edit', ['order' => '__ORDER__']));
+    const initialOrderPayload = @json($initialOrderPayload ?? null);
+    const initialItemsPayload = @json($initialItemsPayload ?? []);
+    const saveButtonIdleLabel = isEditMode ? 'Update Order & Continue' : 'Save Order & Continue';
+    const saveButtonDoneLabel = isEditMode ? 'Order Updated' : 'Order Saved';
+    const saveSuccessMessage = isEditMode ? 'Order updated successfully! You can continue managing items.' : 'Order saved successfully! You can now add items.';
+
     let itemCounter = 0;
     const items = [];
     const tbody = document.getElementById('itemsTbody');
     let editingItemId = null;
     let savedOrderId = null;
 
-    // Check if there's an existing order ID in the URL
+    // For edit mode, prefill from server-rendered payload first.
+    if (isEditMode && initialOrderPayload && initialOrderPayload.orderid) {
+        savedOrderId = String(initialOrderPayload.orderid);
+        document.getElementById('savedOrderId').value = savedOrderId;
+
+        const fields = ['clientid', 'order_number', 'order_title', 'order_date', 'delivery_date', 'sales_person_id', 'notes', 'po_number', 'po_date', 'agreement_ref', 'agreement_date'];
+        fields.forEach(field => {
+            const el = document.getElementById(field);
+            if (el && initialOrderPayload[field] !== undefined && initialOrderPayload[field] !== null) {
+                el.value = initialOrderPayload[field];
+            }
+        });
+        syncSelectedClientDisplay();
+
+        document.getElementById('itemsDisabledOverlay').style.display = 'none';
+        document.getElementById('finalActions').style.display = 'block';
+
+        const btn = document.getElementById('saveOrderBtn');
+        btn.innerHTML = `<i class="fas fa-check" style="margin-right: 0.35rem;"></i>${saveButtonDoneLabel}`;
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-success');
+        btn.disabled = false;
+
+        if (Array.isArray(initialItemsPayload) && initialItemsPayload.length > 0) {
+            loadOrderItemsFromData(initialItemsPayload);
+        }
+    }
+
+    // Check if there's an existing order ID in server-provided context or URL
     const urlParams = new URLSearchParams(window.location.search);
-    const existingOrderId = urlParams.get('order');
-    if (existingOrderId) {
+    const existingOrderId = serverExistingOrderId || urlParams.get('order');
+    if (existingOrderId && !(isEditMode && initialOrderPayload && initialOrderPayload.orderid)) {
         savedOrderId = existingOrderId;
         document.getElementById('savedOrderId').value = savedOrderId;
 
@@ -359,29 +457,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 savedOrderId = data.orderid;
                 document.getElementById('savedOrderId').value = savedOrderId;
 
-                // Update URL with order ID so refresh keeps the same order
-                const url = new URL(window.location);
-                url.searchParams.set('order', savedOrderId);
-                window.history.replaceState({}, '', url);
+                // Keep refresh-safe URL after first save.
+                // In create mode, switch to edit URL for this order.
+                // In edit mode, stay on the existing route.
+                if (!isEditMode) {
+                    const editUrl = editUrlTemplate.replace('__ORDER__', encodeURIComponent(savedOrderId));
+                    window.history.replaceState({}, '', editUrl);
+                } else {
+                    const url = new URL(window.location);
+                    url.searchParams.set('order', savedOrderId);
+                    window.history.replaceState({}, '', url);
+                }
 
                 // Enable items section
                 document.getElementById('itemsDisabledOverlay').style.display = 'none';
                 document.getElementById('finalActions').style.display = 'block';
 
                 // Update button
-                btn.innerHTML = '<i class="fas fa-check" style="margin-right: 0.35rem;"></i>Order Saved';
+                btn.innerHTML = `<i class="fas fa-check" style="margin-right: 0.35rem;"></i>${saveButtonDoneLabel}`;
                 btn.classList.remove('btn-primary');
                 btn.classList.add('btn-success');
                 btn.disabled = false;
 
-                showToast('success', 'Order saved successfully! You can now add items.');
+                showToast('success', saveSuccessMessage);
             } else {
                 throw new Error(data.message || 'Failed to save order');
             }
         })
         .catch(error => {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save" style="margin-right: 0.35rem;"></i>Save Order & Continue';
+            btn.innerHTML = `<i class="fas fa-save" style="margin-right: 0.35rem;"></i>${saveButtonIdleLabel}`;
             alert('Error: ' + error.message);
         });
     });
@@ -444,7 +549,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return `${y}-${m}-${d}`;
     }
 
-    // Helper function to calculate line total: qty × price × users
+    // Helper function to calculate line total: qty x price x users
     // If duration exists, also multiply by duration
     function calculateLineTotal(qty, unitPrice, users, frequency, duration) {
         let total = qty * unitPrice * users;
@@ -503,6 +608,93 @@ document.addEventListener('DOMContentLoaded', function() {
         setDateValue('item_delivery_date', initialOrderDeliveryDate);
     }
 
+    function syncSelectedClientDisplay() {
+        const clientSelect = document.getElementById('clientid');
+        if (!clientSelect) return;
+
+        const fallbackName = 'Select client';
+        const fallbackEmail = 'No client email';
+        let name = fallbackName;
+        let email = fallbackEmail;
+
+        if (clientSelect.tagName === 'SELECT') {
+            const selectedOption = clientSelect.options[clientSelect.selectedIndex];
+            const hasSelectedClient = Boolean(selectedOption?.value);
+            name = hasSelectedClient
+                ? (selectedOption?.dataset?.name || selectedOption?.textContent?.trim() || fallbackName)
+                : fallbackName;
+            email = hasSelectedClient
+                ? (selectedOption?.dataset?.email || fallbackEmail)
+                : fallbackEmail;
+        } else {
+            const selectedClientId = (clientSelect.value || '').trim();
+            const selectedClient = selectedClientId ? clientDirectory[selectedClientId] : null;
+            name = selectedClient?.name || fallbackName;
+            email = selectedClient?.email || fallbackEmail;
+        }
+
+        const summaryName = document.getElementById('summaryClientName');
+        const summaryEmail = document.getElementById('summaryClientEmail');
+        const cardName = document.getElementById('clientCardName');
+        const cardEmail = document.getElementById('clientCardEmail');
+        const displayName = document.getElementById('clientDisplayName');
+
+        if (summaryName) summaryName.textContent = name;
+        if (summaryEmail) summaryEmail.textContent = email;
+        if (cardName) cardName.textContent = name;
+        if (cardEmail) cardEmail.textContent = email;
+        if (displayName) displayName.textContent = name;
+        updateSummary();
+    }
+
+    function normalizeState(value) {
+        return String(value || '')
+            .trim()
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '');
+    }
+
+    function isSameStateGstForSelectedClient() {
+        const clientSelect = document.getElementById('clientid');
+        if (!clientSelect) return false;
+
+        const selectedClientId = String(clientSelect.value || '').trim();
+        const clientState = normalizeState(clientDirectory[selectedClientId]?.state || '');
+        const accountState = normalizeState(accountStateForGst);
+
+        return clientState !== '' && accountState !== '' && clientState === accountState;
+    }
+
+    function updateTaxBreakupDisplay(taxTotal) {
+        const igstRow = document.getElementById('taxIgstRow');
+        const taxTotalEl = document.getElementById('taxTotal');
+        const taxLabelEl = document.getElementById('taxLabel');
+
+        if (!igstRow || !taxTotalEl || !taxLabelEl) {
+            return;
+        }
+
+        if (isSameStateGstForSelectedClient()) {
+            taxLabelEl.textContent = 'Tax (CGST 50% + SGST 50%):';
+            taxTotalEl.textContent = taxTotal.toFixed(2);
+            igstRow.style.display = 'flex';
+        } else {
+            taxLabelEl.textContent = 'Tax (IGST 100%):';
+            taxTotalEl.textContent = taxTotal.toFixed(2);
+            igstRow.style.display = 'flex';
+        }
+    }
+
+    const clientSelect = document.getElementById('clientid');
+    if (clientSelect) {
+        if (clientSelect.tagName === 'SELECT') {
+            clientSelect.addEventListener('change', syncSelectedClientDisplay);
+        } else {
+            clientSelect.addEventListener('input', syncSelectedClientDisplay);
+        }
+        syncSelectedClientDisplay();
+    }
+
     // Item select change
     document.getElementById('item_itemid').addEventListener('change', function() {
         const option = this.options[this.selectedIndex];
@@ -523,6 +715,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return option?.dataset?.userWise === '1';
     }
 
+    function enforceUsersInputConstraint() {
+        const usersInput = document.getElementById('item_users');
+        if (!usersInput) return 1;
+
+        let raw = String(usersInput.value ?? '').replace(/[^\d]/g, '');
+        if (!raw || Number(raw) < 1) {
+            raw = '1';
+        }
+
+        usersInput.value = String(parseInt(raw, 10));
+        return parseInt(usersInput.value, 10) || 1;
+    }
+
     function toggleUsersField() {
         const wrapper = document.getElementById('item_users_wrapper');
         const usersInput = document.getElementById('item_users');
@@ -530,9 +735,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const show = isSelectedItemUserWise();
         wrapper.style.display = show ? 'block' : 'none';
-        if (!show) {
+        if (show) {
+            enforceUsersInputConstraint();
+        } else {
             usersInput.value = 1;
         }
+    }
+
+    const itemUsersInput = document.getElementById('item_users');
+    if (itemUsersInput) {
+        itemUsersInput.addEventListener('input', enforceUsersInputConstraint);
+        itemUsersInput.addEventListener('change', enforceUsersInputConstraint);
+        itemUsersInput.addEventListener('blur', enforceUsersInputConstraint);
     }
     @endif
 
@@ -643,35 +857,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 items.push(item);
 
                 const freqLabels = {'one-time':'One-Time','daily':'Daily','weekly':'Weekly','bi-weekly':'Bi-Weekly','monthly':'Monthly','quarterly':'Quarterly','semi-annually':'Semi-Annually','yearly':'Yearly'};
-                const freqText = frequency ? (freqLabels[frequency] || frequency) : '—';
-                const durationDisplay = duration || '—';
+            const freqText = frequency ? (freqLabels[frequency] || frequency) : '—';
+            const durationDisplay = duration || '—';
 
-                const row = document.createElement('tr');
-                row.dataset.itemId = itemCounter;
-                row.dataset.orderItemId = data.order_item_id || '';
-                row.innerHTML = `
-                    <td style="padding: 0.4rem 0.6rem;">${serviceName}</td>
-                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${qty}</td>
-                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${unitPrice}</td>
-                    @if($account->allow_multi_taxation)
-                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${taxRate}%</td>
-                    @endif
-                    @if($account->have_users)
-                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${users ?? '—'}</td>
-                    @endif
-                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${discountPercent > 0 ? discountPercent + '%' : '—'}</td>
-                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
-                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>
-                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${startDate || '—'}</td>
-                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${endDate || '—'}</td>
-                    <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${deliveryDate || '—'}</td>
-                    <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total">${renderLineTotalHtml(lineTotal)}</td>
-                    <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
-                        <button type="button" class="edit-item icon-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;"><i class="fas fa-edit"></i></button>
-                        <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button>
-                    </td>
-                `;
-                tbody.appendChild(row);
+            const row = document.createElement('tr');
+            row.dataset.itemId = itemCounter;
+            row.dataset.orderItemId = data.order_item_id || '';
+            row.innerHTML = `
+                <td style="padding: 0.4rem 0.6rem;">${item.item_name}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${item.quantity}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${item.unit_price}</td>
+                @if($account->allow_multi_taxation)
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.tax_rate}%</td>
+                @endif
+                @if($account->have_users)
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.no_of_users ?? '—'}</td>
+                @endif
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.discount_percent > 0 ? item.discount_percent + '%' : '—'}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.start_date || '—'}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.end_date || '—'}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.delivery_date || '—'}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${Math.round(item.line_total)}</strong></td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
+                    <button type="button" class="edit-item icon-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;"><i class="fas fa-edit"></i></button>
+                    <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(row);
 
                 document.getElementById('itemsTable').style.display = 'table';
                 updateSummary();
@@ -709,7 +923,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const duration = document.getElementById('item_duration').value || '';
         @if($account->have_users)
         const isUserWiseItem = isSelectedItemUserWise();
-        const users = isUserWiseItem ? (parseInt(document.getElementById('item_users').value) || 1) : 1;
+        const users = isUserWiseItem ? Math.max(1, enforceUsersInputConstraint()) : 1;
         const usersForStorage = isUserWiseItem ? users : null;
         @else
         const users = parseInt(document.getElementById('item_users').value) || 1;
@@ -735,7 +949,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const orderItemId = item?.order_item_id;
 
             if (orderItemId) {
-                fetch(`./${savedOrderId}/remove-item/${orderItemId}`, {
+                fetch(`{{ url('/orders') }}/${savedOrderId}/remove-item/${orderItemId}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -745,6 +959,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(response => response.json())
                 .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.message || 'Failed to update item');
+                    }
+
                     const index = items.findIndex(i => i.id === editingItemId);
                     if (index > -1) items.splice(index, 1);
                     const row = tbody.querySelector(`[data-item-id="${editingItemId}"]`);
@@ -852,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.getElementById('subtotal').textContent = subtotal.toFixed(2);
         document.getElementById('discountTotal').textContent = discountTotal.toFixed(2);
-        document.getElementById('taxTotal').textContent = taxTotal.toFixed(2);
+        updateTaxBreakupDisplay(taxTotal);
         document.getElementById('grandTotal').textContent = grandTotal.toFixed(2);
 
         // Note: In create form, we don't need hidden fields since items are saved via AJAX
@@ -910,7 +1128,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             // Populate form with order details
             if (data.order) {
-                const fields = ['clientid', 'order_number', 'order_title', 'order_date', 'delivery_date', 'sales_person_id', 'notes'];
+                const fields = ['clientid', 'order_number', 'order_title', 'order_date', 'delivery_date', 'sales_person_id', 'notes', 'po_number', 'po_date', 'agreement_ref', 'agreement_date'];
                 fields.forEach(field => {
                     const el = document.getElementById(field);
                     if (el && data.order[field] !== undefined && data.order[field] !== null) {
@@ -918,17 +1136,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
 
-                // Disable order details form
-                document.querySelectorAll('#orderForm .col-3 input, #orderForm .col-3 select, #orderForm .col-3 textarea').forEach(el => {
-                    el.disabled = true;
-                });
+                if (!isEditMode) {
+                    // For create mode, lock details after initial save.
+                    document.querySelectorAll('#orderForm .order-lockable input, #orderForm .order-lockable select, #orderForm .order-lockable textarea').forEach(el => {
+                        el.disabled = true;
+                    });
+                }
+
+                syncSelectedClientDisplay();
 
                 // Enable items section
                 document.getElementById('itemsDisabledOverlay').style.display = 'none';
                 document.getElementById('finalActions').style.display = 'block';
 
                 const btn = document.getElementById('saveOrderBtn');
-                btn.innerHTML = '<i class="fas fa-check" style="margin-right: 0.35rem;"></i>Order Saved';
+                btn.innerHTML = `<i class="fas fa-check" style="margin-right: 0.35rem;"></i>${saveButtonDoneLabel}`;
                 btn.classList.remove('btn-primary');
                 btn.classList.add('btn-success');
                 btn.disabled = false;
@@ -1010,6 +1232,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 @if($account->have_users)
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.no_of_users ?? '—'}</td>
                 @endif
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.discount_percent > 0 ? item.discount_percent + '%' : '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.start_date || '—'}</td>
@@ -1017,6 +1240,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.delivery_date || '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${Math.round(item.line_total)}</strong></td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
+                    <button type="button" class="edit-item icon-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;"><i class="fas fa-edit"></i></button>
                     <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button>
                 </td>
             `;
@@ -1043,9 +1267,156 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-</form>
-
 <style>
+.order-top-summary {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+.order-top-summary__client {
+    min-width: 220px;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+.order-top-summary__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: #e2e8f0;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.order-top-summary__eyebrow {
+    margin: 0;
+    font-size: 0.72rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+}
+.order-top-summary__client-name {
+    margin: 0.12rem 0 0;
+    color: #0f172a;
+    font-size: 0.96rem;
+    font-weight: 700;
+}
+.order-top-summary__client-email {
+    margin: 0.1rem 0 0;
+    color: #64748b;
+    font-size: 0.8rem;
+}
+.order-top-summary__fields {
+    flex: 1 1 540px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    gap: 0.65rem;
+}
+.order-save-row {
+    margin-top: 0.9rem;
+    display: flex;
+    justify-content: flex-end;
+}
+.order-info-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 1rem;
+    height: 100%;
+}
+.order-info-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+}
+.order-number-pill {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-radius: 999px;
+    padding: 0.22rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.order-label {
+    font-size: 0.72rem;
+    color: #64748b;
+    display: block;
+    margin-bottom: 0.2rem;
+    font-weight: 600;
+}
+.order-client-meta,
+.order-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+}
+.order-meta-label {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-weight: 700;
+}
+.order-meta-value {
+    margin: 0.15rem 0 0;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+.order-accordion-wrap {
+    margin-top: 1rem;
+    display: grid;
+    gap: 0.75rem;
+}
+.order-accordion {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+}
+.order-accordion summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 0.75rem 0.95rem;
+    font-size: 0.88rem;
+    color: #334155;
+    font-weight: 700;
+}
+.order-accordion__content {
+    border-top: 1px solid #e2e8f0;
+    padding: 0.75rem 0.95rem 0.2rem;
+}
+.order-items-shell {
+    margin-top: 1rem;
+}
+@media (max-width: 1199px) {
+    .order-top-summary__fields {
+        grid-template-columns: repeat(2, minmax(150px, 1fr));
+    }
+}
+@media (max-width: 767px) {
+    .order-top-summary__fields,
+    .order-client-meta,
+    .order-details-grid {
+        grid-template-columns: 1fr;
+    }
+    .order-save-row {
+        width: 100%;
+        justify-content: stretch;
+    }
+    .order-save-row #saveOrderBtn {
+        width: 100%;
+    }
+}
 @keyframes slideIn {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
@@ -1114,3 +1485,4 @@ document.addEventListener('DOMContentLoaded', function() {
 @endif
 
 @endsection
+

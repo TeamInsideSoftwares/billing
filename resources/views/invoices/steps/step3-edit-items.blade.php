@@ -1,4 +1,11 @@
-@php($selectedClientCurrency = optional($clients->firstWhere('clientid', request('clientid')))->currency ?? 'INR')
+@php
+    $normalizeTaxState = static fn ($value) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $value)));
+    $selectedInvoiceClient = $clients->firstWhere('clientid', request('clientid'));
+    $selectedClientCurrency = optional($selectedInvoiceClient)->currency ?? 'INR';
+    $invoiceClientState = $normalizeTaxState(optional($selectedInvoiceClient)->state ?? '');
+    $invoiceAccountState = $normalizeTaxState(optional($account)->state ?? '');
+    $sameStateGstForInvoice = $invoiceClientState !== '' && $invoiceAccountState !== '' && $invoiceClientState === $invoiceAccountState;
+@endphp
 <!-- Step 3: Edit Items (For Orders & Renewal) -->
 <div id="step3" class="invoice-step">
     <div class="invoice-step-toolbar">
@@ -77,7 +84,10 @@
             <div class="totals-card" style="min-width: 320px;">
                 <div class="total-row"><span>Subtotal</span><strong id="subtotalDisplay">INR 0.00</strong></div>
                 <div class="total-row"><span>Discount</span><strong id="discountDisplay">INR 0.00</strong></div>
-                <div class="total-row"><span>Tax</span><strong id="taxDisplay">INR 0.00</strong></div>
+                <div id="step3TaxRow" class="total-row">
+                    <span id="step3TaxLabel">{{ $sameStateGstForInvoice ? 'Tax (CGST 50% + SGST 50%)' : 'Tax (IGST 100%)' }}</span>
+                    <strong id="taxDisplay">INR 0.00</strong>
+                </div>
                 <div class="total-row total-row-grand"><span>Grand Total</span><strong id="grandTotalDisplay">INR 0.00</strong></div>
             </div>
         </div>
@@ -94,6 +104,7 @@
     const invoiceFor = "{{ request('invoice_for') }}";
     const orderId = "{{ request('orderid', '') }}";
     const accountHasUsers = @json((bool) ($account->have_users ?? false));
+    const sameStateGstForInvoice = @json($sameStateGstForInvoice);
     const itemsBody = document.getElementById('itemsBody');
     const currencyCodeInput = document.getElementById('currency_code');
     const btnNextToStep4 = document.getElementById('btnNextToStep4');
@@ -108,6 +119,16 @@
 
     function formatCurrency(amount) {
         return `${getCurrencyCode()} ${Number(amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
+
+    function updateTaxDisplay(taxTotal) {
+        const taxRow = document.getElementById('step3TaxRow');
+        const taxLabel = document.getElementById('step3TaxLabel');
+        const taxDisplay = document.getElementById('taxDisplay');
+
+        if (taxRow) taxRow.style.display = '';
+        if (taxLabel) taxLabel.textContent = sameStateGstForInvoice ? 'Tax (CGST 50% + SGST 50%)' : 'Tax (IGST 100%)';
+        if (taxDisplay) taxDisplay.textContent = formatCurrency(taxTotal);
     }
 
     function itemSupportsUserFields(item) {
@@ -376,7 +397,7 @@
 
         document.getElementById('subtotalDisplay').textContent = formatCurrency(subtotal);
         document.getElementById('discountDisplay').textContent = formatCurrency(discountTotal);
-        document.getElementById('taxDisplay').textContent = formatCurrency(taxTotal);
+        updateTaxDisplay(taxTotal);
         document.getElementById('grandTotalDisplay').textContent = formatCurrency(subtotal - discountTotal + taxTotal);
 
         document.getElementById('subtotal').value = subtotal.toFixed(2);
