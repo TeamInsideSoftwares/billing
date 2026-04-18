@@ -208,53 +208,13 @@
         <div class="main-panel">
             <header class="topbar">
                 <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
-                    @php
-                        $searchConfig = [
-                            'clients' => ['route' => 'clients.index', 'placeholder' => 'Search clients...'],
-                            'services' => ['route' => 'services.index', 'placeholder' => 'Search items...'],
-                            'invoices' => ['route' => 'invoices.index', 'placeholder' => 'Search invoices...'],
-                            'quotations' => ['route' => 'quotations.index', 'placeholder' => 'Search quotations...'],
-                            'orders' => ['route' => 'orders.index', 'placeholder' => 'Search orders...'],
-                            'payments' => ['route' => 'payments.index', 'placeholder' => 'Search payments...'],
-                            'groups' => ['route' => 'groups.index', 'placeholder' => 'Search groups...'],
-                        ];
-                        
-                        $currentSection = null;
-                        foreach ($searchConfig as $section => $config) {
-                            if (request()->routeIs($section . '.*')) {
-                                $currentSection = $section;
-                                break;
-                            }
-                        }
-                    @endphp
-                    
-                    @if($currentSection)
-                        <form method="GET" action="{{ route($searchConfig[$currentSection]['route']) }}" id="header-search-form" style="margin: 0; position: relative; max-width: 450px; flex: 1;">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); pointer-events: none;">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <path d="m21 21-4.35-4.35"></path>
-                            </svg>
-                            <input 
-                                type="search" 
-                                name="search" 
-                                id="header-search-input"
-                                placeholder="{{ $searchConfig[$currentSection]['placeholder'] }}" 
-                                value="{{ request('search') }}"
-                                style="width: 100%; padding: 0.6rem 0.75rem 0.6rem 2.5rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; background: #f8fafc; transition: all 0.2s;"
-                                onfocus="this.style.background='white'; this.style.borderColor='#3b82f6'; this.previousElementSibling.setAttribute('stroke', '#3b82f6');"
-                                onblur="this.style.background='#f8fafc'; this.style.borderColor='#e2e8f0'; this.previousElementSibling.setAttribute('stroke', '#94a3b8');">
-                        </form>
-                        <script>
-                            document.getElementById('header-search-input').addEventListener('input', function(e) {
-                                if (e.target.value === '') {
-                                    document.getElementById('header-search-form').submit();
-                                }
-                            });
-                        </script>
-                    @else
-                        <button type="button" class="menu-toggle" data-sidebar-toggle>Menu</button>
-                        <h2>{{ $title ?? 'Dashboard' }}</h2>
-                    @endif
+                    <!-- <button type="button" class="menu-toggle" data-sidebar-toggle>Menu</button> -->
+                    <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                        <h2 style="margin: 0;">{{ $title ?? 'Dashboard' }}</h2>
+                        @if(!empty($subtitle))
+                            <p style="margin: 0; font-size: 0.82rem; color: #64748b;">{{ $subtitle }}</p>
+                        @endif
+                    </div>
                 </div>
 
                 <div class="topbar-actions">
@@ -405,4 +365,3 @@
     @endif
 </body>
 </html>
-

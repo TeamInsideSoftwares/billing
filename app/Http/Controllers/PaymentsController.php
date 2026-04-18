@@ -37,7 +37,8 @@ class PaymentsController extends Controller
         });
 
         return view('payments.index', [
-            'title' => 'Payments',
+            'title' => 'All Payments',
+            'subtitle' => $searchTerm ? 'Search results for "' . $searchTerm . '"' : null,
             'payments' => $payments,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
@@ -47,7 +48,7 @@ class PaymentsController extends Controller
     public function paymentsCreate(): View
     {
         return view('payments.create', [
-            'title' => 'New Payment',
+            'title' => 'Record New Payment',
             'clients' => Client::all(),
             'invoices' => Invoice::with('client')
                 ->where('status', '!=', 'paid')
@@ -115,7 +116,8 @@ class PaymentsController extends Controller
     {
         $payment->load(['client', 'invoice']);
         return view('payments.show', [
-            'title' => 'Payment Details',
+            'title' => $payment->payment_number ?? 'Payment',
+            'subtitle' => 'Payment Details',
             'payment' => $payment,
         ]);
     }
@@ -123,7 +125,7 @@ class PaymentsController extends Controller
     public function paymentsEdit(Payment $payment): View
     {
         return view('payments.edit', [
-            'title' => 'Edit Payment',
+            'title' => 'Edit ' . ($payment->payment_number ?? 'Payment'),
             'payment' => $payment,
             'clients' => Client::all(),
             'invoices' => Invoice::with('client')

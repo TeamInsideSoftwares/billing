@@ -32,7 +32,8 @@ class GroupsController extends Controller
         });
 
         return view('groups.index', [
-            'title' => 'Groups',
+            'title' => 'Client Groups',
+            'subtitle' => $searchTerm ? 'Search results for "' . $searchTerm . '"' : null,
             'groups' => $groups,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
@@ -41,7 +42,7 @@ class GroupsController extends Controller
 
     public function groupsCreate(): View
     {
-        return view('groups.create', ['title' => 'New Group']);
+        return view('groups.create', ['title' => 'Add New Group']);
     }
 
     public function groupsStore(Request $request)
@@ -69,14 +70,15 @@ class GroupsController extends Controller
     public function groupsShow(Group $group): View
     {
         return view('groups.show', [
-            'title' => 'Group Details',
+            'title' => $group->group_name ?? 'Group',
+            'subtitle' => 'Group Details',
             'group' => $group,
         ]);
     }
 
     public function groupsEdit(Group $group): View
     {
-        return view('groups.edit', ['title' => 'Edit Group', 'group' => $group]);
+        return view('groups.edit', ['title' => 'Edit ' . ($group->group_name ?? 'Group'), 'group' => $group]);
     }
 
     public function groupsUpdate(Request $request, $id)

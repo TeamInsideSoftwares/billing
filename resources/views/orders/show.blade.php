@@ -15,8 +15,6 @@
 
 <section class="section-bar">
     <div>
-        <p class="eyebrow">View</p>
-        <!-- <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">{{ $order->order_number }}</h3> -->
         <a href="{{ route('orders.index', ['c' => $order->clientid]) }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to orders</a>
     </div>
     <div style="display: flex; gap: 0.5rem;">

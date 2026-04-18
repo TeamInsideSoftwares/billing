@@ -88,7 +88,6 @@
 </style>
 
 <section class="section-bar">
-    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Create New Item</h3>
     <a href="{{ route('services.index') }}" class="text-link">&larr; Back to items</a>
 </section>
 
@@ -726,4 +725,3 @@ function showToast(type, message) {
 })();
 </script>
 @endsection
-

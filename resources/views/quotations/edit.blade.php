@@ -2,9 +2,6 @@
 
 @section('content')
 <section class="section-bar">
-    <div>
-        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Edit {{ $quotation->number }}</h3>
-    </div>
     <a href="{{ route('quotations.index') }}" class="text-link">&larr; Back to quotations</a>
 </section>
 
@@ -57,4 +54,3 @@
     </form>
 </section>
 @endsection
-

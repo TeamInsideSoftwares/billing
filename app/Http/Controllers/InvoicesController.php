@@ -93,7 +93,8 @@ class InvoicesController extends Controller
         });
 
         return view('invoices.index', [
-            'title' => 'Invoices',
+            'title' => 'All Invoices',
+            'subtitle' => $selectedClientId ? 'Filtered by selected client.' : 'Grouped by client with quick actions.',
             'clients' => $clients,
             'groupedInvoices' => $groupedInvoices,
             'selectedClientId' => $selectedClientId,
@@ -119,7 +120,7 @@ class InvoicesController extends Controller
             ->get();
 
         return view('invoices.create', [
-            'title' => 'Create Invoice',
+            'title' => 'Create Proforma Invoice',
             'clients' => Client::orderBy('business_name')->get(),
             'services' => Service::with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
@@ -837,7 +838,8 @@ class InvoicesController extends Controller
         $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
 
         return view('invoices.show', [
-            'title' => 'Invoice Details', 
+            'title' => 'Invoice ' . ($invoice->invoice_number ?? 'Details'),
+            'subtitle' => 'Invoice Details',
             'invoice' => $invoice,
             'account' => $account,
             'accountBillingDetail' => $accountBillingDetail,

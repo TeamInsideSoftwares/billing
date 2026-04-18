@@ -3,10 +3,6 @@
 @section('content')
 <section class="section-bar">
     <div>
-        <p class="eyebrow">{{ $setting->key }}</p>
-        <h3>Setting details</h3>
-    </div>
-    <div>
         <a href="{{ route('settings.edit', $setting) }}" class="primary-button">Edit</a>
         <form method="POST" action="{{ route('settings.destroy', $setting) }}" class="inline-delete" onsubmit="return confirm('Delete this setting?')">
             @csrf @method('DELETE')

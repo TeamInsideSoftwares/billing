@@ -38,7 +38,10 @@ class SubscriptionsController extends Controller
         });
 
         return view('subscriptions.index', [
-            'title' => 'Subscriptions',
+            'title' => 'Subscription Billing',
+            'subtitle' => $searchTerm
+                ? $resultCount . ' subscriptions matching "' . $searchTerm . '"'
+                : count($subscriptions) . ' subscriptions',
             'subscriptions' => $subscriptions,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
@@ -49,6 +52,7 @@ class SubscriptionsController extends Controller
     {
         return view('subscriptions.create', [
             'title' => 'New Subscription',
+            'subtitle' => 'Recurring Revenue',
             'clients' => Client::all(),
             'services' => Service::where('billing_type', 'recurring')->orderBy('sequence')->orderBy('name')->get(),
         ]);
@@ -78,7 +82,8 @@ class SubscriptionsController extends Controller
     {
         $subscription->load('client', 'item');
         return view('subscriptions.show', [
-            'title' => 'Subscription Details',
+            'title' => $subscription->item->name ?? 'Subscription',
+            'subtitle' => 'Subscription Details',
             'subscription' => $subscription,
         ]);
     }
@@ -87,6 +92,7 @@ class SubscriptionsController extends Controller
     {
         return view('subscriptions.edit', [
             'title' => 'Edit Subscription',
+            'subtitle' => 'Update subscription details',
             'subscription' => $subscription,
             'clients' => Client::all(),
             'services' => Service::where('billing_type', 'recurring')->orderBy('sequence')->orderBy('name')->get(),
@@ -116,4 +122,3 @@ class SubscriptionsController extends Controller
         return redirect()->route('subscriptions.index')->with('success', 'Subscription deleted successfully.');
     }
 }
-

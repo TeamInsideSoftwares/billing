@@ -37,7 +37,8 @@ class QuotationsController extends Controller
         });
 
         return view('quotations.index', [
-            'title' => 'Quotations',
+            'title' => 'All Quotations',
+            'subtitle' => $searchTerm ? 'Search results for "' . $searchTerm . '"' : null,
             'quotations' => $quotations,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
@@ -50,7 +51,7 @@ class QuotationsController extends Controller
         $account = Account::find($accountid);
 
         return view('quotations.create', [
-            'title' => 'New Quotation',
+            'title' => 'Create New Quotation',
             'clients' => Client::all(),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'account' => $account,
@@ -80,7 +81,8 @@ class QuotationsController extends Controller
     {
         $quotation->load('client');
         return view('quotations.show', [
-            'title' => 'Quotation Details',
+            'title' => $quotation->quotation_number ?? 'Quotation',
+            'subtitle' => 'Quotation Details',
             'quotation' => $quotation,
         ]);
     }
@@ -91,7 +93,7 @@ class QuotationsController extends Controller
         $account = Account::find($accountid);
 
         return view('quotations.edit', [
-            'title' => 'Edit Quotation',
+            'title' => 'Edit ' . ($quotation->quotation_number ?? 'Quotation'),
             'quotation' => $quotation,
             'clients' => Client::all(),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),

@@ -2,10 +2,6 @@
 
 @section('content')
 <section class="section-bar">
-    <div>
-        <p class="eyebrow">Recurring Revenue</p>
-        <h3>New Subscription</h3>
-    </div>
     <a href="{{ route('subscriptions.index') }}" class="text-link">&larr; Back to subscriptions</a>
 </section>
 

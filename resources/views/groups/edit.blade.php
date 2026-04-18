@@ -2,9 +2,6 @@
 
 @section('content')
 <section class="section-bar">
-    <div>
-        <p class="eyebrow">Edit {{ $group->group_name }}</p>
-    </div>
     <a href="{{ route('groups.index') }}" class="text-link">&larr; Back to groups</a>
 </section>
 

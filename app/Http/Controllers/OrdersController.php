@@ -24,7 +24,8 @@ class OrdersController extends Controller
             ->get();
 
         return view('orders.select-client', [
-            'title' => 'Select Client - Orders',
+            'title' => 'Select Client for Orders',
+            'subtitle' => 'Choose a client to view their orders.',
             'clients' => $clients,
         ]);
     }
@@ -127,7 +128,10 @@ class OrdersController extends Controller
         }
 
         return view('orders.index', [
-            'title' => 'Orders',
+            'title' => 'All Orders',
+            'subtitle' => $searchTerm
+                ? 'Found ' . $resultCount . ' result(s) for "' . $searchTerm . '"'
+                : ($clientId ? 'Showing orders for selected client.' : 'Grouped by client with quick actions.'),
             'orders' => $orders,
             'groupedOrders' => $groupedOrders,
             'searchTerm' => $searchTerm,
@@ -155,6 +159,7 @@ class OrdersController extends Controller
 
         return view('orders.create', [
             'title' => 'Create Order',
+            'subtitle' => 'Order Number: ' . $nextOrderNumber,
             'clients' => Client::all(),
             'services' => Service::with('costings')->orderBy('name')->get(),
             'users' => $this->getSalesPeopleForForm($accountid),
@@ -352,7 +357,7 @@ class OrdersController extends Controller
         $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
 
         return view('orders.show', [
-            'title' => 'Order Details',
+            'title' => 'Order ' . ($order->order_number ?? 'Details'),
             'order' => $order,
             'salesPersonName' => $salesPersonName,
             'account' => $account,
@@ -466,6 +471,7 @@ class OrdersController extends Controller
 
         return view('orders.create', [
             'title' => 'Edit Order',
+            'subtitle' => 'Order Number: ' . ($order->order_number ?? ''),
             'order' => $order,
             'clients' => Client::all(),
             'services' => Service::with('costings')->orderBy('name')->get(),

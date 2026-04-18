@@ -2,10 +2,7 @@
 
 @section('content')
     <section class="section-bar invoice-index-header">
-        <div>
-            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #111827;">All Invoices</h3>
-            <p style="margin: 0.3rem 0 0; font-size: 0.84rem; color: #6b7280;">Grouped by client with quick actions and cleaner list styling.</p>
-        </div>
+        <div></div>
         <div>
             <a href="{{ route('invoices.create') }}" class="primary-button">
                 <i class="fas fa-file-invoice" style="margin-right: 0.5rem;"></i>Create Proforma Invoice

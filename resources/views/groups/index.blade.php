@@ -3,12 +3,6 @@
 @section('content')
     <section class="section-bar">
         <div>
-            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Client Groups</h3>
-            @if(request('search'))
-                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #64748b;">
-                    Search results for "{{ request('search') }}"
-                </p>
-            @endif
             <a href="{{ route('clients.index') }}" class="text-link" style="margin-top: 0.5rem; display: inline-block;">&larr; Back to clients</a>
         </div>
     </section>

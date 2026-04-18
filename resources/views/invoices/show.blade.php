@@ -13,8 +13,6 @@
     $sgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 2) : 0;
     $igstAmount = $sameStateGst ? 0 : round($invoiceTaxTotal, 2);
 @endphp
-<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Invoice Details</h3>
-
 <section class="section-bar">
     <div>
         <p style="font-size: 1.1em; margin-bottom: 0.75rem;">

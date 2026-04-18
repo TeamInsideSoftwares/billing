@@ -2,10 +2,6 @@
 
 @section('content')
 <section class="section-bar">
-    <div>
-        <p class="eyebrow">Edit {{ $setting->key }}</p>
-        <h3>Update setting details</h3>
-    </div>
     <a href="{{ route('settings.index') }}" class="text-link">&larr; Back to settings</a>
 </section>
 

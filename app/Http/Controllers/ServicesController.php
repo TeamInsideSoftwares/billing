@@ -95,7 +95,8 @@ class ServicesController extends Controller
         });
 
         return view('services.index', [
-            'title' => 'Items',
+            'title' => 'All Items',
+            'subtitle' => $searchTerm ? 'Found ' . $resultCount . ' result(s) for "' . $searchTerm . '"' : null,
             'services' => $services,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
@@ -124,7 +125,7 @@ class ServicesController extends Controller
             ->get(['itemid', 'name', 'type']);
 
         return view('services.create', [
-            'title' => 'New Item',
+            'title' => 'Create New Item',
             'categories' => $categories,
             'defaultCurrency' => $accountCurrency,
             'currencies' => $currencies,
@@ -233,7 +234,8 @@ class ServicesController extends Controller
             ->values();
 
         return view('services.show', [
-            'title' => 'Item Details',
+            'title' => $service->name ?? 'Item',
+            'subtitle' => 'Item Details',
             'service' => $service,
             'addonItems' => $addonItems,
         ]);
@@ -254,7 +256,7 @@ class ServicesController extends Controller
             : collect();
 
         return view('services.edit', [
-            'title' => 'Edit Item',
+            'title' => 'Edit ' . ($service->name ?? 'Item'),
             'service' => $service,
             'categories' => $categories,
             'defaultCurrency' => $accountCurrency,

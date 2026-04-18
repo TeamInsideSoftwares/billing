@@ -2,10 +2,6 @@
 
 @section('content')
 <section class="section-bar">
-    <div>
-        <p class="eyebrow">Edit {{ $subscription->client->business_name ?? 'Subscription' }}</p>
-        <h3>Update subscription details</h3>
-    </div>
     <a href="{{ route('subscriptions.index') }}" class="text-link">&larr; Back to subscriptions</a>
 </section>
 

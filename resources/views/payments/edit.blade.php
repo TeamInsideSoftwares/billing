@@ -2,9 +2,6 @@
 
 @section('content')
 <section class="section-bar">
-    <div>
-        <p class="eyebrow">Edit {{ $payment->reference ?? 'Payment' . $payment->id }}</p>
-    </div>
     <a href="{{ route('payments.index') }}" class="text-link">&larr; Back to payments</a>
 </section>
 

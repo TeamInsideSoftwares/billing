@@ -54,7 +54,8 @@ class ClientsController extends Controller
         $groups = Group::where('accountid', $accountId)->orderBy('group_name')->get();
 
         return view('clients.index', [
-            'title' => 'Clients',
+            'title' => 'All Clients',
+            'subtitle' => $searchTerm ? 'Found ' . $resultCount . ' result(s) for "' . $searchTerm . '"' : null,
             'clients' => $clients,
             'groups' => $groups,
             'searchTerm' => $searchTerm,
@@ -74,7 +75,7 @@ class ClientsController extends Controller
             ->get(['iso', 'name']);
 
         return view('clients.create', [
-            'title' => 'New Client',
+            'title' => 'Create New Client',
             'accounts' => Account::where('status', 'active')->get(),
             'groups' => Group::all(),
             'billingProfiles' => $billingProfiles,
@@ -190,7 +191,8 @@ class ClientsController extends Controller
             ->values();
 
         return view('clients.show', [
-            'title' => 'Client Details',
+            'title' => $client->business_name ?? $client->contact_name ?? 'Client',
+            'subtitle' => 'Client Details',
             'client' => $client,
             'outstanding' => $outstanding,
             'allInvoices' => $allInvoices,
@@ -209,7 +211,7 @@ class ClientsController extends Controller
             ->get(['iso', 'name']);
 
         return view('clients.edit', [
-            'title' => 'Edit Client',
+            'title' => 'Edit ' . ($client->business_name ?? $client->contact_name ?? 'Client'),
             'client' => $client,
             'accounts' => Account::where('status', 'active')->get(),
             'groups' => Group::all(),

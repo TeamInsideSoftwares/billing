@@ -112,6 +112,7 @@ class SettingsController extends Controller
 
         return view('settings.index', [
             'title' => 'Settings',
+            'subtitle' => $searchTerm ? 'Search results for "' . $searchTerm . '"' : null,
             'settings' => $settings,
             'account' => $account,
             'financialYears' => $financialYears,
@@ -491,7 +492,7 @@ class SettingsController extends Controller
 
     public function settingsCreate(): View
     {
-        return view('settings.create', ['title' => 'New Setting']);
+        return view('settings.create', ['title' => 'Add System Setting']);
     }
 
     public function settingsStore(Request $request)
@@ -516,7 +517,8 @@ class SettingsController extends Controller
     public function settingsShow(Setting $setting): View
     {
         return view('settings.show', [
-            'title' => 'Setting Details',
+            'title' => $setting->setting_key ?? $setting->key ?? 'Setting',
+            'subtitle' => 'Setting Details',
             'setting' => $setting,
         ]);
     }

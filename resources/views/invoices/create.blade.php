@@ -25,11 +25,6 @@
 
 <section class="panel-card invoice-create-shell" style="padding: 1.25rem;">
     <div class="invoice-create-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb;">
-        <div>
-            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #111827;">
-                <i class="fas fa-file-invoice" style="color: #4f46e5; margin-right: 0.5rem;"></i> Create Proforma Invoice
-            </h3>
-        </div>
         @if($currentStep === 1)
         <a href="{{ $clientId ? route('orders.index', ['c' => $clientId]) : route('invoices.index') }}" class="text-link">&larr; Back</a>
         @endif

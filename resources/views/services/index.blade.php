@@ -2,14 +2,7 @@
 
 @section('content')
 <section class="section-bar">
-    <div>
-        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">All Items</h3>
-        @if(request('search'))
-            <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #64748b;">
-                Found {{ $resultCount }} result(s) for "{{ request('search') }}"
-            </p>
-        @endif
-    </div>
+    <div></div>
     <div>
         <a href="{{ route('services.create') }}" class="primary-button">Add Item</a>
         <button class="secondary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal"><i class="fas fa-folder" style="margin-right: 5px;"></i>Manage Categories</button>

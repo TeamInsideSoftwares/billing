@@ -3,10 +3,6 @@
 @section('content')
 
 <section class="section-bar">
-    <div>
-        <p class="eyebrow">{{ $quotation->number }}</p>
-        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Quotation Details</h3>
-    </div>
     <div style="display: flex; gap: 0.5rem;">
         <a href="{{ route('quotations.edit', $quotation) }}" class="icon-action-btn edit" title="Edit" style="width: 36px; height: 36px; font-size: 1rem;">
             <i class="fas fa-edit"></i>

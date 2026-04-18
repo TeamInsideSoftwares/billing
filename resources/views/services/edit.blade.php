@@ -88,7 +88,6 @@
 </style>
 
 <section class="section-bar">
-    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Edit {{ $service->name }}</h3>
     <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? '']) }}" class="text-link">&larr; Back to items</a>
 </section>
 

@@ -33,12 +33,6 @@
 @endphp
 
 <section class="section-bar order-create-header" style="padding: 0.5rem 1rem;">
-    <div>
-        <p class="eyebrow" style="margin: 0;">{{ $isEditMode ? 'Edit' : 'Create' }}</p>
-        <h3 style="margin: 0.2rem 0 0 0; font-size: 1.05rem; font-weight: 700; color: #0f172a;">
-            {{ $displayOrderNumber }}
-        </h3>
-    </div>
     <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? $clientFallback]) }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to orders</a>
 </section>
 
@@ -1504,4 +1498,3 @@ document.addEventListener('DOMContentLoaded', function() {
 @endif
 
 @endsection
-

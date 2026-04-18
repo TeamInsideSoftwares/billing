@@ -2,12 +2,7 @@
 
 @section('content')
     <section class="section-bar">
-        <div>
-            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Select Client for Orders</h3>
-            <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #64748b;">
-                Choose a client to view their orders
-            </p>
-        </div>
+        <div></div>
     </section>
 
     <div class="panel-card" style="padding: 1.5rem;">

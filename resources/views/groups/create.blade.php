@@ -2,10 +2,6 @@
 
 @section('content')
 <section class="section-bar">
-    <div>
-        <p class="eyebrow">Groups</p>
-        <h3>Add new group</h3>
-    </div>
     <a href="{{ route('groups.index') }}" class="text-link">&larr; Back to groups</a>
 </section>
 

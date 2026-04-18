@@ -4,12 +4,7 @@
     <section class="section-bar order-index-header" 
     style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
     
-    <div>
-        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #111827;">All Orders</h3>
-        <p style="margin: 0.3rem 0 0; font-size: 0.84rem; color: #6b7280;">
-            Grouped by client with quick actions and cleaner list styling.
-        </p>
-    </div>
+    <div></div>
 
     @if($clientId)
         <div style="display: flex; gap: 0.5rem; align-items: end; flex-wrap: wrap;">

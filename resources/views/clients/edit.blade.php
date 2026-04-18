@@ -2,10 +2,6 @@
 
 @section('content')
 <section class="section-bar">
-    <div>
-        <p class="eyebrow">Clients</p>
-        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">Edit {{ $client->business_name ?? $client->contact_name }}</h3>
-    </div>
     <a href="{{ route('clients.index') }}" class="text-link">&larr; Back to clients</a>
 </section>
 

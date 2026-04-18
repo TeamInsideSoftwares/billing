@@ -3,10 +3,6 @@
 @section('content')
 <section class="section-bar">
     <div>
-        <p class="eyebrow">{{ $service->name }}</p>
-        <h3>Item details</h3>
-    </div>
-    <div>
         <a href="{{ route('services.edit', $service) }}" class="primary-button">Edit</a>
         <form method="POST" action="{{ route('services.destroy', $service) }}" class="inline-delete" onsubmit="return confirm('Delete this item?')">
             @csrf @method('DELETE')

@@ -3,10 +3,6 @@
 @section('content')
 <section class="section-bar">
     <div>
-        <p class="eyebrow">{{ $subscription->client->business_name ?? $subscription->client->contact_name ?? 'Subscription' }}</p>
-        <h3>Subscription details</h3>
-    </div>
-    <div>
         <a href="{{ route('subscriptions.edit', $subscription) }}" class="primary-button">Edit</a>
         <form method="POST" action="{{ route('subscriptions.destroy', $subscription) }}" class="inline-delete" onsubmit="return confirm('Delete this subscription?')">
             @csrf @method('DELETE')

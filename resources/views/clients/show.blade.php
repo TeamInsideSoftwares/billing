@@ -4,8 +4,6 @@
 
 <section class="section-bar">
     <div>
-        <p class="eyebrow">Clients</p>
-        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #64748b;">{{ $client->business_name ?? $client->contact_name }}</h3>
         <a href="{{ route('clients.index') }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to clients</a>
     </div>
     <div style="display: flex; gap: 0.5rem;">

@@ -8,13 +8,8 @@
                 <button type="submit">Search</button>
             </form>
             @if (isset($searchTerm) && $searchTerm)
-                <p class="eyebrow">{{ $resultCount }} subscriptions matching "{{ $searchTerm }}"</p>
                 <span class="search-badge">Filtered</span>
-            @else
-                <p class="eyebrow">{{ count($subscriptions) }} subscriptions</p>
             @endif
-            <h3>Subscription billing</h3>
-
         </div>
         <a href="{{ route('subscriptions.create') }}" class="primary-button">Add Subscription</a>
     </section>

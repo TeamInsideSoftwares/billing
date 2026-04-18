@@ -2,9 +2,6 @@
 
 @section('content')
 <section class="section-bar">
-    <div>
-        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #475569;">Edit Invoice</h3>
-    </div>
     <a href="{{ route('invoices.index') }}" class="text-link">&larr; Back to invoices</a>
 </section>
 
