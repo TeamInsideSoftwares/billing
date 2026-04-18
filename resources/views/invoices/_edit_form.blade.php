@@ -41,6 +41,10 @@
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
         <div class="invoice-meta-card">
+            <span class="invoice-meta-label">Invoice Number</span>
+            <strong class="invoice-meta-value">{{ $invoice->invoice_number }}</strong>
+        </div>
+        <div class="invoice-meta-card">
             <span class="invoice-meta-label">Invoice Type</span>
             <strong class="invoice-meta-value">{{ $documentType }}</strong>
         </div>
@@ -58,28 +62,23 @@
         </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-        <div style="grid-column: 1 / -1;">
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <input type="hidden" name="invoice_number" value="{{ old('invoice_number', $invoice->invoice_number) }}">
+        <input type="hidden" name="status" value="{{ old('status', $invoice->status) }}">
+        <input type="hidden" name="clientid" value="{{ old('clientid', $invoice->clientid) }}">
+        <div>
             <label for="clientid" class="field-label">Client</label>
-            <div style="display: grid; grid-template-columns: minmax(280px, 420px) minmax(220px, 320px); gap: 1rem; align-items: end;">
-                <div>
-                    <select id="clientid" name="clientid" required class="form-input">
-                        <option value="">Choose a client</option>
-                        @foreach($clients as $client)
-                            <option value="{{ $client->clientid }}" data-currency="{{ $client->currency ?? 'INR' }}" {{ old('clientid', $invoice->clientid) == $client->clientid ? 'selected' : '' }}>
-                                {{ $client->business_name ?? $client->contact_name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label for="invoice_number" class="field-label">Invoice Number</label>
-                    <input type="text" id="invoice_number" name="invoice_number" value="{{ old('invoice_number', $invoice->invoice_number) }}" required class="form-input">
-                </div>
-            </div>
+            <select id="clientid" disabled class="form-input">
+                <option value="">Choose a client</option>
+                @foreach($clients as $client)
+                    <option value="{{ $client->clientid }}" data-currency="{{ $client->currency ?? 'INR' }}" {{ old('clientid', $invoice->clientid) == $client->clientid ? 'selected' : '' }}>
+                        {{ $client->business_name ?? $client->contact_name }}
+                    </option>
+                @endforeach
+            </select>
         </div>
 
-        <div style="grid-column: 1 / -1; margin-top: 1rem;">
+        <div>
             <label for="invoice_title" class="field-label">Invoice Title</label>
             <input type="text" id="invoice_title" name="invoice_title" value="{{ old('invoice_title', $invoice->invoice_title) }}" class="form-input" placeholder="e.g. Website Development - Phase 1">
         </div>
@@ -92,14 +91,6 @@
             <label for="due_date" class="field-label">Due Date</label>
             <input type="date" id="due_date" name="due_date" value="{{ old('due_date', optional($invoice->due_date)->format('Y-m-d')) }}" class="form-input" required>
         </div>
-        <div>
-            <label for="status" class="field-label">Status</label>
-            <select id="status" name="status" class="form-input" required>
-                @foreach(['unpaid' => 'Unpaid', 'paid' => 'Paid', 'partially-paid' => 'Partially Paid'] as $value => $label)
-                    <option value="{{ $value }}" {{ old('status', $invoice->status) === $value ? 'selected' : '' }}>{{ $label }}</option>
-                @endforeach
-            </select>
-        </div>
         <input type="hidden" name="currency_code" id="currency_code" value="{{ old('currency_code', $invoice->currency_code ?? ($invoice->client->currency ?? 'INR')) }}">
     </div>
 
@@ -108,7 +99,7 @@
     <div class="workflow-panel" style="margin-top: 0; padding-top: 0; border-top: 0;">
         <div class="panel-heading-row" style="display: flex; justify-content: space-between; gap: 1rem; align-items: center; flex-wrap: wrap;">
             <div>
-                <h4 style="margin: 0; font-size: 1rem; color: #334155;">Invoice Items</h4>
+                <h4 style="margin: 0; font-size: 1rem; color: #334155;"><i class="fas fa-edit" style="margin-right: 0.35rem; color: #4f46e5;"></i>Invoice Items</h4>
             </div>
             <button type="button" id="toggleAddItemBtn" class="primary-button">+ Add Item</button>
         </div>
@@ -143,6 +134,10 @@
                 <div>
                     <label for="item_unit_price" class="field-label small">Unit Price</label>
                     <input type="number" id="item_unit_price" class="form-input" min="0" step="0.01">
+                </div>
+                <div>
+                    <label for="item_discount" class="field-label small">Discount %</label>
+                    <input type="number" id="item_discount" class="form-input" min="0" max="100" step="0.01" value="0">
                 </div>
                 @if($account->allow_multi_taxation)
                 <div>
@@ -205,6 +200,7 @@
                         <th>Item</th>
                         <th>Qty</th>
                         <th>Price</th>
+                        <th>Disc %</th>
                         @if($account->allow_multi_taxation)
                         <th>Tax %</th>
                         @endif
@@ -212,7 +208,7 @@
                         <th>Users</th>
                         @endif
                         <th>Frequency</th>
-                        <th>Duration</th>
+                        <th id="itemsDurationHeader">Duration</th>
                         <th>Start</th>
                         <th>End</th>
                         <th>Total</th>
@@ -226,6 +222,7 @@
         <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
             <div class="totals-card" style="min-width: 320px;">
                 <div class="total-row"><span>Subtotal</span><strong id="subtotalDisplay">0.00</strong></div>
+                <div class="total-row"><span>Discount</span><strong id="discountDisplay">0.00</strong></div>
                 <div class="total-row"><span>Tax</span><strong id="taxDisplay">0.00</strong></div>
                 <div class="total-row total-row-grand"><span>Grand Total</span><strong id="grandTotalDisplay">0.00</strong></div>
             </div>
@@ -248,7 +245,7 @@
     </div>
     @else
     <div class="form-actions" style="margin-top: 1rem; display: flex; gap: 0.75rem;">
-        <button type="submit" class="primary-button" id="updateInvoiceBtn">Update Invoice</button>
+        <button type="submit" class="primary-button" id="updateInvoiceBtn"><i class="fas fa-edit" style="margin-right: 0.45rem;"></i>Update Invoice</button>
     </div>
     @endif
 </form>
@@ -264,6 +261,8 @@
     const cancelAddItemBtn = document.getElementById('cancelAddItemBtn');
     const addItemBtn = document.getElementById('addItemBtn');
     const updateInvoiceBtn = document.getElementById('updateInvoiceBtn');
+    const allowMultiTaxation = @json((bool) ($account->allow_multi_taxation ?? false));
+    const accountHasUsers = @json((bool) ($account->have_users ?? false));
 
     const frequencyLabels = { 'one-time': 'One-Time', 'daily': 'Daily', 'weekly': 'Weekly', 'bi-weekly': 'Bi-Weekly', 'monthly': 'Monthly', 'quarterly': 'Quarterly', 'semi-annually': 'Semi-Annually', 'yearly': 'Yearly' };
     const frequencyOptions = ['', 'one-time', 'daily', 'weekly', 'bi-weekly', 'monthly', 'quarterly', 'semi-annually', 'yearly'];
@@ -281,6 +280,7 @@
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price ?? $defaultPrice ?? 0,
                 'tax_rate' => $item->tax_rate,
+                'discount_percent' => $item->discount_percent ?? 0,
                 'duration' => $item->duration,
                 'frequency' => $item->frequency,
                 'no_of_users' => $item->no_of_users,
@@ -304,10 +304,6 @@
     }
 
     function renderTaxSelect(selectedRate, attributes = '') {
-        @if(!$account->allow_multi_taxation)
-        return `<input type="hidden" value="0">`;
-        @endif
-
         const normalizedRate = Number(selectedRate || 0);
         const options = [`<option value="0" ${normalizedRate === 0 ? 'selected' : ''}>No Tax</option>`];
 
@@ -362,6 +358,7 @@
         itemsBody.innerHTML = '';
         let subtotal = 0;
         let taxTotal = 0;
+        let discountTotal = 0;
         let anyItemHasRecurringFrequency = false;
 
         // First pass: check if any item has recurring frequency
@@ -375,10 +372,14 @@
             item.quantity = Number(item.quantity) || 0;
             item.unit_price = Number(item.unit_price) || 0;
             item.tax_rate = Number(item.tax_rate) || 0;
+            item.discount_percent = Math.min(100, Math.max(0, Number(item.discount_percent) || 0));
             item.no_of_users = Math.max(1, Number(item.no_of_users) || 1);
             item.line_total = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
-            const lineTax = item.line_total * (item.tax_rate / 100);
+            const lineDiscount = item.line_total * (item.discount_percent / 100);
+            const taxableAmount = Math.max(0, item.line_total - lineDiscount);
+            const lineTax = taxableAmount * (item.tax_rate / 100);
             subtotal += item.line_total;
+            discountTotal += lineDiscount;
             taxTotal += lineTax;
 
             // Only show dates if there's a recurring frequency
@@ -389,26 +390,37 @@
                 <td><strong>${item.item_name || 'Item'}</strong></td>
                 <td><input type="number" class="form-input item-input" data-index="${index}" data-field="quantity" min="0.01" step="0.01" value="${item.quantity}"></td>
                 <td><input type="number" class="form-input item-input" data-index="${index}" data-field="unit_price" min="0" step="0.01" value="${item.unit_price}"></td>
-                ${renderTaxSelect(item.tax_rate, `data-index="${index}" data-field="tax_rate"` )}
-                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="no_of_users" min="1" step="1" value="${item.no_of_users || 1}"></td>
+                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="discount_percent" min="0" max="100" step="0.01" value="${item.discount_percent || 0}"></td>
+                ${allowMultiTaxation ? `<td>${renderTaxSelect(item.tax_rate, `data-index="${index}" data-field="tax_rate"` )}</td>` : ''}
+                ${accountHasUsers ? `<td><input type="number" class="form-input item-input" data-index="${index}" data-field="no_of_users" min="1" step="1" value="${item.no_of_users || 1}"></td>` : ''}
                 <td>
                     <select class="form-input item-input" data-index="${index}" data-field="frequency">
                         ${frequencyOptions.map((value) => `<option value="${value}" ${item.frequency === value ? 'selected' : ''}>${value ? frequencyLabels[value] : 'Not recurring'}</option>`).join('')}
                     </select>
                 </td>
-                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="duration" min="0" step="1" value="${item.duration ?? ''}"></td>
+                <td style="display: ${anyItemHasRecurringFrequency ? '' : 'none'}">
+                    ${showDates
+                        ? `<input type="number" class="form-input item-input" data-index="${index}" data-field="duration" min="0" step="1" value="${item.duration ?? ''}">`
+                        : '<span style="color:#9ca3af;">-</span>'}
+                </td>
                 <td style="display: ${showDates && anyItemHasRecurringFrequency ? '' : 'none'}"><input type="date" class="form-input item-input" data-index="${index}" data-field="start_date" value="${item.start_date || ''}" ${showDates ? '' : 'disabled'}></td>
                 <td style="display: ${showDates && anyItemHasRecurringFrequency ? '' : 'none'}"><input type="date" class="form-input item-input" data-index="${index}" data-field="end_date" value="${item.end_date || ''}" ${showDates ? '' : 'disabled'}></td>
-                <td><strong>${formatMoney(item.line_total + lineTax)}</strong></td>
-                <td><button type="button" class="icon-action-btn delete remove-item" data-index="${index}" title="Remove"><i class="fas fa-trash"></i></button></td>
+                <td><strong>${formatMoney(Math.max(0, taxableAmount + lineTax))}</strong></td>
+                <td>
+                    <button type="button" class="icon-action-btn delete remove-item" data-index="${index}" title="Remove"><i class="fas fa-trash"></i></button>
+                </td>
             `;
             itemsBody.appendChild(row);
         });
 
-        // Show/hide Start/End column headers based on frequencies
+        // Show/hide Duration/Start/End column headers based on frequencies
         const headerRow = itemsBody.closest('table').querySelector('thead tr');
         const headers = headerRow.querySelectorAll('th');
-        // Find Start and End headers by their text content
+        const durationHeader = document.getElementById('itemsDurationHeader');
+        if (durationHeader) {
+            durationHeader.style.display = anyItemHasRecurringFrequency ? '' : 'none';
+        }
+
         headers.forEach((th) => {
             if (th.textContent.trim() === 'Start' || th.textContent.trim() === 'End') {
                 th.style.display = anyItemHasRecurringFrequency ? '' : 'none';
@@ -416,14 +428,16 @@
         });
 
         document.getElementById('subtotalDisplay').textContent = formatMoney(subtotal);
+        document.getElementById('discountDisplay').textContent = formatMoney(discountTotal);
         document.getElementById('taxDisplay').textContent = formatMoney(taxTotal);
-        document.getElementById('grandTotalDisplay').textContent = formatMoney(subtotal + taxTotal);
+        document.getElementById('grandTotalDisplay').textContent = formatMoney(subtotal - discountTotal + taxTotal);
     }
 
     function resetAddItemForm() {
         document.getElementById('item_itemid').value = '';
         document.getElementById('item_quantity').value = 1;
         document.getElementById('item_unit_price').value = '';
+        document.getElementById('item_discount').value = 0;
         document.getElementById('item_tax_rate').value = '0';
         document.getElementById('item_frequency').value = '';
         document.getElementById('item_duration').value = '';
@@ -520,6 +534,7 @@
             item_name: (option.text || '').split(' (')[0],
             quantity: Number(document.getElementById('item_quantity').value) || 1,
             unit_price: Number(document.getElementById('item_unit_price').value) || 0,
+            discount_percent: Math.min(100, Math.max(0, Number(document.getElementById('item_discount').value) || 0)),
             tax_rate: Number(document.getElementById('item_tax_rate').value) || 0,
             duration: document.getElementById('item_duration').value || null,
             frequency: document.getElementById('item_frequency').value || null,
@@ -549,8 +564,9 @@
         const field = input.dataset.field;
         invoiceItems[index][field] = input.type === 'number' ? Number(input.value) : input.value || null;
 
-        // Clear dates when frequency is one-time or empty
+        // Clear duration and dates when frequency is one-time or empty
         if (field === 'frequency' && (!input.value || input.value === 'one-time')) {
+            invoiceItems[index].duration = null;
             invoiceItems[index].start_date = null;
             invoiceItems[index].end_date = null;
         }
@@ -600,6 +616,7 @@
             item_name: item.item_name,
             quantity: Number(item.quantity) || 0,
             unit_price: Number(item.unit_price) || 0,
+            discount_percent: Math.min(100, Math.max(0, Number(item.discount_percent) || 0)),
             tax_rate: Number(item.tax_rate) || 0,
             duration: item.duration || null,
             frequency: item.frequency || null,

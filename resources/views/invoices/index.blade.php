@@ -187,12 +187,32 @@
     <div class="invoice-index-shell">
     @forelse ($groupedInvoices as $clientName => $clientInvoices)
         @php
-            $clientEmailForGroup = $clientInvoices->first()->client->email;
+            $firstInvoice = $clientInvoices->first();
+            $clientEmailForGroup = $firstInvoice->client->email ?? '';
+            $clientId = $firstInvoice->clientid ?? '';
         @endphp
         <details class="category-accordion invoice-group" open>
             <summary class="accordion-header">
-                <span class="invoice-client-meta">
-                    <span class="category-title">{{ $clientName }}</span>
+                <span class="invoice-client-meta" onclick="event.stopPropagation();">
+                    @if($clientId)
+                        <form action="{{ route('invoices.index') }}" method="GET" style="margin: 0;">
+                            <select
+                                name="c"
+                                class="form-control form-control"
+                                style="min-width: 260px; min-height: 34px;"
+                                onchange="this.form.submit()"
+                                onclick="event.stopPropagation();"
+                            >
+                                @foreach($clients as $clientOption)
+                                    <option value="{{ $clientOption->clientid }}" {{ (string) $clientId === (string) $clientOption->clientid ? 'selected' : '' }}>
+                                        {{ $clientOption->business_name ?? $clientOption->contact_name ?? 'Client' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @else
+                        <span class="category-title">{{ $clientName }}</span>
+                    @endif
                     @if($clientEmailForGroup)
                         <span class="invoice-client-email">{{ $clientEmailForGroup }}</span>
                     @endif
@@ -319,11 +339,52 @@
             </div>
         </details>
     @empty
-        <div class="invoice-empty">
-            <i class="fas fa-file-invoice" style="font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.3;"></i>
-            <p style="margin: 0; font-size: 0.95rem; font-weight: 500;">No invoices found</p>
-            <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem;">Create your first invoice to get started.</p>
-        </div>
+        @if($selectedClientId)
+            @php
+                $selectedClient = $clients->firstWhere('clientid', $selectedClientId);
+                $selectedClientName = $selectedClient->business_name ?? $selectedClient->contact_name ?? 'Selected Client';
+                $selectedClientEmail = $selectedClient->email ?? '';
+            @endphp
+            <details class="category-accordion invoice-group" open>
+                <summary class="accordion-header">
+                    <span class="invoice-client-meta" onclick="event.stopPropagation();">
+                        <form action="{{ route('invoices.index') }}" method="GET" style="margin: 0;">
+                            <select
+                                name="c"
+                                class="form-control form-control"
+                                style="min-width: 260px; min-height: 34px;"
+                                onchange="this.form.submit()"
+                                onclick="event.stopPropagation();"
+                            >
+                                @foreach($clients as $clientOption)
+                                    <option value="{{ $clientOption->clientid }}" {{ (string) $selectedClientId === (string) $clientOption->clientid ? 'selected' : '' }}>
+                                        {{ $clientOption->business_name ?? $clientOption->contact_name ?? 'Client' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                        @if($selectedClientEmail)
+                            <span class="invoice-client-email">{{ $selectedClientEmail }}</span>
+                        @else
+                            <span class="invoice-client-email">{{ $selectedClientName }}</span>
+                        @endif
+                    </span>
+                    <span class="service-count">0 invoice(s)</span>
+                    <span class="accordion-icon"></span>
+                </summary>
+                <div class="invoice-empty">
+                    <i class="fas fa-file-invoice" style="font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.3;"></i>
+                    <p style="margin: 0; font-size: 0.95rem; font-weight: 500;">No invoices found</p>
+                    <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem;">Create your first invoice to get started.</p>
+                </div>
+            </details>
+        @else
+            <div class="invoice-empty">
+                <i class="fas fa-file-invoice" style="font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.3;"></i>
+                <p style="margin: 0; font-size: 0.95rem; font-weight: 500;">No invoices found</p>
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem;">Create your first invoice to get started.</p>
+            </div>
+        @endif
     @endforelse
     </div>
 

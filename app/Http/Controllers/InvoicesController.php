@@ -21,7 +21,7 @@ class InvoicesController extends Controller
     public function invoices()
     {
         $clients = Client::orderBy('business_name')->get();
-        $selectedClientId = request('clientid');
+        $selectedClientId = request('c', request('clientid'));
 
         $invoiceQuery = ProformaInvoice::with(['client', 'items', 'convertedTaxInvoice'])->latest();
 
@@ -108,7 +108,7 @@ class InvoicesController extends Controller
         $legacyAccountId = $user?->id ? (string) $user->id : null;
         $account = \App\Models\Account::find($accountid);
         $orderId = request('o');
-        $clientId = request('c');
+        $clientId = request('c', request('clientid'));
 
         $termAccountIds = array_values(array_filter(array_unique([$accountid, $legacyAccountId])));
 
@@ -178,58 +178,59 @@ class InvoicesController extends Controller
             return response()->json([]);
         }
 
-        \Log::info('getRenewalInvoices', ['clientid' => $clientId, 'days_filter' => $daysFilter]);
-
-        // Get all invoices for this client
+        $recurringFrequencies = ['daily', 'weekly', 'bi-weekly', 'monthly', 'yearly', 'quarterly', 'semi-annually'];
         $invoices = ProformaInvoice::where('clientid', $clientId)
             ->with('items', 'client')
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($invoice) use ($daysFilter) {
+            ->map(function ($invoice) use ($daysFilter, $recurringFrequencies) {
                 $today = now()->startOfDay();
                 $upcomingThreshold = now()->addDays($daysFilter)->endOfDay();
-                
-                // Check for expired recurring items (includes today, not renewed)
-                $expiredItems = $invoice->items->filter(function ($item) use ($today) {
-                    if (!$item->end_date || $item->renewed_to_proformaid) {
-                        return false;
-                    }
-                    
-                    $itemEndDate = $item->end_date instanceof \Carbon\Carbon 
-                        ? $item->end_date 
-                        : \Carbon\Carbon::parse($item->end_date);
-                    
-                    $isExpired = $itemEndDate <= $today;
-                    $hasRecurringFrequency = in_array($item->frequency, ['daily', 'weekly', 'bi-weekly', 'monthly', 'yearly', 'quarterly', 'semi-annually'], true);
-                    
-                    \Log::info('Item check (expired):', [
-                        'item_name' => $item->item_name,
-                        'end_date' => $itemEndDate->toDateTimeString(),
-                        'frequency' => $item->frequency,
-                        'is_expired' => $isExpired,
-                        'has_recurring' => $hasRecurringFrequency,
-                        'is_renewed' => (bool) $item->renewed_to_proformaid,
-                    ]);
-                    
-                    return $isExpired && $hasRecurringFrequency;
-                });
-                
-                // Check for upcoming expiring items (within 30 days, not renewed, not already expired)
-                $upcomingItems = $invoice->items->filter(function ($item) use ($today, $upcomingThreshold) {
-                    if (!$item->end_date || $item->renewed_to_proformaid) {
-                        return false;
-                    }
-                    
-                    $itemEndDate = $item->end_date instanceof \Carbon\Carbon 
-                        ? $item->end_date 
-                        : \Carbon\Carbon::parse($item->end_date);
-                    
-                    // Not expired yet but will expire within 30 days
-                    $isUpcoming = $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
-                    $hasRecurringFrequency = in_array($item->frequency, ['daily', 'weekly', 'bi-weekly', 'monthly', 'yearly', 'quarterly', 'semi-annually'], true);
-                    
-                    return $isUpcoming && $hasRecurringFrequency;
-                });
+
+                $renewalItems = $invoice->items
+                    ->map(function ($item) use ($today, $upcomingThreshold, $recurringFrequencies) {
+                        if (!$item->end_date || $item->renewed_to_proformaid) {
+                            return null;
+                        }
+
+                        $hasRecurringFrequency = in_array($item->frequency, $recurringFrequencies, true);
+                        if (!$hasRecurringFrequency) {
+                            return null;
+                        }
+
+                        $itemEndDate = $item->end_date instanceof \Carbon\Carbon
+                            ? $item->end_date
+                            : \Carbon\Carbon::parse($item->end_date);
+
+                        $isExpired = $itemEndDate <= $today;
+                        $isUpcoming = !$isExpired && $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
+
+                        if (!$isExpired && !$isUpcoming) {
+                            return null;
+                        }
+
+                        return [
+                            'proformaitemid' => $item->proformaitemid,
+                            'itemid' => $item->itemid,
+                            'item_name' => $item->item_name,
+                            'quantity' => (float) ($item->quantity ?? 0),
+                            'unit_price' => (float) ($item->unit_price ?? 0),
+                            'tax_rate' => (float) ($item->tax_rate ?? 0),
+                            'discount_percent' => (float) ($item->discount_percent ?? 0),
+                            'discount_amount' => (float) ($item->discount_amount ?? 0),
+                            'duration' => $item->duration,
+                            'frequency' => $item->frequency,
+                            'no_of_users' => $item->no_of_users ? (int) $item->no_of_users : null,
+                            'start_date' => $item->start_date?->format('Y-m-d'),
+                            'end_date' => $item->end_date?->format('Y-m-d'),
+                            'line_total' => (float) ($item->line_total ?? 0),
+                            'is_expired' => $isExpired,
+                            'is_upcoming' => $isUpcoming,
+                            'renewed_to_proformaid' => $item->renewed_to_proformaid,
+                        ];
+                    })
+                    ->filter()
+                    ->values();
 
                 $result = [
                     'proformaid' => $invoice->proformaid,
@@ -237,27 +238,19 @@ class InvoicesController extends Controller
                     'grand_total' => $invoice->grand_total ?? '0.00',
                     'currency' => $invoice->client->currency ?? 'INR',
                     'total_items' => $invoice->items->count(),
-                    'expired_items' => $expiredItems->count(),
-                    'upcoming_items' => $upcomingItems->count(),
-                    'has_expired' => $expiredItems->count() > 0,
-                    'has_upcoming' => $upcomingItems->count() > 0,
+                    'expired_items' => $renewalItems->where('is_expired', true)->count(),
+                    'upcoming_items' => $renewalItems->where('is_upcoming', true)->count(),
+                    'has_expired' => $renewalItems->where('is_expired', true)->isNotEmpty(),
+                    'has_upcoming' => $renewalItems->where('is_upcoming', true)->isNotEmpty(),
+                    'items' => $renewalItems,
                 ];
-
-                \Log::info('Invoice result:', [
-                    'invoice_number' => $result['invoice_number'],
-                    'expired_items' => $result['expired_items'],
-                    'upcoming_items' => $result['upcoming_items'],
-                ]);
 
                 return $result;
             })
             ->filter(function ($invoice) {
-                // Return invoices with expired OR upcoming items
                 return $invoice['has_expired'] || $invoice['has_upcoming'];
             })
             ->values();
-
-        \Log::info('Renewal invoices found:', ['count' => $invoices->count()]);
 
         return response()->json($invoices);
     }
@@ -728,7 +721,8 @@ class InvoicesController extends Controller
             'clientid' => 'required|exists:clients,clientid',
             'invoice_title' => 'nullable|string|max:255',
             'invoice_for' => 'nullable|string|in:orders,renewal,without_orders',
-                'status' => 'nullable|in:unpaid,paid,partially-paid',
+            'status' => 'nullable|in:unpaid,paid,partially-paid',
+            'items_data' => 'nullable|json',
         ]);
 
         $user = auth()->user();
@@ -766,6 +760,53 @@ class InvoicesController extends Controller
                 'balance_due' => 0,
                 'created_by' => $user?->userid ?? $user?->id,
             ]);
+        }
+
+        $rawItemsData = $request->input('items_data');
+        if ($rawItemsData !== null) {
+            $itemsData = json_decode($rawItemsData, true);
+            if (!is_array($itemsData)) {
+                $itemsData = [];
+            }
+
+            $draftItems = [];
+            foreach ($itemsData as $index => $itemData) {
+                if (!is_array($itemData)) {
+                    continue;
+                }
+
+                $itemName = trim((string) ($itemData['item_name'] ?? ''));
+                if ($itemName === '') {
+                    continue;
+                }
+
+                $taxRate = (float) ($itemData['tax_rate'] ?? 0);
+                $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
+
+                $draftItems[] = [
+                    'itemid' => $itemData['itemid'] ?? null,
+                    'item_name' => $itemName,
+                    'item_description' => $itemData['item_description'] ?? null,
+                    'quantity' => max(0, (float) ($itemData['quantity'] ?? 0)),
+                    'unit_price' => max(0, (float) ($itemData['unit_price'] ?? 0)),
+                    'tax_rate' => $taxRate,
+                    'discount_percent' => min(100, max(0, (float) ($itemData['discount_percent'] ?? 0))),
+                    'discount_amount' => max(0, (float) $amounts['discount_amount']),
+                    'duration' => $itemData['duration'] ?? null,
+                    'frequency' => $itemData['frequency'] ?? null,
+                    'no_of_users' => !empty($itemData['no_of_users']) ? max(1, (int) $itemData['no_of_users']) : null,
+                    'start_date' => $itemData['start_date'] ?? null,
+                    'end_date' => $itemData['end_date'] ?? null,
+                    'line_total' => max(0, (float) $amounts['line_total']),
+                    'sort_order' => $index + 1,
+                    'renewed_from_proformaitemid' => $itemData['renewed_from_proformaitemid'] ?? null,
+                ];
+            }
+
+            $draft->items()->delete();
+            if (!empty($draftItems)) {
+                $draft->items()->createMany($draftItems);
+            }
         }
 
         return response()->json([

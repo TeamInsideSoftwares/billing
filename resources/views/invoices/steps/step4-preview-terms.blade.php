@@ -1,6 +1,6 @@
 @php
     $normalizeTaxState = static fn ($value) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $value)));
-    $selectedInvoiceClient = $clients->firstWhere('clientid', request('clientid'));
+    $selectedInvoiceClient = $clients->firstWhere('clientid', request('clientid', request('c')));
     $selectedClientCurrency = optional($selectedInvoiceClient)->currency ?? 'INR';
     $invoiceClientState = $normalizeTaxState(optional($selectedInvoiceClient)->state ?? '');
     $invoiceAccountState = $normalizeTaxState(optional($account)->state ?? '');
@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <input type="hidden" name="clientid" value="{{ request('clientid') }}">
+    <input type="hidden" name="clientid" value="{{ request('clientid', request('c')) }}">
     <input type="hidden" name="invoice_for" value="{{ request('invoice_for') }}">
     <input type="hidden" name="orderid" value="{{ request('orderid', '') }}">
     <input type="hidden" name="proformaid" id="proformaid" value="">
@@ -83,7 +83,7 @@
 
 <script>
 (function() {
-    const clientId = "{{ request('clientid') }}";
+    const clientId = "{{ request('clientid', request('c')) }}";
     const invoiceFor = "{{ request('invoice_for') }}";
     const orderId = "{{ request('orderid', '') }}";
     const btnBackToPrev = document.getElementById('btnBackToPrev');

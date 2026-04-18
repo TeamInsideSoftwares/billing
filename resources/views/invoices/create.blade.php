@@ -2,11 +2,12 @@
 
 @section('content')
 @php
+    $selectedClientId = request('clientid', request('c'));
     $currentStep = (int) request('step', 1);
     $invoiceFor = request('invoice_for', session('invoice_for', ''));
     
     // Fix: Default empty invoiceFor to 'orders' when clientid present
-    if(empty($invoiceFor) && request('clientid')) {
+    if(empty($invoiceFor) && $selectedClientId) {
         $invoiceFor = 'orders';
     }
     session(['invoice_for' => $invoiceFor]);
@@ -26,7 +27,7 @@
 <section class="panel-card invoice-create-shell" style="padding: 1.25rem;">
     <div class="invoice-create-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb;">
         @if($currentStep === 1)
-        <a href="{{ $clientId ? route('orders.index', ['c' => $clientId]) : route('invoices.index') }}" class="text-link">&larr; Back</a>
+        <a href="{{ $selectedClientId ? route('orders.index', ['c' => $selectedClientId]) : route('invoices.index') }}" class="text-link">&larr; Back</a>
         @endif
     </div>
 

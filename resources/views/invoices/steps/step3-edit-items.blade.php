@@ -1,6 +1,6 @@
 @php
     $normalizeTaxState = static fn ($value) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $value)));
-    $selectedInvoiceClient = $clients->firstWhere('clientid', request('clientid'));
+    $selectedInvoiceClient = $clients->firstWhere('clientid', request('clientid', request('c')));
     $selectedClientCurrency = optional($selectedInvoiceClient)->currency ?? 'INR';
     $invoiceClientState = $normalizeTaxState(optional($selectedInvoiceClient)->state ?? '');
     $invoiceAccountState = $normalizeTaxState(optional($account)->state ?? '');
@@ -21,7 +21,7 @@
         <input type="text" id="invoice_title" name="invoice_title" class="form-input" placeholder="e.g. Website Development - Monthly Subscription">
     </div>
 
-    <input type="hidden" name="clientid" value="{{ request('clientid') }}">
+    <input type="hidden" name="clientid" value="{{ request('clientid', request('c')) }}">
     <input type="hidden" name="orderid" value="{{ request('orderid', '') }}">
     <input type="hidden" name="subtotal" id="subtotal" value="0.00">
     <input type="hidden" name="tax_total" id="tax_total" value="0.00">
@@ -69,7 +69,7 @@
                         <th>Tax %</th>
                         @endif
                         <th>Freq</th>
-                        <th>Dur</th>
+                        <th id="itemsDurationHeader">Dur</th>
                         <th id="itemsStartHeader" style="display:none;">Start Date</th>
                         <th id="itemsEndHeader" style="display:none;">End Date</th>
                         <th>Total</th>
@@ -100,7 +100,7 @@
 
 <script>
 (function() {
-    const clientId = "{{ request('clientid') }}";
+    const clientId = "{{ request('clientid', request('c')) }}";
     const invoiceFor = "{{ request('invoice_for') }}";
     const orderId = "{{ request('orderid', '') }}";
     const accountHasUsers = @json((bool) ($account->have_users ?? false));
@@ -238,9 +238,11 @@
 
     function syncConditionalHeaders() {
         const showUserColumns = invoiceItems.some(itemSupportsUserFields);
+        const showDurationColumns = invoiceItems.some(itemHasRecurringFrequency);
         const showDateColumns = invoiceItems.some(itemHasRecurringFrequency);
 
         document.getElementById('itemsUsersHeader').style.display = showUserColumns ? '' : 'none';
+        document.getElementById('itemsDurationHeader').style.display = showDurationColumns ? '' : 'none';
         document.getElementById('itemsStartHeader').style.display = showDateColumns ? '' : 'none';
         document.getElementById('itemsEndHeader').style.display = showDateColumns ? '' : 'none';
     }
@@ -324,6 +326,7 @@
         let taxTotal = 0;
         let discountTotal = 0;
         const showUserColumns = invoiceItems.some(itemSupportsUserFields);
+        const showDurationColumns = invoiceItems.some(itemHasRecurringFrequency);
         const showDateColumns = invoiceItems.some(itemHasRecurringFrequency);
 
         syncConditionalHeaders();
@@ -367,7 +370,11 @@
                         @endforeach
                     </select>
                 </td>
-                <td><input type="number" class="form-input item-duration" data-index="${index}" value="${item.duration || ''}" min="0" step="1" style="width: 70px;" placeholder="-"></td>
+                <td style="display:${showDurationColumns ? '' : 'none'};">
+                    ${showDatesForRow
+                        ? `<input type="number" class="form-input item-duration" data-index="${index}" value="${item.duration || ''}" min="0" step="1" style="width: 70px;" placeholder="-">`
+                        : '<span style="color:#9ca3af;">-</span>'}
+                </td>
                 <td style="display:${showDateColumns ? '' : 'none'};">
                     ${showDatesForRow
                         ? `<input type="date" class="form-input item-start-date" data-index="${index}" value="${item.start_date || ''}" style="min-width: 135px;">`
@@ -379,7 +386,9 @@
                         : '<span style="color:#9ca3af;">-</span>'}
                 </td>
                 <td style="text-align: right; font-weight: 600;" class="item-total" data-index="${index}">${formatCurrency(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0)))}</td>
-                <td><button type="button" class="remove-item-btn" data-index="${index}" style="background: none; border: none; color: #ef4444; cursor: pointer;"><i class="fas fa-trash"></i></button></td>
+                <td>
+                    <button type="button" class="remove-item-btn" data-index="${index}" title="Remove" style="background: none; border: none; color: #ef4444; cursor: pointer;"><i class="fas fa-trash"></i></button>
+                </td>
             `;
             itemsBody.appendChild(row);
         });
@@ -437,6 +446,7 @@
             }
 
             if (!itemHasRecurringFrequency(invoiceItems[index])) {
+                invoiceItems[index].duration = '';
                 invoiceItems[index].start_date = '';
                 invoiceItems[index].end_date = '';
             } else if (field === 'start_date' || field === 'frequency' || field === 'duration') {
