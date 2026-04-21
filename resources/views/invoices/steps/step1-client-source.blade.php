@@ -1,6 +1,6 @@
 <!-- Step 1: Client & Source Selection -->
 <div id="step1" class="invoice-step">
-    <div class="invoice-meta-card" style="margin-bottom: 1rem;">
+    <div class="invoice-meta-card" style="margin-bottom: 0.75rem;">
         <div class="invoice-grid-4">
             <div class="invoice-span-2">
                 <label for="clientid" class="field-label">Client</label>
@@ -16,13 +16,13 @@
         </div>
     </div>
 
-    <div id="existingInvoicesSection" style="display: none; margin-bottom: 1rem;">
-        <h4 style="margin: 0 0 0.8rem 0; font-size: 1rem; color: #334155;">Existing Invoices</h4>
+    <div id="existingInvoicesSection" style="display: none; margin-bottom: 0.75rem;">
+        <h4 style="margin: 0 0 0.6rem 0; font-size: 0.92rem; color: #334155;">Existing Invoices</h4>
         <div id="clientInvoicesAccordion" class="services-accordion-container"></div>
         <div id="noInvoicesMessage" class="empty-state" style="display: none;">No invoices found for this client yet.</div>
     </div>
 
-    <div id="sourceSelectionSection" style="display: none; margin-bottom: 1rem;">
+    <div id="sourceSelectionSection" style="display: none; margin-bottom: 0.75rem;">
         <div class="section-title-card">
             <h4>Choose Invoice Source</h4>
             <p>Pick how this proforma invoice should be created.</p>
@@ -30,24 +30,24 @@
 
         <div class="source-grid">
             <label class="invoice-source-card">
-                <input type="radio" name="invoice_for" value="orders" {{ old('invoice_for') === 'orders' ? 'checked' : '' }}>
+                <input type="radio" name="invoice_for" value="orders" {{ old('invoice_for', request('invoice_for', session('invoice_for', ''))) === 'orders' ? 'checked' : '' }}>
                 <span class="source-icon"><i class="fas fa-shopping-cart"></i></span>
                 <strong>From Orders</strong>
             </label>
             <label class="invoice-source-card">
-                <input type="radio" name="invoice_for" value="renewal" {{ old('invoice_for') === 'renewal' ? 'checked' : '' }}>
+                <input type="radio" name="invoice_for" value="renewal" {{ old('invoice_for', request('invoice_for', session('invoice_for', ''))) === 'renewal' ? 'checked' : '' }}>
                 <span class="source-icon"><i class="fas fa-sync-alt"></i></span>
                 <strong>Renewal</strong>
             </label>
             <label class="invoice-source-card">
-                <input type="radio" name="invoice_for" value="without_orders" {{ old('invoice_for') === 'without_orders' ? 'checked' : '' }}>
+                <input type="radio" name="invoice_for" value="without_orders" {{ old('invoice_for', request('invoice_for', session('invoice_for', ''))) === 'without_orders' ? 'checked' : '' }}>
                 <span class="source-icon"><i class="fas fa-pen-ruler"></i></span>
                 <strong>Without Orders</strong>
             </label>
         </div>
 
-        <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
-            <button type="button" id="btnNextToStep2" class="primary-button" style="padding: 0.65rem 1.6rem; font-size: 0.9rem;">Next Step &rarr;</button>
+        <div style="margin-top: 0.75rem; display: flex; justify-content: flex-end;">
+            <button type="button" id="btnNextToStep2" class="primary-button" style="padding: 0.55rem 1.35rem; font-size: 0.85rem;">Next Step &rarr;</button>
         </div>
     </div>
 </div>
@@ -74,6 +74,7 @@
 
     function handleClientChange() {
         selectedClientId = clientSelect.value;
+        syncClientInUrl(selectedClientId);
         if (!selectedClientId) {
             existingSection.style.display = 'none';
             sourceSection.style.display = 'none';
@@ -82,6 +83,20 @@
         existingSection.style.display = 'block';
         sourceSection.style.display = 'block';
         loadInvoices(selectedClientId);
+    }
+
+    function syncClientInUrl(clientId) {
+        const currentUrl = new URL(window.location.href);
+
+        if (clientId) {
+            currentUrl.searchParams.set('c', clientId);
+            currentUrl.searchParams.set('clientid', clientId);
+        } else {
+            currentUrl.searchParams.delete('c');
+            currentUrl.searchParams.delete('clientid');
+        }
+
+        window.history.replaceState({}, '', currentUrl.toString());
     }
 
     async function loadInvoices(clientId) {
@@ -170,7 +185,7 @@
             alert('Please choose an invoice source.');
             return;
         }
-        window.location.href = "{{ route('invoices.create') }}?step=2&invoice_for=" + source.value + "&clientid=" + selectedClientId;
+        window.location.href = "{{ route('invoices.create') }}?step=2&invoice_for=" + source.value + "&c=" + selectedClientId;
     });
 })();
 </script>

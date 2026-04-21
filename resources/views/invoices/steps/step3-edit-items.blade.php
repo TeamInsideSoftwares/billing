@@ -9,21 +9,21 @@
 <!-- Step 3: Edit Items (For Orders & Renewal) -->
 <div id="step3" class="invoice-step">
     <div class="invoice-step-toolbar">
-        <button type="button" id="btnBackToStep2" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back</button>
+        <button type="button" id="btnBackToStep2" class="secondary-button" style="padding: 0.4rem 0.8rem;">&larr; Back</button>
         <div class="invoice-side-meta">
             <span class="invoice-meta-label">PI</span>
             <strong class="invoice-meta-value">{{ $nextInvoiceNumber }}</strong>
         </div>
     </div>
 
-    <div style="margin-bottom: 1.5rem;">
+    <div style="margin-bottom: 0.85rem;">
         <label for="invoice_title" class="field-label">Invoice Title</label>
-        <input type="text" id="invoice_title" name="invoice_title" class="form-input" placeholder="e.g. Website Development - Monthly Subscription" required>
+        <input type="text" id="invoice_title" name="invoice_title" class="form-input" placeholder="e.g. Website Development - Monthly Subscription" required style="max-width: 520px;">
         <div id="invoiceTitleError" style="display:none; margin-top: 0.35rem; color: #b91c1c; font-size: 0.8rem; font-weight: 600;">Invoice title is required.</div>
     </div>
 
     <input type="hidden" name="clientid" value="{{ request('clientid', request('c')) }}">
-    <input type="hidden" name="orderid" value="{{ request('orderid', '') }}">
+    <input type="hidden" name="orderid" value="{{ request('orderid', request('o', '')) }}">
     <input type="hidden" name="subtotal" id="subtotal" value="0.00">
     <input type="hidden" name="tax_total" id="tax_total" value="0.00">
     <input type="hidden" name="discount_total" id="discount_total" value="0.00">
@@ -32,33 +32,33 @@
     <input type="hidden" name="currency_code" id="currency_code" value="{{ $selectedClientCurrency }}">
 
     <div id="itemsSection" class="workflow-panel">
-        <div class="panel-heading-row">
+        <div class="panel-heading-row" style="margin-bottom: 0.5rem;">
             <div>
-                <h4 style="margin: 0; font-size: 1rem; color: #111827;">
+            <h4 style="margin: 0; font-size: 0.92rem; color: #111827;">
                     @if(request('orderid'))
                         Edit Items from Order
                     @else
                         Edit Invoice Items
                     @endif
                 </h4>
-                <p style="margin: 0.2rem 0 0 0; color: #6b7280; font-size: 0.85rem;">Adjust quantity, pricing, tax, and other details before proceeding.</p>
+                <p style="margin: 0.15rem 0 0 0; color: #6b7280; font-size: 0.78rem;">Adjust quantity, pricing, tax, and other details before proceeding.</p>
             </div>
         </div>
 
         @if(request('orderid'))
-        <div id="orderSummaryInline" style="display: none; margin-bottom: 1rem; padding: 0.85rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
-            <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+        <div id="orderSummaryInline" style="display: none; margin-bottom: 0.75rem; padding: 0.7rem 0.85rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
+            <div style="display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
                 <div>
-                    <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em;">Source Order</div>
-                    <div id="orderSummaryTitle" style="margin-top: 0.25rem; font-size: 0.95rem; font-weight: 600; color: #111827;">Source Order Details</div>
+                    <div style="font-size: 0.7rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em;">Source Order</div>
+                    <div id="orderSummaryTitle" style="margin-top: 0.15rem; font-size: 0.88rem; font-weight: 600; color: #111827;">Source Order Details</div>
                 </div>
-                <div id="orderSummaryDetails" style="display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center;"></div>
+                <div id="orderSummaryDetails" style="display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center;"></div>
             </div>
         </div>
         @endif
 
         <div class="table-shell">
-            <table class="data-table" id="itemsTable" style="margin: 0; font-size: 0.83rem;">
+            <table class="data-table" id="itemsTable" style="margin: 0; font-size: 0.8rem;">
                 <thead id="itemsTableHead">
                     <tr>
                         <th>Item</th>
@@ -81,8 +81,8 @@
             </table>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
-            <div class="totals-card" style="min-width: 320px;">
+        <div style="display: flex; justify-content: flex-end; margin-top: 0.8rem;">
+            <div class="totals-card" style="min-width: 280px;">
                 <div class="total-row"><span>Subtotal</span><strong id="subtotalDisplay">INR 0.00</strong></div>
                 <div class="total-row"><span>Discount</span><strong id="discountDisplay">INR 0.00</strong></div>
                 <div id="step3TaxRow" class="total-row">
@@ -94,8 +94,8 @@
         </div>
     </div>
 
-    <div style="margin-top: 2rem;">
-        <button type="button" class="primary-button" id="btnNextToStep4" style="width: 100%; padding: 1rem;">Review & Terms &rarr;</button>
+    <div style="margin-top: 0.9rem;">
+        <button type="button" class="primary-button" id="btnNextToStep4" style="width: 100%; padding: 0.75rem 1rem;">Review & Terms &rarr;</button>
     </div>
 </div>
 
@@ -103,7 +103,7 @@
 (function() {
     const clientId = "{{ request('clientid', request('c')) }}";
     const invoiceFor = "{{ request('invoice_for') }}";
-    const orderId = "{{ request('orderid', '') }}";
+    const orderId = "{{ request('orderid', request('o', '')) }}";
     const accountHasUsers = @json((bool) ($account->have_users ?? false));
     const sameStateGstForInvoice = @json($sameStateGstForInvoice);
     const itemsBody = document.getElementById('itemsBody');
@@ -507,16 +507,16 @@
         })
         .then(response => response.json())
         .then(() => {
-            let nextUrl = "{{ route('invoices.create') }}?step=4&invoice_for=" + invoiceFor + "&clientid=" + clientId;
+            let nextUrl = "{{ route('invoices.create') }}?step=4&invoice_for=" + invoiceFor + "&c=" + clientId;
             if (orderId) {
-                nextUrl += "&orderid=" + orderId;
+                nextUrl += "&o=" + orderId;
             }
             window.location.href = nextUrl;
         });
     });
 
     btnBackToStep2.addEventListener('click', function() {
-        window.location.href = "{{ route('invoices.create') }}?step=2&invoice_for=" + invoiceFor + "&clientid=" + clientId;
+        window.location.href = "{{ route('invoices.create') }}?step=2&invoice_for=" + invoiceFor + "&c=" + clientId;
     });
 
     invoiceTitleInput.addEventListener('input', function() {

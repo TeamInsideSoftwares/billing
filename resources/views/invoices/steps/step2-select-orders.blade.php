@@ -7,13 +7,13 @@
         </button>
     </div>
 
-    <input type="hidden" name="clientid" value="{{ request('clientid') }}">
+    <input type="hidden" name="clientid" value="{{ request('clientid', request('c')) }}">
     <input type="hidden" name="orderid" id="orderid">
     <input type="hidden" name="items_data" id="items_data">
 
-    <div class="section-title-card">
+    <div class="section-title-card" style="margin-bottom: 0.65rem;">
         <h4>Select Source Order</h4>
-        <p>Select one verified order. Its details and items will expand directly under that row, and that exact order will be used to create the PI.</p>
+        <p>Select one verified order. The items expand inline so you can move faster.</p>
     </div>
 
     <div class="workflow-panel" style="margin-top: 0;">
@@ -40,8 +40,8 @@
         </div>
     </div>
 
-    <div style="margin-top: 1rem;">
-        <button type="button" id="btnNextToStep3" class="primary-button" disabled style="width:100%;">
+    <div style="margin-top: 0.75rem;">
+        <button type="button" id="btnNextToStep3" class="primary-button" disabled style="width:100%; padding: 0.7rem 1rem; font-size: 0.9rem;">
             Continue &rarr;
         </button>
     </div>
@@ -74,7 +74,7 @@
 }
 
 .order-detail-shell {
-    padding: 1rem 1rem 1.1rem;
+    padding: 0.85rem 0.9rem 0.95rem;
     border-left: 3px solid #4f46e5;
 }
 
@@ -88,9 +88,9 @@
 }
 
 .order-detail-meta {
-    margin: 0.3rem 0 0;
+    margin: 0.2rem 0 0;
     color: #6b7280;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
 }
 
 .order-detail-items {
@@ -106,7 +106,7 @@
 }
 
 .order-detail-items th {
-    padding: 0.7rem 0.75rem;
+    padding: 0.55rem 0.65rem;
     font-size: 0.72rem;
     font-weight: 600;
     color: #6b7280;
@@ -116,8 +116,8 @@
 }
 
 .order-detail-items td {
-    padding: 0.75rem;
-    font-size: 0.83rem;
+    padding: 0.58rem 0.65rem;
+    font-size: 0.8rem;
     border-bottom: 1px solid #e5e7eb;
     background: #fff;
 }
@@ -127,10 +127,10 @@
 }
 
 .order-detail-empty {
-    padding: 1rem;
+    padding: 0.85rem;
     text-align: center;
     color: #9ca3af;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
 }
 
 @media (max-width: 900px) {
@@ -143,7 +143,7 @@
 
 <script>
 (function() {
-    const clientId = "{{ request('clientid') }}";
+    const clientId = "{{ request('clientid', request('c')) }}";
     const ordersBody = document.getElementById('ordersBody');
     const noOrdersMessage = document.getElementById('noOrdersMessage');
     const btnNext = document.getElementById('btnNextToStep3');
@@ -366,12 +366,12 @@
             })
         })
         .then(() => {
-            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=orders&clientid=" + clientId + "&orderid=" + selectedOrderId;
+            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=orders&c=" + clientId + "&o=" + selectedOrderId;
         });
     });
 
     btnBackToStep1.addEventListener('click', function() {
-        window.location.href = "{{ route('invoices.create') }}?step=1&clientid=" + clientId;
+        window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientId;
     });
 
     loadOrders();

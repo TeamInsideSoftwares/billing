@@ -9,7 +9,7 @@
 <!-- Step 4: Preview & Terms (For Orders & Renewal, and Without Orders Step 3) -->
 <div id="step4" class="invoice-step">
     <div class="invoice-step-toolbar">
-        <button type="button" id="btnBackToPrev" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back</button>
+        <button type="button" id="btnBackToPrev" class="secondary-button" style="padding: 0.4rem 0.8rem;">&larr; Back</button>
         <div class="invoice-side-meta">
             <span class="invoice-meta-label">PI</span>
             <strong class="invoice-meta-value" id="piNumberBadge">{{ $nextInvoiceNumber }}</strong>
@@ -18,7 +18,7 @@
 
     <input type="hidden" name="clientid" value="{{ request('clientid', request('c')) }}">
     <input type="hidden" name="invoice_for" value="{{ request('invoice_for') }}">
-    <input type="hidden" name="orderid" value="{{ request('orderid', '') }}">
+    <input type="hidden" name="orderid" value="{{ request('orderid', request('o', '')) }}">
     <input type="hidden" name="proformaid" id="proformaid" value="">
     <input type="hidden" name="renewed_item_ids" id="renewed_item_ids" value="">
     <input type="hidden" name="invoice_number" id="invoice_number" value="{{ $nextInvoiceNumber }}">
@@ -33,8 +33,8 @@
     <input type="hidden" name="notes" id="notes" value="">
 
     <!-- PI Preview -->
-    <div class="panel-card" style="padding: 0; border: 1px solid #e5e7eb; overflow: hidden; background: #fff; margin-bottom: 1.5rem;">
-        <div style="background: #fafafa; padding: 0.85rem 1.25rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+    <div class="panel-card" style="padding: 0; border: 1px solid #e5e7eb; overflow: hidden; background: #fff; margin-bottom: 0.9rem;">
+        <div style="background: #fafafa; padding: 0.7rem 0.9rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
             <h5 style="margin: 0; font-size: 0.95rem; color: #111827;">
                 <i class="fas fa-file-pdf" style="color: #374151; margin-right: 0.5rem;"></i>
                 PI Preview
@@ -44,8 +44,8 @@
                 Live Preview
             </span>
         </div>
-        <div id="invoicePreviewContainer" style="padding: 1.5rem; background: #f5f5f5; max-height: 750px; overflow-y: auto;">
-            <div id="previewContent" style="background: white; padding: 2.5rem; width: 100%; min-height: 842px; border: 1px solid #dddddd; border-radius: 8px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1f2937;">
+        <div id="invoicePreviewContainer" style="padding: 1rem; background: #f5f5f5; max-height: 620px; overflow-y: auto;">
+            <div id="previewContent" style="background: white; padding: 1.5rem; width: 100%; min-height: 640px; border: 1px solid #dddddd; border-radius: 8px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1f2937;">
                 <div style="text-align: center; color: #6b7280; padding-top: 100px;">
                     <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
                     <p>Generating preview...</p>
@@ -55,8 +55,8 @@
     </div>
 
     <!-- Terms & Conditions Below -->
-    <div class="panel-card" style="padding: 1rem; border: 1px solid #e5e7eb; background: #fff; position: relative;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid #e5e7eb;">
+    <div class="panel-card" style="padding: 0.85rem; border: 1px solid #e5e7eb; background: #fff; position: relative;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e5e7eb;">
             <h5 style="margin: 0; font-size: 0.9rem; color: #111827;">Terms & Conditions</h5>
             <button type="button" id="btnAddTC" class="text-link" style="font-size: 0.75rem; font-weight: 600;">+ Add</button>
         </div>
@@ -85,7 +85,7 @@
                 </div>
             </div>
         </div>
-        <div id="termsList" style="max-height: 400px; overflow-y: auto; padding-right: 0.25rem;">
+        <div id="termsList" style="max-height: 280px; overflow-y: auto; padding-right: 0.2rem;">
             @foreach($billingTerms as $term)
             <div style="margin-bottom: 0.4rem; padding: 0.65rem; border-radius: 8px; border: 1px solid #e5e7eb; background: #f9fafb; transition: all 0.2s;" class="term-item-row">
                 <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer;">
@@ -99,8 +99,8 @@
         </div>
     </div>
 
-    <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
-        <button type="submit" class="primary-button create-submit-btn" id="finalSubmitBtn" disabled style="padding: 1rem 4rem; font-size: 1.1rem;">
+    <div style="margin-top: 0.9rem; display: flex; justify-content: flex-end;">
+        <button type="submit" class="primary-button create-submit-btn" id="finalSubmitBtn" disabled style="padding: 0.75rem 2.4rem; font-size: 0.95rem;">
             <i class="fas fa-file-invoice" style="margin-right: 0.5rem;"></i>Create Proforma Invoice
         </button>
     </div>
@@ -110,7 +110,7 @@
 (function() {
     const clientId = "{{ request('clientid', request('c')) }}";
     const invoiceFor = "{{ request('invoice_for') }}";
-    const orderId = "{{ request('orderid', '') }}";
+    const orderId = "{{ request('orderid', request('o', '')) }}";
     const btnBackToPrev = document.getElementById('btnBackToPrev');
     const finalSubmitBtn = document.getElementById('finalSubmitBtn');
     const previewContent = document.getElementById('previewContent');
@@ -512,9 +512,9 @@
     // Back button
     btnBackToPrev.addEventListener('click', function() {
         const prevStep = invoiceFor === 'without_orders' ? 2 : 3;
-        let prevUrl = "{{ route('invoices.create') }}?step=" + prevStep + "&invoice_for=" + invoiceFor + "&clientid=" + clientId;
+        let prevUrl = "{{ route('invoices.create') }}?step=" + prevStep + "&invoice_for=" + invoiceFor + "&c=" + clientId;
         if (orderId) {
-            prevUrl += "&orderid=" + orderId;
+            prevUrl += "&o=" + orderId;
         }
         window.location.href = prevUrl;
     });
