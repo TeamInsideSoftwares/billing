@@ -18,7 +18,7 @@
 
     <input type="hidden" name="clientid" value="{{ request('clientid', request('c')) }}">
     <input type="hidden" name="invoice_for" value="{{ request('invoice_for') }}">
-    <input type="hidden" name="orderid" value="{{ request('orderid', request('o', '')) }}">
+    <input type="hidden" name="orderid" value="{{ request('orderid', request('o', '')) === '0' ? '' : request('orderid', request('o', '')) }}">
     <input type="hidden" name="proformaid" id="proformaid" value="">
     <input type="hidden" name="renewed_item_ids" id="renewed_item_ids" value="">
     <input type="hidden" name="invoice_number" id="invoice_number" value="{{ $nextInvoiceNumber }}">
@@ -111,6 +111,7 @@
     const clientId = "{{ request('clientid', request('c')) }}";
     const invoiceFor = "{{ request('invoice_for') }}";
     const orderId = "{{ request('orderid', request('o', '')) }}";
+    const hasOrderId = orderId && orderId !== '0';
     const btnBackToPrev = document.getElementById('btnBackToPrev');
     const finalSubmitBtn = document.getElementById('finalSubmitBtn');
     const previewContent = document.getElementById('previewContent');
@@ -206,7 +207,15 @@
 
     // Load items
     function loadItems() {
-        fetch("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace('__CLIENTID__', clientId))
+        const draftUrl = new URL("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace('__CLIENTID__', clientId), window.location.origin);
+        if (invoiceFor) {
+            draftUrl.searchParams.set('invoice_for', invoiceFor);
+        }
+        if (hasOrderId) {
+            draftUrl.searchParams.set('orderid', orderId);
+        }
+
+        fetch(draftUrl.toString())
         .then(response => response.json())
         .then(data => {
             if (data.draft && data.draft.items) {
@@ -512,9 +521,11 @@
     // Back button
     btnBackToPrev.addEventListener('click', function() {
         const prevStep = invoiceFor === 'without_orders' ? 2 : 3;
-        let prevUrl = "{{ route('invoices.create') }}?step=" + prevStep + "&invoice_for=" + invoiceFor + "&c=" + clientId;
-        if (orderId) {
-            prevUrl += "&o=" + orderId;
+        const clientToken = encodeURIComponent(clientId);
+        let prevUrl = "{{ route('invoices.create') }}?step=" + prevStep + "&invoice_for=" + encodeURIComponent(invoiceFor) + "&c=" + clientToken + "&clientid=" + clientToken;
+        if (hasOrderId) {
+            const orderToken = encodeURIComponent(orderId);
+            prevUrl += "&o=" + orderToken + "&orderid=" + orderToken;
         }
         window.location.href = prevUrl;
     });

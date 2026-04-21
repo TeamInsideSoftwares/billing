@@ -35,11 +35,12 @@ class InvoicesController extends Controller
             return response()->json([
                 'invoices' => $allInvoices->map(function ($invoice) {
                     $amountPaid = (float) ($invoice->amount_paid ?? 0);
-                    $balanceDue = (float) ($invoice->balance_due ?? $invoice->grand_total);
+                    $grandTotal = (float) ($invoice->grand_total ?? 0);
+                    $balanceDue = (float) ($invoice->balance_due ?? max(0, $grandTotal - $amountPaid));
                     $currency = $invoice->client->currency ?? 'INR';
 
                     $paymentStatus = 'unpaid';
-                    if ($balanceDue <= 0) {
+                    if ($amountPaid > 0 && $balanceDue <= 0 && $grandTotal > 0) {
                         $paymentStatus = 'paid';
                     } elseif ($amountPaid > 0) {
                         $paymentStatus = 'partially paid';
@@ -575,7 +576,7 @@ class InvoicesController extends Controller
         // Check if we're updating an existing draft
         $existingDraft = null;
         if (!empty($validated['proformaid'])) {
-            $existingDraft = ProformaInvoice::whereIn('status', ['unpaid', 'partially-paid'])
+            $existingDraft = ProformaInvoice::whereIn('status', ['draft', 'unpaid', 'partially-paid'])
                 ->find($validated['proformaid']);
             if ($existingDraft) {
                 // Use draft's invoice_number
@@ -734,9 +735,10 @@ class InvoicesController extends Controller
     {
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
+            'orderid' => 'nullable|exists:orders,orderid',
             'invoice_title' => 'sometimes|required|string|max:255',
             'invoice_for' => 'nullable|string|in:orders,renewal,without_orders',
-            'status' => 'nullable|in:unpaid,paid,partially-paid',
+            'status' => 'nullable|in:draft,unpaid,paid,partially-paid',
             'items_data' => 'nullable|json',
         ]);
 
@@ -744,9 +746,17 @@ class InvoicesController extends Controller
         $client = Client::findOrFail($validated['clientid']);
 
         // Check if draft already exists for this client
+        $invoiceFor = $validated['invoice_for'] ?? null;
+        $orderId = $validated['orderid'] ?? null;
+        if (($invoiceFor ?? '') !== 'orders') {
+            $orderId = null;
+        }
+
         $draft = ProformaInvoice::where('clientid', $validated['clientid'])
-            ->whereIn('status', ['unpaid', 'partially-paid'])
+            ->where('status', 'draft')
             ->where('created_by', $user?->userid ?? $user?->id)
+            ->when($invoiceFor, fn ($q) => $q->where('invoice_for', $invoiceFor))
+            ->when($invoiceFor === 'orders', fn ($q) => $q->where('orderid', $orderId))
             ->where('updated_at', '>', now()->subHours(24))
             ->first();
 
@@ -755,6 +765,7 @@ class InvoicesController extends Controller
             $draft->update([
                 'invoice_title' => $validated['invoice_title'] ?? $draft->invoice_title,
                 'invoice_for' => $validated['invoice_for'] ?? $draft->invoice_for,
+                'orderid' => $orderId,
             ]);
         } else {
             // Create new draft
@@ -764,7 +775,8 @@ class InvoicesController extends Controller
                 'invoice_number' => $this->generateInvoiceNumber(),
                 'invoice_title' => $validated['invoice_title'] ?? '',
                 'invoice_for' => $validated['invoice_for'] ?? 'without_orders',
-                'status' => 'unpaid',
+                'orderid' => $orderId,
+                'status' => 'draft',
                 'issue_date' => now(),
                 'due_date' => now()->addDays(7),
                 'currency_code' => $client->currency ?? 'INR',
@@ -777,6 +789,9 @@ class InvoicesController extends Controller
             ]);
         }
 
+        $calculatedSubtotal = 0;
+        $calculatedDiscountTotal = 0;
+        $calculatedTaxTotal = 0;
         $rawItemsData = $request->input('items_data');
         if ($rawItemsData !== null) {
             $itemsData = json_decode($rawItemsData, true);
@@ -797,6 +812,9 @@ class InvoicesController extends Controller
 
                 $taxRate = (float) ($itemData['tax_rate'] ?? 0);
                 $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
+                $calculatedSubtotal += (float) $amounts['line_total'];
+                $calculatedDiscountTotal += (float) $amounts['discount_amount'];
+                $calculatedTaxTotal += (float) $amounts['tax_amount'];
 
                 $draftItems[] = [
                     'itemid' => $itemData['itemid'] ?? null,
@@ -824,6 +842,23 @@ class InvoicesController extends Controller
             }
         }
 
+        if ($rawItemsData !== null) {
+            $calculatedDiscountTotal = $this->roundDiscountDown($calculatedDiscountTotal);
+            $calculatedTaxTotal = $this->roundTaxUp($calculatedTaxTotal);
+            $calculatedGrandTotal = max(0, $calculatedSubtotal - $calculatedDiscountTotal + $calculatedTaxTotal);
+            $amountPaid = (float) ($draft->amount_paid ?? 0);
+            $calculatedBalanceDue = max(0, $calculatedGrandTotal - $amountPaid);
+
+            $draft->update([
+                'subtotal' => $calculatedSubtotal,
+                'discount_total' => $calculatedDiscountTotal,
+                'tax_total' => $calculatedTaxTotal,
+                'grand_total' => $calculatedGrandTotal,
+                'balance_due' => $calculatedBalanceDue,
+                'status' => 'draft',
+            ]);
+        }
+
         return response()->json([
             'ok' => true,
             'proformaid' => $draft->proformaid,
@@ -834,10 +869,17 @@ class InvoicesController extends Controller
     public function invoicesGetDraft($clientid)
     {
         $user = auth()->user();
+        $invoiceFor = request('invoice_for');
+        $orderId = request('orderid', request('o'));
+        if ($invoiceFor !== 'orders') {
+            $orderId = null;
+        }
         
         $draft = ProformaInvoice::where('clientid', $clientid)
-            ->whereIn('status', ['unpaid', 'partially-paid'])
+            ->where('status', 'draft')
             ->where('created_by', $user?->userid ?? $user?->id)
+            ->when($invoiceFor, fn ($q) => $q->where('invoice_for', $invoiceFor))
+            ->when($invoiceFor === 'orders', fn ($q) => $q->where('orderid', $orderId))
             ->where('updated_at', '>', now()->subHours(24))
             ->with('items.item')
             ->first();
@@ -853,6 +895,7 @@ class InvoicesController extends Controller
                 'invoice_number' => $draft->invoice_number,
                 'invoice_title' => $draft->invoice_title,
                 'invoice_for' => $draft->invoice_for,
+                'orderid' => $draft->orderid,
                 'status' => $draft->status,
                 'items' => $draft->items->map(fn($i) => [
                     'proformaitemid' => $i->proformaitemid,

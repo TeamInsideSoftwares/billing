@@ -232,8 +232,11 @@
                             $documentId = $invoice->proformaid ?? $invoice->invoiceid;
                             $documentType = $invoice->isProforma() ? 'Proforma' : 'Tax';
                             $amountPaid = (float) ($invoice->amount_paid ?? 0);
-                            $balanceDue = $invoice->grand_total - $amountPaid;
-                            $paymentStatus = $balanceDue <= 0 ? 'paid' : ($amountPaid > 0 ? 'partially paid' : 'unpaid');
+                            $grandTotal = (float) ($invoice->grand_total ?? 0);
+                            $balanceDue = (float) ($invoice->balance_due ?? max(0, $grandTotal - $amountPaid));
+                            $paymentStatus = ($amountPaid > 0 && $balanceDue <= 0 && $grandTotal > 0)
+                                ? 'paid'
+                                : ($amountPaid > 0 ? 'partially paid' : 'unpaid');
                             $latestEndDate = $invoice->items->max('end_date');
                             $isExpired = $latestEndDate && $latestEndDate < now();
                             $currency = $invoice->client->currency ?? 'INR';

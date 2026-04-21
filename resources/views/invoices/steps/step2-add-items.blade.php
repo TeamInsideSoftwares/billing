@@ -518,12 +518,16 @@
         })
         .then(response => response.json())
         .then(() => {
-            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=without_orders&c={{ request('clientid', request('c')) }}";
+            const clientId = "{{ request('clientid', request('c')) }}";
+            const clientToken = encodeURIComponent(clientId);
+            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=without_orders&c=" + clientToken + "&clientid=" + clientToken;
         });
     });
 
     btnBackToStep1.addEventListener('click', function() {
-        window.location.href = "{{ route('invoices.create') }}?step=1&c={{ request('clientid', request('c')) }}";
+        const clientId = "{{ request('clientid', request('c')) }}";
+        const clientToken = encodeURIComponent(clientId);
+        window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientToken + "&clientid=" + clientToken;
     });
 
     invoiceTitleInput.addEventListener('input', function() {
@@ -533,4 +537,3 @@
     });
 })();
 </script>
-

@@ -23,7 +23,7 @@
     </div>
 
     <input type="hidden" name="clientid" value="{{ request('clientid', request('c')) }}">
-    <input type="hidden" name="orderid" value="{{ request('orderid', request('o', '')) }}">
+    <input type="hidden" name="orderid" value="{{ request('orderid', request('o', '')) === '0' ? '' : request('orderid', request('o', '')) }}">
     <input type="hidden" name="subtotal" id="subtotal" value="0.00">
     <input type="hidden" name="tax_total" id="tax_total" value="0.00">
     <input type="hidden" name="discount_total" id="discount_total" value="0.00">
@@ -104,6 +104,7 @@
     const clientId = "{{ request('clientid', request('c')) }}";
     const invoiceFor = "{{ request('invoice_for') }}";
     const orderId = "{{ request('orderid', request('o', '')) }}";
+    const hasOrderId = orderId && orderId !== '0';
     const accountHasUsers = @json((bool) ($account->have_users ?? false));
     const sameStateGstForInvoice = @json($sameStateGstForInvoice);
     const itemsBody = document.getElementById('itemsBody');
@@ -279,7 +280,15 @@
     }
 
     function loadItems() {
-        fetch("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace('__CLIENTID__', clientId))
+        const draftUrl = new URL("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace('__CLIENTID__', clientId), window.location.origin);
+        if (invoiceFor) {
+            draftUrl.searchParams.set('invoice_for', invoiceFor);
+        }
+        if (hasOrderId) {
+            draftUrl.searchParams.set('orderid', orderId);
+        }
+
+        fetch(draftUrl.toString())
             .then(response => response.json())
             .then(data => {
                 const draftItems = Array.isArray(data && data.draft && data.draft.items) ? data.draft.items : [];
@@ -507,16 +516,24 @@
         })
         .then(response => response.json())
         .then(() => {
-            let nextUrl = "{{ route('invoices.create') }}?step=4&invoice_for=" + invoiceFor + "&c=" + clientId;
-            if (orderId) {
-                nextUrl += "&o=" + orderId;
+            const clientToken = encodeURIComponent(clientId);
+            let nextUrl = "{{ route('invoices.create') }}?step=4&invoice_for=" + encodeURIComponent(invoiceFor) + "&c=" + clientToken + "&clientid=" + clientToken;
+            if (hasOrderId) {
+                const orderToken = encodeURIComponent(orderId);
+                nextUrl += "&o=" + orderToken + "&orderid=" + orderToken;
             }
             window.location.href = nextUrl;
         });
     });
 
     btnBackToStep2.addEventListener('click', function() {
-        window.location.href = "{{ route('invoices.create') }}?step=2&invoice_for=" + invoiceFor + "&c=" + clientId;
+        const clientToken = encodeURIComponent(clientId);
+        let backUrl = "{{ route('invoices.create') }}?step=2&invoice_for=" + encodeURIComponent(invoiceFor) + "&c=" + clientToken + "&clientid=" + clientToken;
+        if (hasOrderId) {
+            const orderToken = encodeURIComponent(orderId);
+            backUrl += "&o=" + orderToken + "&orderid=" + orderToken;
+        }
+        window.location.href = backUrl;
     });
 
     invoiceTitleInput.addEventListener('input', function() {

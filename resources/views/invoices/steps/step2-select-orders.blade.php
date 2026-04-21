@@ -144,6 +144,8 @@
 <script>
 (function() {
     const clientId = "{{ request('clientid', request('c')) }}";
+    const preselectedOrderId = "{{ request('orderid', request('o', '')) }}";
+    const hasPreselectedOrder = preselectedOrderId && preselectedOrderId !== '0';
     const ordersBody = document.getElementById('ordersBody');
     const noOrdersMessage = document.getElementById('noOrdersMessage');
     const btnNext = document.getElementById('btnNextToStep3');
@@ -232,6 +234,14 @@
             });
 
             attachOrderEvents();
+
+            if (hasPreselectedOrder) {
+                const preselectedRadio = ordersBody.querySelector(`input[name="selected_order"][value="${preselectedOrderId}"]`);
+                if (preselectedRadio) {
+                    preselectedRadio.checked = true;
+                    preselectedRadio.dispatchEvent(new Event('change'));
+                }
+            }
         });
     }
 
@@ -366,12 +376,15 @@
             })
         })
         .then(() => {
-            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=orders&c=" + clientId + "&o=" + selectedOrderId;
+            const clientToken = encodeURIComponent(clientId);
+            const orderToken = encodeURIComponent(selectedOrderId);
+            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=orders&c=" + clientToken + "&clientid=" + clientToken + "&o=" + orderToken + "&orderid=" + orderToken;
         });
     });
 
     btnBackToStep1.addEventListener('click', function() {
-        window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientId;
+        const clientToken = encodeURIComponent(clientId);
+        window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientToken + "&clientid=" + clientToken;
     });
 
     loadOrders();

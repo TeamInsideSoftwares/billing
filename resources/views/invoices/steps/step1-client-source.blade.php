@@ -185,7 +185,9 @@
             alert('Please choose an invoice source.');
             return;
         }
-        window.location.href = "{{ route('invoices.create') }}?step=2&invoice_for=" + source.value + "&c=" + selectedClientId;
+        const clientToken = encodeURIComponent(selectedClientId);
+        const sourceToken = encodeURIComponent(source.value);
+        window.location.href = "{{ route('invoices.create') }}?step=2&invoice_for=" + sourceToken + "&c=" + clientToken + "&clientid=" + clientToken;
     });
 })();
 </script>

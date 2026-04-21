@@ -216,12 +216,14 @@
         })
         .then(response => response.json())
         .then(() => {
-            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=renewal&c=" + clientId;
+            const clientToken = encodeURIComponent(clientId);
+            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=renewal&c=" + clientToken + "&clientid=" + clientToken;
         });
     });
 
     btnBackToStep1.addEventListener('click', function() {
-        window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientId;
+        const clientToken = encodeURIComponent(clientId);
+        window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientToken + "&clientid=" + clientToken;
     });
 
     renewalDaysFilter.addEventListener('input', loadRenewals);
