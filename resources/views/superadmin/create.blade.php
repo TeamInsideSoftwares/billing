@@ -1,12 +1,17 @@
 @extends('layouts.app')
 
+@section('header_actions')
+    <a href="{{ route('accounts.index') }}" class="secondary-button">
+        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Agencies
+    </a>
+@endsection
+
 @section('content')
 <section class="section-bar">
     <div>
         <p class="eyebrow">New Registration</p>
         <h3>Add master account</h3>
     </div>
-    <a href="{{ route('accounts.index') }}" class="text-link">&larr; Back to agencies</a>
 </section>
 
 <section class="panel-card">

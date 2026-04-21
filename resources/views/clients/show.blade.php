@@ -1,23 +1,22 @@
 @extends('layouts.app')
 
-@section('content')
+@section('header_actions')
+    <a href="{{ route('clients.index') }}" class="secondary-button">
+        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Clients
+    </a>
+    <a href="{{ route('clients.edit', $client) }}" class="primary-button small">
+        <i class="fas fa-edit" style="margin-right: 0.35rem;"></i>Edit
+    </a>
+    <form method="POST" action="{{ route('clients.destroy', $client) }}" class="inline-delete" onsubmit="return confirm('Delete this client?')" style="display: inline;">
+        @csrf
+        @method('DELETE')
+        <button type="submit" class="secondary-button">
+            <i class="fas fa-trash" style="margin-right: 0.35rem;"></i>Delete
+        </button>
+    </form>
+@endsection
 
-<section class="section-bar">
-    <div>
-        <a href="{{ route('clients.index') }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to clients</a>
-    </div>
-    <div style="display: flex; gap: 0.5rem;">
-        <a href="{{ route('clients.edit', $client) }}" class="icon-action-btn edit" title="Edit" style="width: 36px; height: 36px; font-size: 1rem;">
-            <i class="fas fa-edit"></i>
-        </a>
-        <form method="POST" action="{{ route('clients.destroy', $client) }}" class="inline-delete" onsubmit="return confirm('Delete this client?')">
-            @csrf @method('DELETE')
-            <button type="submit" class="icon-action-btn delete" title="Delete" style="width: 36px; height: 36px; font-size: 1rem;">
-                <i class="fas fa-trash"></i>
-            </button>
-        </form>
-    </div>
-</section>
+@section('content')
 
 <section class="panel-card" style="padding: 1.25rem;">
     <div style="display: flex; gap: 1.5rem; align-items: center;">

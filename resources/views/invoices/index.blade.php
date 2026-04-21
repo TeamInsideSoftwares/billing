@@ -1,20 +1,13 @@
 @extends('layouts.app')
 
+@section('header_actions')
+    <a href="{{ route('invoices.create') }}" class="primary-button">
+        <i class="fas fa-file-invoice" style="margin-right: 0.5rem;"></i>Create Proforma Invoice
+    </a>
+@endsection
+
 @section('content')
-    <section class="section-bar invoice-index-header">
-        <div></div>
-        <div>
-            <a href="{{ route('invoices.create') }}" class="primary-button">
-                <i class="fas fa-file-invoice" style="margin-right: 0.5rem;"></i>Create Proforma Invoice
-            </a>
-        </div>
-    </section>
-
     <style>
-        .invoice-index-header {
-            margin-bottom: 1rem;
-        }
-
         .invoice-index-shell {
             display: flex;
             flex-direction: column;

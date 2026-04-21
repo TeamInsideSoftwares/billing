@@ -32,66 +32,75 @@
     })->all();
 @endphp
 
-<section class="section-bar order-create-header" style="padding: 0.5rem 1rem;">
-    <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? $clientFallback]) }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to orders</a>
-</section>
+@section('header_actions')
+    <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? $clientFallback]) }}" class="secondary-button">
+        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Orders
+    </a>
+@endsection
 
 
 <section class="order-create-shell" style="padding: 0;">
     <form method="POST" action="{{ route('orders.store') }}" class="client-form" id="orderForm" enctype="multipart/form-data">
         @csrf
 
-        <div class="order-top-summary order-lockable">
-            <div class="order-top-summary__client">
-                <div class="order-top-summary__icon">
-                    <i class="fas fa-receipt"></i>
-                </div>
-                <div>
-                    <p class="order-top-summary__eyebrow">{{ $isEditMode ? 'Editing Order' : '' }}</p>
-                    <p class="order-top-summary__client-name" id="summaryClientName">{{ $selectedClientName }}</p>
-                    <p class="order-top-summary__client-email" id="summaryClientEmail">{{ $selectedClientEmail ?: 'No client email' }}</p>
-                    <div style="margin-top: 0.5rem; min-width: 240px;">
-                        <!-- <label class="order-label">Client</label>
-                        <div class="form-control form-control-sm" style="background: #f8fafc;" id="clientDisplayName">
-                            {{ $selectedClientName }}
-                        </div> -->
-                        <input type="hidden" id="clientid" name="clientid" required value="{{ old('clientid', $clientFallback) }}">
-                        @error('clientid') <span class="error">{{ $message }}</span> @enderror
-                        <input type="hidden" id="order_number" name="order_number" value="{{ $displayOrderNumber }}">
+        <div class="order-details-panel">
+            <div class="order-top-summary order-lockable">
+                <div class="order-top-summary__client">
+                    <div class="order-top-summary__icon">
+                        <i class="fas fa-receipt"></i>
+                    </div>
+                    <div>
+                        <p class="order-top-summary__client-name" id="summaryClientName">{{ $selectedClientName }}</p>
+                        <p class="order-top-summary__client-email" id="summaryClientEmail">{{ $selectedClientEmail ?: 'No client email' }}</p>
+
+                        @if($isEditMode)
+                            <p style="margin: 6px 0 0; font-size: 13px; color: #64748b;">
+                                Order Date: {{ !empty($editingOrder->order_date) ? \Carbon\Carbon::parse($editingOrder->order_date)->format('d M Y') : 'N/A' }}
+                            </p>
+                            <input type="hidden" name="order_date" value="{{ old('order_date', $editingOrder->order_date ?? $defaultOrderDate) }}">
+                        @endif
+
+                        <div style="margin-top: 0.5rem; min-width: 240px;">
+                            <input type="hidden" id="clientid" name="clientid" required value="{{ old('clientid', $clientFallback) }}">
+                            @error('clientid') <span class="error">{{ $message }}</span> @enderror
+                            <input type="hidden" id="order_number" name="order_number" value="{{ $displayOrderNumber }}">
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="order-top-summary__fields">
-                <div>
-                    <label class="order-label" for="order_title">Order Title</label>
-                    <input type="text" id="order_title" name="order_title" required value="{{ old('order_title', $isEditMode ? ($editingOrder->order_title ?? '') : '') }}" class="form-control form-control-sm" placeholder="Order Title/Details">
-                </div>
-                <div>
-                    <label class="order-label" for="delivery_date">Delivery Date</label>
-                    <input type="date" id="delivery_date" name="delivery_date" value="{{ old('delivery_date', $defaultDeliveryDate) }}" class="form-control form-control-sm" placeholder="Delivery Date">
-                </div>
-                <div>
-                    <label class="order-label" for="sales_person_id">Sales Person</label>
-                    <select id="sales_person_id" name="sales_person_id" class="form-control form-control-sm">
-                        <option value="">-- Select Sales Person --</option>
-                        @foreach($users as $user)
-                            <option value="{{ $user->id }}" {{ old('sales_person_id', $defaultSalesPersonId) == $user->id ? 'selected' : '' }}>
-                                {{ $user->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="order-label" for="order_date">Order Date</label>
-                    <input type="date" id="order_date" name="order_date" value="{{ old('order_date', $defaultOrderDate) }}" required class="form-control form-control-sm" placeholder="Order Date">
-                    @error('order_date') <span class="error">{{ $message }}</span> @enderror
-                </div>
-            </div>
-        </div>
+                <div class="order-top-summary__fields">
+                    <div>
+                        <label class="order-label" for="order_title">Order Title</label>
+                        <input type="text" id="order_title" name="order_title" required value="{{ old('order_title', $isEditMode ? ($editingOrder->order_title ?? '') : '') }}" class="form-control form-control-sm" placeholder="Order Title/Details">
+                    </div>
 
-        
+                    <div>
+                        <label class="order-label" for="delivery_date">Delivery Date</label>
+                        <input type="date" id="delivery_date" name="delivery_date" value="{{ old('delivery_date', $defaultDeliveryDate) }}" class="form-control form-control-sm" placeholder="Delivery Date">
+                    </div>
 
-        <div class="row g-3 order-lockable">
+                    <div>
+                        <label class="order-label" for="sales_person_id">Sales Person</label>
+                        <select id="sales_person_id" name="sales_person_id" class="form-control form-control-sm">
+                            <option value="">-- Select Sales Person --</option>
+                            @foreach($users as $user)
+                                <option value="{{ $user->id }}" {{ old('sales_person_id', $defaultSalesPersonId) == $user->id ? 'selected' : '' }}>
+                                    {{ $user->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    @if(!$isEditMode)
+                        <div>
+                            <label class="order-label" for="order_date">Order Date</label>
+                            <input type="date" id="order_date" name="order_date" value="{{ old('order_date', $defaultOrderDate) }}" required class="form-control form-control-sm">
+                            @error('order_date') <span class="error">{{ $message }}</span> @enderror
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="row g-3 order-lockable">
             {{-- PO --}}
             <div class="col-12 col-lg-6">
                 <details class="order-accordion" {{ (old('po_number', $defaultPoNumber) || old('po_date', $defaultPoDate)) ? 'open' : '' }}>
@@ -178,10 +187,11 @@
 
         </div>
 
-        <div class="order-save-row">
-            <button type="button" id="saveOrderBtn" class="btn btn-sm btn-primary">
-                <i class="fas fa-save" style="margin-right: 0.35rem;"></i>{{ $isEditMode ? 'Update Order & Continue' : 'Save Order & Continue' }}
-            </button>
+            <div class="order-save-simple">
+                <button type="button" id="saveOrderBtn" class="primary-button small">
+                    <i class="fas fa-save" style="margin-right: 0.35rem;"></i>{{ $isEditMode ? 'Update Order & Continue' : 'Save Order & Continue' }}
+                </button>
+            </div>
         </div>
 
         <div class="order-items-shell" style="position: relative;">
@@ -232,7 +242,7 @@
                         </div>
                         <div style="flex: 0.6; min-width: 60px;">
                             <label style="font-size: 0.75rem;">Qty</label>
-                            <input type="number" id="item_quantity" value="1" min="0.01" step="0.01" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                            <input type="number" id="item_quantity" value="1" min="1" step="1" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                         </div>
                         <div style="flex: 0.8; min-width: 80px;">
                             <label style="font-size: 0.75rem;">Price</label>
@@ -324,40 +334,38 @@
                         </tbody>
                     </table>
 
-                    <div id="orderSummary" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; max-width: 350px; margin-left: auto;">
-                        <h4 style="margin-top: 0; margin-bottom: 0.75rem; font-size: 0.95rem; font-weight: 600;">Order Summary</h4>
+                    <div style="max-width: 350px; margin-left: auto;">
+                        <div id="orderSummary" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+                            <h4 style="margin-top: 0; margin-bottom: 0.75rem; font-size: 0.95rem; font-weight: 600;">Order Summary</h4>
 
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
-                            <span style="color: #64748b;">Subtotal:</span>
-                            <strong id="subtotal">0.00</strong>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                                <span style="color: #64748b;">Subtotal:</span>
+                                <strong id="subtotal">0.00</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                                <span style="color: #64748b;">Discount:</span>
+                                <strong id="discountTotal" style="color: #dc2626;">0.00</strong>
+                            </div>
+                            <div id="taxIgstRow" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                                <span id="taxLabel" style="color: #64748b;">Tax (IGST):</span>
+                                <strong id="taxTotal">0.00</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: 700; border-top: 2px solid #e2e8f0; padding-top: 0.5rem; margin-top: 0.5rem;">
+                                <span>Total:</span>
+                                <strong id="grandTotal" style="color: #3b82f6;">0.00</strong>
+                            </div>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
-                            <span style="color: #64748b;">Discount:</span>
-                            <strong id="discountTotal" style="color: #dc2626;">0.00</strong>
-                        </div>
-                        <div id="taxIgstRow" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
-                            <span id="taxLabel" style="color: #64748b;">Tax (IGST 100%):</span>
-                            <strong id="taxTotal">0.00</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: 700; border-top: 2px solid #e2e8f0; padding-top: 0.5rem; margin-top: 0.5rem;">
-                            <span>Total:</span>
-                            <strong id="grandTotal" style="color: #3b82f6;">0.00</strong>
+
+                        <div id="finalActions" class="order-complete-row" style="display: none;">
+                            <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? $clientFallback]) }}" class="primary-button small">
+                                Complete & Exit
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
 
-        <div class="form-actions text-end" 
-            style="border-top: 1px solid #e2e8f0; display: none; justify-content: flex-end;" 
-            id="finalActions">
-
-            <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? $clientFallback]) }}" 
-            class="btn btn-primary btn-sm">
-                Confirm & Exit
-            </a>
-
-            <input type="hidden" name="orderid" id="savedOrderId">
-        </div>
+        <input type="hidden" name="orderid" id="savedOrderId">
     </form>
 </section>
 
@@ -564,18 +572,26 @@ document.addEventListener('DOMContentLoaded', function() {
         return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
     }
 
+    function roundTaxUp(value) {
+        return Math.ceil(Math.max(0, Number(value) || 0));
+    }
+
+    function roundDiscountDown(value) {
+        return Math.floor(Math.max(0, Number(value) || 0));
+    }
+
     function calculateTaxBreakdown(lineTotalInput, discountPercent, taxRate) {
         const rate = Number(taxRate) || 0;
         const lineTotal = Number(lineTotalInput) || 0;
 
-        const discountAmount = (lineTotal * (Number(discountPercent) || 0)) / 100;
+        const discountAmount = roundDiscountDown((lineTotal * (Number(discountPercent) || 0)) / 100);
         const taxableAmount = Math.max(0, lineTotal - discountAmount);
-        const taxAmount = (taxableAmount * rate) / 100;
+        const taxAmount = roundTaxUp((taxableAmount * rate) / 100);
 
         return {
             lineTotal: round2(lineTotal),
-            discountAmount: round2(discountAmount),
-            taxAmount: round2(taxAmount)
+            discountAmount,
+            taxAmount
         };
     }
 
@@ -669,11 +685,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (isSameStateGstForSelectedClient()) {
-            taxLabelEl.textContent = 'Tax (CGST 50% + SGST 50%):';
+            taxLabelEl.textContent = 'Tax (CGST + SGST):';
             taxTotalEl.textContent = taxTotal.toFixed(2);
             igstRow.style.display = 'flex';
         } else {
-            taxLabelEl.textContent = 'Tax (IGST 100%):';
+            taxLabelEl.textContent = 'Tax (IGST):';
             taxTotalEl.textContent = taxTotal.toFixed(2);
             igstRow.style.display = 'flex';
         }
@@ -786,6 +802,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Helper function to add a new item
     function addNewItem(serviceId, serviceName, qty, unitPrice, frequency, duration, users, startDate, endDate, deliveryDate, lineTotal, discountPercent, discountAmount, taxRate, taxAmount) {
+        qty = Math.max(1, Math.round(Number(qty) || 1));
+
         // Disable button during save
         const btn = document.getElementById('addItemBtn');
         btn.disabled = true;
@@ -859,7 +877,7 @@ document.addEventListener('DOMContentLoaded', function() {
             row.dataset.orderItemId = data.order_item_id || '';
             row.innerHTML = `
                 <td style="padding: 0.4rem 0.6rem;">${item.item_name}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${item.quantity}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${Math.round(Number(item.quantity) || 0)}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${item.unit_price}</td>
                 @if($account->allow_multi_taxation)
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.tax_rate}%</td>
@@ -911,7 +929,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const serviceOption = document.getElementById('item_itemid').options[document.getElementById('item_itemid').selectedIndex];
         const serviceName = serviceOption.text.split(' (')[0];
         
-        const qty = parseFloat(document.getElementById('item_quantity').value) || 1;
+        const qty = Math.max(1, Math.round(Number(document.getElementById('item_quantity').value) || 1));
         const unitPrice = parseFloat(document.getElementById('item_unit_price').value) || 0;
         const frequency = document.getElementById('item_frequency').value || '';
         const duration = document.getElementById('item_duration').value || '';
@@ -1058,8 +1076,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateSummary() {
         const subtotal = round2(items.reduce((sum, item) => sum + Number(item.line_total || 0), 0));
-        const discountTotal = round2(items.reduce((sum, item) => sum + Number(item.discount_amount || 0), 0));
-        const taxTotal = round2(items.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0));
+        const discountTotal = roundDiscountDown(items.reduce((sum, item) => sum + Number(item.discount_amount || 0), 0));
+        const taxTotal = roundTaxUp(items.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0));
         const grandTotal = round2(subtotal - discountTotal + taxTotal);
 
         document.getElementById('subtotal').textContent = subtotal.toFixed(2);
@@ -1193,7 +1211,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 order_item_id: itemData.orderitemid,
                 itemid: itemData.itemid,
                 item_name: itemData.item_name,
-                quantity: itemData.quantity,
+                quantity: Math.max(1, Math.round(Number(itemData.quantity) || 1)),
                 unit_price: itemData.unit_price,
                 frequency: itemData.frequency || '',
                 duration: itemData.duration || '',
@@ -1218,7 +1236,7 @@ document.addEventListener('DOMContentLoaded', function() {
             row.dataset.orderItemId = itemData.orderitemid;
             row.innerHTML = `
                 <td style="padding: 0.4rem 0.6rem;">${item.item_name}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${item.quantity}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${Math.round(Number(item.quantity) || 0)}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${item.unit_price}</td>
                 @if($account->allow_multi_taxation)
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.tax_rate}%</td>
@@ -1267,11 +1285,6 @@ document.addEventListener('DOMContentLoaded', function() {
     border: 0 !important;
     box-shadow: none !important;
     padding: 0 !important;
-}
-.order-create-header {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
 }
 .order-top-summary {
     border: 1px solid #e2e8f0;
@@ -1325,10 +1338,39 @@ document.addEventListener('DOMContentLoaded', function() {
     grid-template-columns: repeat(4, minmax(150px, 1fr));
     gap: 0.65rem;
 }
-.order-save-row {
+.order-details-panel {
+    margin-bottom: 1rem;
+    padding: 0.95rem;
+    border: 1px solid #dbe3ee;
+    border-radius: 14px;
+    background: #ffffff;
+}
+.order-details-panel__head {
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+.order-details-panel__head h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+.order-details-panel__head p {
+    margin: 0.2rem 0 0;
+    font-size: 0.78rem;
+    color: #64748b;
+}
+.order-save-simple {
     margin-top: 0.9rem;
     display: flex;
     justify-content: flex-end;
+}
+.order-complete-row {
+    margin-top: 0.9rem;
+    display: flex;
+    justify-content: flex-end;
+    text-align: right;
 }
 .order-info-card {
     border: 1px solid #e2e8f0;
@@ -1411,6 +1453,16 @@ document.addEventListener('DOMContentLoaded', function() {
     background: #ffffff;
     border-radius: 10px;
 }
+#itemsTable thead th {
+    border-bottom: 1px solid #dbe1ea;
+}
+#itemsTable tbody td {
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+}
+#itemsTable tbody tr:last-child td {
+    border-bottom: none;
+}
 @media (max-width: 1199px) {
     .order-top-summary__fields {
         grid-template-columns: repeat(2, minmax(150px, 1fr));
@@ -1422,11 +1474,11 @@ document.addEventListener('DOMContentLoaded', function() {
     .order-details-grid {
         grid-template-columns: 1fr;
     }
-    .order-save-row {
+    .order-save-simple {
         width: 100%;
         justify-content: stretch;
     }
-    .order-save-row #saveOrderBtn {
+    .order-save-simple #saveOrderBtn {
         width: 100%;
     }
 }

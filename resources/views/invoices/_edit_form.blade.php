@@ -1,6 +1,10 @@
 @php
     $documentId = $invoice->proformaid ?? $invoice->invoiceid;
     $documentType = $invoice->isProforma() ? 'Proforma' : 'Tax';
+    $normalizeTaxState = static fn ($value) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $value)));
+    $clientState = $normalizeTaxState($invoice->client->state ?? '');
+    $accountState = $normalizeTaxState($account->state ?? '');
+    $sameStateGst = $clientState !== '' && $accountState !== '' && $clientState === $accountState;
 @endphp
 <form method="POST" action="{{ route('invoices.update', $invoice) }}" id="{{ isset($inline) && $inline ? 'inline-edit-form-' . $documentId : 'invoiceForm' }}">
     @csrf
@@ -105,7 +109,7 @@
         </div>
 
         <div id="addItemPanel" class="builder-card" style="display: none; margin-bottom: 1rem;">
-            <div class="manual-grid">
+            <div class="manual-grid invoice-edit-add-row">
                 <div>
                     <label for="item_itemid" class="field-label small">Item</label>
                     <select id="item_itemid" class="form-input">
@@ -129,14 +133,14 @@
                 </div>
                 <div>
                     <label for="item_quantity" class="field-label small">Qty</label>
-                    <input type="number" id="item_quantity" class="form-input" value="1" min="0.01" step="0.01">
+                    <input type="number" id="item_quantity" class="form-input" value="1" min="1" step="1">
                 </div>
                 <div>
-                    <label for="item_unit_price" class="field-label small">Unit Price</label>
+                    <label for="item_unit_price" class="field-label small">Price</label>
                     <input type="number" id="item_unit_price" class="form-input" min="0" step="0.01">
                 </div>
                 <div>
-                    <label for="item_discount" class="field-label small">Discount %</label>
+                    <label for="item_discount" class="field-label small">Disc %</label>
                     <input type="number" id="item_discount" class="form-input" min="0" max="100" step="0.01" value="0">
                 </div>
                 @if($account->allow_multi_taxation)
@@ -161,7 +165,7 @@
                 <input type="hidden" id="item_users" value="1">
                 @endif
                 <div>
-                    <label for="item_frequency" class="field-label small">Frequency</label>
+                    <label for="item_frequency" class="field-label small">Freq</label>
                     <select id="item_frequency" class="form-input">
                         <option value="">Not recurring</option>
                         <option value="one-time">One-Time</option>
@@ -174,22 +178,22 @@
                         <option value="yearly">Yearly</option>
                     </select>
                 </div>
-                <div>
-                    <label for="item_duration" class="field-label small">Duration</label>
+                <div id="item_duration_wrap" style="display: none;">
+                    <label for="item_duration" class="field-label small">Dur</label>
                     <input type="number" id="item_duration" class="form-input" min="0" step="1">
                 </div>
-                <div>
-                    <label for="item_start_date" class="field-label small">Start Date</label>
+                <div id="item_start_date_wrap" style="display: none;">
+                    <label for="item_start_date" class="field-label small">Start</label>
                     <input type="date" id="item_start_date" class="form-input">
                 </div>
-                <div>
-                    <label for="item_end_date" class="field-label small">End Date</label>
+                <div id="item_end_date_wrap" style="display: none;">
+                    <label for="item_end_date" class="field-label small">End</label>
                     <input type="date" id="item_end_date" class="form-input">
                 </div>
-            </div>
-            <div style="margin-top: 1rem; display: flex; gap: 0.75rem;">
-                <button type="button" id="addItemBtn" class="primary-button">Add Item</button>
-                <button type="button" id="cancelAddItemBtn" class="secondary-button" style="padding: 0.65rem 1rem;">Cancel</button>
+                <div class="invoice-edit-add-actions">
+                    <button type="button" id="addItemBtn" class="primary-button">Add Item</button>
+                    <button type="button" id="cancelAddItemBtn" class="secondary-button" style="padding: 0.65rem 1rem;">Cancel</button>
+                </div>
             </div>
         </div>
 
@@ -207,11 +211,11 @@
                         @if($account->have_users)
                         <th>Users</th>
                         @endif
-                        <th>Frequency</th>
-                        <th id="itemsDurationHeader">Duration</th>
+                        <th>Freq</th>
+                        <th id="itemsDurationHeader">Dur</th>
                         <th>Start</th>
                         <th>End</th>
-                        <th>Total</th>
+                        <th>Amount</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -223,7 +227,7 @@
             <div class="totals-card" style="min-width: 320px;">
                 <div class="total-row"><span>Subtotal</span><strong id="subtotalDisplay">0.00</strong></div>
                 <div class="total-row"><span>Discount</span><strong id="discountDisplay">0.00</strong></div>
-                <div class="total-row"><span>Tax</span><strong id="taxDisplay">0.00</strong></div>
+                <div class="total-row"><span>{{ $sameStateGst ? 'Tax (CGST + SGST)' : 'Tax (IGST)' }}</span><strong id="taxDisplay">0.00</strong></div>
                 <div class="total-row total-row-grand"><span>Grand Total</span><strong id="grandTotalDisplay">0.00</strong></div>
             </div>
         </div>
@@ -331,6 +335,14 @@
         return total;
     }
 
+    function roundTaxUp(value) {
+        return Math.ceil(Math.max(0, Number(value) || 0));
+    }
+
+    function roundDiscountDown(value) {
+        return Math.floor(Math.max(0, Number(value) || 0));
+    }
+
     function calculateEndDate(startDate, frequency, duration) {
         if (!startDate || !frequency || !duration || frequency === 'one-time') {
             return '';
@@ -369,15 +381,15 @@
         });
 
         invoiceItems.forEach((item, index) => {
-            item.quantity = Number(item.quantity) || 0;
+            item.quantity = Math.max(1, Math.round(Number(item.quantity) || 1));
             item.unit_price = Number(item.unit_price) || 0;
             item.tax_rate = Number(item.tax_rate) || 0;
             item.discount_percent = Math.min(100, Math.max(0, Number(item.discount_percent) || 0));
             item.no_of_users = Math.max(1, Number(item.no_of_users) || 1);
             item.line_total = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
-            const lineDiscount = item.line_total * (item.discount_percent / 100);
+            const lineDiscount = roundDiscountDown(item.line_total * (item.discount_percent / 100));
             const taxableAmount = Math.max(0, item.line_total - lineDiscount);
-            const lineTax = taxableAmount * (item.tax_rate / 100);
+            const lineTax = roundTaxUp(taxableAmount * (item.tax_rate / 100));
             subtotal += item.line_total;
             discountTotal += lineDiscount;
             taxTotal += lineTax;
@@ -388,7 +400,7 @@
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td><strong>${item.item_name || 'Item'}</strong></td>
-                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="quantity" min="0.01" step="0.01" value="${item.quantity}"></td>
+                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="quantity" min="1" step="1" value="${item.quantity}"></td>
                 <td><input type="number" class="form-input item-input" data-index="${index}" data-field="unit_price" min="0" step="0.01" value="${item.unit_price}"></td>
                 <td><input type="number" class="form-input item-input" data-index="${index}" data-field="discount_percent" min="0" max="100" step="0.01" value="${item.discount_percent || 0}"></td>
                 ${allowMultiTaxation ? `<td>${renderTaxSelect(item.tax_rate, `data-index="${index}" data-field="tax_rate"` )}</td>` : ''}
@@ -427,10 +439,13 @@
             }
         });
 
+        const roundedDiscountTotal = roundDiscountDown(discountTotal);
+        const roundedTaxTotal = roundTaxUp(taxTotal);
+
         document.getElementById('subtotalDisplay').textContent = formatMoney(subtotal);
-        document.getElementById('discountDisplay').textContent = formatMoney(discountTotal);
-        document.getElementById('taxDisplay').textContent = formatMoney(taxTotal);
-        document.getElementById('grandTotalDisplay').textContent = formatMoney(subtotal - discountTotal + taxTotal);
+        document.getElementById('discountDisplay').textContent = formatMoney(roundedDiscountTotal);
+        document.getElementById('taxDisplay').textContent = formatMoney(roundedTaxTotal);
+        document.getElementById('grandTotalDisplay').textContent = formatMoney(subtotal - roundedDiscountTotal + roundedTaxTotal);
     }
 
     function resetAddItemForm() {
@@ -447,6 +462,7 @@
         @endif
         document.getElementById('item_start_date').value = '';
         document.getElementById('item_end_date').value = '';
+        toggleAddFormRecurringFields();
     }
 
     clientSelect.addEventListener('change', function () {
@@ -491,25 +507,30 @@
     toggleAddFormUsersField();
     @endif
 
-    // Handle frequency change - hide/show start and end date for one-time
-    document.getElementById('item_frequency').addEventListener('change', function() {
-        const frequency = this.value;
-        const startDateField = document.getElementById('item_start_date').closest('div');
-        const endDateField = document.getElementById('item_end_date').closest('div');
-        
-        if (frequency === 'one-time' || frequency === '') {
-            // Hide start and end date for one-time or no frequency
-            if (startDateField) startDateField.style.display = 'none';
-            if (endDateField) endDateField.style.display = 'none';
-            // Clear the values
+    function isRecurringFrequency(frequency) {
+        return Boolean(frequency) && frequency !== 'one-time';
+    }
+
+    function toggleAddFormRecurringFields() {
+        const frequency = document.getElementById('item_frequency').value;
+        const showRecurringFields = isRecurringFrequency(frequency);
+        const durationWrap = document.getElementById('item_duration_wrap');
+        const startDateWrap = document.getElementById('item_start_date_wrap');
+        const endDateWrap = document.getElementById('item_end_date_wrap');
+
+        if (durationWrap) durationWrap.style.display = showRecurringFields ? 'block' : 'none';
+        if (startDateWrap) startDateWrap.style.display = showRecurringFields ? 'block' : 'none';
+        if (endDateWrap) endDateWrap.style.display = showRecurringFields ? 'block' : 'none';
+
+        if (!showRecurringFields) {
+            document.getElementById('item_duration').value = '';
             document.getElementById('item_start_date').value = '';
             document.getElementById('item_end_date').value = '';
-        } else {
-            // Show start and end date for recurring frequencies
-            if (startDateField) startDateField.style.display = 'block';
-            if (endDateField) endDateField.style.display = 'block';
         }
-    });
+    }
+
+    document.getElementById('item_frequency').addEventListener('change', toggleAddFormRecurringFields);
+    toggleAddFormRecurringFields();
 
     ['item_start_date', 'item_frequency', 'item_duration'].forEach((id) => {
         document.getElementById(id).addEventListener('change', function () {
@@ -532,19 +553,25 @@
         const item = {
             itemid: select.value,
             item_name: (option.text || '').split(' (')[0],
-            quantity: Number(document.getElementById('item_quantity').value) || 1,
+            quantity: Math.max(1, Math.round(Number(document.getElementById('item_quantity').value) || 1)),
             unit_price: Number(document.getElementById('item_unit_price').value) || 0,
             discount_percent: Math.min(100, Math.max(0, Number(document.getElementById('item_discount').value) || 0)),
             tax_rate: Number(document.getElementById('item_tax_rate').value) || 0,
-            duration: document.getElementById('item_duration').value || null,
+            duration: isRecurringFrequency(document.getElementById('item_frequency').value)
+                ? (document.getElementById('item_duration').value || null)
+                : null,
             frequency: document.getElementById('item_frequency').value || null,
             @if($account->have_users)
             no_of_users: isAddFormItemUserWise() ? Math.max(1, Number(document.getElementById('item_users').value) || 1) : null,
             @else
             no_of_users: Math.max(1, Number(document.getElementById('item_users').value) || 1),
             @endif
-            start_date: document.getElementById('item_start_date').value || null,
-            end_date: document.getElementById('item_end_date').value || null,
+            start_date: isRecurringFrequency(document.getElementById('item_frequency').value)
+                ? (document.getElementById('item_start_date').value || null)
+                : null,
+            end_date: isRecurringFrequency(document.getElementById('item_frequency').value)
+                ? (document.getElementById('item_end_date').value || null)
+                : null,
         };
 
         item.line_total = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
@@ -562,7 +589,13 @@
 
         const index = Number(input.dataset.index);
         const field = input.dataset.field;
-        invoiceItems[index][field] = input.type === 'number' ? Number(input.value) : input.value || null;
+        if (field === 'quantity') {
+            const qty = Math.max(1, Math.round(Number(input.value) || 1));
+            invoiceItems[index][field] = qty;
+            input.value = qty;
+        } else {
+            invoiceItems[index][field] = input.type === 'number' ? Number(input.value) : input.value || null;
+        }
 
         // Clear duration and dates when frequency is one-time or empty
         if (field === 'frequency' && (!input.value || input.value === 'one-time')) {
@@ -614,7 +647,7 @@
         itemsDataInput.value = JSON.stringify(invoiceItems.map((item) => ({
             itemid: item.itemid,
             item_name: item.item_name,
-            quantity: Number(item.quantity) || 0,
+            quantity: Math.max(1, Math.round(Number(item.quantity) || 1)),
             unit_price: Number(item.unit_price) || 0,
             discount_percent: Math.min(100, Math.max(0, Number(item.discount_percent) || 0)),
             tax_rate: Number(item.tax_rate) || 0,

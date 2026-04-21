@@ -1,10 +1,12 @@
 @extends('layouts.app')
 
-@section('content')
-<section class="section-bar">
-    <a href="{{ route('payments.index') }}" class="text-link">&larr; Back to payments</a>
-</section>
+@section('header_actions')
+    <a href="{{ route('payments.index') }}" class="secondary-button">
+        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Payments
+    </a>
+@endsection
 
+@section('content')
 <section class="panel-card">
     <form method="POST" action="{{ route('payments.update', $payment) }}" class="client-form">
         @method('PUT')

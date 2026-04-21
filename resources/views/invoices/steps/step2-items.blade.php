@@ -123,7 +123,7 @@
                 </div>
                 <div>
                     <label for="manual_item_quantity" class="field-label small">Qty</label>
-                    <input type="number" id="manual_item_quantity" class="form-input" value="1" min="0.01" step="0.01">
+                    <input type="number" id="manual_item_quantity" class="form-input" value="1" min="1" step="1">
                 </div>
                 <div>
                     <label for="manual_item_unit_price" class="field-label small">Unit Price</label>

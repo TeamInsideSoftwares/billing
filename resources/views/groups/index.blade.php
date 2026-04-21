@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('content')
-    <section class="section-bar">
-        <div>
-            <a href="{{ route('clients.index') }}" class="text-link" style="margin-top: 0.5rem; display: inline-block;">&larr; Back to clients</a>
-        </div>
-    </section>
+@section('header_actions')
+    <a href="{{ route('clients.index') }}" class="secondary-button">
+        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Clients
+    </a>
+@endsection
 
+@section('content')
     <section class="panel-card">
         <table class="data-table">
             <thead>

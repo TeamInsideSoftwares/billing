@@ -1,10 +1,12 @@
 @extends('layouts.app')
 
-@section('content')
-<section class="section-bar">
-    <a href="{{ route('settings.index') }}" class="text-link">&larr; Back to settings</a>
-</section>
+@section('header_actions')
+    <a href="{{ route('settings.index') }}" class="secondary-button">
+        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Settings
+    </a>
+@endsection
 
+@section('content')
 <section class="panel-card">
     <form method="POST" action="{{ route('settings.update', $setting) }}" class="setting-form">
         @method('PUT')

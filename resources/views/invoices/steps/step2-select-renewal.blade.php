@@ -17,18 +17,11 @@
         <div class="panel-heading-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div>
                 <h4 style="margin: 0; font-size: 1rem; color: #111827;">Renewal Candidates</h4>
-                <p style="margin: 0.2rem 0 0 0; color: #6b7280; font-size: 0.85rem;">Select items from previous invoices to renew.</p>
+                <p style="margin: 0.2rem 0 0 0; color: #6b7280; font-size: 0.85rem;">Default shows items due till today. Enter days (e.g. 70, 100) to include upcoming renewals.</p>
             </div>
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <label style="font-size: 0.82rem; color: #6b7280; font-weight: 500;">Show upcoming:</label>
-                <select id="renewalDaysFilter" class="form-input" style="width: auto; min-width: 160px;">
-                    <option value="1" selected>Tomorrow</option>
-                    <option value="7">Next 7 Days</option>
-                    <option value="14">Next 14 Days</option>
-                    <option value="30">Next 30 Days</option>
-                    <option value="60">Next 60 Days</option>
-                    <option value="90">Next 90 Days</option>
-                </select>
+            <div style="display: flex; align-items: center; gap: 0.65rem;">
+                <label for="renewalDaysFilter" style="font-size: 0.82rem; color: #6b7280; font-weight: 500;">Upcoming days:</label>
+                <input type="number" id="renewalDaysFilter" class="form-input" min="0" step="1" value="" placeholder="0" style="width: 140px; max-width: 100%;">
             </div>
         </div>
         <div class="table-shell">
@@ -66,11 +59,15 @@
     const renewalItemStore = new Map();
 
     let selectedRenewalItems = [];
+    let latestRenewalRequestId = 0;
 
     function loadRenewals() {
-        const days = renewalDaysFilter.value;
+        const requestId = ++latestRenewalRequestId;
+        const rawDays = renewalDaysFilter ? renewalDaysFilter.value.trim() : '';
+        const parsedDays = rawDays === '' ? 0 : Math.max(0, parseInt(rawDays, 10) || 0);
         renewalBody.innerHTML = '';
         noRenewalMessage.style.display = 'none';
+        noRenewalMessage.textContent = 'No renewal-ready items were found for this client.';
         selectedRenewalItems = [];
         renewalItemStore.clear();
         itemsDataInput.value = '[]';
@@ -83,16 +80,22 @@
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
             },
-            body: JSON.stringify({ clientid: clientId, days: days })
+            body: JSON.stringify({ clientid: clientId, days: parsedDays })
         })
         .then(response => response.json())
         .then(invoices => {
+            // Ignore stale responses from older requests (typing quickly can trigger races).
+            if (requestId !== latestRenewalRequestId) {
+                return;
+            }
+
             if (!Array.isArray(invoices) || invoices.length === 0) {
                 noRenewalMessage.style.display = 'block';
                 return;
             }
 
             let totalRows = 0;
+            const renderedItemKeys = new Set();
 
             invoices.forEach(invoice => {
                 const items = Array.isArray(invoice.items) ? invoice.items : [];
@@ -103,6 +106,11 @@
                     }
 
                     const itemKey = `${invoice.proformaid}::${item.proformaitemid}`;
+                    if (renderedItemKeys.has(itemKey)) {
+                        return;
+                    }
+                    renderedItemKeys.add(itemKey);
+
                     renewalItemStore.set(itemKey, {
                         ...item,
                         source_invoice_id: invoice.proformaid,
@@ -129,7 +137,7 @@
                         <td>
                             <div style="font-weight: 600; color: #111827;">${item.item_name || 'Item'}</div>
                             <div style="font-size: 0.78rem; color: #6b7280; margin-top: 0.1rem;">
-                                Qty ${Number(item.quantity || 0)}${item.frequency ? ` • ${item.frequency}` : ''}
+                                Qty ${Math.max(1, Math.round(Number(item.quantity || 1)))}${item.frequency ? ` • ${item.frequency}` : ''}
                             </div>
                         </td>
                         <td>
@@ -159,7 +167,11 @@
             });
         })
         .catch(error => {
+            if (requestId !== latestRenewalRequestId) {
+                return;
+            }
             console.error('Error loading renewals:', error);
+            noRenewalMessage.textContent = 'No renewal-ready items were found for this client.';
             noRenewalMessage.style.display = 'block';
         });
     }
@@ -212,7 +224,7 @@
         window.location.href = "{{ route('invoices.create') }}?step=1&clientid=" + clientId;
     });
 
-    renewalDaysFilter.addEventListener('change', loadRenewals);
+    renewalDaysFilter.addEventListener('input', loadRenewals);
 
     // Initialize
     loadRenewals();

@@ -192,15 +192,73 @@
             </div> -->
 
             <div class="user-section" style="margin-top: auto; padding: 1.25rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-                <div class="user-avatar" style="width: 32px; height: 32px; border-radius: 50%; background: #3b82f6; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.85rem; flex-shrink: 0;">
-                    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <div class="dropdown">
+                        <button type="button" class="icon-btn notification-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications" style="position: relative; width: 36px; height: 36px; border-radius: 10px; border: none; background: rgba(255,255,255,0.12); color: #e2e8f0; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                            <span style="position: absolute; top: 7px; right: 7px; width: 7px; height: 7px; background: #ef4444; border-radius: 50%; border: 2px solid #0f172a;"></span>
+                        </button>
+                        <ul class="dropdown-menu" style="width: 320px; max-height: 400px; overflow-y: auto; padding: 0; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); border: 1px solid #e2e8f0;">
+                            <li style="padding: 1rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                                <h6 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Notifications</h6>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; display: block;">
+                                    <div style="display: flex; gap: 0.75rem;">
+                                        <div style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; margin-top: 0.5rem; flex-shrink: 0;"></div>
+                                        <div style="flex: 1;">
+                                            <p style="margin: 0 0 0.25rem 0; font-size: 0.85rem; font-weight: 600; color: #1e293b;">New invoice payment received</p>
+                                            <p style="margin: 0; font-size: 0.8rem; color: #64748b;">Payment of Rs 15,000 received for Invoice #INV-001</p>
+                                            <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #94a3b8;">2 hours ago</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; display: block;">
+                                    <div style="display: flex; gap: 0.75rem;">
+                                        <div style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; margin-top: 0.5rem; flex-shrink: 0;"></div>
+                                        <div style="flex: 1;">
+                                            <p style="margin: 0 0 0.25rem 0; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Invoice overdue reminder</p>
+                                            <p style="margin: 0; font-size: 0.8rem; color: #64748b;">Invoice #INV-045 is 5 days overdue</p>
+                                            <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #94a3b8;">1 day ago</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li style="padding: 0.75rem 1rem; text-align: center; border-top: 1px solid #e2e8f0;">
+                                <a href="#" style="font-size: 0.85rem; color: #3b82f6; text-decoration: none; font-weight: 500;">View all notifications</a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="dropdown">
+                        <button type="button" class="icon-btn profile-btn" data-bs-toggle="dropdown" aria-expanded="false" style="width: 36px; height: 36px; border-radius: 10px; border: none; background: #3b82f6; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.85rem;">
+                            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                        </button>
+                        <ul class="dropdown-menu" style="min-width: 220px; padding: 0.5rem 0; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); border: 1px solid #e2e8f0;">
+                            <li style="padding: 0.75rem 1rem; border-bottom: 1px solid #e2e8f0;">
+                                <h6 style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #1e293b;">{{ auth()->user()->name }}</h6>
+                                <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: #64748b;">{{ auth()->user()->email }}</p>
+                            </li>
+                            <li><a class="dropdown-item" href="{{ route('settings.index') }}#personal" style="padding: 0.6rem 1rem; font-size: 0.9rem;">Profile Settings</a></li>
+                            <li><hr class="dropdown-divider" style="margin: 0.5rem 0;"></li>
+                            <li>
+                                <form action="{{ route('logout') }}" method="POST" style="margin: 0;">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item text-danger" style="padding: 0.6rem 1rem; font-size: 0.9rem; width: 100%; text-align: left; background: none; border: none; cursor: pointer;">Sign Out</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
+
                 <div class="user-text">
                     <strong style="display: block; font-size: 0.9rem;">{{ auth()->user()->name }}</strong>
-                    <form action="{{ route('logout') }}" method="POST" style="margin-top: 0.25rem;">
-                        @csrf
-                        <button type="submit" class="text-link danger" style="font-size: 0.8rem; padding: 0; background: none; border: none; cursor: pointer;">Sign Out</button>
-                    </form>
+                    <span style="display: block; margin-top: 0.2rem; font-size: 0.76rem; color: #94a3b8;">{{ auth()->user()->email }}</span>
                 </div>
             </div>
         </aside>
@@ -217,82 +275,8 @@
                     </div>
                 </div>
 
-                <div class="topbar-actions">
-                <div class="header-right" style="display: flex; align-items: center; gap: 0.5rem;">
-                        <div class="dropdown">
-                            <button type="button" class="icon-btn notification-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications" style="position: relative; width: 40px; height: 40px; border-radius: 10px; border: none; background: #f1f5f9; color: #475569; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='#e2e8f0'; this.style.color='#1e293b';" onmouseout="this.style.background='#f1f5f9'; this.style.color='#475569';">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                                </svg>
-                                <span style="position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; border: 2px solid white;"></span>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end" style="width: 320px; max-height: 400px; overflow-y: auto; padding: 0; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); border: 1px solid #e2e8f0;">
-                                <li style="padding: 1rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
-                                    <h6 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Notifications</h6>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="#" style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; display: block; transition: background 0.2s;">
-                                        <div style="display: flex; gap: 0.75rem;">
-                                            <div style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; margin-top: 0.5rem; flex-shrink: 0;"></div>
-                                            <div style="flex: 1;">
-                                                <p style="margin: 0 0 0.25rem 0; font-size: 0.85rem; font-weight: 600; color: #1e293b;">New invoice payment received</p>
-                                                <p style="margin: 0; font-size: 0.8rem; color: #64748b;">Payment of Rs 15,000 received for Invoice #INV-001</p>
-                                                <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #94a3b8;">2 hours ago</p>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="#" style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; display: block; transition: background 0.2s;">
-                                        <div style="display: flex; gap: 0.75rem;">
-                                            <div style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; margin-top: 0.5rem; flex-shrink: 0;"></div>
-                                            <div style="flex: 1;">
-                                                <p style="margin: 0 0 0.25rem 0; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Invoice overdue reminder</p>
-                                                <p style="margin: 0; font-size: 0.8rem; color: #64748b;">Invoice #INV-045 is 5 days overdue</p>
-                                                <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #94a3b8;">1 day ago</p>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="#" style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; display: block; transition: background 0.2s;">
-                                        <div style="display: flex; gap: 0.75rem;">
-                                            <div style="width: 8px; height: 8px; background: transparent; border-radius: 50%; margin-top: 0.5rem; flex-shrink: 0;"></div>
-                                            <div style="flex: 1;">
-                                                <p style="margin: 0 0 0.25rem 0; font-size: 0.85rem; font-weight: 500; color: #475569;">New client added</p>
-                                                <p style="margin: 0; font-size: 0.8rem; color: #64748b;">Acme Corp has been added to your clients</p>
-                                                <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #94a3b8;">3 days ago</p>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </li>
-                                <li style="padding: 0.75rem 1rem; text-align: center; border-top: 1px solid #e2e8f0;">
-                                    <a href="#" style="font-size: 0.85rem; color: #3b82f6; text-decoration: none; font-weight: 500;">View all notifications</a>
-                                </li>
-                            </ul>
-                        </div>
-                        
-                        <div class="dropdown">
-                            <button type="button" class="icon-btn profile-btn" data-bs-toggle="dropdown" aria-expanded="false" style="width: 40px; height: 40px; border-radius: 10px; border: none; background: #3b82f6; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-weight: 600; font-size: 0.9rem;" onmouseover="this.style.background='#2563eb'; this.style.transform='scale(1.05)';" onmouseout="this.style.background='#3b82f6'; this.style.transform='scale(1)';">
-                                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 200px; padding: 0.5rem 0; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); border: 1px solid #e2e8f0;">
-                                <li style="padding: 0.75rem 1rem; border-bottom: 1px solid #e2e8f0;">
-                                    <h6 style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #1e293b;">{{ auth()->user()->name }}</h6>
-                                    <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: #64748b;">{{ auth()->user()->email }}</p>
-                                </li>
-                                <li><a class="dropdown-item" href="{{ route('settings.index') }}#personal" style="padding: 0.6rem 1rem; font-size: 0.9rem; transition: background 0.2s;">Profile Settings</a></li>
-                                <li><hr class="dropdown-divider" style="margin: 0.5rem 0;"></li>
-                                <li>
-                                    <form action="{{ route('logout') }}" method="POST" style="margin: 0;">
-                                        @csrf
-                                        <button type="submit" class="dropdown-item text-danger" style="padding: 0.6rem 1rem; font-size: 0.9rem; width: 100%; text-align: left; background: none; border: none; cursor: pointer; transition: background 0.2s;">Sign Out</button>
-                                    </form>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
+                <div class="topbar-actions" style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end;">
+                    @yield('header_actions')
                 </div>
             </header>
 

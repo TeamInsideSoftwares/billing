@@ -138,7 +138,7 @@ class OrdersController extends Controller
             'resultCount' => $resultCount,
             'selectedClient' => $selectedClient,
             'clientId' => $clientId,
-            'allClients' => Client::orderBy('business_name')->orderBy('contact_name')->get(),
+            'allClients' => Client::with('billingDetail')->orderBy('business_name')->orderBy('contact_name')->get(),
         ]);
     }
 
@@ -211,8 +211,8 @@ class OrdersController extends Controller
                 $taxTotal += $amounts['tax_amount'];
             }
             $subtotal = round($subtotal, 2);
-            $discountTotal = round($discountTotal, 2);
-            $taxTotal = round($taxTotal, 2);
+            $discountTotal = $this->roundDiscountDown($discountTotal);
+            $taxTotal = $this->roundTaxUp($taxTotal);
             $grandTotal = round($subtotal - $discountTotal + $taxTotal, 2);
 
             $existingOrder->update([
@@ -279,6 +279,7 @@ class OrdersController extends Controller
         $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
         $validated['status'] = 'unverified'; // Always set to unverified
+        $validated['is_verified'] = 'yes';
         unset($validated['items_data']);
 
         $itemsData = json_decode($request->items_data, true) ?: [];
@@ -294,8 +295,8 @@ class OrdersController extends Controller
             $taxTotal += $amounts['tax_amount'];
         }
         $subtotal = round($subtotal, 2);
-        $discountTotal = round($discountTotal, 2);
-        $taxTotal = round($taxTotal, 2);
+        $discountTotal = $this->roundDiscountDown($discountTotal);
+        $taxTotal = $this->roundTaxUp($taxTotal);
         $grandTotal = round($subtotal - $discountTotal + $taxTotal, 2);
         $validated['subtotal'] = $subtotal;
         $validated['discount_total'] = $discountTotal;
@@ -554,8 +555,8 @@ class OrdersController extends Controller
             $taxTotal += $amounts['tax_amount'];
         }
         $subtotal = round($subtotal, 2);
-        $discountTotal = round($discountTotal, 2);
-        $taxTotal = round($taxTotal, 2);
+        $discountTotal = $this->roundDiscountDown($discountTotal);
+        $taxTotal = $this->roundTaxUp($taxTotal);
         $grandTotal = round($subtotal - $discountTotal + $taxTotal, 2);
 
         // Handle PO file upload
@@ -675,9 +676,19 @@ class OrdersController extends Controller
 
         return [
             'line_total' => round($lineTotal, 2),
-            'discount_amount' => round($discountAmount, 2),
-            'tax_amount' => round($taxAmount, 2),
+            'discount_amount' => $this->roundDiscountDown($discountAmount),
+            'tax_amount' => $this->roundTaxUp($taxAmount),
         ];
+    }
+
+    private function roundTaxUp(float $amount): float
+    {
+        return (float) ceil(max(0, $amount));
+    }
+
+    private function roundDiscountDown(float $amount): float
+    {
+        return (float) floor(max(0, $amount));
     }
 
     private function getSalesPeopleForForm(string $accountId): Collection
@@ -843,6 +854,7 @@ class OrdersController extends Controller
             $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
             $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
             $validated['status'] = 'unverified'; // Default status
+            $validated['is_verified'] = 'yes';
             
             // Get default financial year
             $defaultFy = FinancialYear::where('accountid', $validated['accountid'])
@@ -1143,10 +1155,13 @@ class OrdersController extends Controller
             $taxTotal += ($taxableAmount * $taxRate) / 100;
         }
 
+        $discountTotal = $this->roundDiscountDown($discountTotal);
+        $taxTotal = $this->roundTaxUp($taxTotal);
+
         $order->update([
             'subtotal' => round($subtotal, 2),
-            'discount_total' => round($discountTotal, 2),
-            'tax_total' => round($taxTotal, 2),
+            'discount_total' => $discountTotal,
+            'tax_total' => $taxTotal,
             'grand_total' => round($subtotal - $discountTotal + $taxTotal, 2),
         ]);
     }

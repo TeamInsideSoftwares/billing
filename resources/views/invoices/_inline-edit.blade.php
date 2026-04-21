@@ -129,7 +129,7 @@
                     </div>
                     <div>
                         <label class="field-label small">Qty</label>
-                        <input type="number" id="inline_item_qty_{{ $documentId }}" class="form-input" value="1" min="0.01" step="0.01">
+                        <input type="number" id="inline_item_qty_{{ $documentId }}" class="form-input" value="1" min="1" step="1">
                     </div>
                     <div>
                         <label class="field-label small">Unit Price</label>
@@ -327,6 +327,10 @@
         return total;
     }
 
+    function roundTaxUp(value) {
+        return Math.ceil(Math.max(0, Number(value) || 0));
+    }
+
     function calculateEndDate(startDate, frequency, duration) {
         if (!startDate || !frequency || !duration || frequency === 'one-time') return '';
         const start = new Date(startDate);
@@ -358,8 +362,9 @@
         });
 
         invoiceItems.forEach((item, index) => {
+            item.quantity = Math.max(1, Math.round(Number(item.quantity) || 1));
             const lineTotal = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
-            const lineTax = lineTotal * (Number(item.tax_rate || 0) / 100);
+            const lineTax = roundTaxUp(lineTotal * (Number(item.tax_rate || 0) / 100));
             subtotal += lineTotal;
             taxTotal += lineTax;
 
@@ -368,7 +373,7 @@
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td><strong>${item.item_name || 'Item'}</strong></td>
-                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="quantity" min="0.01" step="0.01" value="${item.quantity}"></td>
+                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="quantity" min="1" step="1" value="${item.quantity}"></td>
                 <td><input type="number" class="form-input item-input" data-index="${index}" data-field="unit_price" min="0" step="0.01" value="${item.unit_price}"></td>
                 ${renderTaxSelect(item.tax_rate, `data-index="${index}" data-field="tax_rate"`)}
                 <td><input type="number" class="form-input item-input" data-index="${index}" data-field="no_of_users" min="1" step="1" value="${item.no_of_users || 1}"></td>
@@ -386,9 +391,10 @@
             itemsBody.appendChild(row);
         });
 
+        const roundedTaxTotal = roundTaxUp(taxTotal);
         document.getElementById(`inline_subtotal_${documentId}`).textContent = formatMoney(subtotal);
-        document.getElementById(`inline_tax_${documentId}`).textContent = formatMoney(taxTotal);
-        document.getElementById(`inline_grand_${documentId}`).textContent = formatMoney(subtotal + taxTotal);
+        document.getElementById(`inline_tax_${documentId}`).textContent = formatMoney(roundedTaxTotal);
+        document.getElementById(`inline_grand_${documentId}`).textContent = formatMoney(subtotal + roundedTaxTotal);
     }
 
     function resetAddItemForm() {
@@ -457,7 +463,7 @@
         const item = {
             itemid: select.value,
             item_name: (option.text || '').split(' (')[0],
-            quantity: Number(document.getElementById(`inline_item_qty_${documentId}`).value) || 1,
+            quantity: Math.max(1, Math.round(Number(document.getElementById(`inline_item_qty_${documentId}`).value) || 1)),
             unit_price: Number(document.getElementById(`inline_item_price_${documentId}`).value) || 0,
             tax_rate: Number(document.getElementById(`inline_item_tax_${documentId}`).value) || 0,
             duration: document.getElementById(`inline_item_dur_${documentId}`).value || null,
@@ -484,7 +490,13 @@
 
         const index = Number(input.dataset.index);
         const field = input.dataset.field;
-        invoiceItems[index][field] = input.type === 'number' ? Number(input.value) : input.value || null;
+        if (field === 'quantity') {
+            const qty = Math.max(1, Math.round(Number(input.value) || 1));
+            invoiceItems[index][field] = qty;
+            input.value = qty;
+        } else {
+            invoiceItems[index][field] = input.type === 'number' ? Number(input.value) : input.value || null;
+        }
 
         if (field === 'frequency' && (!input.value || input.value === 'one-time')) {
             invoiceItems[index].start_date = null;

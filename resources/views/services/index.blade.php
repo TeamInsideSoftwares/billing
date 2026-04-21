@@ -1,14 +1,11 @@
 @extends('layouts.app')
 
-@section('content')
-<section class="section-bar">
-    <div></div>
-    <div>
-        <a href="{{ route('services.create') }}" class="primary-button">Add Item</a>
-        <button class="secondary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal"><i class="fas fa-folder" style="margin-right: 5px;"></i>Manage Categories</button>
-    </div>
-</section>
+@section('header_actions')
+    <a href="{{ route('services.create') }}" class="primary-button">Add Item</a>
+    <button class="secondary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal"><i class="fas fa-folder" style="margin-right: 5px;"></i>Manage Categories</button>
+@endsection
 
+@section('content')
 <div class="modal fade" id="productCategoriesModal" tabindex="-1">
     <div class="modal-dialog modal-md modal-dialog-centered" style="max-width: 650px;">
         <div class="modal-content" style="border-radius: 12px; overflow: hidden;">

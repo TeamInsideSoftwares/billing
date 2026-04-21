@@ -121,7 +121,7 @@
                     return `
                         <div style="padding: 0.55rem 0; border-bottom: 1px dashed #e5e7eb; font-size: 0.78rem;">
                             <div style="display: flex; justify-content: space-between; gap: 0.75rem;">
-                                <span style="color: #374151; font-weight: 600;">${item.name || 'Item'} (x${item.qty || item.quantity || 1})</span>
+                                <span style="color: #374151; font-weight: 600;">${item.name || 'Item'} (x${Math.max(1, Math.round(Number(item.qty || item.quantity || 1)))})</span>
                                 <strong style="color: #111827;">${item.total || '-'}</strong>
                             </div>
                             ${details.length ? `<div style="margin-top: 0.15rem; color: #6b7280; font-size: 0.72rem;">${details.join(' | ')}</div>` : ''}

@@ -13,27 +13,26 @@
     $igstAmount = $sameStateGst ? 0 : round($orderTaxTotal, 2);
 @endphp
 
-<section class="section-bar">
-    <div>
-        <a href="{{ route('orders.index', ['c' => $order->clientid]) }}" class="text-link" style="font-size: 0.85rem;">&larr; Back to orders</a>
-    </div>
-    <div style="display: flex; gap: 0.5rem;">
-        @if(($order->is_verified ?? 'no') === 'yes')
-        <a href="{{ route('invoices.create', ['o' => $order->orderid, 'c' => $order->clientid]) }}" class="icon-action-btn" style="color: #8b5cf6; border-color: #ddd6fe; width: 36px; height: 36px; font-size: 1rem;" title="Create PI" onmouseover="this.style.background='#f5f3ff'; this.style.borderColor='#8b5cf6';" onmouseout="this.style.background='white'; this.style.borderColor='#ddd6fe';">
-            <i class="fas fa-file-invoice"></i>
-        </a>
-        @endif
-        <a href="{{ route('orders.edit', ['order' => $order->orderid, 'c' => $order->clientid]) }}" class="icon-action-btn edit" title="Edit" style="width: 36px; height: 36px; font-size: 1rem;">
-            <i class="fas fa-edit"></i>
-        </a>
-        <form method="POST" action="{{ route('orders.destroy', ['order' => $order->orderid, 'c' => $order->clientid]) }}" class="inline-delete" onsubmit="return confirm('Delete this order?')">
-            @csrf @method('DELETE')
-            <button type="submit" class="icon-action-btn delete" title="Delete" style="width: 36px; height: 36px; font-size: 1rem;">
-                <i class="fas fa-trash"></i>
-            </button>
-        </form>
-    </div>
-</section>
+@section('header_actions')
+    <a href="{{ route('orders.index', ['c' => $order->clientid]) }}" class="secondary-button">
+        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Orders
+    </a>
+    @if(($order->is_verified ?? 'no') === 'yes')
+    <a href="{{ route('invoices.create', ['step' => 3, 'invoice_for' => 'orders', 'orderid' => $order->orderid, 'clientid' => $order->clientid]) }}" class="primary-button small">
+        <i class="fas fa-file-invoice" style="margin-right: 0.35rem;"></i>Create PI
+    </a>
+    @endif
+    <a href="{{ route('orders.edit', ['order' => $order->orderid, 'c' => $order->clientid]) }}" class="primary-button small">
+        <i class="fas fa-edit" style="margin-right: 0.35rem;"></i>Edit
+    </a>
+    <form method="POST" action="{{ route('orders.destroy', ['order' => $order->orderid, 'c' => $order->clientid]) }}" class="inline-delete" onsubmit="return confirm('Delete this order?')" style="display: inline;">
+        @csrf
+        @method('DELETE')
+        <button type="submit" class="secondary-button">
+            <i class="fas fa-trash" style="margin-right: 0.35rem;"></i>Delete
+        </button>
+    </form>
+@endsection
 
 <section class="panel-card" style="padding: 1.25rem;">
     <div style="display: flex; gap: 1.5rem; align-items: center;">
@@ -199,7 +198,7 @@
             @if($orderTaxTotal > 0)
                 <tr style="background: #f8fafc;">
                     <td colspan="8" style="padding: 0.5rem; text-align: right; font-weight: 600; font-size: 0.85rem; color: #64748b;">
-                        {{ $sameStateGst ? 'Tax (CGST 50% + SGST 50%):' : 'Tax (IGST 100%):' }}
+                        {{ $sameStateGst ? 'Tax (CGST + SGST):' : 'Tax (IGST):' }}
                     </td>
                     <td style="padding: 0.5rem; font-weight: 600; font-size: 0.85rem; text-align: right; color: #1e293b;">{{ $currency }} {{ number_format($orderTaxTotal, 2) }}</td>
                 </tr>

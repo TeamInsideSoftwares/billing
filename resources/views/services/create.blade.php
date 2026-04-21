@@ -1,5 +1,11 @@
 @extends('layouts.app')
 
+@section('header_actions')
+    <a href="{{ route('services.index') }}" class="secondary-button">
+        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Items
+    </a>
+@endsection
+
 @section('content')
 {{-- Toast Container --}}
 <div id="toast-container" class="toast-container"></div>
@@ -86,10 +92,6 @@
         }
     }
 </style>
-
-<section class="section-bar">
-    <a href="{{ route('services.index') }}" class="text-link">&larr; Back to items</a>
-</section>
 
 <section class="panel-card" style="padding: 1.1rem;">
     <form method="POST" action="{{ route('services.store') }}" class="service-form" id="item-form">

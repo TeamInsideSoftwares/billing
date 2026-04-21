@@ -107,7 +107,7 @@ class InvoicesController extends Controller
         $accountid = auth()->check() ? ($user?->accountid ?? 'ACC0000001') : 'ACC0000001';
         $legacyAccountId = $user?->id ? (string) $user->id : null;
         $account = \App\Models\Account::find($accountid);
-        $orderId = request('o');
+        $orderId = request('orderid', request('o'));
         $clientId = request('c', request('clientid'));
 
         $termAccountIds = array_values(array_filter(array_unique([$accountid, $legacyAccountId])));
@@ -119,6 +119,11 @@ class InvoicesController extends Controller
             ->orderByRaw('COALESCE(sequence, 999999), created_at ASC')
             ->get();
 
+        $accountBillingDetail = AccountBillingDetail::query()
+            ->whereIn('accountid', $termAccountIds)
+            ->orderByRaw('accountid = ? desc', [$accountid])
+            ->first();
+
         return view('invoices.create', [
             'title' => 'Create Proforma Invoice',
             'clients' => Client::orderBy('business_name')->get(),
@@ -126,7 +131,7 @@ class InvoicesController extends Controller
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'nextInvoiceNumber' => $this->generateInvoiceNumber(),
             'account' => $account,
-            'accountBillingDetail' => AccountBillingDetail::where('accountid', $accountid)->first(),
+            'accountBillingDetail' => $accountBillingDetail,
             'billingTerms' => $billingTerms,
             'orderId' => $orderId,
             'clientId' => $clientId,
@@ -172,7 +177,8 @@ class InvoicesController extends Controller
     public function getRenewalInvoices(Request $request)
     {
         $clientId = $request->input('clientid');
-        $daysFilter = (int) $request->input('days', 1);
+        $daysInput = $request->input('days', 0);
+        $daysFilter = is_numeric($daysInput) ? max(0, (int) $daysInput) : 0;
 
         if (!$clientId) {
             return response()->json([]);
@@ -183,7 +189,7 @@ class InvoicesController extends Controller
             ->with('items', 'client')
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($invoice) use ($daysFilter, $recurringFrequencies) {
+            ->map(function ($invoice) use ($recurringFrequencies, $daysFilter) {
                 $today = now()->startOfDay();
                 $upcomingThreshold = now()->addDays($daysFilter)->endOfDay();
 
@@ -203,7 +209,7 @@ class InvoicesController extends Controller
                             : \Carbon\Carbon::parse($item->end_date);
 
                         $isExpired = $itemEndDate <= $today;
-                        $isUpcoming = !$isExpired && $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
+                        $isUpcoming = $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
 
                         if (!$isExpired && !$isUpcoming) {
                             return null;
@@ -371,15 +377,24 @@ class InvoicesController extends Controller
         return [
             'line_total' => round($lineTotal, 2),
             'discount_percent' => $discountPercent,
-            'discount_amount' => round($discountAmount, 2),
-            'tax_amount' => round($taxAmount, 2),
+            'discount_amount' => $this->roundDiscountDown($discountAmount),
+            'tax_amount' => $this->roundTaxUp($taxAmount),
         ];
+    }
+
+    private function roundTaxUp(float $amount): float
+    {
+        return (float) ceil(max(0, $amount));
+    }
+
+    private function roundDiscountDown(float $amount): float
+    {
+        return (float) floor(max(0, $amount));
     }
 
     public function storeBillingTerm(Request $request)
     {
         $validated = $request->validate([
-            'title' => 'nullable|string|max:255',
             'content' => 'required|string',
         ]);
 
@@ -393,7 +408,6 @@ class InvoicesController extends Controller
         $term = TermsCondition::create([
             'accountid' => $accountid,
             'type' => 'billing',
-            'title' => trim((string) ($validated['title'] ?? '')) ?: 'Term',
             'content' => $validated['content'],
             'is_active' => true,
             'sequence' => ((int) ($maxSequence ?? 0)) + 1,
@@ -403,7 +417,6 @@ class InvoicesController extends Controller
             'ok' => true,
             'term' => [
                 'id' => $term->tc_id,
-                'title' => $term->title,
                 'content' => $term->content,
             ],
         ]);
@@ -487,7 +500,7 @@ class InvoicesController extends Controller
                 'clientid' => 'required|exists:clients,clientid',
                 'orderid' => 'nullable|exists:orders,orderid',
                 'invoice_number' => 'nullable|string',
-                'invoice_title' => 'nullable|string|max:255',
+                'invoice_title' => 'required|string|max:255',
                 'invoice_for' => 'required|string|in:orders,renewal,without_orders',
                 'issue_date' => 'required|date',
                 'due_date' => 'required|date|after_or_equal:issue_date',
@@ -641,10 +654,12 @@ class InvoicesController extends Controller
             ];
         }
 
+        $discountTotal = $this->roundDiscountDown($discountTotal);
+        $taxTotal = $this->roundTaxUp($taxTotal);
         $grandTotal = $subtotal - $discountTotal + $taxTotal;
         $validated['subtotal'] = round($subtotal, 2);
-        $validated['tax_total'] = round($taxTotal, 2);
-        $validated['discount_total'] = round($discountTotal, 2);
+        $validated['tax_total'] = $taxTotal;
+        $validated['discount_total'] = $discountTotal;
         $validated['grand_total'] = round($grandTotal, 2);
         $validated['amount_paid'] = 0;
         $validated['balance_due'] = round($grandTotal, 2);
@@ -719,7 +734,7 @@ class InvoicesController extends Controller
     {
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'invoice_title' => 'nullable|string|max:255',
+            'invoice_title' => 'sometimes|required|string|max:255',
             'invoice_for' => 'nullable|string|in:orders,renewal,without_orders',
             'status' => 'nullable|in:unpaid,paid,partially-paid',
             'items_data' => 'nullable|json',
@@ -953,6 +968,8 @@ class InvoicesController extends Controller
             $taxTotal += $amounts['tax_amount'];
         }
 
+        $discountTotal = $this->roundDiscountDown($discountTotal);
+        $taxTotal = $this->roundTaxUp($taxTotal);
         $grandTotal = $subtotal - $discountTotal + $taxTotal;
 
         $invoice->update([

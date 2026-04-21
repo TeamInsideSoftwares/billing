@@ -314,7 +314,7 @@
             return `
                 <tr>
                     <td><strong>${item.item_name || 'Item'}</strong></td>
-                    <td style="text-align:center;">${Number(item.quantity || 0).toLocaleString('en-IN')}</td>
+                    <td style="text-align:center;">${Math.max(1, Math.round(Number(item.quantity || 1))).toLocaleString('en-IN')}</td>
                     <td style="text-align:right;">${Number(item.unit_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                     <td style="text-align:right;">${Number(item.tax_rate || 0).toFixed(2)}%</td>
                     <td style="text-align:right;">${discount}</td>

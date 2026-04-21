@@ -24,7 +24,6 @@ class TermsCondition extends Model
         'tc_id',
         'accountid',
         'type',
-        'title',
         'content',
         'is_active',
         'sequence',

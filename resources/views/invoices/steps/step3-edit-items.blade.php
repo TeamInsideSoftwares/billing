@@ -18,7 +18,8 @@
 
     <div style="margin-bottom: 1.5rem;">
         <label for="invoice_title" class="field-label">Invoice Title</label>
-        <input type="text" id="invoice_title" name="invoice_title" class="form-input" placeholder="e.g. Website Development - Monthly Subscription">
+        <input type="text" id="invoice_title" name="invoice_title" class="form-input" placeholder="e.g. Website Development - Monthly Subscription" required>
+        <div id="invoiceTitleError" style="display:none; margin-top: 0.35rem; color: #b91c1c; font-size: 0.8rem; font-weight: 600;">Invoice title is required.</div>
     </div>
 
     <input type="hidden" name="clientid" value="{{ request('clientid', request('c')) }}">
@@ -85,7 +86,7 @@
                 <div class="total-row"><span>Subtotal</span><strong id="subtotalDisplay">INR 0.00</strong></div>
                 <div class="total-row"><span>Discount</span><strong id="discountDisplay">INR 0.00</strong></div>
                 <div id="step3TaxRow" class="total-row">
-                    <span id="step3TaxLabel">{{ $sameStateGstForInvoice ? 'Tax (CGST 50% + SGST 50%)' : 'Tax (IGST 100%)' }}</span>
+                    <span id="step3TaxLabel">{{ $sameStateGstForInvoice ? 'Tax (CGST + SGST)' : 'Tax (IGST)' }}</span>
                     <strong id="taxDisplay">INR 0.00</strong>
                 </div>
                 <div class="total-row total-row-grand"><span>Grand Total</span><strong id="grandTotalDisplay">INR 0.00</strong></div>
@@ -110,6 +111,8 @@
     const btnNextToStep4 = document.getElementById('btnNextToStep4');
     const btnBackToStep2 = document.getElementById('btnBackToStep2');
     const itemsDataInput = document.getElementById('items_data');
+    const invoiceTitleInput = document.getElementById('invoice_title');
+    const invoiceTitleError = document.getElementById('invoiceTitleError');
 
     let invoiceItems = [];
 
@@ -127,7 +130,7 @@
         const taxDisplay = document.getElementById('taxDisplay');
 
         if (taxRow) taxRow.style.display = '';
-        if (taxLabel) taxLabel.textContent = sameStateGstForInvoice ? 'Tax (CGST 50% + SGST 50%)' : 'Tax (IGST 100%)';
+        if (taxLabel) taxLabel.textContent = sameStateGstForInvoice ? 'Tax (CGST + SGST)' : 'Tax (IGST)';
         if (taxDisplay) taxDisplay.textContent = formatCurrency(taxTotal);
     }
 
@@ -183,7 +186,7 @@
     function normalizeItem(item) {
         const normalizedItem = {
             ...item,
-            quantity: Number(item.quantity || 0),
+            quantity: Math.max(1, Math.round(Number(item.quantity || 1))),
             unit_price: Number(item.unit_price || 0),
             tax_rate: Number(item.tax_rate || 0),
             discount_percent: Number(item.discount_percent || 0),
@@ -214,7 +217,7 @@
     }
 
     function calculateLineInputTotal(item) {
-        const qty = Number(item.quantity || 0);
+        const qty = Math.max(1, Math.round(Number(item.quantity || 1)));
         const price = Number(item.unit_price || 0);
         const users = itemSupportsUserFields(item) ? Math.max(1, Number(item.no_of_users || 1)) : 1;
         const durationMultiplier = (item.frequency && item.frequency !== 'one-time' && Number(item.duration || 0) > 0)
@@ -223,12 +226,20 @@
         return qty * price * users * durationMultiplier;
     }
 
+    function roundTaxUp(value) {
+        return Math.ceil(Math.max(0, Number(value) || 0));
+    }
+
+    function roundDiscountDown(value) {
+        return Math.floor(Math.max(0, Number(value) || 0));
+    }
+
     function normalizeItemAmounts(item) {
         const taxRate = Number(item.tax_rate || 0);
         const discountPercent = Math.min(100, Math.max(0, Number(item.discount_percent || 0)));
         const lineTotal = calculateLineInputTotal(item);
-        const discountAmount = lineTotal * (discountPercent / 100);
-        const taxAmount = Math.max(0, lineTotal - discountAmount) * (taxRate / 100);
+        const discountAmount = roundDiscountDown(lineTotal * (discountPercent / 100));
+        const taxAmount = roundTaxUp(Math.max(0, lineTotal - discountAmount) * (taxRate / 100));
 
         item.line_total = lineTotal;
         item.discount_percent = discountPercent;
@@ -344,7 +355,7 @@
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td><input type="text" class="form-input item-name" data-index="${index}" value="${item.item_name}" style="min-width: 150px;"></td>
-                <td><input type="number" class="form-input item-quantity" data-index="${index}" value="${item.quantity}" min="0.01" step="0.01" style="width: 80px;"></td>
+                <td><input type="number" class="form-input item-quantity" data-index="${index}" value="${item.quantity}" min="1" step="1" style="width: 80px;"></td>
                 <td><input type="number" class="form-input item-price" data-index="${index}" value="${item.unit_price}" min="0" step="0.01" style="width: 100px;"></td>
                 <td style="display:${showUserColumns ? '' : 'none'};">
                     ${showUsersForRow
@@ -404,15 +415,18 @@
             });
         });
 
+        const roundedDiscountTotal = roundDiscountDown(discountTotal);
+        const roundedTaxTotal = roundTaxUp(taxTotal);
+
         document.getElementById('subtotalDisplay').textContent = formatCurrency(subtotal);
-        document.getElementById('discountDisplay').textContent = formatCurrency(discountTotal);
-        updateTaxDisplay(taxTotal);
-        document.getElementById('grandTotalDisplay').textContent = formatCurrency(subtotal - discountTotal + taxTotal);
+        document.getElementById('discountDisplay').textContent = formatCurrency(roundedDiscountTotal);
+        updateTaxDisplay(roundedTaxTotal);
+        document.getElementById('grandTotalDisplay').textContent = formatCurrency(subtotal - roundedDiscountTotal + roundedTaxTotal);
 
         document.getElementById('subtotal').value = subtotal.toFixed(2);
-        document.getElementById('discount_total').value = discountTotal.toFixed(2);
-        document.getElementById('tax_total').value = taxTotal.toFixed(2);
-        document.getElementById('grand_total').value = (subtotal - discountTotal + taxTotal).toFixed(2);
+        document.getElementById('discount_total').value = roundedDiscountTotal.toFixed(2);
+        document.getElementById('tax_total').value = roundedTaxTotal.toFixed(2);
+        document.getElementById('grand_total').value = (subtotal - roundedDiscountTotal + roundedTaxTotal).toFixed(2);
         itemsDataInput.value = JSON.stringify(invoiceItems);
     }
 
@@ -435,6 +449,10 @@
 
             if (field === 'frequency' || field === 'duration' || field === 'start_date' || field === 'end_date') {
                 invoiceItems[index][field] = input.value;
+            } else if (field === 'quantity') {
+                const qty = Math.max(1, Math.round(Number(input.value) || 1));
+                invoiceItems[index][field] = qty;
+                input.value = qty;
             } else {
                 invoiceItems[index][field] = parseFloat(input.value) || 0;
             }
@@ -463,12 +481,20 @@
     }
 
     btnNextToStep4.addEventListener('click', function() {
+        const invoiceTitle = invoiceTitleInput.value;
+        if (!invoiceTitle.trim()) {
+            invoiceTitleError.style.display = 'block';
+            invoiceTitleInput.focus();
+            return;
+        }
+
+        invoiceTitleError.style.display = 'none';
+
         if (invoiceItems.length === 0) {
             alert('No items to invoice.');
             return;
         }
 
-        const invoiceTitle = document.getElementById('invoice_title').value;
         fetch("{{ route('invoices.save-draft') }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
@@ -491,6 +517,12 @@
 
     btnBackToStep2.addEventListener('click', function() {
         window.location.href = "{{ route('invoices.create') }}?step=2&invoice_for=" + invoiceFor + "&clientid=" + clientId;
+    });
+
+    invoiceTitleInput.addEventListener('input', function() {
+        if (this.value.trim()) {
+            invoiceTitleError.style.display = 'none';
+        }
     });
 
     loadItems();

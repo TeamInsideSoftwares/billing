@@ -1,235 +1,14 @@
 @extends('layouts.app')
 
-@section('content')
-    <section class="section-bar order-index-header" 
-    style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-    
-    <div></div>
-
+@section('header_actions')
     @if($clientId)
-        <div style="display: flex; gap: 0.5rem; align-items: end; flex-wrap: wrap;">
-            <a href="{{ route('orders.create', ['c' => $clientId]) }}" class="primary-button">
-                <i class="fas fa-receipt" style="margin-right: 0.5rem;"></i>Create Order
-            </a>
-        </div>
+        <a href="{{ route('orders.create', ['c' => $clientId]) }}" class="primary-button">
+            <i class="fas fa-receipt" style="margin-right: 0.5rem;"></i>Create Order
+        </a>
     @endif
+@endsection
 
-</section>
-
-    <style>
-        .order-index-header {
-            margin-bottom: 1rem;
-        }
-
-        .order-index-shell {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .order-group {
-            overflow: hidden;
-        }
-
-        .order-group[open] .accordion-header {
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .order-group .accordion-header {
-            padding: 1rem 1.1rem;
-            background: #fff;
-        }
-
-        .order-client-meta {
-            display: inline-flex;
-            flex-direction: column;
-            gap: 0.12rem;
-        }
-
-        .order-client-email {
-            font-size: 0.75rem;
-            color: #6b7280;
-            font-weight: 500;
-        }
-
-        .order-table-wrap {
-            padding: 0;
-            background: #fff;
-        }
-
-        .order-row-title {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .order-row-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            background: #f3f4f6;
-            color: #6b7280;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.85rem;
-            flex-shrink: 0;
-        }
-
-        .order-row-text strong {
-            display: block;
-            font-size: 0.9rem;
-            color: #111827;
-        }
-
-        .order-row-text span {
-            display: block;
-            margin-top: 0.15rem;
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
-
-        .order-muted {
-            font-size: 0.84rem;
-            color: #6b7280;
-        }
-
-        .order-amount {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #111827;
-        }
-
-        .order-empty {
-            padding: 3rem;
-            text-align: center;
-            color: #9ca3af;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            background: #fff;
-        }
-
-        .order-items-row {
-            display: none;
-            background: #fbfcfe;
-        }
-
-        .order-items-row.active {
-            display: table-row;
-        }
-
-        .order-client-picker-wrap {
-            max-width: 760px;
-            margin: 1.5rem auto 0;
-        }
-
-        .order-client-picker {
-            padding: 1.5rem;
-            border: 1px solid #e5e7eb;
-            border-radius: 16px;
-            background: #fff;
-        }
-
-        .order-client-picker-head {
-            display: flex;
-            justify-content: space-between;
-            gap: 1rem;
-            align-items: flex-start;
-            margin-bottom: 1.1rem;
-            padding-bottom: 0.95rem;
-            border-bottom: 1px solid #e5e7eb;
-            flex-wrap: wrap;
-        }
-
-        .order-client-picker-title {
-            display: flex;
-            gap: 0.85rem;
-            align-items: flex-start;
-        }
-
-        .order-client-picker-icon {
-            width: 42px;
-            height: 42px;
-            border-radius: 12px;
-            background: #eff6ff;
-            color: #2563eb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .order-client-picker-title strong {
-            display: block;
-            font-size: 1rem;
-            color: #0f172a;
-        }
-
-        .order-client-picker-title p {
-            margin: 0.25rem 0 0;
-            font-size: 0.84rem;
-            color: #6b7280;
-        }
-
-        .order-client-count {
-            padding: 0.45rem 0.75rem;
-            border: 1px solid #e5e7eb;
-            border-radius: 999px;
-            background: #f8fafc;
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: #475569;
-        }
-
-        .order-client-picker form {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 0.85rem;
-            align-items: end;
-        }
-
-        .order-client-picker-field label {
-            display: block;
-            margin-bottom: 0.45rem;
-            font-size: 0.76rem;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            color: #64748b;
-        }
-
-        .order-client-picker-field select {
-            width: 100%;
-            min-height: 46px;
-            padding: 0.72rem 0.9rem;
-            border: 1px solid #dbe3ee;
-            border-radius: 10px;
-            background: #f8fafc;
-            font-size: 0.9rem;
-            color: #0f172a;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-        }
-
-        .order-client-picker-field select:focus {
-            outline: none;
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
-            background: #fff;
-        }
-
-        .order-client-picker-note {
-            margin: 0.85rem 0 0;
-            font-size: 0.78rem;
-            color: #94a3b8;
-        }
-
-        @media (max-width: 720px) {
-            .order-client-picker form {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-
+@section('content')
     <div class="order-index-shell">
         @if(!$clientId)
         {{-- Client Selection View --}}
@@ -273,11 +52,14 @@
         @forelse ($groupedOrders as $clientName => $clientOrders)
             @php
                 $firstOrder = $clientOrders->first();
-                $clientEmailForGroup = $firstOrder['client_email'] ?? '';
                 $clientId = $firstOrder['clientid'] ?? '';
+                $clientForGroup = $allClients->firstWhere('clientid', $clientId);
+                $clientGstin = trim((string) (optional($clientForGroup?->billingDetail)->gstin ?? ''));
+                $clientTypeLabel = $clientGstin !== '' ? 'B2B' : 'B2C';
+                $clientMetaLabel = $clientGstin !== '' ? 'GSTIN available' : 'No GSTIN';
             @endphp
-            <details class="category-accordion order-group" open>
-                <summary class="accordion-header">
+            <section class="order-group">
+                <div class="order-group-head">
                     <span class="order-client-meta" onclick="event.stopPropagation();">
                         @if($clientId)
                             <form action="{{ route('orders.index') }}" method="GET" style="margin: 0;">
@@ -299,15 +81,13 @@
                         @else
                             <span class="category-title">{{ $clientName }}</span>
                         @endif
-                        @if($clientEmailForGroup)
-                            <span class="order-client-email">{{ $clientEmailForGroup }}</span>
-                        @endif
                     </span>
-                    
-                    <span class="service-count">{{ count($clientOrders) }} order(s)</span>
-                    <span class="accordion-icon"></span>
-                </summary>
-                <div class="accordion-content order-table-wrap">
+                    <span class="order-client-summary">
+                        <span class="service-count">{{ count($clientOrders) }} order(s)</span>
+                        <span class="order-client-summary__meta">{{ $clientTypeLabel }} • {{ $clientMetaLabel }}</span>
+                    </span>
+                </div>
+                <div class="order-table-wrap">
                     <table class="data-table" style="margin: 0;">
                         <thead>
                             <tr>
@@ -349,25 +129,27 @@
                                         {{ ($order['verified'] ?? false) ? 'Verified' : 'Unverified' }}
                                     </span>
                                 </td>
-                                <td class="table-actions">
-                                    <a href="{{ route('orders.show', ['order' => $order['record_id'] ?? '' ]) }}" class="icon-action-btn view" title="View">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    @if($order['verified'] ?? false)
-                                    <a href="{{ route('invoices.create', ['o' => $order['record_id'] ?? '', 'c' => $clientId]) }}" class="icon-action-btn" style="color: #8b5cf6; border-color: #ddd6fe;" title="Create PI" onmouseover="this.style.background='#f5f3ff'; this.style.borderColor='#8b5cf6'; this.style.transform='scale(1.1)';" onmouseout="this.style.background='white'; this.style.borderColor='#ddd6fe'; this.style.transform='scale(1)';">
-                                        <i class="fas fa-file-invoice"></i>
-                                    </a>
-                                    @endif
-                                    <a href="{{ route('orders.edit', ['order' => $order['record_id'] ?? '' ]) }}" class="icon-action-btn edit" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <form method="POST" action="{{ route('orders.destroy', ['order' => $order['record_id'] ?? '' ]) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $order['number'] ?? 'this order' }}?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="icon-action-btn delete" title="Delete">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
+                                <td>
+                                    <div class="table-actions">
+                                        <a href="{{ route('orders.show', ['order' => $order['record_id'] ?? '' ]) }}" class="icon-action-btn view" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        @if($order['verified'] ?? false)
+                                        <a href="{{ route('invoices.create', ['step' => 3, 'invoice_for' => 'orders', 'orderid' => $order['record_id'] ?? '', 'clientid' => $clientId]) }}" class="order-create-pi-link" title="Create PI">
+                                            Create PI
+                                        </a>
+                                        @endif
+                                        <a href="{{ route('orders.edit', ['order' => $order['record_id'] ?? '' ]) }}" class="icon-action-btn edit" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <form method="POST" action="{{ route('orders.destroy', ['order' => $order['record_id'] ?? '' ]) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $order['number'] ?? 'this order' }}?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="icon-action-btn delete" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                             {{-- Order Items Row (Hidden by default) --}}
@@ -388,6 +170,9 @@
                                                                     <strong style="color: #0f172a;">{{ $item['item_name'] ?? 'Item' }}</strong>
                                                                     <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.15rem;">
                                                                         Qty: {{ number_format($item['quantity'] ?? 1, 2) }}
+                                                                        @if(!empty($item['duration']))
+                                                                            | Dur: {{ $item['duration'] }}
+                                                                        @endif
                                                                         | Price: {{ $order['currency'] ?? 'INR' }} {{ number_format($item['unit_price'] ?? 0, 2) }}
                                                                         @if(($item['tax_rate'] ?? 0) > 0)
                                                                             | Tax: {{ number_format($item['tax_rate'], 2) }}%
@@ -413,7 +198,7 @@
                         </tbody>
                     </table>
                 </div>
-            </details>
+            </section>
         @empty
             <div class="order-empty">
                 <i class="fas fa-receipt" style="font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.3;"></i>
@@ -423,11 +208,6 @@
         @endforelse
     @endif
     </div>
-
-    <style>
-        .status-pill.verified { background: #dcfce7; color: #166534; }
-        .status-pill.pending { background: #fef3c7; color: #92400e; }
-    </style>
 
     <script>
     function toggleOrderItems(orderRecordId) {

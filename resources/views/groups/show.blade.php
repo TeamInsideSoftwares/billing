@@ -1,13 +1,15 @@
 @extends('layouts.app')
 
-@section('content')
-<section class="section-bar">
-    <div>
-        <a href="{{ route('groups.edit', $group) }}" class="primary-button">Edit</a>
-        <a href="{{ route('groups.index') }}" class="text-link">&larr; Back to groups</a>
-    </div>
-</section>
+@section('header_actions')
+    <a href="{{ route('groups.index') }}" class="secondary-button">
+        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Groups
+    </a>
+    <a href="{{ route('groups.edit', $group) }}" class="primary-button small">
+        <i class="fas fa-edit" style="margin-right: 0.35rem;"></i>Edit
+    </a>
+@endsection
 
+@section('content')
 <section class="panel-card">
     <dl style="display: grid; grid-template-columns: 180px 1fr; gap: 0.75rem;">
         <dt style="color: var(--text-muted);">Group Name</dt>

@@ -1,14 +1,11 @@
 @extends('layouts.app')
 
-@section('content')
-    <section class="section-bar">
-        <div></div>
-        <div>
-            <a href="{{ route('clients.create') }}" class="primary-button">Add Client</a>
-            <button type="button" class="secondary-button" data-bs-toggle="modal" data-bs-target="#manageGroupsModal"><i class="fas fa-layer-group" style="margin-right: 5px;"></i>Manage Groups</button>
-        </div>
-    </section>
+@section('header_actions')
+    <a href="{{ route('clients.create') }}" class="primary-button">Add Client</a>
+    <button type="button" class="secondary-button" data-bs-toggle="modal" data-bs-target="#manageGroupsModal"><i class="fas fa-layer-group" style="margin-right: 5px;"></i>Manage Groups</button>
+@endsection
 
+@section('content')
     <section class="panel-card" style="padding: 0;">
         <table class="data-table">
             <thead>
