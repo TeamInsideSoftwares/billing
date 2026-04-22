@@ -136,6 +136,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/orders/{order}/edit', 'ordersEdit')->name('orders.edit');
         Route::post('/orders', 'ordersStore')->name('orders.store');
         Route::put('/orders/{order}', 'ordersUpdate')->name('orders.update');
+        Route::patch('/orders/{order}/restore', 'ordersRestore')->name('orders.restore');
         Route::delete('/orders/{order}', 'ordersDestroy')->name('orders.destroy');
     });
 
@@ -170,4 +171,3 @@ Route::controller(SettingsController::class)->group(function () {
     // Route::controller(BillingUiController::class)->group(function () {
     // });
 });
-

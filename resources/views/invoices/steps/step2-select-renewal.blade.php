@@ -8,7 +8,7 @@
         </div>
     </div>
 
-    <input type="hidden" name="clientid" value="{{ request('clientid', request('c')) }}">
+    <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
     <input type="hidden" name="proformaid" id="proformaid" value="">
     <input type="hidden" name="renewed_item_ids" id="renewed_item_ids" value="">
     <input type="hidden" name="items_data" id="items_data" value="">
@@ -48,7 +48,7 @@
 
 <script>
 (function() {
-    const clientId = "{{ request('clientid', request('c')) }}";
+    const clientId = "{{ request('c', request('clientid')) }}";
     const renewalBody = document.getElementById('renewalBody');
     const noRenewalMessage = document.getElementById('noRenewalMessage');
     const btnNextToStep3 = document.getElementById('btnNextToStep3');
@@ -60,6 +60,15 @@
 
     let selectedRenewalItems = [];
     let latestRenewalRequestId = 0;
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
 
     function loadRenewals() {
         const requestId = ++latestRenewalRequestId;
@@ -116,6 +125,8 @@
                         source_invoice_id: invoice.proformaid,
                         source_invoice_number: invoice.invoice_number,
                     });
+                    const itemName = escapeHtml(item.item_name || 'Item');
+                    const itemDescription = escapeHtml(item.item_description || '').trim();
 
                     const row = document.createElement('tr');
                     row.innerHTML = `
@@ -135,7 +146,8 @@
                             </div>
                         </td>
                         <td>
-                            <div style="font-weight: 600; color: #111827;">${item.item_name || 'Item'}</div>
+                            <div style="font-weight: 600; color: #111827;">${itemName}</div>
+                            ${itemDescription ? `<div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.1rem; white-space: pre-wrap;">${itemDescription}</div>` : ''}
                             <div style="font-size: 0.78rem; color: #6b7280; margin-top: 0.1rem;">
                                 Qty ${Math.max(1, Math.round(Number(item.quantity || 1)))}${item.frequency ? ` • ${item.frequency}` : ''}
                             </div>
@@ -147,7 +159,7 @@
                             <div style="font-size: 0.78rem; color: #6b7280; margin-top: 0.15rem;">Ends: ${item.end_date || '-'}</div>
                         </td>
                         <td style="text-align: right; font-weight: 600;">
-                            ${(invoice.currency || 'INR')} ${Number(item.line_total || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            ${Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || ((Number(item.line_total || 0) * Number(item.discount_percent || 0)) / 100) || 0)).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
                         </td>
                     `;
                     renewalBody.appendChild(row);
@@ -217,13 +229,13 @@
         .then(response => response.json())
         .then(() => {
             const clientToken = encodeURIComponent(clientId);
-            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=renewal&c=" + clientToken + "&clientid=" + clientToken;
+            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=renewal&c=" + clientToken;
         });
     });
 
     btnBackToStep1.addEventListener('click', function() {
         const clientToken = encodeURIComponent(clientId);
-        window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientToken + "&clientid=" + clientToken;
+        window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientToken;
     });
 
     renewalDaysFilter.addEventListener('input', loadRenewals);

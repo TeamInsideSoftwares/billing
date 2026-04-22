@@ -342,7 +342,7 @@ class InvoiceStepManager {
         this.elements.clientInvoicesAccordion.innerHTML = '<div style="padding: 1rem; text-align: center; color: #94a3b8;">Loading invoices...</div>';
         this.elements.noInvoicesMessage.style.display = 'none';
 
-        fetch(`/invoices?clientid=${clientId}`, { 
+        fetch(`/invoices?c=${clientId}`, { 
             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } 
         })
         .then((response) => response.json())
@@ -522,7 +522,7 @@ class InvoiceStepManager {
      * Format money
      */
     formatMoney(amount) {
-        return `${this.state.clientCurrency} ${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     }
 
     /**
@@ -530,9 +530,9 @@ class InvoiceStepManager {
      */
     setTotals(subtotal, taxTotal) {
         const grandTotal = subtotal + taxTotal;
-        this.elements.subtotalInput.value = subtotal.toFixed(2);
-        this.elements.taxTotalInput.value = taxTotal.toFixed(2);
-        this.elements.grandTotalInput.value = grandTotal.toFixed(2);
+        this.elements.subtotalInput.value = subtotal.toFixed(0);
+        this.elements.taxTotalInput.value = taxTotal.toFixed(0);
+        this.elements.grandTotalInput.value = grandTotal.toFixed(0);
         
         const sd = document.getElementById('subtotalDisplay');
         const td = document.getElementById('taxDisplay');

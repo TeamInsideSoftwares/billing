@@ -6,7 +6,7 @@
     $accountState = $normalizeTaxState($account->state ?? '');
     $sameStateGst = $clientState !== '' && $accountState !== '' && $clientState === $accountState;
 @endphp
-<form method="POST" action="{{ route('invoices.update', $invoice) }}" id="{{ isset($inline) && $inline ? 'inline-edit-form-' . $documentId : 'invoiceForm' }}">
+<form method="POST" action="{{ route('invoices.update', [$invoice, 'c' => request('c')]) }}" id="{{ isset($inline) && $inline ? 'inline-edit-form-' . $documentId : 'invoiceForm' }}">
     @csrf
     @method('PUT')
 
@@ -43,30 +43,24 @@
         </div> -->
     @endif
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-        <div class="invoice-meta-card">
-            <span class="invoice-meta-label">Invoice Number</span>
-            <strong class="invoice-meta-value">{{ $invoice->invoice_number }}</strong>
-        </div>
-        <div class="invoice-meta-card">
-            <span class="invoice-meta-label">Invoice Type</span>
-            <strong class="invoice-meta-value">{{ $documentType }}</strong>
-        </div>
-        <div class="invoice-meta-card">
-            <span class="invoice-meta-label">Invoice For</span>
-            <strong class="invoice-meta-value">{{ ucfirst(str_replace('_', ' ', $invoice->invoice_for ?? 'without_orders')) }}</strong>
-        </div>
-        <div class="invoice-meta-card">
-            <span class="invoice-meta-label">Current Status</span>
-            <strong class="invoice-meta-value">{{ ucfirst($invoice->status ?? 'draft') }}</strong>
-        </div>
-        <div class="invoice-meta-card">
-            <span class="invoice-meta-label">Balance Due</span>
-            <strong class="invoice-meta-value">{{ $invoice->currency_code ?? ($invoice->client->currency ?? 'INR') }} {{ number_format($invoice->balance_due ?? $invoice->grand_total ?? 0, 2) }}</strong>
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 0.55rem;">
+        <div style="display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.35rem; max-width: 100%;">
+            <div style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.26rem 0.58rem; border-radius: 999px; border: 1px solid {{ $invoice->isProforma() ? '#93c5fd' : '#86efac' }}; background: {{ $invoice->isProforma() ? '#dbeafe' : '#dcfce7' }}; color: {{ $invoice->isProforma() ? '#1d4ed8' : '#166534' }}; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.01em;">
+                <span>{{ $invoice->isProforma() ? 'Proforma Invoice' : 'Tax Invoice' }}</span>
+            </div>
+            <div style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.26rem 0.58rem; border-radius: 999px; border: 1px solid #c7d2fe; background: #eef2ff; color: #4338ca; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.01em;">
+                <span>{{ ucfirst(str_replace('_', ' ', $invoice->invoice_for ?? 'without_orders')) }}</span>
+            </div>
+            <div style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.26rem 0.58rem; border-radius: 999px; border: 1px solid #fde68a; background: #fffbeb; color: #92400e; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.01em;">
+                <span>{{ ucfirst($invoice->status ?? 'draft') }}</span>
+            </div>
+            <div style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.26rem 0.58rem; border-radius: 999px; border: 1px solid #e2e8f0; background: #f8fafc; color: #0f172a; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.01em;">
+                <span>PI #{{ $invoice->invoice_number }}</span>
+            </div>
         </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.6rem; margin-bottom: 0.8rem;">
         <input type="hidden" name="invoice_number" value="{{ old('invoice_number', $invoice->invoice_number) }}">
         <input type="hidden" name="status" value="{{ old('status', $invoice->status) }}">
         <input type="hidden" name="clientid" value="{{ old('clientid', $invoice->clientid) }}">
@@ -98,6 +92,11 @@
         <input type="hidden" name="currency_code" id="currency_code" value="{{ old('currency_code', $invoice->currency_code ?? ($invoice->client->currency ?? 'INR')) }}">
     </div>
 
+    <div style="margin-bottom: 0.8rem;">
+        <label for="notes" class="field-label">Notes</label>
+        <textarea id="notes" name="notes" rows="3" class="form-input" style="min-height: 70px;">{{ old('notes', $invoice->notes) }}</textarea>
+    </div>
+
     <input type="hidden" name="items_data" id="items_data" value="">
 
     <div class="workflow-panel" style="margin-top: 0; padding-top: 0; border-top: 0;">
@@ -108,7 +107,7 @@
             <button type="button" id="toggleAddItemBtn" class="primary-button">+ Add Item</button>
         </div>
 
-        <div id="addItemPanel" class="builder-card" style="display: none; margin-bottom: 1rem;">
+        <div id="addItemPanel" class="builder-card" style="display: none; margin-bottom: 0.75rem;">
             <div class="manual-grid invoice-edit-add-row">
                 <div>
                     <label for="item_itemid" class="field-label small">Item</label>
@@ -149,7 +148,7 @@
                     <select id="item_tax_rate" class="form-input">
                         <option value="0">No Tax</option>
                         @foreach($taxes as $tax)
-                            <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 2) }}%)</option>
+                            <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)</option>
                         @endforeach
                     </select>
                 </div>
@@ -223,23 +222,18 @@
             </table>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
-            <div class="totals-card" style="min-width: 320px;">
-                <div class="total-row"><span>Subtotal</span><strong id="subtotalDisplay">0.00</strong></div>
-                <div class="total-row"><span>Discount</span><strong id="discountDisplay">0.00</strong></div>
-                <div class="total-row"><span>{{ $sameStateGst ? 'Tax (CGST + SGST)' : 'Tax (IGST)' }}</span><strong id="taxDisplay">0.00</strong></div>
-                <div class="total-row total-row-grand"><span>Grand Total</span><strong id="grandTotalDisplay">0.00</strong></div>
+        <div style="display: flex; justify-content: flex-end; margin-top: 0.55rem;">
+            <div class="totals-card" style="min-width: 270px; max-width: 350px;">
+                <div class="total-row"><span>Subtotal</span><strong id="subtotalDisplay">0</strong></div>
+                <div class="total-row"><span>Discount</span><strong id="discountDisplay">0</strong></div>
+                <div class="total-row"><span>{{ $sameStateGst ? 'Tax (CGST + SGST)' : 'Tax (IGST)' }}</span><strong id="taxDisplay">0</strong></div>
+                <div class="total-row total-row-grand"><span>Grand Total</span><strong id="grandTotalDisplay">0</strong></div>
             </div>
         </div>
     </div>
 
-    <div style="margin-top: 1.5rem;">
-        <label for="notes" class="field-label">Notes</label>
-        <textarea id="notes" name="notes" rows="4" class="form-input" style="min-height: 110px;">{{ old('notes', $invoice->notes) }}</textarea>
-    </div>
-
     @if(isset($inline) && $inline)
-    <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: flex-end;">
+    <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
         <button type="button" id="cancel-inline-edit-{{ $documentId }}" class="cancel-edit-btn" onclick="toggleInlineEdit('{{ $documentId }}')">
             <i class="fas fa-times" style="margin-right: 0.5rem;"></i> Cancel
         </button>
@@ -248,7 +242,7 @@
         </button>
     </div>
     @else
-    <div class="form-actions" style="margin-top: 1rem; display: flex; gap: 0.75rem;">
+    <div class="form-actions" style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
         <button type="submit" class="primary-button" id="updateInvoiceBtn"><i class="fas fa-edit" style="margin-right: 0.45rem;"></i>Update Invoice</button>
     </div>
     @endif
@@ -304,7 +298,7 @@
     console.log('Loaded invoice items:', invoiceItems);
 
     function formatMoney(amount) {
-        return `${clientCurrency} ${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `${clientCurrency} ${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     }
 
     function renderTaxSelect(selectedRate, attributes = '') {
@@ -313,12 +307,12 @@
 
         taxOptions.forEach((tax) => {
             const rate = Number(tax.rate || 0);
-            options.push(`<option value="${rate}" ${rate === normalizedRate ? 'selected' : ''}>${tax.name} (${rate.toFixed(2)}%)</option>`);
+            options.push(`<option value="${rate}" ${rate === normalizedRate ? 'selected' : ''}>${tax.name} (${rate.toFixed(0)}%)</option>`);
         });
 
         const hasMatch = normalizedRate === 0 || taxOptions.some((tax) => Number(tax.rate || 0) === normalizedRate);
         if (!hasMatch && normalizedRate > 0) {
-            options.push(`<option value="${normalizedRate}" selected>Custom (${normalizedRate.toFixed(2)}%)</option>`);
+            options.push(`<option value="${normalizedRate}" selected>Custom (${normalizedRate.toFixed(0)}%)</option>`);
         }
 
         return `<select class="form-input item-input" ${attributes}>${options.join('')}</select>`;
@@ -723,19 +717,32 @@
 @endif
 
 <style>
+.invoice-create-shell #invoiceForm .form-input,
+.invoice-create-shell #invoiceForm input[type="text"],
+.invoice-create-shell #invoiceForm input[type="number"],
+.invoice-create-shell #invoiceForm input[type="date"],
+.invoice-create-shell #invoiceForm select,
+.invoice-create-shell #invoiceForm textarea {
+    min-height: 32px;
+    padding: 0.32rem 0.55rem;
+    font-size: 0.8rem;
+}
+.invoice-create-shell #invoiceForm textarea {
+    line-height: 1.3;
+}
 .invoice-meta-card { padding: 0.95rem 1rem; border: 1px solid #e2e8f0; border-radius: 12px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); }
 .invoice-meta-label, .field-label.small { display: block; margin-bottom: 0.35rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #64748b; }
-.invoice-meta-value { color: #1e293b; font-size: 0.95rem; }
-.field-label { display: block; margin-bottom: 0.45rem; font-size: 0.85rem; font-weight: 600; color: #475569; }
-.workflow-panel { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e2e8f0; }
-.panel-heading-row { margin-bottom: 0.8rem; }
+.invoice-meta-value { color: #1e293b; font-size: 0.9rem; }
+.field-label { display: block; margin-bottom: 0.22rem; font-size: 0.78rem; font-weight: 600; color: #475569; }
+.workflow-panel { margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid #e2e8f0; }
+.panel-heading-row { margin-bottom: 0.4rem; }
 .table-shell { border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #ffffff; }
-.builder-card { padding: 1rem; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; }
-.manual-grid { display: grid; grid-template-columns: 2fr 0.7fr 1fr 0.8fr 1fr 0.8fr 0.8fr 1fr 1fr; gap: 0.75rem; align-items: end; }
-.totals-card { padding: 1rem; border-radius: 14px; background: #f8fafc; border: 1px solid #e2e8f0; }
-.total-row { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.55rem; font-size: 0.9rem; color: #475569; }
+.builder-card { padding: 0.6rem; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; }
+.manual-grid { display: grid; grid-template-columns: 2fr 0.7fr 1fr 0.8fr 1fr 0.8fr 0.8fr 1fr 1fr; gap: 0.4rem; align-items: end; }
+.totals-card { padding: 0.7rem 0.75rem; border-radius: 14px; background: #f8fafc; border: 1px solid #e2e8f0; }
+.total-row { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.28rem; font-size: 0.82rem; color: #475569; }
 .total-row:last-child { margin-bottom: 0; }
-.total-row-grand { padding-top: 0.7rem; border-top: 1px solid #cbd5e1; font-size: 1rem; font-weight: 700; color: #1e293b; }
+.total-row-grand { padding-top: 0.35rem; border-top: 1px solid #cbd5e1; font-size: 0.9rem; font-weight: 700; color: #1e293b; }
 @media (max-width: 1200px) { .manual-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .manual-grid { grid-template-columns: 1fr; } }
 </style>

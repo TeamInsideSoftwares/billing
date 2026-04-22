@@ -2,7 +2,7 @@
 
 @section('content')
 @php
-    $selectedClientId = request('clientid', request('c'));
+    $selectedClientId = request('c', request('clientid'));
     $currentStep = (int) request('step', 1);
     $invoiceFor = request('invoice_for', session('invoice_for', ''));
     
@@ -26,7 +26,7 @@
 
 @section('header_actions')
     @if($currentStep === 1)
-        <a href="{{ $selectedClientId ? route('orders.index', ['c' => $selectedClientId]) : route('invoices.index') }}" class="secondary-button">
+        <a href="{{ $selectedClientId ? route('invoices.index', ['c' => $selectedClientId]) : route('invoices.index') }}" class="secondary-button">
             <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back
         </a>
     @endif
@@ -109,7 +109,7 @@
 .table-shell { border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background: #ffffff; }
 .empty-state { padding: 1rem; text-align: center; color: #6b7280; font-size: 0.84rem; }
 .builder-card { padding: 0.7rem; border: 1px solid #e5e7eb; border-radius: 12px; background: #f9fafb; }
-.manual-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.55rem; align-items: end; }
+.manual-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.55rem; align-items: start; }
 .totals-card { padding: 0.85rem; border-radius: 12px; background: #f9fafb; border: 1px solid #e5e7eb; }
 .total-row { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.45rem; font-size: 0.84rem; color: #4b5563; }
 .total-row:last-child { margin-bottom: 0; }

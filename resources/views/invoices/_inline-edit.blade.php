@@ -16,7 +16,7 @@
     </div>
 
     <!-- Edit Form -->
-    <form method="POST" action="{{ route('invoices.update', $invoice) }}" id="inline-edit-form-{{ $documentId }}">
+    <form method="POST" action="{{ route('invoices.update', [$invoice, 'c' => request('c')]) }}" id="inline-edit-form-{{ $documentId }}">
         @csrf
         @method('PUT')
 
@@ -47,7 +47,7 @@
             </div>
             <div class="invoice-meta-card">
                 <span class="invoice-meta-label">Balance Due</span>
-                <strong class="invoice-meta-value">{{ $invoice->currency_code ?? ($invoice->client->currency ?? 'INR') }} {{ number_format($invoice->balance_due ?? $invoice->grand_total ?? 0, 2) }}</strong>
+                <strong class="invoice-meta-value">{{ $invoice->currency_code ?? ($invoice->client->currency ?? 'INR') }} {{ number_format($invoice->balance_due ?? $invoice->grand_total ?? 0, 0) }}</strong>
             </div>
         </div>
 
@@ -141,7 +141,7 @@
                         <select id="inline_item_tax_{{ $documentId }}" class="form-input">
                             <option value="0">No Tax</option>
                             @foreach($taxes as $tax)
-                                <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 2) }}%)</option>
+                                <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)</option>
                             @endforeach
                         </select>
                     </div>
@@ -210,9 +210,9 @@
             <!-- Totals -->
             <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
                 <div class="totals-card" style="min-width: 320px;">
-                    <div class="total-row"><span>Subtotal</span><strong id="inline_subtotal_{{ $documentId }}">0.00</strong></div>
-                    <div class="total-row"><span>Tax</span><strong id="inline_tax_{{ $documentId }}">0.00</strong></div>
-                    <div class="total-row total-row-grand"><span>Grand Total</span><strong id="inline_grand_{{ $documentId }}">0.00</strong></div>
+                    <div class="total-row"><span>Subtotal</span><strong id="inline_subtotal_{{ $documentId }}">0</strong></div>
+                    <div class="total-row"><span>Tax</span><strong id="inline_tax_{{ $documentId }}">0</strong></div>
+                    <div class="total-row total-row-grand"><span>Grand Total</span><strong id="inline_grand_{{ $documentId }}">0</strong></div>
                 </div>
             </div>
         </div>
@@ -294,7 +294,7 @@
     let invoiceItems = @json($itemsData);
 
     function formatMoney(amount) {
-        return `${clientCurrency} ${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `${clientCurrency} ${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     }
 
     function renderTaxSelect(selectedRate, attributes = '') {
@@ -307,12 +307,12 @@
 
         taxOptions.forEach((tax) => {
             const rate = Number(tax.rate || 0);
-            options.push(`<option value="${rate}" ${rate === normalizedRate ? 'selected' : ''}>${tax.name} (${rate.toFixed(2)}%)</option>`);
+            options.push(`<option value="${rate}" ${rate === normalizedRate ? 'selected' : ''}>${tax.name} (${rate.toFixed(0)}%)</option>`);
         });
 
         const hasMatch = normalizedRate === 0 || taxOptions.some((tax) => Number(tax.rate || 0) === normalizedRate);
         if (!hasMatch && normalizedRate > 0) {
-            options.push(`<option value="${normalizedRate}" selected>Custom (${normalizedRate.toFixed(2)}%)</option>`);
+            options.push(`<option value="${normalizedRate}" selected>Custom (${normalizedRate.toFixed(0)}%)</option>`);
         }
 
         return `<select class="form-input item-input" ${attributes}>${options.join('')}</select>`;

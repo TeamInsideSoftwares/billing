@@ -90,10 +90,8 @@
 
         if (clientId) {
             currentUrl.searchParams.set('c', clientId);
-            currentUrl.searchParams.set('clientid', clientId);
         } else {
             currentUrl.searchParams.delete('c');
-            currentUrl.searchParams.delete('clientid');
         }
 
         window.history.replaceState({}, '', currentUrl.toString());
@@ -104,7 +102,7 @@
         noMsg.style.display = 'none';
 
         try {
-            const res = await fetch(`{{ route('invoices.index') }}?clientid=${clientId}`, {
+            const res = await fetch(`{{ route('invoices.index') }}?c=${clientId}`, {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
             });
             const data = await res.json();
@@ -123,7 +121,7 @@
                 // Build items HTML
                 const itemsHtml = (inv.items || []).map(item => {
                     const details = [];
-                    // if (item.price && item.price !== '0.00') details.push(`Unit: ${item.price}`);
+                    // if (item.price && item.price !== '0') details.push(`Unit: ${item.price}`);
                     if (item.tax_rate) details.push(`Tax: ${item.tax_rate}%`);
                     if (item.users && item.users > 1) details.push(`Users: ${item.users}`);
                     if (item.frequency) details.push(`Freq: ${item.frequency}`);
@@ -187,7 +185,7 @@
         }
         const clientToken = encodeURIComponent(selectedClientId);
         const sourceToken = encodeURIComponent(source.value);
-        window.location.href = "{{ route('invoices.create') }}?step=2&invoice_for=" + sourceToken + "&c=" + clientToken + "&clientid=" + clientToken;
+        window.location.href = "{{ route('invoices.create') }}?step=2&invoice_for=" + sourceToken + "&c=" + clientToken;
     });
 })();
 </script>

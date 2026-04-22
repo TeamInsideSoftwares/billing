@@ -18,6 +18,7 @@
     $defaultAgreementDate = $isEditMode ? ($editingOrder?->agreement_date?->format('Y-m-d') ?? '') : '';
     $selectedClientId = old('clientid', $clientFallback);
     $selectedClient = collect($clients ?? [])->firstWhere('clientid', $selectedClientId);
+    $selectedClientCurrency = $selectedClient->currency ?? 'INR';
     $selectedClientName = $selectedClient->business_name ?? $selectedClient->contact_name ?? 'Select client';
     $selectedClientEmail = $selectedClient->email ?? 'No client email';
     $accountStateForGst = strtoupper(trim((string) ($account->state ?? '')));
@@ -27,6 +28,7 @@
                 'name' => (string) ($client->business_name ?? $client->contact_name ?? 'Select client'),
                 'email' => (string) ($client->email ?? ''),
                 'state' => strtoupper(trim((string) ($client->state ?? ''))),
+                'currency' => (string) ($client->currency ?? 'INR'),
             ],
         ];
     })->all();
@@ -212,7 +214,7 @@
                         </p>
                     </div>
 
-                    <div class="add-item-row form-grid" style="background: #f9fafb; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; flex-wrap: nowrap; gap: 0.5rem; align-items: end;">
+                    <div class="add-item-row form-grid" style="background: #f9fafb; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; flex-wrap: nowrap; gap: 0.5rem; align-items: flex-start;">
                         <div style="flex: 2; min-width: 150px;">
                             <label style="font-size: 0.75rem;">Item</label>
                             <select id="item_itemid" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
@@ -231,7 +233,8 @@
                                             @endphp
                                             <option value="{{ $service->itemid }}"
                                                     data-selling-price="{{ $sellingPrice }}"
-                                                    data-tax-rate="{{ $taxRate }}"
+                                                    data-tax-rate="{{ (float) $taxRate }}"
+                                                    data-description="{{ $service->description ?? '' }}"
                                                     data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
                                                 {{ $service->name }} ({{ number_format($sellingPrice, 0) }})
                                             </option>
@@ -239,6 +242,8 @@
                                     </optgroup>
                                 @endforeach
                             </select>
+                            <label for="item_description" style="font-size: 0.72rem; margin-top: 0.35rem; display: block;">Description</label>
+                            <textarea id="item_description" rows="1" placeholder="Description (optional)" style="font-size: 0.8rem; padding: 0.35rem 0.5rem; width: 100%; resize: none; height: 34px; line-height: 1.2;"></textarea>
                         </div>
                         <div style="flex: 0.6; min-width: 60px;">
                             <label style="font-size: 0.75rem;">Qty</label>
@@ -246,7 +251,7 @@
                         </div>
                         <div style="flex: 0.8; min-width: 80px;">
                             <label style="font-size: 0.75rem;">Price</label>
-                            <input type="number" id="item_unit_price" min="0" step="0.01" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                            <input type="number" id="item_unit_price" min="0" step="1" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                         </div>
                         @if($account->allow_multi_taxation)
                         <div style="flex: 0.8; min-width: 80px;">
@@ -254,7 +259,7 @@
                             <select id="item_tax_rate" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                                 <option value="0">No Tax</option>
                                 @foreach($taxes as $tax)
-                                    <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 2) }}%)</option>
+                                    <option value="{{ (float) $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)</option>
                                 @endforeach
                             </select>
                         </div>
@@ -271,7 +276,7 @@
                         @endif
                         <div style="flex: 0.6; min-width: 70px;">
                             <label style="font-size: 0.75rem;">Disc%</label>
-                            <input type="number" id="item_discount" value="0" min="0" max="100" step="0.01" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                            <input type="number" id="item_discount" value="0" min="0" max="100" step="1" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                         </div>
                         <div style="flex: 0.8; min-width: 80px;">
                             <label style="font-size: 0.75rem;">Freq</label>
@@ -303,11 +308,10 @@
                             <label style="font-size: 0.75rem;">Delivery</label>
                             <input type="date" id="item_delivery_date" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                         </div>
-                        <div style="flex-shrink: 0;">
+                        <div style="flex-shrink: 0; align-self: flex-end;">
                             <button type="button" id="addItemBtn" class="btn btn-sm btn-primary" style="padding: 0.35rem 0.85rem; font-size: 0.8rem; white-space: nowrap;">Add</button>
                         </div>
                     </div>
-
                     <table id="itemsTable" style="width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; display: none; font-size: 0.9rem;">
                         <thead>
                             <tr style="background: #f3f4f6;">
@@ -340,19 +344,19 @@
 
                             <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
                                 <span style="color: #64748b;">Subtotal:</span>
-                                <strong id="subtotal">0.00</strong>
+                                <strong id="subtotal">0</strong>
                             </div>
                             <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
                                 <span style="color: #64748b;">Discount:</span>
-                                <strong id="discountTotal" style="color: #dc2626;">0.00</strong>
+                                <strong id="discountTotal" style="color: #dc2626;">0</strong>
                             </div>
                             <div id="taxIgstRow" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
                                 <span id="taxLabel" style="color: #64748b;">Tax (IGST):</span>
-                                <strong id="taxTotal">0.00</strong>
+                                <strong id="taxTotal">0</strong>
                             </div>
                             <div style="display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: 700; border-top: 2px solid #e2e8f0; padding-top: 0.5rem; margin-top: 0.5rem;">
                                 <span>Total:</span>
-                                <strong id="grandTotal" style="color: #3b82f6;">0.00</strong>
+                                <strong id="grandTotal" style="color: #3b82f6;">0</strong>
                             </div>
                         </div>
 
@@ -569,7 +573,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Normalize amounts so line_total always represents amount before tax.
     function round2(value) {
-        return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+        return Math.round(Number(value) || 0);
     }
 
     function roundTaxUp(value) {
@@ -596,8 +600,61 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderLineTotalHtml(lineTotal) {
-        const base = Number(lineTotal || 0).toFixed(2);
+        const base = Number(lineTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
         return `<strong>${base}</strong>`;
+    }
+
+    function formatAmount(value) {
+        return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderItemCellContent(itemName, itemDescription) {
+        const safeName = escapeHtml(itemName || '');
+        const safeDescription = escapeHtml(itemDescription || '').trim();
+        if (!safeDescription) {
+            return safeName;
+        }
+
+        return `
+            <div style="font-weight: 600; color: #111827;">${safeName}</div>
+            <div style="margin-top: 0.15rem; color: #64748b; font-size: 0.78rem; white-space: pre-wrap;">${safeDescription}</div>
+        `;
+    }
+
+    function setTaxRateInputValue(rawRate) {
+        const taxInput = document.getElementById('item_tax_rate');
+        if (!taxInput) return;
+
+        const targetRate = Number(rawRate || 0);
+        if (taxInput.tagName !== 'SELECT') {
+            taxInput.value = String(targetRate);
+            return;
+        }
+
+        const options = Array.from(taxInput.options || []);
+        const matched = options.find(opt => Number(opt.value || 0) === targetRate);
+
+        if (matched) {
+            taxInput.value = matched.value;
+            return;
+        }
+
+        // Keep historical/custom rates selectable even if not currently in the tax list.
+        const fallbackOption = document.createElement('option');
+        fallbackOption.value = String(targetRate);
+        fallbackOption.textContent = `Tax ${targetRate}%`;
+        fallbackOption.dataset.dynamicTax = '1';
+        taxInput.appendChild(fallbackOption);
+        taxInput.value = fallbackOption.value;
     }
 
     // When order delivery date changes, update the input field for the next item
@@ -686,11 +743,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (isSameStateGstForSelectedClient()) {
             taxLabelEl.textContent = 'Tax (CGST + SGST):';
-            taxTotalEl.textContent = taxTotal.toFixed(2);
+            taxTotalEl.textContent = formatAmount(taxTotal);
             igstRow.style.display = 'flex';
         } else {
             taxLabelEl.textContent = 'Tax (IGST):';
-            taxTotalEl.textContent = taxTotal.toFixed(2);
+            taxTotalEl.textContent = formatAmount(taxTotal);
             igstRow.style.display = 'flex';
         }
     }
@@ -708,10 +765,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Item select change
     document.getElementById('item_itemid').addEventListener('change', function() {
         const option = this.options[this.selectedIndex];
+        const descriptionInput = document.getElementById('item_description');
         if (option.value) {
-            document.getElementById('item_unit_price').value = option.dataset.sellingPrice || '0';
+            const price = Math.round(Number(option.dataset.sellingPrice || 0));
+            const taxRate = Number(option.dataset.taxRate || 0);
+            document.getElementById('item_unit_price').value = String(price);
+            setTaxRateInputValue(taxRate);
+            if (descriptionInput) {
+                descriptionInput.value = option.dataset.description || '';
+            }
         } else {
             document.getElementById('item_unit_price').value = '';
+            if (descriptionInput) {
+                descriptionInput.value = '';
+            }
         }
         @if($account->have_users)
         toggleUsersField();
@@ -801,7 +868,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Helper function to add a new item
-    function addNewItem(serviceId, serviceName, qty, unitPrice, frequency, duration, users, startDate, endDate, deliveryDate, lineTotal, discountPercent, discountAmount, taxRate, taxAmount) {
+    function addNewItem(serviceId, serviceName, itemDescription, qty, unitPrice, frequency, duration, users, startDate, endDate, deliveryDate, lineTotal, discountPercent, discountAmount, taxRate, taxAmount) {
         qty = Math.max(1, Math.round(Number(qty) || 1));
 
         // Disable button during save
@@ -830,6 +897,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 line_total: lineTotal,
                 discount_percent: discountPercent,
                 discount_amount: discountAmount,
+                item_description: itemDescription,
                 tax_rate: taxRate
             })
         })
@@ -852,6 +920,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     order_item_id: data.order_item_id || null,
                     itemid: serviceId,
                     item_name: serviceName,
+                    item_description: itemDescription,
                     quantity: qty,
                     unit_price: unitPrice,
                     frequency: frequency,
@@ -876,9 +945,9 @@ document.addEventListener('DOMContentLoaded', function() {
             row.dataset.itemId = itemCounter;
             row.dataset.orderItemId = data.order_item_id || '';
             row.innerHTML = `
-                <td style="padding: 0.4rem 0.6rem;">${item.item_name}</td>
+                <td style="padding: 0.4rem 0.6rem;">${renderItemCellContent(item.item_name, item.item_description)}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${Math.round(Number(item.quantity) || 0)}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${item.unit_price}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${formatAmount(item.unit_price)}</td>
                 @if($account->allow_multi_taxation)
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.tax_rate}%</td>
                 @endif
@@ -891,7 +960,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.start_date || '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.end_date || '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.delivery_date || '—'}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${Math.round(item.line_total)}</strong></td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${formatAmount(Math.round(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0))))}</strong></td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
                     <button type="button" class="edit-item icon-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;"><i class="fas fa-edit"></i></button>
                     <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button>
@@ -928,9 +997,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const serviceOption = document.getElementById('item_itemid').options[document.getElementById('item_itemid').selectedIndex];
         const serviceName = serviceOption.text.split(' (')[0];
+        const itemDescription = (document.getElementById('item_description')?.value || '').trim();
         
         const qty = Math.max(1, Math.round(Number(document.getElementById('item_quantity').value) || 1));
-        const unitPrice = parseFloat(document.getElementById('item_unit_price').value) || 0;
+        const unitPrice = Math.round(parseFloat(document.getElementById('item_unit_price').value) || 0);
         const frequency = document.getElementById('item_frequency').value || '';
         const duration = document.getElementById('item_duration').value || '';
         @if($account->have_users)
@@ -948,11 +1018,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const discountPercent = parseFloat(document.getElementById('item_discount').value) || 0;
         const lineInputTotal = calculateLineTotal(qty, unitPrice, users, frequency, duration);
 
-        @if($account->allow_multi_taxation)
-        const taxRate = parseFloat(document.getElementById('item_tax_rate').value) || 0;
-        @else
-        const taxRate = {{ $account->fixed_tax_rate ?? 0 }};
-        @endif
+        let taxRate = parseFloat(document.getElementById('item_tax_rate')?.value) || 0;
+        const serviceTaxRate = Number(serviceOption?.dataset?.taxRate || 0);
+        if (taxRate <= 0 && serviceTaxRate > 0) {
+            taxRate = serviceTaxRate;
+            setTaxRateInputValue(taxRate);
+        }
         
         const { lineTotal, discountAmount, taxAmount } = calculateTaxBreakdown(lineInputTotal, discountPercent, taxRate);
 
@@ -982,7 +1053,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     editingItemId = null;
                     document.getElementById('addItemBtn').textContent = 'Add';
-                    addNewItem(serviceId, serviceName, qty, unitPrice, frequency, duration, usersForStorage, startDate, endDate, deliveryDate, lineTotal, discountPercent, discountAmount, taxRate, taxAmount);
+                    addNewItem(serviceId, serviceName, itemDescription, qty, unitPrice, frequency, duration, usersForStorage, startDate, endDate, deliveryDate, lineTotal, discountPercent, discountAmount, taxRate, taxAmount);
                 })
                 .catch(error => {
                     alert('Error updating item: ' + error.message);
@@ -991,7 +1062,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        addNewItem(serviceId, serviceName, qty, unitPrice, frequency, duration, usersForStorage, startDate, endDate, deliveryDate, lineTotal, discountPercent, discountAmount, taxRate, taxAmount);
+        addNewItem(serviceId, serviceName, itemDescription, qty, unitPrice, frequency, duration, usersForStorage, startDate, endDate, deliveryDate, lineTotal, discountPercent, discountAmount, taxRate, taxAmount);
     });
 
     // Edit and Remove items
@@ -1005,15 +1076,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Load item data into form
                 document.getElementById('item_itemid').value = item.itemid;
                 document.getElementById('item_quantity').value = item.quantity;
-                document.getElementById('item_unit_price').value = item.unit_price;
+                document.getElementById('item_unit_price').value = Math.round(Number(item.unit_price || 0));
                 document.getElementById('item_frequency').value = item.frequency || '';
                 document.getElementById('item_duration').value = item.duration || '';
                 document.getElementById('item_users').value = item.no_of_users || 1;
+                document.getElementById('item_description').value = item.item_description || '';
                 @if($account->have_users)
                 toggleUsersField();
                 @endif
                 document.getElementById('item_discount').value = item.discount_percent || 0;
-                document.getElementById('item_tax_rate').value = item.tax_rate || 0;
+                setTaxRateInputValue(item.tax_rate || 0);
                 
                 setDateValue('item_start_date', item.start_date || '');
                 setDateValue('item_end_date', item.end_date || '');
@@ -1080,10 +1152,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const taxTotal = roundTaxUp(items.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0));
         const grandTotal = round2(subtotal - discountTotal + taxTotal);
 
-        document.getElementById('subtotal').textContent = subtotal.toFixed(2);
-        document.getElementById('discountTotal').textContent = discountTotal.toFixed(2);
+        document.getElementById('subtotal').textContent = formatAmount(subtotal);
+        document.getElementById('discountTotal').textContent = formatAmount(discountTotal);
         updateTaxBreakupDisplay(taxTotal);
-        document.getElementById('grandTotal').textContent = grandTotal.toFixed(2);
+        document.getElementById('grandTotal').textContent = formatAmount(grandTotal);
 
         // Note: In create form, we don't need hidden fields since items are saved via AJAX
         // The hidden fields are only used in edit form for batch submission
@@ -1097,7 +1169,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'item_discount': 0,
             'item_frequency': '',
             'item_duration': '',
-            'item_users': 1
+            'item_users': 1,
+            'item_description': ''
         };
         
         for (const [id, value] of Object.entries(fields)) {
@@ -1115,7 +1188,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const itemTaxRate = document.getElementById('item_tax_rate');
         if (itemTaxRate) {
-            itemTaxRate.value = {{ $account->allow_multi_taxation ? '0' : ($account->fixed_tax_rate ?? 0) }};
+            setTaxRateInputValue({{ $account->allow_multi_taxation ? '0' : ($account->fixed_tax_rate ?? 0) }});
         }
 
         // Reset delivery date to order's delivery date
@@ -1211,19 +1284,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 order_item_id: itemData.orderitemid,
                 itemid: itemData.itemid,
                 item_name: itemData.item_name,
+                item_description: itemData.item_description || '',
                 quantity: Math.max(1, Math.round(Number(itemData.quantity) || 1)),
-                unit_price: itemData.unit_price,
+                unit_price: Math.round(Number(itemData.unit_price) || 0),
                 frequency: itemData.frequency || '',
                 duration: itemData.duration || '',
                 no_of_users: itemData.no_of_users ?? null,
                 start_date: itemData.start_date || '',
                 end_date: itemData.end_date || '',
                 delivery_date: itemData.delivery_date || '',
-                line_total: itemData.line_total,
+                line_total: Math.round(Number(itemData.line_total) || 0),
                 discount_percent: itemData.discount_percent || 0,
-                discount_amount: itemData.discount_amount || 0,
+                discount_amount: roundDiscountDown(Number(itemData.discount_amount) || 0),
                 tax_rate: itemData.tax_rate || 0,
-                tax_amount: (Math.max(0, (itemData.line_total || 0) - (itemData.discount_amount || 0)) * (itemData.tax_rate || 0)) / 100
+                tax_amount: roundTaxUp(Math.max(0, (Number(itemData.line_total) || 0) - (Number(itemData.discount_amount) || 0)) * ((Number(itemData.tax_rate) || 0) / 100))
             };
             items.push(item);
 
@@ -1235,9 +1309,9 @@ document.addEventListener('DOMContentLoaded', function() {
             row.dataset.itemId = itemCounter;
             row.dataset.orderItemId = itemData.orderitemid;
             row.innerHTML = `
-                <td style="padding: 0.4rem 0.6rem;">${item.item_name}</td>
+                <td style="padding: 0.4rem 0.6rem;">${renderItemCellContent(item.item_name, item.item_description)}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${Math.round(Number(item.quantity) || 0)}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${item.unit_price}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${formatAmount(item.unit_price)}</td>
                 @if($account->allow_multi_taxation)
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.tax_rate}%</td>
                 @endif
@@ -1250,7 +1324,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.start_date || '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.end_date || '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.delivery_date || '—'}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${Math.round(item.line_total)}</strong></td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${formatAmount(Math.round(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0))))}</strong></td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
                     <button type="button" class="edit-item icon-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;"><i class="fas fa-edit"></i></button>
                     <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button>

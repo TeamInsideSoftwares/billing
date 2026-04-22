@@ -24,7 +24,7 @@ class OrdersController extends Controller
             ->get();
 
         return view('orders.select-client', [
-            'title' => 'Select Client for Orders',
+            'title' => 'Manage Orders',
             'subtitle' => 'Choose a client to view their orders.',
             'clients' => $clients,
         ]);
@@ -35,7 +35,7 @@ class OrdersController extends Controller
         $clientId = request('c');
         $selectedClient = null;
         
-        $query = Order::with(['client', 'items.item']);
+        $query = Order::with(['client', 'items.item', 'proformaInvoices', 'invoices']);
         
         // Filter by client if client_id is provided
         if ($clientId) {
@@ -78,12 +78,13 @@ class OrdersController extends Controller
                 'currency' => $order->client->currency ?? 'INR',
                 'order_date' => $order->order_date?->format('d M Y') ?? 'N/A',
                 'delivery_date' => $order->delivery_date?->format('d M Y') ?? 'N/A',
-                'amount' => number_format($order->grand_total ?? 0, 2),
+                'amount' => number_format($order->grand_total ?? 0, 0),
                 'discount' => $order->discount_total ?? 0,
                 'item_count' => $order->items->count(),
                 'items' => $order->items->map(function ($item) {
                     return [
                         'item_name' => $item->item_name ?: ($item->item->name ?? 'Item'),
+                        'item_description' => $item->item_description,
                         'quantity' => (float) ($item->quantity ?? 1),
                         'unit_price' => (float) ($item->unit_price ?? 0),
                         'tax_rate' => (float) ($item->tax_rate ?? 0),
@@ -99,8 +100,10 @@ class OrdersController extends Controller
                     ];
                 })->values()->all(),
                 'sales_person' => $salesPersonLookup[$salesPersonId] ?? ($order->salesPerson->name ?? '-'),
+                'status' => (string) ($order->status ?? ''),
                 'is_verified' => ($order->is_verified ?? 'no') === 'yes' ? 'Verified' : 'Unverified',
                 'verified' => ($order->is_verified ?? 'no') === 'yes',
+                'has_pi' => $order->proformaInvoices->isNotEmpty() || $order->invoices->isNotEmpty(),
             ];
         });
 
@@ -128,10 +131,10 @@ class OrdersController extends Controller
         }
 
         return view('orders.index', [
-            'title' => 'All Orders',
+            'title' => $clientId ? 'All Orders' : 'Manage Orders',
             'subtitle' => $searchTerm
                 ? 'Found ' . $resultCount . ' result(s) for "' . $searchTerm . '"'
-                : ($clientId ? 'Showing orders for selected client.' : 'Grouped by client with quick actions.'),
+                : ($clientId ? 'Showing orders for selected client.' : 'Choose a client first to view their orders.'),
             'orders' => $orders,
             'groupedOrders' => $groupedOrders,
             'searchTerm' => $searchTerm,
@@ -210,10 +213,10 @@ class OrdersController extends Controller
                 $discountTotal += $amounts['discount_amount'];
                 $taxTotal += $amounts['tax_amount'];
             }
-            $subtotal = round($subtotal, 2);
+            $subtotal = round($subtotal, 0);
             $discountTotal = $this->roundDiscountDown($discountTotal);
             $taxTotal = $this->roundTaxUp($taxTotal);
-            $grandTotal = round($subtotal - $discountTotal + $taxTotal, 2);
+            $grandTotal = round($subtotal - $discountTotal + $taxTotal, 0);
 
             $existingOrder->update([
                 'clientid' => $validated['clientid'],
@@ -241,11 +244,11 @@ class OrdersController extends Controller
                     'orderid' => $existingOrder->orderid,
                     'itemid' => $itemData['itemid'],
                     'item_name' => $service?->name ?? 'Custom Item',
-                    'item_description' => null,
-                    'quantity' => $itemData['quantity'],
-                    'unit_price' => $itemData['unit_price'],
+                    'item_description' => $itemData['item_description'] ?? null,
+                    'quantity' => $this->wholeQuantity($itemData['quantity'] ?? 1),
+                    'unit_price' => $this->wholeAmount($itemData['unit_price'] ?? 0),
                     'tax_rate' => $taxRate,
-                    'discount_percent' => (float) ($itemData['discount_percent'] ?? 0),
+                    'discount_percent' => $this->wholePercent($itemData['discount_percent'] ?? 0),
                     'discount_amount' => $amounts['discount_amount'],
                     'duration' => $itemData['duration'] ?? null,
                     'frequency' => $itemData['frequency'] ?? null,
@@ -294,10 +297,10 @@ class OrdersController extends Controller
             $discountTotal += $amounts['discount_amount'];
             $taxTotal += $amounts['tax_amount'];
         }
-        $subtotal = round($subtotal, 2);
+        $subtotal = round($subtotal, 0);
         $discountTotal = $this->roundDiscountDown($discountTotal);
         $taxTotal = $this->roundTaxUp($taxTotal);
-        $grandTotal = round($subtotal - $discountTotal + $taxTotal, 2);
+        $grandTotal = round($subtotal - $discountTotal + $taxTotal, 0);
         $validated['subtotal'] = $subtotal;
         $validated['discount_total'] = $discountTotal;
         $validated['tax_total'] = $taxTotal;
@@ -319,11 +322,11 @@ class OrdersController extends Controller
                 'orderid' => $order->orderid,
                 'itemid' => $itemData['itemid'],
                 'item_name' => $service?->name ?? 'Custom Item',
-                'item_description' => null,
-                'quantity' => $itemData['quantity'],
-                'unit_price' => $itemData['unit_price'],
+                'item_description' => $itemData['item_description'] ?? null,
+                'quantity' => $this->wholeQuantity($itemData['quantity'] ?? 1),
+                'unit_price' => $this->wholeAmount($itemData['unit_price'] ?? 0),
                 'tax_rate' => $taxRate,
-                'discount_percent' => (float) ($itemData['discount_percent'] ?? 0),
+                'discount_percent' => $this->wholePercent($itemData['discount_percent'] ?? 0),
                 'discount_amount' => $amounts['discount_amount'],
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
@@ -406,6 +409,7 @@ class OrdersController extends Controller
                     'discount_percent' => $item->discount_percent ?? 0,
                     'discount_amount' => $item->discount_amount ?? 0,
                     'item_name' => $item->item_name ?? '',
+                    'item_description' => $item->item_description ?? '',
                     'frequency' => $item->frequency,
                     'duration' => $item->duration,
                     'no_of_users' => $item->no_of_users,
@@ -440,12 +444,13 @@ class OrdersController extends Controller
                     'orderid' => $item->orderid,
                     'itemid' => $item->itemid,
                     'quantity' => $item->quantity ?? 1,
-                    'unit_price' => number_format($item->unit_price ?? 0, 2),
-                    'tax_rate' => number_format($item->tax_rate ?? 0, 2),
-                    'line_total' => number_format($item->line_total ?? 0, 2),
-                    'discount_percent' => number_format($item->discount_percent ?? 0, 2),
-                    'discount_amount' => number_format($item->discount_amount ?? 0, 2),
+                    'unit_price' => number_format($item->unit_price ?? 0, 0),
+                    'tax_rate' => number_format($item->tax_rate ?? 0, 0),
+                    'line_total' => number_format($item->line_total ?? 0, 0),
+                    'discount_percent' => number_format($item->discount_percent ?? 0, 0),
+                    'discount_amount' => number_format($item->discount_amount ?? 0, 0),
                     'item_name' => $item->item_name ?? 'Item',
+                    'item_description' => $item->item_description ?? '',
                     'service' => null,
                 ];
             });
@@ -454,7 +459,7 @@ class OrdersController extends Controller
                 'orderid' => $order->orderid,
                 'order_number' => $order->order_number,
                 'clientid' => $order->clientid,
-                'grand_total' => number_format($order->grand_total ?? 0, 2),
+                'grand_total' => number_format($order->grand_total ?? 0, 0),
                 'items' => $items,
             ]);
         } catch (\Exception $e) {
@@ -512,6 +517,7 @@ class OrdersController extends Controller
                     'discount_percent' => $item->discount_percent ?? 0,
                     'discount_amount' => $item->discount_amount ?? 0,
                     'item_name' => $item->item_name ?? '',
+                    'item_description' => $item->item_description ?? '',
                     'frequency' => $item->frequency,
                     'duration' => $item->duration,
                     'no_of_users' => $item->no_of_users,
@@ -554,10 +560,10 @@ class OrdersController extends Controller
             $discountTotal += $amounts['discount_amount'];
             $taxTotal += $amounts['tax_amount'];
         }
-        $subtotal = round($subtotal, 2);
+        $subtotal = round($subtotal, 0);
         $discountTotal = $this->roundDiscountDown($discountTotal);
         $taxTotal = $this->roundTaxUp($taxTotal);
-        $grandTotal = round($subtotal - $discountTotal + $taxTotal, 2);
+        $grandTotal = round($subtotal - $discountTotal + $taxTotal, 0);
 
         // Handle PO file upload
         if ($request->hasFile('po_file')) {
@@ -616,11 +622,11 @@ class OrdersController extends Controller
                 'orderid' => $order->orderid,
                 'itemid' => $itemData['itemid'],
                 'item_name' => $service?->name ?? 'Custom Item',
-                'item_description' => null,
-                'quantity' => $itemData['quantity'],
-                'unit_price' => $itemData['unit_price'],
+                'item_description' => $itemData['item_description'] ?? null,
+                'quantity' => $this->wholeQuantity($itemData['quantity'] ?? 1),
+                'unit_price' => $this->wholeAmount($itemData['unit_price'] ?? 0),
                 'tax_rate' => $taxRate,
-                'discount_percent' => (float) ($itemData['discount_percent'] ?? 0),
+                'discount_percent' => $this->wholePercent($itemData['discount_percent'] ?? 0),
                 'discount_amount' => $amounts['discount_amount'],
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
@@ -638,9 +644,22 @@ class OrdersController extends Controller
 
     public function ordersDestroy(Order $order)
     {
-        $order->delete();
+        $order->update([
+            'status' => 'cancelled',
+            'is_verified' => 'no',
+        ]);
 
-        return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order deleted successfully.');
+        return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order cancelled successfully.');
+    }
+
+    public function ordersRestore(Order $order)
+    {
+        $order->update([
+            'status' => 'unverified',
+            'is_verified' => 'no',
+        ]);
+
+        return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order restored successfully.');
     }
 
     private function resolveTaxRate(?Service $service, array $itemData): float
@@ -649,36 +668,64 @@ class OrdersController extends Controller
         $account = \App\Models\Account::find($accountid);
 
         if ($account && !$account->allow_multi_taxation) {
-            return (float) ($account->fixed_tax_rate ?? 0);
+            $fixedTaxRate = (float) ($account->fixed_tax_rate ?? 0);
+            if ($fixedTaxRate > 0) {
+                return $fixedTaxRate;
+            }
         }
 
         if (array_key_exists('tax_rate', $itemData) && $itemData['tax_rate'] !== null && $itemData['tax_rate'] !== '') {
-            return (float) $itemData['tax_rate'];
+            $requestTaxRate = (float) $itemData['tax_rate'];
+            if ($requestTaxRate > 0) {
+                return $requestTaxRate;
+            }
         }
 
         if ($service && $service->relationLoaded('costings')) {
-            $costingTaxRate = (float) ($service->costings->first()?->tax_rate ?? 0);
+            $costingTaxRate = (float) $service->costings
+                ->map(fn ($costing) => (float) ($costing->tax_rate ?? 0))
+                ->filter(fn ($rate) => $rate > 0)
+                ->first();
             if ($costingTaxRate > 0) {
                 return $costingTaxRate;
             }
         }
 
-        return (float) ($itemData['tax_rate'] ?? 0);
+        return max(0, (float) ($itemData['tax_rate'] ?? 0));
     }
 
     private function calculateOrderItemAmounts(array $itemData, float $taxRate): array
     {
-        $lineTotal = (float) ($itemData['line_total'] ?? 0);
-        $discountPercent = (float) ($itemData['discount_percent'] ?? 0);
+        $lineTotal = $this->calculateCanonicalLineTotal($itemData);
+        if ($lineTotal <= 0) {
+            $lineTotal = $this->wholeAmount($itemData['line_total'] ?? 0);
+        }
+
+        $discountPercent = $this->wholePercent($itemData['discount_percent'] ?? 0);
         $discountAmount = ($lineTotal * $discountPercent) / 100;
         $taxableAmount = max(0, $lineTotal - $discountAmount);
         $taxAmount = ($taxableAmount * $taxRate) / 100;
 
         return [
-            'line_total' => round($lineTotal, 2),
+            'line_total' => round($lineTotal, 0),
             'discount_amount' => $this->roundDiscountDown($discountAmount),
             'tax_amount' => $this->roundTaxUp($taxAmount),
         ];
+    }
+
+    private function calculateCanonicalLineTotal(array $itemData): float
+    {
+        $quantity = $this->wholeQuantity($itemData['quantity'] ?? 1);
+        $unitPrice = $this->wholeAmount($itemData['unit_price'] ?? 0);
+        $users = max(1, (int) round((float) ($itemData['no_of_users'] ?? 1), 0));
+        $frequency = strtolower(trim((string) ($itemData['frequency'] ?? '')));
+        $durationMultiplier = 1;
+
+        if ($frequency !== '' && $frequency !== 'one-time') {
+            $durationMultiplier = max(1, (int) round((float) ($itemData['duration'] ?? 1), 0));
+        }
+
+        return (float) round($quantity * $unitPrice * $users * $durationMultiplier, 0);
     }
 
     private function roundTaxUp(float $amount): float
@@ -689,6 +736,21 @@ class OrdersController extends Controller
     private function roundDiscountDown(float $amount): float
     {
         return (float) floor(max(0, $amount));
+    }
+
+    private function wholeAmount(mixed $value): float
+    {
+        return (float) round(max(0, (float) $value), 0);
+    }
+
+    private function wholePercent(mixed $value): float
+    {
+        return (float) min(100, max(0, round((float) $value, 0)));
+    }
+
+    private function wholeQuantity(mixed $value): int
+    {
+        return max(1, (int) round((float) $value, 0));
     }
 
     private function getSalesPeopleForForm(string $accountId): Collection
@@ -973,7 +1035,8 @@ class OrdersController extends Controller
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date',
                 'delivery_date' => 'nullable|date',
-                'line_total' => 'required|numeric|min:0',
+                'item_description' => 'nullable|string',
+                'line_total' => 'nullable|numeric|min:0',
                 'discount_percent' => 'nullable|numeric|min:0|max:100',
                 'discount_amount' => 'nullable|numeric|min:0',
                 'tax_rate' => 'required|numeric|min:0',
@@ -987,11 +1050,11 @@ class OrdersController extends Controller
                 'orderid' => $order->orderid,
                 'itemid' => $validated['itemid'],
                 'item_name' => $service?->name ?? 'Custom Item',
-                'item_description' => null,
-                'quantity' => $validated['quantity'],
-                'unit_price' => $validated['unit_price'],
+                'item_description' => $validated['item_description'] ?? null,
+                'quantity' => $this->wholeQuantity($validated['quantity'] ?? 1),
+                'unit_price' => $this->wholeAmount($validated['unit_price'] ?? 0),
                 'tax_rate' => $taxRate,
-                'discount_percent' => (float) ($validated['discount_percent'] ?? 0),
+                'discount_percent' => $this->wholePercent($validated['discount_percent'] ?? 0),
                 'discount_amount' => $amounts['discount_amount'],
                 'duration' => $validated['duration'] ?? null,
                 'frequency' => $validated['frequency'] ?? null,
@@ -1080,7 +1143,8 @@ class OrdersController extends Controller
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date',
                 'delivery_date' => 'nullable|date',
-                'line_total' => 'required|numeric|min:0',
+                'item_description' => 'nullable|string',
+                'line_total' => 'nullable|numeric|min:0',
                 'discount_percent' => 'nullable|numeric|min:0|max:100',
                 'discount_amount' => 'nullable|numeric|min:0',
                 'tax_rate' => 'required|numeric|min:0',
@@ -1093,10 +1157,11 @@ class OrdersController extends Controller
             $orderItem->update([
                 'itemid' => $validated['itemid'],
                 'item_name' => $service?->name ?? 'Custom Item',
-                'quantity' => $validated['quantity'],
-                'unit_price' => $validated['unit_price'],
+                'item_description' => $validated['item_description'] ?? null,
+                'quantity' => $this->wholeQuantity($validated['quantity'] ?? 1),
+                'unit_price' => $this->wholeAmount($validated['unit_price'] ?? 0),
                 'tax_rate' => $taxRate,
-                'discount_percent' => (float) ($validated['discount_percent'] ?? 0),
+                'discount_percent' => $this->wholePercent($validated['discount_percent'] ?? 0),
                 'discount_amount' => $amounts['discount_amount'],
                 'duration' => $validated['duration'] ?? null,
                 'frequency' => $validated['frequency'] ?? null,
@@ -1159,10 +1224,10 @@ class OrdersController extends Controller
         $taxTotal = $this->roundTaxUp($taxTotal);
 
         $order->update([
-            'subtotal' => round($subtotal, 2),
+            'subtotal' => round($subtotal, 0),
             'discount_total' => $discountTotal,
             'tax_total' => $taxTotal,
-            'grand_total' => round($subtotal - $discountTotal + $taxTotal, 2),
+            'grand_total' => round($subtotal - $discountTotal + $taxTotal, 0),
         ]);
     }
 }

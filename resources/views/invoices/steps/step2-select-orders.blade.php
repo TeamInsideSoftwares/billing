@@ -7,7 +7,7 @@
         </button>
     </div>
 
-    <input type="hidden" name="clientid" value="{{ request('clientid', request('c')) }}">
+    <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
     <input type="hidden" name="orderid" id="orderid">
     <input type="hidden" name="items_data" id="items_data">
 
@@ -143,8 +143,8 @@
 
 <script>
 (function() {
-    const clientId = "{{ request('clientid', request('c')) }}";
-    const preselectedOrderId = "{{ request('orderid', request('o', '')) }}";
+    const clientId = "{{ request('c', request('clientid')) }}";
+    const preselectedOrderId = "{{ request('o', request('orderid', '')) }}";
     const hasPreselectedOrder = preselectedOrderId && preselectedOrderId !== '0';
     const ordersBody = document.getElementById('ordersBody');
     const noOrdersMessage = document.getElementById('noOrdersMessage');
@@ -155,6 +155,15 @@
 
     let selectedOrderId = null;
     let orderItems = [];
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
 
     function loadOrders() {
         fetch("{{ route('invoices.client-orders') }}", {
@@ -194,7 +203,7 @@
                     <td>${order.delivery_date || 'N/A'}</td>
                     <td>${order.sales_person || '-'}</td>
                     <td>${order.item_count || 0} item(s)</td>
-                    <td>${order.currency} ${Number(order.grand_total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td>${Number(order.grand_total).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
                     <td>
                         <span style="font-size: 0.8rem; padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 500; background: ${verified ? '#dcfce7' : '#fef3c7'}; color: ${verified ? '#16a34a' : '#d97706'};">
                             ${verified ? 'Verified' : 'Unverified'}
@@ -219,7 +228,7 @@
                                 </div>
                                 <div class="invoice-side-meta">
                                     <span class="invoice-meta-label">Grand Total</span>
-                                    <strong class="invoice-meta-value">${order.currency} ${Number(order.grand_total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                                    <strong class="invoice-meta-value">${Number(order.grand_total).toLocaleString('en-US', { minimumFractionDigits: 0 })}</strong>
                                 </div>
                             </div>
                             <div class="order-detail-items" id="order-detail-items-${order.orderid}">
@@ -307,8 +316,10 @@
 
         const rows = items.map(item => {
             const discount = Number(item.discount_amount || 0) > 0
-                ? `${Number(item.discount_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}${Number(item.discount_percent || 0) > 0 ? `<div style="font-size:0.7rem;color:#6b7280;">(${Number(item.discount_percent).toFixed(1)}%)</div>` : ''}`
+                ? `${Number(item.discount_amount).toLocaleString('en-US', { minimumFractionDigits: 0 })}${Number(item.discount_percent || 0) > 0 ? `<div style="font-size:0.7rem;color:#6b7280;">(${Number(item.discount_percent).toFixed(1)}%)</div>` : ''}`
                 : '-';
+            const description = escapeHtml(item.item_description || '').trim();
+            const itemName = escapeHtml(item.item_name || 'Item');
 
             const frequencyDuration = `
                 ${item.frequency ? item.frequency.charAt(0).toUpperCase() + item.frequency.slice(1) : '-'}
@@ -323,15 +334,18 @@
 
             return `
                 <tr>
-                    <td><strong>${item.item_name || 'Item'}</strong></td>
-                    <td style="text-align:center;">${Math.max(1, Math.round(Number(item.quantity || 1))).toLocaleString('en-IN')}</td>
-                    <td style="text-align:right;">${Number(item.unit_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td style="text-align:right;">${Number(item.tax_rate || 0).toFixed(2)}%</td>
+                    <td>
+                        <strong>${itemName}</strong>
+                        ${description ? `<div style="margin-top:0.18rem; font-size:0.74rem; color:#6b7280; white-space: pre-wrap;">${description}</div>` : ''}
+                    </td>
+                    <td style="text-align:center;">${Math.max(1, Math.round(Number(item.quantity || 1))).toLocaleString('en-US')}</td>
+                    <td style="text-align:right;">${Number(item.unit_price || 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
+                    <td style="text-align:right;">${Number(item.tax_rate || 0).toFixed(0)}%</td>
                     <td style="text-align:right;">${discount}</td>
                     <td>${frequencyDuration}</td>
                     <td style="text-align:center;">${item.no_of_users || '-'}</td>
                     <td style="font-size:0.78rem; color:#6b7280;">${dates || '-'}</td>
-                    <td style="text-align:right;"><strong>${order.currency || 'INR'} ${Number(item.line_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></td>
+                    <td style="text-align:right;"><strong>${Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || ((Number(item.line_total || 0) * Number(item.discount_percent || 0)) / 100) || 0)).toLocaleString('en-US', { minimumFractionDigits: 0 })}</strong></td>
                 </tr>
             `;
         }).join('');
@@ -378,13 +392,13 @@
         .then(() => {
             const clientToken = encodeURIComponent(clientId);
             const orderToken = encodeURIComponent(selectedOrderId);
-            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=orders&c=" + clientToken + "&clientid=" + clientToken + "&o=" + orderToken + "&orderid=" + orderToken;
+            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=orders&c=" + clientToken + "&o=" + orderToken;
         });
     });
 
     btnBackToStep1.addEventListener('click', function() {
         const clientToken = encodeURIComponent(clientId);
-        window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientToken + "&clientid=" + clientToken;
+        window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientToken;
     });
 
     loadOrders();

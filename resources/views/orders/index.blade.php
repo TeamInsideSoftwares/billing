@@ -3,8 +3,11 @@
 @section('header_actions')
     @if($clientId)
         <a href="{{ route('orders.create', ['c' => $clientId]) }}" class="primary-button">
-            <i class="fas fa-receipt" style="margin-right: 0.5rem;"></i>Create Order
+            <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>Create Order
         </a>
+        <!-- <a href="{{ route('orders.index', ['c' => $clientId]) }}" class="secondary-button">
+            <i class="fas fa-list" style="margin-right: 0.5rem;"></i>View Orders
+        </a> -->
     @endif
 @endsection
 
@@ -20,7 +23,7 @@
                             <i class="fas fa-building"></i>
                         </div>
                         <div>
-                            <strong>Select Client</strong>
+                            <strong>Manage Orders</strong>
                             <p>Choose a client first to load that client’s orders and actions in a cleaner focused view.</p>
                         </div>
                     </div>
@@ -38,9 +41,14 @@
                             @endforeach
                         </select>
                     </div>
-                    <button type="submit" class="primary-button" style="min-height: 46px; padding-inline: 1.15rem;">
-                        <i class="fas fa-arrow-right" style="margin-right: 0.4rem;"></i> View Orders
-                    </button>
+                    <div class="order-client-picker-actions">
+                        <button type="button" id="btnViewOrders" class="secondary-button" style="min-height: 46px; padding-inline: 1.15rem;">
+                            <i class="fas fa-list" style="margin-right: 0.4rem;"></i> View Orders
+                        </button>
+                        <button type="button" id="btnCreateOrder" class="primary-button" style="min-height: 46px; padding-inline: 1.15rem;">
+                            <i class="fas fa-plus" style="margin-right: 0.4rem;"></i> Create Order
+                        </button>
+                    </div>
                 </form>
                 <!-- <p class="order-client-picker-note">
                     This keeps the orders screen focused and avoids mixing records from multiple clients in one list.
@@ -53,6 +61,7 @@
             @php
                 $firstOrder = $clientOrders->first();
                 $clientId = $firstOrder['clientid'] ?? '';
+                $groupCurrency = $firstOrder['currency'] ?? 'INR';
                 $clientForGroup = $allClients->firstWhere('clientid', $clientId);
                 $clientGstin = trim((string) (optional($clientForGroup?->billingDetail)->gstin ?? ''));
                 $clientTypeLabel = $clientGstin !== '' ? 'B2B' : 'B2C';
@@ -94,7 +103,7 @@
                                 <th style="width: 5%;"></th>
                                 <th style="width: 30%;">Order</th>
                                 <th style="width: 12%;">Order Date</th>
-                                <th style="width: 12%;">Amount</th>
+                                <th style="width: 12%;">Amount ({{ $groupCurrency }})</th>
                                 <th style="width: 10%;">Status</th>
                                 <th style="width: 16%;">Actions</th>
                             </tr>
@@ -122,33 +131,53 @@
                                     <span class="order-muted">{{ $order['order_date'] ?? '-' }}</span>
                                 </td>
                                 <td>
-                                    <strong class="order-amount">{{ $order['currency'] ?? 'INR' }} {{ $order['amount'] ?? number_format(0, 2) }}</strong>
+                                    <strong class="order-amount">{{ $order['amount'] ?? number_format(0, 0) }}</strong>
                                 </td>
                                 <td>
-                                    <span class="status-pill {{ ($order['verified'] ?? false) ? 'verified' : 'unverified' }}">
-                                        {{ ($order['verified'] ?? false) ? 'Verified' : 'Unverified' }}
-                                    </span>
+                                    @if(($order['status'] ?? '') === 'cancelled')
+                                        <span class="status-pill unverified" style="background: #e2e8f0; color: #475569;">Cancelled</span>
+                                    @else
+                                        <span class="status-pill {{ ($order['verified'] ?? false) ? 'verified' : 'unverified' }}">
+                                            {{ ($order['verified'] ?? false) ? 'Verified' : 'Unverified' }}
+                                        </span>
+                                    @endif
                                 </td>
                                 <td>
                                     <div class="table-actions">
                                         <a href="{{ route('orders.show', ['order' => $order['record_id'] ?? '' ]) }}" class="icon-action-btn view" title="View">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        @if($order['verified'] ?? false)
-                                        <a href="{{ route('invoices.create', ['step' => 3, 'invoice_for' => 'orders', 'orderid' => $order['record_id'] ?? '', 'clientid' => $clientId]) }}" class="order-create-pi-link" title="Create PI">
-                                            Create PI
-                                        </a>
+                                        @if(($order['verified'] ?? false) && (($order['status'] ?? '') !== 'cancelled'))
+                                            @if(!($order['has_pi'] ?? false))
+                                            <a href="{{ route('invoices.create', ['step' => 3, 'invoice_for' => 'orders', 'o' => $order['record_id'] ?? '', 'c' => $clientId]) }}" class="order-create-pi-link" title="Create PI">
+                                                Create PI
+                                            </a>
+                                            @else
+                                            <span class="order-create-pi-link" style="background: #ecfdf5; border-color: #a7f3d0; color: #047857; cursor: default;" title="PI already created">
+                                                PI Created
+                                            </span>
+                                            @endif
                                         @endif
-                                        <a href="{{ route('orders.edit', ['order' => $order['record_id'] ?? '' ]) }}" class="icon-action-btn edit" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <form method="POST" action="{{ route('orders.destroy', ['order' => $order['record_id'] ?? '' ]) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $order['number'] ?? 'this order' }}?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="icon-action-btn delete" title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
+                                        @if(($order['status'] ?? '') !== 'cancelled')
+                                            <a href="{{ route('orders.edit', ['order' => $order['record_id'] ?? '' ]) }}" class="icon-action-btn edit" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form method="POST" action="{{ route('orders.destroy', ['order' => $order['record_id'] ?? '' ]) }}" class="inline-delete" onsubmit="return confirm('Cancel {{ $order['number'] ?? 'this order' }}?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="icon-action-btn delete" title="Cancel Order">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                            </form>
+                                        @else
+                                            <form method="POST" action="{{ route('orders.restore', ['order' => $order['record_id'] ?? '' ]) }}" class="inline-delete" onsubmit="return confirm('Restore {{ $order['number'] ?? 'this order' }}?')">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="order-create-pi-link" style="background: #ecfdf5; border-color: #a7f3d0; color: #047857;" title="Restore Order">
+                                                    Restore
+                                                </button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -169,20 +198,20 @@
                                                                 <div>
                                                                     <strong style="color: #0f172a;">{{ $item['item_name'] ?? 'Item' }}</strong>
                                                                     <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.15rem;">
-                                                                        Qty: {{ number_format($item['quantity'] ?? 1, 2) }}
+                                                                        Qty: {{ number_format($item['quantity'] ?? 1, 0) }}
                                                                         @if(!empty($item['duration']))
                                                                             | Dur: {{ $item['duration'] }}
                                                                         @endif
-                                                                        | Price: {{ $order['currency'] ?? 'INR' }} {{ number_format($item['unit_price'] ?? 0, 2) }}
+                                                                        | Price: {{ number_format($item['unit_price'] ?? 0, 0) }}
                                                                         @if(($item['tax_rate'] ?? 0) > 0)
-                                                                            | Tax: {{ number_format($item['tax_rate'], 2) }}%
+                                                                            | Tax: {{ number_format($item['tax_rate'], 0) }}%
                                                                         @endif
                                                                         @if(($item['discount_percent'] ?? 0) > 0)
-                                                                            | Disc: {{ number_format($item['discount_percent'], 2) }}%
+                                                                            | Disc: {{ number_format($item['discount_percent'], 0) }}%
                                                                         @endif
                                                                     </div>
                                                                 </div>
-                                                                <strong style="color: #0f172a; font-size: 0.85rem;">{{ $order['currency'] ?? 'INR' }} {{ number_format($item['line_total'] ?? 0, 2) }}</strong>
+                                                                <strong style="color: #0f172a; font-size: 0.85rem;">{{ number_format($item['line_total'] ?? 0, 0) }}</strong>
                                                             </div>
                                                         </div>
                                                     @endforeach
@@ -224,5 +253,65 @@
             icon.style.transform = 'rotate(0deg)';
         }
     }
+
+    // Handle View Orders button
+    document.getElementById('btnViewOrders')?.addEventListener('click', function() {
+        const clientId = document.getElementById('client-select')?.value;
+        if (clientId) {
+            window.location.href = "{{ route('orders.index') }}?c=" + encodeURIComponent(clientId);
+        } else {
+            alert('Please select a client first.');
+        }
+    });
+
+    // Handle Create Order button
+    document.getElementById('btnCreateOrder')?.addEventListener('click', function() {
+        const clientId = document.getElementById('client-select')?.value;
+        if (clientId) {
+            window.location.href = "{{ route('orders.create') }}?c=" + encodeURIComponent(clientId);
+        } else {
+            alert('Please select a client first.');
+        }
+    });
     </script>
+
+    <style>
+    .order-client-picker-actions {
+        display: flex;
+        gap: 0.6rem;
+        margin-top: 0.75rem;
+    }
+
+    .order-client-picker-actions .secondary-button {
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        color: #374151;
+    }
+
+    .order-client-picker-actions .secondary-button:hover {
+        background: #f9fafb;
+        border-color: #9ca3af;
+    }
+
+    .order-client-picker-actions .primary-button {
+        background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+        border: none;
+        color: #ffffff;
+    }
+
+    .order-client-picker-actions .primary-button:hover {
+        background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
+    }
+
+    @media (max-width: 768px) {
+        .order-client-picker-actions {
+            flex-direction: column;
+        }
+        
+        .order-client-picker-actions .secondary-button,
+        .order-client-picker-actions .primary-button {
+            width: 100%;
+        }
+    }
+    </style>
 @endsection

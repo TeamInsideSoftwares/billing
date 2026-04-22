@@ -1,5 +1,5 @@
 @php
-    $selectedClientCurrency = optional($clients->firstWhere('clientid', request('clientid')))->currency ?? 'INR';
+    $selectedClientCurrency = optional($clients->firstWhere('clientid', request('c', request('clientid'))))->currency ?? 'INR';
     $serviceGroups = collect($services ?? [])->groupBy(function ($service) {
         return optional($service->category)->name ?? 'No Category';
     });
@@ -16,18 +16,30 @@
     </div>
 
     <div class="invoice-grid-4" style="margin-bottom: 1rem;">
-        <div class="invoice-span-3">
-        <label for="invoice_title" class="field-label">Invoice Title</label>
-        <input type="text" id="invoice_title" name="invoice_title" class="form-input" placeholder="e.g. Website Development - Monthly Subscription" required>
-        <div id="invoiceTitleError" style="display:none; margin-top: 0.35rem; color: #b91c1c; font-size: 0.8rem; font-weight: 600;">Invoice title is required.</div>
+        <div>
+            <label for="invoice_title" class="field-label">Invoice Title</label>
+            <input type="text" id="invoice_title" name="invoice_title" class="form-input" placeholder="e.g. Website Development - Monthly Subscription" required>
+            <div id="invoiceTitleError" style="display:none; margin-top: 0.35rem; color: #b91c1c; font-size: 0.8rem; font-weight: 600;">Invoice title is required.</div>
+        </div>
+        <div>
+            <label for="issue_date" class="field-label">Issue Date</label>
+            <input type="date" id="issue_date" name="issue_date" class="form-input" required>
+        </div>
+        <div>
+            <label for="due_date" class="field-label">Due Date</label>
+            <input type="date" id="due_date" name="due_date" class="form-input" required>
+        </div>
+        <div>
+            <label for="notes" class="field-label">Notes</label>
+            <textarea id="notes" name="notes" rows="1" class="form-input" style="min-height: 38px; resize: vertical;" placeholder="Optional notes"></textarea>
         </div>
     </div>
 
-    <input type="hidden" name="clientid" value="{{ request('clientid') }}">
-    <input type="hidden" name="subtotal" id="subtotal" value="0.00">
-    <input type="hidden" name="tax_total" id="tax_total" value="0.00">
-    <input type="hidden" name="discount_total" id="discount_total" value="0.00">
-    <input type="hidden" name="grand_total" id="grand_total" value="0.00">
+    <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
+    <input type="hidden" name="subtotal" id="subtotal" value="0">
+    <input type="hidden" name="tax_total" id="tax_total" value="0">
+    <input type="hidden" name="discount_total" id="discount_total" value="0">
+    <input type="hidden" name="grand_total" id="grand_total" value="0">
     <input type="hidden" name="items_data" id="items_data" value="">
     <input type="hidden" name="currency_code" id="currency_code" value="{{ $selectedClientCurrency }}">
 
@@ -51,13 +63,15 @@
                                     @php
                                         $defaultCosting = $service->costings->sortBy('currency_code')->first();
                                     @endphp
-                                    <option value="{{ $service->itemid }}" data-selling-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}" data-taxid="{{ $defaultCosting?->taxid ?? '' }}" data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
+                                    <option value="{{ $service->itemid }}" data-selling-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}" data-taxid="{{ $defaultCosting?->taxid ?? '' }}" data-user-wise="{{ (int) ($service->user_wise ?? 0) }}" data-description="{{ $service->description ?? '' }}">
                                         {{ $service->name }} ({{ number_format($defaultCosting?->selling_price ?? 0, 0) }})
                                     </option>
                                 @endforeach
                             </optgroup>
                         @endforeach
                     </select>
+                    <label for="manual_item_description" class="field-label small" style="margin-top: 0.3rem;">Description</label>
+                    <textarea id="manual_item_description" class="form-input" rows="1" placeholder="Description (optional)" style="height: 34px; min-height: 34px; resize: none; line-height: 1.2;"></textarea>
                 </div>
                 <div>
                     <label for="manual_item_quantity" class="field-label small">Qty</label>
@@ -77,7 +91,7 @@
                     <select id="manual_item_tax_rate" class="form-input">
                         <option value="0">No Tax</option>
                         @foreach($taxes as $tax)
-                            <option value="{{ $tax->rate }}" data-taxid="{{ $tax->taxid }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 2) }}%)</option>
+                            <option value="{{ $tax->rate }}" data-taxid="{{ $tax->taxid }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)</option>
                         @endforeach
                     </select>
                 </div>
@@ -118,7 +132,7 @@
                     <label for="manual_item_end_date" class="field-label small">End</label>
                     <input type="date" id="manual_item_end_date" class="form-input">
                 </div>
-                <div style="display: flex; align-items: end;">
+                <div style="display: flex; align-items: start; align-self: start; margin-top: 1.45rem;">
                     <button type="button" id="addManualItemBtn" class="primary-button" style="width: 100%;">Add</button>
                 </div>
             </div>
@@ -151,11 +165,11 @@
             <div id="manualItemsEmpty" class="empty-state">No items added yet.</div>
         </div>
 
-        <div id="manualOrderSummary" class="totals-card" style="display: none; margin-top: 1rem;">
-            <div class="total-row"><span>Subtotal</span><strong id="manualSubtotal">0.00</strong></div>
-            <div class="total-row"><span>Discount</span><strong id="manualDiscountTotal">0.00</strong></div>
-            <div class="total-row"><span>Tax</span><strong id="manualTaxTotal">0.00</strong></div>
-            <div class="total-row total-row-grand"><span>Total</span><strong id="manualGrandTotal">0.00</strong></div>
+        <div id="manualOrderSummary" class="totals-card" style="display: none; margin-top: 1rem; margin-left: auto; max-width: 350px;">
+            <div class="total-row"><span>Subtotal</span><strong id="manualSubtotal">0</strong></div>
+            <div class="total-row"><span>Discount</span><strong id="manualDiscountTotal">0</strong></div>
+            <div class="total-row"><span>Tax</span><strong id="manualTaxTotal">0</strong></div>
+            <div class="total-row total-row-grand"><span>Total</span><strong id="manualGrandTotal">0</strong></div>
         </div>
     </div>
 
@@ -204,10 +218,10 @@
     const frequencyLabels = { 'one-time': 'One-Time', 'daily': 'Daily', 'weekly': 'Weekly', 'bi-weekly': 'Bi-Weekly', 'monthly': 'Monthly', 'quarterly': 'Quarterly', 'semi-annually': 'Semi-Annually', 'yearly': 'Yearly' };
 
     let manualItems = [];
+    let editingManualItemIndex = null;
 
     function formatCurrency(amount) {
-        const currency = currencyCodeInput.value || '{{ $selectedClientCurrency }}';
-        return `${currency} ${Number(amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        return `${Number(amount || 0).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
     }
 
     function roundTaxUp(value) {
@@ -218,12 +232,34 @@
         return Math.floor(Math.max(0, Number(value) || 0));
     }
 
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderItemCell(item) {
+        const name = escapeHtml(item.item_name || 'Item');
+        const description = escapeHtml(item.item_description || '').trim();
+        if (!description) {
+            return name;
+        }
+        return `
+            <div style="font-weight: 600; color: #111827;">${name}</div>
+            <div style="margin-top: 0.15rem; font-size: 0.78rem; color: #6b7280; white-space: pre-wrap;">${description}</div>
+        `;
+    }
+
     // Auto-fill price when item selected
     document.getElementById('manual_item_itemid').addEventListener('change', function() {
         const selected = this.options[this.selectedIndex];
         const price = selected.dataset.sellingPrice || 0;
         const taxRate = selected.dataset.taxRate || 0;
         document.getElementById('manual_item_unit_price').value = price;
+        document.getElementById('manual_item_description').value = selected.dataset.description || '';
         if (document.getElementById('manual_item_tax_rate')) {
             document.getElementById('manual_item_tax_rate').value = taxRate;
         }
@@ -328,9 +364,28 @@
         return { showRecurringColumns, showUserColumns };
     }
 
+    function resetManualItemForm() {
+        editingManualItemIndex = null;
+        addManualItemBtn.textContent = 'Add';
+        document.getElementById('manual_item_itemid').value = '';
+        document.getElementById('manual_item_quantity').value = '1';
+        document.getElementById('manual_item_unit_price').value = '';
+        document.getElementById('manual_item_discount').value = '0';
+        document.getElementById('manual_item_frequency').value = '';
+        document.getElementById('manual_item_duration').value = '';
+        document.getElementById('manual_item_description').value = '';
+        if (manualStartInput) manualStartInput.value = '';
+        if (manualEndInput) manualEndInput.value = '';
+        toggleManualRecurringFields();
+        @if($account->have_users)
+        toggleManualUsersField();
+        @endif
+    }
+
     addManualItemBtn.addEventListener('click', function() {
         const itemId = document.getElementById('manual_item_itemid').value;
         const itemName = document.getElementById('manual_item_itemid').options[document.getElementById('manual_item_itemid').selectedIndex]?.text || '';
+        const itemDescription = (document.getElementById('manual_item_description').value || '').trim();
         const quantity = Math.max(1, Math.round(Number(document.getElementById('manual_item_quantity').value) || 1));
         const unitPrice = parseFloat(document.getElementById('manual_item_unit_price').value) || 0;
         const discountPercent = Math.min(100, Math.max(0, parseFloat(document.getElementById('manual_item_discount').value) || 0));
@@ -370,6 +425,7 @@
         const newItem = {
             itemid: itemId,
             item_name: itemName.split('(')[0].trim(),
+            item_description: itemDescription,
             quantity,
             unit_price: unitPrice,
             discount_percent: discountPercent,
@@ -384,22 +440,14 @@
             line_total: lineTotal
         };
 
-        manualItems.push(newItem);
+        if (editingManualItemIndex !== null && manualItems[editingManualItemIndex]) {
+            manualItems[editingManualItemIndex] = newItem;
+        } else {
+            manualItems.push(newItem);
+        }
         renderManualItems();
-        
-        // Reset form
-        document.getElementById('manual_item_itemid').value = '';
-        document.getElementById('manual_item_quantity').value = '1';
-        document.getElementById('manual_item_unit_price').value = '';
-        document.getElementById('manual_item_discount').value = '0';
-        document.getElementById('manual_item_frequency').value = '';
-        document.getElementById('manual_item_duration').value = '';
-        if (manualStartInput) manualStartInput.value = '';
-        if (manualEndInput) manualEndInput.value = '';
-        toggleManualRecurringFields();
-        @if($account->have_users)
-        toggleManualUsersField();
-        @endif
+
+        resetManualItemForm();
     });
 
     function renderManualItems() {
@@ -445,10 +493,10 @@
 
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${item.item_name}</td>
+                <td>${renderItemCell(item)}</td>
                 <td style="text-align: center;">${Math.round(Number(item.quantity) || 0)}</td>
                 <td style="text-align: right;">${formatCurrency(item.unit_price)}</td>
-                <td style="text-align: center;">${Number(item.discount_percent || 0).toFixed(2)}%</td>
+                <td style="text-align: center;">${Number(item.discount_percent || 0).toFixed(0)}%</td>
                 @if($account->allow_multi_taxation)
                 <td style="text-align: center;">${item.tax_rate}%</td>
                 @endif
@@ -459,15 +507,73 @@
                 <td style="display:${showRecurringColumns ? '' : 'none'};">${rowRecurring ? (item.duration || '-') : '-'}</td>
                 <td style="display:${showRecurringColumns ? '' : 'none'};">${rowRecurring ? (item.start_date || '-') : '-'}</td>
                 <td style="display:${showRecurringColumns ? '' : 'none'};">${rowRecurring ? (item.end_date || '-') : '-'}</td>
-                <td style="text-align: right; font-weight: 600;">${formatCurrency(Math.max(0, item.line_total - item.discount_amount + item.tax_amount))}</td>
-                <td><button type="button" class="remove-item-btn" data-index="${index}" style="background: none; border: none; color: #ef4444; cursor: pointer;"><i class="fas fa-trash"></i></button></td>
+                <td style="text-align: right; font-weight: 600;">${formatCurrency(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0)))}</td>
+                <td style="white-space: nowrap;">
+                    <button type="button" class="edit-item-btn icon-action-btn edit" data-index="${index}" title="Edit" style="margin-right: 0.3rem;">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="remove-item-btn icon-action-btn delete" data-index="${index}" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
             `;
             manualItemsBody.appendChild(row);
         });
 
+        document.querySelectorAll('.edit-item-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = Number(this.dataset.index);
+                const item = manualItems[index];
+                if (!item) return;
+
+                editingManualItemIndex = index;
+                addManualItemBtn.textContent = 'Update';
+
+                const itemSelect = document.getElementById('manual_item_itemid');
+                itemSelect.value = item.itemid || '';
+                if (itemSelect.value) {
+                    itemSelect.dispatchEvent(new Event('change'));
+                }
+
+                document.getElementById('manual_item_quantity').value = Math.max(1, Math.round(Number(item.quantity || 1)));
+                document.getElementById('manual_item_unit_price').value = Number(item.unit_price || 0);
+                document.getElementById('manual_item_description').value = item.item_description || '';
+                document.getElementById('manual_item_discount').value = Number(item.discount_percent || 0);
+                document.getElementById('manual_item_tax_rate').value = Number(item.tax_rate || 0);
+                document.getElementById('manual_item_frequency').value = item.frequency || '';
+                document.getElementById('manual_item_duration').value = item.duration || '';
+                if (manualStartInput) manualStartInput.value = item.start_date || '';
+                if (manualEndInput) manualEndInput.value = item.end_date || '';
+
+                @if($account->have_users)
+                toggleManualUsersField();
+                if (item.no_of_users) {
+                    document.getElementById('manual_item_users').value = Math.max(1, Number(item.no_of_users || 1));
+                }
+                @endif
+
+                toggleManualRecurringFields();
+                if (isRecurringFrequency(item.frequency || '') && manualEndInput && !manualEndInput.value) {
+                    manualEndInput.value = calculateEndDate(manualStartInput?.value || '', item.frequency || '', item.duration || '');
+                }
+
+                addManualItemBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        });
+
         document.querySelectorAll('.remove-item-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                manualItems.splice(this.dataset.index, 1);
+                const index = Number(this.dataset.index);
+                manualItems.splice(index, 1);
+
+                if (editingManualItemIndex !== null) {
+                    if (editingManualItemIndex === index) {
+                        resetManualItemForm();
+                    } else if (index < editingManualItemIndex) {
+                        editingManualItemIndex -= 1;
+                    }
+                }
+
                 renderManualItems();
             });
         });
@@ -480,10 +586,10 @@
         document.getElementById('manualTaxTotal').textContent = formatCurrency(roundedTaxTotal);
         document.getElementById('manualGrandTotal').textContent = formatCurrency(subtotal - roundedDiscountTotal + roundedTaxTotal);
 
-        document.getElementById('subtotal').value = subtotal.toFixed(2);
-        document.getElementById('discount_total').value = roundedDiscountTotal.toFixed(2);
-        document.getElementById('tax_total').value = roundedTaxTotal.toFixed(2);
-        document.getElementById('grand_total').value = (subtotal - roundedDiscountTotal + roundedTaxTotal).toFixed(2);
+        document.getElementById('subtotal').value = subtotal.toFixed(0);
+        document.getElementById('discount_total').value = roundedDiscountTotal.toFixed(0);
+        document.getElementById('tax_total').value = roundedTaxTotal.toFixed(0);
+        document.getElementById('grand_total').value = (subtotal - roundedDiscountTotal + roundedTaxTotal).toFixed(0);
         itemsDataInput.value = JSON.stringify(manualItems);
     }
 
@@ -506,7 +612,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify({
-                clientid: "{{ request('clientid') }}",
+                clientid: "{{ request('c', request('clientid')) }}",
                 invoice_for: 'without_orders',
                 invoice_title: invoiceTitle,
                 items_data: itemsDataInput.value,
@@ -518,16 +624,16 @@
         })
         .then(response => response.json())
         .then(() => {
-            const clientId = "{{ request('clientid', request('c')) }}";
+            const clientId = "{{ request('c', request('clientid')) }}";
             const clientToken = encodeURIComponent(clientId);
-            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=without_orders&c=" + clientToken + "&clientid=" + clientToken;
+            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=without_orders&c=" + clientToken;
         });
     });
 
     btnBackToStep1.addEventListener('click', function() {
-        const clientId = "{{ request('clientid', request('c')) }}";
+        const clientId = "{{ request('c', request('clientid')) }}";
         const clientToken = encodeURIComponent(clientId);
-        window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientToken + "&clientid=" + clientToken;
+        window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientToken;
     });
 
     invoiceTitleInput.addEventListener('input', function() {

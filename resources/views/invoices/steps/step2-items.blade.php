@@ -25,9 +25,9 @@
     <input type="hidden" name="orderid" id="orderid" value="{{ old('orderid', '') }}">
     <input type="hidden" name="status" value="unpaid">
     <input type="hidden" name="currency_code" id="currency_code" value="{{ old('currency_code', 'INR') }}">
-    <input type="hidden" name="subtotal" id="subtotal" value="{{ old('subtotal', '0.00') }}">
-    <input type="hidden" name="tax_total" id="tax_total" value="{{ old('tax_total', '0.00') }}">
-    <input type="hidden" name="grand_total" id="grand_total" value="{{ old('grand_total', '0.00') }}">
+    <input type="hidden" name="subtotal" id="subtotal" value="{{ old('subtotal', '0') }}">
+    <input type="hidden" name="tax_total" id="tax_total" value="{{ old('tax_total', '0') }}">
+    <input type="hidden" name="grand_total" id="grand_total" value="{{ old('grand_total', '0') }}">
     <input type="hidden" name="items_data" id="items_data" value="{{ old('items_data', '') }}">
 
     <div id="ordersSection" class="workflow-panel" style="display: none;">
@@ -135,7 +135,7 @@
                     <select id="manual_item_tax_rate" class="form-input">
                         <option value="0" data-taxid="">No Tax</option>
                         @foreach($taxes as $tax)
-                            <option value="{{ $tax->rate }}" data-taxid="{{ $tax->taxid }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 2) }}%)</option>
+                            <option value="{{ $tax->rate }}" data-taxid="{{ $tax->taxid }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)</option>
                         @endforeach
                     </select>
                 </div>
@@ -209,9 +209,9 @@
         </div>
 
         <div id="manualOrderSummary" class="totals-card" style="display: none; margin-top: 1rem;">
-            <div class="total-row"><span>Subtotal</span><strong id="manualSubtotal">0.00</strong></div>
-            <div class="total-row"><span>Tax</span><strong id="manualTaxTotal">0.00</strong></div>
-            <div class="total-row total-row-grand"><span>Total</span><strong id="manualGrandTotal">0.00</strong></div>
+            <div class="total-row"><span>Subtotal</span><strong id="manualSubtotal">0</strong></div>
+            <div class="total-row"><span>Tax</span><strong id="manualTaxTotal">0</strong></div>
+            <div class="total-row total-row-grand"><span>Total</span><strong id="manualGrandTotal">0</strong></div>
         </div>
     </div>
 
@@ -252,9 +252,9 @@
 
         <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
             <div class="totals-card" style="min-width: 320px;">
-                <div class="total-row"><span>Subtotal</span><strong id="subtotalDisplay">INR 0.00</strong></div>
-                <div class="total-row"><span>Tax</span><strong id="taxDisplay">INR 0.00</strong></div>
-                <div class="total-row total-row-grand"><span>Grand Total</span><strong id="grandTotalDisplay">INR 0.00</strong></div>
+                <div class="total-row"><span>Subtotal</span><strong id="subtotalDisplay">0</strong></div>
+                <div class="total-row"><span>Tax</span><strong id="taxDisplay">0</strong></div>
+                <div class="total-row total-row-grand"><span>Grand Total</span><strong id="grandTotalDisplay">0</strong></div>
             </div>
         </div>
     </div>

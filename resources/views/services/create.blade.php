@@ -232,8 +232,7 @@
                                     @if($account->allow_multi_taxation)
                                     <select name="costings[{{ $index }}][taxid]" class="tax-select" style="min-width: 140px; padding: 0.3rem; font-size: 0.82rem;">
                                         <option value="">-- None --</option>
-                                        @foreach(['GST','VAT'] as $taxType)
-                                            @php $typeTaxes = $taxes->where('type', $taxType); @endphp
+                                        @foreach($taxes->groupBy(fn($tax) => $tax->type ?: 'Other') as $taxType => $typeTaxes)
                                             @if($typeTaxes->isNotEmpty())
                                                 <optgroup label="{{ $taxType }}">
                                                     @foreach($typeTaxes as $tax)

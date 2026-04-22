@@ -4,14 +4,13 @@
 @php
     $normalizeTaxState = static fn ($value) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $value)));
     $documentType = $invoice->isProforma() ? 'Proforma' : 'Tax';
-    $currency = $invoice->currency_code ?? ($invoice->client->currency ?? 'INR');
     $clientState = $normalizeTaxState($invoice->client->state ?? '');
     $accountState = $normalizeTaxState($account->state ?? '');
     $sameStateGst = $clientState !== '' && $accountState !== '' && $clientState === $accountState;
     $invoiceTaxTotal = (float) ($invoice->tax_total ?? 0);
-    $cgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 2) : 0;
-    $sgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 2) : 0;
-    $igstAmount = $sameStateGst ? 0 : round($invoiceTaxTotal, 2);
+    $cgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 0) : 0;
+    $sgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 0) : 0;
+    $igstAmount = $sameStateGst ? 0 : round($invoiceTaxTotal, 0);
 
     $signatureUploadPath = optional($accountBillingDetail)->signature_upload;
     $signatureUploadUrl = null;
@@ -24,13 +23,13 @@
     }
 @endphp
 @section('header_actions')
-    <a href="{{ route('invoices.index') }}" class="secondary-button">
+    <a href="{{ route('invoices.index', request('c') ? ['c' => request('c')] : []) }}" class="secondary-button">
         <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Invoices
     </a>
-    <a href="{{ route('invoices.edit', $invoice) }}" class="primary-button small">
+    <a href="{{ route('invoices.edit', [$invoice, 'c' => request('c')]) }}" class="primary-button small">
         <i class="fas fa-edit" style="margin-right: 0.35rem;"></i>Edit
     </a>
-    <form method="POST" action="{{ route('invoices.destroy', $invoice) }}" class="inline-delete" onsubmit="return confirm('Delete this invoice?')" style="display: inline;">
+    <form method="POST" action="{{ route('invoices.destroy', [$invoice, 'c' => request('c')]) }}" class="inline-delete" onsubmit="return confirm('Delete this invoice?')" style="display: inline;">
         @csrf
         @method('DELETE')
         <button type="submit" class="secondary-button">
@@ -49,7 +48,7 @@
             </div>
         </div>
         <div style="text-align: right;">
-            <div style="font-size: 1.5em; font-weight: bold; margin-bottom: 0.25rem;">{{ $currency }} {{ number_format($invoice->grand_total ?? 0, 0) }}</div>
+            <div style="font-size: 1.5em; font-weight: bold; margin-bottom: 0.25rem;">{{ number_format($invoice->grand_total ?? 0, 0) }}</div>
             <div>{{ $invoice->issue_date?->format('d M Y') }} due {{ $invoice->due_date?->format('d M Y') }}</div>
         </div>
     </div>
@@ -142,10 +141,10 @@ Invoice Items Table
                     {{ number_format($item->quantity, 0) }}
                 </td>
                 <td style="padding: 0.75rem 0.5rem 0.75rem 0; text-align: right;">
-                    {{ $currency }} {{ number_format($item->unit_price, 0) }}
+                    {{ number_format($item->unit_price, 0) }}
                 </td>
                 <td style="padding: 0.75rem 0.5rem 0.75rem 0; text-align: right; font-weight: 600;">
-                    {{ $currency }} {{ number_format($item->line_total, 0) }}
+                    {{ number_format($item->line_total, 0) }}
                 </td>
             </tr>
             @empty
@@ -160,17 +159,17 @@ Invoice Items Table
         <tfoot>
             <tr style="border-top: 2px solid #e5e7eb; font-weight: 600;">
                 <td colspan="3" style="padding: 1rem 0.5rem; text-align: right;">Subtotal:</td>
-                <td style="padding: 1rem 0.5rem; text-align: right;">{{ $currency }} {{ number_format($invoice->subtotal ?? 0, 0) }}</td>
+                <td style="padding: 1rem 0.5rem; text-align: right;">{{ number_format($invoice->subtotal ?? 0, 0) }}</td>
             </tr>
             @if($invoiceTaxTotal > 0)
                 <tr style="font-weight: 600;">
                     <td colspan="3" style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">{{ $sameStateGst ? 'Tax (CGST + SGST):' : 'Tax (IGST):' }}</td>
-                    <td style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">{{ $currency }} {{ number_format($invoiceTaxTotal, 0) }}</td>
+                    <td style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">{{ number_format($invoiceTaxTotal, 0) }}</td>
                 </tr>
             @endif
             <tr style="background: #f8fafc; font-size: 1.1em; font-weight: bold;">
                 <td colspan="3" style="padding: 1rem 0.5rem; text-align: right;">Grand Total:</td>
-                <td style="padding: 1rem 0.5rem; text-align: right;">{{ $currency }} {{ number_format($invoice->grand_total ?? 0, 0) }}</td>
+                <td style="padding: 1rem 0.5rem; text-align: right;">{{ number_format($invoice->grand_total ?? 0, 0) }}</td>
             </tr>
         </tfoot>
         @endif
@@ -195,18 +194,18 @@ Invoice Items Table
                 <td style="padding: 0.75rem 0.5rem;">{{ $payment->paid_at instanceof \DateTime ? $payment->paid_at->format('d M Y') : $payment->paid_at }}</td>
                 <td style="padding: 0.75rem 0.5rem;">{{ $payment->method }}</td>
                 <td style="padding: 0.75rem 0.5rem;">{{ $payment->reference ?? 'N/A' }}</td>
-                <td style="padding: 0.75rem 0.5rem; text-align: right;"><strong>{{ $currency }} {{ number_format($payment->amount, 0) }}</strong></td>
+                <td style="padding: 0.75rem 0.5rem; text-align: right;"><strong>{{ number_format($payment->amount, 0) }}</strong></td>
             </tr>
             @endforeach
         </tbody>
         <tfoot style="border-top: 2px solid #e5e7eb;">
             <tr>
                 <td colspan="3" style="padding: 1rem 0.5rem 0.5rem; text-align: right;"><strong>Total Paid:</strong></td>
-                <td style="padding: 1rem 0.5rem 0.5rem; text-align: right;"><strong>{{ $currency }} {{ number_format($invoice->payments->sum('amount'), 0) }}</strong></td>
+                <td style="padding: 1rem 0.5rem 0.5rem; text-align: right;"><strong>{{ number_format($invoice->payments->sum('amount'), 0) }}</strong></td>
             </tr>
             <tr>
                 <td colspan="3" style="padding: 0.5rem; text-align: right;"><strong>Balance Due:</strong></td>
-                <td style="padding: 0.5rem; text-align: right; color: #ef4444;"><strong>{{ $currency }} {{ number_format($invoice->balance_due, 0) }}</strong></td>
+                <td style="padding: 0.5rem; text-align: right; color: #ef4444;"><strong>{{ number_format($invoice->balance_due, 0) }}</strong></td>
             </tr>
         </tfoot>
     </table>

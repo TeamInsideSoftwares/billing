@@ -56,9 +56,9 @@ class InvoicesController extends Controller
                         'due_date' => $invoice->due_date?->format('d M Y'),
                         'due_date_raw' => $invoice->due_date?->format('Y-m-d'),
                         'invoice_for' => ucfirst(str_replace('_', ' ', $invoice->invoice_for ?? 'without orders')),
-                        'amount' => $currency . ' ' . number_format($invoice->grand_total ?? 0, 2),
-                        'amount_paid' => $currency . ' ' . number_format($amountPaid, 2),
-                        'balance_due' => $currency . ' ' . number_format($balanceDue, 2),
+                        'amount' => $currency . ' ' . number_format($invoice->grand_total ?? 0, 0),
+                        'amount_paid' => $currency . ' ' . number_format($amountPaid, 0),
+                        'balance_due' => $currency . ' ' . number_format($balanceDue, 0),
                         'status' => $invoice->status ?? 'draft',
                         'payment_status' => $paymentStatus,
                         'items' => $invoice->items->map(function ($item) use ($currency) {
@@ -68,7 +68,7 @@ class InvoicesController extends Controller
                                 'item_name' => $item->item_name,
                                 'qty' => $item->quantity,
                                 'quantity' => $item->quantity,
-                                'price' => $currency . ' ' . number_format($item->unit_price, 2),
+                                'price' => $currency . ' ' . number_format($item->unit_price, 0),
                                 'unit_price' => (float) $item->unit_price,
                                 'tax_rate' => (float) ($item->tax_rate ?? 0),
                                 'discount_percent' => (float) ($item->discount_percent ?? 0),
@@ -79,7 +79,7 @@ class InvoicesController extends Controller
                                 'no_of_users' => (int) ($item->no_of_users ?? 1),
                                 'start_date' => $item->start_date?->format('Y-m-d'),
                                 'end_date' => $item->end_date?->format('Y-m-d'),
-                                'total' => $currency . ' ' . number_format($item->line_total, 2),
+                                'total' => $currency . ' ' . number_format($item->line_total, 0),
                                 'line_total' => (float) $item->line_total,
                             ];
                         }),
@@ -94,8 +94,8 @@ class InvoicesController extends Controller
         });
 
         return view('invoices.index', [
-            'title' => 'All Invoices',
-            'subtitle' => $selectedClientId ? 'Filtered by selected client.' : 'Grouped by client with quick actions.',
+            'title' => $selectedClientId ? 'All Invoices' : 'Manage Invoices',
+            'subtitle' => $selectedClientId ? 'Filtered by selected client.' : 'Choose a client first to view invoices.',
             'clients' => $clients,
             'groupedInvoices' => $groupedInvoices,
             'selectedClientId' => $selectedClientId,
@@ -108,8 +108,34 @@ class InvoicesController extends Controller
         $accountid = auth()->check() ? ($user?->accountid ?? 'ACC0000001') : 'ACC0000001';
         $legacyAccountId = $user?->id ? (string) $user->id : null;
         $account = \App\Models\Account::find($accountid);
-        $orderId = request('orderid', request('o'));
+        $orderId = request('o', request('orderid'));
         $clientId = request('c', request('clientid'));
+        $invoiceFor = request('invoice_for', session('invoice_for'));
+        $currentUserId = $user?->userid ?? $user?->id;
+        $draftId = request('d');
+
+        $existingDraft = null;
+        if (!empty($draftId) && !empty($currentUserId)) {
+            $existingDraft = ProformaInvoice::query()
+                ->where('proformaid', $draftId)
+                ->where('status', 'draft')
+                ->where('created_by', $currentUserId)
+                ->first();
+        }
+
+        if (!empty($clientId) && !empty($currentUserId)) {
+            $existingDraft = $existingDraft ?: ProformaInvoice::query()
+                ->where('clientid', $clientId)
+                ->where('status', 'draft')
+                ->where('created_by', $currentUserId)
+                ->when($invoiceFor, fn ($q) => $q->where('invoice_for', $invoiceFor))
+                ->when($invoiceFor === 'orders', fn ($q) => $q->where('orderid', $orderId))
+                ->where('updated_at', '>', now()->subHours(24))
+                ->latest('updated_at')
+                ->first();
+        }
+
+        $nextInvoiceNumber = $existingDraft?->invoice_number ?: $this->generateInvoiceNumber();
 
         $termAccountIds = array_values(array_filter(array_unique([$accountid, $legacyAccountId])));
 
@@ -130,7 +156,7 @@ class InvoicesController extends Controller
             'clients' => Client::orderBy('business_name')->get(),
             'services' => Service::with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
-            'nextInvoiceNumber' => $this->generateInvoiceNumber(),
+            'nextInvoiceNumber' => $nextInvoiceNumber,
             'account' => $account,
             'accountBillingDetail' => $accountBillingDetail,
             'billingTerms' => $billingTerms,
@@ -163,7 +189,7 @@ class InvoicesController extends Controller
                     'order_title' => $order->order_title,
                     'order_date' => $order->order_date?->format('d M Y') ?? 'N/A',
                     'delivery_date' => $order->delivery_date?->format('d M Y') ?? 'N/A',
-                    'grand_total' => $order->grand_total ?? '0.00',
+                    'grand_total' => $order->grand_total ?? '0',
                     'currency' => $currency,
                     'status' => $order->status ?? 'draft',
                     'is_verified' => $order->is_verified ?? 'no',
@@ -242,7 +268,7 @@ class InvoicesController extends Controller
                 $result = [
                     'proformaid' => $invoice->proformaid,
                     'invoice_number' => $invoice->invoice_number,
-                    'grand_total' => $invoice->grand_total ?? '0.00',
+                    'grand_total' => $invoice->grand_total ?? '0',
                     'currency' => $invoice->client->currency ?? 'INR',
                     'total_items' => $invoice->items->count(),
                     'expired_items' => $renewalItems->where('is_expired', true)->count(),
@@ -272,6 +298,7 @@ class InvoicesController extends Controller
             return [
                 'itemid' => $item->itemid,
                 'item_name' => $item->item_name,
+                'item_description' => $item->item_description,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
                 'tax_rate' => $taxRate,
@@ -339,6 +366,7 @@ class InvoicesController extends Controller
                 'proformaitemid' => $item->proformaitemid,
                 'itemid' => $item->itemid,
                 'item_name' => $item->item_name,
+                'item_description' => $item->item_description,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
                 'tax_rate' => $taxRate,
@@ -368,15 +396,15 @@ class InvoicesController extends Controller
 
     private function calculateInvoiceItemAmounts(array $itemData, float $taxRate): array
     {
-        $lineTotal = (float) ($itemData['line_total'] ?? 0);
-        $discountPercent = min(100, max(0, (float) ($itemData['discount_percent'] ?? 0)));
+        $lineTotal = $this->wholeAmount($itemData['line_total'] ?? 0);
+        $discountPercent = $this->wholePercent($itemData['discount_percent'] ?? 0);
 
         $discountAmount = ($lineTotal * $discountPercent) / 100;
         $taxableAmount = max(0, $lineTotal - $discountAmount);
         $taxAmount = ($taxableAmount * $taxRate) / 100;
 
         return [
-            'line_total' => round($lineTotal, 2),
+            'line_total' => round($lineTotal, 0),
             'discount_percent' => $discountPercent,
             'discount_amount' => $this->roundDiscountDown($discountAmount),
             'tax_amount' => $this->roundTaxUp($taxAmount),
@@ -391,6 +419,21 @@ class InvoicesController extends Controller
     private function roundDiscountDown(float $amount): float
     {
         return (float) floor(max(0, $amount));
+    }
+
+    private function wholeAmount(mixed $value): float
+    {
+        return (float) round(max(0, (float) $value), 0);
+    }
+
+    private function wholePercent(mixed $value): float
+    {
+        return (float) min(100, max(0, round((float) $value, 0)));
+    }
+
+    private function wholeQuantity(mixed $value): int
+    {
+        return max(1, (int) round((float) $value, 0));
     }
 
     public function storeBillingTerm(Request $request)
@@ -607,8 +650,8 @@ class InvoicesController extends Controller
         foreach ($itemsData as $index => $itemData) {
             $itemId = $itemData['itemid'] ?? null;
             $service = $itemId ? Service::find($itemId) : null;
-            $quantity = (float) ($itemData['quantity'] ?? 0);
-            $unitPrice = (float) ($itemData['unit_price'] ?? 0);
+            $quantity = $this->wholeQuantity($itemData['quantity'] ?? 1);
+            $unitPrice = $this->wholeAmount($itemData['unit_price'] ?? 0);
             $taxRate = (float) ($itemData['tax_rate'] ?? 0);
             $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
             $taxid = $itemData['taxid'] ?? null;
@@ -637,8 +680,8 @@ class InvoicesController extends Controller
                 'proformaid' => null,
                 'itemid' => $itemId,
                 'item_name' => $itemData['item_name'] ?? ($service?->name ?? 'Custom Item'),
-                'item_description' => null,
-                'quantity' => $quantity,
+                'item_description' => $itemData['item_description'] ?? null,
+                'quantity' => $this->wholeQuantity($quantity),
                 'unit_price' => $unitPrice,
                 'tax_rate' => $taxRate,
                 'discount_percent' => $amounts['discount_percent'],
@@ -658,12 +701,12 @@ class InvoicesController extends Controller
         $discountTotal = $this->roundDiscountDown($discountTotal);
         $taxTotal = $this->roundTaxUp($taxTotal);
         $grandTotal = $subtotal - $discountTotal + $taxTotal;
-        $validated['subtotal'] = round($subtotal, 2);
+        $validated['subtotal'] = round($subtotal, 0);
         $validated['tax_total'] = $taxTotal;
         $validated['discount_total'] = $discountTotal;
-        $validated['grand_total'] = round($grandTotal, 2);
+        $validated['grand_total'] = round($grandTotal, 0);
         $validated['amount_paid'] = 0;
-        $validated['balance_due'] = round($grandTotal, 2);
+        $validated['balance_due'] = round($grandTotal, 0);
 
         $invoice = null;
 
@@ -820,17 +863,17 @@ class InvoicesController extends Controller
                     'itemid' => $itemData['itemid'] ?? null,
                     'item_name' => $itemName,
                     'item_description' => $itemData['item_description'] ?? null,
-                    'quantity' => max(0, (float) ($itemData['quantity'] ?? 0)),
-                    'unit_price' => max(0, (float) ($itemData['unit_price'] ?? 0)),
+                    'quantity' => max(0, (int) round((float) ($itemData['quantity'] ?? 0), 0)),
+                    'unit_price' => $this->wholeAmount($itemData['unit_price'] ?? 0),
                     'tax_rate' => $taxRate,
-                    'discount_percent' => min(100, max(0, (float) ($itemData['discount_percent'] ?? 0))),
+                    'discount_percent' => $this->wholePercent($itemData['discount_percent'] ?? 0),
                     'discount_amount' => max(0, (float) $amounts['discount_amount']),
                     'duration' => $itemData['duration'] ?? null,
                     'frequency' => $itemData['frequency'] ?? null,
                     'no_of_users' => !empty($itemData['no_of_users']) ? max(1, (int) $itemData['no_of_users']) : null,
                     'start_date' => $itemData['start_date'] ?? null,
                     'end_date' => $itemData['end_date'] ?? null,
-                    'line_total' => max(0, (float) $amounts['line_total']),
+                    'line_total' => $this->wholeAmount($amounts['line_total'] ?? 0),
                     'sort_order' => $index + 1,
                     'renewed_from_proformaitemid' => $itemData['renewed_from_proformaitemid'] ?? null,
                 ];
@@ -870,19 +913,31 @@ class InvoicesController extends Controller
     {
         $user = auth()->user();
         $invoiceFor = request('invoice_for');
-        $orderId = request('orderid', request('o'));
+        $orderId = request('o', request('orderid'));
+        $draftId = request('d');
         if ($invoiceFor !== 'orders') {
             $orderId = null;
         }
-        
-        $draft = ProformaInvoice::where('clientid', $clientid)
-            ->where('status', 'draft')
-            ->where('created_by', $user?->userid ?? $user?->id)
-            ->when($invoiceFor, fn ($q) => $q->where('invoice_for', $invoiceFor))
-            ->when($invoiceFor === 'orders', fn ($q) => $q->where('orderid', $orderId))
-            ->where('updated_at', '>', now()->subHours(24))
-            ->with('items.item')
-            ->first();
+
+        $draft = null;
+        if (!empty($draftId)) {
+            $draft = ProformaInvoice::where('proformaid', $draftId)
+                ->where('status', 'draft')
+                ->where('created_by', $user?->userid ?? $user?->id)
+                ->with('items.item')
+                ->first();
+        }
+
+        if (!$draft) {
+            $draft = ProformaInvoice::where('clientid', $clientid)
+                ->where('status', 'draft')
+                ->where('created_by', $user?->userid ?? $user?->id)
+                ->when($invoiceFor, fn ($q) => $q->where('invoice_for', $invoiceFor))
+                ->when($invoiceFor === 'orders', fn ($q) => $q->where('orderid', $orderId))
+                ->where('updated_at', '>', now()->subHours(24))
+                ->with('items.item')
+                ->first();
+        }
 
         if (!$draft) {
             return response()->json(['ok' => false]);
@@ -901,6 +956,7 @@ class InvoicesController extends Controller
                     'proformaitemid' => $i->proformaitemid,
                     'itemid' => $i->itemid,
                     'item_name' => $i->item_name,
+                    'item_description' => $i->item_description,
                     'quantity' => $i->quantity,
                     'unit_price' => $i->unit_price,
                     'tax_rate' => $i->tax_rate,
@@ -1045,9 +1101,9 @@ class InvoicesController extends Controller
             $payload = [
                 'itemid'           => $itemData['itemid'] ?: null,
                 'item_name'        => $itemData['item_name'] ?? ($service?->name ?? 'Custom Item'),
-                'item_description' => null,
-                'quantity'         => $itemData['quantity'],
-                'unit_price'       => $itemData['unit_price'],
+                'item_description' => $itemData['item_description'] ?? null,
+                'quantity'         => $this->wholeQuantity($itemData['quantity'] ?? 1),
+                'unit_price'       => $this->wholeAmount($itemData['unit_price'] ?? 0),
                 'tax_rate'         => $taxRate,
                 'discount_percent' => $amounts['discount_percent'],
                 'discount_amount' => $amounts['discount_amount'],
@@ -1074,15 +1130,22 @@ class InvoicesController extends Controller
             return response()->json(['success' => true, 'message' => 'Invoice updated successfully.']);
         }
 
-        return redirect()->route('invoices.index')->with('success', 'Invoice updated successfully.');
+        $selectedClientId = $request->input('c') ?: $request->input('clientid') ?: $invoice->clientid;
+
+        return redirect()
+            ->route('invoices.index', $selectedClientId ? ['c' => $selectedClientId] : [])
+            ->with('success', 'Invoice updated successfully.');
     }
 
     public function invoicesDestroy(string $invoice)
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
+        $selectedClientId = request('c') ?: $invoice->clientid;
         $invoice->delete();
 
-        return redirect()->route('invoices.index')->with('success', 'Invoice deleted successfully.');
+        return redirect()
+            ->route('invoices.index', $selectedClientId ? ['c' => $selectedClientId] : [])
+            ->with('success', 'Invoice deleted successfully.');
     }
 
     public function convertToTaxInvoice(ProformaInvoice $invoice)
@@ -1188,3 +1251,4 @@ class InvoicesController extends Controller
         }
     }
 }
+
