@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'invoiceid',
+    'accountid',
+    'clientid',
     'itemid',
     'item_name',
     'item_description',
@@ -17,19 +19,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'tax_rate',
     'discount_percent',
     'discount_amount',
-    'taxid',
     'duration',
     'frequency',
     'no_of_users',
     'start_date',
     'end_date',
     'line_total',
-    'sort_order',
+    'amount',
 ])]
 class InvoiceItem extends Model
 {
-    protected $table = 'ti_items';
-    protected $primaryKey = 'invoiceitemid';
+    protected $table = 'invoice_items';
+    protected $primaryKey = 'invoice_itemid';
 
     protected function idLength(): int
     {
@@ -46,11 +47,38 @@ class InvoiceItem extends Model
             'tax_rate' => 'decimal:2',
             'discount_percent' => 'decimal:2',
             'discount_amount' => 'decimal:2',
-            'line_total' => 'decimal:2',
+            'amount' => 'decimal:2',
             'no_of_users' => 'integer',
             'start_date' => 'date',
             'end_date' => 'date',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $item): void {
+            if (empty($item->accountid) || empty($item->clientid)) {
+                $invoice = Invoice::query()
+                    ->select(['accountid', 'clientid'])
+                    ->where('invoiceid', $item->invoiceid)
+                    ->first();
+
+                if ($invoice) {
+                    $item->accountid = $item->accountid ?: $invoice->accountid;
+                    $item->clientid = $item->clientid ?: $invoice->clientid;
+                }
+            }
+        });
+    }
+
+    public function getLineTotalAttribute(): mixed
+    {
+        return $this->attributes['amount'] ?? 0;
+    }
+
+    public function setLineTotalAttribute(mixed $value): void
+    {
+        $this->attributes['amount'] = $value;
     }
 
     public function invoice(): BelongsTo

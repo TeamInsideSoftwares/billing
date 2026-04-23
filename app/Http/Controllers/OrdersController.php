@@ -35,7 +35,7 @@ class OrdersController extends Controller
         $clientId = request('c');
         $selectedClient = null;
         
-        $query = Order::with(['client', 'items.item', 'proformaInvoices', 'invoices']);
+        $query = Order::with(['client', 'items.item', 'invoices']);
         
         // Filter by client if client_id is provided
         if ($clientId) {
@@ -103,7 +103,7 @@ class OrdersController extends Controller
                 'status' => (string) ($order->status ?? ''),
                 'is_verified' => ($order->is_verified ?? 'no') === 'yes' ? 'Verified' : 'Unverified',
                 'verified' => ($order->is_verified ?? 'no') === 'yes',
-                'has_pi' => $order->proformaInvoices->isNotEmpty() || $order->invoices->isNotEmpty(),
+                'has_pi' => $order->invoices->isNotEmpty(),
             ];
         });
 
@@ -226,10 +226,6 @@ class OrdersController extends Controller
                 'delivery_date' => $validated['delivery_date'] ?? null,
                 'notes' => $validated['notes'],
                 'sales_person_id' => $validated['sales_person_id'] ?? null,
-                'subtotal' => $subtotal,
-                'discount_total' => $discountTotal,
-                'tax_total' => $taxTotal,
-                'grand_total' => $grandTotal,
             ]);
 
             // Delete existing items and recreate
@@ -257,7 +253,6 @@ class OrdersController extends Controller
                     'end_date' => $itemData['end_date'] ?? null,
                     'delivery_date' => $itemData['delivery_date'] ?? null,
                     'line_total' => $amounts['line_total'],
-                    'sort_order' => $index + 1,
                 ]);
             }
 
@@ -273,15 +268,13 @@ class OrdersController extends Controller
             'delivery_date' => 'nullable|date|after_or_equal:order_date',
             'notes' => 'nullable|string',
             'sales_person_id' => 'nullable|string|max:50',
-            'subtotal' => 'nullable|numeric|min:0',
-            'grand_total' => 'nullable|numeric|min:0',
             'items_data' => 'required|json',
             'accountid' => 'nullable|size:10',
         ]);
 
         $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
-        $validated['status'] = 'unverified'; // Always set to unverified
+        $validated['status'] = 'running'; // Default status for new orders
         $validated['is_verified'] = 'yes';
         unset($validated['items_data']);
 
@@ -301,11 +294,6 @@ class OrdersController extends Controller
         $discountTotal = $this->roundDiscountDown($discountTotal);
         $taxTotal = $this->roundTaxUp($taxTotal);
         $grandTotal = round($subtotal - $discountTotal + $taxTotal, 0);
-        $validated['subtotal'] = $subtotal;
-        $validated['discount_total'] = $discountTotal;
-        $validated['tax_total'] = $taxTotal;
-        $validated['grand_total'] = $grandTotal;
-
         $order = Order::create($validated);
 
         foreach ($itemsData as $index => $itemData) {
@@ -335,7 +323,6 @@ class OrdersController extends Controller
                 'end_date' => $itemData['end_date'] ?? null,
                 'delivery_date' => $itemData['delivery_date'] ?? null,
                 'line_total' => $amounts['line_total'],
-                'sort_order' => $index + 1,
             ]);
         }
 
@@ -591,10 +578,6 @@ class OrdersController extends Controller
             'delivery_date' => $validated['delivery_date'] ?? null,
             'notes' => $validated['notes'],
             'sales_person_id' => $validated['sales_person_id'] ?? null,
-            'subtotal' => $subtotal,
-            'discount_total' => $discountTotal,
-            'tax_total' => $taxTotal,
-            'grand_total' => $grandTotal,
             'po_number' => $validated['po_number'] ?? null,
             'po_date' => $validated['po_date'] ?? null,
             'po_file' => $validated['po_file'] ?? $order->po_file,
@@ -635,7 +618,6 @@ class OrdersController extends Controller
                 'end_date' => $itemData['end_date'] ?? null,
                 'delivery_date' => $itemData['delivery_date'] ?? null,
                 'line_total' => $amounts['line_total'],
-                'sort_order' => $index + 1,
             ]);
         }
 
@@ -655,7 +637,7 @@ class OrdersController extends Controller
     public function ordersRestore(Order $order)
     {
         $order->update([
-            'status' => 'unverified',
+            'status' => 'running',
             'is_verified' => 'no',
         ]);
 
@@ -1063,7 +1045,6 @@ class OrdersController extends Controller
                 'end_date' => $validated['end_date'] ?? null,
                 'delivery_date' => $validated['delivery_date'] ?? null,
                 'line_total' => $amounts['line_total'],
-                'sort_order' => $order->items()->count() + 1,
             ]);
 
             // Update order totals
@@ -1223,11 +1204,6 @@ class OrdersController extends Controller
         $discountTotal = $this->roundDiscountDown($discountTotal);
         $taxTotal = $this->roundTaxUp($taxTotal);
 
-        $order->update([
-            'subtotal' => round($subtotal, 0),
-            'discount_total' => $discountTotal,
-            'tax_total' => $taxTotal,
-            'grand_total' => round($subtotal - $discountTotal + $taxTotal, 0),
-        ]);
+        // Totals are now derived from order_items and not stored on orders table.
     }
 }

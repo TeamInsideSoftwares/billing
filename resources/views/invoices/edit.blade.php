@@ -16,9 +16,4 @@
     @include('invoices._edit_form', ['invoice' => $invoice, 'clients' => $clients, 'services' => $services, 'taxes' => $taxes, 'account' => $account, 'inline' => false])
 </section>
 
-@if($invoice->isProforma() && !$invoice->convertedTaxInvoice)
-<form method="POST" action="{{ route('invoices.convert-to-tax', $invoice) }}" id="convertToTaxInvoiceForm" onsubmit="return confirm('Are you sure you want to convert this proforma invoice to a tax invoice? A new tax invoice will be created.')">
-    @csrf
-</form>
-@endif
 @endsection

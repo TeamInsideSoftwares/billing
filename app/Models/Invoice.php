@@ -13,31 +13,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'fy_id',
     'clientid',
     'orderid',
-    'proformaid',
     'invoice_number',
+    'pi_number',
+    'ti_number',
     'invoice_title',
-    'invoice_for',
     'status',
     'issue_date',
     'due_date',
-    'subtotal',
-    'tax_total',
-    'discount_total',
-    'grand_total',
-    'amount_paid',
-    'balance_due',
-    'currency_code',
     'notes',
     'terms',
-    'sent_at',
-    'paid_at',
     'created_by',
 ])]
 class Invoice extends Model
 {
     use HasAlphaNumericId;
 
-    protected $table = 'tax_invoices';
+    protected $table = 'invoices';
     protected $primaryKey = 'invoiceid';
     public $incrementing = false;
     protected $keyType = 'string';
@@ -53,14 +44,6 @@ class Invoice extends Model
         return [
             'issue_date' => 'date',
             'due_date' => 'date',
-            'sent_at' => 'datetime',
-            'paid_at' => 'datetime',
-            'subtotal' => 'decimal:2',
-            'tax_total' => 'decimal:2',
-            'discount_total' => 'decimal:2',
-            'grand_total' => 'decimal:2',
-            'amount_paid' => 'decimal:2',
-            'balance_due' => 'decimal:2',
         ];
     }
 
@@ -79,11 +62,6 @@ class Invoice extends Model
         return $this->belongsTo(Order::class, 'orderid');
     }
 
-    public function proforma(): BelongsTo
-    {
-        return $this->belongsTo(ProformaInvoice::class, 'proformaid', 'proformaid');
-    }
-
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -99,14 +77,63 @@ class Invoice extends Model
         return $this->hasMany(Payment::class, 'invoiceid', 'invoiceid');
     }
 
-    public function isProforma(): bool
-    {
-        return false;
-    }
-
     public function hasPaymentsRecorded(): bool
     {
         return (float) ($this->amount_paid ?? 0) > 0 || $this->payments()->exists();
     }
 
+    public function getInvoiceNumberAttribute(): string
+    {
+        return (string) ($this->pi_number ?? $this->ti_number ?? '');
+    }
+
+    public function setInvoiceNumberAttribute(mixed $value): void
+    {
+        $this->attributes['pi_number'] = $value;
+    }
+
+    public function getInvoiceForAttribute(): string
+    {
+        return $this->orderid ? 'orders' : 'without_orders';
+    }
+
+    public function getCurrencyCodeAttribute(): string
+    {
+        return $this->client?->currency ?? 'INR';
+    }
+
+    public function getSubtotalAttribute(): float
+    {
+        return (float) $this->items->sum('line_total');
+    }
+
+    public function getDiscountTotalAttribute(): float
+    {
+        return (float) floor((float) $this->items->sum('discount_amount'));
+    }
+
+    public function getTaxTotalAttribute(): float
+    {
+        return (float) $this->items->sum(function ($item) {
+            $lineTotal = (float) ($item->line_total ?? 0);
+            $discount = (float) ($item->discount_amount ?? 0);
+            $rate = (float) ($item->tax_rate ?? 0);
+            return ceil(max(0, $lineTotal - $discount) * ($rate / 100));
+        });
+    }
+
+    public function getGrandTotalAttribute(): float
+    {
+        return max(0, $this->subtotal - $this->discount_total + $this->tax_total);
+    }
+
+    public function getAmountPaidAttribute(): float
+    {
+        return (float) ($this->payments()->sum('amount') ?? 0);
+    }
+
+    public function getBalanceDueAttribute(): float
+    {
+        return max(0, $this->grand_total - $this->amount_paid);
+    }
 }

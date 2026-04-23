@@ -1,17 +1,35 @@
 @php
     $selectedClientCurrency = optional($clients->firstWhere('clientid', request('c', request('clientid'))))->currency ?? 'INR';
+    $selectedClient = $clients->firstWhere('clientid', request('c', request('clientid')));
+    $selectedClientName = $selectedClient ? ($selectedClient->business_name ?? $selectedClient->contact_name ?? 'Unknown Client') : 'No Client Selected';
+    $selectedClientEmail = $selectedClient->email ?? '';
     $serviceGroups = collect($services ?? [])->groupBy(function ($service) {
         return optional($service->category)->name ?? 'No Category';
     });
 @endphp
 <!-- Step 2: Add Items (Without Orders) -->
 <div id="step2" class="invoice-step">
-    <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
-        <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back</button>
-        <div class="invoice-side-meta">
-            <span class="invoice-meta-label">PI</span>
-            <strong class="invoice-meta-value">{{ $nextInvoiceNumber }}</strong>
-            <input type="hidden" name="invoice_number" value="{{ $nextInvoiceNumber }}">
+    {{-- Client Info Header with Back Button --}}
+    <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
+                <i class="fas fa-arrow-left" style="font-size: 0.8rem;"></i>
+            </button>
+            <div style="width: 1px; height: 32px; background: #d1d5db; flex-shrink: 0;"></div>
+            <div style="width: 36px; height: 36px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-user"></i>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 0.9rem; font-weight: 600; color: #111827; margin-top: 0.1rem;">{{ $selectedClientName }}</div>
+                @if($selectedClientEmail)
+                <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.05rem;">{{ $selectedClientEmail }}</div>
+                @endif
+            </div>
+            <div style="text-align: right; flex-shrink: 0;">
+                <div style="display: inline-block; padding: 0.35rem 0.75rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #c7d2fe;">
+                    {{ $nextInvoiceNumber }}
+                </div>
+            </div>
         </div>
     </div>
 
@@ -36,6 +54,7 @@
     </div>
 
     <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
+    <input type="hidden" name="invoice_number" value="{{ $nextInvoiceNumber }}">
     <input type="hidden" name="subtotal" id="subtotal" value="0">
     <input type="hidden" name="tax_total" id="tax_total" value="0">
     <input type="hidden" name="discount_total" id="discount_total" value="0">
@@ -63,15 +82,13 @@
                                     @php
                                         $defaultCosting = $service->costings->sortBy('currency_code')->first();
                                     @endphp
-                                    <option value="{{ $service->itemid }}" data-selling-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}" data-taxid="{{ $defaultCosting?->taxid ?? '' }}" data-user-wise="{{ (int) ($service->user_wise ?? 0) }}" data-description="{{ $service->description ?? '' }}">
+                                    <option value="{{ $service->itemid }}" data-selling-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}" data-user-wise="{{ (int) ($service->user_wise ?? 0) }}" data-description="{{ $service->description ?? '' }}">
                                         {{ $service->name }} ({{ number_format($defaultCosting?->selling_price ?? 0, 0) }})
                                     </option>
                                 @endforeach
                             </optgroup>
                         @endforeach
                     </select>
-                    <label for="manual_item_description" class="field-label small" style="margin-top: 0.3rem;">Description</label>
-                    <textarea id="manual_item_description" class="form-input" rows="1" placeholder="Description (optional)" style="height: 34px; min-height: 34px; resize: none; line-height: 1.2;"></textarea>
                 </div>
                 <div>
                     <label for="manual_item_quantity" class="field-label small">Qty</label>
@@ -91,7 +108,7 @@
                     <select id="manual_item_tax_rate" class="form-input">
                         <option value="0">No Tax</option>
                         @foreach($taxes as $tax)
-                            <option value="{{ $tax->rate }}" data-taxid="{{ $tax->taxid }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)</option>
+                            <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)</option>
                         @endforeach
                     </select>
                 </div>
@@ -110,14 +127,12 @@
                     <label for="manual_item_frequency" class="field-label small">Freq</label>
                     <select id="manual_item_frequency" class="form-input">
                         <option value="">None</option>
-                        <option value="one-time">One-Time</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="bi-weekly">Bi-Weekly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="quarterly">Quarterly</option>
-                        <option value="semi-annually">Semi-Annually</option>
-                        <option value="yearly">Yearly</option>
+                        <option value="One-Time">One-Time</option>
+                        <option value="Day(s)">Day(s)</option>
+                        <option value="Week(s)">Week(s)</option>
+                        <option value="Month(s)">Month(s)</option>
+                        <option value="Quarter(s)">Quarter(s)</option>
+                        <option value="Year(s)">Year(s)</option>
                     </select>
                 </div>
                 <div id="manual_item_duration_wrap" style="display: none;">
@@ -132,9 +147,10 @@
                     <label for="manual_item_end_date" class="field-label small">End</label>
                     <input type="date" id="manual_item_end_date" class="form-input">
                 </div>
-                <div style="display: flex; align-items: start; align-self: start; margin-top: 1.45rem;">
-                    <button type="button" id="addManualItemBtn" class="primary-button" style="width: 100%;">Add</button>
-                </div>
+            </div>
+            <div style="margin-top: 0.45rem; display: flex; gap: 0.45rem; align-items: flex-end;">
+                <textarea id="manual_item_description" class="form-input" rows="1" placeholder="Description (optional)" style="flex: 1 1 auto; min-height: 30px; resize: none; line-height: 1.2;"></textarea>
+                <button type="button" id="addManualItemBtn" class="primary-button" style="padding: 0.55rem 1rem; white-space: nowrap;">Add</button>
             </div>
         </div>
 
@@ -215,7 +231,7 @@
     const manualStartInput = document.getElementById('manual_item_start_date');
     const manualEndInput = document.getElementById('manual_item_end_date');
 
-    const frequencyLabels = { 'one-time': 'One-Time', 'daily': 'Daily', 'weekly': 'Weekly', 'bi-weekly': 'Bi-Weekly', 'monthly': 'Monthly', 'quarterly': 'Quarterly', 'semi-annually': 'Semi-Annually', 'yearly': 'Yearly' };
+    const frequencyLabels = { 'One-Time': 'One-Time', 'Day(s)': 'Day(s)', 'Week(s)': 'Week(s)', 'Month(s)': 'Month(s)', 'Quarter(s)': 'Quarter(s)', 'Year(s)': 'Year(s)' };
 
     let manualItems = [];
     let editingManualItemIndex = null;
@@ -287,7 +303,7 @@
     @endif
 
     function isRecurringFrequency(frequency) {
-        return Boolean(frequency) && frequency !== 'one-time';
+        return Boolean(frequency) && frequency !== 'One-Time';
     }
 
     function calculateEndDate(startDate, frequency, duration) {
@@ -301,13 +317,11 @@
         }
         const end = new Date(start);
         switch (frequency) {
-            case 'daily': end.setDate(end.getDate() + steps); break;
-            case 'weekly': end.setDate(end.getDate() + (steps * 7)); break;
-            case 'bi-weekly': end.setDate(end.getDate() + (steps * 14)); break;
-            case 'monthly': end.setMonth(end.getMonth() + steps); break;
-            case 'quarterly': end.setMonth(end.getMonth() + (steps * 3)); break;
-            case 'semi-annually': end.setMonth(end.getMonth() + (steps * 6)); break;
-            case 'yearly': end.setFullYear(end.getFullYear() + steps); break;
+            case 'Day(s)': end.setDate(end.getDate() + steps); break;
+            case 'Week(s)': end.setDate(end.getDate() + (steps * 7)); break;
+            case 'Month(s)': end.setMonth(end.getMonth() + steps); break;
+            case 'Quarter(s)': end.setMonth(end.getMonth() + (steps * 3)); break;
+            case 'Year(s)': end.setFullYear(end.getFullYear() + steps); break;
             default: return '';
         }
         return end.toISOString().split('T')[0];
@@ -472,6 +486,7 @@
         let subtotal = 0;
         let discountTotal = 0;
         let taxTotal = 0;
+        const showTaxColumn = @json((bool) ($account->allow_multi_taxation ?? false));
 
         manualItems.forEach((item, index) => {
             const quantity = Math.max(1, Math.round(Number(item.quantity || 1)));
@@ -490,6 +505,8 @@
 
             const rowRecurring = itemIsRecurring(item);
             const rowUsers = itemHasUsers(item);
+            const safeName = escapeHtml(item.item_name || 'Item');
+            const safeDescription = escapeHtml(item.item_description || '').trim();
 
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -507,12 +524,12 @@
                 <td style="display:${showRecurringColumns ? '' : 'none'};">${rowRecurring ? (item.duration || '-') : '-'}</td>
                 <td style="display:${showRecurringColumns ? '' : 'none'};">${rowRecurring ? (item.start_date || '-') : '-'}</td>
                 <td style="display:${showRecurringColumns ? '' : 'none'};">${rowRecurring ? (item.end_date || '-') : '-'}</td>
-                <td style="text-align: right; font-weight: 600;">${formatCurrency(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0)))}</td>
-                <td style="white-space: nowrap;">
-                    <button type="button" class="edit-item-btn icon-action-btn edit" data-index="${index}" title="Edit" style="margin-right: 0.3rem;">
+                <td style="text-align: right;">${formatCurrency(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0)))}</td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <button type="button" class="edit-item-btn icon-action-btn edit" data-index="${index}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button type="button" class="remove-item-btn icon-action-btn delete" data-index="${index}" title="Delete">
+                    <button type="button" class="remove-item-btn icon-action-btn delete" data-index="${index}" title="Delete" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -623,10 +640,14 @@
             })
         })
         .then(response => response.json())
-        .then(() => {
+        .then((data) => {
             const clientId = "{{ request('c', request('clientid')) }}";
             const clientToken = encodeURIComponent(clientId);
-            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=without_orders&c=" + clientToken;
+            let nextUrl = "{{ route('invoices.create') }}?step=3&invoice_for=without_orders&c=" + clientToken;
+            if (data && data.invoiceid) {
+                nextUrl += "&d=" + encodeURIComponent(data.invoiceid);
+            }
+            window.location.href = nextUrl;
         });
     });
 

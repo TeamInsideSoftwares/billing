@@ -29,7 +29,7 @@
     <h3>Description</h3>
     <p>{{ $setting->description }}</p>
 </section>
-@endif>
+@endif
 
 @endsection
 

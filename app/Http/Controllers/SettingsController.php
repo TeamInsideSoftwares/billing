@@ -34,9 +34,27 @@ class SettingsController extends Controller
             ];
         });
 
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
-        $financialYears = $account ? $account->financialYears()->orderBy('financial_year')->get() : collect();
+        if (! $account) {
+            $account = Account::find('ACC0000001');
+            if ($account) {
+                $accountid = $account->accountid;
+            }
+        }
+        $hasPersistedAccount = (bool) ($account && $account->exists);
+
+        if (! $account) {
+            $account = new Account([
+                'accountid' => $accountid,
+                'allow_multi_taxation' => false,
+                'have_users' => false,
+                'fixed_tax_rate' => 0,
+                'fixed_tax_type' => 'GST',
+            ]);
+        }
+
+        $financialYears = $hasPersistedAccount ? $account->financialYears()->orderBy('financial_year')->get() : collect();
 
         $editId = request('e') ? base64_decode(request('e')) : null;
 
@@ -49,12 +67,16 @@ class SettingsController extends Controller
             ->orderBy('iso')
             ->get(['iso', 'name']);
 
-        $billingDetails = $account ? $account->billingDetails : collect();
-        $quotationDetails = $account ? $account->quotationDetails : collect();
+        $billingDetails = $hasPersistedAccount ? $account->billingDetails : collect();
+        $quotationDetails = $hasPersistedAccount ? $account->quotationDetails : collect();
 
-        $editingBillingDetail = ($editId && str_starts_with($editId, 'ABD')) ? AccountBillingDetail::where('account_bdid', $editId)->where('accountid', $accountid)->first() : ($account->billingDetails()->first());
+        $editingBillingDetail = ($editId && str_starts_with($editId, 'ABD'))
+            ? AccountBillingDetail::where('account_bdid', $editId)->where('accountid', $accountid)->first()
+            : ($hasPersistedAccount ? $account->billingDetails()->first() : null);
 
-        $editingQuotationDetail = ($editId && str_starts_with($editId, 'AQD')) ? AccountQuotationDetail::where('account_qdid', $editId)->where('accountid', $accountid)->first() : ($account->quotationDetails()->first());
+        $editingQuotationDetail = ($editId && str_starts_with($editId, 'AQD'))
+            ? AccountQuotationDetail::where('account_qdid', $editId)->where('accountid', $accountid)->first()
+            : ($hasPersistedAccount ? $account->quotationDetails()->first() : null);
 
 // Serial configurations from dedicated table
         $proformaSerialConfig   = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'proforma_invoice')->first();
@@ -74,7 +96,7 @@ class SettingsController extends Controller
             ->where('type', 'quotation')
             ->get();
 
-        $taxes = $account ? $account->taxes()->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect();
+        $taxes = $hasPersistedAccount ? $account->taxes()->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect();
 
         $editingTerm = null;
         if ($editId && strlen($editId) === 6 && !str_starts_with($editId, 'SET') && !str_starts_with($editId, 'ABD') && !str_starts_with($editId, 'AQD')) {
@@ -138,7 +160,7 @@ class SettingsController extends Controller
 
     public function accountUpdate(Request $request)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
 
         if (! $account) {
@@ -172,9 +194,12 @@ class SettingsController extends Controller
         $validated['allow_multi_taxation'] = $request->has('allow_multi_taxation');
         $validated['have_users'] = $request->has('have_users');
 
-        // Set fixed tax rate and type (default to 0 and GST if not provided)
-        $validated['fixed_tax_rate'] = $request->input('fixed_tax_rate', 0);
-        $validated['fixed_tax_type'] = $request->input('fixed_tax_type', 'GST');
+        // Do not overwrite fixed tax values on generic profile updates
+        // unless these fields are explicitly submitted.
+        if ($request->filled('fixed_tax_rate')) {
+            $validated['fixed_tax_rate'] = $request->input('fixed_tax_rate');
+            $validated['fixed_tax_type'] = $request->input('fixed_tax_type', 'GST');
+        }
 
         if (!empty($validated['fy_month']) && !empty($validated['fy_day'])) {
             $validated['fy_startdate'] = $validated['fy_month'] . '-' . $validated['fy_day'];
@@ -198,7 +223,7 @@ class SettingsController extends Controller
 
     public function fixedTaxUpdate(Request $request)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
 
         if (! $account) {
@@ -217,7 +242,7 @@ class SettingsController extends Controller
 
     public function serialConfigUpdate(Request $request)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
 
         $validated = $request->validate([
             'document_type'   => 'required|in:proforma_invoice,tax_invoice,quotation,order',
@@ -265,7 +290,7 @@ class SettingsController extends Controller
 
     public function accountBillingUpdate(Request $request)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
 
         if (! $account) {
@@ -325,7 +350,7 @@ class SettingsController extends Controller
 
     public function accountQuotationUpdate(Request $request)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
 
         if (! $account) {
@@ -424,7 +449,7 @@ class SettingsController extends Controller
 
     public function financialYearUpdate(Request $request)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
         if (! $account) {
             return redirect()->back()->with('error', 'Account not found.');
@@ -468,7 +493,7 @@ class SettingsController extends Controller
 
     public function financialYearSetDefault(FinancialYear $financialYear)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
 
         if ($financialYear->accountid !== $accountid) {
             return redirect()->back()->with('error', 'Unauthorized action.');
@@ -552,7 +577,7 @@ class SettingsController extends Controller
 
     public function termsConditionsStore(Request $request)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
 
         $editId = $request->e ? base64_decode($request->e) : null;
 
@@ -599,7 +624,7 @@ class SettingsController extends Controller
 
     public function termsConditionsUpdateSequence(Request $request, TermsCondition $term)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         if ($term->accountid !== $accountid) {
             abort(403, 'Unauthorized');
         }
@@ -636,7 +661,7 @@ class SettingsController extends Controller
 
     public function termsConditionsToggle(TermsCondition $term)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         if ($term->accountid !== $accountid) {
             abort(403, 'Unauthorized');
         }
@@ -646,7 +671,7 @@ class SettingsController extends Controller
 
     public function termsConditionsDestroy(TermsCondition $term)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         if ($term->accountid !== $accountid) {
             abort(403, 'Unauthorized');
         }
@@ -656,7 +681,7 @@ class SettingsController extends Controller
 
     public function fyPrefixUpdate(Request $request)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
         if (!$account) {
             return redirect()->back()->with('error', 'Account not found.');
@@ -704,7 +729,7 @@ class SettingsController extends Controller
 
     public function taxStore(Request $request)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
 
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'tax_name' => 'nullable|string|max:100',
@@ -745,7 +770,7 @@ class SettingsController extends Controller
 
     public function taxUpdate(Request $request, Tax $tax)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         if ($tax->accountid !== $accountid) {
             abort(403, 'Unauthorized');
         }
@@ -763,7 +788,7 @@ class SettingsController extends Controller
 
     public function taxDestroy(Tax $tax)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         if ($tax->accountid !== $accountid) {
             abort(403, 'Unauthorized');
         }
@@ -773,11 +798,31 @@ class SettingsController extends Controller
 
     public function taxToggle(Tax $tax)
     {
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         if ($tax->accountid !== $accountid) {
             abort(403, 'Unauthorized');
         }
         $tax->update(['is_active' => !$tax->is_active]);
         return redirect()->to(route('settings.index') . '#taxes')->with('success', 'Tax status toggled.');
+    }
+
+    private function resolveAccountId(): string
+    {
+        if (! auth()->check()) {
+            return 'ACC0000001';
+        }
+
+        $user = auth()->user();
+        $userAccountId = $user->accountid ?? null;
+        if (is_string($userAccountId) && Str::startsWith($userAccountId, 'ACC')) {
+            return $userAccountId;
+        }
+
+        $authId = auth()->id();
+        if (is_string($authId) && Str::startsWith($authId, 'ACC')) {
+            return $authId;
+        }
+
+        return 'ACC0000001';
     }
 }

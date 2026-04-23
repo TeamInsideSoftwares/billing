@@ -90,7 +90,7 @@ class SerialConfiguration extends Model
         }
 
         if ($this->document_type === 'proforma_invoice') {
-            return $this->getProformaInvoiceCount($currentFyId);
+            return $this->getTaxInvoiceCount($currentFyId);
         }
 
         if ($this->document_type === 'quotation') {
@@ -103,17 +103,6 @@ class SerialConfiguration extends Model
     protected function getTaxInvoiceCount(?string $fyId): int
     {
         $query = Invoice::where('accountid', $this->accountid);
-
-        if ($this->reset_on_fy && $fyId) {
-            $query->where('fy_id', $fyId);
-        }
-
-        return $query->count();
-    }
-
-    protected function getProformaInvoiceCount(?string $fyId): int
-    {
-        $query = ProformaInvoice::where('accountid', $this->accountid);
 
         if ($this->reset_on_fy && $fyId) {
             $query->where('fy_id', $fyId);
@@ -165,7 +154,7 @@ class SerialConfiguration extends Model
         }
 
         if ($this->document_type === 'proforma_invoice') {
-            return $this->getProformaInvoiceNumbers($currentFyId);
+            return $this->getTaxInvoiceNumbers($currentFyId);
         }
 
         if ($this->document_type === 'quotation') {
@@ -177,28 +166,18 @@ class SerialConfiguration extends Model
 
     protected function getTaxInvoiceNumbers(?string $fyId): Collection
     {
+        $numberColumn = $this->document_type === 'tax_invoice' ? 'ti_number' : 'pi_number';
         $query = Invoice::query()
             ->where('accountid', $this->accountid)
-            ->whereNotNull('invoice_number');
+            ->whereNotNull($numberColumn)
+            ->where($numberColumn, '!=', '')
+            ->where($numberColumn, '!=', '0');
 
         if ($this->reset_on_fy && $fyId) {
             $query->where('fy_id', $fyId);
         }
 
-        return $query->pluck('invoice_number');
-    }
-
-    protected function getProformaInvoiceNumbers(?string $fyId): Collection
-    {
-        $query = ProformaInvoice::query()
-            ->where('accountid', $this->accountid)
-            ->whereNotNull('invoice_number');
-
-        if ($this->reset_on_fy && $fyId) {
-            $query->where('fy_id', $fyId);
-        }
-
-        return $query->pluck('invoice_number');
+        return $query->pluck($numberColumn);
     }
 
     protected function getQuotationNumbers(?string $fyId): Collection

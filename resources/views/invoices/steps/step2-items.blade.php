@@ -4,7 +4,7 @@
         <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back to Step 1</button>
         <div style="display: flex; align-items: center; gap: 1rem;">
             <span style="font-size: 0.75rem; padding: 0.3rem 0.7rem; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #92400e; border-radius: 20px; font-weight: 600; border: 1px solid #f59e0b;">
-                <i class="fas fa-file-invoice" style="margin-right: 0.3rem;"></i>Proforma Invoice
+                <i class="fas fa-file-invoice" style="margin-right: 0.3rem;"></i>Invoice
             </span>
             <div style="text-align: right;">
                 <span class="invoice-meta-label">Invoice Number</span>
@@ -21,7 +21,7 @@
         </div>
     </div>
 
-    <input type="hidden" name="proformaid" id="proformaid" value="">
+    <input type="hidden" name="invoiceid" id="invoiceid" value="">
     <input type="hidden" name="orderid" id="orderid" value="{{ old('orderid', '') }}">
     <input type="hidden" name="status" value="unpaid">
     <input type="hidden" name="currency_code" id="currency_code" value="{{ old('currency_code', 'INR') }}">
@@ -113,7 +113,7 @@
                                     @php
                                         $defaultCosting = $service->costings->sortBy('currency_code')->first();
                                     @endphp
-                                    <option value="{{ $service->itemid }}" data-selling-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}" data-taxid="{{ $defaultCosting?->taxid ?? '' }}" data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
+                                    <option value="{{ $service->itemid }}" data-selling-price="{{ $defaultCosting?->selling_price ?? 0 }}" data-tax-rate="{{ $defaultCosting?->tax_rate ?? 0 }}" data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
                                         {{ $service->name }} ({{ number_format($defaultCosting?->selling_price ?? 0, 0) }})
                                     </option>
                                 @endforeach
@@ -133,9 +133,9 @@
                 <div>
                     <label for="manual_item_tax_rate" class="field-label small">Tax <a href="#" id="open-tax-modal-invoice" style="font-size:11px;margin-left:4px;" class="text-link">+ Add</a></label>
                     <select id="manual_item_tax_rate" class="form-input">
-                        <option value="0" data-taxid="">No Tax</option>
+                        <option value="0">No Tax</option>
                         @foreach($taxes as $tax)
-                            <option value="{{ $tax->rate }}" data-taxid="{{ $tax->taxid }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)</option>
+                            <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)</option>
                         @endforeach
                     </select>
                 </div>

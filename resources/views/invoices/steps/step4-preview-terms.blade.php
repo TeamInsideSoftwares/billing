@@ -2,24 +2,42 @@
     $normalizeTaxState = static fn ($value) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $value)));
     $selectedInvoiceClient = $clients->firstWhere('clientid', request('c', request('clientid')));
     $selectedClientCurrency = optional($selectedInvoiceClient)->currency ?? 'INR';
+    $selectedClientName = $selectedInvoiceClient ? ($selectedInvoiceClient->business_name ?? $selectedInvoiceClient->contact_name ?? 'Unknown Client') : 'No Client Selected';
+    $selectedClientEmail = $selectedInvoiceClient->email ?? '';
     $invoiceClientState = $normalizeTaxState(optional($selectedInvoiceClient)->state ?? '');
     $invoiceAccountState = $normalizeTaxState(optional($account)->state ?? '');
     $sameStateGstForInvoice = $invoiceClientState !== '' && $invoiceAccountState !== '' && $invoiceClientState === $invoiceAccountState;
 @endphp
 <!-- Step 4: Preview & Terms (For Orders & Renewal, and Without Orders Step 3) -->
 <div id="step4" class="invoice-step">
-    <div class="invoice-step-toolbar">
-        <button type="button" id="btnBackToPrev" class="secondary-button" style="padding: 0.4rem 0.8rem;">&larr; Back</button>
-        <!-- <div class="invoice-side-meta">
-            <span class="invoice-meta-label">PI</span>
-            <strong class="invoice-meta-value" id="piNumberBadge">{{ $nextInvoiceNumber }}</strong>
-        </div> -->
+    {{-- Client Info Header with Back Button --}}
+    <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <button type="button" id="btnBackToPrev" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
+                <i class="fas fa-arrow-left" style="font-size: 0.8rem;"></i>
+            </button>
+            <div style="width: 1px; height: 32px; background: #d1d5db; flex-shrink: 0;"></div>
+            <div style="width: 36px; height: 36px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-user"></i>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 0.9rem; font-weight: 600; color: #111827; margin-top: 0.1rem;">{{ $selectedClientName }}</div>
+                @if($selectedClientEmail)
+                <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.05rem;">{{ $selectedClientEmail }}</div>
+                @endif
+            </div>
+            <div style="text-align: right; flex-shrink: 0;">
+                <div id="piNumberBadge" style="display: inline-block; padding: 0.35rem 0.75rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #c7d2fe;">
+                    {{ $nextInvoiceNumber }}
+                </div>
+            </div>
+        </div>
     </div>
 
     <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
     <input type="hidden" name="invoice_for" value="{{ request('invoice_for') }}">
     <input type="hidden" name="orderid" value="{{ request('o', request('orderid', '')) === '0' ? '' : request('o', request('orderid', '')) }}">
-    <input type="hidden" name="proformaid" id="proformaid" value="">
+    <input type="hidden" name="invoiceid" id="invoiceid" value="">
     <input type="hidden" name="renewed_item_ids" id="renewed_item_ids" value="">
     <input type="hidden" name="invoice_number" id="invoice_number" value="{{ $nextInvoiceNumber }}">
     <input type="hidden" name="issue_date" id="issue_date" value="{{ date('Y-m-d') }}">
@@ -110,7 +128,7 @@
 
     <div style="margin-top: 0.9rem; display: flex; justify-content: flex-end;">
         <button type="submit" class="primary-button create-submit-btn" id="finalSubmitBtn" disabled style="padding: 0.75rem 2.4rem; font-size: 0.95rem;">
-            <i class="fas fa-file-invoice" style="margin-right: 0.5rem;"></i>Create Proforma Invoice
+            <i class="fas fa-file-invoice" style="margin-right: 0.5rem;"></i>Create Invoice
         </button>
     </div>
 </div>
@@ -137,7 +155,7 @@
     const piNumberBadge = document.getElementById('piNumberBadge');
     const itemsDataInput = document.getElementById('items_data');
     const invoiceNumberInput = document.getElementById('invoice_number');
-    const proformaidInput = document.getElementById('proformaid');
+    const invoiceidInput = document.getElementById('invoiceid');
     const currencyCodeInput = document.getElementById('currency_code');
     const sameStateGstForInvoice = @json($sameStateGstForInvoice);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -194,9 +212,16 @@
     let invoiceItems = [];
     let draftInvoiceTitle = '';
     let draftInvoiceNumber = invoiceNumberInput.value || '{{ $nextInvoiceNumber }}';
+    let draftPoNumber = '';
+    let draftPoDate = '';
 
     function getCurrencyCode() {
         return currencyCodeInput.value || '{{ $selectedClientCurrency }}';
+    }
+
+    function formatMoney(amount) {
+        const currency = getCurrencyCode();
+        return `${currency} ${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     }
 
     function openTermModal() {
@@ -231,22 +256,43 @@
         fetch(draftUrl.toString())
         .then(response => response.json())
         .then(data => {
-            if (data.draft && data.draft.items) {
-                invoiceItems = data.draft.items;
+            console.log('Draft data loaded:', data);
+            if (data.draft) {
+                if (data.draft.items) {
+                    invoiceItems = data.draft.items;
+                    itemsDataInput.value = JSON.stringify(invoiceItems);
+                }
+                
                 draftInvoiceTitle = data.draft.invoice_title || '';
                 draftInvoiceNumber = data.draft.invoice_number || draftInvoiceNumber;
+                
+                if (data.draft.issue_date) document.getElementById('issue_date').value = data.draft.issue_date;
+                if (data.draft.due_date) document.getElementById('due_date').value = data.draft.due_date;
+                if (data.draft.notes) document.getElementById('notes').value = data.draft.notes;
+                if (data.draft.currency_code) {
+                    currencyCodeInput.value = data.draft.currency_code;
+                }
+                
+                draftPoNumber = data.draft.po_number || '';
+                draftPoDate = data.draft.po_date || '';
+
                 invoiceNumberInput.value = draftInvoiceNumber;
-                proformaidInput.value = data.draft.proformaid || '';
+                invoiceidInput.value = data.draft.invoiceid || '';
+                
                 if (piNumberBadge) {
                     piNumberBadge.textContent = draftInvoiceNumber;
                 }
-                itemsDataInput.value = JSON.stringify(invoiceItems);
+                
                 updateTotals();
+                updateInvoicePreview();
+            } else {
+                console.log('No draft found');
                 updateInvoicePreview();
             }
         })
-        .catch(() => {
-            console.error('Failed to load draft items');
+        .catch(error => {
+            console.error('Failed to load draft items:', error);
+            updateInvoicePreview();
         });
     }
 
@@ -279,9 +325,10 @@
 
     function updateInvoicePreview() {
         const invoiceNumber = draftInvoiceNumber || invoiceNumberInput.value || "{{ $nextInvoiceNumber }}";
-        const issueDate = document.getElementById('issue_date').value;
-        const dueDate = document.getElementById('due_date').value;
-        const invoiceTitle = draftInvoiceTitle || 'Proforma Invoice';
+        const issueDate = document.getElementById('issue_date')?.value || '-';
+        const dueDate = document.getElementById('due_date')?.value || '-';
+        const invoiceTitle = draftInvoiceTitle || document.getElementById('invoice_title')?.value || 'Invoice';
+        const notes = document.getElementById('notes')?.value || '';
 
         // Get terms
         const terms = Array.from(document.querySelectorAll('.term-checkbox'))
@@ -304,15 +351,16 @@
         ].filter(Boolean).join('<br>');
 
         const frequencyLabelMap = {
-            'one-time': 'One-Time',
-            'daily': 'Daily',
-            'weekly': 'Weekly',
-            'bi-weekly': 'Bi-Weekly',
-            'monthly': 'Monthly',
-            'quarterly': 'Quarterly',
-            'semi-annually': 'Semi-Annually',
-            'yearly': 'Yearly'
+            'One-Time': 'One-Time',
+            'Day(s)': 'Day(s)',
+            'Week(s)': 'Week(s)',
+            'Month(s)': 'Month(s)',
+            'Quarter(s)': 'Quarter(s)',
+            'Year(s)': 'Year(s)'
         };
+        
+        const hasRecurring = invoiceItems.some(item => item.frequency && item.frequency !== 'one-time');
+        const showDates = hasRecurring;
 
         const formatDate = (dateValue) => {
             if (!dateValue) return '-';
@@ -322,16 +370,9 @@
         };
 
         const formatFrequencyDuration = (frequency, duration) => {
-            if (!frequency || frequency === 'one-time') return '-';
-            const freqLabel = frequency.charAt(0).toUpperCase() + frequency.slice(1);
-            return duration ? `${duration} ${freqLabel}` : freqLabel;
+            if (!frequency || frequency === 'One-Time') return 'One-Time';
+            return duration ? `${duration} ${frequency}` : frequency;
         };
-
-        // Get invoice metadata from hidden inputs
-        const invoiceTitle = document.getElementById('invoice_title')?.value || 'Proforma Invoice';
-        const issueDate = document.getElementById('issue_date')?.value || '-';
-        const dueDate = document.getElementById('due_date')?.value || '-';
-        const notes = document.getElementById('notes')?.value || '';
 
         const escapeHtml = (value) => String(value ?? '')
             .replace(/&/g, '&amp;')
@@ -342,17 +383,29 @@
 
         // Build items table
         let itemsHtml = '';
+        let totalItemsLineTotal = 0;
+        let totalItemsDiscountTotal = 0;
+        let totalItemsTaxTotal = 0;
+
         invoiceItems.forEach((item, index) => {
             const qty = Math.max(1, Math.round(Number(item.quantity || 1)));
             const unitPrice = Number(item.unit_price || 0);
             const lineTotal = Number(item.line_total || 0);
             const discountPercent = Number(item.discount_percent || 0);
-            const discountAmount = Number(item.discount_amount || (lineTotal * (discountPercent / 100)) || 0);
-            const discountedUnitPrice = Math.max(0, unitPrice * (1 - (discountPercent / 100)));
+            const discountAmount = roundDiscountDown(item.discount_amount || (lineTotal * (discountPercent / 100)) || 0);
+            const taxableAmount = Math.max(0, lineTotal - discountAmount);
+            const taxRate = Number(item.tax_rate || 0);
+            const taxAmount = roundTaxUp(taxableAmount * (taxRate / 100));
+
+            totalItemsLineTotal += lineTotal;
+            totalItemsDiscountTotal += discountAmount;
+            totalItemsTaxTotal += taxAmount;
+
+            const discountedUnitPrice = qty > 0 ? (lineTotal / qty) : unitPrice; // Showing raw rate
+            
             const users = item.no_of_users ? Number(item.no_of_users) : null;
             const frequency = item.frequency ? (frequencyLabelMap[item.frequency] || item.frequency) : '-';
             const duration = item.duration ? Number(item.duration) : null;
-            const taxableAmount = Math.max(0, lineTotal - discountAmount);
             const itemName = escapeHtml(item.item_name || 'Item');
             const itemDescription = escapeHtml(item.item_description || '').trim();
 
@@ -366,40 +419,38 @@
                     <td style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #e5e7eb; font-size: 0.75rem;">${qty}</td>
                     <td style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #e5e7eb; font-size: 0.75rem;">${users || '-'}</td>
                     <td style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #e5e7eb; font-size: 0.75rem;">${formatFrequencyDuration(frequency, duration)}</td>
+                    ${showDates ? `
                     <td style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #e5e7eb; font-size: 0.75rem;">${formatDate(item.start_date)}</td>
                     <td style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #e5e7eb; font-size: 0.75rem;">${formatDate(item.end_date)}</td>
-                    <td style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #e5e7eb; font-size: 0.75rem;">${discountedUnitPrice.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
-                    <td style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #e5e7eb; font-weight: 600; font-size: 0.75rem;">${taxableAmount.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
+                    ` : ''}
+                    <td style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #e5e7eb; font-size: 0.75rem;">${unitPrice.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
+                    <td style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #e5e7eb; font-weight: 600; font-size: 0.75rem;">${lineTotal.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
                 </tr>
             `;
         });
 
-        let subtotal = 0, taxTotal = 0, grandTotal = 0;
-        invoiceItems.forEach(item => {
-            const lineTotal = parseFloat(item.line_total || 0);
-            const lineDiscount = roundDiscountDown(parseFloat(item.discount_amount || (lineTotal * ((parseFloat(item.discount_percent || 0)) / 100)) || 0));
-            const taxableLineAmount = Math.max(0, lineTotal - lineDiscount);
-            subtotal += taxableLineAmount;
-            taxTotal += roundTaxUp(taxableLineAmount * (parseFloat(item.tax_rate || 0) / 100));
-        });
-        taxTotal = roundTaxUp(taxTotal);
-        grandTotal = subtotal + taxTotal;
+        const subtotal = totalItemsLineTotal;
+        const discountTotal = roundDiscountDown(totalItemsDiscountTotal);
+        const taxTotal = roundTaxUp(totalItemsTaxTotal);
+        const grandTotal = subtotal - discountTotal + taxTotal;
+
         const cgstAmount = taxTotal / 2;
         const sgstAmount = taxTotal - cgstAmount;
         const taxRowsHtml = sameStateGstForInvoice
             ? `
                     <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #e5e7eb;">
-                        <span>Tax (CGST):</span><strong>${cgstAmount.toLocaleString('en-US', {minimumFractionDigits: 0})}</strong>
+                        <span>Tax (CGST):</span><strong>${formatMoney(cgstAmount)}</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #e5e7eb;">
-                        <span>Tax (SGST):</span><strong>${sgstAmount.toLocaleString('en-US', {minimumFractionDigits: 0})}</strong>
+                        <span>Tax (SGST):</span><strong>${formatMoney(sgstAmount)}</strong>
                     </div>
               `
             : `
                     <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #e5e7eb;">
-                        <span>Tax (IGST):</span><strong>${taxTotal.toLocaleString('en-US', {minimumFractionDigits: 0})}</strong>
+                        <span>Tax (IGST):</span><strong>${formatMoney(taxTotal)}</strong>
                     </div>
               `;
+
 
         previewContent.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid #111827; gap: 1rem;">
@@ -410,12 +461,14 @@
                     ${accountData.billing.gstin ? `<p style="margin: 0.15rem 0; font-size: 0.78rem; color: #374151;"><strong>GSTIN:</strong> ${accountData.billing.gstin}</p>` : ''}
                 </div>
                 <div style="text-align: right; min-width: 240px; margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 0.45rem;">
-                    <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 0.25rem;">Proforma Invoice</div>
+                    <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 0.25rem;">Invoice</div>
                     ${accountData.logo ? `<img src="${accountData.logo}" style="max-width: 140px; max-height: 56px; object-fit: contain;">` : ''}
                     <div style="display: inline-block; text-align: left; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.65rem 0.8rem; background: #fafafa; min-width: 100%; box-sizing: border-box;">
                         <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>Performa No:</strong> ${invoiceNumber}</p>
-                        <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>Issue Date:</strong> ${issueDate}</p>
-                        <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>Due Date:</strong> ${dueDate}</p>
+                        <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>Issue Date:</strong> ${formatDate(issueDate)}</p>
+                        <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>Due Date:</strong> ${formatDate(dueDate)}</p>
+                        ${draftPoNumber ? `<p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>PO Number:</strong> ${draftPoNumber}</p>` : ''}
+                        ${draftPoDate ? `<p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>PO Date:</strong> ${formatDate(draftPoDate)}</p>` : ''}
                     </div>
                     ${invoiceTitle ? `<div style="text-align: right; font-size: 0.85rem; font-weight: 600; color: #111827; margin-top: 0.5rem;">${invoiceTitle}</div>` : ''}
                     ${notes ? `<div style="text-align: right; font-size: 0.78rem; color: #6b7280; margin-top: 0.35rem; max-width: 300px; white-space: pre-wrap;">${notes}</div>` : ''}
@@ -441,8 +494,10 @@
                         <th style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #d1d5db; font-size: 0.75rem;">Qty</th>
                         <th style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #d1d5db; font-size: 0.75rem;">Users</th>
                         <th style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #d1d5db; font-size: 0.75rem;">Duration</th>
+                        ${showDates ? `
                         <th style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #d1d5db; font-size: 0.75rem;">Start</th>
                         <th style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #d1d5db; font-size: 0.75rem;">End</th>
+                        ` : ''}
                         <th style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #d1d5db; font-size: 0.75rem;">Rate</th>
                         <th style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #d1d5db; font-size: 0.75rem;">Amount</th>
                     </tr>
@@ -453,11 +508,11 @@
             <div style="display: flex; justify-content: flex-end;">
                 <div style="min-width: 260px; border: 1px solid #d1d5db; border-radius: 8px; padding: 0.4rem 0.5rem; background: #fafafa;">
                     <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #e5e7eb;">
-                        <span>Subtotal:</span><strong>${subtotal.toLocaleString('en-US', {minimumFractionDigits: 0})}</strong>
+                        <span>Subtotal:</span><strong>${formatMoney(subtotal - discountTotal)}</strong>
                     </div>
                     ${taxRowsHtml}
                     <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; font-size: 0.95rem; font-weight: 700; color: #111827;">
-                        <span>Grand Total:</span><span>${grandTotal.toLocaleString('en-US', {minimumFractionDigits: 0})}</span>
+                        <span>Grand Total:</span><span>${formatMoney(grandTotal)}</span>
                     </div>
                 </div>
             </div>
@@ -569,7 +624,8 @@
     // Edit button
     document.getElementById('btnEditPreview')?.addEventListener('click', function() {
         const clientToken = encodeURIComponent(clientId);
-        let editUrl = "{{ route('invoices.create') }}?step=3&invoice_for=" + encodeURIComponent(invoiceFor) + "&c=" + clientToken;
+        const editStep = invoiceFor === 'without_orders' ? 2 : 3;
+        let editUrl = "{{ route('invoices.create') }}?step=" + editStep + "&invoice_for=" + encodeURIComponent(invoiceFor) + "&c=" + clientToken;
         if (hasOrderId) {
             const orderToken = encodeURIComponent(orderId);
             editUrl += "&o=" + orderToken;

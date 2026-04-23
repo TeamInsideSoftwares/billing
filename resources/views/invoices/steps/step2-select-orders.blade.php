@@ -1,10 +1,32 @@
+@php
+    $selectedClient = $clients->firstWhere('clientid', request('c', request('clientid')));
+    $selectedClientName = $selectedClient ? ($selectedClient->business_name ?? $selectedClient->contact_name ?? 'Unknown Client') : 'No Client Selected';
+    $selectedClientEmail = $selectedClient->email ?? '';
+@endphp
 <!-- Step 2: Select Orders -->
 <div id="step2" class="invoice-step">
-
-    <div class="invoice-step-toolbar">
-        <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.4rem 0.8rem;">
-            &larr; Back
-        </button>
+    {{-- Client Info Header with Back Button --}}
+    <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
+                <i class="fas fa-arrow-left" style="font-size: 0.8rem;"></i>
+            </button>
+            <div style="width: 1px; height: 32px; background: #d1d5db; flex-shrink: 0;"></div>
+            <div style="width: 36px; height: 36px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-user"></i>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 0.9rem; font-weight: 600; color: #111827; margin-top: 0.1rem;">{{ $selectedClientName }}</div>
+                @if($selectedClientEmail)
+                <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.05rem;">{{ $selectedClientEmail }}</div>
+                @endif
+            </div>
+            <div style="text-align: right; flex-shrink: 0;">
+                <div style="display: inline-block; padding: 0.35rem 0.75rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #c7d2fe;">
+                    {{ $nextInvoiceNumber }}
+                </div>
+            </div>
+        </div>
     </div>
 
     <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
@@ -321,10 +343,9 @@
             const description = escapeHtml(item.item_description || '').trim();
             const itemName = escapeHtml(item.item_name || 'Item');
 
-            const frequencyDuration = `
-                ${item.frequency ? item.frequency.charAt(0).toUpperCase() + item.frequency.slice(1) : '-'}
-                ${item.duration ? `<div style="font-size:0.75rem;color:#6b7280;">${item.duration}</div>` : ''}
-            `;
+            const frequencyDuration = item.duration && item.frequency
+                ? `${item.duration} ${item.frequency}`
+                : (item.frequency || '-');
 
             const dates = [
                 item.start_date ? `S: ${item.start_date}` : '',

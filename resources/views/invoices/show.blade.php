@@ -3,7 +3,7 @@
 @section('content')
 @php
     $normalizeTaxState = static fn ($value) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $value)));
-    $documentType = $invoice->isProforma() ? 'Proforma' : 'Tax';
+    $documentType = 'Invoice';
     $clientState = $normalizeTaxState($invoice->client->state ?? '');
     $accountState = $normalizeTaxState($account->state ?? '');
     $sameStateGst = $clientState !== '' && $accountState !== '' && $clientState === $accountState;
@@ -26,23 +26,25 @@
     <a href="{{ route('invoices.index', request('c') ? ['c' => request('c')] : []) }}" class="secondary-button">
         <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Invoices
     </a>
+    @if(($invoice->status ?? '') !== 'cancelled')
     <a href="{{ route('invoices.edit', [$invoice, 'c' => request('c')]) }}" class="primary-button small">
         <i class="fas fa-edit" style="margin-right: 0.35rem;"></i>Edit
     </a>
-    <form method="POST" action="{{ route('invoices.destroy', [$invoice, 'c' => request('c')]) }}" class="inline-delete" onsubmit="return confirm('Delete this invoice?')" style="display: inline;">
+    <form method="POST" action="{{ route('invoices.destroy', [$invoice, 'c' => request('c')]) }}" class="inline-delete" onsubmit="return confirm('Cancel this invoice?')" style="display: inline;">
         @csrf
         @method('DELETE')
         <button type="submit" class="secondary-button">
-            <i class="fas fa-trash" style="margin-right: 0.35rem;"></i>Delete
+            <i class="fas fa-ban" style="margin-right: 0.35rem;"></i>Cancel Invoice
         </button>
     </form>
+    @endif
 @endsection
 <section class="panel-card">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem;">
         <div>
             <h1 style="margin: 0 0 0.5rem 0; font-size: 1.5em;">{{ $invoice->invoice_number }}</h1>
             <div style="margin-top: 0.5rem;">
-                <span style="display: inline-block; padding: 0.3rem 0.7rem; background: {{ $invoice->isProforma() ? '#dbeafe' : '#fef3c7' }}; color: {{ $invoice->isProforma() ? '#1e40af' : '#92400e' }}; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
+                <span style="display: inline-block; padding: 0.3rem 0.7rem; background: #dbeafe; color: #1e40af; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
                     {{ $documentType }} Invoice
                 </span>
             </div>
@@ -99,10 +101,28 @@
                 <span style="display: block; color: #6b7280; font-weight: 600; font-size: 0.85em;">
                     Status
                 </span>
-                <span class="status-pill {{ strtolower($invoice->status) }}">
-                    {{ ucfirst($invoice->status) }}
+                <span class="status-pill {{ ($invoice->status ?? '') === 'cancelled' ? 'cancelled' : 'active' }}" style="{{ ($invoice->status ?? '') === 'cancelled' ? 'background:#e2e8f0;color:#475569;' : 'background:#dbeafe;color:#1e40af;' }}">
+                    {{ ($invoice->status ?? '') === 'cancelled' ? 'Cancelled' : 'Active' }}
                 </span>
             </p>
+
+            @if($invoice->order?->po_number)
+            <p style="margin-bottom: 0.75rem;">
+                <span style="display: block; color: #6b7280; font-weight: 600; font-size: 0.85em;">
+                    PO Number
+                </span>
+                <span>{{ $invoice->order->po_number }}</span>
+            </p>
+            @endif
+
+            @if($invoice->order?->po_date)
+            <p style="margin-bottom: 0.75rem;">
+                <span style="display: block; color: #6b7280; font-weight: 600; font-size: 0.85em;">
+                    PO Date
+                </span>
+                <span>{{ $invoice->order->po_date->format('d M Y') }}</span>
+            </p>
+            @endif
 
             @if($invoice->notes)
            <p style="margin-bottom: 0.75rem;">
@@ -115,9 +135,8 @@
         </div>
     </div>
 </section>
-    </section>
 
-Invoice Items Table
+<!-- Invoice Items Table -->
     <section class="panel-card" style="max-width: none;">
     <table style="width: 100%; border-collapse: collapse; font-size: 0.95em;">
         <thead>
@@ -134,7 +153,7 @@ Invoice Items Table
                 <td style="padding: 0.75rem 0.5rem 0.75rem 0; vertical-align: top;">
                     <strong style="font-size: 1em;">{{ $item->item_name }}</strong>
                     @if($item->item_description)
-                    <div style="font-size: 0.85em; color: #6b7280; margin-top: 0.25rem;">{{ Str::limit($item->item_description, 100) }}</div>
+                    <div style="font-size: 0.85em; color: #6b7280; margin-top: 0.25rem; white-space: pre-wrap;">{{ $item->item_description }}</div>
                     @endif
                 </td>
                 <td style="padding: 0.75rem 0.5rem 0.75rem 0; text-align: right;">
@@ -161,6 +180,12 @@ Invoice Items Table
                 <td colspan="3" style="padding: 1rem 0.5rem; text-align: right;">Subtotal:</td>
                 <td style="padding: 1rem 0.5rem; text-align: right;">{{ number_format($invoice->subtotal ?? 0, 0) }}</td>
             </tr>
+            @if(($invoice->discount_total ?? 0) > 0)
+            <tr style="font-weight: 600; color: #dc2626;">
+                <td colspan="3" style="padding: 0.5rem; text-align: right;">Discount:</td>
+                <td style="padding: 0.5rem; text-align: right;">- {{ number_format($invoice->discount_total, 0) }}</td>
+            </tr>
+            @endif
             @if($invoiceTaxTotal > 0)
                 <tr style="font-weight: 600;">
                     <td colspan="3" style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">{{ $sameStateGst ? 'Tax (CGST + SGST):' : 'Tax (IGST):' }}</td>
@@ -214,14 +239,9 @@ Invoice Items Table
 <section class="panel-card" style="margin-top: 2rem;">
     <div style="text-align: center; padding: 2rem; color: #6b7280;">
         <p style="margin-bottom: 1rem;">No payments recorded for this invoice yet.</p>
-        @if($invoice->isProforma())
-            <p style="margin: 0; color: #92400e;">Convert this proforma invoice to a tax invoice before recording payment.</p>
-        @else
-            <a href="{{ route('payments.create', ['invoiceid' => $invoice->invoiceid, 'clientid' => $invoice->clientid, 'amount' => $invoice->balance_due]) }}" class="primary-button" style="text-decoration: none; display: inline-block;">Record a payment</a>
-        @endif
+        <a href="{{ route('payments.create', ['invoiceid' => $invoice->invoiceid, 'clientid' => $invoice->clientid, 'amount' => $invoice->balance_due]) }}" class="primary-button" style="text-decoration: none; display: inline-block;">Record a payment</a>
     </div>
 </section>
 @endif
 
 @endsection
-

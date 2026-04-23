@@ -1,6 +1,6 @@
 @php
-    $documentId = $invoice->proformaid ?? $invoice->invoiceid;
-    $documentType = $invoice->isProforma() ? 'Proforma' : 'Tax';
+    $documentId = $invoice->invoiceid;
+    $documentType = 'Invoice';
     $normalizeTaxState = static fn ($value) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $value)));
     $clientState = $normalizeTaxState($invoice->client->state ?? '');
     $accountState = $normalizeTaxState($account->state ?? '');
@@ -21,48 +21,14 @@
         </div>
     @endif
 
-    @if($invoice->isProforma())
-        <!-- <div style="margin-bottom: 1.25rem; padding: 0.9rem 1rem; border: 1px solid #bfdbfe; background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); color: #1e40af; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-            <div>
-                <strong style="display: block; margin-bottom: 0.25rem;">This is a Proforma Invoice</strong>
-                @if($invoice->convertedTaxInvoice)
-                    <span style="font-size: 0.85rem;">A tax invoice has already been created for this proforma invoice.</span>
-                @else
-                    <span style="font-size: 0.85rem;">You can convert this to a tax invoice. A new tax invoice will be created with the same items.</span>
-                @endif
-            </div>
-            @if($invoice->convertedTaxInvoice)
-                <a href="{{ route('invoices.show', $invoice->convertedTaxInvoice) }}" class="primary-button" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; padding: 0.65rem 1.2rem; font-size: 0.85rem; font-weight: 600; color: #ffffff; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-link"></i> View Tax Invoice
-                </a>
-            @else
-                <button type="submit" form="convertToTaxInvoiceForm" class="primary-button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; padding: 0.65rem 1.2rem; font-size: 0.85rem; font-weight: 600; color: #ffffff; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-file-invoice-dollar"></i> Convert to Tax Invoice
-                </button>
-            @endif
-        </div> -->
-    @endif
-
     <div style="display: flex; justify-content: flex-end; margin-bottom: 0.55rem;">
-        <div style="display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.35rem; max-width: 100%;">
-            <div style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.26rem 0.58rem; border-radius: 999px; border: 1px solid {{ $invoice->isProforma() ? '#93c5fd' : '#86efac' }}; background: {{ $invoice->isProforma() ? '#dbeafe' : '#dcfce7' }}; color: {{ $invoice->isProforma() ? '#1d4ed8' : '#166534' }}; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.01em;">
-                <span>{{ $invoice->isProforma() ? 'Proforma Invoice' : 'Tax Invoice' }}</span>
-            </div>
-            <div style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.26rem 0.58rem; border-radius: 999px; border: 1px solid #c7d2fe; background: #eef2ff; color: #4338ca; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.01em;">
-                <span>{{ ucfirst(str_replace('_', ' ', $invoice->invoice_for ?? 'without_orders')) }}</span>
-            </div>
-            <div style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.26rem 0.58rem; border-radius: 999px; border: 1px solid #fde68a; background: #fffbeb; color: #92400e; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.01em;">
-                <span>{{ ucfirst($invoice->status ?? 'draft') }}</span>
-            </div>
-            <div style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.26rem 0.58rem; border-radius: 999px; border: 1px solid #e2e8f0; background: #f8fafc; color: #0f172a; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.01em;">
-                <span>PI #{{ $invoice->invoice_number }}</span>
-            </div>
+        <div style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.26rem 0.58rem; border-radius: 999px; border: 1px solid #e2e8f0; background: #f8fafc; color: #0f172a; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.01em;">
+            <span>#{{ $invoice->invoice_number }}</span>
         </div>
     </div>
 
     <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.6rem; margin-bottom: 0.8rem;">
         <input type="hidden" name="invoice_number" value="{{ old('invoice_number', $invoice->invoice_number) }}">
-        <input type="hidden" name="status" value="{{ old('status', $invoice->status) }}">
         <input type="hidden" name="clientid" value="{{ old('clientid', $invoice->clientid) }}">
         <div>
             <label for="clientid" class="field-label">Client</label>
@@ -166,15 +132,13 @@
                 <div>
                     <label for="item_frequency" class="field-label small">Freq</label>
                     <select id="item_frequency" class="form-input">
-                        <option value="">Not recurring</option>
-                        <option value="one-time">One-Time</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="bi-weekly">Bi-Weekly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="quarterly">Quarterly</option>
-                        <option value="semi-annually">Semi-Annually</option>
-                        <option value="yearly">Yearly</option>
+                        <option value="">None</option>
+                        <option value="One-Time">One-Time</option>
+                        <option value="Day(s)">Day(s)</option>
+                        <option value="Week(s)">Week(s)</option>
+                        <option value="Month(s)">Month(s)</option>
+                        <option value="Quarter(s)">Quarter(s)</option>
+                        <option value="Year(s)">Year(s)</option>
                     </select>
                 </div>
                 <div id="item_duration_wrap" style="display: none;">
@@ -262,8 +226,8 @@
     const allowMultiTaxation = @json((bool) ($account->allow_multi_taxation ?? false));
     const accountHasUsers = @json((bool) ($account->have_users ?? false));
 
-    const frequencyLabels = { 'one-time': 'One-Time', 'daily': 'Daily', 'weekly': 'Weekly', 'bi-weekly': 'Bi-Weekly', 'monthly': 'Monthly', 'quarterly': 'Quarterly', 'semi-annually': 'Semi-Annually', 'yearly': 'Yearly' };
-    const frequencyOptions = ['', 'one-time', 'daily', 'weekly', 'bi-weekly', 'monthly', 'quarterly', 'semi-annually', 'yearly'];
+    const frequencyLabels = { 'One-Time': 'One-Time', 'Day(s)': 'Day(s)', 'Week(s)': 'Week(s)', 'Month(s)': 'Month(s)', 'Quarter(s)': 'Quarter(s)', 'Year(s)': 'Year(s)' };
+    const frequencyOptions = ['', 'One-Time', 'Day(s)', 'Week(s)', 'Month(s)', 'Quarter(s)', 'Year(s)'];
     const taxOptions = @json(($taxes ?? collect())->map(fn ($tax) => ['name' => $tax->tax_name, 'rate' => (float) $tax->rate])->values());
 
     let clientCurrency = currencyCodeInput.value || 'INR';
@@ -275,6 +239,7 @@
             return [
                 'itemid' => $item->itemid,
                 'item_name' => $item->item_name ?? ($item->service->name ?? 'Item'),
+                'item_description' => $item->item_description ?? '',
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price ?? $defaultPrice ?? 0,
                 'tax_rate' => $item->tax_rate,
@@ -320,7 +285,7 @@
 
     function calculateLineTotal(quantity, unitPrice, users, frequency, duration) {
         let total = (Number(quantity) || 0) * (Number(unitPrice) || 0) * Math.max(1, Number(users) || 1);
-        if (frequency && frequency !== 'one-time' && duration) {
+        if (frequency && frequency !== 'One-Time' && duration) {
             const durationNumber = Number(duration) || 0;
             if (durationNumber > 0) {
                 total *= durationNumber;
@@ -338,7 +303,7 @@
     }
 
     function calculateEndDate(startDate, frequency, duration) {
-        if (!startDate || !frequency || !duration || frequency === 'one-time') {
+        if (!startDate || !frequency || !duration || frequency === 'One-Time') {
             return '';
         }
         const start = new Date(startDate);
@@ -348,13 +313,11 @@
         }
         const end = new Date(start);
         switch (frequency) {
-            case 'daily': end.setDate(end.getDate() + durationNumber); break;
-            case 'weekly': end.setDate(end.getDate() + (durationNumber * 7)); break;
-            case 'bi-weekly': end.setDate(end.getDate() + (durationNumber * 14)); break;
-            case 'monthly': end.setMonth(end.getMonth() + durationNumber); break;
-            case 'quarterly': end.setMonth(end.getMonth() + (durationNumber * 3)); break;
-            case 'semi-annually': end.setMonth(end.getMonth() + (durationNumber * 6)); break;
-            case 'yearly': end.setFullYear(end.getFullYear() + durationNumber); break;
+            case 'Day(s)': end.setDate(end.getDate() + durationNumber); break;
+            case 'Week(s)': end.setDate(end.getDate() + (durationNumber * 7)); break;
+            case 'Month(s)': end.setMonth(end.getMonth() + durationNumber); break;
+            case 'Quarter(s)': end.setMonth(end.getMonth() + (durationNumber * 3)); break;
+            case 'Year(s)': end.setFullYear(end.getFullYear() + durationNumber); break;
             default: return '';
         }
         return end.toISOString().split('T')[0];
@@ -369,7 +332,7 @@
 
         // First pass: check if any item has recurring frequency
         invoiceItems.forEach((item) => {
-            if (item.frequency && item.frequency !== 'one-time') {
+            if (item.frequency && item.frequency !== 'One-Time') {
                 anyItemHasRecurringFrequency = true;
             }
         });
@@ -389,11 +352,14 @@
             taxTotal += lineTax;
 
             // Only show dates if there's a recurring frequency
-            const showDates = item.frequency && item.frequency !== 'one-time';
+            const showDates = item.frequency && item.frequency !== 'One-Time';
 
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td><strong>${item.item_name || 'Item'}</strong></td>
+                <td>
+                    <div style="font-weight: 600; color: #111827;">${item.item_name || 'Item'}</div>
+                    <textarea class="form-input item-input" data-index="${index}" data-field="item_description" rows="1" placeholder="Description (optional)" style="margin-top: 0.25rem; font-size: 0.75rem; min-height: 32px; resize: vertical;">${item.item_description || ''}</textarea>
+                </td>
                 <td><input type="number" class="form-input item-input" data-index="${index}" data-field="quantity" min="1" step="1" value="${item.quantity}"></td>
                 <td><input type="number" class="form-input item-input" data-index="${index}" data-field="unit_price" min="0" step="0.01" value="${item.unit_price}"></td>
                 <td><input type="number" class="form-input item-input" data-index="${index}" data-field="discount_percent" min="0" max="100" step="0.01" value="${item.discount_percent || 0}"></td>
@@ -502,7 +468,7 @@
     @endif
 
     function isRecurringFrequency(frequency) {
-        return Boolean(frequency) && frequency !== 'one-time';
+        return Boolean(frequency) && frequency !== 'One-Time';
     }
 
     function toggleAddFormRecurringFields() {
@@ -592,7 +558,7 @@
         }
 
         // Clear duration and dates when frequency is one-time or empty
-        if (field === 'frequency' && (!input.value || input.value === 'one-time')) {
+        if (field === 'frequency' && (!input.value || input.value === 'One-Time')) {
             invoiceItems[index].duration = null;
             invoiceItems[index].start_date = null;
             invoiceItems[index].end_date = null;
@@ -608,7 +574,7 @@
         }
 
         // Check if any item now has recurring frequency
-        let anyItemHasRecurringFrequency = invoiceItems.some(item => item.frequency && item.frequency !== 'one-time');
+        let anyItemHasRecurringFrequency = invoiceItems.some(item => item.frequency && item.frequency !== 'One-Time');
         
         // Show/hide Start/End column headers
         const headerRow = itemsBody.closest('table').querySelector('thead tr');
@@ -641,6 +607,7 @@
         itemsDataInput.value = JSON.stringify(invoiceItems.map((item) => ({
             itemid: item.itemid,
             item_name: item.item_name,
+            item_description: item.item_description || '',
             quantity: Math.max(1, Math.round(Number(item.quantity) || 1)),
             unit_price: Number(item.unit_price) || 0,
             discount_percent: Math.min(100, Math.max(0, Number(item.discount_percent) || 0)),

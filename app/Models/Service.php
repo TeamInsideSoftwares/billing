@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'accountid',
     'ps_catid',
-    'service_code',
     'type',
     'sync',
     'user_wise',

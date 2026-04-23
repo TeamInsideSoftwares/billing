@@ -9,7 +9,7 @@
     </div>
 
     <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
-    <input type="hidden" name="proformaid" id="proformaid" value="">
+    <input type="hidden" name="invoiceid" id="invoiceid" value="">
     <input type="hidden" name="renewed_item_ids" id="renewed_item_ids" value="">
     <input type="hidden" name="items_data" id="items_data" value="">
 
@@ -114,7 +114,7 @@
                         return;
                     }
 
-                    const itemKey = `${invoice.proformaid}::${item.proformaitemid}`;
+                    const itemKey = `${invoice.invoiceid}::${item.invoice_itemid}`;
                     if (renderedItemKeys.has(itemKey)) {
                         return;
                     }
@@ -122,7 +122,7 @@
 
                     renewalItemStore.set(itemKey, {
                         ...item,
-                        source_invoice_id: invoice.proformaid,
+                        source_invoice_id: invoice.invoiceid,
                         source_invoice_number: invoice.invoice_number,
                     });
                     const itemName = escapeHtml(item.item_name || 'Item');
@@ -138,7 +138,7 @@
                         <td>
                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.45rem;">
                                 <span>${invoice.invoice_number || '-'}</span>
-                                <a href="{{ url('invoices') }}/${invoice.proformaid}/edit"
+                                <a href="{{ url('invoices') }}/${invoice.invoiceid}/edit"
                                    style="font-size: 0.72rem; padding: 0.26rem 0.52rem; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 6px; font-weight: 500; display: inline-flex; align-items: center; gap: 0.2rem; text-decoration: none;"
                                    title="Edit source invoice">
                                     <i class="fas fa-edit"></i>
@@ -200,9 +200,9 @@
 
             selectedRenewalItems.push({
                 ...selectedItem,
-                renewed_from_proformaitemid: selectedItem.proformaitemid
+                renewed_from_invoice_itemid: selectedItem.invoice_itemid
             });
-            renewedIds.add(selectedItem.proformaitemid);
+            renewedIds.add(selectedItem.invoice_itemid);
         });
 
         itemsDataInput.value = JSON.stringify(selectedRenewalItems);

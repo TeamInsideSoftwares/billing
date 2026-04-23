@@ -6,9 +6,6 @@ use App\Models\Account;
 use App\Models\Client;
 use App\Models\ClientBillingDetail;
 use App\Models\Group;
-use App\Models\Invoice;
-use App\Models\Payment;
-use App\Models\ProformaInvoice;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +15,7 @@ class ClientsController extends Controller
 {
     public function clients(): View
     {
-        $query = Client::query();
+        $query = Client::query()->with(['invoices.items', 'payments']);
         $searchTerm = request('search', '');
         $accountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
 
@@ -32,7 +29,11 @@ class ClientsController extends Controller
         $resultCount = $query->count();
 
         $clients = $query->latest()->take(20)->get()->map(function ($client) {
-            $outstanding = Invoice::where('clientid', $client->clientid)->where('status', '!=', 'paid')->sum('grand_total') - Payment::where('clientid', $client->clientid)->sum('amount');
+            $invoiceTotal = $client->invoices
+                ->where('status', '!=', 'paid')
+                ->sum(fn ($invoice) => (float) ($invoice->grand_total ?? 0));
+            $paidTotal = (float) $client->payments->sum('amount');
+            $outstanding = $invoiceTotal - $paidTotal;
             $account = Account::find($client->accountid);
             $cur = $account?->currency_code ?? 'INR';
             return [
@@ -47,7 +48,7 @@ class ClientsController extends Controller
                 'status' => $client->status ?? 'Active',
                 'balance' => $cur . ' ' . number_format($outstanding, 0),
                 'created_at' => $client->created_at,
-                'invoice_count' => Invoice::where('clientid', $client->clientid)->count() + ProformaInvoice::where('clientid', $client->clientid)->count(),
+                'invoice_count' => $client->invoices->count(),
             ];
         });
 
@@ -183,12 +184,9 @@ class ClientsController extends Controller
 
     public function clientsShow(Client $client): View
     {
-        $client->load(['invoices', 'proformaInvoices', 'payments', 'subscriptions', 'billingDetail']);
+        $client->load(['invoices', 'payments','billingDetail']);
         $outstanding = ($client->invoices->sum('grand_total') ?? 0) - ($client->payments->sum('amount') ?? 0);
-        $allInvoices = $client->proformaInvoices
-            ->concat($client->invoices)
-            ->sortByDesc('created_at')
-            ->values();
+        $allInvoices = $client->invoices->sortByDesc('created_at')->values();
 
         return view('clients.show', [
             'title' => $client->business_name ?? $client->contact_name ?? 'Client',

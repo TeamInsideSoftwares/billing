@@ -72,7 +72,7 @@ class AccountBillingDetail extends Model
         }
 
         // Count existing invoices for this account
-        $query = ProformaInvoice::where('accountid', $this->accountid);
+        $query = Invoice::where('accountid', $this->accountid);
         
         // If reset_on_fy is enabled, only count invoices from current FY
         if ($this->reset_on_fy && $currentFyId) {
@@ -89,9 +89,11 @@ class AccountBillingDetail extends Model
 
     protected function getExistingSerialNumbers(): Collection
     {
-        $query = ProformaInvoice::query()
+        $query = Invoice::query()
             ->where('accountid', $this->accountid)
-            ->whereNotNull('invoice_number');
+            ->whereNotNull('pi_number')
+            ->where('pi_number', '!=', '')
+            ->where('pi_number', '!=', '0');
 
         $currentFyId = FinancialYear::where('accountid', $this->accountid)
             ->where('default', true)
@@ -101,7 +103,7 @@ class AccountBillingDetail extends Model
             $query->where('fy_id', $currentFyId);
         }
 
-        return $query->pluck('invoice_number');
+        return $query->pluck('pi_number');
     }
 
     protected function extractMaxConfiguredNumber(Collection $numbers, string $part): ?int

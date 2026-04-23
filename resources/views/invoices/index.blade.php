@@ -3,7 +3,7 @@
 @section('header_actions')
     @if($selectedClientId)
         <a href="{{ route('invoices.create', ['c' => $selectedClientId]) }}" class="primary-button">
-            <i class="fas fa-file-invoice" style="margin-right: 0.5rem;"></i>Create Proforma Invoice
+            <i class="fas fa-file-invoice" style="margin-right: 0.5rem;"></i>Create Invoice
         </a>
     @endif
 @endsection
@@ -103,7 +103,7 @@
             border: 1px solid transparent;
         }
 
-        .invoice-type-badge.proforma {
+        .invoice-type-badge.invoice {
             background: #eef2ff;
             color: #4338ca;
             border-color: #c7d2fe;
@@ -370,8 +370,8 @@
                         <tbody>
                             @foreach ($selectedInvoices as $invoice)
                                 @php
-                                    $documentId = $invoice->proformaid ?? $invoice->invoiceid;
-                                    $documentType = $invoice->isProforma() ? 'Proforma' : 'Tax';
+                                    $documentId = $invoice->invoiceid;
+                                    $documentType = 'Invoice';
                                     $amountPaid = (float) ($invoice->amount_paid ?? 0);
                                     $grandTotal = (float) ($invoice->grand_total ?? 0);
                                     $balanceDue = (float) ($invoice->balance_due ?? max(0, $grandTotal - $amountPaid));
@@ -381,8 +381,6 @@
                                     $latestEndDate = $invoice->items->max('end_date');
                                     $isExpired = $latestEndDate && $latestEndDate < now();
                                     $currency = $invoice->client->currency ?? 'INR';
-                                    $isProforma = $invoice->isProforma();
-                                    $convertedTaxInvoice = $invoice->convertedTaxInvoice;
                                 @endphp
                                 <tr>
                                     <td>
@@ -422,37 +420,30 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <span class="status-pill {{ str_replace(' ', '-', $paymentStatus) }}">{{ ucfirst($paymentStatus) }}</span>
+                                        @if(($invoice->status ?? '') === 'cancelled')
+                                            <span class="status-pill" style="background: #e2e8f0; color: #475569;">Cancelled</span>
+                                        @else
+                                            <span class="status-pill" style="background: #dbeafe; color: #1e40af;">Active</span>
+                                        @endif
                                     </td>
                                     <td class="table-actions">
                                         <a href="{{ route('invoices.show', [$documentId, 'c' => $selectedClientId]) }}" class="icon-action-btn view" title="View">
                                             <i class="fas fa-eye"></i>
                                         </a>
 
-                                        @if($isProforma && !$convertedTaxInvoice)
-                                            <form method="POST" action="{{ route('invoices.convert-to-tax', $documentId) }}" style="display: inline;" onsubmit="return confirm('Convert this proforma invoice to a tax invoice?')">
-                                                @csrf
-                                                <button type="submit" class="icon-action-btn" style="width: 28px; height: 28px; color: #4338ca; border-color: #c7d2fe; background: #eef2ff;" title="Convert to Tax Invoice">
-                                                    <i class="fas fa-file-invoice-dollar"></i>
-                                                </button>
-                                            </form>
-                                        @elseif($isProforma && $convertedTaxInvoice)
-                                            <a href="{{ route('invoices.show', [$convertedTaxInvoice, 'c' => $selectedClientId]) }}" class="icon-action-btn" title="View Tax Invoice" style="width: 28px; height: 28px; color: #047857; border-color: #a7f3d0; background: #ecfdf5;">
-                                                <i class="fas fa-link"></i>
-                                            </a>
-                                        @endif
-
                                         <a href="{{ route('invoices.edit', [$invoice, 'c' => $selectedClientId]) }}" class="icon-action-btn edit" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
 
-                                        <form method="POST" action="{{ route('invoices.destroy', [$documentId, 'c' => $selectedClientId]) }}" class="inline-delete" onsubmit="return confirm('Delete this invoice?')">
+                                        @if(($invoice->status ?? '') !== 'cancelled')
+                                        <form method="POST" action="{{ route('invoices.destroy', [$documentId, 'c' => $selectedClientId]) }}" class="inline-delete" onsubmit="return confirm('Cancel this invoice?')">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="icon-action-btn delete" title="Delete">
-                                                <i class="fas fa-trash"></i>
+                                            <button type="submit" class="icon-action-btn delete" title="Cancel Invoice">
+                                                <i class="fas fa-ban"></i>
                                             </button>
                                         </form>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach
@@ -467,6 +458,7 @@
         .status-pill.unpaid { background: #fee2e2; color: #991b1b; }
         .status-pill.partially-paid { background: #fef3c7; color: #92400e; }
         .status-pill.paid { background: #dcfce7; color: #166534; }
+        .status-pill.cancelled { background: #e2e8f0; color: #475569; }
     </style>
 
 @endsection

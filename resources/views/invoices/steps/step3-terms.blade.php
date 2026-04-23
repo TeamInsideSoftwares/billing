@@ -5,12 +5,12 @@
         <h4 style="margin: 0; font-size: 1.1rem; color: #334155;">Final Review</h4>
     </div>
 
-    <!-- Proforma Invoice Preview -->
+    <!-- Invoice Preview -->
     <div class="panel-card" style="padding: 0; border: 1px solid #e2e8f0; overflow: hidden; background: #fff; margin-bottom: 1.5rem;">
         <div style="background: #f8fafc; padding: 0.75rem 1.25rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
             <h5 style="margin: 0; font-size: 0.95rem; color: #1e293b;">
                 <i class="fas fa-file-pdf" style="color: #ef4444; margin-right: 0.5rem;"></i> 
-                Proforma Invoice Preview
+                Invoice Preview
             </h5>
             <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">
                 <i class="fas fa-circle" style="color: #f59e0b; font-size: 0.5rem; margin-right: 0.3rem;"></i>
@@ -50,7 +50,7 @@
 
     <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
         <button type="submit" class="primary-button create-submit-btn" id="finalSubmitBtnStep3" disabled style="padding: 1rem 4rem; font-size: 1.1rem; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4);">
-            <i class="fas fa-file-invoice" style="margin-right: 0.5rem;"></i>Create Proforma Invoice
+            <i class="fas fa-file-invoice" style="margin-right: 0.5rem;"></i>Create Invoice
         </button>
     </div>
 </div>

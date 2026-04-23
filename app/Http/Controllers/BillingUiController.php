@@ -540,11 +540,14 @@ $editingBillingDetail = request('edit_bd') ? AccountBillingDetail::where('accoun
         $searchTerm = request('search', '');
         
         if ($searchTerm) {
-            $query->where('invoice_number', 'like', '%' . $searchTerm . '%')
-                  ->orWhereHas('client', function ($q) use ($searchTerm) {
-                      $q->where('business_name', 'like', '%' . $searchTerm . '%')
-                        ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('pi_number', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('ti_number', 'like', '%' . $searchTerm . '%')
+                  ->orWhereHas('client', function ($clientQuery) use ($searchTerm) {
+                      $clientQuery->where('business_name', 'like', '%' . $searchTerm . '%')
+                          ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
                   });
+            });
         }
         $resultCount = $query->count();
         
@@ -1657,7 +1660,7 @@ $serviceData = [
     {
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'invoice_number' => 'required|string|unique:invoices,invoice_number',
+            'invoice_number' => 'required|string|unique:invoices,pi_number',
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
             'notes' => 'nullable|string',
@@ -1934,7 +1937,7 @@ public function invoicesEdit(Invoice $invoice): View
     {
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'invoice_number' => 'required|string|unique:invoices,invoice_number,' . $invoice->invoiceid . ',invoiceid',
+            'invoice_number' => 'required|string|unique:invoices,pi_number,' . $invoice->invoiceid . ',invoiceid',
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
             'notes' => 'nullable|string',

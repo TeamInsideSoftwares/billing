@@ -16,7 +16,7 @@ class PaymentsController extends Controller
         $searchTerm = request('search', '');
 
         if ($searchTerm) {
-            $query->where('reference', 'like', '%' . $searchTerm . '%')
+            $query->where('reference_number', 'like', '%' . $searchTerm . '%')
                 ->orWhereHas('client', function ($q) use ($searchTerm) {
                     $q->where('business_name', 'like', '%' . $searchTerm . '%')
                         ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
@@ -60,7 +60,7 @@ class PaymentsController extends Controller
     {
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'invoiceid' => 'nullable|exists:tax_invoices,invoiceid',
+            'invoiceid' => 'nullable|exists:invoices,invoiceid',
             'reference' => 'nullable|string|max:255',
             'amount' => 'required|numeric|min:0.01',
             'method' => 'required|string',
@@ -99,14 +99,7 @@ class PaymentsController extends Controller
         $payment = Payment::create($paymentData);
 
         if ($payment->invoiceid && $invoice) {
-                $invoice->balance_due -= $payment->amount;
-                $invoice->amount_paid += $payment->amount;
-                if ($invoice->balance_due <= 0) {
-                    $invoice->status = 'paid';
-                    $invoice->balance_due = 0;
-                    $invoice->paid_at = now();
-                }
-                $invoice->save();
+            $this->refreshInvoicePaymentStatus($invoice);
         }
 
         return redirect()->route('payments.index')->with('success', 'Payment recorded successfully.');
@@ -137,7 +130,7 @@ class PaymentsController extends Controller
     {
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'invoiceid' => 'nullable|exists:tax_invoices,invoiceid',
+            'invoiceid' => 'nullable|exists:invoices,invoiceid',
             'reference' => 'nullable|string|max:255',
             'amount' => 'required|numeric|min:0.01',
             'method' => 'required|string',
@@ -173,16 +166,31 @@ class PaymentsController extends Controller
         if ($payment->invoiceid) {
             $invoice = Invoice::find($payment->invoiceid);
             if ($invoice) {
-                $invoice->balance_due += $payment->amount;
-                if ($invoice->balance_due > 0 && $invoice->status == 'paid') {
-                    $invoice->status = 'sent';
-                }
-                $invoice->save();
+                $this->refreshInvoicePaymentStatus($invoice);
             }
         }
 
         $payment->delete();
 
         return redirect()->route('payments.index')->with('success', 'Payment deleted successfully.');
+    }
+
+    private function refreshInvoicePaymentStatus(Invoice $invoice): void
+    {
+        $invoice->loadMissing('payments');
+
+        $amountPaid = (float) ($invoice->payments->sum('amount') ?? 0);
+        $grandTotal = (float) ($invoice->grand_total ?? 0);
+        $balanceDue = max(0, $grandTotal - $amountPaid);
+
+        if ($amountPaid > 0 && $balanceDue <= 0 && $grandTotal > 0) {
+            $invoice->status = 'paid';
+        } elseif ($amountPaid > 0) {
+            $invoice->status = 'partially-paid';
+        } else {
+            $invoice->status = 'unpaid';
+        }
+
+        $invoice->save();
     }
 }

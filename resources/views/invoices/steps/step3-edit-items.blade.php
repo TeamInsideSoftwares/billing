@@ -5,17 +5,35 @@
     });
     $selectedInvoiceClient = $clients->firstWhere('clientid', request('c', request('clientid')));
     $selectedClientCurrency = optional($selectedInvoiceClient)->currency ?? 'INR';
+    $selectedClientName = $selectedInvoiceClient ? ($selectedInvoiceClient->business_name ?? $selectedInvoiceClient->contact_name ?? 'Unknown Client') : 'No Client Selected';
+    $selectedClientEmail = $selectedInvoiceClient->email ?? '';
     $invoiceClientState = $normalizeTaxState(optional($selectedInvoiceClient)->state ?? '');
     $invoiceAccountState = $normalizeTaxState(optional($account)->state ?? '');
     $sameStateGstForInvoice = $invoiceClientState !== '' && $invoiceAccountState !== '' && $invoiceClientState === $invoiceAccountState;
 @endphp
 <!-- Step 3: Edit Items (For Orders & Renewal) -->
 <div id="step3" class="invoice-step">
-    <div class="invoice-step-toolbar">
-        <button type="button" id="btnBackToStep2" class="secondary-button" style="padding: 0.4rem 0.8rem;">&larr; Back</button>
-        <div class="invoice-side-meta">
-            <span class="invoice-meta-label">PI</span>
-            <strong class="invoice-meta-value" id="piNumberBadgeStep3">{{ $nextInvoiceNumber }}</strong>
+    {{-- Client Info Header with Back Button --}}
+    <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <button type="button" id="btnBackToStep2" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
+                <i class="fas fa-arrow-left" style="font-size: 0.8rem;"></i>
+            </button>
+            <div style="width: 1px; height: 32px; background: #d1d5db; flex-shrink: 0;"></div>
+            <div style="width: 36px; height: 36px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-user"></i>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 0.9rem; font-weight: 600; color: #111827; margin-top: 0.1rem;">{{ $selectedClientName }}</div>
+                @if($selectedClientEmail)
+                <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.05rem;">{{ $selectedClientEmail }}</div>
+                @endif
+            </div>
+            <div style="text-align: right; flex-shrink: 0;">
+                <div id="piNumberBadgeStep3" style="display: inline-block; padding: 0.35rem 0.75rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #c7d2fe;">
+                    {{ $nextInvoiceNumber }}
+                </div>
+            </div>
         </div>
     </div>
 
@@ -116,8 +134,6 @@
                             </optgroup>
                         @endforeach
                     </select>
-                    <label for="add_item_description" class="field-label small" style="margin-top: 0.3rem;">Description</label>
-                    <textarea id="add_item_description" class="form-input" rows="1" placeholder="Description (optional)" style="height: 34px; min-height: 34px; resize: none; line-height: 1.2;"></textarea>
                 </div>
                 <div>
                     <label for="add_item_quantity" class="field-label small">Qty</label>
@@ -156,9 +172,12 @@
                     <label for="add_item_frequency" class="field-label small">Freq</label>
                     <select id="add_item_frequency" class="form-input">
                         <option value="">None</option>
-                        @foreach(['one-time', 'daily', 'weekly', 'bi-weekly', 'monthly', 'quarterly', 'semi-annually', 'yearly'] as $freq)
-                        <option value="{{ $freq }}">{{ ucfirst(str_replace('-', ' ', $freq)) }}</option>
-                        @endforeach
+                        <option value="One-Time">One-Time</option>
+                        <option value="Day(s)">Day(s)</option>
+                        <option value="Week(s)">Week(s)</option>
+                        <option value="Month(s)">Month(s)</option>
+                        <option value="Quarter(s)">Quarter(s)</option>
+                        <option value="Year(s)">Year(s)</option>
                     </select>
                 </div>
                 <div id="add_item_duration_wrap" style="display: none;">
@@ -173,9 +192,10 @@
                     <label for="add_item_end_date" class="field-label small">End</label>
                     <input type="date" id="add_item_end_date" class="form-input">
                 </div>
-                <div style="display: flex; align-items: start; align-self: start; margin-top: 1.45rem;">
-                    <button type="button" id="btnAddItemStep3" class="primary-button" style="width: 100%; padding: 0.5rem 0.75rem; font-size: 0.85rem;">Add</button>
-                </div>
+            </div>
+            <div style="margin-top: 0.45rem; display: flex; gap: 0.45rem; align-items: flex-end;">
+                <textarea id="add_item_description" class="form-input" rows="1" placeholder="Description (optional)" style="flex: 1 1 auto; min-height: 30px; resize: none; line-height: 1.2;"></textarea>
+                <button type="button" id="btnAddItemStep3" class="primary-button" style="padding: 0.55rem 1rem; font-size: 0.85rem; white-space: nowrap;">Add</button>
             </div>
         </div>
 
@@ -256,7 +276,17 @@
     const toggleAddItemFormBtn = document.getElementById('toggleAddItemFormBtn');
     const addItemFormCard = document.getElementById('addItemFormCard');
 
+    const frequencyLabels = {
+        'One-Time': 'One-Time',
+        'Day(s)': 'Day(s)',
+        'Week(s)': 'Week(s)',
+        'Month(s)': 'Month(s)',
+        'Quarter(s)': 'Quarter(s)',
+        'Year(s)': 'Year(s)',
+    };
+
     let invoiceItems = [];
+    let editingInvoiceItemIndex = null;
     let addItemFormVisible = false;
 
     function getCurrencyCode() {
@@ -276,6 +306,18 @@
             .replace(/'/g, '&#39;');
     }
 
+    function renderItemCell(item) {
+        const name = escapeHtml(item.item_name || 'Item');
+        const description = escapeHtml(item.item_description || '').trim();
+        if (!description) {
+            return `<div style="font-weight: 600; color: #111827;">${name}</div>`;
+        }
+        return `
+            <div style="font-weight: 600; color: #111827;">${name}</div>
+            <div style="margin-top: 0.15rem; font-size: 0.78rem; color: #6b7280; white-space: pre-wrap;">${description}</div>
+        `;
+    }
+
     function updateTaxDisplay(taxTotal) {
         const taxRow = document.getElementById('step3TaxRow');
         const taxLabel = document.getElementById('step3TaxLabel');
@@ -291,7 +333,7 @@
     }
 
     function itemHasRecurringFrequency(item) {
-        return Boolean(item && item.frequency) && item.frequency !== 'one-time';
+        return Boolean(item && item.frequency) && item.frequency !== 'One-Time';
     }
 
     function isAddItemUserWise() {
@@ -307,7 +349,7 @@
     }
 
     function toggleAddItemRecurringFields() {
-        const showRecurring = Boolean(addItemFrequencyInput?.value) && addItemFrequencyInput.value !== 'one-time';
+        const showRecurring = Boolean(addItemFrequencyInput?.value) && addItemFrequencyInput.value !== 'One-Time';
         if (addItemDurationWrap) addItemDurationWrap.style.display = showRecurring ? 'block' : 'none';
         if (addItemStartWrap) addItemStartWrap.style.display = showRecurring ? 'block' : 'none';
         if (addItemEndWrap) addItemEndWrap.style.display = showRecurring ? 'block' : 'none';
@@ -319,7 +361,7 @@
     }
 
     function calculateEndDate(startDate, frequency, duration) {
-        if (!startDate || !frequency || frequency === 'one-time' || !duration) {
+        if (!startDate || !frequency || frequency === 'One-Time' || !duration) {
             return '';
         }
 
@@ -331,25 +373,19 @@
         }
 
         switch (frequency) {
-            case 'daily':
+            case 'Day(s)':
                 date.setDate(date.getDate() + steps);
                 break;
-            case 'weekly':
+            case 'Week(s)':
                 date.setDate(date.getDate() + (steps * 7));
                 break;
-            case 'bi-weekly':
-                date.setDate(date.getDate() + (steps * 14));
-                break;
-            case 'monthly':
+            case 'Month(s)':
                 date.setMonth(date.getMonth() + steps);
                 break;
-            case 'quarterly':
+            case 'Quarter(s)':
                 date.setMonth(date.getMonth() + (steps * 3));
                 break;
-            case 'semi-annually':
-                date.setMonth(date.getMonth() + (steps * 6));
-                break;
-            case 'yearly':
+            case 'Year(s)':
                 date.setFullYear(date.getFullYear() + steps);
                 break;
             default:
@@ -360,6 +396,9 @@
     }
 
     function normalizeItem(item) {
+        const requiresUserFields = accountHasUsers
+            && (Boolean(item && item.requires_user_fields) || Number(item?.no_of_users || 0) > 0);
+
         const normalizedItem = {
             ...item,
             item_description: item.item_description || '',
@@ -371,7 +410,7 @@
             duration: item.duration ?? null,
             frequency: item.frequency ?? '',
             line_total: Number(item.line_total || 0),
-            requires_user_fields: accountHasUsers && Boolean(item && item.requires_user_fields),
+            requires_user_fields: requiresUserFields,
             no_of_users: null,
             start_date: item.start_date || null,
             end_date: item.end_date || null,
@@ -395,6 +434,7 @@
     }
 
     function resetAddItemForm() {
+        editingInvoiceItemIndex = null;
         if (addItemSelect) addItemSelect.value = '';
         if (addItemQuantityInput) addItemQuantityInput.value = '1';
         if (addItemPriceInput) addItemPriceInput.value = '';
@@ -404,8 +444,48 @@
         if (addItemDurationInput) addItemDurationInput.value = '';
         if (addItemStartInput) addItemStartInput.value = '';
         if (addItemEndInput) addItemEndInput.value = '';
+        if (btnAddItemStep3) btnAddItemStep3.textContent = 'Add';
         toggleAddItemUsersField();
         toggleAddItemRecurringFields();
+    }
+
+    function beginEditItem(index) {
+        const item = invoiceItems[index];
+        if (!item) return;
+
+        editingInvoiceItemIndex = index;
+
+        if (addItemSelect) addItemSelect.value = item.itemid || '';
+        if (addItemQuantityInput) addItemQuantityInput.value = String(Math.max(1, Math.round(Number(item.quantity || 1))));
+        if (addItemPriceInput) addItemPriceInput.value = String(Number(item.unit_price || 0));
+        if (addItemDescriptionInput) addItemDescriptionInput.value = item.item_description || '';
+        if (addItemDiscountInput) addItemDiscountInput.value = String(Number(item.discount_percent || 0));
+        if (addItemTaxRateInput) addItemTaxRateInput.value = String(Number(item.tax_rate || 0));
+        if (addItemFrequencyInput) addItemFrequencyInput.value = item.frequency || '';
+        if (addItemDurationInput) addItemDurationInput.value = item.duration ?? '';
+        if (addItemStartInput) addItemStartInput.value = item.start_date || '';
+        if (addItemEndInput) addItemEndInput.value = item.end_date || '';
+        if (addItemUsersInput) addItemUsersInput.value = String(Math.max(1, Number(item.no_of_users || 1)));
+
+        toggleAddItemUsersField();
+        if (accountHasUsers && itemSupportsUserFields(item) && addItemUsersWrap) {
+            addItemUsersWrap.style.display = 'block';
+        }
+        toggleAddItemRecurringFields();
+
+        if (!addItemFormVisible) {
+            addItemFormVisible = true;
+            if (addItemFormCard) addItemFormCard.style.display = 'block';
+            if (toggleAddItemFormBtn) {
+                toggleAddItemFormBtn.innerHTML = '<i class="fas fa-times" style="margin-right: 0.35rem; font-size: 0.75rem;"></i>Cancel';
+                toggleAddItemFormBtn.style.background = '#fef2f2';
+                toggleAddItemFormBtn.style.color = '#dc2626';
+                toggleAddItemFormBtn.style.borderColor = '#fecaca';
+            }
+        }
+
+        if (btnAddItemStep3) btnAddItemStep3.textContent = 'Update';
+        btnAddItemStep3?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     function toggleAddItemForm() {
@@ -458,7 +538,7 @@
         const qty = Math.max(1, Math.round(Number(item.quantity || 1)));
         const price = Number(item.unit_price || 0);
         const users = itemSupportsUserFields(item) ? Math.max(1, Number(item.no_of_users || 1)) : 1;
-        const durationMultiplier = (item.frequency && item.frequency !== 'one-time' && Number(item.duration || 0) > 0)
+        const durationMultiplier = (item.frequency && item.frequency !== 'One-Time' && Number(item.duration || 0) > 0)
             ? Number(item.duration || 0)
             : 1;
         return qty * price * users * durationMultiplier;
@@ -534,12 +614,12 @@
                     piNumberBadgeStep3.textContent = data.draft.invoice_number;
                 }
 
-                if (draftItems.length > 0) {
+                if (invoiceFor === 'orders' && orderId) {
+                    loadOrderItems(orderId);
+                } else if (draftItems.length > 0) {
                     invoiceItems = draftItems.map(normalizeItem);
                     renderItems();
                     initializeAddItemFormVisibility();
-                } else if (invoiceFor === 'orders' && orderId) {
-                    loadOrderItems(orderId);
                 }
 
                 if (orderId) {
@@ -586,6 +666,7 @@
         const showUserColumns = invoiceItems.some(itemSupportsUserFields);
         const showDurationColumns = invoiceItems.some(itemHasRecurringFrequency);
         const showDateColumns = invoiceItems.some(itemHasRecurringFrequency);
+        const showTaxColumn = @json((bool) ($account->allow_multi_taxation ?? false));
 
         syncConditionalHeaders();
 
@@ -600,70 +681,69 @@
             const showDatesForRow = itemHasRecurringFrequency(item);
 
             const row = document.createElement('tr');
-            const safeItemName = escapeHtml(item.item_name || '');
-            const safeItemDescription = escapeHtml(item.item_description || '');
+            const formattedFrequency = item.frequency ? (frequencyLabels[item.frequency] || item.frequency) : '-';
+            const lineAmount = Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0) + Number(item.tax_amount || 0));
             row.innerHTML = `
-                <td>
-                    <input type="text" class="form-input item-name" data-index="${index}" value="${safeItemName}" style="min-width: 150px;">
-                    <textarea class="form-input item-description" data-index="${index}" rows="2" placeholder="Description (optional)" style="margin-top: 0.35rem; min-width: 180px;">${safeItemDescription}</textarea>
-                </td>
-                <td><input type="number" class="form-input item-quantity" data-index="${index}" value="${item.quantity}" min="1" step="1" style="width: 80px;"></td>
-                <td><input type="number" class="form-input item-price" data-index="${index}" value="${item.unit_price}" min="0" step="0.01" style="width: 100px;"></td>
+                <td>${renderItemCell(item)}</td>
+                <td style="text-align:center;">${Math.round(Number(item.quantity || 1))}</td>
+                <td style="text-align:right;">${formatCurrency(item.unit_price)}</td>
                 <td style="display:${showUserColumns ? '' : 'none'};">
                     ${showUsersForRow
-                        ? `<input type="number" class="form-input item-users" data-index="${index}" value="${item.no_of_users || 1}" min="1" step="1" style="width: 70px;">`
+                        ? `${Math.max(1, Number(item.no_of_users || 1))}`
                         : '<span style="color:#9ca3af;">-</span>'}
                 </td>
-                <td><input type="number" class="form-input item-discount" data-index="${index}" value="${item.discount_percent || 0}" min="0" max="100" step="0.01" style="width: 85px;"></td>
+                <td style="text-align:center;">${Number(item.discount_percent || 0).toFixed(0)}%</td>
                 @if($account->allow_multi_taxation)
-                <td>
-                    <select class="form-input item-tax-rate" data-index="${index}" style="width: 90px;">
-                        <option value="0" ${!item.tax_rate ? 'selected' : ''}>0%</option>
-                        @foreach($taxes as $tax)
-                        <option value="{{ $tax->rate }}" ${item.tax_rate == {{ $tax->rate }} ? 'selected' : ''}>{{ $tax->rate }}%</option>
-                        @endforeach
-                    </select>
-                </td>
+                <td style="text-align:center;">${Number(item.tax_rate || 0).toFixed(0)}%</td>
                 @endif
-                <td>
-                    <select class="form-input item-frequency" data-index="${index}" style="width: 100px;">
-                        <option value="">None</option>
-                        @foreach(['one-time', 'daily', 'weekly', 'bi-weekly', 'monthly', 'quarterly', 'semi-annually', 'yearly'] as $freq)
-                        <option value="{{ $freq }}" ${(item.frequency || '') === '{{ $freq }}' ? 'selected' : ''}>{{ ucfirst(str_replace('-', ' ', $freq)) }}</option>
-                        @endforeach
-                    </select>
-                </td>
+                <td>${formattedFrequency}</td>
                 <td style="display:${showDurationColumns ? '' : 'none'};">
                     ${showDatesForRow
-                        ? `<input type="number" class="form-input item-duration" data-index="${index}" value="${item.duration || ''}" min="0" step="1" style="width: 70px;" placeholder="-">`
+                        ? `${item.duration || '-'}`
                         : '<span style="color:#9ca3af;">-</span>'}
                 </td>
                 <td style="display:${showDateColumns ? '' : 'none'};">
                     ${showDatesForRow
-                        ? `<input type="date" class="form-input item-start-date" data-index="${index}" value="${item.start_date || ''}" style="min-width: 135px;">`
+                        ? `${item.start_date || '-'}`
                         : '<span style="color:#9ca3af;">-</span>'}
                 </td>
                 <td style="display:${showDateColumns ? '' : 'none'};">
                     ${showDatesForRow
-                        ? `<input type="date" class="form-input item-end-date" data-index="${index}" value="${item.end_date || ''}" style="min-width: 135px;">`
+                        ? `${item.end_date || '-'}`
                         : '<span style="color:#9ca3af;">-</span>'}
                 </td>
-                <td style="text-align: right; font-weight: 600;" class="item-total" data-index="${index}">${formatCurrency(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0)))}</td>
-                <td>
-                    <button type="button" class="remove-item-btn" data-index="${index}" title="Remove" style="background: none; border: none; color: #ef4444; cursor: pointer;"><i class="fas fa-trash"></i></button>
+                <td style="text-align:right;"><strong style="color:#111827;">${formatCurrency(lineAmount)}</strong></td>
+                <td style="text-align:center; white-space: nowrap;">
+                    <button type="button" class="edit-item-btn icon-action-btn edit" data-index="${index}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="remove-item-btn icon-action-btn delete" data-index="${index}" title="Delete" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
             `;
             itemsBody.appendChild(row);
         });
 
-        document.querySelectorAll('.item-name, .item-description, .item-quantity, .item-price, .item-discount, .item-tax-rate, .item-users, .item-frequency, .item-duration, .item-start-date, .item-end-date').forEach(input => {
-            input.addEventListener('change', recalculateItems);
-        });
-
         document.querySelectorAll('.remove-item-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                invoiceItems.splice(parseInt(this.dataset.index, 10), 1);
+                const removeIndex = parseInt(this.dataset.index, 10);
+                invoiceItems.splice(removeIndex, 1);
+                if (editingInvoiceItemIndex !== null) {
+                    if (editingInvoiceItemIndex === removeIndex) {
+                        resetAddItemForm();
+                    } else if (removeIndex < editingInvoiceItemIndex) {
+                        editingInvoiceItemIndex -= 1;
+                    }
+                }
                 renderItems();
+            });
+        });
+
+        document.querySelectorAll('.edit-item-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = parseInt(this.dataset.index, 10);
+                beginEditItem(index);
             });
         });
 
@@ -680,68 +760,6 @@
         document.getElementById('tax_total').value = roundedTaxTotal.toFixed(0);
         document.getElementById('grand_total').value = (subtotal - roundedDiscountTotal + roundedTaxTotal).toFixed(0);
         itemsDataInput.value = JSON.stringify(invoiceItems);
-    }
-
-    function recalculateItems() {
-        document.querySelectorAll('.item-name, .item-description, .item-quantity, .item-price, .item-discount, .item-tax-rate, .item-users, .item-frequency, .item-duration, .item-start-date, .item-end-date').forEach(input => {
-            const index = parseInt(input.dataset.index, 10);
-            const field = input.className.includes('item-name') ? 'item_name' :
-                input.className.includes('item-description') ? 'item_description' :
-                input.className.includes('quantity') ? 'quantity' :
-                input.className.includes('price') ? 'unit_price' :
-                input.className.includes('discount') ? 'discount_percent' :
-                input.className.includes('tax-rate') ? 'tax_rate' :
-                input.className.includes('users') ? 'no_of_users' :
-                input.className.includes('frequency') ? 'frequency' :
-                input.className.includes('start-date') ? 'start_date' :
-                input.className.includes('end-date') ? 'end_date' :
-                input.className.includes('duration') ? 'duration' : null;
-
-            if (!field || !invoiceItems[index]) {
-                return;
-            }
-
-            if (field === 'item_name' || field === 'item_description' || field === 'frequency' || field === 'duration' || field === 'start_date' || field === 'end_date') {
-                invoiceItems[index][field] = input.value;
-            } else if (field === 'quantity') {
-                const qty = Math.max(1, Math.round(Number(input.value) || 1));
-                invoiceItems[index][field] = qty;
-                input.value = qty;
-            } else {
-                invoiceItems[index][field] = parseFloat(input.value) || 0;
-            }
-
-            if (field === 'duration') {
-                invoiceItems[index].duration = input.value === '' ? null : Math.max(0, Number(input.value) || 0);
-            }
-            if (field === 'start_date' || field === 'end_date') {
-                invoiceItems[index][field] = input.value || null;
-            }
-            if (field === 'frequency') {
-                invoiceItems[index].frequency = input.value || '';
-            }
-
-            if (!itemSupportsUserFields(invoiceItems[index])) {
-                invoiceItems[index].no_of_users = null;
-            } else {
-                invoiceItems[index].no_of_users = Math.max(1, Number(invoiceItems[index].no_of_users || 1));
-            }
-
-            if (!itemHasRecurringFrequency(invoiceItems[index])) {
-                invoiceItems[index].duration = null;
-                invoiceItems[index].start_date = null;
-                invoiceItems[index].end_date = null;
-            } else if (field === 'start_date' || field === 'frequency' || field === 'duration') {
-                invoiceItems[index].end_date = calculateEndDate(
-                    invoiceItems[index].start_date,
-                    invoiceItems[index].frequency,
-                    invoiceItems[index].duration
-                ) || null;
-            }
-            normalizeItemAmounts(invoiceItems[index]);
-        });
-
-        renderItems();
     }
 
     addItemSelect?.addEventListener('change', function() {
@@ -814,7 +832,11 @@
         });
 
         normalizeItemAmounts(newItem);
-        invoiceItems.push(newItem);
+        if (editingInvoiceItemIndex !== null && invoiceItems[editingInvoiceItemIndex]) {
+            invoiceItems[editingInvoiceItemIndex] = newItem;
+        } else {
+            invoiceItems.push(newItem);
+        }
         renderItems();
         resetAddItemForm();
     });
@@ -863,8 +885,8 @@
                 const orderToken = encodeURIComponent(orderId);
                 nextUrl += "&o=" + orderToken;
             }
-            if (data && data.proformaid) {
-                nextUrl += "&d=" + encodeURIComponent(data.proformaid);
+            if (data && data.invoiceid) {
+                nextUrl += "&d=" + encodeURIComponent(data.invoiceid);
             }
             window.location.href = nextUrl;
         })
@@ -910,6 +932,8 @@
 #addItemFormCard textarea.form-input {
     padding: 0.4rem 0.55rem;
     font-size: 0.8rem;
+    min-height: 30px;
+    resize: none;
 }
 
 #toggleAddItemFormBtn:hover {

@@ -25,7 +25,7 @@
     <div id="sourceSelectionSection" style="display: none; margin-bottom: 0.75rem;">
         <div class="section-title-card">
             <h4>Choose Invoice Source</h4>
-            <p>Pick how this proforma invoice should be created.</p>
+            <p>Pick how this invoice should be created.</p>
         </div>
 
         <div class="source-grid">
@@ -154,7 +154,7 @@
                                 <a href="{{ url('invoices') }}/${inv.record_id}/edit" style="font-size: 0.72rem; padding: 0.28rem 0.56rem; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 6px; font-weight: 500; display: inline-flex; align-items: center; gap: 0.2rem; text-decoration: none;">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <span style="font-size: 0.62rem; padding: 0.16rem 0.42rem; background: #f3f4f6; color: #374151; border-radius: 999px; font-weight: 600;">Proforma</span>
+                                <span style="font-size: 0.62rem; padding: 0.16rem 0.42rem; background: #f3f4f6; color: #374151; border-radius: 999px; font-weight: 600;">Invoice</span>
                                 <span class="status-pill ${status}" style="font-size: 0.65rem; padding: 0.12rem 0.4rem;">${inv.payment_status || 'unpaid'}</span>
                                 <span style="font-size: 0.75rem; font-weight: 600; color: #111827;">${inv.amount || '-'}</span>
                             </span>

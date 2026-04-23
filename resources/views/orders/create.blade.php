@@ -55,13 +55,6 @@
                         <p class="order-top-summary__client-name" id="summaryClientName">{{ $selectedClientName }}</p>
                         <p class="order-top-summary__client-email" id="summaryClientEmail">{{ $selectedClientEmail ?: 'No client email' }}</p>
 
-                        @if($isEditMode)
-                            <p style="margin: 6px 0 0; font-size: 13px; color: #64748b;">
-                                Order Date: {{ !empty($editingOrder->order_date) ? \Carbon\Carbon::parse($editingOrder->order_date)->format('d M Y') : 'N/A' }}
-                            </p>
-                            <input type="hidden" name="order_date" value="{{ old('order_date', $editingOrder->order_date ?? $defaultOrderDate) }}">
-                        @endif
-
                         <div style="margin-top: 0.5rem; min-width: 240px;">
                             <input type="hidden" id="clientid" name="clientid" required value="{{ old('clientid', $clientFallback) }}">
                             @error('clientid') <span class="error">{{ $message }}</span> @enderror
@@ -92,13 +85,11 @@
                         </select>
                     </div>
 
-                    @if(!$isEditMode)
-                        <div>
-                            <label class="order-label" for="order_date">Order Date</label>
-                            <input type="date" id="order_date" name="order_date" value="{{ old('order_date', $defaultOrderDate) }}" required class="form-control form-control-sm">
-                            @error('order_date') <span class="error">{{ $message }}</span> @enderror
-                        </div>
-                    @endif
+                    <div>
+                        <label class="order-label" for="order_date">Order Date</label>
+                        <input type="date" id="order_date" name="order_date" value="{{ old('order_date', $defaultOrderDate) }}" required class="form-control form-control-sm">
+                        @error('order_date') <span class="error">{{ $message }}</span> @enderror
+                    </div>
                 </div>
             </div>
 
@@ -191,7 +182,7 @@
 
             <div class="order-save-simple">
                 <button type="button" id="saveOrderBtn" class="primary-button small">
-                    <i class="fas fa-save" style="margin-right: 0.35rem;"></i>{{ $isEditMode ? 'Update Order & Continue' : 'Save Order & Continue' }}
+                    <i class="fas fa-save" style="margin-right: 0.35rem;"></i>{{ $isEditMode ? 'Update Order Details' : 'Save Order Details' }}
                 </button>
             </div>
         </div>
@@ -214,7 +205,7 @@
                         </p>
                     </div>
 
-                    <div class="add-item-row form-grid" style="background: #f9fafb; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; flex-wrap: nowrap; gap: 0.5rem; align-items: flex-start;">
+                    <div class="add-item-row form-grid" style="background: #f9fafb; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-start;">
                         <div style="flex: 2; min-width: 150px;">
                             <label style="font-size: 0.75rem;">Item</label>
                             <select id="item_itemid" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
@@ -242,8 +233,6 @@
                                     </optgroup>
                                 @endforeach
                             </select>
-                            <label for="item_description" style="font-size: 0.72rem; margin-top: 0.35rem; display: block;">Description</label>
-                            <textarea id="item_description" rows="1" placeholder="Description (optional)" style="font-size: 0.8rem; padding: 0.35rem 0.5rem; width: 100%; resize: none; height: 34px; line-height: 1.2;"></textarea>
                         </div>
                         <div style="flex: 0.6; min-width: 60px;">
                             <label style="font-size: 0.75rem;">Qty</label>
@@ -282,14 +271,12 @@
                             <label style="font-size: 0.75rem;">Freq</label>
                             <select id="item_frequency" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                                 <option value="">--</option>
-                                <option value="one-time">One-Time</option>
-                                <option value="daily">Daily</option>
-                                <option value="weekly">Weekly</option>
-                                <option value="bi-weekly">Bi-Weekly</option>
-                                <option value="monthly">Monthly</option>
-                                <option value="quarterly">Quarterly</option>
-                                <option value="semi-annually">Semi-Annually</option>
-                                <option value="yearly">Yearly</option>
+                                <option value="One-Time">One-Time</option>
+                                <option value="Day(s)">Day(s)</option>
+                                <option value="Week(s)">Week(s)</option>
+                                <option value="Month(s)">Month(s)</option>
+                                <option value="Quarter(s)">Quarter(s)</option>
+                                <option value="Year(s)">Year(s)</option>
                             </select>
                         </div>
                         <div id="item_duration_wrapper" style="flex: 0.6; min-width: 60px;">
@@ -308,8 +295,9 @@
                             <label style="font-size: 0.75rem;">Delivery</label>
                             <input type="date" id="item_delivery_date" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
                         </div>
-                        <div style="flex-shrink: 0; align-self: flex-end;">
-                            <button type="button" id="addItemBtn" class="btn btn-sm btn-primary" style="padding: 0.35rem 0.85rem; font-size: 0.8rem; white-space: nowrap;">Add</button>
+                        <div style="flex: 1 1 100%; display: flex; gap: 0.5rem; align-items: flex-end;">
+                            <textarea id="item_description" rows="1" placeholder="Description (optional)" style="flex: 1 1 auto; font-size: 0.8rem; padding: 0.45rem 0.6rem; min-height: 36px; resize: vertical; line-height: 1.2;"></textarea>
+                            <button type="button" id="addItemBtn" class="btn btn-sm btn-primary" style="padding: 0.45rem 0.95rem; font-size: 0.8rem; white-space: nowrap;">Add</button>
                         </div>
                     </div>
                     <table id="itemsTable" style="width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; display: none; font-size: 0.9rem;">
@@ -325,8 +313,7 @@
                                 <th style="padding: 0.75rem 0.6rem; text-align: right; width: 85px; font-size: 0.82rem; font-weight: 600;">Users</th>
                                 @endif
                                 <th style="padding: 0.75rem 0.6rem; text-align: right; width: 75px; font-size: 0.82rem; font-weight: 600;">Disc%</th>
-                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 115px; font-size: 0.82rem; font-weight: 600;">Freq</th>
-                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 100px; font-size: 0.82rem; font-weight: 600;">Dur</th>
+                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 115px; font-size: 0.82rem; font-weight: 600;">Freq / Dur</th>
                                 <th style="padding: 0.75rem 0.6rem; text-align: right; width: 105px; font-size: 0.82rem; font-weight: 600;">Start</th>
                                 <th style="padding: 0.75rem 0.6rem; text-align: right; width: 105px; font-size: 0.82rem; font-weight: 600;">End</th>
                                 <th style="padding: 0.75rem 0.6rem; text-align: right; width: 90px; font-size: 0.82rem; font-weight: 600;">Delivery</th>
@@ -360,10 +347,22 @@
                             </div>
                         </div>
 
-                        <div id="finalActions" class="order-complete-row" style="display: none;">
-                            <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? $clientFallback]) }}" class="primary-button small">
-                                Complete & Exit
+                        <div id="finalActions" class="order-complete-row" style="display: none; gap: 0.5rem; flex-wrap: wrap;">
+                            <a id="actionCreateNewOrder" href="{{ route('orders.create', ['c' => $preSelectedClientId ?? $clientFallback]) }}" class="order-action-btn order-action-btn--primary">
+                                Create New Order
                             </a>
+                            <a id="actionViewAllOrders" href="{{ route('orders.index', ['c' => $preSelectedClientId ?? $clientFallback]) }}" class="order-action-btn order-action-btn--secondary">
+                                View All Orders
+                            </a>
+                            <a id="actionCreatePi" href="{{ route('invoices.create', ['step' => 3, 'invoice_for' => 'orders', 'o' => $editingOrder->orderid ?? '', 'c' => $preSelectedClientId ?? $clientFallback]) }}" class="order-action-btn order-action-btn--secondary">
+                                Create PI
+                            </a>
+                            <button type="button" id="actionAllotTeam" class="order-action-btn order-action-btn--muted" disabled title="Coming soon">
+                                Allot Team
+                            </button>
+                            <button type="button" id="actionReceivePayment" class="order-action-btn order-action-btn--muted" disabled title="Coming soon">
+                                Receive Payment
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -383,15 +382,54 @@ document.addEventListener('DOMContentLoaded', function() {
     const editUrlTemplate = @json(route('orders.edit', ['order' => '__ORDER__']));
     const initialOrderPayload = @json($initialOrderPayload ?? null);
     const initialItemsPayload = @json($initialItemsPayload ?? []);
-    const saveButtonIdleLabel = isEditMode ? 'Update Order & Continue' : 'Save Order & Continue';
+    const saveButtonIdleLabel = isEditMode ? 'Update Order Details' : 'Save Order Details';
     const saveButtonDoneLabel = isEditMode ? 'Order Updated' : 'Order Saved';
     const saveSuccessMessage = isEditMode ? 'Order updated successfully! You can continue managing items.' : 'Order saved successfully! You can now add items.';
+    const ordersCreateBaseUrl = @json(route('orders.create'));
+    const ordersIndexBaseUrl = @json(route('orders.index'));
+    const invoicesCreateBaseUrl = @json(route('invoices.create'));
 
     let itemCounter = 0;
     const items = [];
     const tbody = document.getElementById('itemsTbody');
     let editingItemId = null;
     let savedOrderId = null;
+
+    function buildUrl(baseUrl, params = {}) {
+        const url = new URL(baseUrl, window.location.origin);
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== null && value !== undefined && String(value).trim() !== '') {
+                url.searchParams.set(key, String(value));
+            }
+        });
+        return url.toString();
+    }
+
+    function updateFinalActionLinks() {
+        const clientId = String(document.getElementById('clientid')?.value || '').trim();
+        const orderId = String(savedOrderId || document.getElementById('savedOrderId')?.value || '').trim();
+
+        const createNewOrderLink = document.getElementById('actionCreateNewOrder');
+        const viewAllOrdersLink = document.getElementById('actionViewAllOrders');
+        const createPiLink = document.getElementById('actionCreatePi');
+
+        if (createNewOrderLink) {
+            createNewOrderLink.href = buildUrl(ordersCreateBaseUrl, { c: clientId || null });
+        }
+
+        if (viewAllOrdersLink) {
+            viewAllOrdersLink.href = buildUrl(ordersIndexBaseUrl, { c: clientId || null });
+        }
+
+        if (createPiLink) {
+            createPiLink.href = buildUrl(invoicesCreateBaseUrl, {
+                step: 3,
+                invoice_for: 'orders',
+                c: clientId || null,
+                o: orderId || null,
+            });
+        }
+    }
 
     // For edit mode, prefill from server-rendered payload first.
     if (isEditMode && initialOrderPayload && initialOrderPayload.orderid) {
@@ -406,9 +444,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         syncSelectedClientDisplay();
+        updateFinalActionLinks();
 
         document.getElementById('itemsDisabledOverlay').style.display = 'none';
-        document.getElementById('finalActions').style.display = 'block';
+        document.getElementById('finalActions').style.display = 'flex';
 
         const btn = document.getElementById('saveOrderBtn');
         btn.innerHTML = `<i class="fas fa-check" style="margin-right: 0.35rem;"></i>${saveButtonDoneLabel}`;
@@ -427,6 +466,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (existingOrderId && !(isEditMode && initialOrderPayload && initialOrderPayload.orderid)) {
         savedOrderId = existingOrderId;
         document.getElementById('savedOrderId').value = savedOrderId;
+        updateFinalActionLinks();
 
         // Load order details into the form
         loadOrderDetails(existingOrderId);
@@ -477,7 +517,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Enable items section
                 document.getElementById('itemsDisabledOverlay').style.display = 'none';
-                document.getElementById('finalActions').style.display = 'block';
+                document.getElementById('finalActions').style.display = 'flex';
+                updateFinalActionLinks();
 
                 // Update button
                 btn.innerHTML = `<i class="fas fa-check" style="margin-right: 0.35rem;"></i>${saveButtonDoneLabel}`;
@@ -519,32 +560,25 @@ document.addEventListener('DOMContentLoaded', function() {
         let endDate = new Date(start);
 
         switch(frequency) {
-            case 'daily':
+            case 'Day(s)':
                 endDate.setDate(endDate.getDate() + durationNum - 1);
                 break;
-            case 'weekly':
+            case 'Week(s)':
                 endDate.setDate(endDate.getDate() + (durationNum * 7) - 1);
                 break;
-            case 'bi-weekly':
-                endDate.setDate(endDate.getDate() + (durationNum * 14) - 1);
-                break;
-            case 'monthly':
+            case 'Month(s)':
                 endDate.setMonth(endDate.getMonth() + durationNum);
                 endDate.setDate(endDate.getDate() - 1);
                 break;
-            case 'quarterly':
+            case 'Quarter(s)':
                 endDate.setMonth(endDate.getMonth() + (durationNum * 3));
                 endDate.setDate(endDate.getDate() - 1);
                 break;
-            case 'semi-annually':
-                endDate.setMonth(endDate.getMonth() + (durationNum * 6));
-                endDate.setDate(endDate.getDate() - 1);
-                break;
-            case 'yearly':
+            case 'Year(s)':
                 endDate.setFullYear(endDate.getFullYear() + durationNum);
                 endDate.setDate(endDate.getDate() - 1);
                 break;
-            case 'one-time':
+            case 'One-Time':
             default:
                 return '';
         }
@@ -561,7 +595,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let total = qty * unitPrice * users;
         
         // If duration is provided, multiply by duration
-        if (duration && frequency && frequency !== 'one-time') {
+        if (duration && frequency && frequency !== 'One-Time') {
             const durationNum = parseFloat(duration);
             if (!isNaN(durationNum) && durationNum > 0) {
                 total = total * durationNum;
@@ -712,6 +746,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (cardEmail) cardEmail.textContent = email;
         if (displayName) displayName.textContent = name;
         updateSummary();
+        updateFinalActionLinks();
     }
 
     function normalizeState(value) {
@@ -828,7 +863,7 @@ document.addEventListener('DOMContentLoaded', function() {
     @endif
 
     function toggleRecurringFields(frequency) {
-        const isRecurring = frequency && frequency !== 'one-time';
+        const isRecurring = frequency && frequency !== 'One-Time';
         const durationField = document.getElementById('item_duration_wrapper');
         const startDateField = document.getElementById('item_start_date_wrapper');
         const endDateField = document.getElementById('item_end_date_wrapper');
@@ -937,9 +972,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
                 items.push(item);
 
-                const freqLabels = {'one-time':'One-Time','daily':'Daily','weekly':'Weekly','bi-weekly':'Bi-Weekly','monthly':'Monthly','quarterly':'Quarterly','semi-annually':'Semi-Annually','yearly':'Yearly'};
-            const freqText = frequency ? (freqLabels[frequency] || frequency) : '—';
-            const durationDisplay = duration || '—';
+                const freqLabels = {'One-Time':'One-Time','Day(s)':'Day(s)','Week(s)':'Week(s)','Month(s)':'Month(s)','Quarter(s)':'Quarter(s)','Year(s)':'Year(s)'};
+            const freqDurationText = duration && frequency && frequency !== 'One-Time'
+                ? `${duration} ${frequency}`
+                : (frequency ? (freqLabels[frequency] || frequency) : '—');
 
             const row = document.createElement('tr');
             row.dataset.itemId = itemCounter;
@@ -955,8 +991,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.no_of_users ?? '—'}</td>
                 @endif
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.discount_percent > 0 ? item.discount_percent + '%' : '—'}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqDurationText}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.start_date || '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.end_date || '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.delivery_date || '—'}</td>
@@ -1232,7 +1267,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Enable items section
                 document.getElementById('itemsDisabledOverlay').style.display = 'none';
-                document.getElementById('finalActions').style.display = 'block';
+                document.getElementById('finalActions').style.display = 'flex';
+                updateFinalActionLinks();
 
                 const btn = document.getElementById('saveOrderBtn');
                 btn.innerHTML = `<i class="fas fa-check" style="margin-right: 0.35rem;"></i>${saveButtonDoneLabel}`;
@@ -1301,9 +1337,10 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             items.push(item);
 
-            const freqLabels = {'one-time':'One-Time','daily':'Daily','weekly':'Weekly','bi-weekly':'Bi-Weekly','monthly':'Monthly','quarterly':'Quarterly','semi-annually':'Semi-Annually','yearly':'Yearly'};
-            const freqText = itemData.frequency ? (freqLabels[itemData.frequency] || itemData.frequency) : '—';
-            const durationDisplay = itemData.duration || '—';
+            const freqLabels = {'One-Time':'One-Time','Day(s)':'Day(s)','Week(s)':'Week(s)','Month(s)':'Month(s)','Quarter(s)':'Quarter(s)','Year(s)':'Year(s)'};
+            const freqDurationText = itemData.duration && itemData.frequency && itemData.frequency !== 'One-Time'
+                ? `${itemData.duration} ${itemData.frequency}`
+                : (itemData.frequency ? (freqLabels[itemData.frequency] || itemData.frequency) : '—');
 
             const row = document.createElement('tr');
             row.dataset.itemId = itemCounter;
@@ -1319,8 +1356,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.no_of_users ?? '—'}</td>
                 @endif
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.discount_percent > 0 ? item.discount_percent + '%' : '—'}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqText}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${durationDisplay}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqDurationText}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.start_date || '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.end_date || '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.delivery_date || '—'}</td>
@@ -1446,6 +1482,50 @@ document.addEventListener('DOMContentLoaded', function() {
     justify-content: flex-end;
     text-align: right;
 }
+.order-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0.45rem 0.9rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    line-height: 1;
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+.order-action-btn--primary {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+}
+.order-action-btn--primary:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #fff;
+}
+.order-action-btn--secondary {
+    background: #fff;
+    color: #334155;
+    border-color: #cbd5e1;
+}
+.order-action-btn--secondary:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+.order-action-btn--muted {
+    background: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}
+.order-action-btn--muted:disabled {
+    opacity: 1;
+    cursor: not-allowed;
+}
 .order-info-card {
     border: 1px solid #e2e8f0;
     border-radius: 12px;
@@ -1554,6 +1634,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     .order-save-simple #saveOrderBtn {
         width: 100%;
+    }
+    .order-complete-row {
+        justify-content: flex-start;
     }
 }
 @keyframes slideIn {

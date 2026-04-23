@@ -60,11 +60,6 @@ class Client extends Model
         return $this->hasMany(Invoice::class, 'clientid');
     }
 
-    public function proformaInvoices(): HasMany
-    {
-        return $this->hasMany(ProformaInvoice::class, 'clientid');
-    }
-
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'clientid');

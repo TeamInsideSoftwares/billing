@@ -66,7 +66,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/invoices/{invoice}/edit', 'invoicesEdit')->name('invoices.edit');
         Route::put('/invoices/{invoice}', 'invoicesUpdate')->name('invoices.update');
         Route::delete('/invoices/{invoice}', 'invoicesDestroy')->name('invoices.destroy');
-        Route::post('/invoices/{invoice}/convert-to-tax', 'convertToTaxInvoice')->name('invoices.convert-to-tax');
     });
 
     Route::controller(PaymentsController::class)->group(function () {

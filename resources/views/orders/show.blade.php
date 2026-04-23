@@ -16,7 +16,7 @@
     <a href="{{ route('orders.index', ['c' => $order->clientid]) }}" class="secondary-button">
         <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Orders
     </a>
-    @if(($order->is_verified ?? 'no') === 'yes' && ($order->status ?? '') !== 'cancelled')
+    @if(($order->status ?? '') !== 'cancelled' && ($order->status ?? '') !== 'completed')
     <a href="{{ route('invoices.create', ['step' => 3, 'invoice_for' => 'orders', 'o' => $order->orderid, 'c' => $order->clientid]) }}" class="primary-button small">
         <i class="fas fa-file-invoice" style="margin-right: 0.35rem;"></i>Create PI
     </a>
@@ -58,9 +58,17 @@
                     <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 999px; font-weight: 600; background: #e2e8f0; color: #475569;">
                         Cancelled
                     </span>
+                @elseif(($order->status ?? '') === 'completed')
+                    <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 999px; font-weight: 600; background: #dcfce7; color: #166534;">
+                        Completed
+                    </span>
+                @elseif(($order->status ?? '') === 'paused')
+                    <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 999px; font-weight: 600; background: #fef3c7; color: #92400e;">
+                        Paused
+                    </span>
                 @else
-                    <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 999px; font-weight: 600; background: {{ ($order->is_verified ?? 'no') === 'yes' ? '#dcfce7' : '#fef3c7' }}; color: {{ ($order->is_verified ?? 'no') === 'yes' ? '#16a34a' : '#d97706' }};">
-                        {{ ($order->is_verified ?? 'no') === 'yes' ? 'Verified' : 'Unverified' }}
+                    <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 999px; font-weight: 600; background: #dbeafe; color: #1e40af;">
+                        Running
                     </span>
                 @endif
             </div>
@@ -172,9 +180,10 @@
                     @endif
                 </td>
                 <td style="font-size: 0.85rem;">
-                    {{ ucfirst($item->frequency ?? '—') }}
-                    @if($item->duration)
-                        <br><span style="font-size: 0.75rem; color: #64748b;">{{ $item->duration }}</span>
+                    @if($item->duration && $item->frequency && $item->frequency !== 'One-Time')
+                        {{ $item->duration }} {{ $item->frequency }}
+                    @else
+                        {{ $item->frequency ?? '—' }}
                     @endif
                 </td>
                 <td style="font-size: 0.85rem; text-align: center;">{{ $item->no_of_users ?? '—' }}</td>

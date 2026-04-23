@@ -135,11 +135,13 @@
                                 </td>
                                 <td>
                                     @if(($order['status'] ?? '') === 'cancelled')
-                                        <span class="status-pill unverified" style="background: #e2e8f0; color: #475569;">Cancelled</span>
+                                        <span class="status-pill" style="background: #e2e8f0; color: #475569;">Cancelled</span>
+                                    @elseif(($order['status'] ?? '') === 'completed')
+                                        <span class="status-pill" style="background: #dcfce7; color: #166534;">Completed</span>
+                                    @elseif(($order['status'] ?? '') === 'paused')
+                                        <span class="status-pill" style="background: #fef3c7; color: #92400e;">Paused</span>
                                     @else
-                                        <span class="status-pill {{ ($order['verified'] ?? false) ? 'verified' : 'unverified' }}">
-                                            {{ ($order['verified'] ?? false) ? 'Verified' : 'Unverified' }}
-                                        </span>
+                                        <span class="status-pill" style="background: #dbeafe; color: #1e40af;">Running</span>
                                     @endif
                                 </td>
                                 <td>

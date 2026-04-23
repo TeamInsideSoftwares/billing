@@ -1,6 +1,6 @@
 @php
-    $documentId = $invoice->proformaid ?? $invoice->invoiceid;
-    $documentType = $invoice->isProforma() ? 'Proforma' : 'Tax';
+    $documentId = $invoice->invoiceid;
+    $documentType = 'Invoice';
 @endphp
 
 <!-- Inline Edit Container -->
@@ -43,7 +43,7 @@
             </div>
             <div class="invoice-meta-card">
                 <span class="invoice-meta-label">Current Status</span>
-                <strong class="invoice-meta-value">{{ ucfirst($invoice->status ?? 'draft') }}</strong>
+                <strong class="invoice-meta-value">{{ ($invoice->status ?? '') === 'cancelled' ? 'Cancelled' : 'Active' }}</strong>
             </div>
             <div class="invoice-meta-card">
                 <span class="invoice-meta-label">Balance Due</span>
@@ -83,14 +83,7 @@
                 <label for="inline_due_date_{{ $documentId }}" class="field-label">Due Date</label>
                 <input type="date" id="inline_due_date_{{ $documentId }}" name="due_date" value="{{ old('due_date', optional($invoice->due_date)->format('Y-m-d')) }}" class="form-input" required>
             </div>
-            <div>
-                <label for="inline_status_{{ $documentId }}" class="field-label">Status</label>
-                <select id="inline_status_{{ $documentId }}" name="status" class="form-input" required>
-                    @foreach(['draft', 'sent', 'paid', 'overdue', 'cancelled'] as $status)
-                        <option value="{{ $status }}" {{ old('status', $invoice->status) === $status ? 'selected' : '' }}>{{ ucfirst($status) }}</option>
-                    @endforeach
-                </select>
-            </div>
+            <input type="hidden" name="status" value="{{ old('status', $invoice->status) }}">
             <input type="hidden" name="currency_code" id="inline_currency_{{ $documentId }}" value="{{ old('currency_code', $invoice->currency_code ?? ($invoice->client->currency ?? 'INR')) }}">
         </div>
 
@@ -279,6 +272,7 @@
             return [
                 'itemid' => $item->itemid,
                 'item_name' => $item->item_name ?? ($item->service->name ?? 'Item'),
+                'item_description' => $item->item_description ?? '',
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
                 'tax_rate' => $item->tax_rate,
@@ -372,7 +366,10 @@
 
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td><strong>${item.item_name || 'Item'}</strong></td>
+                <td>
+                    <div style="font-weight: 600; color: #111827;">${item.item_name || 'Item'}</div>
+                    <textarea class="form-input item-input" data-index="${index}" data-field="item_description" rows="1" placeholder="Description (optional)" style="margin-top: 0.25rem; font-size: 0.75rem; min-height: 32px; resize: vertical;">${item.item_description || ''}</textarea>
+                </td>
                 <td><input type="number" class="form-input item-input" data-index="${index}" data-field="quantity" min="1" step="1" value="${item.quantity}"></td>
                 <td><input type="number" class="form-input item-input" data-index="${index}" data-field="unit_price" min="0" step="0.01" value="${item.unit_price}"></td>
                 ${renderTaxSelect(item.tax_rate, `data-index="${index}" data-field="tax_rate"`)}
@@ -525,6 +522,7 @@
     form.addEventListener('submit', function (e) {
         itemsDataInput.value = JSON.stringify(invoiceItems.map(i => ({
             ...i,
+            item_description: i.item_description || '',
             line_total: calculateLineTotal(i.quantity, i.unit_price, i.no_of_users, i.frequency, i.duration)
         })));
     });

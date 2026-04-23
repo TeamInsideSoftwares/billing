@@ -24,7 +24,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'end_date',
     'delivery_date',
     'line_total',
-    'sort_order',
 ])]
 class OrderItem extends Model
 {

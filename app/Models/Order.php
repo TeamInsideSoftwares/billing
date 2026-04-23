@@ -20,10 +20,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'duration',
     'frequency',
     'no_of_users',
-    'subtotal',
-    'discount_total',
-    'tax_total',
-    'grand_total',
     'is_verified',
     'notes',
     'terms',
@@ -60,10 +56,6 @@ class Order extends Model
             'po_date' => 'date',
             'agreement_date' => 'date',
             'no_of_users' => 'integer',
-            'subtotal' => 'decimal:2',
-            'tax_total' => 'decimal:2',
-            'discount_total' => 'decimal:2',
-            'grand_total' => 'decimal:2',
         ];
     }
 
@@ -102,8 +94,28 @@ class Order extends Model
         return $this->hasMany(Invoice::class, 'orderid');
     }
 
-    public function proformaInvoices(): HasMany
+    public function getSubtotalAttribute(): float
     {
-        return $this->hasMany(ProformaInvoice::class, 'orderid');
+        return (float) $this->items->sum('line_total');
+    }
+
+    public function getDiscountTotalAttribute(): float
+    {
+        return (float) floor((float) $this->items->sum('discount_amount'));
+    }
+
+    public function getTaxTotalAttribute(): float
+    {
+        return (float) $this->items->sum(function ($item) {
+            $lineTotal = (float) ($item->line_total ?? 0);
+            $discount = (float) ($item->discount_amount ?? 0);
+            $rate = (float) ($item->tax_rate ?? 0);
+            return ceil(max(0, $lineTotal - $discount) * ($rate / 100));
+        });
+    }
+
+    public function getGrandTotalAttribute(): float
+    {
+        return max(0, $this->subtotal - $this->discount_total + $this->tax_total);
     }
 }
