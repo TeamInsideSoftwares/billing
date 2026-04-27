@@ -1,17 +1,37 @@
+@php
+    $selectedClient = $clients->firstWhere('clientid', request('c', request('clientid')));
+    $selectedClientName = $selectedClient ? ($selectedClient->business_name ?? $selectedClient->contact_name ?? 'Unknown Client') : 'No Client Selected';
+    $selectedClientEmail = $selectedClient->email ?? '';
+@endphp
 <!-- Step 2: Select Renewal Items -->
 <div id="step2" class="invoice-step">
-    <div class="invoice-step-toolbar">
-        <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.5rem 1rem;">&larr; Back</button>
-        <div class="invoice-side-meta">
-            <span class="invoice-meta-label">PI</span>
-            <strong class="invoice-meta-value">{{ $nextInvoiceNumber }}</strong>
+    {{-- Client Info Header with Back Button --}}
+    <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
+                <i class="fas fa-arrow-left" style="font-size: 0.8rem;"></i>
+            </button>
+            <div style="width: 1px; height: 32px; background: #d1d5db; flex-shrink: 0;"></div>
+            <div style="width: 36px; height: 36px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-user"></i>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 0.9rem; font-weight: 600; color: #111827; margin-top: 0.1rem;">{{ $selectedClientName }}</div>
+                @if($selectedClientEmail)
+                <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.05rem;">{{ $selectedClientEmail }}</div>
+                @endif
+            </div>
         </div>
     </div>
 
     <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
-    <input type="hidden" name="invoiceid" id="invoiceid" value="">
+    <input type="hidden" name="invoiceid" id="invoiceid" value="{{ request('d', '') }}">
     <input type="hidden" name="renewed_item_ids" id="renewed_item_ids" value="">
     <input type="hidden" name="items_data" id="items_data" value="">
+    <input type="hidden" name="pi_number" id="pi_number" value="{{ $invoice?->pi_number ?? $nextInvoiceNumber }}">
+    <input type="hidden" name="issue_date" id="step2_select_renewal_issue_date" value="{{ date('Y-m-d') }}">
+    <input type="hidden" name="due_date" id="step2_select_renewal_due_date" value="{{ date('Y-m-d', strtotime('+7 days')) }}">
+    <input type="hidden" name="notes" id="step2_select_renewal_notes" value="">
 
     <div id="renewalSection" class="workflow-panel">
         <div class="panel-heading-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
@@ -32,7 +52,7 @@
                         <th>Invoice #</th>
                         <th>Item</th>
                         <th>Renewal Window</th>
-                        <th style="text-align: right;">Amount</th>
+                        <th style="text-align: right;">Amount ({{ $selectedClientCurrency }})</th>
                     </tr>
                 </thead>
                 <tbody id="renewalBody"></tbody>
@@ -153,13 +173,13 @@
                             </div>
                         </td>
                         <td>
-                            <span class="status-pill ${item.is_expired ? 'unpaid' : 'partially-paid'}" style="font-size: 0.65rem; padding: 0.12rem 0.45rem;">
+                            <span class="status-pill ${item.is_expired ? 'cancelled' : 'active'}" style="font-size: 0.65rem; padding: 0.12rem 0.45rem;">
                                 ${item.is_expired ? 'Expired' : 'Upcoming'}
                             </span>
                             <div style="font-size: 0.78rem; color: #6b7280; margin-top: 0.15rem;">Ends: ${item.end_date || '-'}</div>
                         </td>
                         <td style="text-align: right; font-weight: 600;">
-                            ${Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || ((Number(item.line_total || 0) * Number(item.discount_percent || 0)) / 100) || 0)).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+                            ${invoice.currency || 'INR'} ${Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || ((Number(item.line_total || 0) * Number(item.discount_percent || 0)) / 100) || 0)).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
                         </td>
                     `;
                     renewalBody.appendChild(row);
@@ -216,20 +236,45 @@
             return;
         }
 
+        const issueDateValue = document.getElementById('step2_select_renewal_issue_date')?.value || '';
+        const dueDateValue = document.getElementById('step2_select_renewal_due_date')?.value || '';
+        const notesValue = document.getElementById('step2_select_renewal_notes')?.value || '';
+
         fetch("{{ route('invoices.save-draft') }}", {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            },
             body: JSON.stringify({
-                clientid: clientId,
+                invoiceid: "{{ request('d', '') }}" || undefined,
                 invoice_for: 'renewal',
-                items_data: itemsDataInput.value,
-                renewed_item_ids: renewedItemIdsInput.value
+                clientid: clientId,
+                issue_date: issueDateValue,
+                due_date: dueDateValue,
+                notes: notesValue,
+                items_data: JSON.stringify(selectedRenewalItems)
             })
         })
-        .then(response => response.json())
-        .then(() => {
+        .then(async (response) => {
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || 'Failed to save draft.');
+            }
+            const contentType = response.headers.get('content-type') || '';
+            return contentType.includes('application/json') ? response.json() : {};
+        })
+        .then((data) => {
             const clientToken = encodeURIComponent(clientId);
-            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=renewal&c=" + clientToken;
+            let nextUrl = "{{ route('invoices.create') }}?step=3&invoice_for=renewal&c=" + clientToken;
+            if (data && data.invoiceid) {
+                nextUrl += "&d=" + encodeURIComponent(data.invoiceid);
+            }
+            window.location.href = nextUrl;
+        })
+        .catch((error) => {
+            console.error('Error saving draft:', error);
+            alert('Unable to save draft right now. Please try again.');
         });
     });
 
@@ -240,7 +285,66 @@
 
     renewalDaysFilter.addEventListener('input', loadRenewals);
 
+    // Load draft items when editing
+    function loadItems() {
+        const draftId = "{{ request('d', '') }}";
+        
+        if (!draftId) return;
+        
+        const draftUrl = new URL("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace('__CLIENTID__', clientId), window.location.origin);
+        draftUrl.searchParams.set('invoice_for', 'renewal');
+        draftUrl.searchParams.set('d', draftId);
+        
+        fetch(draftUrl.toString())
+            .then(response => response.json())
+            .then(data => {
+                if (data.draft) {
+                    if (data.draft.items && data.draft.items.length > 0) {
+                        selectedRenewalItems = data.draft.items;
+                        itemsDataInput.value = JSON.stringify(selectedRenewalItems);
+                        
+                        // Update checkboxes based on loaded items
+                        renewalItemStore.forEach((item, key) => {
+                            const checkbox = document.querySelector(`.renewal-item-checkbox[data-item-key="${key}"]`);
+                            if (checkbox) {
+                                const isSelected = selectedRenewalItems.some(si => si.invoice_itemid === item.invoice_itemid);
+                                checkbox.checked = isSelected;
+                            }
+                        });
+                        
+                        updateSelectedItems();
+                    }
+                    
+                    if (data.draft.issue_date) {
+                        const issueDateField = document.getElementById('issue_date');
+                        if (issueDateField) {
+                            issueDateField.value = data.draft.issue_date;
+                        }
+                        document.getElementById('step2_select_renewal_issue_date').value = data.draft.issue_date;
+                    }
+                    if (data.draft.due_date) {
+                        const dueDateField = document.getElementById('due_date');
+                        if (dueDateField) {
+                            dueDateField.value = data.draft.due_date;
+                        }
+                        document.getElementById('step2_select_renewal_due_date').value = data.draft.due_date;
+                    }
+                    if (data.draft.notes) {
+                        const notesField = document.getElementById('notes');
+                        if (notesField) {
+                            notesField.value = data.draft.notes;
+                        }
+                        document.getElementById('step2_select_renewal_notes').value = data.draft.notes;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Failed to load draft items:', error);
+            });
+    }
+    
     // Initialize
+    loadItems();
     loadRenewals();
 })();
 </script>

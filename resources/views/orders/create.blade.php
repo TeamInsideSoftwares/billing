@@ -642,6 +642,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     }
 
+    function formatDiscountPercentDisplay(value) {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric) || numeric <= 0) {
+            return '—';
+        }
+
+        const compact = Number.isInteger(numeric)
+            ? String(numeric)
+            : String(numeric).replace(/\.?0+$/, '');
+
+        return `${compact}%`;
+    }
+
     function escapeHtml(value) {
         return String(value ?? '')
             .replace(/&/g, '&amp;')
@@ -867,12 +880,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const durationField = document.getElementById('item_duration_wrapper');
         const startDateField = document.getElementById('item_start_date_wrapper');
         const endDateField = document.getElementById('item_end_date_wrapper');
+        const durationInput = document.getElementById('item_duration');
 
         if (durationField) durationField.style.display = isRecurring ? 'block' : 'none';
         if (startDateField) startDateField.style.display = isRecurring ? 'block' : 'none';
         if (endDateField) endDateField.style.display = isRecurring ? 'block' : 'none';
 
-        if (!isRecurring) {
+        if (isRecurring) {
+            const durationValue = Number(durationInput?.value || 0);
+            if (durationInput && (!durationInput.value || durationValue <= 0)) {
+                durationInput.value = '1';
+            }
+        } else {
             document.getElementById('item_duration').value = '';
             document.getElementById('item_start_date').value = '';
             document.getElementById('item_end_date').value = '';
@@ -990,7 +1009,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 @if($account->have_users)
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.no_of_users ?? '—'}</td>
                 @endif
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.discount_percent > 0 ? item.discount_percent + '%' : '—'}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${formatDiscountPercentDisplay(item.discount_percent)}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqDurationText}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.start_date || '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.end_date || '—'}</td>
@@ -1037,7 +1056,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const qty = Math.max(1, Math.round(Number(document.getElementById('item_quantity').value) || 1));
         const unitPrice = Math.round(parseFloat(document.getElementById('item_unit_price').value) || 0);
         const frequency = document.getElementById('item_frequency').value || '';
-        const duration = document.getElementById('item_duration').value || '';
+        const rawDuration = Number(document.getElementById('item_duration').value || 0);
+        const duration = (frequency && frequency !== 'One-Time') ? String(rawDuration > 0 ? rawDuration : 1) : '';
         @if($account->have_users)
         const isUserWiseItem = isSelectedItemUserWise();
         const users = isUserWiseItem ? Math.max(1, enforceUsersInputConstraint()) : 1;
@@ -1355,7 +1375,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 @if($account->have_users)
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.no_of_users ?? '—'}</td>
                 @endif
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.discount_percent > 0 ? item.discount_percent + '%' : '—'}</td>
+                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${formatDiscountPercentDisplay(item.discount_percent)}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqDurationText}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.start_date || '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.end_date || '—'}</td>

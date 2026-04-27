@@ -172,7 +172,13 @@
                 </div>
                 <div>
                     <label for="billing_gstin" style="font-size: 0.8rem;">GSTIN</label>
-                    <input type="text" id="billing_gstin" name="billing_gstin" value="{{ old('billing_gstin', $client->billingDetail->gstin ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
+                    <input type="text" id="billing_gstin" name="billing_gstin" value="{{ old('billing_gstin', $client->billingDetail->gstin ?? '') }}"
+                        maxlength="15" minlength="15" pattern="[A-Z0-9]{15}"
+                        title="GSTIN must be exactly 15 characters"
+                        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
+                        onblur="if(this.value && this.value.length!==15){this.setCustomValidity('GSTIN must be exactly 15 characters');this.reportValidity();}else{this.setCustomValidity('');}"
+                        style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
+                    <span id="gstin_hint" style="font-size: 0.72rem; color: #94a3b8; display: block; margin-top: 2px;">Exactly 15 characters required</span>
                     @error('billing_gstin') <span class="error">{{ $message }}</span> @enderror
                 </div>
                 <div>
@@ -182,7 +188,7 @@
                 </div>
                 <div>
                     <label for="billing_phone" style="font-size: 0.8rem;">Billing Phone</label>
-                    <input type="tel" id="billing_phone" name="billing_phone" value="{{ old('billing_phone', $client->billingDetail->phone ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
+                    <input type="tel" id="billing_phone" name="billing_phone" value="{{ old('billing_phone', $client->billingDetail->billing_phone ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
                     @error('billing_phone') <span class="error">{{ $message }}</span> @enderror
                 </div>
                 <div>
@@ -292,6 +298,7 @@
         const billingName = document.getElementById('billing_business_name');
         const billingGstin = document.getElementById('billing_gstin');
         const billingEmail = document.getElementById('billing_email');
+        const billingPhone = document.getElementById('billing_phone');
         const billingAddress = document.getElementById('billing_address_line_1');
         const billingCity = document.getElementById('billing_city');
         const billingState = document.getElementById('billing_state');
@@ -301,6 +308,7 @@
         const sameAsClientCheckbox = document.getElementById('billing_same_as_client');
         const clientBusinessName = document.getElementById('business_name');
         const clientEmail = document.getElementById('email');
+        const clientPhone = document.getElementById('phone');
         const clientAddress = document.getElementById('address_line_1');
         const clientCity = document.getElementById('city');
         const clientState = document.getElementById('state');
@@ -315,6 +323,7 @@
             billingName.value = profile.business_name || '';
             billingGstin.value = profile.gstin || '';
             billingEmail.value = profile.billing_email || '';
+            billingPhone.value = profile.billing_phone || '';
             billingAddress.value = profile.address_line_1 || '';
             billingCity.value = profile.city || '';
             billingState.value = profile.state || '';
@@ -324,6 +333,7 @@
 
         function clearBillingFields() {
             billingName.value = ''; billingGstin.value = ''; billingEmail.value = '';
+            billingPhone.value = '';
             billingAddress.value = ''; billingCity.value = ''; billingState.value = '';
             billingPostal.value = ''; billingCountry.value = 'India';
         }
@@ -331,6 +341,7 @@
         function copyClientDetailsToBilling() {
             billingName.value = clientBusinessName.value || '';
             billingEmail.value = clientEmail.value || '';
+            billingPhone.value = clientPhone.value || '';
             billingAddress.value = clientAddress.value || '';
             billingCity.value = clientCity.value || '';
             billingState.value = clientState.value || '';
@@ -341,7 +352,7 @@
         existingSelect.addEventListener('change', loadSelectedBillingProfile);
         newBillingBtn.addEventListener('click', function () { existingSelect.value = ''; clearBillingFields(); });
         sameAsClientCheckbox.addEventListener('change', function () { if (this.checked) copyClientDetailsToBilling(); });
-        [clientBusinessName, clientEmail, clientAddress, clientCity, clientState, clientPostal, clientCountry].forEach(function(el) {
+        [clientBusinessName, clientEmail, clientPhone, clientAddress, clientCity, clientState, clientPostal, clientCountry].forEach(function(el) {
             el.addEventListener('input', function () { if (sameAsClientCheckbox.checked) copyClientDetailsToBilling(); });
         });
         billingName.required = true;

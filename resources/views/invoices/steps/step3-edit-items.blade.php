@@ -10,11 +10,15 @@
     $invoiceClientState = $normalizeTaxState(optional($selectedInvoiceClient)->state ?? '');
     $invoiceAccountState = $normalizeTaxState(optional($account)->state ?? '');
     $sameStateGstForInvoice = $invoiceClientState !== '' && $invoiceAccountState !== '' && $invoiceClientState === $invoiceAccountState;
+    $isTaxInvoiceStep3 = (request('tax_invoice', 0) == 1) || !empty($invoice?->ti_number);
+    $initialHeaderNumberStep3 = $isTaxInvoiceStep3
+        ? ($invoice?->ti_number ?: ($nextTaxInvoiceNumber ?? $nextInvoiceNumber))
+        : ($invoice?->pi_number ?: $nextInvoiceNumber);
 @endphp
 <!-- Step 3: Edit Items (For Orders & Renewal) -->
 <div id="step3" class="invoice-step">
     {{-- Client Info Header with Back Button --}}
-    <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
+    <div style="margin-bottom: 0.7rem; padding: 0.55rem 0.72rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
             <button type="button" id="btnBackToStep2" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
                 <i class="fas fa-arrow-left" style="font-size: 0.8rem;"></i>
@@ -24,14 +28,14 @@
                 <i class="fas fa-user"></i>
             </div>
             <div style="flex: 1; min-width: 0;">
-                <div style="font-size: 0.9rem; font-weight: 600; color: #111827; margin-top: 0.1rem;">{{ $selectedClientName }}</div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: #111827; margin-top: 0.08rem;">{{ $selectedClientName }}</div>
                 @if($selectedClientEmail)
-                <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.05rem;">{{ $selectedClientEmail }}</div>
+                <div style="font-size: 0.72rem; color: #64748b; margin-top: 0.05rem;">{{ $selectedClientEmail }}</div>
                 @endif
             </div>
             <div style="text-align: right; flex-shrink: 0;">
-                <div id="piNumberBadgeStep3" style="display: inline-block; padding: 0.35rem 0.75rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #c7d2fe;">
-                    {{ $nextInvoiceNumber }}
+                <div id="piNumberBadgeStep3" style="display: inline-block; padding: 0.27rem 0.58rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.78rem; font-weight: 700; border: 1px solid #c7d2fe;">
+                    {{ $initialHeaderNumberStep3 }}
                 </div>
             </div>
         </div>
@@ -40,32 +44,28 @@
     <div class="invoice-grid-4" style="margin-bottom: 0.85rem;">
         <div style="display:flex; flex-direction:column;">
             <label for="invoice_title" class="field-label">Invoice Title</label>
-            <input type="text" id="invoice_title" name="invoice_title" class="form-input" placeholder="e.g. Website Development - Monthly Subscription" required style="height:42px; box-sizing:border-box;">
+            <input type="text" id="invoice_title" name="invoice_title" class="form-input" placeholder="e.g. Website Development - Monthly Subscription" required style="height:36px; box-sizing:border-box;">
             <div id="invoiceTitleError" style="display:none; margin-top: 0.35rem; color: #b91c1c; font-size: 0.8rem; font-weight: 600;">Invoice title is required.</div>
         </div>
 
         <div style="display:flex; flex-direction:column;">
             <label for="issue_date" class="field-label">Issue Date</label>
-            <input type="date" id="issue_date" name="issue_date" class="form-input" required style="height:42px; box-sizing:border-box;">
+            <input type="date" id="issue_date" name="issue_date" class="form-input" required style="height:36px; box-sizing:border-box;" value="{{ old('issue_date', $invoice?->issue_date?->format('Y-m-d') ?? date('Y-m-d')) }}">
         </div>
 
         <div style="display:flex; flex-direction:column;">
             <label for="due_date" class="field-label">Due Date</label>
-            <input type="date" id="due_date" name="due_date" class="form-input" required style="height:42px; box-sizing:border-box;">
+            <input type="date" id="due_date" name="due_date" class="form-input" required style="height:36px; box-sizing:border-box;" value="{{ old('due_date', $invoice?->due_date?->format('Y-m-d') ?? date('Y-m-d', strtotime('+7 days'))) }}">
         </div>
 
         <div style="display:flex; flex-direction:column;">
             <label for="notes" class="field-label">Notes</label>
-            <textarea id="notes" name="notes" class="form-input" placeholder="Optional notes" style="height:42px; min-height:42px; padding:0.5rem 0.75rem; box-sizing:border-box; resize:none; overflow:hidden; line-height:1.4;"></textarea>
+            <textarea id="notes" name="notes" class="form-input" placeholder="Optional notes" style="height:36px; min-height:36px; padding:0.38rem 0.58rem; box-sizing:border-box; resize:none; overflow:hidden; line-height:1.3;">{{ old('notes', $invoice?->notes ?? '') }}</textarea>
         </div>
     </div>
 
     <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
     <input type="hidden" name="orderid" value="{{ request('o', request('orderid', '')) === '0' ? '' : request('o', request('orderid', '')) }}">
-    <input type="hidden" name="subtotal" id="subtotal" value="0">
-    <input type="hidden" name="tax_total" id="tax_total" value="0">
-    <input type="hidden" name="discount_total" id="discount_total" value="0">
-    <input type="hidden" name="grand_total" id="grand_total" value="0">
     <input type="hidden" name="items_data" id="items_data" value="">
     <input type="hidden" name="currency_code" id="currency_code" value="{{ $selectedClientCurrency }}">
 
@@ -205,7 +205,7 @@
                     <tr>
                         <th>Item</th>
                         <th>Qty</th>
-                        <th>Price</th>
+                        <th>Price ({{ $selectedClientCurrency }})</th>
                         <th id="itemsUsersHeader" style="display:none;">Users</th>
                         <th>Disc %</th>
                         @if($account->allow_multi_taxation)
@@ -215,7 +215,7 @@
                         <th id="itemsDurationHeader">Dur</th>
                         <th id="itemsStartHeader" style="display:none;">Start Date</th>
                         <th id="itemsEndHeader" style="display:none;">End Date</th>
-                        <th>Total</th>
+                        <th>Total ({{ $selectedClientCurrency }})</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -246,6 +246,8 @@
     const clientId = "{{ request('c', request('clientid')) }}";
     const invoiceFor = "{{ request('invoice_for') }}";
     const orderId = "{{ request('o', request('orderid', '')) }}";
+    const draftId = "{{ request('d', '') }}";
+    const isTaxInvoice = @json($isTaxInvoiceStep3);
     const hasOrderId = orderId && orderId !== '0';
     const accountHasUsers = @json((bool) ($account->have_users ?? false));
     const sameStateGstForInvoice = @json($sameStateGstForInvoice);
@@ -257,6 +259,29 @@
     const invoiceTitleInput = document.getElementById('invoice_title');
     const invoiceTitleError = document.getElementById('invoiceTitleError');
     const piNumberBadgeStep3 = document.getElementById('piNumberBadgeStep3');
+    const issueDateInput = document.getElementById('issue_date');
+    const dueDateInput = document.getElementById('due_date');
+    const notesInput = document.getElementById('notes');
+    let draftPiNumber = '';
+    let draftTiNumber = '';
+    const fallbackPiNumber = "{{ $nextInvoiceNumber }}";
+    const fallbackTiNumber = "{{ $nextTaxInvoiceNumber ?? $nextInvoiceNumber }}";
+
+    function getStep3HeaderNumber() {
+        if (draftTiNumber) {
+            return draftTiNumber;
+        }
+        if (isTaxInvoice) {
+            return draftTiNumber || fallbackTiNumber;
+        }
+        return draftPiNumber || fallbackPiNumber;
+    }
+
+    function updateStep3HeaderNumber() {
+        if (piNumberBadgeStep3) {
+            piNumberBadgeStep3.textContent = getStep3HeaderNumber();
+        }
+    }
     const addItemSelect = document.getElementById('add_item_itemid');
     const addItemQuantityInput = document.getElementById('add_item_quantity');
     const addItemPriceInput = document.getElementById('add_item_unit_price');
@@ -353,7 +378,12 @@
         if (addItemDurationWrap) addItemDurationWrap.style.display = showRecurring ? 'block' : 'none';
         if (addItemStartWrap) addItemStartWrap.style.display = showRecurring ? 'block' : 'none';
         if (addItemEndWrap) addItemEndWrap.style.display = showRecurring ? 'block' : 'none';
-        if (!showRecurring) {
+        if (showRecurring) {
+            const durationValue = Number(addItemDurationInput?.value || 0);
+            if (addItemDurationInput && (!addItemDurationInput.value || durationValue <= 0)) {
+                addItemDurationInput.value = '1';
+            }
+        } else {
             if (addItemDurationInput) addItemDurationInput.value = '';
             if (addItemStartInput) addItemStartInput.value = '';
             if (addItemEndInput) addItemEndInput.value = '';
@@ -600,6 +630,9 @@
         if (hasOrderId) {
             draftUrl.searchParams.set('o', orderId);
         }
+        if (draftId) {
+            draftUrl.searchParams.set('d', draftId);
+        }
 
         fetch(draftUrl.toString())
             .then(response => response.json())
@@ -608,11 +641,23 @@
                 const draftTitle = data && data.draft ? (data.draft.invoice_title || '') : '';
 
                 if (draftTitle) {
-                    document.getElementById('invoice_title').value = draftTitle;
+                    invoiceTitleInput.value = draftTitle;
                 }
+                if (data && data.draft && data.draft.issue_date && issueDateInput) {
+                    issueDateInput.value = data.draft.issue_date;
+                }
+                if (data && data.draft && data.draft.due_date && dueDateInput) {
+                    dueDateInput.value = data.draft.due_date;
+                }
+                if (data && data.draft && data.draft.notes && notesInput) {
+                    notesInput.value = data.draft.notes;
+                }
+                draftPiNumber = data && data.draft ? (data.draft.pi_number || '') : '';
+                draftTiNumber = data && data.draft ? (data.draft.ti_number || '') : '';
                 if (data && data.draft && data.draft.invoice_number && piNumberBadgeStep3) {
                     piNumberBadgeStep3.textContent = data.draft.invoice_number;
                 }
+                updateStep3HeaderNumber();
 
                 if (invoiceFor === 'orders' && orderId) {
                     loadOrderItems(orderId);
@@ -622,16 +667,6 @@
                     initializeAddItemFormVisibility();
                 }
 
-                if (orderId) {
-                    fetch(`{{ route('invoices.order-items', ['orderid' => '__ORDERID__']) }}`.replace('__ORDERID__', orderId))
-                        .then(response => response.json())
-                        .then(orderData => {
-                            if (orderData && orderData.order) {
-                                renderOrderSummary(orderData.order);
-                            }
-                        })
-                        .catch(() => {});
-                }
             })
             .catch(() => {
                 @if(request('invoice_for') === 'orders' && request('o', request('orderid')))
@@ -755,10 +790,6 @@
         updateTaxDisplay(roundedTaxTotal);
         document.getElementById('grandTotalDisplay').textContent = formatCurrency(subtotal - roundedDiscountTotal + roundedTaxTotal);
 
-        document.getElementById('subtotal').value = subtotal.toFixed(0);
-        document.getElementById('discount_total').value = roundedDiscountTotal.toFixed(0);
-        document.getElementById('tax_total').value = roundedTaxTotal.toFixed(0);
-        document.getElementById('grand_total').value = (subtotal - roundedDiscountTotal + roundedTaxTotal).toFixed(0);
         itemsDataInput.value = JSON.stringify(invoiceItems);
     }
 
@@ -807,7 +838,7 @@
         const discountPercent = Math.min(100, Math.max(0, Number(addItemDiscountInput?.value || 0)));
         const taxRate = Math.max(0, Number(addItemTaxRateInput?.value || 0));
         const frequency = addItemFrequencyInput?.value || '';
-        const duration = itemHasRecurringFrequency({ frequency }) ? (Number(addItemDurationInput?.value || 0) || null) : null;
+        const duration = itemHasRecurringFrequency({ frequency }) ? Math.max(1, Number(addItemDurationInput?.value || 1)) : null;
         const startDate = itemHasRecurringFrequency({ frequency }) ? (addItemStartInput?.value || null) : null;
         const endDate = itemHasRecurringFrequency({ frequency })
             ? (addItemEndInput?.value || calculateEndDate(startDate, frequency, duration) || null)
@@ -860,10 +891,14 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify({
-                clientid: clientId,
+                invoiceid: draftId || undefined,
                 invoice_for: invoiceFor,
+                clientid: clientId,
                 orderid: hasOrderId ? orderId : null,
                 invoice_title: invoiceTitle,
+                issue_date: document.getElementById('issue_date').value,
+                due_date: document.getElementById('due_date').value,
+                notes: document.getElementById('notes').value,
                 items_data: itemsDataInput.value
             })
         })
@@ -885,6 +920,9 @@
                 const orderToken = encodeURIComponent(orderId);
                 nextUrl += "&o=" + orderToken;
             }
+            if (isTaxInvoice) {
+                nextUrl += "&tax_invoice=1";
+            }
             if (data && data.invoiceid) {
                 nextUrl += "&d=" + encodeURIComponent(data.invoiceid);
             }
@@ -903,6 +941,9 @@
             const orderToken = encodeURIComponent(orderId);
             backUrl += "&o=" + orderToken;
         }
+        if (isTaxInvoice) {
+            backUrl += "&tax_invoice=1";
+        }
         window.location.href = backUrl;
     });
 
@@ -920,19 +961,19 @@
 
 <style>
 #addItemFormCard .form-input {
-    padding: 0.45rem 0.6rem;
-    font-size: 0.82rem;
+    padding: 0.36rem 0.5rem;
+    font-size: 0.76rem;
 }
 
 #addItemFormCard .field-label.small {
-    font-size: 0.7rem;
-    margin-bottom: 0.25rem;
+    font-size: 0.64rem;
+    margin-bottom: 0.18rem;
 }
 
 #addItemFormCard textarea.form-input {
-    padding: 0.4rem 0.55rem;
-    font-size: 0.8rem;
-    min-height: 30px;
+    padding: 0.34rem 0.44rem;
+    font-size: 0.74rem;
+    min-height: 26px;
     resize: none;
 }
 

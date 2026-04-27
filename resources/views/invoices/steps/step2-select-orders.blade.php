@@ -22,9 +22,6 @@
                 @endif
             </div>
             <div style="text-align: right; flex-shrink: 0;">
-                <div style="display: inline-block; padding: 0.35rem 0.75rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #c7d2fe;">
-                    {{ $nextInvoiceNumber }}
-                </div>
             </div>
         </div>
     </div>
@@ -32,6 +29,10 @@
     <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
     <input type="hidden" name="orderid" id="orderid">
     <input type="hidden" name="items_data" id="items_data">
+    <input type="hidden" name="pi_number" id="pi_number" value="{{ $invoice?->pi_number ?? $nextInvoiceNumber }}">
+    <input type="hidden" name="issue_date" id="step2_select_orders_issue_date" value="{{ date('Y-m-d') }}">
+    <input type="hidden" name="due_date" id="step2_select_orders_due_date" value="{{ date('Y-m-d', strtotime('+7 days')) }}">
+    <input type="hidden" name="notes" id="step2_select_orders_notes" value="">
 
     <div class="section-title-card" style="margin-bottom: 0.65rem;">
         <h4>Select Source Order</h4>
@@ -96,7 +97,7 @@
 }
 
 .order-detail-shell {
-    padding: 0.85rem 0.9rem 0.95rem;
+    padding: 0.62rem 0.68rem 0.72rem;
     border-left: 3px solid #4f46e5;
 }
 
@@ -106,13 +107,13 @@
     gap: 1rem;
     align-items: flex-start;
     flex-wrap: wrap;
-    margin-bottom: 0.9rem;
+    margin-bottom: 0.62rem;
 }
 
 .order-detail-meta {
     margin: 0.2rem 0 0;
     color: #6b7280;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
 }
 
 .order-detail-items {
@@ -128,8 +129,8 @@
 }
 
 .order-detail-items th {
-    padding: 0.55rem 0.65rem;
-    font-size: 0.72rem;
+    padding: 0.42rem 0.52rem;
+    font-size: 0.68rem;
     font-weight: 600;
     color: #6b7280;
     text-align: left;
@@ -138,8 +139,8 @@
 }
 
 .order-detail-items td {
-    padding: 0.58rem 0.65rem;
-    font-size: 0.8rem;
+    padding: 0.44rem 0.52rem;
+    font-size: 0.74rem;
     border-bottom: 1px solid #e5e7eb;
     background: #fff;
 }
@@ -149,10 +150,10 @@
 }
 
 .order-detail-empty {
-    padding: 0.85rem;
+    padding: 0.62rem;
     text-align: center;
     color: #9ca3af;
-    font-size: 0.8rem;
+    font-size: 0.74rem;
 }
 
 @media (max-width: 900px) {
@@ -177,6 +178,9 @@
 
     let selectedOrderId = null;
     let orderItems = [];
+    const orderItemsCache = new Map();
+    const orderSummaryCache = new Map();
+    let activeOrderRequestController = null;
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -198,6 +202,7 @@
         })
         .then(res => res.json())
         .then(orders => {
+            noOrdersMessage.style.display = 'none';
             if (!orders.length) {
                 noOrdersMessage.style.display = 'block';
                 return;
@@ -225,7 +230,7 @@
                     <td>${order.delivery_date || 'N/A'}</td>
                     <td>${order.sales_person || '-'}</td>
                     <td>${order.item_count || 0} item(s)</td>
-                    <td>${Number(order.grand_total).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
+                    <td>${(order.currency || 'INR')} ${Number(order.grand_total).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
                     <td>
                         <span style="font-size: 0.8rem; padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 500; background: ${verified ? '#dcfce7' : '#fef3c7'}; color: ${verified ? '#16a34a' : '#d97706'};">
                             ${verified ? 'Verified' : 'Unverified'}
@@ -250,7 +255,7 @@
                                 </div>
                                 <div class="invoice-side-meta">
                                     <span class="invoice-meta-label">Grand Total</span>
-                                    <strong class="invoice-meta-value">${Number(order.grand_total).toLocaleString('en-US', { minimumFractionDigits: 0 })}</strong>
+                                    <strong class="invoice-meta-value">${(order.currency || 'INR')} ${Number(order.grand_total).toLocaleString('en-US', { minimumFractionDigits: 0 })}</strong>
                                 </div>
                             </div>
                             <div class="order-detail-items" id="order-detail-items-${order.orderid}">
@@ -299,6 +304,13 @@
     }
 
     function selectOrder(orderId, row) {
+        if (selectedOrderId === orderId && orderItemsCache.has(orderId)) {
+            orderItems = orderItemsCache.get(orderId) || [];
+            itemsDataInput.value = JSON.stringify(orderItems);
+            btnNext.disabled = orderItems.length === 0;
+            return;
+        }
+
         selectedOrderId = orderId;
         orderIdInput.value = selectedOrderId;
 
@@ -315,13 +327,46 @@
     }
 
     function loadOrderDetails(orderId) {
-        fetch(`{{ route('invoices.order-items', ['orderid' => '__ORDERID__']) }}`.replace('__ORDERID__', orderId))
+        if (activeOrderRequestController) {
+            activeOrderRequestController.abort();
+        }
+
+        if (orderItemsCache.has(orderId)) {
+            const cachedItems = orderItemsCache.get(orderId) || [];
+            const cachedOrder = orderSummaryCache.get(orderId) || {};
+            orderItems = cachedItems;
+            itemsDataInput.value = JSON.stringify(orderItems);
+            btnNext.disabled = orderItems.length === 0;
+            renderOrderItems(orderId, cachedItems, cachedOrder);
+            return;
+        }
+
+        activeOrderRequestController = new AbortController();
+        const container = document.getElementById(`order-detail-items-${orderId}`);
+        if (container) {
+            container.innerHTML = '<div class="order-detail-empty">Loading order items...</div>';
+        }
+
+        fetch(`{{ route('invoices.order-items', ['orderid' => '__ORDERID__']) }}`.replace('__ORDERID__', orderId), {
+            signal: activeOrderRequestController.signal
+        })
         .then(res => res.json())
         .then(data => {
             orderItems = data.items || [];
+            orderItemsCache.set(orderId, orderItems);
+            orderSummaryCache.set(orderId, data.order || {});
             itemsDataInput.value = JSON.stringify(orderItems);
             btnNext.disabled = orderItems.length === 0;
             renderOrderItems(orderId, orderItems, data.order || {});
+        })
+        .catch(error => {
+            if (error?.name === 'AbortError') return;
+            if (container) {
+                container.innerHTML = '<div class="order-detail-empty">Unable to load items. Try selecting again.</div>';
+            }
+        })
+        .finally(() => {
+            activeOrderRequestController = null;
         });
     }
 
@@ -360,13 +405,13 @@
                         ${description ? `<div style="margin-top:0.18rem; font-size:0.74rem; color:#6b7280; white-space: pre-wrap;">${description}</div>` : ''}
                     </td>
                     <td style="text-align:center;">${Math.max(1, Math.round(Number(item.quantity || 1))).toLocaleString('en-US')}</td>
-                    <td style="text-align:right;">${Number(item.unit_price || 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
+                    <td style="text-align:right;">${(order.currency || 'INR')} ${Number(item.unit_price || 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
                     <td style="text-align:right;">${Number(item.tax_rate || 0).toFixed(0)}%</td>
                     <td style="text-align:right;">${discount}</td>
                     <td>${frequencyDuration}</td>
                     <td style="text-align:center;">${item.no_of_users || '-'}</td>
                     <td style="font-size:0.78rem; color:#6b7280;">${dates || '-'}</td>
-                    <td style="text-align:right;"><strong>${Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || ((Number(item.line_total || 0) * Number(item.discount_percent || 0)) / 100) || 0)).toLocaleString('en-US', { minimumFractionDigits: 0 })}</strong></td>
+                    <td style="text-align:right;"><strong>${(order.currency || 'INR')} ${Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || ((Number(item.line_total || 0) * Number(item.discount_percent || 0)) / 100) || 0)).toLocaleString('en-US', { minimumFractionDigits: 0 })}</strong></td>
                 </tr>
             `;
         }).join('');
@@ -377,13 +422,13 @@
                     <tr>
                         <th>Item</th>
                         <th style="text-align:center;">Qty</th>
-                        <th style="text-align:right;">Price</th>
+                        <th style="text-align:right;">Price ({{ $selectedClientCurrency }})</th>
                         <th style="text-align:right;">Tax %</th>
                         <th style="text-align:right;">Discount</th>
                         <th>Frequency / Duration</th>
                         <th style="text-align:center;">Users</th>
                         <th>Dates</th>
-                        <th style="text-align:right;">Total</th>
+                        <th style="text-align:right;">Total ({{ $selectedClientCurrency }})</th>
                     </tr>
                 </thead>
                 <tbody>${rows}</tbody>
@@ -397,24 +442,13 @@
             return;
         }
 
-        fetch("{{ route('invoices.save-draft') }}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                clientid: clientId,
-                orderid: selectedOrderId,
-                invoice_for: 'orders',
-                items_data: itemsDataInput.value
-            })
-        })
-        .then(() => {
-            const clientToken = encodeURIComponent(clientId);
-            const orderToken = encodeURIComponent(selectedOrderId);
-            window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=orders&c=" + clientToken + "&o=" + orderToken;
-        });
+        // Save orderid to hidden input
+        orderIdInput.value = selectedOrderId;
+
+        // Redirect to step3 without saving draft
+        const clientToken = encodeURIComponent(clientId);
+        const orderToken = encodeURIComponent(selectedOrderId);
+        window.location.href = "{{ route('invoices.create') }}?step=3&invoice_for=orders&c=" + clientToken + "&o=" + orderToken;
     });
 
     btnBackToStep1.addEventListener('click', function() {
@@ -422,6 +456,68 @@
         window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientToken;
     });
 
+    // Load draft items when editing
+    function loadItems() {
+        const draftId = "{{ request('d', '') }}";
+        
+        if (!draftId) return;
+        
+        const draftUrl = new URL("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace('__CLIENTID__', clientId), window.location.origin);
+        draftUrl.searchParams.set('invoice_for', 'orders');
+        draftUrl.searchParams.set('d', draftId);
+        
+        fetch(draftUrl.toString())
+            .then(response => response.json())
+            .then(data => {
+                if (data.draft) {
+                    if (data.draft.items && data.draft.items.length > 0) {
+                        orderItems = data.draft.items;
+                        itemsDataInput.value = JSON.stringify(orderItems);
+                        btnNext.disabled = orderItems.length === 0;
+                    }
+                    
+                    if (data.draft.orderid) {
+                        orderIdInput.value = data.draft.orderid;
+                        selectedOrderId = data.draft.orderid;
+                        
+                        // Select the order in the UI
+                        const preselectedRadio = ordersBody.querySelector(`input[name="selected_order"][value="${data.draft.orderid}"]`);
+                        if (preselectedRadio) {
+                            preselectedRadio.checked = true;
+                            preselectedRadio.dispatchEvent(new Event('change'));
+                        }
+                    }
+                    
+                    if (data.draft.issue_date) {
+                        const issueDateField = document.getElementById('issue_date');
+                        if (issueDateField) {
+                            issueDateField.value = data.draft.issue_date;
+                        }
+                        document.getElementById('step2_select_orders_issue_date').value = data.draft.issue_date;
+                    }
+                    if (data.draft.due_date) {
+                        const dueDateField = document.getElementById('due_date');
+                        if (dueDateField) {
+                            dueDateField.value = data.draft.due_date;
+                        }
+                        document.getElementById('step2_select_orders_due_date').value = data.draft.due_date;
+                    }
+                    if (data.draft.notes) {
+                        const notesField = document.getElementById('notes');
+                        if (notesField) {
+                            notesField.value = data.draft.notes;
+                        }
+                        document.getElementById('step2_select_orders_notes').value = data.draft.notes;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Failed to load draft items:', error);
+            });
+    }
+    
+    // Initialize
+    loadItems();
     loadOrders();
 })();
 </script>

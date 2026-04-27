@@ -3,6 +3,10 @@
     $selectedClient = $clients->firstWhere('clientid', request('c', request('clientid')));
     $selectedClientName = $selectedClient ? ($selectedClient->business_name ?? $selectedClient->contact_name ?? 'Unknown Client') : 'No Client Selected';
     $selectedClientEmail = $selectedClient->email ?? '';
+    $isTaxInvoiceStep2 = (request('tax_invoice', 0) == 1) || !empty($invoice?->ti_number);
+    $initialHeaderNumberStep2 = $isTaxInvoiceStep2
+        ? ($invoice?->ti_number ?: ($nextTaxInvoiceNumber ?? $nextInvoiceNumber))
+        : ($invoice?->pi_number ?: $nextInvoiceNumber);
     $serviceGroups = collect($services ?? [])->groupBy(function ($service) {
         return optional($service->category)->name ?? 'No Category';
     });
@@ -26,51 +30,56 @@
                 @endif
             </div>
             <div style="text-align: right; flex-shrink: 0;">
-                <div style="display: inline-block; padding: 0.35rem 0.75rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #c7d2fe;">
-                    {{ $nextInvoiceNumber }}
+                <div id="piNumberBadge" style="display: inline-block; padding: 0.35rem 0.75rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #c7d2fe;">
+                    {{ $initialHeaderNumberStep2 }}
                 </div>
             </div>
         </div>
     </div>
 
     <div class="invoice-grid-4" style="margin-bottom: 1rem;">
-        <div>
+        <div style="overflow: visible;">
             <label for="invoice_title" class="field-label">Invoice Title</label>
             <input type="text" id="invoice_title" name="invoice_title" class="form-input" placeholder="e.g. Website Development - Monthly Subscription" required>
-            <div id="invoiceTitleError" style="display:none; margin-top: 0.35rem; color: #b91c1c; font-size: 0.8rem; font-weight: 600;">Invoice title is required.</div>
+            <div id="invoiceTitleError" style="display:none; margin-top: 0.5rem; color: #b91c1c; font-size: 0.8rem; font-weight: 600;">Invoice title is required.</div>
         </div>
         <div>
             <label for="issue_date" class="field-label">Issue Date</label>
-            <input type="date" id="issue_date" name="issue_date" class="form-input" required>
+            <input type="date" id="issue_date" name="issue_date" class="form-input" required value="{{ old('issue_date', request('d') && $invoice ? $invoice->issue_date?->format('Y-m-d') : date('Y-m-d')) }}">
         </div>
         <div>
             <label for="due_date" class="field-label">Due Date</label>
-            <input type="date" id="due_date" name="due_date" class="form-input" required>
+            <input type="date" id="due_date" name="due_date" class="form-input" required value="{{ old('due_date', request('d') && $invoice ? $invoice->due_date?->format('Y-m-d') : date('Y-m-d', strtotime('+7 days'))) }}">
         </div>
         <div>
             <label for="notes" class="field-label">Notes</label>
-            <textarea id="notes" name="notes" rows="1" class="form-input" style="min-height: 38px; resize: vertical;" placeholder="Optional notes"></textarea>
+            <textarea id="notes" name="notes" rows="1" class="form-input" style="min-height: 38px; resize: vertical;" placeholder="Optional notes">{{ old('notes', request('d') && $invoice ? $invoice->notes : '') }}</textarea>
         </div>
     </div>
 
     <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
-    <input type="hidden" name="invoice_number" value="{{ $nextInvoiceNumber }}">
-    <input type="hidden" name="subtotal" id="subtotal" value="0">
-    <input type="hidden" name="tax_total" id="tax_total" value="0">
-    <input type="hidden" name="discount_total" id="discount_total" value="0">
-    <input type="hidden" name="grand_total" id="grand_total" value="0">
+    <input type="hidden" name="invoice_number" value="{{ $initialHeaderNumberStep2 }}">
     <input type="hidden" name="items_data" id="items_data" value="">
     <input type="hidden" name="currency_code" id="currency_code" value="{{ $selectedClientCurrency }}">
+    <input type="hidden" name="issue_date" id="step2_issue_date" value="{{ date('Y-m-d') }}">
+    <input type="hidden" name="due_date" id="step2_due_date" value="{{ date('Y-m-d', strtotime('+7 days')) }}">
+    <input type="hidden" name="notes" id="step2_notes" value="">
 
     <div id="manualItemsSection" class="workflow-panel">
-        <div class="panel-heading-row">
+        <div class="panel-heading-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
             <div>
                 <h4 style="margin: 0; font-size: 1rem; color: #334155;">Add Invoice Items</h4>
                 <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Add items to your invoice.</p>
             </div>
+            <div>
+                <button type="button" id="toggleAddItemFormBtn" class="text-link" style="display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; font-size: 0.8rem; padding: 0.35rem 0.65rem; border: 1px solid #e5e7eb; border-radius: 6px; background: #ffffff; color: #4f46e5; font-weight: 500; line-height: 1;">
+                    <i class="fas fa-plus" style="font-size: 0.75rem; line-height: 1; vertical-align: middle;"></i>
+                    <span style="line-height: 1;">Add More Items</span>
+                </button>
+            </div>
         </div>
 
-        <div class="builder-card">
+        <div class="builder-card" id="addItemFormCard" style="margin-bottom: 0.65rem; padding: 0.6rem; display: none;">
             <div class="manual-grid manual-grid-add-items">
                 <div class="invoice-span-2">
                     <label for="manual_item_itemid" class="field-label small">Item</label>
@@ -160,7 +169,7 @@
                     <tr>
                         <th>Item</th>
                         <th>Qty</th>
-                        <th>Price</th>
+                        <th>Price ({{ $selectedClientCurrency }})</th>
                         <th>Disc %</th>
                         @if($account->allow_multi_taxation)
                         <th>Tax %</th>
@@ -172,7 +181,7 @@
                         <th id="manualDurationHeader" style="display:none;">Dur</th>
                         <th id="manualStartHeader" style="display:none;">Start</th>
                         <th id="manualEndHeader" style="display:none;">End</th>
-                        <th>Total</th>
+                        <th>Total ({{ $selectedClientCurrency }})</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -218,6 +227,8 @@
     const manualItemsEmpty = document.getElementById('manualItemsEmpty');
     const manualSummary = document.getElementById('manualOrderSummary');
     const btnNextToStep3 = document.getElementById('btnNextToStep3');
+    const toggleAddItemFormBtn = document.getElementById('toggleAddItemFormBtn');
+    const addItemFormCard = document.getElementById('addItemFormCard');
     const btnBackToStep1 = document.getElementById('btnBackToStep1');
     const itemsDataInput = document.getElementById('items_data');
     const currencyCodeInput = document.getElementById('currency_code');
@@ -230,6 +241,24 @@
     const manualEndWrap = document.getElementById('manual_item_end_date_wrap');
     const manualStartInput = document.getElementById('manual_item_start_date');
     const manualEndInput = document.getElementById('manual_item_end_date');
+    const piNumberBadge = document.getElementById('piNumberBadge');
+    const isTaxInvoice = @json($isTaxInvoiceStep2);
+    const fallbackPiNumber = "{{ $nextInvoiceNumber }}";
+    const fallbackTiNumber = "{{ $nextTaxInvoiceNumber ?? $nextInvoiceNumber }}";
+    let draftPiNumber = '';
+    let draftTiNumber = '';
+
+    function getStep2HeaderNumber() {
+        if (draftTiNumber) return draftTiNumber;
+        if (isTaxInvoice) return fallbackTiNumber;
+        return draftPiNumber || fallbackPiNumber;
+    }
+
+    function updateStep2HeaderNumber() {
+        if (piNumberBadge) {
+            piNumberBadge.textContent = getStep2HeaderNumber();
+        }
+    }
 
     const frequencyLabels = { 'One-Time': 'One-Time', 'Day(s)': 'Day(s)', 'Week(s)': 'Week(s)', 'Month(s)': 'Month(s)', 'Quarter(s)': 'Quarter(s)', 'Year(s)': 'Year(s)' };
 
@@ -333,7 +362,12 @@
         manualDurationWrap.style.display = showRecurring ? 'block' : 'none';
         manualStartWrap.style.display = showRecurring ? 'block' : 'none';
         manualEndWrap.style.display = showRecurring ? 'block' : 'none';
-        if (!showRecurring) {
+        if (showRecurring) {
+            const durationValue = Number(manualDurationInput.value || 0);
+            if (!manualDurationInput.value || durationValue <= 0) {
+                manualDurationInput.value = '1';
+            }
+        } else {
             manualDurationInput.value = '';
             manualStartInput.value = '';
             manualEndInput.value = '';
@@ -396,6 +430,15 @@
         @endif
     }
 
+    function openAddItemForm() {
+        if (addItemFormCard) {
+            addItemFormCard.style.display = 'block';
+        }
+        if (toggleAddItemFormBtn) {
+            toggleAddItemFormBtn.innerHTML = '<i class="fas fa-times" style="font-size: 0.75rem; line-height: 1; vertical-align: middle;"></i><span style="line-height: 1;">Cancel</span>';
+        }
+    }
+
     addManualItemBtn.addEventListener('click', function() {
         const itemId = document.getElementById('manual_item_itemid').value;
         const itemName = document.getElementById('manual_item_itemid').options[document.getElementById('manual_item_itemid').selectedIndex]?.text || '';
@@ -414,7 +457,7 @@
         @endif
         const frequency = document.getElementById('manual_item_frequency').value;
         const duration = isRecurringFrequency(frequency)
-            ? (parseInt(document.getElementById('manual_item_duration').value) || null)
+            ? Math.max(1, parseInt(document.getElementById('manual_item_duration').value) || 1)
             : null;
         const startDate = isRecurringFrequency(frequency) ? (manualStartInput?.value || null) : null;
         const endDate = isRecurringFrequency(frequency)
@@ -543,6 +586,7 @@
                 const item = manualItems[index];
                 if (!item) return;
 
+                openAddItemForm();
                 editingManualItemIndex = index;
                 addManualItemBtn.textContent = 'Update';
 
@@ -603,16 +647,18 @@
         document.getElementById('manualTaxTotal').textContent = formatCurrency(roundedTaxTotal);
         document.getElementById('manualGrandTotal').textContent = formatCurrency(subtotal - roundedDiscountTotal + roundedTaxTotal);
 
-        document.getElementById('subtotal').value = subtotal.toFixed(0);
-        document.getElementById('discount_total').value = roundedDiscountTotal.toFixed(0);
-        document.getElementById('tax_total').value = roundedTaxTotal.toFixed(0);
-        document.getElementById('grand_total').value = (subtotal - roundedDiscountTotal + roundedTaxTotal).toFixed(0);
         itemsDataInput.value = JSON.stringify(manualItems);
     }
 
     btnNextToStep3.addEventListener('click', function() {
         if (manualItems.length === 0) {
             alert('Please add at least one item.');
+            return;
+        }
+
+        const clientId = "{{ request('c', request('clientid')) }}";
+        if (!clientId) {
+            alert('Please select a client before continuing.');
             return;
         }
 
@@ -625,36 +671,63 @@
 
         invoiceTitleError.style.display = 'none';
 
+        // Save items to hidden input
+        itemsDataInput.value = JSON.stringify(manualItems);
+
+        const issueDateValue = document.getElementById('issue_date')?.value || '';
+        const dueDateValue = document.getElementById('due_date')?.value || '';
+        const notesValue = document.getElementById('notes')?.value || '';
+
         fetch("{{ route('invoices.save-draft') }}", {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            },
             body: JSON.stringify({
-                clientid: "{{ request('c', request('clientid')) }}",
+                invoiceid: "{{ request('d', '') }}" || undefined,
                 invoice_for: 'without_orders',
-                invoice_title: invoiceTitle,
-                items_data: itemsDataInput.value,
-                subtotal: document.getElementById('subtotal').value,
-                discount_total: document.getElementById('discount_total').value,
-                tax_total: document.getElementById('tax_total').value,
-                grand_total: document.getElementById('grand_total').value
+                clientid: clientId,
+                invoice_title: invoiceTitle.trim(),
+                issue_date: issueDateValue,
+                due_date: dueDateValue,
+                notes: notesValue,
+                items_data: itemsDataInput.value
             })
         })
-        .then(response => response.json())
+        .then(async (response) => {
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || 'Failed to save draft.');
+            }
+            const contentType = response.headers.get('content-type') || '';
+            return contentType.includes('application/json') ? response.json() : {};
+        })
         .then((data) => {
-            const clientId = "{{ request('c', request('clientid')) }}";
             const clientToken = encodeURIComponent(clientId);
             let nextUrl = "{{ route('invoices.create') }}?step=3&invoice_for=without_orders&c=" + clientToken;
+            if (isTaxInvoice) {
+                nextUrl += "&tax_invoice=1";
+            }
             if (data && data.invoiceid) {
                 nextUrl += "&d=" + encodeURIComponent(data.invoiceid);
             }
             window.location.href = nextUrl;
+        })
+        .catch((error) => {
+            console.error('Error saving draft:', error);
+            alert('Unable to save draft right now. Please try again.');
         });
     });
 
     btnBackToStep1.addEventListener('click', function() {
         const clientId = "{{ request('c', request('clientid')) }}";
         const clientToken = encodeURIComponent(clientId);
-        window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientToken;
+        let backUrl = "{{ route('invoices.create') }}?step=1&c=" + clientToken;
+        if (isTaxInvoice) {
+            backUrl += "&tax_invoice=1";
+        }
+        window.location.href = backUrl;
     });
 
     invoiceTitleInput.addEventListener('input', function() {
@@ -662,5 +735,119 @@
             invoiceTitleError.style.display = 'none';
         }
     });
+
+    // Load draft items when editing
+    function loadItems() {
+        const draftId = "{{ request('d', '') }}";
+        const clientId = "{{ request('c', request('clientid')) }}";
+        const invoiceFor = "{{ request('invoice_for') }}";
+        
+        if (!draftId) return;
+        
+        const draftUrl = new URL("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace('__CLIENTID__', clientId), window.location.origin);
+        if (invoiceFor) {
+            draftUrl.searchParams.set('invoice_for', invoiceFor);
+        }
+        draftUrl.searchParams.set('d', draftId);
+        
+        fetch(draftUrl.toString())
+            .then(response => response.json())
+            .then(data => {
+                console.log('Draft data loaded:', data);
+                if (data.draft) {
+                    if (data.draft.items && data.draft.items.length > 0) {
+                        manualItems = data.draft.items.map(item => ({
+                            itemid: item.itemid,
+                            item_name: item.item_name,
+                            item_description: item.item_description || '',
+                            quantity: item.quantity,
+                            unit_price: item.unit_price,
+                            discount_percent: item.discount_percent || 0,
+                            discount_amount: item.discount_amount || 0,
+                            tax_rate: item.tax_rate,
+                            no_of_users: item.no_of_users,
+                            frequency: item.frequency,
+                            duration: item.duration,
+                            start_date: item.start_date,
+                            end_date: item.end_date,
+                            tax_amount: item.tax_amount,
+                            line_total: item.line_total
+                        }));
+                        renderManualItems();
+                    }
+                    
+                    if (data.draft.invoice_title) {
+                        invoiceTitleInput.value = data.draft.invoice_title;
+                    }
+                    
+                    if (data.draft.issue_date) {
+                        document.getElementById('issue_date').value = data.draft.issue_date;
+                        document.getElementById('step2_issue_date').value = data.draft.issue_date;
+                    }
+                    if (data.draft.due_date) {
+                        document.getElementById('due_date').value = data.draft.due_date;
+                        document.getElementById('step2_due_date').value = data.draft.due_date;
+                    }
+                    if (data.draft.notes) {
+                        document.getElementById('notes').value = data.draft.notes;
+                        document.getElementById('step2_notes').value = data.draft.notes;
+                    }
+                    if (data.draft.currency_code) {
+                        currencyCodeInput.value = data.draft.currency_code;
+                    }
+
+                    draftPiNumber = data.draft.pi_number || '';
+                    draftTiNumber = data.draft.ti_number || '';
+                    updateStep2HeaderNumber();
+                }
+            })
+            .catch(error => {
+                console.error('Failed to load draft items:', error);
+            });
+    }
+    
+    // Sync visible inputs to hidden inputs
+    const issueDateInput = document.getElementById('issue_date');
+    const dueDateInput = document.getElementById('due_date');
+    const notesInput = document.getElementById('notes');
+    const step2IssueDateInput = document.getElementById('step2_issue_date');
+    const step2DueDateInput = document.getElementById('step2_due_date');
+    const step2NotesInput = document.getElementById('step2_notes');
+    
+    if (issueDateInput && step2IssueDateInput) {
+        issueDateInput.addEventListener('change', function() {
+            step2IssueDateInput.value = this.value;
+        });
+    }
+    if (dueDateInput && step2DueDateInput) {
+        dueDateInput.addEventListener('change', function() {
+            step2DueDateInput.value = this.value;
+        });
+    }
+    if (notesInput && step2NotesInput) {
+        notesInput.addEventListener('input', function() {
+            step2NotesInput.value = this.value;
+        });
+    }
+    
+    // Toggle form visibility
+    function toggleAddItemForm() {
+        if (addItemFormCard) {
+            addItemFormCard.style.display = addItemFormCard.style.display === 'none' ? 'block' : 'none';
+        }
+        if (toggleAddItemFormBtn) {
+            toggleAddItemFormBtn.innerHTML = addItemFormCard.style.display === 'none' 
+                ? '<i class="fas fa-plus" style="font-size: 0.75rem; line-height: 1; vertical-align: middle;"></i><span style="line-height: 1;">Add More Items</span>'
+                : '<i class="fas fa-times" style="font-size: 0.75rem; line-height: 1; vertical-align: middle;"></i><span style="line-height: 1;">Cancel</span>';
+        }
+    }
+    
+    if (toggleAddItemFormBtn) {
+        toggleAddItemFormBtn.addEventListener('click', toggleAddItemForm);
+    }
+    
+    // Initialize
+    loadItems();
+    updateStep2HeaderNumber();
 })();
 </script>

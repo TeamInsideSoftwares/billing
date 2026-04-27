@@ -17,7 +17,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'state',
     'postal_code',
     'country',
-    'gstin',
 ])]
 class Group extends Model
 {

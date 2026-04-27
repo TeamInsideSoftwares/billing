@@ -199,7 +199,7 @@ input:checked + .toggle-slider {
                 <label style="font-size: 0.8rem;">Company Logo</label>
                 <div style="border: 2px dashed #e2e8f0; border-radius: 8px; padding: 0.75rem; text-align: center; background: #f8fafc;">
                     @if(!empty($account->logo_path))
-                        <img src="{{ asset($account->logo_path) }}" alt="Logo" id="logo-preview" style="max-width: 120px; max-height: 80px; border-radius: 6px; margin-bottom: 0.5rem; object-fit: contain;">
+                        <img src="{{ str_starts_with($account->logo_path, 'http') ? $account->logo_path : asset($account->logo_path) }}" alt="Logo" id="logo-preview" style="max-width: 120px; max-height: 80px; border-radius: 6px; margin-bottom: 0.5rem; object-fit: contain;">
                     @else
                         <div id="logo-preview" style="width: 120px; height: 80px; margin: 0 auto 0.5rem; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: #e2e8f0; color: #94a3b8; font-size: 1.5rem;"><i class="fas fa-image"></i></div>
                     @endif
@@ -648,7 +648,12 @@ input:checked + .toggle-slider {
             </div>
             <div>
                 <label>GSTIN</label>
-                <input type="text" name="gstin" value="{{ old('gstin', $editingBillingDetail->gstin ?? '') }}">
+                <input type="text" name="gstin" value="{{ old('gstin', $editingBillingDetail->gstin ?? '') }}"
+                    maxlength="15" minlength="15" pattern="[A-Z0-9]{15}"
+                    title="GSTIN must be exactly 15 characters"
+                    oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
+                    onblur="if(this.value && this.value.length!==15){this.setCustomValidity('GSTIN must be exactly 15 characters');this.reportValidity();}else{this.setCustomValidity('');}">
+                <span style="font-size: 0.72rem; color: #94a3b8; display: block; margin-top: 2px;">Exactly 15 characters required</span>
             </div>
             <div>
                 <label>TIN</label>
@@ -661,7 +666,7 @@ input:checked + .toggle-slider {
                 @if(!empty($editingBillingDetail->signature_upload))
                     <div style="margin-top: 0.5rem;">
                         <small style="color: #64748b; font-size: 0.75rem; display: block; margin-bottom: 0.25rem;">Current signature:</small>
-                        <img id="billing-signature-preview" src="{{ asset('storage/' . $editingBillingDetail->signature_upload) }}" alt="Signature" style="max-width: 200px; max-height: 100px; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px;">
+                        <img id="billing-signature-preview" src="{{ $editingBillingDetail->signature_upload }}" alt="Signature" style="max-width: 200px; max-height: 100px; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px;">
                     </div>
                 @else
                     <div id="billing-signature-preview" style="margin-top: 0.5rem; display: none;">
@@ -749,7 +754,12 @@ input:checked + .toggle-slider {
             </div>
             <div>
                 <label>GSTIN</label>
-                <input type="text" name="gstin" value="{{ old('gstin', $editingQuotationDetail->gstin ?? '') }}">
+                <input type="text" name="gstin" value="{{ old('gstin', $editingQuotationDetail->gstin ?? '') }}"
+                    maxlength="15" minlength="15" pattern="[A-Z0-9]{15}"
+                    title="GSTIN must be exactly 15 characters"
+                    oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
+                    onblur="if(this.value && this.value.length!==15){this.setCustomValidity('GSTIN must be exactly 15 characters');this.reportValidity();}else{this.setCustomValidity('');}">
+                <span style="font-size: 0.72rem; color: #94a3b8; display: block; margin-top: 2px;">Exactly 15 characters required</span>
             </div>
             <div>
                 <label>TIN</label>
@@ -762,7 +772,7 @@ input:checked + .toggle-slider {
                 @if(!empty($editingQuotationDetail->signature_upload))
                     <div style="margin-top: 0.5rem;">
                         <small style="color: #64748b; font-size: 0.75rem; display: block; margin-bottom: 0.25rem;">Current signature:</small>
-                        <img id="quotation-signature-preview" src="{{ asset('storage/' . $editingQuotationDetail->signature_upload) }}" alt="Signature" style="max-width: 200px; max-height: 100px; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px;">
+                        <img id="quotation-signature-preview" src="{{ $editingQuotationDetail->signature_upload }}" alt="Signature" style="max-width: 200px; max-height: 100px; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px;">
                     </div>
                 @else
                     <div id="quotation-signature-preview" style="margin-top: 0.5rem; display: none;">

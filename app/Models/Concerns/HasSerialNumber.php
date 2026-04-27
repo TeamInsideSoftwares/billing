@@ -86,6 +86,46 @@ trait HasSerialNumber
     protected function resolveNextAutoIncrementNumber(string $part): int
     {
         $start = $this->resolveConfiguredAutoIncrementStart($part);
+
+        // Prefer the first available number from the configured start.
+        // Example: if 1001 is deleted and 1002 exists, reuse 1001.
+        if (method_exists($this, 'getExistingSerialNumbers')) {
+            $existingNumbers = [];
+            $serials = $this->getExistingSerialNumbers();
+
+            foreach ($serials as $serial) {
+                if (!is_string($serial) || trim($serial) === '') {
+                    continue;
+                }
+
+                $parsed = $this->extractAutoIncrementNumberForPart($serial, $part);
+                if ($parsed !== null && $parsed >= $start) {
+                    $existingNumbers[$parsed] = true;
+                }
+            }
+
+            if (!empty($existingNumbers)) {
+                $sorted = array_keys($existingNumbers);
+                sort($sorted, SORT_NUMERIC);
+
+                $candidate = $start;
+                foreach ($sorted as $used) {
+                    if ($used < $candidate) {
+                        continue;
+                    }
+                    if ($used === $candidate) {
+                        $candidate++;
+                        continue;
+                    }
+                    if ($used > $candidate) {
+                        break;
+                    }
+                }
+
+                return $candidate;
+            }
+        }
+
         $highestKnown = null;
 
         if (method_exists($this, 'getLastAutoIncrementValueForPart')) {

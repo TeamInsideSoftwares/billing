@@ -106,7 +106,7 @@ class ClientsController extends Controller
             'address_line_1' => 'nullable|string|max:150',
             'existing_bd_id' => 'nullable|string|size:6|exists:client_billing_details,bd_id',
             'billing_business_name' => 'required|string|max:150',
-            'billing_gstin' => 'nullable|string|max:15',
+            'billing_gstin' => 'nullable|string|size:15',
             'billing_email' => 'nullable|email',
             'billing_city' => 'nullable|string|max:100',
             'billing_state' => 'required|string|max:100',
@@ -115,6 +115,13 @@ class ClientsController extends Controller
             'billing_address_line_1' => 'nullable|string|max:150',
             'billing_phone' => 'nullable|string|max:20',
         ]);
+
+        $validated['billing_phone'] = isset($validated['billing_phone'])
+            ? trim((string) $validated['billing_phone'])
+            : null;
+        if ($validated['billing_phone'] === '') {
+            $validated['billing_phone'] = null;
+        }
 
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');
@@ -146,7 +153,7 @@ class ClientsController extends Controller
                 'state' => $validated['billing_state'] ?? null,
                 'country' => $validated['billing_country'] ?? 'India',
                 'postal_code' => $validated['billing_postal_code'] ?? null,
-                'phone' => $validated['billing_phone'] ?? null,
+                'billing_phone' => $validated['billing_phone'] ?? null,
                 'address_line_1' => $validated['billing_address_line_1'] ?? null,
             ]);
         } else {
@@ -160,7 +167,7 @@ class ClientsController extends Controller
                 'state' => $validated['billing_state'] ?? null,
                 'country' => $validated['billing_country'] ?? 'India',
                 'postal_code' => $validated['billing_postal_code'] ?? null,
-                'phone' => $validated['billing_phone'] ?? null,
+                'billing_phone' => $validated['billing_phone'] ?? null,
                 'address_line_1' => $validated['billing_address_line_1'] ?? null,
             ]);
         }
@@ -176,6 +183,7 @@ class ClientsController extends Controller
             'billing_country',
             'billing_postal_code',
             'billing_address_line_1',
+            'billing_phone',
         ])->all();
         Client::create($clientData);
 
@@ -237,7 +245,7 @@ class ClientsController extends Controller
             'address_line_1' => 'nullable|string|max:150',
             'existing_bd_id' => 'nullable|string|size:6|exists:client_billing_details,bd_id',
             'billing_business_name' => 'required|string|max:150',
-            'billing_gstin' => 'nullable|string|max:15',
+            'billing_gstin' => 'nullable|string|size:15',
             'billing_email' => 'nullable|email',
             'billing_city' => 'nullable|string|max:100',
             'billing_state' => 'required|string|max:100',
@@ -246,6 +254,13 @@ class ClientsController extends Controller
             'billing_address_line_1' => 'nullable|string|max:150',
             'billing_phone' => 'nullable|string|max:20',
         ]);
+
+        $validated['billing_phone'] = isset($validated['billing_phone'])
+            ? trim((string) $validated['billing_phone'])
+            : null;
+        if ($validated['billing_phone'] === '') {
+            $validated['billing_phone'] = null;
+        }
 
         if ($request->hasFile('logo')) {
             if ($client->logo_path) {
@@ -280,7 +295,7 @@ class ClientsController extends Controller
                 'state' => $validated['billing_state'] ?? null,
                 'country' => $validated['billing_country'] ?? 'India',
                 'postal_code' => $validated['billing_postal_code'] ?? null,
-                'phone' => $validated['billing_phone'] ?? null,
+                'billing_phone' => $validated['billing_phone'] ?? null,
                 'address_line_1' => $validated['billing_address_line_1'] ?? null,
             ]);
             $selectedBdId = $existingBillingDetail->bd_id;
@@ -294,6 +309,7 @@ class ClientsController extends Controller
                 'state' => $validated['billing_state'] ?? null,
                 'country' => $validated['billing_country'] ?? 'India',
                 'postal_code' => $validated['billing_postal_code'] ?? null,
+                'billing_phone' => $validated['billing_phone'] ?? null,
                 'address_line_1' => $validated['billing_address_line_1'] ?? null,
             ];
 
@@ -320,6 +336,7 @@ class ClientsController extends Controller
             'billing_country',
             'billing_postal_code',
             'billing_address_line_1',
+            'billing_phone',
         ])->all();
         $client->update($clientData);
 
@@ -333,3 +350,5 @@ class ClientsController extends Controller
         return redirect()->route('clients.index')->with('success', 'Client deleted successfully.');
     }
 }
+
+

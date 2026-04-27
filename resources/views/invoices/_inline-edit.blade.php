@@ -47,7 +47,7 @@
             </div>
             <div class="invoice-meta-card">
                 <span class="invoice-meta-label">Balance Due</span>
-                <strong class="invoice-meta-value">{{ $invoice->currency_code ?? ($invoice->client->currency ?? 'INR') }} {{ number_format($invoice->balance_due ?? $invoice->grand_total ?? 0, 0) }}</strong>
+                <strong class="invoice-meta-value">{{ $invoice->currency_code ?? ($invoice->client->currency ?? 'INR') }} {{ number_format($invoice->balance_due ?? $invoice->items->sum('line_total') ?? 0, 0) }}</strong>
             </div>
         </div>
 

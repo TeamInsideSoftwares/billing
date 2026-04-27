@@ -57,13 +57,17 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/invoices/client-orders', 'getClientOrders')->name('invoices.client-orders');
         Route::post('/invoices/renewal-invoices', 'getRenewalInvoices')->name('invoices.renewal-invoices');
         Route::post('/invoices/terms/billing', 'storeBillingTerm')->name('invoices.terms.billing.store');
+        Route::patch('/invoices/{invoice}/terms', 'applyTerms')->name('invoices.apply-terms');
         Route::get('/invoices/order-items/{orderid}', 'getOrderItems')->name('invoices.order-items');
         Route::get('/invoices/renewal-items/{invoiceid}', 'getRenewalItems')->name('invoices.renewal-items');
         Route::post('/invoices/draft', 'invoicesSaveDraft')->name('invoices.save-draft');
         Route::get('/invoices/draft/{clientid}', 'invoicesGetDraft')->name('invoices.get-draft');
         Route::post('/invoices', 'invoicesStore')->name('invoices.store');
+        Route::post('/invoices/create-tax-invoice', 'createTaxInvoice')->name('invoices.create-tax-invoice');
+        Route::get('/invoices/{invoice}/pdf', 'downloadPdf')->name('invoices.pdf');
         Route::get('/invoices/{invoice}', 'invoicesShow')->name('invoices.show');
         Route::get('/invoices/{invoice}/edit', 'invoicesEdit')->name('invoices.edit');
+        Route::patch('/invoices/{invoice}/items/{item}', 'invoicesUpdateItem')->name('invoices.items.update');
         Route::put('/invoices/{invoice}', 'invoicesUpdate')->name('invoices.update');
         Route::delete('/invoices/{invoice}', 'invoicesDestroy')->name('invoices.destroy');
     });

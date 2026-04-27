@@ -17,9 +17,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'status',
     'order_date',
     'delivery_date',
-    'duration',
-    'frequency',
-    'no_of_users',
     'is_verified',
     'notes',
     'terms',
@@ -55,7 +52,6 @@ class Order extends Model
             'delivery_date' => 'date',
             'po_date' => 'date',
             'agreement_date' => 'date',
-            'no_of_users' => 'integer',
         ];
     }
 

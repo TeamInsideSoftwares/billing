@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'fy_id',
     'clientid',
     'orderid',
-    'invoice_number',
     'pi_number',
     'ti_number',
     'invoice_title',
@@ -80,6 +79,36 @@ class Invoice extends Model
     public function hasPaymentsRecorded(): bool
     {
         return (float) ($this->amount_paid ?? 0) > 0 || $this->payments()->exists();
+    }
+
+    public function getTermsAttribute($value): array
+    {
+        if (empty($value)) {
+            return [];
+        }
+
+        // If it's already an array (thanks to casting), return it
+        if (is_array($value)) {
+            return $value;
+        }
+
+        // If it's a string, try to decode it
+        $decoded = json_decode($value, true);
+        
+        // Handle double encoding: if decoded value is still a string, decode again
+        if (is_string($decoded)) {
+            $secondDecoded = json_decode($decoded, true);
+            if (is_array($secondDecoded)) {
+                return $secondDecoded;
+            }
+        }
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    public function setTermsAttribute($value): void
+    {
+        $this->attributes['terms'] = is_array($value) ? json_encode($value) : $value;
     }
 
     public function getInvoiceNumberAttribute(): string

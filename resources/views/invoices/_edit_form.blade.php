@@ -153,10 +153,10 @@
                     <label for="item_end_date" class="field-label small">End</label>
                     <input type="date" id="item_end_date" class="form-input">
                 </div>
-                <div class="invoice-edit-add-actions">
-                    <button type="button" id="addItemBtn" class="primary-button">Add Item</button>
-                    <button type="button" id="cancelAddItemBtn" class="secondary-button" style="padding: 0.65rem 1rem;">Cancel</button>
-                </div>
+            </div>
+            <div style="margin-top: 0.45rem; display: flex; gap: 0.45rem; align-items: flex-end;">
+                <textarea id="item_description" class="form-input" rows="1" placeholder="Description (optional)" style="flex: 1 1 auto; min-height: 30px; resize: none; line-height: 1.2;"></textarea>
+                <button type="button" id="addItemBtn" class="primary-button" style="padding: 0.55rem 1rem; white-space: nowrap;">Add Item</button>
             </div>
         </div>
 
@@ -175,9 +175,9 @@
                         <th>Users</th>
                         @endif
                         <th>Freq</th>
-                        <th id="itemsDurationHeader">Dur</th>
-                        <th>Start</th>
-                        <th>End</th>
+                        <th id="itemsDurationHeader" style="display:none;">Dur</th>
+                        <th id="itemsStartHeader" style="display:none;">Start</th>
+                        <th id="itemsEndHeader" style="display:none;">End</th>
                         <th>Amount</th>
                         <th></th>
                     </tr>
@@ -220,15 +220,12 @@
     const itemsDataInput = document.getElementById('items_data');
     const toggleAddItemBtn = document.getElementById('toggleAddItemBtn');
     const addItemPanel = document.getElementById('addItemPanel');
-    const cancelAddItemBtn = document.getElementById('cancelAddItemBtn');
     const addItemBtn = document.getElementById('addItemBtn');
     const updateInvoiceBtn = document.getElementById('updateInvoiceBtn');
     const allowMultiTaxation = @json((bool) ($account->allow_multi_taxation ?? false));
     const accountHasUsers = @json((bool) ($account->have_users ?? false));
 
     const frequencyLabels = { 'One-Time': 'One-Time', 'Day(s)': 'Day(s)', 'Week(s)': 'Week(s)', 'Month(s)': 'Month(s)', 'Quarter(s)': 'Quarter(s)', 'Year(s)': 'Year(s)' };
-    const frequencyOptions = ['', 'One-Time', 'Day(s)', 'Week(s)', 'Month(s)', 'Quarter(s)', 'Year(s)'];
-    const taxOptions = @json(($taxes ?? collect())->map(fn ($tax) => ['name' => $tax->tax_name, 'rate' => (float) $tax->rate])->values());
 
     let clientCurrency = currencyCodeInput.value || 'INR';
     @php
@@ -237,6 +234,7 @@
             $defaultPrice = $item->service?->costings?->sortBy('currency_code')->first()?->selling_price ?? 0;
             
             return [
+                'invoice_itemid' => $item->invoice_itemid,
                 'itemid' => $item->itemid,
                 'item_name' => $item->item_name ?? ($item->service->name ?? 'Item'),
                 'item_description' => $item->item_description ?? '',
@@ -266,22 +264,6 @@
         return `${clientCurrency} ${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     }
 
-    function renderTaxSelect(selectedRate, attributes = '') {
-        const normalizedRate = Number(selectedRate || 0);
-        const options = [`<option value="0" ${normalizedRate === 0 ? 'selected' : ''}>No Tax</option>`];
-
-        taxOptions.forEach((tax) => {
-            const rate = Number(tax.rate || 0);
-            options.push(`<option value="${rate}" ${rate === normalizedRate ? 'selected' : ''}>${tax.name} (${rate.toFixed(0)}%)</option>`);
-        });
-
-        const hasMatch = normalizedRate === 0 || taxOptions.some((tax) => Number(tax.rate || 0) === normalizedRate);
-        if (!hasMatch && normalizedRate > 0) {
-            options.push(`<option value="${normalizedRate}" selected>Custom (${normalizedRate.toFixed(0)}%)</option>`);
-        }
-
-        return `<select class="form-input item-input" ${attributes}>${options.join('')}</select>`;
-    }
 
     function calculateLineTotal(quantity, unitPrice, users, frequency, duration) {
         let total = (Number(quantity) || 0) * (Number(unitPrice) || 0) * Math.max(1, Number(users) || 1);
@@ -323,19 +305,16 @@
         return end.toISOString().split('T')[0];
     }
 
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
     function renderItems() {
         itemsBody.innerHTML = '';
         let subtotal = 0;
         let taxTotal = 0;
         let discountTotal = 0;
-        let anyItemHasRecurringFrequency = false;
-
-        // First pass: check if any item has recurring frequency
-        invoiceItems.forEach((item) => {
-            if (item.frequency && item.frequency !== 'One-Time') {
-                anyItemHasRecurringFrequency = true;
-            }
-        });
+        const anyItemHasRecurringFrequency = invoiceItems.some((item) => item.frequency && item.frequency !== 'One-Time');
 
         invoiceItems.forEach((item, index) => {
             item.quantity = Math.max(1, Math.round(Number(item.quantity) || 1));
@@ -351,53 +330,39 @@
             discountTotal += lineDiscount;
             taxTotal += lineTax;
 
-            // Only show dates if there's a recurring frequency
             const showDates = item.frequency && item.frequency !== 'One-Time';
+            const description = escapeHtml(item.item_description || '').trim();
 
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>
-                    <div style="font-weight: 600; color: #111827;">${item.item_name || 'Item'}</div>
-                    <textarea class="form-input item-input" data-index="${index}" data-field="item_description" rows="1" placeholder="Description (optional)" style="margin-top: 0.25rem; font-size: 0.75rem; min-height: 32px; resize: vertical;">${item.item_description || ''}</textarea>
+                    <div style="font-weight: 600; color: #111827;">${escapeHtml(item.item_name || 'Item')}</div>
+                    ${description ? `<div style="margin-top: 0.15rem; font-size: 0.78rem; color: #6b7280; white-space: pre-wrap;">${description}</div>` : ''}
                 </td>
-                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="quantity" min="1" step="1" value="${item.quantity}"></td>
-                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="unit_price" min="0" step="0.01" value="${item.unit_price}"></td>
-                <td><input type="number" class="form-input item-input" data-index="${index}" data-field="discount_percent" min="0" max="100" step="0.01" value="${item.discount_percent || 0}"></td>
-                ${allowMultiTaxation ? `<td>${renderTaxSelect(item.tax_rate, `data-index="${index}" data-field="tax_rate"` )}</td>` : ''}
-                ${accountHasUsers ? `<td><input type="number" class="form-input item-input" data-index="${index}" data-field="no_of_users" min="1" step="1" value="${item.no_of_users || 1}"></td>` : ''}
-                <td>
-                    <select class="form-input item-input" data-index="${index}" data-field="frequency">
-                        ${frequencyOptions.map((value) => `<option value="${value}" ${item.frequency === value ? 'selected' : ''}>${value ? frequencyLabels[value] : 'Not recurring'}</option>`).join('')}
-                    </select>
-                </td>
-                <td style="display: ${anyItemHasRecurringFrequency ? '' : 'none'}">
-                    ${showDates
-                        ? `<input type="number" class="form-input item-input" data-index="${index}" data-field="duration" min="0" step="1" value="${item.duration ?? ''}">`
-                        : '<span style="color:#9ca3af;">-</span>'}
-                </td>
-                <td style="display: ${showDates && anyItemHasRecurringFrequency ? '' : 'none'}"><input type="date" class="form-input item-input" data-index="${index}" data-field="start_date" value="${item.start_date || ''}" ${showDates ? '' : 'disabled'}></td>
-                <td style="display: ${showDates && anyItemHasRecurringFrequency ? '' : 'none'}"><input type="date" class="form-input item-input" data-index="${index}" data-field="end_date" value="${item.end_date || ''}" ${showDates ? '' : 'disabled'}></td>
+                <td>${item.quantity}</td>
+                <td>${item.unit_price}</td>
+                <td>${item.discount_percent}%</td>
+                ${allowMultiTaxation ? `<td>${item.tax_rate}%</td>` : ''}
+                ${accountHasUsers ? `<td>${item.no_of_users || 1}</td>` : ''}
+                <td>${item.frequency ? (frequencyLabels[item.frequency] || item.frequency) : '-'}</td>
+                <td style="display: ${anyItemHasRecurringFrequency ? '' : 'none'}">${showDates ? (item.duration || '-') : '-'}</td>
+                <td style="display: ${anyItemHasRecurringFrequency ? '' : 'none'}">${showDates ? (item.start_date || '-') : '-'}</td>
+                <td style="display: ${anyItemHasRecurringFrequency ? '' : 'none'}">${showDates ? (item.end_date || '-') : '-'}</td>
                 <td><strong>${formatMoney(Math.max(0, taxableAmount + lineTax))}</strong></td>
-                <td>
+                <td style="white-space: nowrap;">
+                    <button type="button" class="icon-action-btn edit edit-item" data-index="${index}" title="Edit"><i class="fas fa-edit"></i></button>
                     <button type="button" class="icon-action-btn delete remove-item" data-index="${index}" title="Remove"><i class="fas fa-trash"></i></button>
                 </td>
             `;
             itemsBody.appendChild(row);
         });
 
-        // Show/hide Duration/Start/End column headers based on frequencies
-        const headerRow = itemsBody.closest('table').querySelector('thead tr');
-        const headers = headerRow.querySelectorAll('th');
         const durationHeader = document.getElementById('itemsDurationHeader');
-        if (durationHeader) {
-            durationHeader.style.display = anyItemHasRecurringFrequency ? '' : 'none';
-        }
-
-        headers.forEach((th) => {
-            if (th.textContent.trim() === 'Start' || th.textContent.trim() === 'End') {
-                th.style.display = anyItemHasRecurringFrequency ? '' : 'none';
-            }
-        });
+        const startHeader = document.getElementById('itemsStartHeader');
+        const endHeader = document.getElementById('itemsEndHeader');
+        if (durationHeader) durationHeader.style.display = anyItemHasRecurringFrequency ? '' : 'none';
+        if (startHeader) startHeader.style.display = anyItemHasRecurringFrequency ? '' : 'none';
+        if (endHeader) endHeader.style.display = anyItemHasRecurringFrequency ? '' : 'none';
 
         const roundedDiscountTotal = roundDiscountDown(discountTotal);
         const roundedTaxTotal = roundTaxUp(taxTotal);
@@ -409,6 +374,8 @@
     }
 
     function resetAddItemForm() {
+        editingItemIndex = null;
+        addItemBtn.textContent = 'Add Item';
         document.getElementById('item_itemid').value = '';
         document.getElementById('item_quantity').value = 1;
         document.getElementById('item_unit_price').value = '';
@@ -416,6 +383,7 @@
         document.getElementById('item_tax_rate').value = '0';
         document.getElementById('item_frequency').value = '';
         document.getElementById('item_duration').value = '';
+        document.getElementById('item_description').value = '';
         document.getElementById('item_users').value = 1;
         @if($account->have_users)
         toggleAddFormUsersField();
@@ -425,6 +393,26 @@
         toggleAddFormRecurringFields();
     }
 
+    let editingItemIndex = null;
+    let addItemPanelVisible = false;
+
+    function openAddItemPanel() {
+        addItemPanelVisible = true;
+        addItemPanel.style.display = 'block';
+        toggleAddItemBtn.textContent = 'Cancel';
+        toggleAddItemBtn.classList.remove('primary-button');
+        toggleAddItemBtn.classList.add('secondary-button');
+    }
+
+    function closeAddItemPanel() {
+        addItemPanelVisible = false;
+        addItemPanel.style.display = 'none';
+        toggleAddItemBtn.textContent = '+ Add Item';
+        toggleAddItemBtn.classList.remove('secondary-button');
+        toggleAddItemBtn.classList.add('primary-button');
+        resetAddItemForm();
+    }
+
     clientSelect.addEventListener('change', function () {
         clientCurrency = this.options[this.selectedIndex]?.dataset?.currency || 'INR';
         currencyCodeInput.value = clientCurrency;
@@ -432,12 +420,11 @@
     });
 
     toggleAddItemBtn.addEventListener('click', function () {
-        addItemPanel.style.display = addItemPanel.style.display === 'none' ? 'block' : 'none';
-    });
-
-    cancelAddItemBtn.addEventListener('click', function () {
-        addItemPanel.style.display = 'none';
-        resetAddItemForm();
+        if (addItemPanelVisible) {
+            closeAddItemPanel();
+        } else {
+            openAddItemPanel();
+        }
     });
 
     document.getElementById('item_itemid').addEventListener('change', function () {
@@ -513,6 +500,7 @@
         const item = {
             itemid: select.value,
             item_name: (option.text || '').split(' (')[0],
+            item_description: (document.getElementById('item_description').value || '').trim(),
             quantity: Math.max(1, Math.round(Number(document.getElementById('item_quantity').value) || 1)),
             unit_price: Number(document.getElementById('item_unit_price').value) || 0,
             discount_percent: Math.min(100, Math.max(0, Number(document.getElementById('item_discount').value) || 0)),
@@ -535,69 +523,112 @@
         };
 
         item.line_total = calculateLineTotal(item.quantity, item.unit_price, item.no_of_users, item.frequency, item.duration);
-        invoiceItems.push(item);
-        renderItems();
-        resetAddItemForm();
-        addItemPanel.style.display = 'none';
-    });
 
-    itemsBody.addEventListener('input', function (event) {
-        const input = event.target.closest('.item-input');
-        if (!input) {
-            return;
-        }
+        if (editingItemIndex !== null) {
+            const existingItem = invoiceItems[editingItemIndex];
+            item.invoice_itemid = existingItem.invoice_itemid || null;
+            invoiceItems[editingItemIndex] = item;
 
-        const index = Number(input.dataset.index);
-        const field = input.dataset.field;
-        if (field === 'quantity') {
-            const qty = Math.max(1, Math.round(Number(input.value) || 1));
-            invoiceItems[index][field] = qty;
-            input.value = qty;
-        } else {
-            invoiceItems[index][field] = input.type === 'number' ? Number(input.value) : input.value || null;
-        }
+            // If this is a persisted item, save it to DB immediately via AJAX
+            if (item.invoice_itemid) {
+                const invoiceId = '{{ $invoice->invoiceid }}';
+                const url = '{{ url("invoices") }}/' + invoiceId + '/items/' + item.invoice_itemid;
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+                    || document.querySelector('input[name="_token"]')?.value || '';
 
-        // Clear duration and dates when frequency is one-time or empty
-        if (field === 'frequency' && (!input.value || input.value === 'One-Time')) {
-            invoiceItems[index].duration = null;
-            invoiceItems[index].start_date = null;
-            invoiceItems[index].end_date = null;
-        }
+                addItemBtn.disabled = true;
+                addItemBtn.textContent = 'Saving...';
 
-        // Recalculate end date
-        if (field === 'start_date' && invoiceItems[index].frequency && invoiceItems[index].duration) {
-            invoiceItems[index].end_date = calculateEndDate(invoiceItems[index].start_date, invoiceItems[index].frequency, invoiceItems[index].duration);
-        }
+                fetch(url, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        item_name: item.item_name,
+                        item_description: item.item_description || '',
+                        quantity: item.quantity,
+                        unit_price: item.unit_price,
+                        tax_rate: item.tax_rate,
+                        discount_percent: item.discount_percent,
+                        duration: item.duration || null,
+                        frequency: item.frequency || null,
+                        no_of_users: item.no_of_users || null,
+                        start_date: item.start_date || null,
+                        end_date: item.end_date || null,
+                        line_total: item.line_total,
+                    }),
+                })
+                .then((res) => {
+                    if (!res.ok) {
+                        return res.text().then((text) => { throw new Error(`HTTP ${res.status}: ${text.substring(0, 300)}`); });
+                    }
+                    return res.json();
+                })
+                .then((data) => {
+                    addItemBtn.disabled = false;
+                    addItemBtn.textContent = 'Update Item';
+                    if (!data.success) {
+                        alert('Failed to save item: ' + (data.message || 'Unknown error'));
+                    } else {
+                        closeAddItemPanel();
+                    }
+                })
+                .catch((err) => {
+                    addItemBtn.disabled = false;
+                    addItemBtn.textContent = 'Update Item';
+                    alert('Error saving item: ' + err.message);
+                });
 
-        if ((field === 'frequency' || field === 'duration') && invoiceItems[index].start_date) {
-            invoiceItems[index].end_date = calculateEndDate(invoiceItems[index].start_date, invoiceItems[index].frequency, invoiceItems[index].duration);
-        }
-
-        // Check if any item now has recurring frequency
-        let anyItemHasRecurringFrequency = invoiceItems.some(item => item.frequency && item.frequency !== 'One-Time');
-        
-        // Show/hide Start/End column headers
-        const headerRow = itemsBody.closest('table').querySelector('thead tr');
-        const headers = headerRow.querySelectorAll('th');
-        headers.forEach((th) => {
-            if (th.textContent.trim() === 'Start' || th.textContent.trim() === 'End') {
-                th.style.display = anyItemHasRecurringFrequency ? '' : 'none';
+                renderItems();
+                return;
             }
-        });
+        } else {
+            invoiceItems.push(item);
+        }
 
         renderItems();
+        closeAddItemPanel();
     });
 
     itemsBody.addEventListener('click', function (event) {
-        const button = event.target.closest('.remove-item');
-        if (!button) {
+        const editBtn = event.target.closest('.edit-item');
+        if (editBtn) {
+            const index = Number(editBtn.dataset.index);
+            const item = invoiceItems[index];
+            if (!item) return;
+
+            editingItemIndex = index;
+            addItemBtn.textContent = 'Update Item';
+
+            const select = document.getElementById('item_itemid');
+            select.value = item.itemid || '';
+            document.getElementById('item_quantity').value = item.quantity;
+            document.getElementById('item_unit_price').value = item.unit_price;
+            document.getElementById('item_discount').value = item.discount_percent || 0;
+            document.getElementById('item_tax_rate').value = item.tax_rate || 0;
+            document.getElementById('item_description').value = item.item_description || '';
+            document.getElementById('item_frequency').value = item.frequency || '';
+            document.getElementById('item_duration').value = item.duration || '';
+            document.getElementById('item_start_date').value = item.start_date || '';
+            document.getElementById('item_end_date').value = item.end_date || '';
+            document.getElementById('item_users').value = item.no_of_users || 1;
+
+            @if($account->have_users)
+            toggleAddFormUsersField();
+            @endif
+            toggleAddFormRecurringFields();
+            openAddItemPanel();
+            addItemPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             return;
         }
-        invoiceItems.splice(Number(button.dataset.index), 1);
-        renderItems();
+
+        const removeBtn = event.target.closest('.remove-item');
+        if (removeBtn) {
+            invoiceItems.splice(Number(removeBtn.dataset.index), 1);
+            renderItems();
+        }
     });
 
-    document.getElementById('invoiceForm').addEventListener('submit', function (event) {
+    document.getElementById('{{ isset($inline) && $inline ? 'inline-edit-form-' . $documentId : 'invoiceForm' }}').addEventListener('submit', function (event) {
         if (!invoiceItems.length) {
             event.preventDefault();
             alert('Add at least one invoice item before updating the invoice.');

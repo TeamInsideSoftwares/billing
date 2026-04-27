@@ -8,8 +8,8 @@
             </span>
             <div style="text-align: right;">
                 <span class="invoice-meta-label">Invoice Number</span>
-                <strong class="invoice-meta-value">{{ $nextInvoiceNumber }}</strong>
-                <input type="hidden" name="invoice_number" value="{{ $nextInvoiceNumber }}">
+                <strong class="invoice-meta-value">{{ $invoice?->pi_number ?? $nextInvoiceNumber }}</strong>
+                <input type="hidden" name="invoice_number" value="{{ $invoice?->pi_number ?? $nextInvoiceNumber }}">
             </div>
         </div>
     </div>
@@ -21,13 +21,10 @@
         </div>
     </div>
 
-    <input type="hidden" name="invoiceid" id="invoiceid" value="">
+    <input type="hidden" name="invoiceid" id="invoiceid" value="{{ request('d', '') }}">
     <input type="hidden" name="orderid" id="orderid" value="{{ old('orderid', '') }}">
-    <input type="hidden" name="status" value="unpaid">
+    <input type="hidden" name="status" value="active">
     <input type="hidden" name="currency_code" id="currency_code" value="{{ old('currency_code', 'INR') }}">
-    <input type="hidden" name="subtotal" id="subtotal" value="{{ old('subtotal', '0') }}">
-    <input type="hidden" name="tax_total" id="tax_total" value="{{ old('tax_total', '0') }}">
-    <input type="hidden" name="grand_total" id="grand_total" value="{{ old('grand_total', '0') }}">
     <input type="hidden" name="items_data" id="items_data" value="{{ old('items_data', '') }}">
 
     <div id="ordersSection" class="workflow-panel" style="display: none;">

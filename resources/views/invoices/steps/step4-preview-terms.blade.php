@@ -7,6 +7,10 @@
     $invoiceClientState = $normalizeTaxState(optional($selectedInvoiceClient)->state ?? '');
     $invoiceAccountState = $normalizeTaxState(optional($account)->state ?? '');
     $sameStateGstForInvoice = $invoiceClientState !== '' && $invoiceAccountState !== '' && $invoiceClientState === $invoiceAccountState;
+    $isTaxInvoiceStep4 = (request('tax_invoice', 0) == 1) || !empty($invoice?->ti_number);
+    $initialHeaderNumber = $isTaxInvoiceStep4
+        ? ($invoice?->ti_number ?: ($nextTaxInvoiceNumber ?? $nextInvoiceNumber))
+        : ($invoice?->pi_number ?: $nextInvoiceNumber);
 @endphp
 <!-- Step 4: Preview & Terms (For Orders & Renewal, and Without Orders Step 3) -->
 <div id="step4" class="invoice-step">
@@ -28,7 +32,7 @@
             </div>
             <div style="text-align: right; flex-shrink: 0;">
                 <div id="piNumberBadge" style="display: inline-block; padding: 0.35rem 0.75rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #c7d2fe;">
-                    {{ $nextInvoiceNumber }}
+                    {{ $initialHeaderNumber }}
                 </div>
             </div>
         </div>
@@ -37,25 +41,24 @@
     <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
     <input type="hidden" name="invoice_for" value="{{ request('invoice_for') }}">
     <input type="hidden" name="orderid" value="{{ request('o', request('orderid', '')) === '0' ? '' : request('o', request('orderid', '')) }}">
-    <input type="hidden" name="invoiceid" id="invoiceid" value="">
-    <input type="hidden" name="renewed_item_ids" id="renewed_item_ids" value="">
-    <input type="hidden" name="invoice_number" id="invoice_number" value="{{ $nextInvoiceNumber }}">
-    <input type="hidden" name="issue_date" id="issue_date" value="{{ date('Y-m-d') }}">
-    <input type="hidden" name="due_date" id="due_date" value="{{ date('Y-m-d', strtotime('+7 days')) }}">
-    <input type="hidden" name="subtotal" id="subtotal" value="0">
-    <input type="hidden" name="tax_total" id="tax_total" value="0">
-    <input type="hidden" name="discount_total" id="discount_total" value="0">
-    <input type="hidden" name="grand_total" id="grand_total" value="0">
-    <input type="hidden" name="items_data" id="items_data" value="">
-    <input type="hidden" name="currency_code" id="currency_code" value="{{ $selectedClientCurrency }}">
-    <input type="hidden" name="notes" id="notes" value="">
+    <input type="hidden" name="invoiceid" id="step4_invoiceid" value="{{ request('d', '') }}">
+    <input type="hidden" name="renewed_item_ids" id="step4_renewed_item_ids" value="">
+    <input type="hidden" name="invoice_number" id="step4_invoice_number" value="{{ $invoice?->pi_number ?? $nextInvoiceNumber }}">
+    <input type="hidden" name="issue_date" id="step4_issue_date" value="{{ date('Y-m-d') }}">
+    <input type="hidden" name="due_date" id="step4_due_date" value="{{ date('Y-m-d', strtotime('+7 days')) }}">
+    <input type="hidden" name="items_data" id="step4_items_data" value="">
+    <input type="hidden" name="currency_code" id="step4_currency_code" value="{{ $selectedClientCurrency }}">
+    <input type="hidden" name="notes" id="step4_notes" value="">
 
     <div class="row g-3 align-items-start">
         <div class="col-12 col-md-3" style="min-width: 0;">
             <div class="panel-card" style="padding: 0.85rem; border: 1px solid #e5e7eb; background: #fff; position: relative; height: 100%; overflow: hidden;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e5e7eb;">
                     <h5 style="margin: 0; font-size: 0.9rem; color: #111827;">Terms & Conditions</h5>
-                    <button type="button" id="btnAddTC" class="text-link" style="font-size: 0.75rem; font-weight: 600;">+ Add</button>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button type="button" id="btnApplyTC" class="primary-button" style="padding: 0.28rem 0.65rem; font-size: 0.72rem; display: none;">Apply</button>
+                        <button type="button" id="btnAddTC" class="text-link" style="font-size: 0.75rem; font-weight: 600;">+ Add</button>
+                    </div>
                 </div>
                 <div class="modal fade" id="addTermModal" tabindex="-1">
                     <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
@@ -97,12 +100,12 @@
         </div>
 
         <div class="col-12 col-md-9" style="min-width: 0;">
-            <!-- PI Preview -->
+            <!-- Invoice Preview -->
             <div class="panel-card" style="padding: 0; border: 1px solid #e5e7eb; overflow: hidden; background: #fff; margin-bottom: 0; min-width: 0;">
                 <div style="background: #fafafa; padding: 0.7rem 0.9rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
                     <h5 style="margin: 0; font-size: 0.95rem; color: #111827;">
                         <i class="fas fa-file-pdf" style="color: #374151; margin-right: 0.5rem;"></i>
-                        PI Preview
+                        {{ $isTaxInvoiceStep4 ? 'Tax Invoice Preview' : 'Invoice Preview' }}
                     </h5>
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <span style="font-size: 0.75rem; color: #6b7280; font-weight: 500;">
@@ -126,9 +129,18 @@
         </div>
     </div>
 
-    <div style="margin-top: 0.9rem; display: flex; justify-content: flex-end;">
-        <button type="submit" class="primary-button create-submit-btn" id="finalSubmitBtn" disabled style="padding: 0.75rem 2.4rem; font-size: 0.95rem;">
-            <i class="fas fa-file-invoice" style="margin-right: 0.5rem;"></i>Create Invoice
+    <div style="margin-top: 0.9rem; display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
+        <a id="btnDownloadPI" href="#" target="_blank" class="secondary-button" style="padding: 0.75rem 1.5rem; font-size: 0.95rem; display: none; align-items: center; gap: 0.4rem; text-decoration: none;">
+            <i class="fas fa-file-download"></i> Download PI
+        </a>
+        <button type="button" id="btnDownloadTaxInvoice" class="secondary-button" style="padding: 0.75rem 1.5rem; font-size: 0.95rem; display: none; align-items: center; gap: 0.4rem;">
+            <i class="fas fa-file-invoice-dollar"></i> Download Tax Invoice
+        </button>
+        <button type="button" class="text-button" id="digitalSignBtn" disabled style="padding: 0.75rem 1.5rem; font-size: 0.95rem; opacity: 0.5;">
+            <i class="fas fa-signature" style="margin-right: 0.5rem;"></i>Download Signed
+        </button>
+        <button type="button" class="secondary-button" id="btnExit" style="padding: 0.75rem 1.5rem; font-size: 0.95rem;">
+            <i class="fas fa-times" style="margin-right: 0.5rem;"></i>Exit
         </button>
     </div>
 </div>
@@ -139,12 +151,19 @@
     const invoiceFor = "{{ request('invoice_for') }}";
     const orderId = "{{ request('o', request('orderid', '')) }}";
     const draftId = "{{ request('d', '') }}";
+    const isTaxInvoice = @json($isTaxInvoiceStep4);
     const hasOrderId = orderId && orderId !== '0';
     const btnBackToPrev = document.getElementById('btnBackToPrev');
     const finalSubmitBtn = document.getElementById('finalSubmitBtn');
+    const createTaxInvoiceBtn = document.getElementById('createTaxInvoiceBtn');
+    const digitalSignBtn = document.getElementById('digitalSignBtn');
+    const btnDownloadPI = document.getElementById('btnDownloadPI');
+    const btnDownloadTaxPI = document.getElementById('btnDownloadTaxPI');
+    const btnDownloadTaxInvoice = document.getElementById('btnDownloadTaxInvoice');
     const previewContent = document.getElementById('previewContent');
     const termsList = document.getElementById('termsList');
     const btnAddTC = document.getElementById('btnAddTC');
+    const btnApplyTC = document.getElementById('btnApplyTC');
     const addTermModal = document.getElementById('addTermModal');
     const btnCloseTermModal = document.getElementById('btnCloseTermModal');
     const btnCancelTermModal = document.getElementById('btnCancelTermModal');
@@ -153,10 +172,10 @@
     const addTermError = document.getElementById('addTermError');
     const addTermBootstrapModal = addTermModal ? new bootstrap.Modal(addTermModal) : null;
     const piNumberBadge = document.getElementById('piNumberBadge');
-    const itemsDataInput = document.getElementById('items_data');
-    const invoiceNumberInput = document.getElementById('invoice_number');
-    const invoiceidInput = document.getElementById('invoiceid');
-    const currencyCodeInput = document.getElementById('currency_code');
+    const itemsDataInput = document.getElementById('step4_items_data');
+    const invoiceNumberInput = document.getElementById('step4_invoice_number');
+    const invoiceidInput = document.getElementById('step4_invoiceid');
+    const currencyCodeInput = document.getElementById('step4_currency_code');
     const sameStateGstForInvoice = @json($sameStateGstForInvoice);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -173,7 +192,9 @@
 
         $accountDataArr = [
             'name' => optional($account)->name,
-            'logo' => ($account && $account->logo_path) ? asset($account->logo_path) : null,
+            'logo' => ($account && $account->logo_path)
+                ? (str_starts_with($account->logo_path, 'http') ? $account->logo_path : asset($account->logo_path))
+                : null,
             'billing' => [
                 'name' => optional($accountBillingDetail)->billing_name ?? optional($account)->name,
                 'address' => optional($accountBillingDetail)->address ?? '',
@@ -211,9 +232,33 @@
 
     let invoiceItems = [];
     let draftInvoiceTitle = '';
-    let draftInvoiceNumber = invoiceNumberInput.value || '{{ $nextInvoiceNumber }}';
+    let draftInvoiceNumber = invoiceNumberInput.value || '{{ $invoice?->pi_number ?? $nextInvoiceNumber }}';
+    let draftPiNumber = '';
+    let draftTiNumber = '';
+    let draftIssueDate = '';
+    let draftDueDate = '';
+    let draftNotes = '';
     let draftPoNumber = '';
     let draftPoDate = '';
+    let appliedTerms = [];
+    const fallbackPiNumber = "{{ $nextInvoiceNumber }}";
+    const fallbackTiNumber = "{{ $nextTaxInvoiceNumber ?? $nextInvoiceNumber }}";
+
+    function getHeaderDocumentNumber() {
+        if (draftTiNumber) {
+            return draftTiNumber;
+        }
+        if (isTaxInvoice) {
+            return draftTiNumber || fallbackTiNumber;
+        }
+        return draftPiNumber || draftInvoiceNumber || invoiceNumberInput.value || fallbackPiNumber;
+    }
+
+    function updateHeaderNumberBadge() {
+        if (piNumberBadge) {
+            piNumberBadge.textContent = getHeaderDocumentNumber();
+        }
+    }
 
     function getCurrencyCode() {
         return currencyCodeInput.value || '{{ $selectedClientCurrency }}';
@@ -265,10 +310,15 @@
                 
                 draftInvoiceTitle = data.draft.invoice_title || '';
                 draftInvoiceNumber = data.draft.invoice_number || draftInvoiceNumber;
+                draftPiNumber = data.draft.pi_number || '';
+                draftTiNumber = data.draft.ti_number || '';
+                draftIssueDate = data.draft.issue_date || '';
+                draftDueDate = data.draft.due_date || '';
+                draftNotes = data.draft.notes || '';
                 
-                if (data.draft.issue_date) document.getElementById('issue_date').value = data.draft.issue_date;
-                if (data.draft.due_date) document.getElementById('due_date').value = data.draft.due_date;
-                if (data.draft.notes) document.getElementById('notes').value = data.draft.notes;
+                if (data.draft.issue_date) document.getElementById('step4_issue_date').value = data.draft.issue_date;
+                if (data.draft.due_date) document.getElementById('step4_due_date').value = data.draft.due_date;
+                if (data.draft.notes) document.getElementById('step4_notes').value = data.draft.notes;
                 if (data.draft.currency_code) {
                     currencyCodeInput.value = data.draft.currency_code;
                 }
@@ -276,22 +326,34 @@
                 draftPoNumber = data.draft.po_number || '';
                 draftPoDate = data.draft.po_date || '';
 
+                if (data.draft.terms) {
+                    appliedTerms = Array.isArray(data.draft.terms) ? data.draft.terms : [];
+                    const checkboxes = document.querySelectorAll('.term-checkbox');
+                    checkboxes.forEach(cb => {
+                        const val = cb.value.trim();
+                        cb.checked = appliedTerms.some(t => String(t).trim() === val);
+                    });
+                }
+
                 invoiceNumberInput.value = draftInvoiceNumber;
                 invoiceidInput.value = data.draft.invoiceid || '';
+                if (btnApplyTC && data.draft.invoiceid) btnApplyTC.style.display = 'inline-block';
                 
-                if (piNumberBadge) {
-                    piNumberBadge.textContent = draftInvoiceNumber;
-                }
+                updateHeaderNumberBadge();
+                
+                updateDownloadButtons(data.draft.invoiceid, data.draft.invoice_number);
                 
                 updateTotals();
                 updateInvoicePreview();
             } else {
                 console.log('No draft found');
+                updateHeaderNumberBadge();
                 updateInvoicePreview();
             }
         })
         .catch(error => {
             console.error('Failed to load draft items:', error);
+            updateHeaderNumberBadge();
             updateInvoicePreview();
         });
     }
@@ -302,6 +364,30 @@
 
     function roundDiscountDown(value) {
         return Math.floor(Math.max(0, Number(value) || 0));
+    }
+
+    function updateDownloadButtons(invoiceid, invoiceNumber) {
+        if (!invoiceid) return;
+        const base = "{{ url('invoices') }}/" + invoiceid + "/pdf";
+        if (btnDownloadPI) {
+            btnDownloadPI.href = base + '?type=pi';
+            btnDownloadPI.style.display = 'inline-flex';
+        }
+        if (btnDownloadTaxInvoice) {
+            btnDownloadTaxInvoice.style.display = 'inline-flex';
+            btnDownloadTaxInvoice.onclick = function() {
+                if (draftTiNumber) {
+                    window.open(base + '?type=tax_invoice', '_blank');
+                } else {
+                    createTaxInvoice();
+                }
+            };
+        }
+        if (digitalSignBtn) {
+            digitalSignBtn.disabled = false;
+            digitalSignBtn.style.opacity = '1';
+            digitalSignBtn.onclick = () => window.open(base + '?type=pi&signed=1', '_blank');
+        }
     }
 
     function updateTotals() {
@@ -316,23 +402,17 @@
 
         discountTotal = roundDiscountDown(discountTotal);
         taxTotal = roundTaxUp(taxTotal);
-
-        document.getElementById('subtotal').value = subtotal.toFixed(0);
-        document.getElementById('discount_total').value = discountTotal.toFixed(0);
-        document.getElementById('tax_total').value = taxTotal.toFixed(0);
-        document.getElementById('grand_total').value = (subtotal - discountTotal + taxTotal).toFixed(0);
     }
 
     function updateInvoicePreview() {
         const invoiceNumber = draftInvoiceNumber || invoiceNumberInput.value || "{{ $nextInvoiceNumber }}";
-        const issueDate = document.getElementById('issue_date')?.value || '-';
-        const dueDate = document.getElementById('due_date')?.value || '-';
+        const issueDate = draftIssueDate || document.getElementById('step4_issue_date')?.value || '-';
+        const dueDate = draftDueDate || document.getElementById('step4_due_date')?.value || '-';
         const invoiceTitle = draftInvoiceTitle || document.getElementById('invoice_title')?.value || 'Invoice';
-        const notes = document.getElementById('notes')?.value || '';
+        const notes = draftNotes || document.getElementById('step4_notes')?.value || '';
 
-        // Get terms
-        const terms = Array.from(document.querySelectorAll('.term-checkbox'))
-            .filter(cb => cb.checked)
+        // Get terms — live checkbox state
+        const terms = Array.from(document.querySelectorAll('.term-checkbox:checked'))
             .map(cb => cb.value.trim())
             .filter(Boolean);
 
@@ -439,15 +519,15 @@
         const taxRowsHtml = sameStateGstForInvoice
             ? `
                     <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #e5e7eb;">
-                        <span>Tax (CGST):</span><strong>${formatMoney(cgstAmount)}</strong>
+                        <span>Tax (CGST):</span><strong>${(cgstAmount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #e5e7eb;">
-                        <span>Tax (SGST):</span><strong>${formatMoney(sgstAmount)}</strong>
+                        <span>Tax (SGST):</span><strong>${(sgstAmount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong>
                     </div>
               `
             : `
                     <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #e5e7eb;">
-                        <span>Tax (IGST):</span><strong>${formatMoney(taxTotal)}</strong>
+                        <span>Tax (IGST):</span><strong>${(taxTotal).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong>
                     </div>
               `;
 
@@ -455,35 +535,31 @@
         previewContent.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid #111827; gap: 1rem;">
                 <div style="flex: 1 1 auto; min-width: 0; max-width: 56%;">
-                    <div style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 0.35rem;">From</div>
-                    <p style="margin: 0.12rem 0; font-size: 0.92rem; font-weight: 700; color: #111827;">${accountData.billing.name || accountData.name || 'Company Name'}</p>
+                    <p style="margin: 0 0 0.12rem 0; font-size: 0.92rem; font-weight: 700; color: #111827;">${accountData.billing.name || accountData.name || 'Company Name'}</p>
                     ${companyAddressLine ? `<p style="margin: 0.2rem 0; font-size: 0.8rem; color: #4b5563; line-height: 1.45;">${companyAddressLine}</p>` : ''}
                     ${accountData.billing.gstin ? `<p style="margin: 0.15rem 0; font-size: 0.78rem; color: #374151;"><strong>GSTIN:</strong> ${accountData.billing.gstin}</p>` : ''}
                 </div>
                 <div style="text-align: right; min-width: 240px; margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 0.45rem;">
-                    <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 0.25rem;">Invoice</div>
+                    <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 0.25rem;">${draftTiNumber ? 'Tax Invoice' : 'Proforma Invoice'}</div>
                     ${accountData.logo ? `<img src="${accountData.logo}" style="max-width: 140px; max-height: 56px; object-fit: contain;">` : ''}
-                    <div style="display: inline-block; text-align: left; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.65rem 0.8rem; background: #fafafa; min-width: 100%; box-sizing: border-box;">
-                        <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>Performa No:</strong> ${invoiceNumber}</p>
+                    <div style="text-align: right;">
+                        <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>${draftTiNumber ? 'Tax No:' : 'Proforma No:'}</strong> ${draftTiNumber || draftPiNumber || invoiceNumber}</p>
                         <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>Issue Date:</strong> ${formatDate(issueDate)}</p>
                         <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>Due Date:</strong> ${formatDate(dueDate)}</p>
                         ${draftPoNumber ? `<p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>PO Number:</strong> ${draftPoNumber}</p>` : ''}
                         ${draftPoDate ? `<p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>PO Date:</strong> ${formatDate(draftPoDate)}</p>` : ''}
                     </div>
-                    ${invoiceTitle ? `<div style="text-align: right; font-size: 0.85rem; font-weight: 600; color: #111827; margin-top: 0.5rem;">${invoiceTitle}</div>` : ''}
-                    ${notes ? `<div style="text-align: right; font-size: 0.78rem; color: #6b7280; margin-top: 0.35rem; max-width: 300px; white-space: pre-wrap;">${notes}</div>` : ''}
                 </div>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem;">
-                <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.8rem 0.95rem; background: #fcfcfc;">
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: flex-start;">
+                <div style="flex: 1; min-width: 0; padding: 0.8rem 0.95rem 0.8rem 0;">
                     <div style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 0.35rem;">Bill To</div>
                     <p style="margin: 0.12rem 0; font-size: 0.92rem; font-weight: 700; color: #111827;">${clientData.billing.name || clientData.name || 'Client'}</p>
                     ${clientAddressLine ? `<p style="margin: 0.2rem 0; font-size: 0.8rem; color: #4b5563; line-height: 1.45;">${clientAddressLine}</p>` : ''}
-                    ${clientData.email ? `<p style="margin: 0.15rem 0; font-size: 0.78rem; color: #374151;"><strong>Email:</strong> ${clientData.email}</p>` : ''}
-                    ${clientData.phone ? `<p style="margin: 0.15rem 0; font-size: 0.78rem; color: #374151;"><strong>Phone:</strong> ${clientData.phone}</p>` : ''}
                     ${clientData.billing.gstin ? `<p style="margin: 0.15rem 0; font-size: 0.78rem; color: #374151;"><strong>GSTIN:</strong> ${clientData.billing.gstin}</p>` : ''}
                 </div>
+                ${invoiceTitle ? `<div style="flex-shrink: 0; max-width: 45%; text-align: right; padding-top: 0.2rem;"><span style="font-size: 0.95rem; font-weight: 700; color: #111827;">${invoiceTitle}</span></div>` : ''}
             </div>
 
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
@@ -498,24 +574,26 @@
                         <th style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #d1d5db; font-size: 0.75rem;">Start</th>
                         <th style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #d1d5db; font-size: 0.75rem;">End</th>
                         ` : ''}
-                        <th style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #d1d5db; font-size: 0.75rem;">Rate</th>
-                        <th style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #d1d5db; font-size: 0.75rem;">Amount</th>
+                        <th style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #d1d5db; font-size: 0.75rem;">Rate ({{ $selectedClientCurrency }})</th>
+                        <th style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #d1d5db; font-size: 0.75rem;">Amount ({{ $selectedClientCurrency }})</th>
                     </tr>
                 </thead>
                 <tbody>${itemsHtml}</tbody>
             </table>
 
             <div style="display: flex; justify-content: flex-end;">
-                <div style="min-width: 260px; border: 1px solid #d1d5db; border-radius: 8px; padding: 0.4rem 0.5rem; background: #fafafa;">
+                <div style="min-width: 260px; padding: 0.4rem 0.5rem;">
                     <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #e5e7eb;">
-                        <span>Subtotal:</span><strong>${formatMoney(subtotal - discountTotal)}</strong>
+                        <span>Subtotal:</span><strong>${(subtotal - discountTotal).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong>
                     </div>
                     ${taxRowsHtml}
                     <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; font-size: 0.95rem; font-weight: 700; color: #111827;">
-                        <span>Grand Total:</span><span>${formatMoney(grandTotal)}</span>
+                        <span>Grand Total:</span><span>${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                     </div>
                 </div>
             </div>
+
+            ${notes ? `<div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; font-size: 0.78rem; color: #6b7280; white-space: pre-wrap;">${notes}</div>` : ''}
 
             ${terms.length ? `<div style="margin-top: 1rem; padding: 0.75rem 0; border-top: 1px solid #e5e7eb;"><h4 style="margin: 0 0 0.35rem 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: #374151;">Terms & Conditions</h4><ul style="margin: 0; padding-left: 1.25rem; font-size: 0.78rem; line-height: 1.5; color: #4b5563; list-style: disc;">${terms.map(term => `<li style="margin-bottom: 0.25rem;">${term.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</li>`).join('')}</ul></div>` : ''}
 
@@ -533,12 +611,65 @@
     // Terms checkboxes
     document.getElementById('termsList').addEventListener('change', (e) => {
         if (e.target.classList.contains('term-checkbox')) {
-            updateInvoicePreview();
             const allCheckboxes = document.querySelectorAll('.term-checkbox');
             const anyChecked = Array.from(allCheckboxes).some(cb => cb.checked);
-            finalSubmitBtn.disabled = !anyChecked;
+            if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
+            if (createTaxInvoiceBtn) createTaxInvoiceBtn.disabled = !invoiceidInput.value;
+            if (btnApplyTC) btnApplyTC.style.display = invoiceidInput.value ? 'inline-block' : 'none';
+            
+            updateInvoicePreview();
         }
     });
+
+    if (btnApplyTC) {
+        btnApplyTC.addEventListener('click', function () {
+            const invoiceid = invoiceidInput.value;
+            if (!invoiceid) {
+                alert('Save the invoice first before applying terms.');
+                return;
+            }
+            const selectedTerms = Array.from(document.querySelectorAll('.term-checkbox'))
+                .filter(cb => cb.checked)
+                .map(cb => cb.value.trim())
+                .filter(Boolean);
+
+            btnApplyTC.disabled = true;
+            btnApplyTC.textContent = 'Applying...';
+
+            fetch(`{{ url('invoices') }}/${invoiceid}/terms`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ terms: selectedTerms }),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.ok) {
+                    appliedTerms = selectedTerms;
+                    updateInvoicePreview();
+                    btnApplyTC.textContent = 'Applied ✓';
+                    btnApplyTC.style.background = '#d1fae5';
+                    btnApplyTC.style.color = '#065f46';
+                    setTimeout(() => {
+                        btnApplyTC.textContent = 'Apply';
+                        btnApplyTC.style.background = '';
+                        btnApplyTC.style.color = '';
+                        btnApplyTC.disabled = false;
+                    }, 2000);
+                } else {
+                    throw new Error('Failed');
+                }
+            })
+            .catch(() => {
+                btnApplyTC.textContent = 'Apply';
+                btnApplyTC.disabled = false;
+                alert('Failed to apply terms. Please try again.');
+            });
+        });
+    }
 
     if (btnAddTC && addTermModal) {
         btnAddTC.addEventListener('click', openTermModal);
@@ -582,20 +713,19 @@
 
                     const term = data.term;
                     const row = document.createElement('div');
-                    row.style.marginBottom = '0.4rem';
-                    row.style.padding = '0.65rem';
-                    row.style.borderRadius = '8px';
-                    row.style.border = '1px solid #e5e7eb';
-                    row.style.background = '#f9fafb';
+                    row.style.marginBottom = '0.55rem';
                     row.className = 'term-item-row';
                     row.innerHTML = `
-                        <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer;">
-                            <input type="checkbox" class="term-checkbox" data-tc-id="${term.id}" data-content="${term.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')}" value="${term.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')}" style="margin-top: 0.15rem; width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
-                            <div style="flex: 1;"><p style="margin: 0; font-size: 0.78rem; color: #4b5563; line-height: 1.4;">${term.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p></div>
+                        <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.45rem; cursor: pointer; margin-bottom: 0.2rem; width: 100%; max-width: 100%; box-sizing: border-box;">
+                            <input type="checkbox" class="term-checkbox" checked data-tc-id="${term.id}" data-content="${term.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')}" value="${term.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')}" style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
+                            <div style="min-width: 0; width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">
+                                <p style="margin: 0; font-size: 0.78rem; color: #4b5563; line-height: 1.45; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">${term.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+                            </div>
                         </label>
                     `;
 
                     termsList.prepend(row);
+                    if (finalSubmitBtn) finalSubmitBtn.disabled = false;
                     closeTermModal();
                     updateInvoicePreview();
                 })
@@ -615,6 +745,9 @@
             const orderToken = encodeURIComponent(orderId);
             prevUrl += "&o=" + orderToken;
         }
+        if (isTaxInvoice) {
+            prevUrl += "&tax_invoice=1";
+        }
         if (draftId) {
             prevUrl += "&d=" + encodeURIComponent(draftId);
         }
@@ -630,13 +763,72 @@
             const orderToken = encodeURIComponent(orderId);
             editUrl += "&o=" + orderToken;
         }
+        if (isTaxInvoice) {
+            editUrl += "&tax_invoice=1";
+        }
         if (draftId) {
             editUrl += "&d=" + encodeURIComponent(draftId);
         }
         window.location.href = editUrl;
     });
 
+    // Exit button
+    document.getElementById('btnExit')?.addEventListener('click', function() {
+        window.location.href = "{{ route('invoices.index') }}?c=" + encodeURIComponent(clientId);
+    });
+
+    // Digital Signed button
+    digitalSignBtn?.addEventListener('click', function() {
+        const invoiceid = invoiceidInput.value;
+        if (!invoiceid) return;
+        const base = "{{ url('invoices') }}/" + invoiceid + "/pdf";
+        window.open(base + '?type=pi&signed=1', '_blank');
+    });
+
+    // Create Tax Invoice function
+    function createTaxInvoice() {
+        if (!invoiceidInput.value) {
+            alert('Please create PI first.');
+            return;
+        }
+
+        if (!confirm('This will generate a Tax Invoice number and mark this invoice as a Tax Invoice. Continue?')) {
+            return;
+        }
+
+        fetch("{{ route('invoices.create-tax-invoice') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({
+                invoiceid: invoiceidInput.value
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                draftTiNumber = data.ti_number;
+                updateHeaderNumberBadge();
+                updateInvoicePreview();
+                const base = "{{ url('invoices') }}/" + invoiceidInput.value + "/pdf";
+                window.open(base + '?type=tax_invoice', '_blank');
+            } else {
+                alert(data.message || 'Failed to create tax invoice.');
+            }
+        })
+        .catch(error => {
+            console.error('Failed to create tax invoice:', error);
+            alert('Failed to create tax invoice. Please try again.');
+        });
+    }
+
     // Initialize
+    if (draftId) {
+        updateDownloadButtons(draftId, null);
+        if (btnApplyTC) btnApplyTC.style.display = 'inline-block';
+    }
     loadItems();
 })();
 </script>

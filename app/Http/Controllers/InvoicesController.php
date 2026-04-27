@@ -116,25 +116,38 @@ class InvoicesController extends Controller
         if (!empty($draftId) && !empty($currentUserId)) {
             $existingDraft = Invoice::query()
                 ->where('invoiceid', $draftId)
-                ->where('status', 'draft')
                 ->where('created_by', $currentUserId)
                 ->first();
         }
 
-        if (!empty($clientId) && !empty($currentUserId)) {
-            $existingDraft = $existingDraft ?: Invoice::query()
+        if (empty($existingDraft) && empty($draftId) && !empty($clientId) && !empty($currentUserId)) {
+            $existingDraft = Invoice::query()
                 ->where('clientid', $clientId)
                 ->where('status', 'draft')
                 ->where('created_by', $currentUserId)
-                ->when($invoiceFor === 'orders', fn ($q) => $q->whereNotNull('orderid'))
+                ->when(!empty($invoiceFor), function ($q) use ($invoiceFor) {
+                    $q->where(function ($inner) use ($invoiceFor) {
+                        $inner->where('invoice_for', $invoiceFor)
+                            ->orWhereNull('invoice_for');
+                    });
+                })
                 ->when($invoiceFor === 'orders' && !empty($orderId), fn ($q) => $q->where('orderid', $orderId))
-                ->when(($invoiceFor ?? '') !== 'orders', fn ($q) => $q->whereNull('orderid'))
+                ->when($invoiceFor === 'orders' && empty($orderId), fn ($q) => $q->whereNull('orderid'))
+                ->when($invoiceFor !== 'orders', fn ($q) => $q->whereNull('orderid'))
                 ->where('updated_at', '>', now()->subHours(24))
                 ->latest('updated_at')
                 ->first();
         }
 
-        $nextInvoiceNumber = $existingDraft?->invoice_number ?: $this->generateInvoiceNumber();
+        $nextInvoiceNumber = $existingDraft?->pi_number ?: $this->generateInvoiceNumber();
+        $nextTaxInvoiceNumber = $existingDraft?->ti_number ?: $this->generateTaxInvoiceNumber();
+
+        // Get selected client currency
+        $selectedClientCurrency = 'INR';
+        if (!empty($clientId)) {
+            $client = Client::find($clientId);
+            $selectedClientCurrency = $client?->currency ?? 'INR';
+        }
 
         $termAccountIds = array_values(array_filter(array_unique([$accountid, $legacyAccountId])));
 
@@ -156,11 +169,15 @@ class InvoicesController extends Controller
             'services' => Service::with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'nextInvoiceNumber' => $nextInvoiceNumber,
+            'nextTaxInvoiceNumber' => $nextTaxInvoiceNumber,
             'account' => $account,
             'accountBillingDetail' => $accountBillingDetail,
             'billingTerms' => $billingTerms,
             'orderId' => $orderId,
             'clientId' => $clientId,
+            'invoice' => $existingDraft,
+            'isTaxInvoice' => request('tax_invoice', 0) == 1,
+            'selectedClientCurrency' => $selectedClientCurrency,
         ]);
     }
 
@@ -175,9 +192,10 @@ class InvoicesController extends Controller
         $orders = \App\Models\Order::where('clientid', $clientId)
             ->where('is_verified', 'yes') 
             ->whereDoesntHave('invoices')
-            ->with(['client', 'items', 'salesPerson'])
+            ->with(['client:clientid,currency', 'salesPerson'])
+            ->withCount('items')
             ->orderBy('order_date', 'desc')
-            ->get(['orderid', 'order_number', 'order_title', 'order_date', 'delivery_date', 'status', 'clientid', 'is_verified', 'sales_person_id'])
+            ->get(['orderid', 'order_number', 'order_title', 'order_date', 'delivery_date', 'status', 'clientid', 'is_verified', 'sales_person_id', 'grand_total'])
             ->map(function ($order) {
                 $currency = $order->client->currency ?? 'INR';
 
@@ -192,7 +210,7 @@ class InvoicesController extends Controller
                     'status' => $order->status ?? 'draft',
                     'is_verified' => $order->is_verified ?? 'no',
                     'sales_person' => $order->salesPerson->name ?? '-',
-                    'item_count' => $order->items->count(),
+                    'item_count' => (int) ($order->items_count ?? 0),
                 ];
             });
 
@@ -287,7 +305,11 @@ class InvoicesController extends Controller
 
     public function getOrderItems(Request $request, $orderid)
     {
-        $order = \App\Models\Order::with(['items.item.costings', 'client', 'salesPerson'])->findOrFail($orderid);
+        $order = \App\Models\Order::with([
+            'items.item:itemid,user_wise',
+            'client:clientid,currency',
+            'salesPerson',
+        ])->findOrFail($orderid);
 
         $items = $order->items->map(function ($item) {
             $taxRate = (float) ($item->tax_rate ?? 0);
@@ -461,49 +483,64 @@ class InvoicesController extends Controller
             ],
         ]);
     }
+    public function applyTerms(Request $request, string $invoice)
+    {
+        $invoice = $this->resolveInvoiceDocument($invoice);
+
+        $request->validate([
+            'terms' => 'nullable|array',
+            'terms.*' => 'string',
+        ]);
+
+        $terms = array_values(array_filter($request->input('terms', []), fn($t) => trim($t) !== ''));
+        $invoice->update(['terms' => $terms ?: null]);
+
+        return response()->json(['ok' => true, 'count' => count($terms)]);
+    }
+
 
     protected function generateInvoiceNumber(): string
     {
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
 
-        // First, check for SerialConfiguration (from Financial Year tab settings)
+        // Use dedicated proforma configuration for PI generation.
         $serialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)
-            ->whereIn('document_type', ['invoice', 'tax_invoice', 'proforma_invoice'])
+            ->where('document_type', 'proforma_invoice')
             ->first();
 
         if ($serialConfig) {
-            // Use the SerialConfiguration from Financial Year tab
             $candidate = $serialConfig->generateNextSerialNumber();
-            return $this->ensureUniqueDocumentNumber($candidate !== '' ? $candidate : 'INV-0001', $accountid);
+            return $this->ensureUniqueDocumentNumber($candidate !== '' ? $candidate : 'INV-0001', $accountid, 'pi_number');
         }
 
-        // Fallback: Check AccountBillingDetail (legacy configuration)
-        $billingDetail = AccountBillingDetail::where('accountid', $accountid)->first();
-
-        if (!$billingDetail) {
-            // Fallback: simple auto-increment if no configuration exists
-            $count = Invoice::where('accountid', $accountid)->count();
-            $candidate = 'INV-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
-            return $this->ensureUniqueDocumentNumber($candidate, $accountid);
-        }
-
-        // Use the billing detail's serial number generation (legacy)
-        $candidate = $billingDetail->generateNextSerialNumber();
-
-        // Ensure we don't generate an empty string
-        return $this->ensureUniqueDocumentNumber($candidate !== '' ? $candidate : 'INV-0001', $accountid);
+        // Fallback: simple auto-increment if no serial configuration exists.
+        $count = Invoice::where('accountid', $accountid)->count();
+        $candidate = 'INV-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+        return $this->ensureUniqueDocumentNumber($candidate, $accountid, 'pi_number');
     }
 
     protected function generateTaxInvoiceNumber(): string
     {
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
-        $count = Invoice::where('accountid', $accountid)->count();
+
+        // Check for SerialConfiguration
+        $serialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)
+            ->where('document_type', 'tax_invoice')
+            ->first();
+
+        if ($serialConfig) {
+            $candidate = $serialConfig->generateNextSerialNumber();
+            return $this->ensureUniqueDocumentNumber($candidate !== '' ? $candidate : 'TAX-0001', $accountid, 'ti_number');
+        }
+
+        // Fallback
+        $count = Invoice::where('accountid', $accountid)->whereNotNull('ti_number')->where('ti_number', '!=', '')->count();
         $candidate = 'TAX-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
 
-        return $this->ensureUniqueDocumentNumber($candidate, $accountid);
+        return $this->ensureUniqueDocumentNumber($candidate, $accountid, 'ti_number');
     }
 
-    protected function ensureUniqueDocumentNumber(string $candidate, string $accountid): string
+    protected function ensureUniqueDocumentNumber(string $candidate, string $accountid, ?string $numberColumn = null): string
     {
         $candidate = trim($candidate);
 
@@ -516,24 +553,51 @@ class InvoicesController extends Controller
 
         while (
             Invoice::where('accountid', $accountid)
-                ->where(function ($query) use ($number) {
-                    $query->where('pi_number', $number)
-                        ->orWhere('ti_number', $number);
+                ->when($numberColumn, fn ($query) => $query->where($numberColumn, $number), function ($query) use ($number) {
+                    $query->where(function ($inner) use ($number) {
+                        $inner->where('pi_number', $number)
+                            ->orWhere('ti_number', $number);
+                    });
                 })
                 ->exists()
         ) {
-            if (preg_match('/^(.*?)(\d+)$/', $candidate, $matches)) {
-                $prefix = $matches[1];
-                $digits = $matches[2];
-                $number = $prefix . str_pad((string) ((int) $digits + $sequence - 1), strlen($digits), '0', STR_PAD_LEFT);
-            } else {
-                $number = $candidate . '-' . $sequence;
-            }
-
+            $number = $this->incrementConfiguredNumberPart($candidate, $sequence - 1);
             $sequence++;
         }
 
         return $number;
+    }
+
+    protected function incrementConfiguredNumberPart(string $candidate, int $incrementBy): string
+    {
+        if ($incrementBy <= 0) {
+            return $candidate;
+        }
+
+        if (!preg_match_all('/\d+/', $candidate, $matches, PREG_OFFSET_CAPTURE) || empty($matches[0])) {
+            return $candidate . '-' . ($incrementBy + 1);
+        }
+
+        $groups = $matches[0];
+        $targetIndex = count($groups) - 1;
+
+        // If the trailing numeric group looks like a year and there is a prior numeric group,
+        // increment the prior group so we don't mutate the year suffix.
+        if (count($groups) > 1) {
+            $lastDigits = (string) $groups[$targetIndex][0];
+            $lastValue = (int) $lastDigits;
+            $looksLikeYear = strlen($lastDigits) === 4 && $lastValue >= 1900 && $lastValue <= 2200;
+            if ($looksLikeYear) {
+                $targetIndex = count($groups) - 2;
+            }
+        }
+
+        $targetDigits = (string) $groups[$targetIndex][0];
+        $offset = (int) $groups[$targetIndex][1];
+        $newValue = (int) $targetDigits + $incrementBy;
+        $replacement = str_pad((string) $newValue, strlen($targetDigits), '0', STR_PAD_LEFT);
+
+        return substr_replace($candidate, $replacement, $offset, strlen($targetDigits));
     }
 
     public function invoicesStore(Request $request)
@@ -545,12 +609,11 @@ class InvoicesController extends Controller
                 'orderid' => 'nullable|exists:orders,orderid',
                 'invoice_number' => 'nullable|string',
                 'invoice_title' => 'required|string|max:255',
-                'invoice_for' => 'required|string|in:orders,renewal,without_orders',
                 'issue_date' => 'required|date',
                 'due_date' => 'required|date|after_or_equal:issue_date',
                 'notes' => 'nullable|string',
                 'terms' => 'nullable|string',
-                'status' => 'nullable|in:unpaid,paid,partially-paid',
+                'status' => 'nullable|in:active,cancelled',
                 'items_data' => 'required|json',
                 'accountid' => 'nullable|size:10',
                 'renewed_item_ids' => 'nullable|string',
@@ -571,13 +634,15 @@ class InvoicesController extends Controller
         }
 
         // Set default status if not provided
-        $validated['status'] = $validated['status'] ?? 'unpaid';
+        $validated['status'] = $validated['status'] ?? 'active';
         
         if (!empty($validated['invoice_number'])) {
-            $this->assertDocumentNumberAvailable($validated['invoice_number']);
+            $this->assertDocumentNumberAvailable($validated['invoice_number'], null, 'pi_number');
         }
 
-        if ($validated['invoice_for'] === 'orders') {
+        $invoiceSource = $validated['orderid'] ? 'orders' : 'without_orders';
+
+        if ($invoiceSource === 'orders') {
             if (empty($validated['orderid'])) {
                 throw ValidationException::withMessages([
                     'orderid' => 'Select an order before creating an invoice from orders.',
@@ -600,10 +665,7 @@ class InvoicesController extends Controller
                     'orderid' => 'The selected order already has an invoice.',
                 ]);
             }
-        } elseif ($validated['invoice_for'] === 'renewal') {
-            $validated['orderid'] = null;
-        } else {
-            // For without_orders, ensure orderid is null
+        } elseif ($invoiceSource === 'renewal') {
             $validated['orderid'] = null;
         }
 
@@ -611,22 +673,27 @@ class InvoicesController extends Controller
         $client = Client::findOrFail($validated['clientid']);
         $validated['accountid'] = $validated['accountid'] ?? ($user->accountid ?? 'ACC0000001');
         $validated['created_by'] = $user?->userid ?? $user?->id;
+        // TI number is assigned only when converting PI to Tax Invoice.
+        // Keep it empty for PI/draft creation so insert works on older schemas too.
+        $validated['ti_number'] = $validated['ti_number'] ?? '';
         unset($validated['items_data']);
         
         // Check if we're updating an existing draft
         $existingDraft = null;
         if (!empty($validated['invoiceid'])) {
-            $existingDraft = Invoice::whereIn('status', ['draft', 'unpaid', 'partially-paid'])
+            $existingDraft = Invoice::whereIn('status', ['draft', 'active', 'cancelled'])
                 ->find($validated['invoiceid']);
             if ($existingDraft) {
-                // Use draft's invoice_number
-                $validated['invoice_number'] = $existingDraft->invoice_number;
+                // Use draft's existing PI number
+                $validated['pi_number'] = $existingDraft->pi_number;
             }
         } else {
             // Generate new number
-            $validated['invoice_number'] = $this->generateInvoiceNumber();
-            $this->assertDocumentNumberAvailable($validated['invoice_number']);
+            $validated['pi_number'] = $this->generateInvoiceNumber();
+            $this->assertDocumentNumberAvailable($validated['pi_number'], null, 'pi_number');
         }
+        unset($validated['invoice_number']);
+        unset($validated['invoice_for']);
 
         $itemsData = json_decode($request->items_data, true);
         if (!is_array($itemsData) || empty($itemsData)) {
@@ -723,12 +790,12 @@ class InvoicesController extends Controller
                 }
 
                 // If this is a renewal, mark the original items as renewed
-                if ($validated['invoice_for'] === 'renewal') {
+                if ($invoiceSource === 'renewal') {
                     $renewedItemIdsRaw = $request->input('renewed_item_ids');
                     $renewedItemIds = json_decode($renewedItemIdsRaw ?? '[]', true);
                     
                     \Log::info('Renewal submission check', [
-                        'invoice_for' => $validated['invoice_for'],
+                        'invoice_for' => $invoiceSource,
                         'renewed_item_ids_raw' => $renewedItemIdsRaw,
                         'renewed_item_ids_parsed' => $renewedItemIds,
                         'new_invoice_id' => $invoice->invoiceid,
@@ -761,11 +828,15 @@ class InvoicesController extends Controller
     public function invoicesSaveDraft(Request $request)
     {
         $validated = $request->validate([
+            'invoiceid' => 'nullable|exists:invoices,invoiceid',
+            'invoice_for' => 'nullable|in:orders,renewal,without_orders',
             'clientid' => 'required|exists:clients,clientid',
             'orderid' => 'nullable|exists:orders,orderid',
             'invoice_title' => 'sometimes|required|string|max:255',
-            'invoice_for' => 'nullable|string|in:orders,renewal,without_orders',
-            'status' => 'nullable|in:draft,unpaid,paid,partially-paid',
+            'issue_date' => 'nullable|date',
+            'due_date' => 'nullable|date|after_or_equal:issue_date',
+            'notes' => 'nullable|string',
+            'status' => 'nullable|in:draft,active,cancelled',
             'items_data' => 'nullable|json',
         ]);
 
@@ -773,38 +844,53 @@ class InvoicesController extends Controller
         $client = Client::findOrFail($validated['clientid']);
 
         // Check if draft already exists for this client
-        $invoiceFor = $validated['invoice_for'] ?? null;
         $orderId = $validated['orderid'] ?? null;
-        if (($invoiceFor ?? '') !== 'orders') {
-            $orderId = null;
+        $invoiceFor = $validated['invoice_for'] ?? ($orderId ? 'orders' : 'without_orders');
+
+        $draft = null;
+        if (!empty($validated['invoiceid'])) {
+            $draft = Invoice::where('invoiceid', $validated['invoiceid'])
+                ->whereIn('status', ['draft', 'active'])
+                ->where('created_by', $user?->userid ?? $user?->id)
+                ->first();
         }
 
-        $draft = Invoice::where('clientid', $validated['clientid'])
-            ->where('status', 'draft')
-            ->where('created_by', $user?->userid ?? $user?->id)
-            ->when($invoiceFor === 'orders', fn ($q) => $q->whereNotNull('orderid'))
-            ->when($invoiceFor === 'orders' && !empty($orderId), fn ($q) => $q->where('orderid', $orderId))
-            ->when(($invoiceFor ?? '') !== 'orders', fn ($q) => $q->whereNull('orderid'))
-            ->where('updated_at', '>', now()->subHours(24))
-            ->first();
+        if (!$draft) {
+            $draft = Invoice::where('clientid', $validated['clientid'])
+                ->whereIn('status', ['draft', 'active'])
+                ->where('created_by', $user?->userid ?? $user?->id)
+                ->where(function ($q) use ($invoiceFor) {
+                    $q->where('invoice_for', $invoiceFor)
+                        ->orWhereNull('invoice_for');
+                })
+                ->when(!empty($orderId), fn ($q) => $q->where('orderid', $orderId))
+                ->when(empty($orderId), fn ($q) => $q->whereNull('orderid'))
+                ->where('updated_at', '>', now()->subHours(24))
+                ->first();
+        }
 
         if ($draft) {
             // Update existing draft
             $draft->update([
                 'invoice_title' => $validated['invoice_title'] ?? $draft->invoice_title,
                 'orderid' => $orderId,
+                'issue_date' => $validated['issue_date'] ?? $draft->issue_date,
+                'due_date' => $validated['due_date'] ?? $draft->due_date,
+                'notes' => $validated['notes'] ?? $draft->notes,
             ]);
         } else {
             // Create new draft
             $draft = Invoice::create([
                 'accountid' => $user->accountid ?? 'ACC0000001',
                 'clientid' => $validated['clientid'],
-                'invoice_number' => $this->generateInvoiceNumber(),
+                'pi_number' => $this->generateInvoiceNumber(),
+                'ti_number' => '',
                 'invoice_title' => $validated['invoice_title'] ?? '',
                 'orderid' => $orderId,
+                'issue_date' => $validated['issue_date'] ?? now(),
+                'due_date' => $validated['due_date'] ?? now()->addDays(7),
+                'notes' => $validated['notes'] ?? '',
                 'status' => 'draft',
-                'issue_date' => now(),
-                'due_date' => now()->addDays(7),
                 'created_by' => $user?->userid ?? $user?->id,
             ]);
         }
@@ -880,29 +966,30 @@ class InvoicesController extends Controller
     public function invoicesGetDraft($clientid)
     {
         $user = auth()->user();
-        $invoiceFor = request('invoice_for');
         $orderId = request('o', request('orderid'));
         $draftId = request('d');
-        if ($invoiceFor !== 'orders') {
-            $orderId = null;
-        }
+        $invoiceFor = request('invoice_for');
 
         $draft = null;
         if (!empty($draftId)) {
             $draft = Invoice::where('invoiceid', $draftId)
-                ->where('status', 'draft')
                 ->where('created_by', $user?->userid ?? $user?->id)
                 ->with(['items.item', 'order'])
                 ->first();
         }
 
-        if (!$draft) {
+        if (!$draft && empty($draftId)) {
             $draft = Invoice::where('clientid', $clientid)
                 ->where('status', 'draft')
                 ->where('created_by', $user?->userid ?? $user?->id)
-                ->when($invoiceFor === 'orders', fn ($q) => $q->whereNotNull('orderid'))
-                ->when($invoiceFor === 'orders' && !empty($orderId), fn ($q) => $q->where('orderid', $orderId))
-                ->when(($invoiceFor ?? '') !== 'orders', fn ($q) => $q->whereNull('orderid'))
+                ->when(!empty($invoiceFor), function ($q) use ($invoiceFor) {
+                    $q->where(function ($inner) use ($invoiceFor) {
+                        $inner->where('invoice_for', $invoiceFor)
+                            ->orWhereNull('invoice_for');
+                    });
+                })
+                ->when(!empty($orderId), fn ($q) => $q->where('orderid', $orderId))
+                ->when(empty($orderId), fn ($q) => $q->whereNull('orderid'))
                 ->where('updated_at', '>', now()->subHours(24))
                 ->with(['items.item', 'order'])
                 ->first();
@@ -917,11 +1004,17 @@ class InvoicesController extends Controller
             'draft' => [
                 'invoiceid' => $draft->invoiceid,
                 'invoice_number' => $draft->invoice_number,
+                'pi_number' => $draft->pi_number,
+                'ti_number' => $draft->ti_number,
                 'invoice_title' => $draft->invoice_title,
                 'invoice_for' => $draft->invoice_for,
                 'orderid' => $draft->orderid,
                 'po_number' => $draft->order?->po_number,
                 'po_date' => $draft->order?->po_date?->format('Y-m-d'),
+                'issue_date' => $draft->issue_date?->format('Y-m-d'),
+                'due_date' => $draft->due_date?->format('Y-m-d'),
+                'notes' => $draft->notes,
+                'terms' => $draft->terms ?? [],
                 'status' => $draft->status,
                 'items' => $draft->items->map(fn($i) => [
                     'invoice_itemid' => $i->invoice_itemid,
@@ -992,6 +1085,89 @@ class InvoicesController extends Controller
         return view('invoices.edit', $viewData);
     }
 
+    public function invoicesUpdateItem(Request $request, string $invoice, string $item)
+    {
+        \Log::info('invoicesUpdateItem called', ['invoice' => $invoice, 'item' => $item, 'input' => $request->all()]);
+        $invoice = $this->resolveInvoiceDocument($invoice);
+        $invoiceItem = InvoiceItem::where('invoice_itemid', $item)
+            ->where('invoiceid', $invoice->invoiceid)
+            ->firstOrFail();
+
+        $itemData = $request->validate([
+            'item_name'        => 'required|string|max:255',
+            'item_description' => 'nullable|string',
+            'quantity'         => 'required|numeric|min:1',
+            'unit_price'       => 'required|numeric|min:0',
+            'tax_rate'         => 'nullable|numeric|min:0|max:100',
+            'discount_percent' => 'nullable|numeric|min:0|max:100',
+            'duration'         => 'nullable|numeric|min:0',
+            'frequency'        => 'nullable|string',
+            'no_of_users'      => 'nullable|integer|min:1',
+            'start_date'       => 'nullable|date',
+            'end_date'         => 'nullable|date',
+            'line_total'       => 'nullable|numeric|min:0',
+        ]);
+
+        $taxRate = (float) ($itemData['tax_rate'] ?? 0);
+        $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
+        $hasRecurringFrequency = filled($itemData['frequency'] ?? null) && ($itemData['frequency'] ?? null) !== 'one-time';
+
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $account = \App\Models\Account::find($accountid);
+        $accountHasUsers = (bool) ($account?->have_users ?? false);
+        $service = Service::find($invoiceItem->itemid);
+        $isUserWiseItem = $accountHasUsers && (bool) ($service?->user_wise ?? false);
+
+        $invoiceItem->update([
+            'item_name'        => $itemData['item_name'],
+            'item_description' => $itemData['item_description'] ?? null,
+            'quantity'         => $this->wholeQuantity($itemData['quantity']),
+            'unit_price'       => $this->wholeAmount($itemData['unit_price']),
+            'tax_rate'         => $taxRate,
+            'discount_percent' => $amounts['discount_percent'],
+            'discount_amount'  => $amounts['discount_amount'],
+            'duration'         => $itemData['duration'] ?? null,
+            'frequency'        => $itemData['frequency'] ?? null,
+            'no_of_users'      => $isUserWiseItem ? max(1, (int) ($itemData['no_of_users'] ?? 1)) : null,
+            'start_date'       => $hasRecurringFrequency ? ($itemData['start_date'] ?: null) : null,
+            'end_date'         => $hasRecurringFrequency ? ($itemData['end_date'] ?: null) : null,
+            'amount'           => $amounts['line_total'],
+        ]);
+
+        // Recalculate invoice totals
+        $invoice->load('items');
+        $subtotal = 0;
+        $discountTotal = 0;
+        $taxTotal = 0;
+        foreach ($invoice->items as $it) {
+            $a = $this->calculateInvoiceItemAmounts(['line_total' => $it->amount, 'discount_percent' => $it->discount_percent], (float) $it->tax_rate);
+            $subtotal += $a['line_total'];
+            $discountTotal += $a['discount_amount'];
+            $taxTotal += $a['tax_amount'];
+        }
+        // Totals are derived from invoice_items and not stored on invoices table.
+
+        return response()->json([
+            'success' => true,
+            'item' => [
+                'invoice_itemid'   => $invoiceItem->invoice_itemid,
+                'item_name'        => $invoiceItem->item_name,
+                'item_description' => $invoiceItem->item_description,
+                'quantity'         => (int) $invoiceItem->quantity,
+                'unit_price'       => (float) $invoiceItem->unit_price,
+                'tax_rate'         => (float) $invoiceItem->tax_rate,
+                'discount_percent' => (float) $invoiceItem->discount_percent,
+                'discount_amount'  => (float) $invoiceItem->discount_amount,
+                'duration'         => $invoiceItem->duration,
+                'frequency'        => $invoiceItem->frequency,
+                'no_of_users'      => $invoiceItem->no_of_users,
+                'start_date'       => $invoiceItem->start_date?->format('Y-m-d'),
+                'end_date'         => $invoiceItem->end_date?->format('Y-m-d'),
+                'line_total'       => (float) $invoiceItem->amount,
+            ],
+        ]);
+    }
+
     public function invoicesUpdate(Request $request, string $invoice)
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
@@ -1025,7 +1201,7 @@ class InvoicesController extends Controller
 
         $invoice->update([
             'clientid' => $validated['clientid'],
-            'invoice_number' => $validated['invoice_number'],
+            'pi_number' => $validated['invoice_number'],
             'invoice_title' => $validated['invoice_title'] ?? $invoice->invoice_title,
             'issue_date' => $validated['issue_date'],
             'due_date' => $validated['due_date'],
@@ -1093,12 +1269,14 @@ class InvoicesController extends Controller
         return Invoice::findOrFail($invoiceid);
     }
 
-    protected function assertDocumentNumberAvailable(string $invoiceNumber, ?string $ignoreInvoiceId = null): void
+    protected function assertDocumentNumberAvailable(string $invoiceNumber, ?string $ignoreInvoiceId = null, ?string $numberColumn = null): void
     {
         $numberExists = Invoice::query()
-            ->where(function ($query) use ($invoiceNumber) {
-                $query->where('pi_number', $invoiceNumber)
-                    ->orWhere('ti_number', $invoiceNumber);
+            ->when($numberColumn, fn ($query) => $query->where($numberColumn, $invoiceNumber), function ($query) use ($invoiceNumber) {
+                $query->where(function ($inner) use ($invoiceNumber) {
+                    $inner->where('pi_number', $invoiceNumber)
+                        ->orWhere('ti_number', $invoiceNumber);
+                });
             })
             ->when($ignoreInvoiceId, function ($query) use ($ignoreInvoiceId) {
                 $query->where('invoiceid', '!=', $ignoreInvoiceId);
@@ -1111,8 +1289,81 @@ class InvoicesController extends Controller
             ]);
         }
     }
+
+    public function createTaxInvoice(Request $request)
+    {
+        $validated = $request->validate([
+            'invoiceid' => 'required|exists:invoices,invoiceid',
+        ]);
+
+        $invoice = Invoice::findOrFail($validated['invoiceid']);
+
+        // Generate tax invoice number
+        $tiNumber = $this->generateTaxInvoiceNumber();
+        $this->assertDocumentNumberAvailable($tiNumber, $invoice->invoiceid, 'ti_number');
+
+        // Update invoice with tax invoice number
+        $invoice->update([
+            'ti_number' => $tiNumber,
+            'status' => 'active',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tax Invoice created successfully.',
+            'ti_number' => $tiNumber,
+        ]);
+    }
+    public function downloadPdf(Request $request, string $invoice)
+    {
+        $invoice = $this->resolveInvoiceDocument($invoice);
+        $invoice->loadMissing(['client.billingDetail', 'items', 'order', 'payments']);
+
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $account = \App\Models\Account::find($accountid);
+        $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
+
+        $type = $request->query('type', 'pi'); // pi | tax_pi | tax_invoice
+
+        $isTaxInvoice = $type === 'tax_invoice' || (!empty($invoice->ti_number) && $type !== 'pi');
+        $documentType = $isTaxInvoice ? 'Tax Invoice' : 'Proforma Invoice';
+
+        $normalizeTaxState = fn ($v) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $v)));
+        $clientState = $normalizeTaxState($invoice->client->state ?? '');
+        $accountState = $normalizeTaxState($account->state ?? '');
+        $sameStateGst = $clientState !== '' && $accountState !== '' && $clientState === $accountState;
+
+        $signatureUrl = null;
+        $sigPath = optional($accountBillingDetail)->signature_upload;
+        if (!empty($sigPath)) {
+            // If already a full URL, use as-is; otherwise build from storage path
+            if (str_starts_with($sigPath, 'http://') || str_starts_with($sigPath, 'https://')) {
+                $signatureUrl = $sigPath;
+            } else {
+                $relative = str_starts_with($sigPath, 'storage/') ? $sigPath : 'storage/' . ltrim($sigPath, '/');
+                $signatureUrl = public_path($relative);
+            }
+        }
+
+        $html = view('invoices.pdf', compact(
+            'invoice', 'account', 'accountBillingDetail',
+            'sameStateGst', 'isTaxInvoice', 'documentType', 'signatureUrl'
+        ))->render();
+
+        $filename = $documentType . ' - ' . $invoice->invoice_number . '.pdf';
+
+        $pdf = \Spatie\Browsershot\Browsershot::html($html)
+            ->setChromePath('C:\Program Files\Google\Chrome\Application\chrome.exe') // Add this line
+            ->noSandbox()
+            ->format('A4')
+            ->margins(12, 12, 12, 12)
+            ->showBackground()
+            ->pdf();
+
+        return response($pdf, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
 }
-
-
-
-

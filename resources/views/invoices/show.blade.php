@@ -3,11 +3,32 @@
 @section('content')
 @php
     $normalizeTaxState = static fn ($value) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $value)));
-    $documentType = 'Invoice';
     $clientState = $normalizeTaxState($invoice->client->state ?? '');
     $accountState = $normalizeTaxState($account->state ?? '');
     $sameStateGst = $clientState !== '' && $accountState !== '' && $clientState === $accountState;
-    $invoiceTaxTotal = (float) ($invoice->tax_total ?? 0);
+    $itemsSubtotal = (float) $invoice->items->sum(function ($item) {
+        return (float) ($item->line_total ?? 0);
+    });
+    $itemsDiscountTotal = (float) $invoice->items->sum(function ($item) {
+        $lineTotal = (float) ($item->line_total ?? 0);
+        $discountPercent = (float) ($item->discount_percent ?? 0);
+        $discountAmount = isset($item->discount_amount)
+            ? (float) ($item->discount_amount ?? 0)
+            : floor(max(0, $lineTotal * ($discountPercent / 100)));
+        return max(0, $discountAmount);
+    });
+    $invoiceTaxTotal = (float) $invoice->items->sum(function ($item) {
+        $lineTotal = (float) ($item->line_total ?? 0);
+        $discountPercent = (float) ($item->discount_percent ?? 0);
+        $discountAmount = isset($item->discount_amount)
+            ? (float) ($item->discount_amount ?? 0)
+            : floor(max(0, $lineTotal * ($discountPercent / 100)));
+        $taxableAmount = max(0, $lineTotal - max(0, $discountAmount));
+        return ceil($taxableAmount * ((float) ($item->tax_rate ?? 0) / 100));
+    });
+    $invoiceGrandTotal = max(0, $itemsSubtotal - $itemsDiscountTotal + $invoiceTaxTotal);
+    $totalPaidAmount = (float) $invoice->payments->sum('amount');
+    $balanceDueAmount = max(0, $invoiceGrandTotal - $totalPaidAmount);
     $cgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 0) : 0;
     $sgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 0) : 0;
     $igstAmount = $sameStateGst ? 0 : round($invoiceTaxTotal, 0);
@@ -21,6 +42,8 @@
             $signatureUploadUrl = asset(str_starts_with($signatureUploadPath, 'storage/') ? $signatureUploadPath : 'storage/' . ltrim($signatureUploadPath, '/'));
         }
     }
+
+    $documentType = !empty($invoice->ti_number) ? 'Tax Invoice' : 'Proforma Invoice';
 @endphp
 @section('header_actions')
     <a href="{{ route('invoices.index', request('c') ? ['c' => request('c')] : []) }}" class="secondary-button">
@@ -45,12 +68,12 @@
             <h1 style="margin: 0 0 0.5rem 0; font-size: 1.5em;">{{ $invoice->invoice_number }}</h1>
             <div style="margin-top: 0.5rem;">
                 <span style="display: inline-block; padding: 0.3rem 0.7rem; background: #dbeafe; color: #1e40af; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
-                    {{ $documentType }} Invoice
+                    {{ $documentType }}
                 </span>
             </div>
         </div>
         <div style="text-align: right;">
-            <div style="font-size: 1.5em; font-weight: bold; margin-bottom: 0.25rem;">{{ number_format($invoice->grand_total ?? 0, 0) }}</div>
+            <div style="font-size: 1.5em; font-weight: bold; margin-bottom: 0.25rem;">{{ number_format($invoiceGrandTotal, 0) }}</div>
             <div>{{ $invoice->issue_date?->format('d M Y') }} due {{ $invoice->due_date?->format('d M Y') }}</div>
         </div>
     </div>
@@ -142,9 +165,11 @@
         <thead>
             <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
                 <th style="padding: 1rem 0.5rem 0.5rem 0; text-align: left; font-weight: 600;">Item</th>
-                <th style="padding: 1rem 0.5rem 0.5rem 0; text-align: right; width: 80px; font-weight: 600;">Qty</th>
-                <th style="padding: 1rem 0.5rem 0.5rem 0; text-align: right; width: 100px; font-weight: 600;">Unit Price</th>
-                <th style="padding: 1rem 0.5rem 0.5rem 0; text-align: right; width: 100px; font-weight: 600;">Total</th>
+                <th style="padding: 1rem 0.5rem 0.5rem 0; text-align: center; width: 70px; font-weight: 600;">Qty</th>
+                <th style="padding: 1rem 0.5rem 0.5rem 0; text-align: right; width: 90px; font-weight: 600;">Price</th>
+                <th style="padding: 1rem 0.5rem 0.5rem 0; text-align: right; width: 70px; font-weight: 600;">Disc %</th>
+                <th style="padding: 1rem 0.5rem 0.5rem 0; text-align: right; width: 70px; font-weight: 600;">Tax %</th>
+                <th style="padding: 1rem 0.5rem 0.5rem 0; text-align: right; width: 90px; font-weight: 600;">Total</th>
             </tr>
         </thead>
         <tbody>
@@ -155,12 +180,35 @@
                     @if($item->item_description)
                     <div style="font-size: 0.85em; color: #6b7280; margin-top: 0.25rem; white-space: pre-wrap;">{{ $item->item_description }}</div>
                     @endif
+                    @if($item->frequency && $item->frequency !== 'One-Time')
+                    <div style="font-size: 0.78em; color: #6b7280; margin-top: 0.35rem; padding: 0.35rem 0.5rem; background: #f8fafc; border-radius: 6px;">
+                        <span style="margin-right: 0.5rem;">{{ $item->frequency }}</span>
+                        @if($item->duration)
+                        <span>for {{ $item->duration }} {{ $item->frequency === 'Day(s)' ? 'day(s)' : ($item->frequency === 'Week(s)' ? 'week(s)' : ($item->frequency === 'Month(s)' ? 'month(s)' : ($item->frequency === 'Quarter(s)' ? 'quarter(s)' : 'year(s)'))) }}</span>
+                        @endif
+                        @if($item->start_date)
+                        <span style="margin-left: 0.5rem;">(Start: {{ $item->start_date->format('d M Y') }})</span>
+                        @endif
+                        @if($item->end_date)
+                        <span style="margin-left: 0.5rem;">(End: {{ $item->end_date->format('d M Y') }})</span>
+                        @endif
+                    </div>
+                    @endif
                 </td>
-                <td style="padding: 0.75rem 0.5rem 0.75rem 0; text-align: right;">
+                <td style="padding: 0.75rem 0.5rem 0.75rem 0; text-align: center;">
                     {{ number_format($item->quantity, 0) }}
+                    @if($item->no_of_users && $item->no_of_users > 1)
+                    <div style="font-size: 0.75em; color: #6b7280;">{{ $item->no_of_users }} users</div>
+                    @endif
                 </td>
                 <td style="padding: 0.75rem 0.5rem 0.75rem 0; text-align: right;">
                     {{ number_format($item->unit_price, 0) }}
+                </td>
+                <td style="padding: 0.75rem 0.5rem 0.75rem 0; text-align: right;">
+                    {{ number_format($item->discount_percent, 0) }}%
+                </td>
+                <td style="padding: 0.75rem 0.5rem 0.75rem 0; text-align: right;">
+                    {{ number_format($item->tax_rate, 0) }}%
                 </td>
                 <td style="padding: 0.75rem 0.5rem 0.75rem 0; text-align: right; font-weight: 600;">
                     {{ number_format($item->line_total, 0) }}
@@ -168,7 +216,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="4" style="padding: 2rem; text-align: center; color: #9ca3af; font-style: italic;">
+                <td colspan="6" style="padding: 2rem; text-align: center; color: #9ca3af; font-style: italic;">
                     No items added to this invoice.
                 </td>
             </tr>
@@ -177,24 +225,24 @@
         @if($invoice->items->count())
         <tfoot>
             <tr style="border-top: 2px solid #e5e7eb; font-weight: 600;">
-                <td colspan="3" style="padding: 1rem 0.5rem; text-align: right;">Subtotal:</td>
-                <td style="padding: 1rem 0.5rem; text-align: right;">{{ number_format($invoice->subtotal ?? 0, 0) }}</td>
+                <td colspan="5" style="padding: 1rem 0.5rem; text-align: right;">Subtotal:</td>
+                <td style="padding: 1rem 0.5rem; text-align: right;">{{ number_format($itemsSubtotal, 0) }}</td>
             </tr>
-            @if(($invoice->discount_total ?? 0) > 0)
+            @if($itemsDiscountTotal > 0)
             <tr style="font-weight: 600; color: #dc2626;">
-                <td colspan="3" style="padding: 0.5rem; text-align: right;">Discount:</td>
-                <td style="padding: 0.5rem; text-align: right;">- {{ number_format($invoice->discount_total, 0) }}</td>
+                <td colspan="5" style="padding: 0.5rem; text-align: right;">Discount:</td>
+                <td style="padding: 0.5rem; text-align: right;">- {{ number_format($itemsDiscountTotal, 0) }}</td>
             </tr>
             @endif
             @if($invoiceTaxTotal > 0)
                 <tr style="font-weight: 600;">
-                    <td colspan="3" style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">{{ $sameStateGst ? 'Tax (CGST + SGST):' : 'Tax (IGST):' }}</td>
+                    <td colspan="5" style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">{{ $sameStateGst ? 'Tax (CGST + SGST):' : 'Tax (IGST):' }}</td>
                     <td style="padding: 0.5rem 0.5rem 1rem 0.5rem; text-align: right;">{{ number_format($invoiceTaxTotal, 0) }}</td>
                 </tr>
             @endif
             <tr style="background: #f8fafc; font-size: 1.1em; font-weight: bold;">
-                <td colspan="3" style="padding: 1rem 0.5rem; text-align: right;">Grand Total:</td>
-                <td style="padding: 1rem 0.5rem; text-align: right;">{{ number_format($invoice->grand_total ?? 0, 0) }}</td>
+                <td colspan="5" style="padding: 1rem 0.5rem; text-align: right;">Grand Total:</td>
+                <td style="padding: 1rem 0.5rem; text-align: right;">{{ number_format($invoiceGrandTotal, 0) }}</td>
             </tr>
         </tfoot>
         @endif
@@ -226,11 +274,11 @@
         <tfoot style="border-top: 2px solid #e5e7eb;">
             <tr>
                 <td colspan="3" style="padding: 1rem 0.5rem 0.5rem; text-align: right;"><strong>Total Paid:</strong></td>
-                <td style="padding: 1rem 0.5rem 0.5rem; text-align: right;"><strong>{{ number_format($invoice->payments->sum('amount'), 0) }}</strong></td>
+                <td style="padding: 1rem 0.5rem 0.5rem; text-align: right;"><strong>{{ number_format($totalPaidAmount, 0) }}</strong></td>
             </tr>
             <tr>
                 <td colspan="3" style="padding: 0.5rem; text-align: right;"><strong>Balance Due:</strong></td>
-                <td style="padding: 0.5rem; text-align: right; color: #ef4444;"><strong>{{ number_format($invoice->balance_due, 0) }}</strong></td>
+                <td style="padding: 0.5rem; text-align: right; color: #ef4444;"><strong>{{ number_format($balanceDueAmount, 0) }}</strong></td>
             </tr>
         </tfoot>
     </table>
@@ -239,7 +287,7 @@
 <section class="panel-card" style="margin-top: 2rem;">
     <div style="text-align: center; padding: 2rem; color: #6b7280;">
         <p style="margin-bottom: 1rem;">No payments recorded for this invoice yet.</p>
-        <a href="{{ route('payments.create', ['invoiceid' => $invoice->invoiceid, 'clientid' => $invoice->clientid, 'amount' => $invoice->balance_due]) }}" class="primary-button" style="text-decoration: none; display: inline-block;">Record a payment</a>
+        <a href="{{ route('payments.create', ['invoiceid' => $invoice->invoiceid, 'clientid' => $invoice->clientid, 'amount' => $balanceDueAmount]) }}" class="primary-button" style="text-decoration: none; display: inline-block;">Record a payment</a>
     </div>
 </section>
 @endif

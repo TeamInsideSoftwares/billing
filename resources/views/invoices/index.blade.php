@@ -371,16 +371,10 @@
                             @foreach ($selectedInvoices as $invoice)
                                 @php
                                     $documentId = $invoice->invoiceid;
-                                    $documentType = 'Invoice';
-                                    $amountPaid = (float) ($invoice->amount_paid ?? 0);
-                                    $grandTotal = (float) ($invoice->grand_total ?? 0);
-                                    $balanceDue = (float) ($invoice->balance_due ?? max(0, $grandTotal - $amountPaid));
-                                    $paymentStatus = ($amountPaid > 0 && $balanceDue <= 0 && $grandTotal > 0)
-                                        ? 'paid'
-                                        : ($amountPaid > 0 ? 'partially paid' : 'unpaid');
                                     $latestEndDate = $invoice->items->max('end_date');
                                     $isExpired = $latestEndDate && $latestEndDate < now();
-                                    $currency = $invoice->client->currency ?? 'INR';
+                                    $documentType = !empty($invoice->ti_number) ? 'Tax Invoice' : 'Proforma Invoice';
+                                    $invoiceAmount = (float) $invoice->items->sum('line_total');
                                 @endphp
                                 <tr>
                                     <td>
@@ -405,7 +399,7 @@
                                         <span class="invoice-muted">{{ ucfirst(str_replace('_', ' ', $invoice->invoice_for ?? 'without orders')) }}</span>
                                     </td>
                                     <td>
-                                        <strong class="invoice-amount">{{ number_format($invoice->grand_total ?? 0, 0) }}</strong>
+                                        <strong class="invoice-amount">{{ number_format($invoiceAmount, 0) }}</strong>
                                     </td>
                                     <td>
                                         @if($latestEndDate)
@@ -455,9 +449,7 @@
     </div>
 
     <style>
-        .status-pill.unpaid { background: #fee2e2; color: #991b1b; }
-        .status-pill.partially-paid { background: #fef3c7; color: #92400e; }
-        .status-pill.paid { background: #dcfce7; color: #166534; }
+        .status-pill.active { background: #dbeafe; color: #1e40af; }
         .status-pill.cancelled { background: #e2e8f0; color: #475569; }
     </style>
 

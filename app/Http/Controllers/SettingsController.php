@@ -207,11 +207,10 @@ class SettingsController extends Controller
 
         // Handle logo upload
         if ($request->hasFile('logo')) {
-            if ($account->logo_path && \Storage::exists($account->logo_path)) {
-                \Storage::delete($account->logo_path);
-            }
-            $path = $request->file('logo')->store('logos', 'public');
-            $validated['logo_path'] = 'storage/' . $path;
+            $file = $request->file('logo');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('uploads/logos'), $filename);
+            $validated['logo_path'] = asset('uploads/logos/' . $filename);
         }
 
         $account->update($validated);
@@ -305,7 +304,7 @@ class SettingsController extends Controller
             'state'              => 'required|string|max:100',
             'country'            => 'nullable|string|max:100',
             'postal_code'        => 'nullable|string|max:20',
-            'gstin'              => 'nullable|string|max:15',
+            'gstin' => 'nullable|string|size:15',
             'tin'                => 'nullable|string|max:50',
             'authorize_signatory'=> 'nullable|string|max:255',
             'signature_upload'   => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
@@ -325,8 +324,8 @@ class SettingsController extends Controller
             try {
                 $file = $request->file('signature_upload');
                 $filename = time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('signatures', $filename, 'public');
-                $validated['signature_upload'] = $path;
+                $file->move(public_path('uploads/signatures'), $filename);
+                $validated['signature_upload'] = asset('uploads/signatures/' . $filename);
             } catch (\Exception $e) {
                 return redirect()->to(route('settings.index') . '#billing-details')
                     ->with('error', 'Failed to upload signature: ' . $e->getMessage())
@@ -365,7 +364,7 @@ class SettingsController extends Controller
             'state'              => 'nullable|string|max:100',
             'country'            => 'nullable|string|max:100',
             'postal_code'        => 'nullable|string|max:20',
-            'gstin'              => 'nullable|string|max:15',
+            'gstin' => 'nullable|string|size:15',
             'tin'                => 'nullable|string|max:50',
             'authorize_signatory'=> 'nullable|string|max:255',
             'signature_upload'   => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
@@ -385,8 +384,8 @@ class SettingsController extends Controller
             try {
                 $file = $request->file('signature_upload');
                 $filename = time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('signatures', $filename, 'public');
-                $validated['signature_upload'] = $path;
+                $file->move(public_path('uploads/signatures'), $filename);
+                $validated['signature_upload'] = asset('uploads/signatures/' . $filename);
             } catch (\Exception $e) {
                 return redirect()->to(route('settings.index') . '#quotation-details')
                     ->with('error', 'Failed to upload signature: ' . $e->getMessage())
@@ -409,7 +408,7 @@ class SettingsController extends Controller
     }
 
     /**
-     * Reset serial numbers if reset_on_fy is enabled
+     * Reset serial counters in serial_configurations when FY changes.
      */
     private function resetSerialNumbersIfRequired($accountid)
     {
@@ -430,21 +429,10 @@ class SettingsController extends Controller
             return; // Don't reset for non-standard FY
         }
 
-        // Reset billing serial
-        $billingDetail = AccountBillingDetail::where('accountid', $accountid)->first();
-        if ($billingDetail && $billingDetail->reset_on_fy) {
-            $billingDetail->update([
-                'number_value' => null,
-            ]);
-        }
-
-        // Reset quotation serial
-        $quotationDetail = AccountQuotationDetail::where('accountid', $accountid)->first();
-        if ($quotationDetail && $quotationDetail->reset_on_fy) {
-            $quotationDetail->update([
-                'number_value' => null,
-            ]);
-        }
+        \App\Models\SerialConfiguration::query()
+            ->where('accountid', $accountid)
+            ->where('reset_on_fy', true)
+            ->update(['number_value' => null]);
     }
 
     public function financialYearUpdate(Request $request)
@@ -826,3 +814,5 @@ class SettingsController extends Controller
         return 'ACC0000001';
     }
 }
+
+

@@ -78,19 +78,6 @@ DROP TABLE IF EXISTS `account_billing_details`;
 CREATE TABLE IF NOT EXISTS `account_billing_details` (
   `account_bdid` varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL,
   `accountid` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `serial_number` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `prefix_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'manual text',
-  `prefix_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `prefix_length` int NOT NULL DEFAULT '0',
-  `prefix_separator` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `number_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'auto increment',
-  `number_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `number_length` int NOT NULL DEFAULT '4',
-  `number_separator` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `suffix_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'manual text',
-  `suffix_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `suffix_length` int NOT NULL DEFAULT '0',
-  `reset_on_fy` tinyint(1) NOT NULL DEFAULT '0',
   `billing_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `address` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `city` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -102,7 +89,6 @@ CREATE TABLE IF NOT EXISTS `account_billing_details` (
   `authorize_signatory` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `signature_upload` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `billing_from_email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `terms_conditions` text COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`account_bdid`),
@@ -113,8 +99,8 @@ CREATE TABLE IF NOT EXISTS `account_billing_details` (
 -- Dumping data for table `account_billing_details`
 --
 
-INSERT INTO `account_billing_details` (`account_bdid`, `accountid`, `serial_number`, `prefix_type`, `prefix_value`, `prefix_length`, `prefix_separator`, `number_type`, `number_value`, `number_length`, `number_separator`, `suffix_type`, `suffix_value`, `suffix_length`, `reset_on_fy`, `billing_name`, `address`, `city`, `state`, `country`, `postal_code`, `gstin`, `tin`, `authorize_signatory`, `signature_upload`, `billing_from_email`, `terms_conditions`, `created_at`, `updated_at`) VALUES
-('VREEJ8', 'ACC0000001', '1001', 'manual text', 'INV', 0, '/', 'auto increment', '1001', 4, '/', 'year', NULL, 0, 0, 'Inside Softwares', 'Address 1:\r\nBuilding Number: 17\r\nStreet Name: Lodhi Estate\r\nStreet Address: 48, Lodhi Road, Near Sai Baba Mandir', 'New Delhi', 'Delhi', 'India', '110003', '415263', '1245 7878 9696', NULL, 'signatures/1775201011_Ims_logo_new .png', 'test@gmail.com', '<ul>\r\n<li>Terms and conditions agreements inform users about the rules and expectations for using a website or app.</li>\r\n<li>These agreements are also where you can establish and communicate your governing laws and dispute resolutions.</li>\r\n<li>It may hold up in court so long as long as your rules fall within applicable laws and users read and agreed to it.</li>\r\n</ul>', '2026-04-01 04:10:27', '2026-04-09 00:05:54');
+INSERT INTO `account_billing_details` (`account_bdid`, `accountid`, `billing_name`, `address`, `city`, `state`, `country`, `postal_code`, `gstin`, `tin`, `authorize_signatory`, `signature_upload`, `billing_from_email`, `created_at`, `updated_at`) VALUES
+('VREEJ8', 'ACC0000001', 'Inside Softwares', 'Address 1:\r\nBuilding Number: 17\r\nStreet Name: Lodhi Estate\r\nStreet Address: 48, Lodhi Road, Near Sai Baba Mandir', 'New Delhi', 'Delhi', 'India', '110003', '415263', '1245 7878 9696', NULL, 'signatures/1775201011_Ims_logo_new .png', 'test@gmail.com', '2026-04-01 04:10:27', '2026-04-09 00:05:54');
 
 -- --------------------------------------------------------
 
@@ -126,19 +112,6 @@ DROP TABLE IF EXISTS `account_quotation_details`;
 CREATE TABLE IF NOT EXISTS `account_quotation_details` (
   `account_qdid` varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL,
   `accountid` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `serial_number` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `prefix_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'manual text',
-  `prefix_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `prefix_length` int NOT NULL DEFAULT '0',
-  `prefix_separator` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `number_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'auto increment',
-  `number_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `number_length` int NOT NULL DEFAULT '4',
-  `number_separator` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `suffix_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'manual text',
-  `suffix_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `suffix_length` int NOT NULL DEFAULT '0',
-  `reset_on_fy` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'For auto_increment: reset counter on financial year',
   `quotation_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `address` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `city` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -150,7 +123,6 @@ CREATE TABLE IF NOT EXISTS `account_quotation_details` (
   `authorize_signatory` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `signature_upload` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `billing_from_email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `terms_conditions` text COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`account_qdid`),
@@ -161,8 +133,8 @@ CREATE TABLE IF NOT EXISTS `account_quotation_details` (
 -- Dumping data for table `account_quotation_details`
 --
 
-INSERT INTO `account_quotation_details` (`account_qdid`, `accountid`, `serial_number`, `prefix_type`, `prefix_value`, `prefix_length`, `prefix_separator`, `number_type`, `number_value`, `number_length`, `number_separator`, `suffix_type`, `suffix_value`, `suffix_length`, `reset_on_fy`, `quotation_name`, `address`, `city`, `state`, `country`, `postal_code`, `gstin`, `tin`, `authorize_signatory`, `signature_upload`, `billing_from_email`, `terms_conditions`, `created_at`, `updated_at`) VALUES
-('7WWKSX', 'ACC0000001', '4545', 'manual text', 'QUO', 0, '/', 'auto increment', '1001', 4, '/', 'manual text', NULL, 0, 0, 'Inside Softwares[]', 'Address 1:\r\nBuilding Number: 17\r\nStreet Name: Lodhi Estate\r\nStreet Address: 48, Lodhi Road, Near Sai Baba Mandir', 'New Delhi', 'Delhi', 'India', '248001', '415263', '1245 7878 9696', 'INSIDE SOFTWARES', 'signatures/1775201790_axis-bank.png', 'test@gmail.com', '<ul>\r\n<li>Terms and conditions agreements inform users about the rules and expectations for using a website or app.</li>\r\n<li>These agreements are also where you can establish and communicate your governing laws and dispute resolutions.</li>\r\n<li>It may hold up in court so long as long as your rules fall within applicable laws and users read and agreed to it.</li>\r\n</ul>', '2026-04-01 04:16:03', '2026-04-07 06:20:06');
+INSERT INTO `account_quotation_details` (`account_qdid`, `accountid`, `quotation_name`, `address`, `city`, `state`, `country`, `postal_code`, `gstin`, `tin`, `authorize_signatory`, `signature_upload`, `billing_from_email`, `created_at`, `updated_at`) VALUES
+('7WWKSX', 'ACC0000001', 'Inside Softwares[]', 'Address 1:\r\nBuilding Number: 17\r\nStreet Name: Lodhi Estate\r\nStreet Address: 48, Lodhi Road, Near Sai Baba Mandir', 'New Delhi', 'Delhi', 'India', '248001', '415263', '1245 7878 9696', 'INSIDE SOFTWARES', 'signatures/1775201790_axis-bank.png', 'test@gmail.com', '2026-04-01 04:16:03', '2026-04-07 06:20:06');
 
 -- --------------------------------------------------------
 
@@ -582,7 +554,7 @@ CREATE TABLE IF NOT EXISTS `invoices` (
   `clientid` varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL,
   `orderid` varchar(6) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `pi_number` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `ti_number` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ti_number` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `invoice_title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `issue_date` date NOT NULL,

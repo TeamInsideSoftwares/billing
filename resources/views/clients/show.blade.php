@@ -122,7 +122,7 @@
             <div>{{ $client->billingDetail->billing_email ?? $client->billing_email ?? '-' }}</div>
 
             <div style="color: #64748b;">Phone</div>
-            <div>{{ $client->billingDetail->phone ?? '-' }}</div>
+            <div>{{ $client->billingDetail->billing_phone ?? '-' }}</div>
 
             <div style="color: #64748b;">Address</div>
             <div>{{ $client->billingDetail->address_line_1 ?? '-' }}</div>
