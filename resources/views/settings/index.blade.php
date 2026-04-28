@@ -190,13 +190,13 @@ input:checked + .toggle-slider {
             </div>
         @endif
 
-        <form method="POST" action="{{ route('account.update') }}" enctype="multipart/form-data" class="form-grid" style="grid-template-columns: repeat(4, 1fr); gap: 0.75rem;">
+        <form method="POST" action="{{ route('account.update') }}" enctype="multipart/form-data" class="form-grid" class="form-grid grid-cols-4">
             @csrf
             @method('PUT')
 
             <!-- Logo Upload -->
             <div style="grid-column: span 1;">
-                <label style="font-size: 0.8rem;">Company Logo</label>
+                <label class="text-sm">Company Logo</label>
                 <div style="border: 2px dashed #e2e8f0; border-radius: 8px; padding: 0.75rem; text-align: center; background: #f8fafc;">
                     @if(!empty($account->logo_path))
                         <img src="{{ str_starts_with($account->logo_path, 'http') ? $account->logo_path : asset($account->logo_path) }}" alt="Logo" id="logo-preview" style="max-width: 120px; max-height: 80px; border-radius: 6px; margin-bottom: 0.5rem; object-fit: contain;">
@@ -209,32 +209,32 @@ input:checked + .toggle-slider {
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;" class="required">Business Name *</label>
+                <label class="text-sm" class="required">Business Name *</label>
                 <input type="text" name="name" value="{{ old('name', $account->name ?? '') }}" required style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;">Legal Entity Name</label>
+                <label class="text-sm">Legal Entity Name</label>
                 <input type="text" name="legal_name" value="{{ old('legal_name', $account->legal_name ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;">Website</label>
+                <label class="text-sm">Website</label>
                 <input type="text" name="website" value="{{ old('website', $account->website ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;" class="required">Email *</label>
+                <label class="text-sm" class="required">Email *</label>
                 <input type="email" name="email" value="{{ old('email', $account->email ?? '') }}" required style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;">Phone</label>
+                <label class="text-sm">Phone</label>
                 <input type="text" name="phone" value="{{ old('phone', $account->phone ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;">Currency</label>
+                <label class="text-sm">Currency</label>
                 <select name="currency_code" style="font-size: 0.85rem; padding: 0.45rem 0.6rem; width: 100%;">
                     @foreach($currencies as $currency)
                         <option value="{{ $currency->iso }}" {{ old('currency_code', $account->currency_code ?? 'INR') == $currency->iso ? 'selected' : '' }}>
@@ -245,24 +245,24 @@ input:checked + .toggle-slider {
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;">Timezone</label>
+                <label class="text-sm">Timezone</label>
                 <input type="text" name="timezone" value="{{ old('timezone', $account->timezone ?? 'Asia/Kolkata') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;">Address</label>
+                <label class="text-sm">Address</label>
                 <input type="text" name="address_line_1" value="{{ old('address_line_1', $account->address_line_1 ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;">Country</label>
+                <label class="text-sm">Country</label>
                 <select name="country" class="country-select" data-selected="{{ old('country', $account->country ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem; width: 100%;">
                     <option value="">Select Country</option>
                 </select>
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;">State *</label>
+                <label class="text-sm">State *</label>
                 <select name="state" required class="state-select" data-selected="{{ old('state', $account->state ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem; width: 100%;">
                     <option value="">Select State</option>
                 </select>
@@ -270,18 +270,18 @@ input:checked + .toggle-slider {
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;">City</label>
+                <label class="text-sm">City</label>
                 <select name="city" class="city-select" data-selected="{{ old('city', $account->city ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem; width: 100%;">
                     <option value="">Select City</option>
                 </select>
             </div>
 
             <div>
-                <label style="font-size: 0.8rem;">Postal Code</label>
+                <label class="text-sm">Postal Code</label>
                 <input type="text" name="postal_code" value="{{ old('postal_code', $account->postal_code ?? '') }}" style="font-size: 0.85rem; padding: 0.45rem 0.6rem;">
             </div>
             <div>
-                <label style="font-size: 0.8rem;">FY Start (Day & Month)</label>
+                <label class="text-sm">FY Start (Day & Month)</label>
                 <div style="display: flex; gap: 0.5rem;">
                     @php
                         $currentFy = old('fy_startdate', $account->fy_startdate ?? '04-01');
@@ -400,7 +400,7 @@ input:checked + .toggle-slider {
                 <form method="POST" action="{{ route('financial-year.update') }}" style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
                     @csrf
                     <div style="display: flex; align-items: flex-end; gap: 8px;">
-                        <div style="flex: 1;">
+                        <div class="flex-fill">
                             <label style="font-size: 0.75rem; color: #64748b; margin-bottom: 4px; display: block; font-weight: 600;">Start Year</label>
                             <select name="year_start" id="fy_year_start" required style="width: 100%; padding: 0.45rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
                                 @php $currentYear = date('Y'); @endphp
@@ -410,7 +410,7 @@ input:checked + .toggle-slider {
                             </select>
                         </div>
                         <span style="font-size: 1rem; font-weight: bold; color: #94a3b8;">-</span>
-                        <div style="flex: 1;">
+                        <div class="flex-fill">
                             <label style="font-size: 0.75rem; color: #64748b; margin-bottom: 4px; display: block; font-weight: 600;">End Year</label>
                             <select name="year_end" id="fy_year_end" required style="width: 100%; padding: 0.45rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
                                 @for($y = $currentYear; $y <= $currentYear + 2; $y++)
@@ -432,7 +432,7 @@ input:checked + .toggle-slider {
                             <th style="width: 30px;">#</th>
                             <th>Financial Year</th>
                             <th>Status</th>
-                            <th style="text-align: right;">Action</th>
+                            <th class="text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -447,7 +447,7 @@ input:checked + .toggle-slider {
                                         <span style="color: #94a3b8; font-size: 0.78rem;">—</span>
                                     @endif
                                 </td>
-                                <td style="text-align: right;">
+                                <td class="text-right">
                                     @if(!$fy->default)
                                         <form method="POST" action="{{ route('financial-year.default', $fy->fy_id) }}" style="display: inline;">
                                             @csrf
@@ -542,7 +542,7 @@ input:checked + .toggle-slider {
                     <th style="width: 40px;">#</th>
                     <th>Key</th>
                     <th>Value</th>
-                    <th style="text-align: right;">Action</th>
+                    <th class="text-right">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -551,7 +551,7 @@ input:checked + .toggle-slider {
                         <td style="color: #64748b; font-size: 0.85rem;">{{ $index + 1 }}</td>
                         <td><code>{{ $setting['key'] }}</code></td>
                         <td>{{ $setting['value'] }}</td>
-                        <td style="text-align: right;">
+                        <td class="text-right">
                             <div style="display: flex; justify-content: flex-end; gap: 8px;">
                                 <a href="{{ route('settings.index', ['e' => base64_encode($setting['record_id'])]) }}#config" class="text-link" style="border: 1px solid #3b82f6; color: #3b82f6; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; text-decoration: none;">Edit</a>
                                 <form method="POST" action="{{ route('settings.destroy', $setting['record_id']) }}" onsubmit="return confirm('Delete this setting?')">
@@ -620,7 +620,7 @@ input:checked + .toggle-slider {
                 <input type="text" name="authorize_signatory" value="{{ old('authorize_signatory', $editingBillingDetail->authorize_signatory ?? '') }}">
             </div>
             <div style="grid-column: span 3;">
-                <label style="font-size: 0.8rem;">Address</label>
+                <label class="text-sm">Address</label>
                 <textarea name="address" rows="2" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">{{ old('address', $editingBillingDetail->address ?? '') }}</textarea>
             </div>
             <div>
@@ -727,7 +727,7 @@ input:checked + .toggle-slider {
                 <input type="text" name="authorize_signatory" value="{{ old('authorize_signatory', $editingQuotationDetail->authorize_signatory ?? '') }}">
             </div>
             <div style="grid-column: span 3;">
-                <label style="font-size: 0.8rem;">Address</label>
+                <label class="text-sm">Address</label>
                 <textarea name="address" rows="2" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem;">{{ old('address', $editingQuotationDetail->address ?? '') }}</textarea>
             </div>
             <div>
@@ -823,7 +823,7 @@ input:checked + .toggle-slider {
                         <option value="quotation" {{ old('type', $editingTerm->type ?? '') == 'quotation' ? 'selected' : '' }}>Quotation</option>
                     </select>
                 </div>
-                <div style="flex: 1;">
+                <div class="flex-fill">
                     <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b; font-weight: 600;">Terms and Condition *</label>
                     <input type="text" name="content" value="{{ old('content', $editingTerm->content ?? '') }}" placeholder="Enter terms and condition" required style="width: 100%; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">
                 </div>
@@ -839,7 +839,7 @@ input:checked + .toggle-slider {
         {{-- Billing Terms List --}}
         <div style="margin-bottom: 1rem;">
             <h6 style="margin-bottom: 0.4rem; color: #1e293b; font-weight: 600; font-size: 0.9rem;">Billing T&C</h6>
-            <table class="data-table" style="font-size: 0.85rem;">
+            <table class="data-table" class="small-text">
                 <thead>
                     <tr>
                         <th style="width: 50px; padding: 0.4rem;">Seq</th>
@@ -890,7 +890,7 @@ input:checked + .toggle-slider {
         {{-- Quotation Terms List --}}
         <div>
             <h6 style="margin-bottom: 0.4rem; color: #1e293b; font-weight: 600; font-size: 0.9rem;">Quotation T&C</h6>
-            <table class="data-table" style="font-size: 0.85rem;">
+            <table class="data-table" class="small-text">
                 <thead>
                     <tr>
                         <th style="width: 50px; padding: 0.4rem;">Seq</th>
@@ -1047,8 +1047,8 @@ input:checked + .toggle-slider {
 {{-- Fixed Tax Rate Modal --}}
 <div class="modal fade" id="fixedTaxRateModal" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
-        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
-            <div class="modal-header" style="padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
+        <div class="modal-content" class="rounded-panel">
+            <div class="modal-header" class="modal-header-custom">
                 <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;">
                     <i class="fas fa-receipt" style="margin-right: 0.5rem; color: #64748b;"></i>Add Tax
                 </h5>

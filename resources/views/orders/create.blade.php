@@ -36,12 +36,12 @@
 
 @section('header_actions')
     <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? $clientFallback]) }}" class="secondary-button">
-        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Orders
+        <i class="fas fa-arrow-left icon-spaced"></i>Back to Orders
     </a>
 @endsection
 
 
-<section class="order-create-shell" style="padding: 0;">
+<section class="order-create-shell no-padding">
     <form method="POST" action="{{ route('orders.store') }}" class="client-form" id="orderForm" enctype="multipart/form-data">
         @csrf
 
@@ -55,7 +55,7 @@
                         <p class="order-top-summary__client-name" id="summaryClientName">{{ $selectedClientName }}</p>
                         <p class="order-top-summary__client-email" id="summaryClientEmail">{{ $selectedClientEmail ?: 'No client email' }}</p>
 
-                        <div style="margin-top: 0.5rem; min-width: 240px;">
+                        <div class="mt-2 min-w-240">
                             <input type="hidden" id="clientid" name="clientid" required value="{{ old('clientid', $clientFallback) }}">
                             @error('clientid') <span class="error">{{ $message }}</span> @enderror
                             <input type="hidden" id="order_number" name="order_number" value="{{ $displayOrderNumber }}">
@@ -98,7 +98,7 @@
             <div class="col-12 col-lg-6">
                 <details class="order-accordion" {{ (old('po_number', $defaultPoNumber) || old('po_date', $defaultPoDate)) ? 'open' : '' }}>
                     <summary>
-                        <span><i class="fas fa-file-alt" style="margin-right: 0.4rem; color: #94a3b8;"></i>Purchase Order</span>
+                        <span><i class="fas fa-file-alt icon-spaced-sm text-muted"></i>Purchase Order</span>
                     </summary>
                     <div class="order-accordion__content">
                         
@@ -121,8 +121,8 @@
                         <div class="mb-2">
                             <label class="order-label">PO Upload</label>
                             @if($isEditMode && !empty($editingOrder?->po_file))
-                                <div style="font-size: 0.75rem; margin-bottom: 0.25rem;">
-                                    <a href="{{ asset('storage/' . $editingOrder->po_file) }}" target="_blank" class="text-link">
+                                <div class="text-xs mb-1">
+                                    <a href="{{ route('orders.file', ['order' => $editingOrder->orderid, 'type' => 'po']) }}" target="_blank" class="text-link">
                                         <i class="fas fa-file"></i> View Current File
                                     </a>
                                 </div>
@@ -140,7 +140,7 @@
             <div class="col-12 col-lg-6">
                 <details class="order-accordion" {{ (old('agreement_ref', $defaultAgreementRef) || old('agreement_date', $defaultAgreementDate)) ? 'open' : '' }}>
                     <summary>
-                        <span><i class="fas fa-file-signature" style="margin-right: 0.4rem; color: #94a3b8;"></i>Agreement</span>
+                        <span><i class="fas fa-file-signature icon-spaced-sm text-muted"></i>Agreement</span>
                     </summary>
                     <div class="order-accordion__content">
 
@@ -163,8 +163,8 @@
                         <div class="mb-2">
                             <label class="order-label">Agreement Upload</label>
                             @if($isEditMode && !empty($editingOrder?->agreement_file))
-                                <div style="font-size: 0.75rem; margin-bottom: 0.25rem;">
-                                    <a href="{{ asset('storage/' . $editingOrder->agreement_file) }}" target="_blank" class="text-link">
+                                <div class="text-xs mb-1">
+                                    <a href="{{ route('orders.file', ['order' => $editingOrder->orderid, 'type' => 'agreement']) }}" target="_blank" class="text-link">
                                         <i class="fas fa-file"></i> View Current File
                                     </a>
                                 </div>
@@ -182,33 +182,33 @@
 
             <div class="order-save-simple">
                 <button type="button" id="saveOrderBtn" class="primary-button small">
-                    <i class="fas fa-save" style="margin-right: 0.35rem;"></i>{{ $isEditMode ? 'Update Order Details' : 'Save Order Details' }}
+                    <i class="fas fa-save icon-spaced-sm"></i>{{ $isEditMode ? 'Update Order Details' : 'Save Order Details' }}
                 </button>
             </div>
         </div>
 
-        <div class="order-items-shell" style="position: relative;">
+        <div class="order-items-shell position-relative">
                 {{-- Disabled overlay until order is saved --}}
-                <div id="itemsDisabledOverlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.9); display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 8px;">
-                    <div style="text-align: center; color: #64748b;">
-                        <i class="fas fa-lock" style="font-size: 2rem; margin-bottom: 0.5rem; color: #94a3b8;"></i>
-                        <p style="margin: 0; font-size: 0.9rem;">{{ $isEditMode ? 'Loading order details...' : 'Save order details first to add items' }}</p>
+                <div id="itemsDisabledOverlay" class="overlay-disabled">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-lock text-4xl mb-2 text-muted"></i>
+                        <p class="mb-0 text-base">{{ $isEditMode ? 'Loading order details...' : 'Save order details first to add items' }}</p>
                     </div>
                 </div>
 
                 {{-- Items Section --}}
                 <div class="items-section">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <p style="margin: 0; font-size: 0.85rem; color: #64748b;">
-                            <!-- <i class="fas fa-info-circle" style="margin-right: 0.35rem;"></i> -->
+                    <div class="flex-between mb-4">
+                        <p class="mb-0 text-sm text-muted">
+                            <!-- <i class="fas fa-info-circle" class="icon-spaced-sm"></i> -->
                             <!-- Items will be saved when you click "Create Order" -->
                         </p>
                     </div>
 
-                    <div class="add-item-row form-grid" style="background: #f9fafb; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-start;">
-                        <div style="flex: 2; min-width: 150px;">
-                            <label style="font-size: 0.75rem;">Item</label>
-                            <select id="item_itemid" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                    <div class="add-item-row form-grid form-input-row">
+                        <div class="flex-2 min-w-150">
+                            <label class="text-xs">Item</label>
+                            <select id="item_itemid" class="input-form input-full">
                                 <option value="">-- Select Item --</option>
                                 @php
                                     $groupedServices = $services->groupBy(fn($s) => $s->category->name ?? 'No Category');
@@ -234,18 +234,18 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div style="flex: 0.6; min-width: 60px;">
-                            <label style="font-size: 0.75rem;">Qty</label>
-                            <input type="number" id="item_quantity" value="1" min="1" step="1" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                        <div class="flex-06 min-w-60">
+                            <label class="text-xs">Qty</label>
+                            <input type="number" id="item_quantity" value="1" min="1" step="1" class="input-form input-full">
                         </div>
                         <div style="flex: 0.8; min-width: 80px;">
-                            <label style="font-size: 0.75rem;">Price</label>
-                            <input type="number" id="item_unit_price" min="0" step="1" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                            <label class="text-xs">Price</label>
+                            <input type="number" id="item_unit_price" min="0" step="1" class="input-form input-full">
                         </div>
                         @if($account->allow_multi_taxation)
                         <div style="flex: 0.8; min-width: 80px;">
-                            <label style="font-size: 0.75rem;">Tax% <a href="#" id="open-tax-modal-order" style="font-size:10px;margin-left:2px;" class="text-link">+</a></label>
-                            <select id="item_tax_rate" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                            <label class="text-xs">Tax% <a href="#" id="open-tax-modal-order" style="font-size:10px;margin-left:2px;" class="text-link">+</a></label>
+                            <select id="item_tax_rate" class="input-form input-full">
                                 <option value="0">No Tax</option>
                                 @foreach($taxes as $tax)
                                     <option value="{{ (float) $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)</option>
@@ -257,19 +257,19 @@
                         @endif
                         @if($account->have_users)
                         <div id="item_users_wrapper" style="flex: 0.6; min-width: 55px; display: none;">
-                            <label style="font-size: 0.75rem;">Users</label>
-                            <input type="number" id="item_users" value="1" min="1" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                            <label class="text-xs">Users</label>
+                            <input type="number" id="item_users" value="1" min="1" class="input-form input-full">
                         </div>
                         @else
                         <input type="hidden" id="item_users" value="1">
                         @endif
                         <div style="flex: 0.6; min-width: 70px;">
-                            <label style="font-size: 0.75rem;">Disc%</label>
-                            <input type="number" id="item_discount" value="0" min="0" max="100" step="1" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                            <label class="text-xs">Disc%</label>
+                            <input type="number" id="item_discount" value="0" min="0" max="100" step="1" class="input-form input-full">
                         </div>
                         <div style="flex: 0.8; min-width: 80px;">
-                            <label style="font-size: 0.75rem;">Freq</label>
-                            <select id="item_frequency" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                            <label class="text-xs">Freq</label>
+                            <select id="item_frequency" class="input-form input-full">
                                 <option value="">--</option>
                                 <option value="One-Time">One-Time</option>
                                 <option value="Day(s)">Day(s)</option>
@@ -279,21 +279,21 @@
                                 <option value="Year(s)">Year(s)</option>
                             </select>
                         </div>
-                        <div id="item_duration_wrapper" style="flex: 0.6; min-width: 60px;">
-                            <label style="font-size: 0.75rem;">Dur</label>
-                            <input type="text" id="item_duration" placeholder="12" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                        <div id="item_duration_wrapper" class="flex-06 min-w-60">
+                            <label class="text-xs">Dur</label>
+                            <input type="text" id="item_duration" placeholder="12" class="input-form input-full">
                         </div>
                         <div id="item_start_date_wrapper" style="flex: 0.8; min-width: 90px;">
-                            <label style="font-size: 0.75rem;">Start</label>
-                            <input type="date" id="item_start_date" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                            <label class="text-xs">Start</label>
+                            <input type="date" id="item_start_date" class="input-form input-full">
                         </div>
                         <div id="item_end_date_wrapper" style="flex: 0.8; min-width: 90px;">
-                            <label style="font-size: 0.75rem;">End</label>
-                            <input type="date" id="item_end_date" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                            <label class="text-xs">End</label>
+                            <input type="date" id="item_end_date" class="input-form input-full">
                         </div>
                         <div style="flex: 0.8; min-width: 90px;">
-                            <label style="font-size: 0.75rem;">Delivery</label>
-                            <input type="date" id="item_delivery_date" style="font-size: 0.85rem; padding: 0.4rem 0.5rem; width: 100%;">
+                            <label class="text-xs">Delivery</label>
+                            <input type="date" id="item_delivery_date" class="input-form input-full">
                         </div>
                         <div style="flex: 1 1 100%; display: flex; gap: 0.5rem; align-items: flex-end;">
                             <textarea id="item_description" rows="1" placeholder="Description (optional)" style="flex: 1 1 auto; font-size: 0.8rem; padding: 0.45rem 0.6rem; min-height: 36px; resize: vertical; line-height: 1.2;"></textarea>
@@ -450,7 +450,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('finalActions').style.display = 'flex';
 
         const btn = document.getElementById('saveOrderBtn');
-        btn.innerHTML = `<i class="fas fa-check" style="margin-right: 0.35rem;"></i>${saveButtonDoneLabel}`;
+        btn.innerHTML = `<i class="fas fa-check icon-spaced-sm"></i>${saveButtonDoneLabel}`;
         btn.classList.remove('btn-primary');
         btn.classList.add('btn-success');
         btn.disabled = false;
@@ -487,7 +487,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Disable button and show loading
         const btn = document.getElementById('saveOrderBtn');
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 0.35rem;"></i>Saving...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin icon-spaced-sm"></i>Saving...';
 
         fetch('{{ route("orders.save-ajax") }}', {
             method: 'POST',
@@ -521,7 +521,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateFinalActionLinks();
 
                 // Update button
-                btn.innerHTML = `<i class="fas fa-check" style="margin-right: 0.35rem;"></i>${saveButtonDoneLabel}`;
+                btn.innerHTML = `<i class="fas fa-check icon-spaced-sm"></i>${saveButtonDoneLabel}`;
                 btn.classList.remove('btn-primary');
                 btn.classList.add('btn-success');
                 btn.disabled = false;
@@ -533,7 +533,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             btn.disabled = false;
-            btn.innerHTML = `<i class="fas fa-save" style="margin-right: 0.35rem;"></i>${saveButtonIdleLabel}`;
+            btn.innerHTML = `<i class="fas fa-save icon-spaced-sm"></i>${saveButtonIdleLabel}`;
             alert('Error: ' + error.message);
         });
     });
@@ -1291,7 +1291,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateFinalActionLinks();
 
                 const btn = document.getElementById('saveOrderBtn');
-                btn.innerHTML = `<i class="fas fa-check" style="margin-right: 0.35rem;"></i>${saveButtonDoneLabel}`;
+                btn.innerHTML = `<i class="fas fa-check icon-spaced-sm"></i>${saveButtonDoneLabel}`;
                 btn.classList.remove('btn-primary');
                 btn.classList.add('btn-success');
                 btn.disabled = false;
@@ -1676,8 +1676,8 @@ document.addEventListener('DOMContentLoaded', function() {
 @if($account->allow_multi_taxation)
 <div class="modal fade" id="addTaxModalOrder" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
-        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
-            <div class="modal-header" style="padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
+        <div class="modal-content rounded-panel">
+            <div class="modal-header modal-header-custom">
                 <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;">
                     <i class="fas fa-receipt" style="margin-right: 0.5rem; color: #64748b;"></i>Add Tax
                 </h5>

@@ -9,7 +9,7 @@
     <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
             <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
-                <i class="fas fa-arrow-left" style="font-size: 0.8rem;"></i>
+                <i class="fas fa-arrow-left" class="text-sm"></i>
             </button>
             <div style="width: 1px; height: 32px; background: #d1d5db; flex-shrink: 0;"></div>
             <div style="width: 36px; height: 36px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -57,7 +57,7 @@
                 <tbody id="ordersBody"></tbody>
             </table>
 
-            <div id="noOrdersMessage" class="empty-state" style="display:none;">
+            <div id="noOrdersMessage" class="empty-state" class="hidden">
                 No verified orders are available for this client.
             </div>
         </div>

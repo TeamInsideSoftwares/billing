@@ -47,17 +47,17 @@
 @endphp
 @section('header_actions')
     <a href="{{ route('invoices.index', request('c') ? ['c' => request('c')] : []) }}" class="secondary-button">
-        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Invoices
+        <i class="fas fa-arrow-left" class="icon-spaced"></i>Back to Invoices
     </a>
     @if(($invoice->status ?? '') !== 'cancelled')
     <a href="{{ route('invoices.edit', [$invoice, 'c' => request('c')]) }}" class="primary-button small">
-        <i class="fas fa-edit" style="margin-right: 0.35rem;"></i>Edit
+        <i class="fas fa-edit" class="icon-spaced-sm"></i>Edit
     </a>
     <form method="POST" action="{{ route('invoices.destroy', [$invoice, 'c' => request('c')]) }}" class="inline-delete" onsubmit="return confirm('Cancel this invoice?')" style="display: inline;">
         @csrf
         @method('DELETE')
         <button type="submit" class="secondary-button">
-            <i class="fas fa-ban" style="margin-right: 0.35rem;"></i>Cancel Invoice
+            <i class="fas fa-ban" class="icon-spaced-sm"></i>Cancel Invoice
         </button>
     </form>
     @endif
@@ -72,7 +72,7 @@
                 </span>
             </div>
         </div>
-        <div style="text-align: right;">
+        <div class="text-right">
             <div style="font-size: 1.5em; font-weight: bold; margin-bottom: 0.25rem;">{{ number_format($invoiceGrandTotal, 0) }}</div>
             <div>{{ $invoice->issue_date?->format('d M Y') }} due {{ $invoice->due_date?->format('d M Y') }}</div>
         </div>
@@ -86,7 +86,7 @@
     <div style="display: flex; justify-content: space-between; gap: 2rem;">
 
         <!-- Client Info -->
-        <div style="flex: 1;">
+        <div class="flex-fill">
             @if($invoice->client->email)
             <p style="margin-bottom: 0.75rem;">
                 <span style="display: block; color: #6b7280; font-weight: 600; font-size: 0.85em;">
@@ -107,7 +107,7 @@
         </div>
 
         <!-- Invoice Info -->
-        <div style="flex: 1;">
+        <div class="flex-fill">
             <p style="margin-bottom: 0.75rem;">
                 <span style="display: block; color: #6b7280; font-weight: 600; font-size: 0.85em;">
                     Issue Date

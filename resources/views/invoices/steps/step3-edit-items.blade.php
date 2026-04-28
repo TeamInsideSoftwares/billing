@@ -21,7 +21,7 @@
     <div style="margin-bottom: 0.7rem; padding: 0.55rem 0.72rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
             <button type="button" id="btnBackToStep2" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
-                <i class="fas fa-arrow-left" style="font-size: 0.8rem;"></i>
+                <i class="fas fa-arrow-left" class="text-sm"></i>
             </button>
             <div style="width: 1px; height: 32px; background: #d1d5db; flex-shrink: 0;"></div>
             <div style="width: 36px; height: 36px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -206,15 +206,15 @@
                         <th>Item</th>
                         <th>Qty</th>
                         <th>Price ({{ $selectedClientCurrency }})</th>
-                        <th id="itemsUsersHeader" style="display:none;">Users</th>
+                        <th id="itemsUsersHeader" class="hidden">Users</th>
                         <th>Disc %</th>
                         @if($account->allow_multi_taxation)
                         <th>Tax %</th>
                         @endif
                         <th>Freq</th>
                         <th id="itemsDurationHeader">Dur</th>
-                        <th id="itemsStartHeader" style="display:none;">Start Date</th>
-                        <th id="itemsEndHeader" style="display:none;">End Date</th>
+                        <th id="itemsStartHeader" class="hidden">Start Date</th>
+                        <th id="itemsEndHeader" class="hidden">End Date</th>
                         <th>Total ({{ $selectedClientCurrency }})</th>
                         <th></th>
                     </tr>

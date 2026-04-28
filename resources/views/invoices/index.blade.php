@@ -296,7 +296,7 @@
                             </select>
                         </div>
                         <button type="submit" class="primary-button" style="min-height: 46px; padding-inline: 1.15rem;">
-                            <i class="fas fa-arrow-right" style="margin-right: 0.4rem;"></i> View Invoices
+                            <i class="fas fa-arrow-right" class="icon-spaced"></i> View Invoices
                         </button>
                     </form>
                 </div>
@@ -327,7 +327,7 @@
                 <div class="invoice-empty">
                     <i class="fas fa-file-invoice" style="font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.3;"></i>
                     <p style="margin: 0; font-size: 0.95rem; font-weight: 500;">No invoices found for {{ $selectedClientLabel }}</p>
-                    <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem;">Create your first invoice to get started.</p>
+                    <p class="small-text">Create your first invoice to get started.</p>
                 </div>
             </section>
         @else

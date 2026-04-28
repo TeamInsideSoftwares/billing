@@ -27,20 +27,20 @@
 @section('header_actions')
     @if($currentStep === 1)
         <a href="{{ $selectedClientId ? route('invoices.index', ['c' => $selectedClientId]) : route('invoices.index') }}" class="secondary-button">
-            <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back
+            <i class="fas fa-arrow-left" class="icon-spaced"></i>Back
         </a>
     @endif
 @endsection
 
-<section class="panel-card invoice-create-shell" style="padding: 0.95rem;">
+<section class="panel-card invoice-create-shell" >
     @if ($errors->any())
-        <div style="margin-bottom: 0.9rem; padding: 0.7rem 0.85rem; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; border-radius: 10px;">
-            <strong style="display: block; margin-bottom: 0.4rem;">
+        <div class="alert warning">
+            <strong class="d-block mb-1">
                 @if($errors->has('general')) Error: {{ $errors->first('general') }}
                 @else Fix these issues before creating the invoice: @endif
             </strong>
             @unless($errors->has('general'))
-            <ul style="margin: 0; padding-left: 1rem;">
+            <ul class="plain-list">
                 @foreach ($errors->all() as $error) <li>{{ $error }}</li> @endforeach
             </ul>
             @endunless

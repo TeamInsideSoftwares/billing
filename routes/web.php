@@ -133,6 +133,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/orders/{order}/add-item', 'addOrderItemAjax')->name('orders.items.add');
         Route::post('/orders/{order}/update-item/{orderItemId}', 'updateOrderItemAjax')->name('orders.items.update');
         Route::delete('/orders/{order}/remove-item/{orderItemId}', 'deleteOrderItemAjax')->name('orders.items.delete');
+        Route::get('/orders/{order}/file/{type}', 'ordersFile')->name('orders.file');
         // Parameterized routes
         Route::get('/orders/{order}', 'ordersShow')->name('orders.show');
         Route::get('/orders/{order}/json', 'getOrderJson')->name('orders.json');

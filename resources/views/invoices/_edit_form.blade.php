@@ -12,8 +12,8 @@
 
     @if ($errors->any())
         <div style="margin-bottom: 1.25rem; padding: 0.9rem 1rem; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; border-radius: 10px;">
-            <strong style="display: block; margin-bottom: 0.4rem;">Fix these issues before updating the invoice:</strong>
-            <ul style="margin: 0; padding-left: 1rem;">
+            <strong class="d-block mb-1">Fix these issues before updating the invoice:</strong>
+            <ul class="plain-list">
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
@@ -175,9 +175,9 @@
                         <th>Users</th>
                         @endif
                         <th>Freq</th>
-                        <th id="itemsDurationHeader" style="display:none;">Dur</th>
-                        <th id="itemsStartHeader" style="display:none;">Start</th>
-                        <th id="itemsEndHeader" style="display:none;">End</th>
+                        <th id="itemsDurationHeader" class="hidden">Dur</th>
+                        <th id="itemsStartHeader" class="hidden">Start</th>
+                        <th id="itemsEndHeader" class="hidden">End</th>
                         <th>Amount</th>
                         <th></th>
                     </tr>
@@ -665,8 +665,8 @@
 @if($account->allow_multi_taxation)
 <div class="modal fade" id="addTaxModalInvoiceEdit" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
-        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
-            <div class="modal-header" style="padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
+        <div class="modal-content" class="rounded-panel">
+            <div class="modal-header" class="modal-header-custom">
                 <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;">
                     <i class="fas fa-receipt" style="margin-right: 0.5rem; color: #64748b;"></i>Add Tax
                 </h5>

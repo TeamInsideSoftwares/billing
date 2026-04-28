@@ -22,8 +22,8 @@
 
         @if ($errors->any())
             <div style="margin-bottom: 1.25rem; padding: 0.9rem 1rem; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; border-radius: 10px;">
-                <strong style="display: block; margin-bottom: 0.4rem;">Fix these issues before updating the invoice:</strong>
-                <ul style="margin: 0; padding-left: 1rem;">
+                <strong class="d-block mb-1">Fix these issues before updating the invoice:</strong>
+                <ul class="plain-list">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach

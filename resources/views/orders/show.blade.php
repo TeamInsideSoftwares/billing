@@ -14,22 +14,22 @@
 
 @section('header_actions')
     <a href="{{ route('orders.index', ['c' => $order->clientid]) }}" class="secondary-button">
-        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Orders
+        <i class="fas fa-arrow-left" class="icon-spaced"></i>Back to Orders
     </a>
     @if(($order->status ?? '') !== 'cancelled' && ($order->status ?? '') !== 'completed')
     <a href="{{ route('invoices.create', ['step' => 3, 'invoice_for' => 'orders', 'o' => $order->orderid, 'c' => $order->clientid]) }}" class="primary-button small">
-        <i class="fas fa-file-invoice" style="margin-right: 0.35rem;"></i>Create PI
+        <i class="fas fa-file-invoice" class="icon-spaced-sm"></i>Create PI
     </a>
     @endif
     @if(($order->status ?? '') !== 'cancelled')
         <a href="{{ route('orders.edit', ['order' => $order->orderid, 'c' => $order->clientid]) }}" class="primary-button small">
-            <i class="fas fa-edit" style="margin-right: 0.35rem;"></i>Edit
+            <i class="fas fa-edit" class="icon-spaced-sm"></i>Edit
         </a>
         <form method="POST" action="{{ route('orders.destroy', ['order' => $order->orderid, 'c' => $order->clientid]) }}" class="inline-delete" onsubmit="return confirm('Cancel this order?')" style="display: inline;">
             @csrf
             @method('DELETE')
             <button type="submit" class="secondary-button">
-                <i class="fas fa-ban" style="margin-right: 0.35rem;"></i>Cancel Order
+                <i class="fas fa-ban" class="icon-spaced-sm"></i>Cancel Order
             </button>
         </form>
     @else
@@ -37,7 +37,7 @@
             @csrf
             @method('PATCH')
             <button type="submit" class="primary-button small">
-                <i class="fas fa-undo" style="margin-right: 0.35rem;"></i>Restore Order
+                <i class="fas fa-undo" class="icon-spaced-sm"></i>Restore Order
             </button>
         </form>
     @endif
@@ -48,7 +48,7 @@
         <div style="width: 64px; height: 64px; border-radius: 10px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
             <i class="fas fa-receipt"></i>
         </div>
-        <div style="flex: 1;">
+        <div class="flex-fill">
             <div style="margin: 0.25rem 0 0; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                 @if($order->order_title)
                     <p style="margin: 0; font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">{{ $order->order_title }}</p>
@@ -73,10 +73,10 @@
                 @endif
             </div>
             <h1 style="margin: 0.25rem 0 0.25rem 0; font-size: 1.3rem; font-weight: 700;">{{ $order->client->business_name ?? $order->client->contact_name }}</h1>
-            <p style="margin: 0; font-size: 0.85rem; color: #64748b;">{{ $order->client->email }}</p>
-            <!-- <span class="status-pill {{ strtolower($order->status ?? 'draft') }}" style="margin-top: 0.25rem; display: inline-block;">{{ ucfirst($order->status ?? 'Draft') }}</span> -->
+            <p class="mb-0 text-sm text-muted">{{ $order->client->email }}</p>
+            <!-- <span class="status-pill {{ strtolower($order->status ?? 'draft') }}" class="status-pill-inline">{{ ucfirst($order->status ?? 'Draft') }}</span> -->
         </div>
-        <div style="text-align: right;">
+        <div class="text-right">
             <p style="margin: 0; font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Grand Total</p>
             <strong style="font-size: 1.4rem; color: #0f172a; margin-top: 0.25rem; display: block;">{{ number_format($order->grand_total ?? 0, 0) }}</strong>
         </div>
@@ -152,12 +152,12 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th style="font-size: 0.8rem;">Item</th>
+                <th class="text-sm">Item</th>
                 <th style="font-size: 0.8rem; text-align: center;">Qty</th>
                 <th style="font-size: 0.8rem; text-align: right;">Price</th>
                 <th style="font-size: 0.8rem; text-align: right;">Tax %</th>
                 <th style="font-size: 0.8rem; text-align: right;">Discount</th>
-                <th style="font-size: 0.8rem;">Frequency / Duration</th>
+                <th class="text-sm">Frequency / Duration</th>
                 <th style="font-size: 0.8rem; text-align: center;">Users</th>
                 <th style="font-size: 0.8rem; text-align: right;">Total</th>
             </tr>
@@ -165,7 +165,7 @@
         <tbody>
             @forelse($order->items as $item)
             <tr>
-                <td style="font-size: 0.85rem;"><strong>{{ $item->item_name }}</strong></td>
+                <td class="small-text"><strong>{{ $item->item_name }}</strong></td>
                 <td style="font-size: 0.85rem; text-align: center;">{{ number_format($item->quantity, 0) }}</td>
                 <td style="font-size: 0.85rem; text-align: right;">{{ number_format($item->unit_price, 0) }}</td>
                 <td style="font-size: 0.85rem; text-align: right;">{{ number_format($item->tax_rate, 0) }}%</td>
@@ -179,7 +179,7 @@
                         —
                     @endif
                 </td>
-                <td style="font-size: 0.85rem;">
+                <td class="small-text">
                     @if($item->duration && $item->frequency && $item->frequency !== 'One-Time')
                         {{ $item->duration }} {{ $item->frequency }}
                     @else

@@ -2,13 +2,13 @@
 
 @section('content')
 <section class="section-bar">
-    <div style="display: flex; gap: 0.5rem;">
-        <a href="{{ route('payments.edit', $payment) }}" class="icon-action-btn edit" title="Edit" style="width: 36px; height: 36px; font-size: 1rem;">
+    <div class="flex-center-gap-sm">
+        <a href="{{ route('payments.edit', $payment) }}" class="icon-action-btn edit" title="Edit" class="icon-action-small">
             <i class="fas fa-edit"></i>
         </a>
         <form method="POST" action="{{ route('payments.destroy', $payment) }}" class="inline-delete" onsubmit="return confirm('Delete this payment?')">
             @csrf @method('DELETE')
-            <button type="submit" class="icon-action-btn delete" title="Delete" style="width: 36px; height: 36px; font-size: 1rem;">
+            <button type="submit" class="icon-action-btn delete" title="Delete" class="icon-action-small">
                 <i class="fas fa-trash"></i>
             </button>
         </form>

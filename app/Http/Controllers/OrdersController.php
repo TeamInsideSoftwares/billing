@@ -13,10 +13,37 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class OrdersController extends Controller
 {
+    public function ordersFile(Order $order, string $type)
+    {
+        $userAccountId = (string) (auth()->user()->accountid ?? '');
+        $orderAccountId = (string) ($order->accountid ?? '');
+
+        if ($userAccountId !== '' && $orderAccountId !== '' && $userAccountId !== $orderAccountId) {
+            abort(403);
+        }
+
+        $path = null;
+
+        if ($type === 'po') {
+            $path = $order->po_file;
+        } elseif ($type === 'agreement') {
+            $path = $order->agreement_file;
+        } else {
+            abort(404);
+        }
+
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            abort(404);
+        }
+
+        return Storage::disk('public')->response($path);
+    }
+
     public function selectClient(): View
     {
         $clients = Client::orderBy('business_name')

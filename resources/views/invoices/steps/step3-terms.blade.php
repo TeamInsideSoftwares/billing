@@ -39,7 +39,7 @@
             <div style="margin-bottom: 0.4rem; padding: 0.5rem; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; transition: all 0.2s;" class="term-item-row">
                 <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer;">
                     <input type="checkbox" class="term-checkbox" data-tc-id="{{ $term->tc_id }}" data-content="{{ $term->content }}" value="{{ $term->content }}" style="margin-top: 0.15rem; width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
-                    <div style="flex: 1;">
+                    <div class="flex-fill">
                         <p style="margin: 0; font-size: 0.78rem; color: #475569; line-height: 1.4;">{{ $term->content }}</p>
                     </div>
                 </label>

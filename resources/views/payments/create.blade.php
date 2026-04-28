@@ -2,7 +2,7 @@
 
 @section('header_actions')
     <a href="{{ route('payments.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Payments
+        <i class="fas fa-arrow-left" class="icon-spaced"></i>Back to Payments
     </a>
 @endsection
 
@@ -57,7 +57,7 @@
                 <label for="reference">Reference Number</label>
                 <input type="text" id="reference" name="reference" value="{{ old('reference') }}">
             </div>
-            <div style="grid-column: span 2;">
+            <div class="col-span-2">
                 <label for="notes">Notes</label>
                 <textarea id="notes" name="notes" rows="3">{{ old('notes') }}</textarea>
             </div>

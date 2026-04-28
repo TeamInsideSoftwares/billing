@@ -51,7 +51,7 @@
                 <div style="grid-column: 1 / -1; padding: 3rem; text-align: center; color: #94a3b8;">
                     <i class="fas fa-users" style="font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.3;"></i>
                     <p style="margin: 0; font-size: 0.95rem; font-weight: 500;">No clients found</p>
-                    <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem;">Add clients first to create orders.</p>
+                    <p class="small-text">Add clients first to create orders.</p>
                 </div>
             @endforelse
         </div>

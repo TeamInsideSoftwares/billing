@@ -2,7 +2,7 @@
 
 @section('header_actions')
     <a href="{{ route('services.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Items
+        <i class="fas fa-arrow-left" class="icon-spaced"></i>Back to Items
     </a>
 @endsection
 
@@ -280,8 +280,8 @@
 @if($account->allow_multi_taxation)
 <div class="modal fade" id="addTaxModalEdit" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
-        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
-            <div class="modal-header" style="padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
+        <div class="modal-content" class="rounded-panel">
+            <div class="modal-header" class="modal-header-custom">
                 <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;">
                     <i class="fas fa-receipt" style="margin-right: 0.5rem; color: #64748b;"></i>Add Tax
                 </h5>

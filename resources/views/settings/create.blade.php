@@ -2,7 +2,7 @@
 
 @section('header_actions')
     <a href="{{ route('settings.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Settings
+        <i class="fas fa-arrow-left" class="icon-spaced"></i>Back to Settings
     </a>
 @endsection
 

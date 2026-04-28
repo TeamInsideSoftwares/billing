@@ -2,14 +2,14 @@
 
 @section('header_actions')
     <a href="{{ route('services.create') }}" class="primary-button">Add Item</a>
-    <button class="secondary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal"><i class="fas fa-folder" style="margin-right: 5px;"></i>Manage Categories</button>
+    <button class="secondary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal"><i class="fas fa-folder" class="icon-spaced-sm"></i>Manage Categories</button>
 @endsection
 
 @section('content')
 <div class="modal fade" id="productCategoriesModal" tabindex="-1">
     <div class="modal-dialog modal-md modal-dialog-centered" style="max-width: 650px;">
-        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
-            <div class="modal-header" style="padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
+        <div class="modal-content" class="rounded-panel">
+            <div class="modal-header" class="modal-header-custom">
                 <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;"><i class="fas fa-folder" style="margin-right: 0.5rem; color: #64748b;"></i>Manage Categories</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -36,7 +36,7 @@
                     </div>
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
                         <button type="submit" id="catSubmitBtn" class="primary-button small">Save Category</button>
-                        <button type="button" id="catCancelBtn" class="text-link small" style="display:none;" onclick="resetCatForm()">Cancel</button>
+                        <button type="button" id="catCancelBtn" class="text-link small" class="hidden" onclick="resetCatForm()">Cancel</button>
                     </div>
                 </form>
 
@@ -45,7 +45,7 @@
                     <h6 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">{{ count($productCategories) }} Categories</h6>
                     @forelse($productCategories as $pc)
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 0.25rem; background: #f8fafc;">
-                            <div style="flex: 1;">
+                            <div class="flex-fill">
                                 <div style="display: flex; align-items: center; gap: 0.4rem;">
                                     <div style="width: 24px; height: 24px; border-radius: 5px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; flex-shrink: 0;"><i class="fas fa-folder"></i></div>
                                     <div>

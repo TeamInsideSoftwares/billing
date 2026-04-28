@@ -18,7 +18,7 @@
     <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
             <button type="button" id="btnBackToPrev" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
-                <i class="fas fa-arrow-left" style="font-size: 0.8rem;"></i>
+                <i class="fas fa-arrow-left" class="text-sm"></i>
             </button>
             <div style="width: 1px; height: 32px; background: #d1d5db; flex-shrink: 0;"></div>
             <div style="width: 36px; height: 36px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -62,8 +62,8 @@
                 </div>
                 <div class="modal fade" id="addTermModal" tabindex="-1">
                     <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
-                        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
-                            <div class="modal-header" style="padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
+                        <div class="modal-content" class="rounded-panel">
+                            <div class="modal-header" class="modal-header-custom">
                                 <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;">
                                     <i class="fas fa-file-signature" style="margin-right: 0.5rem; color: #64748b;"></i>Add Terms & Conditions
                                 </h5>
@@ -113,7 +113,7 @@
                             Live Preview
                         </span>
                         <button type="button" id="btnEditPreview" class="secondary-button" style="padding: 0.35rem 0.7rem; font-size: 0.8rem;">
-                            <i class="fas fa-edit" style="margin-right: 0.35rem;"></i>Edit
+                            <i class="fas fa-edit" class="icon-spaced-sm"></i>Edit
                         </button>
                     </div>
                 </div>
@@ -542,7 +542,7 @@
                 <div style="text-align: right; min-width: 240px; margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 0.45rem;">
                     <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 0.25rem;">${draftTiNumber ? 'Tax Invoice' : 'Proforma Invoice'}</div>
                     ${accountData.logo ? `<img src="${accountData.logo}" style="max-width: 140px; max-height: 56px; object-fit: contain;">` : ''}
-                    <div style="text-align: right;">
+                    <div class="text-right">
                         <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>${draftTiNumber ? 'Tax No:' : 'Proforma No:'}</strong> ${draftTiNumber || draftPiNumber || invoiceNumber}</p>
                         <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>Issue Date:</strong> ${formatDate(issueDate)}</p>
                         <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>Due Date:</strong> ${formatDate(dueDate)}</p>

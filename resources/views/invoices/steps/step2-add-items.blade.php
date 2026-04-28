@@ -17,7 +17,7 @@
     <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
             <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
-                <i class="fas fa-arrow-left" style="font-size: 0.8rem;"></i>
+                <i class="fas fa-arrow-left" class="text-sm"></i>
             </button>
             <div style="width: 1px; height: 32px; background: #d1d5db; flex-shrink: 0;"></div>
             <div style="width: 36px; height: 36px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -175,12 +175,12 @@
                         <th>Tax %</th>
                         @endif
                         @if($account->have_users)
-                        <th id="manualUsersHeader" style="display:none;">Users</th>
+                        <th id="manualUsersHeader" class="hidden">Users</th>
                         @endif
                         <th>Freq</th>
-                        <th id="manualDurationHeader" style="display:none;">Dur</th>
-                        <th id="manualStartHeader" style="display:none;">Start</th>
-                        <th id="manualEndHeader" style="display:none;">End</th>
+                        <th id="manualDurationHeader" class="hidden">Dur</th>
+                        <th id="manualStartHeader" class="hidden">Start</th>
+                        <th id="manualEndHeader" class="hidden">End</th>
                         <th>Total ({{ $selectedClientCurrency }})</th>
                         <th></th>
                     </tr>
@@ -555,7 +555,7 @@
             row.innerHTML = `
                 <td>${renderItemCell(item)}</td>
                 <td style="text-align: center;">${Math.round(Number(item.quantity) || 0)}</td>
-                <td style="text-align: right;">${formatCurrency(item.unit_price)}</td>
+                <td class="text-right">${formatCurrency(item.unit_price)}</td>
                 <td style="text-align: center;">${Number(item.discount_percent || 0).toFixed(0)}%</td>
                 @if($account->allow_multi_taxation)
                 <td style="text-align: center;">${item.tax_rate}%</td>
@@ -567,7 +567,7 @@
                 <td style="display:${showRecurringColumns ? '' : 'none'};">${rowRecurring ? (item.duration || '-') : '-'}</td>
                 <td style="display:${showRecurringColumns ? '' : 'none'};">${rowRecurring ? (item.start_date || '-') : '-'}</td>
                 <td style="display:${showRecurringColumns ? '' : 'none'};">${rowRecurring ? (item.end_date || '-') : '-'}</td>
-                <td style="text-align: right;">${formatCurrency(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0)))}</td>
+                <td class="text-right">${formatCurrency(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0)))}</td>
                 <td style="text-align: center; white-space: nowrap;">
                     <button type="button" class="edit-item-btn icon-action-btn edit" data-index="${index}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;">
                         <i class="fas fa-edit"></i>

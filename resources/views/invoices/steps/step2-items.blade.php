@@ -6,7 +6,7 @@
             <span style="font-size: 0.75rem; padding: 0.3rem 0.7rem; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #92400e; border-radius: 20px; font-weight: 600; border: 1px solid #f59e0b;">
                 <i class="fas fa-file-invoice" style="margin-right: 0.3rem;"></i>Invoice
             </span>
-            <div style="text-align: right;">
+            <div class="text-right">
                 <span class="invoice-meta-label">Invoice Number</span>
                 <strong class="invoice-meta-value">{{ $invoice?->pi_number ?? $nextInvoiceNumber }}</strong>
                 <input type="hidden" name="invoice_number" value="{{ $invoice?->pi_number ?? $nextInvoiceNumber }}">
@@ -219,7 +219,7 @@
                 <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Adjust pricing, tax, duration, or dates before creating.</p>
             </div>
             <button type="button" id="saveStateBtn" class="primary-button" style="padding: 0.6rem 1.5rem; font-size: 0.9rem;">
-                <i class="fas fa-save" style="margin-right: 0.4rem;"></i>Save Progress
+                <i class="fas fa-save" class="icon-spaced"></i>Save Progress
             </button>
         </div>
         <div class="table-shell">

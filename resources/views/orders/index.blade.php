@@ -43,10 +43,10 @@
                     </div>
                     <div class="order-client-picker-actions">
                         <button type="button" id="btnViewOrders" class="secondary-button" style="min-height: 46px; padding-inline: 1.15rem;">
-                            <i class="fas fa-list" style="margin-right: 0.4rem;"></i> View Orders
+                            <i class="fas fa-list" class="icon-spaced"></i> View Orders
                         </button>
                         <button type="button" id="btnCreateOrder" class="primary-button" style="min-height: 46px; padding-inline: 1.15rem;">
-                            <i class="fas fa-plus" style="margin-right: 0.4rem;"></i> Create Order
+                            <i class="fas fa-plus" class="icon-spaced"></i> Create Order
                         </button>
                     </div>
                 </form>
@@ -234,7 +234,7 @@
             <div class="order-empty">
                 <i class="fas fa-receipt" style="font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.3;"></i>
                 <p style="margin: 0; font-size: 0.95rem; font-weight: 500;">No orders found</p>
-                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem;">Create your first order to get started.</p>
+                <p class="small-text">Create your first order to get started.</p>
             </div>
         @endforelse
     @endif

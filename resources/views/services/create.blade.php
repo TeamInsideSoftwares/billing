@@ -2,7 +2,7 @@
 
 @section('header_actions')
     <a href="{{ route('services.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Items
+        <i class="fas fa-arrow-left" class="icon-spaced"></i>Back to Items
     </a>
 @endsection
 
@@ -262,7 +262,7 @@
 
         <div id="saved-items-panel" class="section-divider" style="display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <strong style="font-size: 0.85rem;">Saved Items</strong>
+                <strong class="small-text">Saved Items</strong>
                 <span id="saved-items-count" style="color: #64748b; font-size: 0.78rem;">0 saved</span>
             </div>
             <div id="saved-items-list" style="margin-top: 0.45rem; display: flex; flex-direction: column; gap: 0.35rem;"></div>
@@ -272,8 +272,8 @@
         @if($account->allow_multi_taxation)
         <div class="modal fade" id="addTaxModal" tabindex="-1">
             <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
-                <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
-                    <div class="modal-header" style="padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb;">
+                <div class="modal-content" class="rounded-panel">
+                    <div class="modal-header" class="modal-header-custom">
                         <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;">
                             <i class="fas fa-receipt" style="margin-right: 0.5rem; color: #64748b;"></i>Add Tax
                         </h5>
