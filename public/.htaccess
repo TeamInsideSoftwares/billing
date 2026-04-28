@@ -6,7 +6,7 @@
     RewriteEngine On
 
     # Handle subdirectory installation
-    RewriteBase /billing.skoolready.com
+    RewriteBase /billing/
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .

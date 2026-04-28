@@ -5,6 +5,7 @@ RewriteOptions inherit
     </IfModule>
 
     RewriteEngine On
+    RewriteBase /billing/
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .

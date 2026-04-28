@@ -17,7 +17,7 @@ class AccountSeeder extends Seeder
             'accountid'      => 'ACC0000001',
             'name'           => 'Test',
             'slug'           => 'test',
-            'email'          => 'team@insidesoftwares.com',
+            'email'          => 'team@skoolready.com',
             'password'       => Hash::make('123456'),
             'status'         => 'active',
             'currency_code'  => 'INR',
