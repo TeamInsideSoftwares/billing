@@ -89,163 +89,156 @@
 
     <!-- Manage Groups Modal -->
     <div class="modal fade" id="manageGroupsModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered" class="modal-width-lg">
-            <div class="modal-content" class="rounded-panel">
-                <div class="modal-header" class="modal-header-custom">
-                    <h5 class="modal-title" class="modal-title-strong"><i class="fas fa-layer-group" class="icon-spaced text-muted"></i>Manage Groups</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" class="modal-body-custom">
-                    <!-- Add/Edit Group Form -->
-                    <div class="section-divider">
-                        <h6 id="groupFormTitle" class="modal-subtitle"><i class="fas fa-plus-circle" class="icon-spaced-sm text-muted"></i>Add New Group</h6>
-                        <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="panel-note">
-                            @csrf
-                            <input type="hidden" id="groupId" name="_group_id" value="">
-                            <div class="grid-cols-2">
-                                <div >
-                                    <label class="label-compact">Group Name *</label>
-                                    <input type="text" name="group_name" id="groupName" required maxlength="150" class="input-full">
-                                </div>
-                                <div >
-                                    <label class="label-compact">Email</label>
-                                    <input type="email" name="email" id="groupEmail" maxlength="150" class="input-full">
-                                </div>
-                                <div >
-                                    <label class="label-compact">Address Line 1</label>
-                                    <textarea name="address_line_1" id="groupAddress1" rows="2" maxlength="150" class="input-full textarea-auto">{{ old('address_line_1') }}</textarea>
-                                </div>
-                                <div >
-                                    <label class="label-compact">Address Line 2</label>
-                                    <textarea name="address_line_2" id="groupAddress2" rows="2" maxlength="150" class="input-full textarea-auto">{{ old('address_line_2') }}</textarea>
-                                </div>
-                                <div>
-                                    <label class="label-compact">Country</label>
-                                    <select id="groupCountry" name="country" class="country-select" data-selected="India" class="input-full">
-                                        <option value="">Select Country</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="label-compact">State</label>
-                                    <select id="groupState" name="state" class="state-select" data-selected="" class="input-full">
-                                        <option value="">Select State</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="label-compact">City</label>
-                                    <select id="groupCity" name="city" class="city-select" data-selected="" class="input-full">
-                                        <option value="">Select City</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="label-compact">Postal Code</label>
-                                    <input type="text" name="postal_code" id="groupPostalCode" maxlength="20" class="input-full">
-                                </div>
-                            </div>
-                            <div class="flex-between">
-                                <button type="submit" id="groupSubmitBtn" class="primary-button small">Save Group</button>
-                                <button type="button" id="groupCancelBtn" class="text-link small" class="hidden" onclick="resetGroupForm()">Cancel Edit</button>
-                            </div>
-                        </form>
+    <div class="modal-dialog modal-md modal-dialog-centered" style="max-width: 650px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-semibold"><i class="fas fa-layer-group me-2 text-muted"></i>Manage Groups</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="bg-light p-3 rounded border">
+                    @csrf
+                    <input type="hidden" id="groupId" name="_group_id" value="">
+                    <div id="methodField"></div>
+                    <h6 id="groupFormTitle" class="mb-3 fw-semibold">Add New Group</h6>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Group Name *</label>
+                        <input type="text" name="group_name" id="groupName" value="{{ old('group_name') }}" required maxlength="150" class="form-control">
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Email</label>
+                        <input type="email" name="email" id="groupEmail" value="{{ old('email') }}" maxlength="150" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Address Line 1</label>
+                        <textarea name="address_line_1" id="groupAddress1" rows="2" maxlength="150" class="form-control">{{ old('address_line_1') }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Address Line 2</label>
+                        <textarea name="address_line_2" id="groupAddress2" rows="2" maxlength="150" class="form-control">{{ old('address_line_2') }}</textarea>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Country</label>
+                            <select id="groupCountry" name="country" class="form-select" data-selected="India">
+                                <option value="">Select Country</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">State</label>
+                            <select id="groupState" name="state" class="form-select" data-selected="">
+                                <option value="">Select State</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">City</label>
+                            <select id="groupCity" name="city" class="form-select" data-selected="">
+                                <option value="">Select City</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Postal Code</label>
+                            <input type="text" name="postal_code" id="groupPostalCode" value="{{ old('postal_code') }}" maxlength="20" class="form-control">
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <button type="submit" id="groupSubmitBtn" class="btn btn-primary btn-sm">Save Group</button>
+                        <button type="button" id="groupCancelBtn" class="btn btn-link btn-sm d-none" onclick="resetGroupForm()">Cancel Edit</button>
+                    </div>
+                </form>
 
-                    <!-- Groups List -->
-                    <div class="scroll-box">
-                        <h6 class="text-muted-uppercase">{{ $groups->count() }} Groups</h6>
-                        @forelse($groups as $group)
-                            <div class="panel-note">
-                                <div class="flex-fill">
-                                    <div class="flex-center-gap">
-                                        <div class="section-icon"><i class="fas fa-users"></i></div>
-                                        <div>
-                                            <strong class="small-text">{{ $group->group_name }}</strong>
-                                            @if($group->email)
-                                                <div class="text-xs text-muted">{{ $group->email }}</div>
-                                            @endif
-                                        </div>
+                <!-- Groups List -->
+                <div style="margin-top: 1rem; max-height: 220px; overflow-y: auto;">
+                    <h6 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">{{ $groups->count() }} Groups</h6>
+                    @forelse($groups as $group)
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 0.25rem; background: #f8fafc;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                    <div style="width: 24px; height: 24px; border-radius: 5px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; flex-shrink: 0;"><i class="fas fa-users"></i></div>
+                                    <div>
+                                        <strong style="font-size: 0.82rem;">{{ $group->group_name }}</strong>
+                                        @if($group->email)
+                                            <div style="font-size: 0.72rem; color: #64748b;">{{ $group->email }}</div>
+                                        @endif
                                     </div>
                                 </div>
-                                <div class="flex-center-gap-sm">
-                                    <button type="button" class="icon-action-btn edit" onclick="editGroup('{{ $group->groupid }}', '{{ addslashes($group->group_name) }}', '{{ addslashes($group->email ?? '') }}', '{{ addslashes($group->address_line_1 ?? '') }}', '{{ addslashes($group->address_line_2 ?? '') }}', '{{ addslashes($group->city ?? '') }}', '{{ addslashes($group->state ?? '') }}', '{{ addslashes($group->postal_code ?? '') }}', '{{ addslashes($group->country ?? '') }}')" title="Edit" class="icon-action-compact">
-                                        <i class="fas fa-edit"></i>
+                            </div>
+                            <div style="display: flex; gap: 0.2rem; align-items: center;">
+                                <button type="button" style="padding: 0.25rem 0.4rem; font-size: 0.72rem; background: transparent; border: none; color: #6b7280; cursor: pointer;" onclick="editGroup('{{ $group->groupid }}', '{{ addslashes($group->group_name) }}', '{{ addslashes($group->email ?? '') }}', '{{ addslashes($group->address_line_1 ?? '') }}', '{{ addslashes($group->address_line_2 ?? '') }}', '{{ addslashes($group->city ?? '') }}', '{{ addslashes($group->state ?? '') }}', '{{ addslashes($group->postal_code ?? '') }}', '{{ addslashes($group->country ?? '') }}')" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <form method="POST" action="{{ route('groups.destroy', $group->groupid) }}" style="display: inline;" onsubmit="return confirm('Delete this group?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" style="padding: 0.25rem 0.4rem; font-size: 0.72rem; background: transparent; border: none; color: #ef4444; cursor: pointer;" title="Delete">
+                                        <i class="fas fa-trash"></i>
                                     </button>
-                                    <form method="POST" action="{{ route('groups.destroy', $group->groupid) }}" class="inline" onsubmit="return confirm('Delete this group?')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="icon-action-btn delete" title="Delete" class="icon-action-compact">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
+                                </form>
                             </div>
-                        @empty
-                            <div class="empty-state">
-                                <i class="fas fa-folder-open" class="empty-state-icon"></i>
-                                <p class="text-help">No groups yet. Create one above!</p>
-                            </div>
-                        @endforelse
-                    </div>
+                        </div>
+                    @empty
+                        <div style="text-align: center; padding: 1.25rem; color: #94a3b8;">
+                            <i class="fas fa-folder-open" style="font-size: 1.25rem; margin-bottom: 0.4rem; opacity: 0.3;"></i>
+                            <p style="margin: 0; font-size: 0.82rem;">No groups yet. Create one above!</p>
+                        </div>
+                    @endforelse
                 </div>
             </div>
         </div>
+    </div>
     </div>
 
     <script>
     function editGroup(id, name, email, addr1, addr2, city, state, postal, country) {
         const form = document.getElementById('groupForm');
-        form.action = '{{ url('groups') }}/' + id;
-        document.getElementById('groupId').value = id;
+        const title = document.getElementById('groupFormTitle');
+        const submitBtn = document.getElementById('groupSubmitBtn');
+        const cancelBtn = document.getElementById('groupCancelBtn');
+        const methodField = document.getElementById('methodField');
 
-        // Handle _method input
-        let methodInput = form.querySelector('input[name="_method"]');
-        if (!methodInput) {
-            methodInput = document.createElement('input');
-            methodInput.type = 'hidden';
-            methodInput.name = '_method';
-            form.appendChild(methodInput);
-        }
-        methodInput.value = 'PUT';
+        form.action = 'groups/' + id;
+        methodField.innerHTML = '<input type="hidden" name="_method" value="PUT">';
 
         document.getElementById('groupName').value = name;
         document.getElementById('groupEmail').value = email;
         document.getElementById('groupAddress1').value = addr1;
         document.getElementById('groupAddress2').value = addr2;
         document.getElementById('groupPostalCode').value = postal;
-        
+
         // Set country, then state, then city (cascade order)
         const countryEl = document.getElementById('groupCountry');
         const stateEl = document.getElementById('groupState');
         const cityEl = document.getElementById('groupCity');
-        
+
         countryEl.dataset.selected = country || 'India';
         stateEl.dataset.selected = state || '';
         cityEl.dataset.selected = city || '';
-        
+
         // Trigger change events to populate cascading dropdowns
         countryEl.dispatchEvent(new Event('change'));
         setTimeout(() => { stateEl.dispatchEvent(new Event('change')); }, 300);
-        
-        document.getElementById('groupFormTitle').innerHTML = '<i class="fas fa-edit" class="icon-spaced-sm text-muted"></i>Edit Group';
-        document.getElementById('groupSubmitBtn').textContent = 'Update Group';
-        document.getElementById('groupCancelBtn').style.display = 'inline-block';
+
+        title.innerText = 'Editing Group';
+        submitBtn.innerText = 'Update Now';
+        cancelBtn.style.display = 'inline-block';
+        document.getElementById('groupName').focus();
     }
 
     function resetGroupForm() {
         const form = document.getElementById('groupForm');
-        form.action = "{{ route('groups.store') }}";
-        form.reset();
-        document.getElementById('groupId').value = '';
+        const title = document.getElementById('groupFormTitle');
+        const submitBtn = document.getElementById('groupSubmitBtn');
+        const cancelBtn = document.getElementById('groupCancelBtn');
+        const methodField = document.getElementById('methodField');
 
-        const methodInput = form.querySelector('input[name="_method"]');
-        if (methodInput) methodInput.remove();
-        
-        document.getElementById('groupCountry').dataset.selected = 'India';
-        document.getElementById('groupState').dataset.selected = '';
-        document.getElementById('groupCity').dataset.selected = '';
-        document.getElementById('groupCountry').dispatchEvent(new Event('change'));
-        
-        document.getElementById('groupFormTitle').innerHTML = '<i class="fas fa-plus-circle" class="icon-spaced-sm text-muted"></i>Add New Group';
-        document.getElementById('groupSubmitBtn').textContent = 'Save Group';
-        document.getElementById('groupCancelBtn').style.display = 'none';
+        form.action = "{{ route('groups.store') }}";
+        methodField.innerHTML = '';
+        form.reset();
+
+        title.innerText = 'Add New Group';
+        submitBtn.innerText = 'Save Group';
+        cancelBtn.style.display = 'none';
     }
 
     document.getElementById('manageGroupsModal').addEventListener('hidden.bs.modal', resetGroupForm);

@@ -12,6 +12,7 @@ use App\Models\TermsCondition;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Illuminate\Http\RedirectResponse;
 
@@ -35,9 +36,14 @@ class SettingsController extends Controller
         });
 
         $accountid = $this->resolveAccountId();
-        $account = Account::find($accountid);
+        
+        // Optimize: Use with() to eager load relationships
+        $account = Account::with(['financialYears', 'billingDetails', 'quotationDetails', 'taxes'])
+            ->find($accountid);
+            
         if (! $account) {
-            $account = Account::find('ACC0000001');
+            $account = Account::with(['financialYears', 'billingDetails', 'quotationDetails', 'taxes'])
+                ->find('ACC0000001');
             if ($account) {
                 $accountid = $account->accountid;
             }
@@ -54,7 +60,7 @@ class SettingsController extends Controller
             ]);
         }
 
-        $financialYears = $hasPersistedAccount ? $account->financialYears()->orderBy('financial_year')->get() : collect();
+        $financialYears = $hasPersistedAccount ? $account->financialYears->sortBy('financial_year')->values() : collect();
 
         $editId = request('e') ? base64_decode(request('e')) : null;
 
@@ -71,14 +77,14 @@ class SettingsController extends Controller
         $quotationDetails = $hasPersistedAccount ? $account->quotationDetails : collect();
 
         $editingBillingDetail = ($editId && str_starts_with($editId, 'ABD'))
-            ? AccountBillingDetail::where('account_bdid', $editId)->where('accountid', $accountid)->first()
-            : ($hasPersistedAccount ? $account->billingDetails()->first() : null);
+            ? $account->billingDetails->firstWhere('account_bdid', $editId)
+            : ($hasPersistedAccount ? $account->billingDetails->first() : null);
 
         $editingQuotationDetail = ($editId && str_starts_with($editId, 'AQD'))
-            ? AccountQuotationDetail::where('account_qdid', $editId)->where('accountid', $accountid)->first()
-            : ($hasPersistedAccount ? $account->quotationDetails()->first() : null);
+            ? $account->quotationDetails->firstWhere('account_qdid', $editId)
+            : ($hasPersistedAccount ? $account->quotationDetails->first() : null);
 
-// Serial configurations from dedicated table
+        // Serial configurations from dedicated table
         $proformaSerialConfig   = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'proforma_invoice')->first();
         $taxInvoiceSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'tax_invoice')->first();
         $quotationSerialConfig  = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'quotation')->first();
@@ -96,7 +102,7 @@ class SettingsController extends Controller
             ->where('type', 'quotation')
             ->get();
 
-        $taxes = $hasPersistedAccount ? $account->taxes()->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect();
+        $taxes = $hasPersistedAccount ? $account->taxes->sortByDesc('created_at')->values() : collect();
 
         $editingTerm = null;
         if ($editId && strlen($editId) === 6 && !str_starts_with($editId, 'SET') && !str_starts_with($editId, 'ABD') && !str_starts_with($editId, 'AQD')) {
@@ -207,10 +213,19 @@ class SettingsController extends Controller
 
         // Handle logo upload
         if ($request->hasFile('logo')) {
-            $file = $request->file('logo');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $file->move(public_path('uploads/logos'), $filename);
-            $validated['logo_path'] = asset('uploads/logos/' . $filename);
+            try {
+                $file = $request->file('logo');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $uploadDir = public_path('uploads/logos');
+                File::ensureDirectoryExists($uploadDir, 0755, true);
+                $file->move($uploadDir, $filename);
+                chmod($uploadDir . '/' . $filename, 0644);
+                $validated['logo_path'] = asset('uploads/logos/' . $filename);
+            } catch (\Exception $e) {
+                return redirect()->back()
+                    ->with('error', 'Failed to upload logo: ' . $e->getMessage())
+                    ->withInput();
+            }
         }
 
         $account->update($validated);
@@ -324,7 +339,10 @@ class SettingsController extends Controller
             try {
                 $file = $request->file('signature_upload');
                 $filename = time() . '_' . $file->getClientOriginalName();
-                $file->move(public_path('uploads/signatures'), $filename);
+                $uploadDir = public_path('uploads/signatures');
+                File::ensureDirectoryExists($uploadDir, 0755, true);
+                $file->move($uploadDir, $filename);
+                chmod($uploadDir . '/' . $filename, 0644);
                 $validated['signature_upload'] = asset('uploads/signatures/' . $filename);
             } catch (\Exception $e) {
                 return redirect()->to(route('settings.index') . '#billing-details')
@@ -384,7 +402,10 @@ class SettingsController extends Controller
             try {
                 $file = $request->file('signature_upload');
                 $filename = time() . '_' . $file->getClientOriginalName();
-                $file->move(public_path('uploads/signatures'), $filename);
+                $uploadDir = public_path('uploads/signatures');
+                File::ensureDirectoryExists($uploadDir, 0755, true);
+                $file->move($uploadDir, $filename);
+                chmod($uploadDir . '/' . $filename, 0644);
                 $validated['signature_upload'] = asset('uploads/signatures/' . $filename);
             } catch (\Exception $e) {
                 return redirect()->to(route('settings.index') . '#quotation-details')
