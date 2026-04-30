@@ -96,56 +96,54 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-                <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="bg-light p-3 rounded border">
+                <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="panel-note">
                     @csrf
                     <input type="hidden" id="groupId" name="_group_id" value="">
                     <div id="methodField"></div>
-                    <h6 id="groupFormTitle" class="mb-3 fw-semibold">Add New Group</h6>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Group Name *</label>
-                        <input type="text" name="group_name" id="groupName" value="{{ old('group_name') }}" required maxlength="150" class="form-control">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Email</label>
-                        <input type="email" name="email" id="groupEmail" value="{{ old('email') }}" maxlength="150" class="form-control">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Address Line 1</label>
-                        <textarea name="address_line_1" id="groupAddress1" rows="2" maxlength="150" class="form-control">{{ old('address_line_1') }}</textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Address Line 2</label>
-                        <textarea name="address_line_2" id="groupAddress2" rows="2" maxlength="150" class="form-control">{{ old('address_line_2') }}</textarea>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">Country</label>
-                            <select id="groupCountry" name="country" class="form-select country-select" data-selected="India">
+                    <h6 id="groupFormTitle" class="modal-subtitle">Add New Group</h6>
+                    <div class="form-grid grid-cols-2">
+                        <div>
+                            <label class="label-compact">Group Name *</label>
+                            <input type="text" name="group_name" id="groupName" value="{{ old('group_name') }}" required maxlength="150">
+                        </div>
+                        <div>
+                            <label class="label-compact">Email</label>
+                            <input type="email" name="email" id="groupEmail" value="{{ old('email') }}" maxlength="150">
+                        </div>
+                        <div>
+                            <label class="label-compact">Address Line 1</label>
+                            <input type="text" name="address_line_1" id="groupAddress1" value="{{ old('address_line_1') }}" maxlength="150">
+                        </div>
+                        <div>
+                            <label class="label-compact">Address Line 2</label>
+                            <input type="text" name="address_line_2" id="groupAddress2" value="{{ old('address_line_2') }}" maxlength="150">
+                        </div>
+                        <div>
+                            <label class="label-compact">Country</label>
+                            <select id="groupCountry" name="country" class="country-select" data-selected="India">
                                 <option value="">Select Country</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">State</label>
-                            <select id="groupState" name="state" class="form-select state-select" data-selected="">
+                        <div>
+                            <label class="label-compact">State</label>
+                            <select id="groupState" name="state" class="state-select" data-selected="">
                                 <option value="">Select State</option>
                             </select>
                         </div>
-                    </div>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">City</label>
-                            <select id="groupCity" name="city" class="form-select city-select" data-selected="">
+                        <div>
+                            <label class="label-compact">City</label>
+                            <select id="groupCity" name="city" class="city-select" data-selected="">
                                 <option value="">Select City</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">Postal Code</label>
-                            <input type="text" name="postal_code" id="groupPostalCode" value="{{ old('postal_code') }}" maxlength="20" class="form-control">
+                        <div>
+                            <label class="label-compact">Postal Code</label>
+                            <input type="text" name="postal_code" id="groupPostalCode" value="{{ old('postal_code') }}" maxlength="20">
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-3">
-                        <button type="submit" id="groupSubmitBtn" class="btn btn-primary btn-sm">Save Group</button>
-                        <button type="button" id="groupCancelBtn" class="btn btn-link btn-sm d-none" onclick="resetGroupForm()">Cancel Edit</button>
+                    <div class="flex-between">
+                        <button type="submit" id="groupSubmitBtn" class="primary-button small">Save Group</button>
+                        <button type="button" id="groupCancelBtn" class="text-link small hidden" onclick="resetGroupForm()">Cancel Edit</button>
                     </div>
                 </form>
 

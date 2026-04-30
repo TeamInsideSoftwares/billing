@@ -123,6 +123,11 @@ class InvoicesController extends Controller
                 ->first();
         }
 
+        if (empty($invoiceFor) && !empty($existingDraft?->invoice_for)) {
+            $invoiceFor = $existingDraft->invoice_for;
+            session(['invoice_for' => $invoiceFor]);
+        }
+
         if (empty($existingDraft) && empty($draftId) && !empty($clientId) && !empty($currentUserId)) {
             $existingDraft = Invoice::query()
                 ->where('clientid', $clientId)
@@ -1045,29 +1050,24 @@ class InvoicesController extends Controller
     public function invoicesEdit(string $invoice)
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
-        $invoice->load(['items.service', 'items', 'payments']);
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
-        $account = \App\Models\Account::find($accountid);
-
-        $documentType = 'Invoice';
-
-        $viewData = [
-            'title' => 'Edit Invoice',
-            'invoice' => $invoice,
-            'clients' => Client::all(),
-            'services' => Service::with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),
-            'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
-            'items' => $invoice->items,
-            'account' => $account,
-            'documentType' => $documentType,
+        $invoiceFor = $invoice->invoice_for ?: 'orders';
+        $step = $invoiceFor === 'without_orders' ? 2 : 3;
+        $query = [
+            'step' => $step,
+            'invoice_for' => $invoiceFor,
+            'c' => request('c', $invoice->clientid),
+            'd' => $invoice->invoiceid,
         ];
 
-        // Return inline edit view with PDF preview for AJAX/inline requests
-        if (request('inline')) {
-            return view('invoices._inline-edit', array_merge($viewData, ['inline' => true]));
+        if ($invoiceFor === 'orders' && !empty($invoice->orderid)) {
+            $query['o'] = $invoice->orderid;
         }
 
-        return view('invoices.edit', $viewData);
+        if (!empty($invoice->ti_number)) {
+            $query['tax_invoice'] = 1;
+        }
+
+        return redirect()->route('invoices.create', $query);
     }
 
     public function invoicesUpdateItem(Request $request, string $invoice, string $item)
@@ -1293,11 +1293,15 @@ class InvoicesController extends Controller
             'status' => 'active',
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Tax Invoice created successfully.',
-            'ti_number' => $tiNumber,
-        ]);
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tax Invoice created successfully.',
+                'ti_number' => $tiNumber,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Tax Invoice created successfully: ' . $tiNumber);
     }
     public function downloadPdf(Request $request, string $invoice)
     {
@@ -1308,9 +1312,17 @@ class InvoicesController extends Controller
         $account = \App\Models\Account::find($accountid);
         $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
 
-        $type = $request->query('type', 'pi'); // pi | tax_pi | tax_invoice
+        $type = $request->query('type'); // optional: pi | tax_invoice
 
-        $isTaxInvoice = $type === 'tax_invoice' || (!empty($invoice->ti_number) && $type !== 'pi');
+        // If type is not specified, prefer Tax Invoice if ti_number exists
+        if ($type === 'tax_invoice') {
+            $isTaxInvoice = true;
+        } elseif ($type === 'pi') {
+            $isTaxInvoice = false;
+        } else {
+            $isTaxInvoice = !empty(trim($invoice->ti_number ?? ''));
+        }
+
         $documentType = $isTaxInvoice ? 'Tax Invoice' : 'Proforma Invoice';
 
         $normalizeTaxState = fn ($v) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $v)));
@@ -1335,7 +1347,7 @@ class InvoicesController extends Controller
             'sameStateGst', 'isTaxInvoice', 'documentType', 'signatureUrl'
         ))->render();
 
-        $filename = $documentType . ' - ' . $invoice->invoice_number . '.pdf';
+        $filename = $documentType . ' - ' . ($isTaxInvoice ? $invoice->ti_number : $invoice->pi_number) . '.pdf';
 
         $browsershot = $this->getBrowsershot($html);
 
@@ -1343,7 +1355,7 @@ class InvoicesController extends Controller
 
         return response($pdf, 200, [
             'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
         ]);
     }
 

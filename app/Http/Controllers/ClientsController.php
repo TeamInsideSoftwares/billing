@@ -75,7 +75,7 @@ class ClientsController extends Controller
             ->orderBy('iso')
             ->get(['iso', 'name']);
 
-        return view('clients.create', [
+        return view('clients.form', [
             'title' => 'Create New Client',
             'accounts' => Account::where('status', 'active')->get(),
             'groups' => Group::all(),
@@ -216,7 +216,7 @@ class ClientsController extends Controller
             ->orderBy('iso')
             ->get(['iso', 'name']);
 
-        return view('clients.edit', [
+        return view('clients.form', [
             'title' => 'Edit ' . ($client->business_name ?? $client->contact_name ?? 'Client'),
             'client' => $client,
             'accounts' => Account::where('status', 'active')->get(),

@@ -124,7 +124,7 @@ class ServicesController extends Controller
             ->orderBy('name')
             ->get(['itemid', 'name', 'type']);
 
-        return view('services.create', [
+        return view('services.form', [
             'title' => 'Create New Item',
             'categories' => $categories,
             'defaultCurrency' => $accountCurrency,
@@ -255,7 +255,7 @@ class ServicesController extends Controller
             ? Tax::where('accountid', $accountid)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() 
             : collect();
 
-        return view('services.edit', [
+        return view('services.form', [
             'title' => 'Edit ' . ($service->name ?? 'Item'),
             'service' => $service,
             'categories' => $categories,

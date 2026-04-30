@@ -47,7 +47,7 @@ class PaymentsController extends Controller
 
     public function paymentsCreate(): View
     {
-        return view('payments.create', [
+        return view('payments.form', [
             'title' => 'Record New Payment',
             'clients' => Client::all(),
             'invoices' => Invoice::with('client')
@@ -117,7 +117,7 @@ class PaymentsController extends Controller
 
     public function paymentsEdit(Payment $payment): View
     {
-        return view('payments.edit', [
+        return view('payments.form', [
             'title' => 'Edit ' . ($payment->payment_number ?? 'Payment'),
             'payment' => $payment,
             'clients' => Client::all(),

@@ -113,7 +113,7 @@ class Invoice extends Model
 
     public function getInvoiceNumberAttribute(): string
     {
-        return (string) ($this->pi_number ?? $this->ti_number ?? '');
+        return (string) (!empty($this->ti_number) ? $this->ti_number : ($this->pi_number ?? ''));
     }
 
     public function setInvoiceNumberAttribute(mixed $value): void

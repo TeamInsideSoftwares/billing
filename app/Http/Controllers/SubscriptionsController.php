@@ -50,7 +50,7 @@ class SubscriptionsController extends Controller
 
     public function subscriptionsCreate(): View
     {
-        return view('subscriptions.create', [
+        return view('subscriptions.form', [
             'title' => 'New Subscription',
             'subtitle' => 'Recurring Revenue',
             'clients' => Client::all(),
@@ -90,7 +90,7 @@ class SubscriptionsController extends Controller
 
     public function subscriptionsEdit(Subscription $subscription): View
     {
-        return view('subscriptions.edit', [
+        return view('subscriptions.form', [
             'title' => 'Edit Subscription',
             'subtitle' => 'Update subscription details',
             'subscription' => $subscription,

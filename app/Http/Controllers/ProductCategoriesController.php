@@ -37,7 +37,7 @@ class ProductCategoriesController extends Controller
 
     public function productCategoriesCreate(): View
     {
-        return view('product-categories.create', ['title' => 'New Product Category']);
+        return view('product-categories.form', ['title' => 'New Product Category']);
     }
 
     public function productCategoriesStore(Request $request)
@@ -68,7 +68,7 @@ class ProductCategoriesController extends Controller
 
     public function productCategoriesEdit(ProductCategory $productCategory): View
     {
-        return view('product-categories.edit', ['title' => 'Edit Product Category', 'productCategory' => $productCategory]);
+        return view('product-categories.form', ['title' => 'Edit Product Category', 'productCategory' => $productCategory]);
     }
 
     public function productCategoriesUpdate(Request $request, $id)

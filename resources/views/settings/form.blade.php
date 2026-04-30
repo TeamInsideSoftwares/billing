@@ -8,26 +8,27 @@
 
 @section('content')
 <section class="panel-card">
-    <form method="POST" action="{{ route('settings.update', $setting) }}" class="setting-form">
-        @method('PUT')
+    <form method="POST" action="{{ isset($setting) ? route('settings.update', $setting) : route('settings.store') }}" class="setting-form">
+        @isset($setting)
+            @method('PUT')
+        @endisset
         @csrf
         <div class="form-grid">
             <div>
                 <label for="key">Key *</label>
-                <input type="text" id="key" name="key" value="{{ old('key', $setting->key) }}" required>
+                <input type="text" id="key" name="key" value="{{ old('key', isset($setting) ? $setting->key : '') }}" required>
                 @error('key') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="value">Value *</label>
-                <input type="text" id="value" name="value" value="{{ old('value', $setting->value) }}" required>
+                <input type="text" id="value" name="value" value="{{ old('value', isset($setting) ? $setting->value : '') }}" required>
                 @error('value') <span class="error">{{ $message }}</span> @enderror
             </div>
         </div>
         <div class="form-actions">
-            <button type="submit" class="primary-button">Update Setting</button>
+            <button type="submit" class="primary-button">{{ isset($setting) ? 'Update Setting' : 'Create Setting' }}</button>
             <a href="{{ route('settings.index') }}" class="text-link">Cancel</a>
         </div>
     </form>
 </section>
 @endsection
-

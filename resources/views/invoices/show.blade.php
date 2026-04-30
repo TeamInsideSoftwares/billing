@@ -43,14 +43,33 @@
         }
     }
 
-    $documentType = !empty($invoice->ti_number) ? 'Tax Invoice' : 'Proforma Invoice';
+    $documentType = !empty(trim($invoice->ti_number ?? '')) ? 'Tax Invoice' : 'Proforma Invoice';
 @endphp
 @section('header_actions')
     <a href="{{ route('invoices.index', request('c') ? ['c' => request('c')] : []) }}" class="secondary-button">
         <i class="fas fa-arrow-left" class="icon-spaced"></i>Back to Invoices
     </a>
     @if(($invoice->status ?? '') !== 'cancelled')
-    <a href="{{ route('invoices.edit', [$invoice, 'c' => request('c')]) }}" class="primary-button small">
+        <a href="{{ route('invoices.pdf', $invoice) }}" class="secondary-button small" target="_blank">
+            <i class="fas fa-file-pdf" class="icon-spaced-sm"></i>View PDF
+        </a>
+        @if(empty(trim($invoice->ti_number ?? '')))
+            <form method="POST" action="{{ route('invoices.create-tax-invoice') }}" style="display: inline;" onsubmit="return confirm('Convert this Proforma to Tax Invoice? This will generate a Tax Invoice number.')">
+                @csrf
+                <input type="hidden" name="invoiceid" value="{{ $invoice->invoiceid }}">
+                <button type="submit" class="primary-button small" style="background: #10b981; border-color: #059669;">
+                    <i class="fas fa-check-double" class="icon-spaced-sm"></i>Convert to Tax Invoice
+                </button>
+            </form>
+        @endif
+    <a href="{{ route('invoices.create', [
+        'step' => ($invoice->invoice_for ?? 'orders') === 'without_orders' ? 2 : 3,
+        'invoice_for' => $invoice->invoice_for ?? 'orders',
+        'c' => request('c', $invoice->clientid),
+        'd' => $invoice->invoiceid,
+        'o' => ($invoice->invoice_for ?? '') === 'orders' ? ($invoice->orderid ?? null) : null,
+        'tax_invoice' => !empty($invoice->ti_number) ? 1 : null,
+    ]) }}" class="primary-button small">
         <i class="fas fa-edit" class="icon-spaced-sm"></i>Edit
     </a>
     <form method="POST" action="{{ route('invoices.destroy', [$invoice, 'c' => request('c')]) }}" class="inline-delete" onsubmit="return confirm('Cancel this invoice?')" style="display: inline;">

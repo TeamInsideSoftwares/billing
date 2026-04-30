@@ -526,7 +526,7 @@ class SettingsController extends Controller
 
     public function settingsCreate(): View
     {
-        return view('settings.create', ['title' => 'Add System Setting']);
+        return view('settings.form', ['title' => 'Add System Setting']);
     }
 
     public function settingsStore(Request $request)

@@ -42,7 +42,7 @@ class GroupsController extends Controller
 
     public function groupsCreate(): View
     {
-        return view('groups.create', ['title' => 'Add New Group']);
+        return view('groups.form', ['title' => 'Add New Group']);
     }
 
     public function groupsStore(Request $request)
@@ -78,7 +78,7 @@ class GroupsController extends Controller
 
     public function groupsEdit(Group $group): View
     {
-        return view('groups.edit', ['title' => 'Edit ' . ($group->group_name ?? 'Group'), 'group' => $group]);
+        return view('groups.form', ['title' => 'Edit ' . ($group->group_name ?? 'Group'), 'group' => $group]);
     }
 
     public function groupsUpdate(Request $request, $id)

@@ -875,6 +875,17 @@ a {
     transform: scale(1.1);
 }
 
+.icon-action-btn.pdf {
+    color: #4b5563;
+    border-color: #d1d5db;
+}
+
+.icon-action-btn.pdf:hover {
+    background: #f3f4f6;
+    border-color: #4b5563;
+    transform: scale(1.1);
+}
+
 .table-actions {
     display: flex;
     gap: 0.375rem;

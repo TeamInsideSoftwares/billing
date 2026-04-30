@@ -425,7 +425,18 @@
                                             <i class="fas fa-eye"></i>
                                         </a>
 
-                                        <a href="{{ route('invoices.edit', [$invoice, 'c' => $selectedClientId]) }}" class="icon-action-btn edit" title="Edit">
+                                        <a href="{{ route('invoices.pdf', $invoice) }}" class="icon-action-btn pdf" title="Download PDF" target="_blank">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </a>
+
+                                        <a href="{{ route('invoices.create', [
+                                            'step' => ($invoice->invoice_for ?? 'orders') === 'without_orders' ? 2 : 3,
+                                            'invoice_for' => $invoice->invoice_for ?? 'orders',
+                                            'c' => $selectedClientId ?: $invoice->clientid,
+                                            'd' => $invoice->invoiceid,
+                                            'o' => ($invoice->invoice_for ?? '') === 'orders' ? ($invoice->orderid ?? null) : null,
+                                            'tax_invoice' => !empty($invoice->ti_number) ? 1 : null,
+                                        ]) }}" class="icon-action-btn edit" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
 

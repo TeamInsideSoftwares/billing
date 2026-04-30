@@ -50,7 +50,7 @@ class QuotationsController extends Controller
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $account = Account::find($accountid);
 
-        return view('quotations.create', [
+        return view('quotations.form', [
             'title' => 'Create New Quotation',
             'clients' => Client::all(),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
@@ -92,7 +92,7 @@ class QuotationsController extends Controller
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $account = Account::find($accountid);
 
-        return view('quotations.edit', [
+        return view('quotations.form', [
             'title' => 'Edit ' . ($quotation->quotation_number ?? 'Quotation'),
             'quotation' => $quotation,
             'clients' => Client::all(),

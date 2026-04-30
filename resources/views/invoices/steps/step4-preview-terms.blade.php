@@ -112,6 +112,18 @@
                             <i class="fas fa-circle" style="color: #10b981; font-size: 0.5rem; margin-right: 0.3rem;"></i>
                             Live Preview
                         </span>
+                        <a id="btnDownloadPI" href="#" target="_blank" class="secondary-button" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none; align-items: center; gap: 0.35rem; text-decoration: none;">
+                            <i class="fas fa-file-download"></i>Download PI
+                        </a>
+                        <button type="button" class="text-button" id="digitalSignBtn" disabled style="padding: 0.35rem 0.7rem; font-size: 0.8rem; opacity: 0.5;">
+                            <i class="fas fa-signature"></i>Download Signed
+                        </button>
+                        <button type="button" id="createTaxInvoiceBtn" class="secondary-button" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none;">
+                            <i class="fas fa-check-double" class="icon-spaced-sm"></i>Convert to Tax Invoice
+                        </button>
+                        <button type="button" id="btnDownloadTaxInvoice" class="secondary-button" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none;">
+                            <i class="fas fa-file-invoice-dollar" class="icon-spaced-sm"></i>Download Tax Invoice
+                        </button>
                         <button type="button" id="btnEditPreview" class="secondary-button" style="padding: 0.35rem 0.7rem; font-size: 0.8rem;">
                             <i class="fas fa-edit" class="icon-spaced-sm"></i>Edit
                         </button>
@@ -130,17 +142,8 @@
     </div>
 
     <div style="margin-top: 0.9rem; display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
-        <a id="btnDownloadPI" href="#" target="_blank" class="secondary-button" style="padding: 0.75rem 1.5rem; font-size: 0.95rem; display: none; align-items: center; gap: 0.4rem; text-decoration: none;">
-            <i class="fas fa-file-download"></i> Download PI
-        </a>
-        <button type="button" id="btnDownloadTaxInvoice" class="secondary-button" style="padding: 0.75rem 1.5rem; font-size: 0.95rem; display: none; align-items: center; gap: 0.4rem;">
-            <i class="fas fa-file-invoice-dollar"></i> Download Tax Invoice
-        </button>
-        <button type="button" class="text-button" id="digitalSignBtn" disabled style="padding: 0.75rem 1.5rem; font-size: 0.95rem; opacity: 0.5;">
-            <i class="fas fa-signature" style="margin-right: 0.5rem;"></i>Download Signed
-        </button>
-        <button type="button" class="secondary-button" id="btnExit" style="padding: 0.75rem 1.5rem; font-size: 0.95rem;">
-            <i class="fas fa-times" style="margin-right: 0.5rem;"></i>Exit
+        <button type="button" class="primary-button" id="btnSendEmail" style="padding: 0.75rem 1.5rem; font-size: 0.95rem;">
+            <i class="fas fa-envelope" style="margin-right: 0.5rem;"></i>Send Email
         </button>
     </div>
 </div>
@@ -158,7 +161,6 @@
     const createTaxInvoiceBtn = document.getElementById('createTaxInvoiceBtn');
     const digitalSignBtn = document.getElementById('digitalSignBtn');
     const btnDownloadPI = document.getElementById('btnDownloadPI');
-    const btnDownloadTaxPI = document.getElementById('btnDownloadTaxPI');
     const btnDownloadTaxInvoice = document.getElementById('btnDownloadTaxInvoice');
     const previewContent = document.getElementById('previewContent');
     const termsList = document.getElementById('termsList');
@@ -373,20 +375,33 @@
             btnDownloadPI.href = base + '?type=pi';
             btnDownloadPI.style.display = 'inline-flex';
         }
-        if (btnDownloadTaxInvoice) {
-            btnDownloadTaxInvoice.style.display = 'inline-flex';
-            btnDownloadTaxInvoice.onclick = function() {
-                if (draftTiNumber) {
-                    window.open(base + '?type=tax_invoice', '_blank');
-                } else {
-                    createTaxInvoice();
-                }
-            };
-        }
+        syncTaxInvoiceButtons(invoiceid);
         if (digitalSignBtn) {
             digitalSignBtn.disabled = false;
             digitalSignBtn.style.opacity = '1';
             digitalSignBtn.onclick = () => window.open(base + '?type=pi&signed=1', '_blank');
+        }
+    }
+
+    function syncTaxInvoiceButtons(invoiceid) {
+        if (!createTaxInvoiceBtn || !btnDownloadTaxInvoice) return;
+        if (!invoiceid) {
+            createTaxInvoiceBtn.style.display = 'none';
+            btnDownloadTaxInvoice.style.display = 'none';
+            return;
+        }
+
+        const base = "{{ url('invoices') }}/" + invoiceid + "/pdf";
+        if (draftTiNumber) {
+            createTaxInvoiceBtn.style.display = 'none';
+            btnDownloadTaxInvoice.style.display = 'inline-flex';
+            btnDownloadTaxInvoice.onclick = function() {
+                window.open(base + '?type=tax_invoice', '_blank');
+            };
+        } else {
+            btnDownloadTaxInvoice.style.display = 'none';
+            createTaxInvoiceBtn.style.display = 'inline-flex';
+            createTaxInvoiceBtn.disabled = false;
         }
     }
 
@@ -772,9 +787,21 @@
         window.location.href = editUrl;
     });
 
-    // Exit button
-    document.getElementById('btnExit')?.addEventListener('click', function() {
-        window.location.href = "{{ route('invoices.index') }}?c=" + encodeURIComponent(clientId);
+    // Send Email button
+    document.getElementById('btnSendEmail')?.addEventListener('click', function() {
+        const invoiceid = invoiceidInput.value;
+        if (!invoiceid) {
+            alert('Please save the invoice first.');
+            return;
+        }
+
+        const recipient = encodeURIComponent(clientData?.email || '');
+        const subject = encodeURIComponent('Invoice ' + (draftTiNumber || draftPiNumber || draftInvoiceNumber || ''));
+        const body = encodeURIComponent(
+            "Hello,\n\nPlease find your invoice details below.\n\nInvoice: " + (draftTiNumber || draftPiNumber || draftInvoiceNumber || 'Invoice') + "\nPDF: " + "{{ url('invoices') }}/" + invoiceid + "/pdf?type=pi" + "\n\nRegards"
+        );
+
+        window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;
     });
 
     // Digital Signed button
@@ -811,6 +838,7 @@
             if (data.success) {
                 draftTiNumber = data.ti_number;
                 updateHeaderNumberBadge();
+                syncTaxInvoiceButtons(invoiceidInput.value);
                 updateInvoicePreview();
                 const base = "{{ url('invoices') }}/" + invoiceidInput.value + "/pdf";
                 window.open(base + '?type=tax_invoice', '_blank');
@@ -825,10 +853,13 @@
     }
 
     // Initialize
+    createTaxInvoiceBtn?.addEventListener('click', createTaxInvoice);
+
     if (draftId) {
         updateDownloadButtons(draftId, null);
         if (btnApplyTC) btnApplyTC.style.display = 'inline-block';
     }
+    syncTaxInvoiceButtons(invoiceidInput.value || draftId);
     loadItems();
 })();
 </script>
