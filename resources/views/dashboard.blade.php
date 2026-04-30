@@ -12,8 +12,8 @@
                 <div class="stat-content">
                     <p class="eyebrow mb-1">{{ $stat['label'] }}</p>
                     <div class="d-flex align-items-baseline gap-2">
-                        <h3 class="mb-0 fw-800" style="font-weight: 800;">{{ $stat['value'] }}</h3>
-                        <span class="stat-change {{ str_contains($stat['change'], '+') ? 'positive' : 'warning' }}" style="font-size: 0.8rem;">
+                        <h3 class="mb-0 fw-800">{{ $stat['value'] }}</h3>
+                        <span class="stat-change stat-change-sm {{ str_contains($stat['change'], '+') ? 'positive' : 'warning' }}">
                             {{ $stat['change'] }}
                         </span>
                     </div>
@@ -28,7 +28,7 @@
             <div class="panel-head mb-4">
                 <div>
                     <p class="eyebrow">Financial Trends</p>
-                    <h5 class="fw-700 mb-0" style="font-weight: 700;">Monthly Revenue</h5>
+                    <h5 class="fw-700 mb-0">Monthly Revenue</h5>
                 </div>
                 <div class="dropdown">
                     <button class="icon-btn text-dark bg-light" data-bs-toggle="dropdown">
@@ -40,17 +40,17 @@
                     </ul>
                 </div>
             </div>
-            <canvas id="revenueChart" style="max-height: 300px;"></canvas>
+            <canvas id="revenueChart" class="chart-canvas"></canvas>
         </div>
 
         <div class="soft-card p-4">
             <div class="panel-head mb-4">
                 <div>
                     <p class="eyebrow">Payment Volume</p>
-                    <h5 class="fw-700 mb-0" style="font-weight: 700;">Transaction Count</h5>
+                    <h5 class="fw-700 mb-0">Transaction Count</h5>
                 </div>
             </div>
-            <canvas id="transactionChart" style="max-height: 300px;"></canvas>
+            <canvas id="transactionChart" class="chart-canvas"></canvas>
         </div>
     </div>
 
@@ -58,7 +58,7 @@
     <div class="lists-row">
         <div class="soft-card p-4">
             <div class="panel-head mb-3">
-                <h5 class="fw-700 mb-0" style="font-weight: 700;">Recent Revenue</h5>
+                <h5 class="fw-700 mb-0">Recent Revenue</h5>
                 <a href="{{ route('payments.index') }}" class="text-link">View All</a>
             </div>
             <div class="list-group list-group-flush">
@@ -69,7 +69,7 @@
                                 <i class="fas fa-arrow-down text-success"></i>
                             </div>
                             <div>
-                                <p class="mb-0 fw-600" style="font-size: 0.9rem; font-weight: 600;">{{ $item['title'] }}</p>
+                                <p class="mb-0 fw-600 list-item-title">{{ $item['title'] }}</p>
                                 <small class="text-muted">{{ $item['date'] }}</small>
                             </div>
                         </div>
@@ -83,7 +83,7 @@
 
         <div class="soft-card p-4">
             <div class="panel-head mb-3">
-                <h5 class="fw-700 mb-0" style="font-weight: 700;">Recent Expenses</h5>
+                <h5 class="fw-700 mb-0">Recent Expenses</h5>
                 <a href="#" class="text-link">Manage</a>
             </div>
             <div class="list-group list-group-flush">
@@ -94,7 +94,7 @@
                                 <i class="fas fa-arrow-up text-danger"></i>
                             </div>
                             <div>
-                                <p class="mb-0 fw-600" style="font-size: 0.9rem; font-weight: 600;">{{ $item['title'] }}</p>
+                                <p class="mb-0 fw-600 list-item-title">{{ $item['title'] }}</p>
                                 <small class="text-muted">{{ $item['date'] }}</small>
                             </div>
                         </div>

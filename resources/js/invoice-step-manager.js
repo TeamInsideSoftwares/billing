@@ -501,7 +501,8 @@ class InvoiceStepManager {
      */
     calculateEndDate(startDate, frequency, duration) {
         if (!startDate || !frequency || !duration || frequency === 'one-time') return '';
-        const start = new Date(startDate);
+        const parts = String(startDate).split('-');
+        const start = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
         const durationNumber = Number(duration);
         if (Number.isNaN(start.getTime()) || durationNumber <= 0) return '';
         const end = new Date(start);
@@ -515,7 +516,12 @@ class InvoiceStepManager {
             case 'yearly': end.setFullYear(end.getFullYear() + durationNumber); break;
             default: return '';
         }
-        return end.toISOString().split('T')[0];
+        // End date is inclusive across billing cycles.
+        end.setDate(end.getDate() - 1);
+        const y = end.getFullYear();
+        const m = String(end.getMonth() + 1).padStart(2, '0');
+        const d = String(end.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
     }
 
     /**

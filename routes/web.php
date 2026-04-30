@@ -64,6 +64,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/invoices/draft/{clientid}', 'invoicesGetDraft')->name('invoices.get-draft');
         Route::post('/invoices', 'invoicesStore')->name('invoices.store');
         Route::post('/invoices/create-tax-invoice', 'createTaxInvoice')->name('invoices.create-tax-invoice');
+        Route::get('/invoices/{invoice}/email-compose', 'emailCompose')->name('invoices.email-compose');
+        Route::post('/invoices/{invoice}/email-compose', 'emailComposeStore')->name('invoices.email-compose.store');
         Route::get('/invoices/{invoice}/pdf', 'downloadPdf')->name('invoices.pdf');
         Route::get('/invoices/{invoice}', 'invoicesShow')->name('invoices.show');
         Route::get('/invoices/{invoice}/edit', 'invoicesEdit')->name('invoices.edit');

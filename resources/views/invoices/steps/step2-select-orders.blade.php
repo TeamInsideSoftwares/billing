@@ -6,22 +6,22 @@
 <!-- Step 2: Select Orders -->
 <div id="step2" class="invoice-step">
     {{-- Client Info Header with Back Button --}}
-    <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
+    <div class="invoice-client-header">
+        <div class="invoice-client-header__row">
+            <button type="button" id="btnBackToStep1" class="secondary-button invoice-back-btn">
                 <i class="fas fa-arrow-left" class="text-sm"></i>
             </button>
-            <div style="width: 1px; height: 32px; background: #d1d5db; flex-shrink: 0;"></div>
-            <div style="width: 36px; height: 36px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <div class="invoice-client-header__divider"></div>
+            <div class="invoice-client-header__icon">
                 <i class="fas fa-user"></i>
             </div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="font-size: 0.9rem; font-weight: 600; color: #111827; margin-top: 0.1rem;">{{ $selectedClientName }}</div>
+            <div class="invoice-client-header__body">
+                <div class="invoice-client-header__name">{{ $selectedClientName }}</div>
                 @if($selectedClientEmail)
-                <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.05rem;">{{ $selectedClientEmail }}</div>
+                <div class="invoice-client-header__email">{{ $selectedClientEmail }}</div>
                 @endif
             </div>
-            <div style="text-align: right; flex-shrink: 0;">
+            <div class="invoice-client-header__right">
             </div>
         </div>
     </div>
@@ -34,135 +34,41 @@
     <input type="hidden" name="due_date" id="step2_select_orders_due_date" value="{{ date('Y-m-d', strtotime('+7 days')) }}">
     <input type="hidden" name="notes" id="step2_select_orders_notes" value="">
 
-    <div class="section-title-card" style="margin-bottom: 0.65rem;">
+    <div class="section-title-card invoice-section-title">
         <h4>Select Source Order</h4>
         <p>Select one verified order. The items expand inline so you can move faster.</p>
     </div>
 
-    <div class="workflow-panel" style="margin-top: 0;">
+    <div class="workflow-panel mt-0">
         <div class="table-shell">
-            <table class="data-table" id="ordersTable" style="margin: 0;">
+            <table class="data-table m-0" id="ordersTable">
                 <thead>
                     <tr>
-                        <th style="width: 56px;">Select</th>
-                        <th style="width: 28%;">Order Title</th>
-                        <th style="width: 13%;">Order Date</th>
-                        <th style="width: 13%;">Delivery</th>
-                        <th style="width: 14%;">Sales Person</th>
-                        <th style="width: 12%;">Items</th>
-                        <th style="width: 10%;">Amount</th>
-                        <th style="width: 10%;">Status</th>
+                        <th class="orders-col-select">Select</th>
+                        <th class="orders-col-title">Order Title</th>
+                        <th class="orders-col-date">Order Date</th>
+                        <th class="orders-col-date">Delivery</th>
+                        <th class="orders-col-sales">Sales Person</th>
+                        <th class="orders-col-items">Items</th>
+                        <th class="orders-col-amount">Amount</th>
+                        <th class="orders-col-status">Status</th>
                     </tr>
                 </thead>
                 <tbody id="ordersBody"></tbody>
             </table>
 
-            <div id="noOrdersMessage" class="empty-state" class="hidden">
+            <div id="noOrdersMessage" class="empty-state is-hidden">
                 No verified orders are available for this client.
             </div>
         </div>
     </div>
 
-    <div style="margin-top: 0.75rem;">
-        <button type="button" id="btnNextToStep3" class="primary-button" disabled style="width:100%; padding: 0.7rem 1rem; font-size: 0.9rem;">
+    <div class="mt-3">
+        <button type="button" id="btnNextToStep3" class="primary-button w-100 invoice-continue-btn" disabled>
             Continue &rarr;
         </button>
     </div>
 </div>
-
-<style>
-#ordersTable tbody tr.order-option-row {
-    cursor: pointer;
-}
-
-#ordersTable tbody tr.order-option-row.is-selected {
-    background: #f8faff;
-}
-
-#ordersTable tbody tr.order-option-row.is-selected td {
-    border-bottom-color: #c7d2fe;
-}
-
-.order-ref {
-    display: block;
-    margin-top: 0.15rem;
-    font-size: 11px;
-    color: #6b7280;
-}
-
-.order-detail-row td {
-    padding: 0;
-    background: #fbfcfe;
-    border-bottom: 1px solid #dbe3f3;
-}
-
-.order-detail-shell {
-    padding: 0.62rem 0.68rem 0.72rem;
-    border-left: 3px solid #4f46e5;
-}
-
-.order-detail-header {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    margin-bottom: 0.62rem;
-}
-
-.order-detail-meta {
-    margin: 0.2rem 0 0;
-    color: #6b7280;
-    font-size: 0.72rem;
-}
-
-.order-detail-items {
-    overflow-x: auto;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    background: #fff;
-}
-
-.order-detail-items table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.order-detail-items th {
-    padding: 0.42rem 0.52rem;
-    font-size: 0.68rem;
-    font-weight: 600;
-    color: #6b7280;
-    text-align: left;
-    background: #f9fafb;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.order-detail-items td {
-    padding: 0.44rem 0.52rem;
-    font-size: 0.74rem;
-    border-bottom: 1px solid #e5e7eb;
-    background: #fff;
-}
-
-.order-detail-items tr:last-child td {
-    border-bottom: 0;
-}
-
-.order-detail-empty {
-    padding: 0.62rem;
-    text-align: center;
-    color: #9ca3af;
-    font-size: 0.74rem;
-}
-
-@media (max-width: 900px) {
-    .order-detail-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-}
-</style>
 
 <script>
 (function() {
@@ -202,9 +108,9 @@
         })
         .then(res => res.json())
         .then(orders => {
-            noOrdersMessage.style.display = 'none';
+            noOrdersMessage.classList.add('is-hidden');
             if (!orders.length) {
-                noOrdersMessage.style.display = 'block';
+                noOrdersMessage.classList.remove('is-hidden');
                 return;
             }
 
@@ -232,7 +138,7 @@
                     <td>${order.item_count || 0} item(s)</td>
                     <td>${(order.currency || 'INR')} ${Number(order.grand_total).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
                     <td>
-                        <span style="font-size: 0.8rem; padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 500; background: ${verified ? '#dcfce7' : '#fef3c7'}; color: ${verified ? '#16a34a' : '#d97706'};">
+                        <span class="order-status-badge ${verified ? 'is-verified' : 'is-unverified'}">
                             ${verified ? 'Verified' : 'Unverified'}
                         </span>
                     </td>
@@ -241,7 +147,7 @@
                 const detailRow = document.createElement('tr');
                 detailRow.className = 'order-detail-row';
                 detailRow.id = `order-detail-${order.orderid}`;
-                detailRow.style.display = 'none';
+                detailRow.classList.add('is-hidden');
                 detailRow.innerHTML = `
                     <td colspan="8">
                         <div class="order-detail-shell">
@@ -315,12 +221,12 @@
         orderIdInput.value = selectedOrderId;
 
         document.querySelectorAll('.order-option-row').forEach(item => item.classList.remove('is-selected'));
-        document.querySelectorAll('.order-detail-row').forEach(item => item.style.display = 'none');
+        document.querySelectorAll('.order-detail-row').forEach(item => item.classList.add('is-hidden'));
 
         row.classList.add('is-selected');
         const detailRow = document.getElementById(`order-detail-${orderId}`);
         if (detailRow) {
-            detailRow.style.display = 'table-row';
+            detailRow.classList.remove('is-hidden');
         }
 
         loadOrderDetails(orderId);
@@ -383,7 +289,7 @@
 
         const rows = items.map(item => {
             const discount = Number(item.discount_amount || 0) > 0
-                ? `${Number(item.discount_amount).toLocaleString('en-US', { minimumFractionDigits: 0 })}${Number(item.discount_percent || 0) > 0 ? `<div style="font-size:0.7rem;color:#6b7280;">(${Number(item.discount_percent).toFixed(1)}%)</div>` : ''}`
+                ? `${Number(item.discount_amount).toLocaleString('en-US', { minimumFractionDigits: 0 })}${Number(item.discount_percent || 0) > 0 ? `<div class="order-discount-meta">(${Number(item.discount_percent).toFixed(1)}%)</div>` : ''}`
                 : '-';
             const description = escapeHtml(item.item_description || '').trim();
             const itemName = escapeHtml(item.item_name || 'Item');
@@ -398,43 +304,43 @@
                 item.delivery_date ? `D: ${item.delivery_date}` : ''
             ].filter(Boolean).join('<br>');
 
-            return `
-                <tr>
-                    <td>
-                        <strong>${itemName}</strong>
-                        ${description ? `<div style="margin-top:0.18rem; font-size:0.74rem; color:#6b7280; white-space: pre-wrap;">${description}</div>` : ''}
-                    </td>
-                    <td style="text-align:center;">${Math.max(1, Math.round(Number(item.quantity || 1))).toLocaleString('en-US')}</td>
-                    <td style="text-align:right;">${(order.currency || 'INR')} ${Number(item.unit_price || 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
-                    <td style="text-align:right;">${Number(item.tax_rate || 0).toFixed(0)}%</td>
-                    <td style="text-align:right;">${discount}</td>
-                    <td>${frequencyDuration}</td>
-                    <td style="text-align:center;">${item.no_of_users || '-'}</td>
-                    <td style="font-size:0.78rem; color:#6b7280;">${dates || '-'}</td>
-                    <td style="text-align:right;"><strong>${(order.currency || 'INR')} ${Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || ((Number(item.line_total || 0) * Number(item.discount_percent || 0)) / 100) || 0)).toLocaleString('en-US', { minimumFractionDigits: 0 })}</strong></td>
-                </tr>
-            `;
-        }).join('');
+	            return `
+	                <tr>
+	                    <td>
+	                        <strong>${itemName}</strong>
+	                        ${description ? `<div class="order-item-desc">${description}</div>` : ''}
+	                    </td>
+	                    <td class="text-center">${Math.max(1, Math.round(Number(item.quantity || 1))).toLocaleString('en-US')}</td>
+	                    <td class="text-end">${(order.currency || 'INR')} ${Number(item.unit_price || 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
+	                    <td class="text-end">${Number(item.tax_rate || 0).toFixed(0)}%</td>
+	                    <td class="text-end">${discount}</td>
+	                    <td>${frequencyDuration}</td>
+	                    <td class="text-center">${item.no_of_users || '-'}</td>
+	                    <td class="order-item-dates">${dates || '-'}</td>
+	                    <td class="text-end"><strong>${(order.currency || 'INR')} ${Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || ((Number(item.line_total || 0) * Number(item.discount_percent || 0)) / 100) || 0)).toLocaleString('en-US', { minimumFractionDigits: 0 })}</strong></td>
+	                </tr>
+	            `;
+	        }).join('');
 
         container.innerHTML = `
-            <table>
-                <thead>
-                    <tr>
-                        <th>Item</th>
-                        <th style="text-align:center;">Qty</th>
-                        <th style="text-align:right;">Price ({{ $selectedClientCurrency }})</th>
-                        <th style="text-align:right;">Tax %</th>
-                        <th style="text-align:right;">Discount</th>
-                        <th>Frequency / Duration</th>
-                        <th style="text-align:center;">Users</th>
-                        <th>Dates</th>
-                        <th style="text-align:right;">Total ({{ $selectedClientCurrency }})</th>
-                    </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-            </table>
-        `;
-    }
+	            <table>
+	                <thead>
+	                    <tr>
+	                        <th>Item</th>
+	                        <th class="text-center">Qty</th>
+	                        <th class="text-end">Price ({{ $selectedClientCurrency }})</th>
+	                        <th class="text-end">Tax %</th>
+	                        <th class="text-end">Discount</th>
+	                        <th>Frequency / Duration</th>
+	                        <th class="text-center">Users</th>
+	                        <th>Dates</th>
+	                        <th class="text-end">Total ({{ $selectedClientCurrency }})</th>
+	                    </tr>
+	                </thead>
+	                <tbody>${rows}</tbody>
+	            </table>
+	        `;
+	    }
 
     btnNext.addEventListener('click', function() {
         if (!selectedOrderId) {

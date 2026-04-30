@@ -37,11 +37,7 @@
         <div class="panel-heading-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div>
                 <h4 style="margin: 0; font-size: 1rem; color: #111827;">Renewal Candidates</h4>
-                <p style="margin: 0.2rem 0 0 0; color: #6b7280; font-size: 0.85rem;">Default shows items due till today. Enter days (e.g. 70, 100) to include upcoming renewals.</p>
-            </div>
-            <div style="display: flex; align-items: center; gap: 0.65rem;">
-                <label for="renewalDaysFilter" style="font-size: 0.82rem; color: #6b7280; font-weight: 500;">Upcoming days:</label>
-                <input type="number" id="renewalDaysFilter" class="form-input" min="0" step="1" value="" placeholder="0" style="width: 140px; max-width: 100%;">
+                <p style="margin: 0.2rem 0 0 0; color: #6b7280; font-size: 0.85rem;">Showing only expired recurring items from tax invoices</p>
             </div>
         </div>
         <div class="table-shell">
@@ -75,7 +71,6 @@
     const btnBackToStep1 = document.getElementById('btnBackToStep1');
     const itemsDataInput = document.getElementById('items_data');
     const renewedItemIdsInput = document.getElementById('renewed_item_ids');
-    const renewalDaysFilter = document.getElementById('renewalDaysFilter');
     const renewalItemStore = new Map();
 
     let selectedRenewalItems = [];
@@ -92,11 +87,9 @@
 
     function loadRenewals() {
         const requestId = ++latestRenewalRequestId;
-        const rawDays = renewalDaysFilter ? renewalDaysFilter.value.trim() : '';
-        const parsedDays = rawDays === '' ? 0 : Math.max(0, parseInt(rawDays, 10) || 0);
         renewalBody.innerHTML = '';
         noRenewalMessage.style.display = 'none';
-        noRenewalMessage.textContent = 'No renewal-ready items were found for this client.';
+        noRenewalMessage.textContent = 'No expired renewal items found from tax invoices for this client.';
         selectedRenewalItems = [];
         renewalItemStore.clear();
         itemsDataInput.value = '[]';
@@ -109,7 +102,7 @@
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
             },
-            body: JSON.stringify({ clientid: clientId, days: parsedDays })
+            body: JSON.stringify({ clientid: clientId })
         })
         .then(response => response.json())
         .then(invoices => {
@@ -130,7 +123,7 @@
                 const items = Array.isArray(invoice.items) ? invoice.items : [];
 
                 items.forEach(item => {
-                    if (!item || (!item.is_expired && !item.is_upcoming)) {
+                    if (!item || !item.is_expired) {
                         return;
                     }
 
@@ -173,8 +166,8 @@
                             </div>
                         </td>
                         <td>
-                            <span class="status-pill ${item.is_expired ? 'cancelled' : 'active'}" style="font-size: 0.65rem; padding: 0.12rem 0.45rem;">
-                                ${item.is_expired ? 'Expired' : 'Upcoming'}
+                            <span class="status-pill cancelled" style="font-size: 0.65rem; padding: 0.12rem 0.45rem;">
+                                Expired
                             </span>
                             <div style="font-size: 0.78rem; color: #6b7280; margin-top: 0.15rem;">Ends: ${item.end_date || '-'}</div>
                         </td>
@@ -203,7 +196,7 @@
                 return;
             }
             console.error('Error loading renewals:', error);
-            noRenewalMessage.textContent = 'No renewal-ready items were found for this client.';
+            noRenewalMessage.textContent = 'No expired renewal items found from tax invoices for this client.';
             noRenewalMessage.style.display = 'block';
         });
     }
@@ -283,18 +276,16 @@
         window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientToken;
     });
 
-    renewalDaysFilter.addEventListener('input', loadRenewals);
-
     // Load draft items when editing
     function loadItems() {
         const draftId = "{{ request('d', '') }}";
-        
+
         if (!draftId) return;
-        
+
         const draftUrl = new URL("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace('__CLIENTID__', clientId), window.location.origin);
         draftUrl.searchParams.set('invoice_for', 'renewal');
         draftUrl.searchParams.set('d', draftId);
-        
+
         fetch(draftUrl.toString())
             .then(response => response.json())
             .then(data => {
@@ -302,7 +293,7 @@
                     if (data.draft.items && data.draft.items.length > 0) {
                         selectedRenewalItems = data.draft.items;
                         itemsDataInput.value = JSON.stringify(selectedRenewalItems);
-                        
+
                         // Update checkboxes based on loaded items
                         renewalItemStore.forEach((item, key) => {
                             const checkbox = document.querySelector(`.renewal-item-checkbox[data-item-key="${key}"]`);
@@ -311,10 +302,10 @@
                                 checkbox.checked = isSelected;
                             }
                         });
-                        
+
                         updateSelectedItems();
                     }
-                    
+
                     if (data.draft.issue_date) {
                         const issueDateField = document.getElementById('issue_date');
                         if (issueDateField) {
@@ -342,7 +333,7 @@
                 console.error('Failed to load draft items:', error);
             });
     }
-    
+
     // Initialize
     loadItems();
     loadRenewals();

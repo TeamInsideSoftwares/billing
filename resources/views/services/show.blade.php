@@ -32,8 +32,8 @@
 @if($service->costings->count())
 <section class="panel-card">
     <h3>Costings</h3>
-    <div style="overflow-x:auto;">
-        <table class="data-table" style="min-width: 500px;">
+    <div class="table-x">
+        <table class="data-table service-show-table">
             <thead>
                 <tr>
                     <th>Currency</th>
@@ -62,9 +62,9 @@
 @if(isset($addonItems) && $addonItems->count())
 <section class="panel-card">
     <h3>Linked Add-ons ({{ $addonItems->count() }})</h3>
-    <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem;">
+    <div class="service-addon-wrap">
         @foreach($addonItems as $addon)
-            <span class="badge" style="display: inline-block; padding: 0.2rem 0.45rem; background: #f3f4f6; color: #374151; border-radius: 0.25rem; font-size: 0.75rem;">
+            <span class="badge service-addon-badge">
                 {{ $addon->name }} ({{ ucfirst($addon->type ?? 'service') }})
             </span>
         @endforeach

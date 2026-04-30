@@ -2,11 +2,11 @@
 
 @section('header_actions')
     <a href="{{ route('clients.create') }}" class="primary-button">Add Client</a>
-    <button type="button" class="secondary-button" data-bs-toggle="modal" data-bs-target="#manageGroupsModal"><i class="fas fa-layer-group" class="icon-spaced-sm"></i>Manage Groups</button>
+    <button type="button" class="secondary-button" data-bs-toggle="modal" data-bs-target="#manageGroupsModal"><i class="fas fa-layer-group icon-spaced-sm"></i>Manage Groups</button>
 @endsection
 
 @section('content')
-    <section class="panel-card" class="no-padding">
+    <section class="panel-card no-padding">
         <table class="data-table">
             <thead>
                 <tr>
@@ -38,7 +38,7 @@
                             <div class="small-text">{{ $client['contact'] }}</div>
                         @endif
                         @if($client['phone'])
-                            <div class="text-xs text-muted"><i class="fas fa-phone" class="icon-small icon-spaced-sm"></i>{{ $client['phone'] }}</div>
+                            <div class="text-xs text-muted"><i class="fas fa-phone icon-small icon-spaced-sm"></i>{{ $client['phone'] }}</div>
                         @endif
                     </td>
                     <td>
@@ -77,7 +77,7 @@
             @empty
                 <tr>
                     <td colspan="7" class="no-records-cell">
-                        <i class="fas fa-users" class="empty-state-icon"></i>
+                        <i class="fas fa-users empty-state-icon"></i>
                         <p class="no-empty-state-text">No clients found</p>
                         <p class="small-text">Get started by adding your first client.</p>
                     </td>
@@ -89,7 +89,7 @@
 
     <!-- Manage Groups Modal -->
     <div class="modal fade" id="manageGroupsModal" tabindex="-1">
-    <div class="modal-dialog modal-md modal-dialog-centered" style="max-width: 650px;">
+    <div class="modal-dialog modal-md modal-dialog-centered modal-650">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title fw-semibold"><i class="fas fa-layer-group me-2 text-muted"></i>Manage Groups</h5>
@@ -148,37 +148,37 @@
                 </form>
 
                 <!-- Groups List -->
-                <div style="margin-top: 1rem; max-height: 220px; overflow-y: auto;">
-                    <h6 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">{{ $groups->count() }} Groups</h6>
+                <div class="group-list-wrap">
+                    <h6 class="group-list-title">{{ $groups->count() }} Groups</h6>
                     @forelse($groups as $group)
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 0.25rem; background: #f8fafc;">
-                            <div style="flex: 1;">
-                                <div style="display: flex; align-items: center; gap: 0.4rem;">
-                                    <div style="width: 24px; height: 24px; border-radius: 5px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; flex-shrink: 0;"><i class="fas fa-users"></i></div>
+                        <div class="group-list-item">
+                            <div class="flex-fill">
+                                <div class="group-list-item-head">
+                                    <div class="group-list-item-icon"><i class="fas fa-users"></i></div>
                                     <div>
-                                        <strong style="font-size: 0.82rem;">{{ $group->group_name }}</strong>
+                                        <strong class="group-list-item-name">{{ $group->group_name }}</strong>
                                         @if($group->email)
-                                            <div style="font-size: 0.72rem; color: #64748b;">{{ $group->email }}</div>
+                                            <div class="group-list-item-email">{{ $group->email }}</div>
                                         @endif
                                     </div>
                                 </div>
                             </div>
-                            <div style="display: flex; gap: 0.2rem; align-items: center;">
-                                <button type="button" style="padding: 0.25rem 0.4rem; font-size: 0.72rem; background: transparent; border: none; color: #6b7280; cursor: pointer;" onclick="editGroup('{{ $group->groupid }}', '{{ addslashes($group->group_name) }}', '{{ addslashes($group->email ?? '') }}', '{{ addslashes($group->address_line_1 ?? '') }}', '{{ addslashes($group->address_line_2 ?? '') }}', '{{ addslashes($group->city ?? '') }}', '{{ addslashes($group->state ?? '') }}', '{{ addslashes($group->postal_code ?? '') }}', '{{ addslashes($group->country ?? '') }}')" title="Edit">
+                            <div class="group-list-item-actions">
+                                <button type="button" class="icon-action-btn edit" onclick="editGroup('{{ $group->groupid }}', '{{ addslashes($group->group_name) }}', '{{ addslashes($group->email ?? '') }}', '{{ addslashes($group->address_line_1 ?? '') }}', '{{ addslashes($group->address_line_2 ?? '') }}', '{{ addslashes($group->city ?? '') }}', '{{ addslashes($group->state ?? '') }}', '{{ addslashes($group->postal_code ?? '') }}', '{{ addslashes($group->country ?? '') }}')" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <form method="POST" action="{{ route('groups.destroy', $group->groupid) }}" style="display: inline;" onsubmit="return confirm('Delete this group?')">
+                                <form method="POST" action="{{ route('groups.destroy', $group->groupid) }}" class="inline-delete" onsubmit="return confirm('Delete this group?')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" style="padding: 0.25rem 0.4rem; font-size: 0.72rem; background: transparent; border: none; color: #ef4444; cursor: pointer;" title="Delete">
+                                    <button type="submit" class="icon-action-btn delete" title="Delete">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>
                             </div>
                         </div>
                     @empty
-                        <div style="text-align: center; padding: 1.25rem; color: #94a3b8;">
-                            <i class="fas fa-folder-open" style="font-size: 1.25rem; margin-bottom: 0.4rem; opacity: 0.3;"></i>
-                            <p style="margin: 0; font-size: 0.82rem;">No groups yet. Create one above!</p>
+                        <div class="group-list-empty">
+                            <i class="fas fa-folder-open empty-state-icon-sm"></i>
+                            <p class="group-list-empty-text">No groups yet. Create one above!</p>
                         </div>
                     @endforelse
                 </div>
@@ -242,4 +242,3 @@
     document.getElementById('manageGroupsModal').addEventListener('hidden.bs.modal', resetGroupForm);
     </script>
 @endsection
-

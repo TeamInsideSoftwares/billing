@@ -11,16 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'accountid',
     'clientid',
     'invoiceid',
-    'payment_number',
+    'debit',
+    'credit',
     'payment_date',
-    'amount',
-    'payment_method',
+    'mode',
     'reference_number',
-    'gateway_name',
-    'gateway_transaction_id',
     'status',
-    'notes',
-    'received_by',
 ])]
 class Payment extends Model
 {
@@ -37,13 +33,6 @@ protected $primaryKey = 'paymentid';
 
     use HasAlphaNumericId;
 
-    protected function casts(): array
-    {
-        return [
-            'payment_date' => 'date',
-            'amount' => 'decimal:2',
-        ];
-    }
 
     public function account(): BelongsTo
     {
@@ -58,10 +47,5 @@ protected $primaryKey = 'paymentid';
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class, 'invoiceid');
-    }
-
-    public function receiver(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'received_by');
     }
 }

@@ -90,6 +90,9 @@ class OrdersController extends Controller
             $businessName = $order->client->business_name ?? null;
             $contactName = $order->client->contact_name ?? null;
             $salesPersonId = (string) ($order->sales_person_id ?? '');
+            $linkedInvoice = $order->invoices
+                ->sortByDesc('created_at')
+                ->first();
 
             return [
                 'record_id' => $order->orderid,
@@ -131,6 +134,9 @@ class OrdersController extends Controller
                 'is_verified' => ($order->is_verified ?? 'no') === 'yes' ? 'Verified' : 'Unverified',
                 'verified' => ($order->is_verified ?? 'no') === 'yes',
                 'has_pi' => $order->invoices->isNotEmpty(),
+                'linked_invoice_id' => $linkedInvoice?->invoiceid,
+                'linked_invoice_for' => $linkedInvoice?->invoice_for,
+                'linked_invoice_has_ti' => !empty($linkedInvoice?->ti_number),
             ];
         });
 
@@ -262,6 +268,7 @@ class OrdersController extends Controller
                 $service = Service::with('costings')->find($itemData['itemid'] ?? null);
                 $taxRate = $this->resolveTaxRate($service, $itemData);
                 $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
+                $recurringDates = $this->normalizeRecurringDates($itemData);
 
                 OrderItem::create([
                     'orderid' => $existingOrder->orderid,
@@ -276,8 +283,8 @@ class OrdersController extends Controller
                     'duration' => $itemData['duration'] ?? null,
                     'frequency' => $itemData['frequency'] ?? null,
                     'no_of_users' => $itemData['no_of_users'] ?? null,
-                    'start_date' => $itemData['start_date'] ?? null,
-                    'end_date' => $itemData['end_date'] ?? null,
+                    'start_date' => $recurringDates['start_date'],
+                    'end_date' => $recurringDates['end_date'],
                     'delivery_date' => $itemData['delivery_date'] ?? null,
                     'line_total' => $amounts['line_total'],
                 ]);
@@ -327,6 +334,7 @@ class OrdersController extends Controller
             $service = Service::with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
             $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
+            $recurringDates = $this->normalizeRecurringDates($itemData);
 
             \Log::info('Order Item Create', [
                 'item' => $itemData['itemid'],
@@ -346,8 +354,8 @@ class OrdersController extends Controller
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
                 'no_of_users' => $itemData['no_of_users'] ?? null,
-                'start_date' => $itemData['start_date'] ?? null,
-                'end_date' => $itemData['end_date'] ?? null,
+                'start_date' => $recurringDates['start_date'],
+                'end_date' => $recurringDates['end_date'],
                 'delivery_date' => $itemData['delivery_date'] ?? null,
                 'line_total' => $amounts['line_total'],
             ]);
@@ -619,6 +627,7 @@ class OrdersController extends Controller
             $service = Service::with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
             $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
+            $recurringDates = $this->normalizeRecurringDates($itemData);
             
             // Log for debugging
             \Log::info('Order Item Save', [
@@ -641,8 +650,8 @@ class OrdersController extends Controller
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
                 'no_of_users' => $itemData['no_of_users'] ?? null,
-                'start_date' => $itemData['start_date'] ?? null,
-                'end_date' => $itemData['end_date'] ?? null,
+                'start_date' => $recurringDates['start_date'],
+                'end_date' => $recurringDates['end_date'],
                 'delivery_date' => $itemData['delivery_date'] ?? null,
                 'line_total' => $amounts['line_total'],
             ]);
@@ -735,6 +744,71 @@ class OrdersController extends Controller
         }
 
         return (float) round($quantity * $unitPrice * $users * $durationMultiplier, 0);
+    }
+
+    private function normalizeRecurringDates(array $itemData): array
+    {
+        $frequencyRaw = trim((string) ($itemData['frequency'] ?? ''));
+        $frequencyKey = strtolower($frequencyRaw);
+        $duration = (int) round((float) ($itemData['duration'] ?? 0), 0);
+        $startDateRaw = $itemData['start_date'] ?? null;
+
+        if ($frequencyRaw === '' || $frequencyKey === 'one-time') {
+            return ['start_date' => null, 'end_date' => null];
+        }
+
+        if (empty($startDateRaw) || $duration <= 0) {
+            return [
+                'start_date' => $startDateRaw ?: null,
+                'end_date' => $itemData['end_date'] ?? null,
+            ];
+        }
+
+        try {
+            $start = \Carbon\Carbon::parse((string) $startDateRaw)->startOfDay();
+        } catch (\Throwable $e) {
+            return [
+                'start_date' => $startDateRaw,
+                'end_date' => $itemData['end_date'] ?? null,
+            ];
+        }
+
+        $end = $start->copy();
+        switch ($frequencyKey) {
+            case 'day(s)':
+            case 'daily':
+                $end->addDays($duration);
+                break;
+            case 'week(s)':
+            case 'weekly':
+                $end->addWeeks($duration);
+                break;
+            case 'month(s)':
+            case 'monthly':
+                $end->addMonths($duration);
+                break;
+            case 'quarter(s)':
+            case 'quarterly':
+                $end->addMonths($duration * 3);
+                break;
+            case 'year(s)':
+            case 'yearly':
+                $end->addYears($duration);
+                break;
+            default:
+                return [
+                    'start_date' => $start->format('Y-m-d'),
+                    'end_date' => $itemData['end_date'] ?? null,
+                ];
+        }
+
+        // Inclusive end date: subtract one day from the next cycle boundary.
+        $end->subDay();
+
+        return [
+            'start_date' => $start->format('Y-m-d'),
+            'end_date' => $end->format('Y-m-d'),
+        ];
     }
 
     private function roundTaxUp(float $amount): float
@@ -1054,6 +1128,7 @@ class OrdersController extends Controller
             $service = Service::with('costings')->find($validated['itemid']);
             $taxRate = $this->resolveTaxRate($service, $validated);
             $amounts = $this->calculateOrderItemAmounts($validated, $taxRate);
+            $recurringDates = $this->normalizeRecurringDates($validated);
 
             $orderItem = OrderItem::create([
                 'orderid' => $order->orderid,
@@ -1068,8 +1143,8 @@ class OrdersController extends Controller
                 'duration' => $validated['duration'] ?? null,
                 'frequency' => $validated['frequency'] ?? null,
                 'no_of_users' => $validated['no_of_users'] ?? null,
-                'start_date' => $validated['start_date'] ?? null,
-                'end_date' => $validated['end_date'] ?? null,
+                'start_date' => $recurringDates['start_date'],
+                'end_date' => $recurringDates['end_date'],
                 'delivery_date' => $validated['delivery_date'] ?? null,
                 'line_total' => $amounts['line_total'],
             ]);
@@ -1161,6 +1236,7 @@ class OrdersController extends Controller
             $service = Service::with('costings')->find($validated['itemid']);
             $taxRate = $this->resolveTaxRate($service, $validated);
             $amounts = $this->calculateOrderItemAmounts($validated, $taxRate);
+            $recurringDates = $this->normalizeRecurringDates($validated);
 
             $orderItem->update([
                 'itemid' => $validated['itemid'],
@@ -1174,8 +1250,8 @@ class OrdersController extends Controller
                 'duration' => $validated['duration'] ?? null,
                 'frequency' => $validated['frequency'] ?? null,
                 'no_of_users' => $validated['no_of_users'] ?? null,
-                'start_date' => $validated['start_date'] ?? null,
-                'end_date' => $validated['end_date'] ?? null,
+                'start_date' => $recurringDates['start_date'],
+                'end_date' => $recurringDates['end_date'],
                 'delivery_date' => $validated['delivery_date'] ?? null,
                 'line_total' => $amounts['line_total'],
             ]);

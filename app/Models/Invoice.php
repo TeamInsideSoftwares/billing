@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 
 #[Fillable([
     'accountid',
@@ -158,7 +159,23 @@ class Invoice extends Model
 
     public function getAmountPaidAttribute(): float
     {
-        return (float) ($this->payments()->sum('amount') ?? 0);
+        static $paymentAmountColumn = null;
+
+        if ($paymentAmountColumn === null) {
+            if (Schema::hasColumn('payments', 'amount')) {
+                $paymentAmountColumn = 'amount';
+            } elseif (Schema::hasColumn('payments', 'credit')) {
+                $paymentAmountColumn = 'credit';
+            } else {
+                $paymentAmountColumn = false;
+            }
+        }
+
+        if ($paymentAmountColumn === false) {
+            return 0.0;
+        }
+
+        return (float) ($this->payments()->sum($paymentAmountColumn) ?? 0);
     }
 
     public function getBalanceDueAttribute(): float

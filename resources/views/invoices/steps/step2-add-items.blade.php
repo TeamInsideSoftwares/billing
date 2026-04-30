@@ -14,34 +14,34 @@
 <!-- Step 2: Add Items (Without Orders) -->
 <div id="step2" class="invoice-step">
     {{-- Client Info Header with Back Button --}}
-    <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <button type="button" id="btnBackToStep1" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
+    <div class="invoice-client-header">
+        <div class="invoice-client-header__row">
+            <button type="button" id="btnBackToStep1" class="secondary-button invoice-back-btn">
                 <i class="fas fa-arrow-left" class="text-sm"></i>
             </button>
-            <div style="width: 1px; height: 32px; background: #d1d5db; flex-shrink: 0;"></div>
-            <div style="width: 36px; height: 36px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <div class="invoice-client-header__divider"></div>
+            <div class="invoice-client-header__icon">
                 <i class="fas fa-user"></i>
             </div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="font-size: 0.9rem; font-weight: 600; color: #111827; margin-top: 0.1rem;">{{ $selectedClientName }}</div>
+            <div class="invoice-client-header__body">
+                <div class="invoice-client-header__name">{{ $selectedClientName }}</div>
                 @if($selectedClientEmail)
-                <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.05rem;">{{ $selectedClientEmail }}</div>
+                <div class="invoice-client-header__email">{{ $selectedClientEmail }}</div>
                 @endif
             </div>
-            <div style="text-align: right; flex-shrink: 0;">
-                <div id="piNumberBadge" style="display: inline-block; padding: 0.35rem 0.75rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #c7d2fe;">
+            <div class="invoice-client-header__right">
+                <div id="piNumberBadge" class="invoice-number-badge">
                     {{ $initialHeaderNumberStep2 }}
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="invoice-grid-4" style="margin-bottom: 1rem;">
-        <div style="overflow: visible;">
+    <div class="invoice-grid-4 mb-3">
+        <div class="overflow-visible">
             <label for="invoice_title" class="field-label">Invoice Title</label>
             <input type="text" id="invoice_title" name="invoice_title" class="form-input" placeholder="e.g. Website Development - Monthly Subscription" required>
-            <div id="invoiceTitleError" style="display:none; margin-top: 0.5rem; color: #b91c1c; font-size: 0.8rem; font-weight: 600;">Invoice title is required.</div>
+            <div id="invoiceTitleError" class="invoice-field-error is-hidden">Invoice title is required.</div>
         </div>
         <div>
             <label for="issue_date" class="field-label">Issue Date</label>
@@ -53,7 +53,7 @@
         </div>
         <div>
             <label for="notes" class="field-label">Notes</label>
-            <textarea id="notes" name="notes" rows="1" class="form-input" style="min-height: 38px; resize: vertical;" placeholder="Optional notes">{{ old('notes', request('d') && $invoice ? $invoice->notes : '') }}</textarea>
+            <textarea id="notes" name="notes" rows="1" class="form-input invoice-notes-textarea" placeholder="Optional notes">{{ old('notes', request('d') && $invoice ? $invoice->notes : '') }}</textarea>
         </div>
     </div>
 
@@ -66,20 +66,20 @@
     <input type="hidden" name="notes" id="step2_notes" value="">
 
     <div id="manualItemsSection" class="workflow-panel">
-        <div class="panel-heading-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <div class="panel-heading-row">
             <div>
-                <h4 style="margin: 0; font-size: 1rem; color: #334155;">Add Invoice Items</h4>
-                <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Add items to your invoice.</p>
+                <h4 class="panel-heading-title">Add Invoice Items</h4>
+                <p class="panel-heading-subtitle">Add items to your invoice.</p>
             </div>
             <div>
-                <button type="button" id="toggleAddItemFormBtn" class="text-link" style="display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; font-size: 0.8rem; padding: 0.35rem 0.65rem; border: 1px solid #e5e7eb; border-radius: 6px; background: #ffffff; color: #4f46e5; font-weight: 500; line-height: 1;">
-                    <i class="fas fa-plus" style="font-size: 0.75rem; line-height: 1; vertical-align: middle;"></i>
-                    <span style="line-height: 1;">Add More Items</span>
+                <button type="button" id="toggleAddItemFormBtn" class="text-link invoice-add-item-btn">
+                    <i class="fas fa-plus invoice-add-item-btn__icon"></i>
+                    <span class="invoice-add-item-btn__text">Add More Items</span>
                 </button>
             </div>
         </div>
 
-        <div class="builder-card" id="addItemFormCard" style="margin-bottom: 0.65rem; padding: 0.6rem; display: none;">
+        <div class="builder-card invoice-builder-card" id="addItemFormCard">
             <div class="manual-grid manual-grid-add-items">
                 <div class="invoice-span-2">
                     <label for="manual_item_itemid" class="field-label small">Item</label>
@@ -125,7 +125,7 @@
                 <input type="hidden" id="manual_item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
                 @endif
                 @if($account->have_users)
-                <div id="manual_item_users_wrap" style="display: none;">
+                <div id="manual_item_users_wrap" class="is-hidden">
                     <label for="manual_item_users" class="field-label small">Users</label>
                     <input type="number" id="manual_item_users" class="form-input" value="1" min="1" step="1">
                 </div>
@@ -144,27 +144,27 @@
                         <option value="Year(s)">Year(s)</option>
                     </select>
                 </div>
-                <div id="manual_item_duration_wrap" style="display: none;">
+                <div id="manual_item_duration_wrap" class="is-hidden">
                     <label for="manual_item_duration" class="field-label small">Dur</label>
                     <input type="number" id="manual_item_duration" class="form-input" min="0" step="1" placeholder="e.g. 12">
                 </div>
-                <div id="manual_item_start_date_wrap" style="display: none;">
+                <div id="manual_item_start_date_wrap" class="is-hidden">
                     <label for="manual_item_start_date" class="field-label small">Start</label>
                     <input type="date" id="manual_item_start_date" class="form-input">
                 </div>
-                <div id="manual_item_end_date_wrap" style="display: none;">
+                <div id="manual_item_end_date_wrap" class="is-hidden">
                     <label for="manual_item_end_date" class="field-label small">End</label>
                     <input type="date" id="manual_item_end_date" class="form-input">
                 </div>
             </div>
-            <div style="margin-top: 0.45rem; display: flex; gap: 0.45rem; align-items: flex-end;">
-                <textarea id="manual_item_description" class="form-input" rows="1" placeholder="Description (optional)" style="flex: 1 1 auto; min-height: 30px; resize: none; line-height: 1.2;"></textarea>
-                <button type="button" id="addManualItemBtn" class="primary-button" style="padding: 0.55rem 1rem; white-space: nowrap;">Add</button>
+            <div class="invoice-item-desc-row">
+                <textarea id="manual_item_description" class="form-input invoice-item-desc-input" rows="1" placeholder="Description (optional)"></textarea>
+                <button type="button" id="addManualItemBtn" class="primary-button invoice-item-add-btn">Add</button>
             </div>
         </div>
 
-        <div class="table-shell" style="margin-top: 1rem;">
-            <table class="data-table" id="manualItemsTable" style="display: none; margin: 0; font-size: 0.84rem;">
+        <div class="table-shell mt-3">
+            <table class="data-table m-0 invoice-items-table is-hidden" id="manualItemsTable">
                 <thead>
                     <tr>
                         <th>Item</th>
@@ -175,12 +175,12 @@
                         <th>Tax %</th>
                         @endif
                         @if($account->have_users)
-                        <th id="manualUsersHeader" class="hidden">Users</th>
+                        <th id="manualUsersHeader" class="is-hidden">Users</th>
                         @endif
                         <th>Freq</th>
-                        <th id="manualDurationHeader" class="hidden">Dur</th>
-                        <th id="manualStartHeader" class="hidden">Start</th>
-                        <th id="manualEndHeader" class="hidden">End</th>
+                        <th id="manualDurationHeader" class="is-hidden">Dur</th>
+                        <th id="manualStartHeader" class="is-hidden">Start</th>
+                        <th id="manualEndHeader" class="is-hidden">End</th>
                         <th>Total ({{ $selectedClientCurrency }})</th>
                         <th></th>
                     </tr>
@@ -190,7 +190,7 @@
             <div id="manualItemsEmpty" class="empty-state">No items added yet.</div>
         </div>
 
-        <div id="manualOrderSummary" class="totals-card" style="display: none; margin-top: 1rem; margin-left: auto; max-width: 350px;">
+        <div id="manualOrderSummary" class="totals-card totals-card--narrow is-hidden mt-3 ms-auto">
             <div class="total-row"><span>Subtotal</span><strong id="manualSubtotal">0</strong></div>
             <div class="total-row"><span>Discount</span><strong id="manualDiscountTotal">0</strong></div>
             <div class="total-row"><span>Tax</span><strong id="manualTaxTotal">0</strong></div>
@@ -198,26 +198,10 @@
         </div>
     </div>
 
-    <div style="margin-top: 2rem;">
-        <button type="button" class="primary-button" id="btnNextToStep3" disabled style="width: 100%; padding: 1rem;">Review & Terms &rarr;</button>
+    <div class="mt-4">
+        <button type="button" class="primary-button w-100 invoice-next-btn" id="btnNextToStep3" disabled>Review & Terms &rarr;</button>
     </div>
 </div>
-
-<style>
-.manual-grid.manual-grid-add-items {
-    grid-template-columns: 2.2fr 0.7fr 1fr 0.8fr 1fr 0.8fr 0.8fr 1fr 1fr 0.8fr;
-}
-@media (max-width: 1200px) {
-    .manual-grid.manual-grid-add-items {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-@media (max-width: 720px) {
-    .manual-grid.manual-grid-add-items {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
 
 <script>
 (function() {
@@ -293,8 +277,8 @@
             return name;
         }
         return `
-            <div style="font-weight: 600; color: #111827;">${name}</div>
-            <div style="margin-top: 0.15rem; font-size: 0.78rem; color: #6b7280; white-space: pre-wrap;">${description}</div>
+            <div class="invoice-item-cell-title">${name}</div>
+            <div class="invoice-item-cell-desc">${description}</div>
         `;
     }
 
@@ -339,7 +323,8 @@
         if (!startDate || !isRecurringFrequency(frequency) || !duration) {
             return '';
         }
-        const start = new Date(startDate);
+        const parts = String(startDate).split('-');
+        const start = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
         const steps = Number(duration) || 0;
         if (Number.isNaN(start.getTime()) || steps <= 0) {
             return '';
@@ -353,15 +338,20 @@
             case 'Year(s)': end.setFullYear(end.getFullYear() + steps); break;
             default: return '';
         }
-        return end.toISOString().split('T')[0];
+        // End date is inclusive across billing cycles.
+        end.setDate(end.getDate() - 1);
+        const y = end.getFullYear();
+        const m = String(end.getMonth() + 1).padStart(2, '0');
+        const d = String(end.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
     }
 
     function toggleManualRecurringFields() {
         if (!manualDurationWrap || !manualDurationInput || !manualStartWrap || !manualEndWrap || !manualStartInput || !manualEndInput) return;
         const showRecurring = isRecurringFrequency(manualFrequencyInput?.value || '');
-        manualDurationWrap.style.display = showRecurring ? 'block' : 'none';
-        manualStartWrap.style.display = showRecurring ? 'block' : 'none';
-        manualEndWrap.style.display = showRecurring ? 'block' : 'none';
+        manualDurationWrap.classList.toggle('is-hidden', !showRecurring);
+        manualStartWrap.classList.toggle('is-hidden', !showRecurring);
+        manualEndWrap.classList.toggle('is-hidden', !showRecurring);
         if (showRecurring) {
             const durationValue = Number(manualDurationInput.value || 0);
             if (!manualDurationInput.value || durationValue <= 0) {
@@ -404,10 +394,10 @@
         const durationHeader = document.getElementById('manualDurationHeader');
         const startHeader = document.getElementById('manualStartHeader');
         const endHeader = document.getElementById('manualEndHeader');
-        if (usersHeader) usersHeader.style.display = showUserColumns ? '' : 'none';
-        if (durationHeader) durationHeader.style.display = showRecurringColumns ? '' : 'none';
-        if (startHeader) startHeader.style.display = showRecurringColumns ? '' : 'none';
-        if (endHeader) endHeader.style.display = showRecurringColumns ? '' : 'none';
+        if (usersHeader) usersHeader.classList.toggle('is-hidden', !showUserColumns);
+        if (durationHeader) durationHeader.classList.toggle('is-hidden', !showRecurringColumns);
+        if (startHeader) startHeader.classList.toggle('is-hidden', !showRecurringColumns);
+        if (endHeader) endHeader.classList.toggle('is-hidden', !showRecurringColumns);
 
         return { showRecurringColumns, showUserColumns };
     }
@@ -432,10 +422,10 @@
 
     function openAddItemForm() {
         if (addItemFormCard) {
-            addItemFormCard.style.display = 'block';
+            addItemFormCard.classList.remove('is-hidden');
         }
         if (toggleAddItemFormBtn) {
-            toggleAddItemFormBtn.innerHTML = '<i class="fas fa-times" style="font-size: 0.75rem; line-height: 1; vertical-align: middle;"></i><span style="line-height: 1;">Cancel</span>';
+            toggleAddItemFormBtn.innerHTML = '<i class="fas fa-times invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Cancel</span>';
         }
     }
 
@@ -509,17 +499,17 @@
 
     function renderManualItems() {
         if (manualItems.length === 0) {
-            manualItemsTable.style.display = 'none';
-            manualItemsEmpty.style.display = 'block';
-            manualSummary.style.display = 'none';
+            manualItemsTable.classList.add('is-hidden');
+            manualItemsEmpty.classList.remove('is-hidden');
+            manualSummary.classList.add('is-hidden');
             btnNextToStep3.disabled = true;
             syncManualHeaders();
             return;
         }
 
-        manualItemsTable.style.display = 'table';
-        manualItemsEmpty.style.display = 'none';
-        manualSummary.style.display = 'block';
+        manualItemsTable.classList.remove('is-hidden');
+        manualItemsEmpty.classList.add('is-hidden');
+        manualSummary.classList.remove('is-hidden');
         btnNextToStep3.disabled = false;
         const headerState = syncManualHeaders();
         const showRecurringColumns = headerState.showRecurringColumns;
@@ -554,25 +544,25 @@
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${renderItemCell(item)}</td>
-                <td style="text-align: center;">${Math.round(Number(item.quantity) || 0)}</td>
+                <td class="text-center">${Math.round(Number(item.quantity) || 0)}</td>
                 <td class="text-right">${formatCurrency(item.unit_price)}</td>
-                <td style="text-align: center;">${Number(item.discount_percent || 0).toFixed(0)}%</td>
+                <td class="text-center">${Number(item.discount_percent || 0).toFixed(0)}%</td>
                 @if($account->allow_multi_taxation)
-                <td style="text-align: center;">${item.tax_rate}%</td>
+                <td class="text-center">${item.tax_rate}%</td>
                 @endif
                 @if($account->have_users)
-                <td style="text-align: center; display:${showUserColumns ? '' : 'none'};">${rowUsers ? item.no_of_users : '-'}</td>
+                <td class="text-center ${showUserColumns ? '' : 'is-hidden'}">${rowUsers ? item.no_of_users : '-'}</td>
                 @endif
                 <td>${item.frequency ? (frequencyLabels[item.frequency] || item.frequency) : '-'}</td>
-                <td style="display:${showRecurringColumns ? '' : 'none'};">${rowRecurring ? (item.duration || '-') : '-'}</td>
-                <td style="display:${showRecurringColumns ? '' : 'none'};">${rowRecurring ? (item.start_date || '-') : '-'}</td>
-                <td style="display:${showRecurringColumns ? '' : 'none'};">${rowRecurring ? (item.end_date || '-') : '-'}</td>
+                <td class="${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.duration || '-') : '-'}</td>
+                <td class="${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.start_date || '-') : '-'}</td>
+                <td class="${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.end_date || '-') : '-'}</td>
                 <td class="text-right">${formatCurrency(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0)))}</td>
-                <td style="text-align: center; white-space: nowrap;">
-                    <button type="button" class="edit-item-btn icon-action-btn edit" data-index="${index}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;">
+                <td class="text-center text-nowrap">
+                    <button type="button" class="edit-item-btn icon-action-btn edit" data-index="${index}" title="Edit">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button type="button" class="remove-item-btn icon-action-btn delete" data-index="${index}" title="Delete" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;">
+                    <button type="button" class="remove-item-btn icon-action-btn delete" data-index="${index}" title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -833,12 +823,13 @@
     // Toggle form visibility
     function toggleAddItemForm() {
         if (addItemFormCard) {
-            addItemFormCard.style.display = addItemFormCard.style.display === 'none' ? 'block' : 'none';
+            addItemFormCard.classList.toggle('is-hidden');
         }
         if (toggleAddItemFormBtn) {
-            toggleAddItemFormBtn.innerHTML = addItemFormCard.style.display === 'none' 
-                ? '<i class="fas fa-plus" style="font-size: 0.75rem; line-height: 1; vertical-align: middle;"></i><span style="line-height: 1;">Add More Items</span>'
-                : '<i class="fas fa-times" style="font-size: 0.75rem; line-height: 1; vertical-align: middle;"></i><span style="line-height: 1;">Cancel</span>';
+            const isHidden = addItemFormCard ? addItemFormCard.classList.contains('is-hidden') : true;
+            toggleAddItemFormBtn.innerHTML = isHidden
+                ? '<i class="fas fa-plus invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Add More Items</span>'
+                : '<i class="fas fa-times invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Cancel</span>';
         }
     }
     
@@ -847,6 +838,12 @@
     }
     
     // Initialize
+    if (toggleAddItemFormBtn) {
+        toggleAddItemFormBtn.classList.add('is-hidden');
+    }
+    if (addItemFormCard) {
+        addItemFormCard.classList.remove('is-hidden');
+    }
     loadItems();
     updateStep2HeaderNumber();
 })();

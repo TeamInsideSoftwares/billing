@@ -3,10 +3,10 @@
 @section('header_actions')
     @if($clientId)
         <a href="{{ route('orders.create', ['c' => $clientId]) }}" class="primary-button">
-            <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>Create Order
+            <i class="fas fa-plus icon-spaced"></i>Create Order
         </a>
         <!-- <a href="{{ route('orders.index', ['c' => $clientId]) }}" class="secondary-button">
-            <i class="fas fa-list" style="margin-right: 0.5rem;"></i>View Orders
+            <i class="fas fa-list icon-spaced"></i>View Orders
         </a> -->
     @endif
 @endsection
@@ -42,11 +42,11 @@
                         </select>
                     </div>
                     <div class="order-client-picker-actions">
-                        <button type="button" id="btnViewOrders" class="secondary-button" style="min-height: 46px; padding-inline: 1.15rem;">
-                            <i class="fas fa-list" class="icon-spaced"></i> View Orders
+                        <button type="button" id="btnViewOrders" class="secondary-button action-btn-lg">
+                            <i class="fas fa-list icon-spaced"></i> View Orders
                         </button>
-                        <button type="button" id="btnCreateOrder" class="primary-button" style="min-height: 46px; padding-inline: 1.15rem;">
-                            <i class="fas fa-plus" class="icon-spaced"></i> Create Order
+                        <button type="button" id="btnCreateOrder" class="primary-button action-btn-lg">
+                            <i class="fas fa-plus icon-spaced"></i> Create Order
                         </button>
                     </div>
                 </form>
@@ -71,11 +71,10 @@
                 <div class="order-group-head">
                     <span class="order-client-meta" onclick="event.stopPropagation();">
                         @if($clientId)
-                            <form action="{{ route('orders.index') }}" method="GET" style="margin: 0;">
+                            <form action="{{ route('orders.index') }}" method="GET" class="m-0">
                                 <select
                                     name="c"
-                                    class="form-control form-control"
-                                    style="min-width: 260px; min-height: 34px;"
+                                    class="form-control select-client-compact"
                                     onchange="this.form.submit()"
                                     onclick="event.stopPropagation();"
                                 >
@@ -97,23 +96,23 @@
                     </span>
                 </div>
                 <div class="order-table-wrap">
-                    <table class="data-table" style="margin: 0;">
+                    <table class="data-table table-no-margin">
                         <thead>
                             <tr>
-                                <th style="width: 5%;"></th>
-                                <th style="width: 30%;">Order</th>
-                                <th style="width: 12%;">Order Date</th>
-                                <th style="width: 12%;">Amount ({{ $groupCurrency }})</th>
-                                <th style="width: 10%;">Status</th>
-                                <th style="width: 16%;">Actions</th>
+                                <th class="w-5"></th>
+                                <th class="w-30">Order</th>
+                                <th class="w-12">Order Date</th>
+                                <th class="w-12">Amount ({{ $groupCurrency }})</th>
+                                <th class="w-10">Status</th>
+                                <th class="w-16">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                         @foreach ($clientOrders as $order)
                             <tr class="order-row" data-order-id="{{ $order['record_id'] ?? '' }}">
                                 <td>
-                                    <button type="button" class="expand-order-btn" onclick="toggleOrderItems('{{ $order['record_id'] ?? '' }}')" style="width: 24px; height: 24px; border: 1px solid #e2e8f0; background: white; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc';" onmouseout="this.style.background='white';">
-                                        <i class="fas fa-chevron-right" id="icon-{{ $order['record_id'] ?? '' }}" style="font-size: 0.7rem; color: #64748b; transition: transform 0.2s;"></i>
+                                    <button type="button" class="expand-order-btn" onclick="toggleOrderItems('{{ $order['record_id'] ?? '' }}')">
+                                        <i class="fas fa-chevron-right expand-order-icon" id="icon-{{ $order['record_id'] ?? '' }}"></i>
                                     </button>
                                 </td>
                                 <td>
@@ -135,13 +134,13 @@
                                 </td>
                                 <td>
                                     @if(($order['status'] ?? '') === 'cancelled')
-                                        <span class="status-pill" style="background: #e2e8f0; color: #475569;">Cancelled</span>
+                                        <span class="status-pill status-pill-cancelled">Cancelled</span>
                                     @elseif(($order['status'] ?? '') === 'completed')
-                                        <span class="status-pill" style="background: #dcfce7; color: #166534;">Completed</span>
+                                        <span class="status-pill status-pill-completed">Completed</span>
                                     @elseif(($order['status'] ?? '') === 'paused')
-                                        <span class="status-pill" style="background: #fef3c7; color: #92400e;">Paused</span>
+                                        <span class="status-pill status-pill-paused">Paused</span>
                                     @else
-                                        <span class="status-pill" style="background: #dbeafe; color: #1e40af;">Running</span>
+                                        <span class="status-pill status-pill-running">Running</span>
                                     @endif
                                 </td>
                                 <td>
@@ -155,9 +154,16 @@
                                                 Create PI
                                             </a>
                                             @else
-                                            <span class="order-create-pi-link" style="background: #ecfdf5; border-color: #a7f3d0; color: #047857; cursor: default;" title="PI already created">
-                                                PI Created
-                                            </span>
+                                            <a href="{{ route('invoices.create', [
+                                                'step' => (($order['linked_invoice_for'] ?? 'orders') === 'without_orders') ? 2 : 3,
+                                                'invoice_for' => $order['linked_invoice_for'] ?? 'orders',
+                                                'c' => $clientId,
+                                                'd' => $order['linked_invoice_id'],
+                                                'o' => (($order['linked_invoice_for'] ?? 'orders') === 'orders') ? ($order['record_id'] ?? '') : null,
+                                                'tax_invoice' => !empty($order['linked_invoice_has_ti']) ? 1 : null,
+                                            ]) }}" class="order-create-pi-link order-pill-created" title="Edit PI">
+                                                Edit PI
+                                            </a>
                                             @endif
                                         @endif
                                         @if(($order['status'] ?? '') !== 'cancelled')
@@ -175,7 +181,7 @@
                                             <form method="POST" action="{{ route('orders.restore', ['order' => $order['record_id'] ?? '' ]) }}" class="inline-delete" onsubmit="return confirm('Restore {{ $order['number'] ?? 'this order' }}?')">
                                                 @csrf
                                                 @method('PATCH')
-                                                <button type="submit" class="order-create-pi-link" style="background: #ecfdf5; border-color: #a7f3d0; color: #047857;" title="Restore Order">
+                                                <button type="submit" class="order-create-pi-link order-pill-created" title="Restore Order">
                                                     Restore
                                                 </button>
                                             </form>
@@ -184,22 +190,22 @@
                                 </td>
                             </tr>
                             {{-- Order Items Row (Hidden by default) --}}
-                            <tr class="order-items-row" id="items-{{ $order['record_id'] ?? '' }}" style="display: none;">
-                                <td colspan="6" style="padding: 0; background: #f8fafc; border-left: 3px solid #3b82f6;">
-                                    <div style="padding: 0.875rem 1rem;">
-                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.625rem;">
-                                            <i class="fas fa-box-open" style="color: #3b82f6; font-size: 0.85rem;"></i>
-                                            <strong style="font-size: 0.8rem; color: #0f172a;">Order Items</strong>
+                            <tr class="order-items-row" id="items-{{ $order['record_id'] ?? '' }}">
+                                <td colspan="6" class="order-items-cell">
+                                    <div class="order-items-inner">
+                                        <div class="order-items-head">
+                                            <i class="fas fa-box-open order-items-head-icon"></i>
+                                            <strong class="order-items-head-title">Order Items</strong>
                                         </div>
-                                        <div id="order-items-content-{{ $order['record_id'] ?? '' }}" style="font-size: 0.8rem; color: #64748b;">
+                                        <div id="order-items-content-{{ $order['record_id'] ?? '' }}" class="order-items-content">
                                             @if(!empty($order['items']) && count($order['items']) > 0)
-                                                <div style="display: grid; gap: 0.5rem;">
+                                                <div class="order-items-grid">
                                                     @foreach($order['items'] as $item)
-                                                        <div style="background: white; padding: 0.625rem; border-radius: 4px; border: 1px solid #e2e8f0;">
-                                                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                                                        <div class="order-item-card">
+                                                            <div class="order-item-card-row">
                                                                 <div>
-                                                                    <strong style="color: #0f172a;">{{ $item['item_name'] ?? 'Item' }}</strong>
-                                                                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.15rem;">
+                                                                    <strong class="order-item-name">{{ $item['item_name'] ?? 'Item' }}</strong>
+                                                                    <div class="order-item-meta">
                                                                         Qty: {{ number_format($item['quantity'] ?? 1, 0) }}
                                                                         @if(!empty($item['duration']))
                                                                             | Dur: {{ $item['duration'] }}
@@ -213,13 +219,13 @@
                                                                         @endif
                                                                     </div>
                                                                 </div>
-                                                                <strong style="color: #0f172a; font-size: 0.85rem;">{{ number_format($item['line_total'] ?? 0, 0) }}</strong>
+                                                                <strong class="order-item-total">{{ number_format($item['line_total'] ?? 0, 0) }}</strong>
                                                             </div>
                                                         </div>
                                                     @endforeach
                                                 </div>
                                             @else
-                                                <em style="color: #94a3b8;">No items in this order</em>
+                                                <em class="text-muted-light">No items in this order</em>
                                             @endif
                                         </div>
                                     </div>
@@ -232,8 +238,8 @@
             </section>
         @empty
             <div class="order-empty">
-                <i class="fas fa-receipt" style="font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.3;"></i>
-                <p style="margin: 0; font-size: 0.95rem; font-weight: 500;">No orders found</p>
+                <i class="fas fa-receipt empty-state-icon"></i>
+                <p class="no-empty-state-text">No orders found</p>
                 <p class="small-text">Create your first order to get started.</p>
             </div>
         @endforelse
@@ -276,44 +282,4 @@
         }
     });
     </script>
-
-    <style>
-    .order-client-picker-actions {
-        display: flex;
-        gap: 0.6rem;
-        margin-top: 0.75rem;
-    }
-
-    .order-client-picker-actions .secondary-button {
-        background: #ffffff;
-        border: 1px solid #d1d5db;
-        color: #374151;
-    }
-
-    .order-client-picker-actions .secondary-button:hover {
-        background: #f9fafb;
-        border-color: #9ca3af;
-    }
-
-    .order-client-picker-actions .primary-button {
-        background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-        border: none;
-        color: #ffffff;
-    }
-
-    .order-client-picker-actions .primary-button:hover {
-        background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
-    }
-
-    @media (max-width: 768px) {
-        .order-client-picker-actions {
-            flex-direction: column;
-        }
-        
-        .order-client-picker-actions .secondary-button,
-        .order-client-picker-actions .primary-button {
-            width: 100%;
-        }
-    }
-    </style>
 @endsection

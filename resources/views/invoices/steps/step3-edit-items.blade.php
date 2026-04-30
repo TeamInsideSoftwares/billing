@@ -18,49 +18,49 @@
 <!-- Step 3: Edit Items (For Orders & Renewal) -->
 <div id="step3" class="invoice-step">
     {{-- Client Info Header with Back Button --}}
-    <div style="margin-bottom: 0.7rem; padding: 0.55rem 0.72rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <button type="button" id="btnBackToStep2" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
+    <div class="invoice-client-header invoice-client-header--compact">
+        <div class="invoice-client-header__row">
+            <button type="button" id="btnBackToStep2" class="secondary-button invoice-back-btn invoice-back-btn--compact">
                 <i class="fas fa-arrow-left" class="text-sm"></i>
             </button>
-            <div style="width: 1px; height: 32px; background: #d1d5db; flex-shrink: 0;"></div>
-            <div style="width: 36px; height: 36px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <div class="invoice-client-header__divider"></div>
+            <div class="invoice-client-header__icon">
                 <i class="fas fa-user"></i>
             </div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="font-size: 0.82rem; font-weight: 600; color: #111827; margin-top: 0.08rem;">{{ $selectedClientName }}</div>
+            <div class="invoice-client-header__body">
+                <div class="invoice-client-header__name invoice-client-header__name--compact">{{ $selectedClientName }}</div>
                 @if($selectedClientEmail)
-                <div style="font-size: 0.72rem; color: #64748b; margin-top: 0.05rem;">{{ $selectedClientEmail }}</div>
+                <div class="invoice-client-header__email invoice-client-header__email--compact">{{ $selectedClientEmail }}</div>
                 @endif
             </div>
-            <div style="text-align: right; flex-shrink: 0;">
-                <div id="piNumberBadgeStep3" style="display: inline-block; padding: 0.27rem 0.58rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.78rem; font-weight: 700; border: 1px solid #c7d2fe;">
+            <div class="invoice-client-header__right">
+                <div id="piNumberBadgeStep3" class="invoice-number-badge invoice-number-badge--sm">
                     {{ $initialHeaderNumberStep3 }}
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="invoice-grid-4" style="margin-bottom: 0.85rem;">
-        <div style="display:flex; flex-direction:column;">
+    <div class="invoice-grid-4 mb-3">
+        <div class="d-flex flex-column">
             <label for="invoice_title" class="field-label">Invoice Title</label>
-            <input type="text" id="invoice_title" name="invoice_title" class="form-input" placeholder="e.g. Website Development - Monthly Subscription" required style="height:36px; box-sizing:border-box;">
-            <div id="invoiceTitleError" style="display:none; margin-top: 0.35rem; color: #b91c1c; font-size: 0.8rem; font-weight: 600;">Invoice title is required.</div>
+            <input type="text" id="invoice_title" name="invoice_title" class="form-input invoice-input-compact" placeholder="e.g. Website Development - Monthly Subscription" required>
+            <div id="invoiceTitleError" class="invoice-field-error is-hidden">Invoice title is required.</div>
         </div>
 
-        <div style="display:flex; flex-direction:column;">
+        <div class="d-flex flex-column">
             <label for="issue_date" class="field-label">Issue Date</label>
-            <input type="date" id="issue_date" name="issue_date" class="form-input" required style="height:36px; box-sizing:border-box;" value="{{ old('issue_date', $invoice?->issue_date?->format('Y-m-d') ?? date('Y-m-d')) }}">
+            <input type="date" id="issue_date" name="issue_date" class="form-input invoice-input-compact" required value="{{ old('issue_date', $invoice?->issue_date?->format('Y-m-d') ?? date('Y-m-d')) }}">
         </div>
 
-        <div style="display:flex; flex-direction:column;">
+        <div class="d-flex flex-column">
             <label for="due_date" class="field-label">Due Date</label>
-            <input type="date" id="due_date" name="due_date" class="form-input" required style="height:36px; box-sizing:border-box;" value="{{ old('due_date', $invoice?->due_date?->format('Y-m-d') ?? date('Y-m-d', strtotime('+7 days'))) }}">
+            <input type="date" id="due_date" name="due_date" class="form-input invoice-input-compact" required value="{{ old('due_date', $invoice?->due_date?->format('Y-m-d') ?? date('Y-m-d', strtotime('+7 days'))) }}">
         </div>
 
-        <div style="display:flex; flex-direction:column;">
+        <div class="d-flex flex-column">
             <label for="notes" class="field-label">Notes</label>
-            <textarea id="notes" name="notes" class="form-input" placeholder="Optional notes" style="height:36px; min-height:36px; padding:0.38rem 0.58rem; box-sizing:border-box; resize:none; overflow:hidden; line-height:1.3;">{{ old('notes', $invoice?->notes ?? '') }}</textarea>
+            <textarea id="notes" name="notes" class="form-input invoice-notes-compact" placeholder="Optional notes">{{ old('notes', $invoice?->notes ?? '') }}</textarea>
         </div>
     </div>
 
@@ -70,46 +70,46 @@
     <input type="hidden" name="currency_code" id="currency_code" value="{{ $selectedClientCurrency }}">
 
     <div id="itemsSection" class="workflow-panel">
-        <div class="panel-heading-row" style="margin-bottom: 0.5rem;">
+        <div class="panel-heading-row mb-2">
             <div>
-            <h4 style="margin: 0; font-size: 0.92rem; color: #111827;">
+            <h4 class="panel-heading-title panel-heading-title--sm">
                     @if(request('o', request('orderid')))
                         Edit Items from Order
                     @else
                         Edit Invoice Items
                     @endif
                 </h4>
-                <p style="margin: 0.15rem 0 0 0; color: #6b7280; font-size: 0.78rem;">Adjust quantity, pricing, tax, and other details before proceeding.</p>
+                <p class="panel-heading-subtitle panel-heading-subtitle--sm">Adjust quantity, pricing, tax, and other details before proceeding.</p>
             </div>
         </div>
 
         @if(request('o', request('orderid')))
-        <div id="orderSummaryInline" style="display: none; margin-bottom: 0.5rem; padding: 0.65rem 0.8rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
-            <div style="display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-size: 0.7rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em;">Source Order</div>
-                    <div id="orderSummaryTitle" style="margin-top: 0.15rem; font-size: 0.88rem; font-weight: 600; color: #111827;">Source Order Details</div>
+        <div id="orderSummaryInline" class="invoice-order-summary is-hidden">
+            <div class="invoice-order-summary__row">
+                <div class="invoice-order-summary__main">
+                    <div class="invoice-order-summary__eyebrow">Source Order</div>
+                    <div id="orderSummaryTitle" class="invoice-order-summary__title">Source Order Details</div>
                 </div>
-                <div id="orderSummaryDetails" style="display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center;"></div>
+                <div id="orderSummaryDetails" class="invoice-order-summary__badges"></div>
             </div>
         </div>
-        <div style="margin-bottom: 0.65rem; display: flex; justify-content: flex-end;">
-            <button type="button" id="toggleAddItemFormBtn" class="text-link" style="display: none; align-items: center; justify-content: center; gap: 0.35rem; font-size: 0.8rem; padding: 0.35rem 0.65rem; border: 1px solid #e5e7eb; border-radius: 6px; background: #ffffff; color: #4f46e5; font-weight: 500; line-height: 1;">
-                <i class="fas fa-plus" style="font-size: 0.75rem; line-height: 1; vertical-align: middle;"></i>
-                <span style="line-height: 1;">Add More Items</span>
+        <div class="d-flex justify-content-end mb-3">
+            <button type="button" id="toggleAddItemFormBtn" class="text-link invoice-add-item-btn is-hidden">
+                <i class="fas fa-plus invoice-add-item-btn__icon"></i>
+                <span class="invoice-add-item-btn__text">Add More Items</span>
             </button>
         </div>
         @else
-        <div style="margin-bottom: 0.65rem; display: flex; justify-content: flex-end;">
-            <button type="button" id="toggleAddItemFormBtn" class="text-link" style="display: none; align-items: center; justify-content: center; gap: 0.35rem; font-size: 0.8rem; padding: 0.35rem 0.65rem; border: 1px solid #e5e7eb; border-radius: 6px; background: #ffffff; color: #4f46e5; font-weight: 500; line-height: 1;">
-                <i class="fas fa-plus" style="font-size: 0.75rem; line-height: 1; vertical-align: middle;"></i>
-                <span style="line-height: 1;">Add More Items</span>
+        <div class="d-flex justify-content-end mb-3">
+            <button type="button" id="toggleAddItemFormBtn" class="text-link invoice-add-item-btn is-hidden">
+                <i class="fas fa-plus invoice-add-item-btn__icon"></i>
+                <span class="invoice-add-item-btn__text">Add More Items</span>
             </button>
         </div>
         @endif
 
-        <div class="builder-card" id="addItemFormCard" style="margin-bottom: 0.65rem; padding: 0.6rem; display: none;">
-            <div class="manual-grid" style="grid-template-columns: 2fr 0.7fr 0.85fr 0.75fr 0.85fr 0.85fr 0.7fr 0.9fr 0.9fr 0.85fr; gap: 0.45rem;">
+        <div class="builder-card invoice-builder-card is-hidden" id="addItemFormCard">
+            <div class="manual-grid manual-grid-step3">
                 <div class="invoice-span-2">
                     <label for="add_item_itemid" class="field-label small">Item</label>
                     <select id="add_item_itemid" class="form-input">
@@ -161,7 +161,7 @@
                 <input type="hidden" id="add_item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
                 @endif
                 @if($account->have_users)
-                <div id="add_item_users_wrap" style="display: none;">
+                <div id="add_item_users_wrap" class="is-hidden">
                     <label for="add_item_users" class="field-label small">Users</label>
                     <input type="number" id="add_item_users" class="form-input" value="1" min="1" step="1">
                 </div>
@@ -180,41 +180,41 @@
                         <option value="Year(s)">Year(s)</option>
                     </select>
                 </div>
-                <div id="add_item_duration_wrap" style="display: none;">
+                <div id="add_item_duration_wrap" class="is-hidden">
                     <label for="add_item_duration" class="field-label small">Dur</label>
                     <input type="number" id="add_item_duration" class="form-input" min="0" step="1">
                 </div>
-                <div id="add_item_start_wrap" style="display: none;">
+                <div id="add_item_start_wrap" class="is-hidden">
                     <label for="add_item_start_date" class="field-label small">Start</label>
                     <input type="date" id="add_item_start_date" class="form-input">
                 </div>
-                <div id="add_item_end_wrap" style="display: none;">
+                <div id="add_item_end_wrap" class="is-hidden">
                     <label for="add_item_end_date" class="field-label small">End</label>
                     <input type="date" id="add_item_end_date" class="form-input">
                 </div>
             </div>
-            <div style="margin-top: 0.45rem; display: flex; gap: 0.45rem; align-items: flex-end;">
-                <textarea id="add_item_description" class="form-input" rows="1" placeholder="Description (optional)" style="flex: 1 1 auto; min-height: 30px; resize: none; line-height: 1.2;"></textarea>
-                <button type="button" id="btnAddItemStep3" class="primary-button" style="padding: 0.55rem 1rem; font-size: 0.85rem; white-space: nowrap;">Add</button>
+            <div class="invoice-item-desc-row">
+                <textarea id="add_item_description" class="form-input invoice-item-desc-input" rows="1" placeholder="Description (optional)"></textarea>
+                <button type="button" id="btnAddItemStep3" class="primary-button invoice-item-add-btn invoice-item-add-btn--sm">Add</button>
             </div>
         </div>
 
         <div class="table-shell">
-            <table class="data-table" id="itemsTable" style="margin: 0; font-size: 0.8rem;">
+            <table class="data-table m-0 invoice-items-table invoice-items-table--sm" id="itemsTable">
                 <thead id="itemsTableHead">
                     <tr>
                         <th>Item</th>
                         <th>Qty</th>
                         <th>Price ({{ $selectedClientCurrency }})</th>
-                        <th id="itemsUsersHeader" class="hidden">Users</th>
+                        <th id="itemsUsersHeader" class="is-hidden">Users</th>
                         <th>Disc %</th>
                         @if($account->allow_multi_taxation)
                         <th>Tax %</th>
                         @endif
                         <th>Freq</th>
                         <th id="itemsDurationHeader">Dur</th>
-                        <th id="itemsStartHeader" class="hidden">Start Date</th>
-                        <th id="itemsEndHeader" class="hidden">End Date</th>
+                        <th id="itemsStartHeader" class="is-hidden">Start Date</th>
+                        <th id="itemsEndHeader" class="is-hidden">End Date</th>
                         <th>Total ({{ $selectedClientCurrency }})</th>
                         <th></th>
                     </tr>
@@ -223,8 +223,8 @@
             </table>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; margin-top: 0.8rem;">
-            <div class="totals-card" style="min-width: 280px; max-width: 350px;">
+        <div class="d-flex justify-content-end mt-3">
+            <div class="totals-card totals-card--wide">
                 <div class="total-row"><span>Subtotal</span><strong id="subtotalDisplay">0</strong></div>
                 <div class="total-row"><span>Discount</span><strong id="discountDisplay">0</strong></div>
                 <div id="step3TaxRow" class="total-row">
@@ -236,8 +236,8 @@
         </div>
     </div>
 
-    <div style="margin-top: 0.9rem;">
-        <button type="button" class="primary-button" id="btnNextToStep4" style="width: 100%; padding: 0.75rem 1rem;">Review & Terms &rarr;</button>
+    <div class="mt-3">
+        <button type="button" class="primary-button w-100 invoice-continue-btn" id="btnNextToStep4">Review & Terms &rarr;</button>
     </div>
 </div>
 
@@ -262,6 +262,7 @@
     const issueDateInput = document.getElementById('issue_date');
     const dueDateInput = document.getElementById('due_date');
     const notesInput = document.getElementById('notes');
+    let currentInvoiceId = draftId || '';
     let draftPiNumber = '';
     let draftTiNumber = '';
     const fallbackPiNumber = "{{ $nextInvoiceNumber }}";
@@ -335,11 +336,11 @@
         const name = escapeHtml(item.item_name || 'Item');
         const description = escapeHtml(item.item_description || '').trim();
         if (!description) {
-            return `<div style="font-weight: 600; color: #111827;">${name}</div>`;
+            return `<div class="invoice-item-cell-title">${name}</div>`;
         }
         return `
-            <div style="font-weight: 600; color: #111827;">${name}</div>
-            <div style="margin-top: 0.15rem; font-size: 0.78rem; color: #6b7280; white-space: pre-wrap;">${description}</div>
+            <div class="invoice-item-cell-title">${name}</div>
+            <div class="invoice-item-cell-desc">${description}</div>
         `;
     }
 
@@ -369,15 +370,15 @@
     function toggleAddItemUsersField() {
         if (!addItemUsersWrap || !addItemUsersInput) return;
         const show = accountHasUsers && isAddItemUserWise();
-        addItemUsersWrap.style.display = show ? 'block' : 'none';
+        addItemUsersWrap.classList.toggle('is-hidden', !show);
         if (!show) addItemUsersInput.value = 1;
     }
 
     function toggleAddItemRecurringFields() {
         const showRecurring = Boolean(addItemFrequencyInput?.value) && addItemFrequencyInput.value !== 'One-Time';
-        if (addItemDurationWrap) addItemDurationWrap.style.display = showRecurring ? 'block' : 'none';
-        if (addItemStartWrap) addItemStartWrap.style.display = showRecurring ? 'block' : 'none';
-        if (addItemEndWrap) addItemEndWrap.style.display = showRecurring ? 'block' : 'none';
+        if (addItemDurationWrap) addItemDurationWrap.classList.toggle('is-hidden', !showRecurring);
+        if (addItemStartWrap) addItemStartWrap.classList.toggle('is-hidden', !showRecurring);
+        if (addItemEndWrap) addItemEndWrap.classList.toggle('is-hidden', !showRecurring);
         if (showRecurring) {
             const durationValue = Number(addItemDurationInput?.value || 0);
             if (addItemDurationInput && (!addItemDurationInput.value || durationValue <= 0)) {
@@ -395,7 +396,8 @@
             return '';
         }
 
-        const date = new Date(startDate);
+        const parts = String(startDate).split('-');
+        const date = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
         const steps = Math.max(0, Number(duration) || 0);
 
         if (steps <= 0 || Number.isNaN(date.getTime())) {
@@ -422,12 +424,16 @@
                 return '';
         }
 
-        return date.toISOString().split('T')[0];
+        // End date is inclusive across billing cycles.
+        date.setDate(date.getDate() - 1);
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
     }
 
     function normalizeItem(item) {
-        const requiresUserFields = accountHasUsers
-            && (Boolean(item && item.requires_user_fields) || Number(item?.no_of_users || 0) > 0);
+        const requiresUserFields = accountHasUsers && Number(item?.no_of_users || 0) > 0;
 
         const normalizedItem = {
             ...item,
@@ -499,18 +505,16 @@
 
         toggleAddItemUsersField();
         if (accountHasUsers && itemSupportsUserFields(item) && addItemUsersWrap) {
-            addItemUsersWrap.style.display = 'block';
+            addItemUsersWrap.classList.remove('is-hidden');
         }
         toggleAddItemRecurringFields();
 
         if (!addItemFormVisible) {
             addItemFormVisible = true;
-            if (addItemFormCard) addItemFormCard.style.display = 'block';
+            if (addItemFormCard) addItemFormCard.classList.remove('is-hidden');
             if (toggleAddItemFormBtn) {
-                toggleAddItemFormBtn.innerHTML = '<i class="fas fa-times" style="margin-right: 0.35rem; font-size: 0.75rem;"></i>Cancel';
-                toggleAddItemFormBtn.style.background = '#fef2f2';
-                toggleAddItemFormBtn.style.color = '#dc2626';
-                toggleAddItemFormBtn.style.borderColor = '#fecaca';
+                toggleAddItemFormBtn.innerHTML = '<i class="fas fa-times invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Cancel</span>';
+                toggleAddItemFormBtn.classList.add('is-danger');
             }
         }
 
@@ -521,19 +525,15 @@
     function toggleAddItemForm() {
         addItemFormVisible = !addItemFormVisible;
         if (addItemFormCard) {
-            addItemFormCard.style.display = addItemFormVisible ? 'block' : 'none';
+            addItemFormCard.classList.toggle('is-hidden', !addItemFormVisible);
         }
         if (toggleAddItemFormBtn) {
             if (addItemFormVisible) {
-                toggleAddItemFormBtn.innerHTML = '<i class="fas fa-times" style="margin-right: 0.35rem; font-size: 0.75rem;"></i>Cancel';
-                toggleAddItemFormBtn.style.background = '#fef2f2';
-                toggleAddItemFormBtn.style.color = '#dc2626';
-                toggleAddItemFormBtn.style.borderColor = '#fecaca';
+                toggleAddItemFormBtn.innerHTML = '<i class="fas fa-times invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Cancel</span>';
+                toggleAddItemFormBtn.classList.add('is-danger');
             } else {
-                toggleAddItemFormBtn.innerHTML = '<i class="fas fa-plus" style="margin-right: 0.35rem; font-size: 0.75rem;"></i>Add More Items';
-                toggleAddItemFormBtn.style.background = '#ffffff';
-                toggleAddItemFormBtn.style.color = '#4f46e5';
-                toggleAddItemFormBtn.style.borderColor = '#e5e7eb';
+                toggleAddItemFormBtn.innerHTML = '<i class="fas fa-plus invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Add More Items</span>';
+                toggleAddItemFormBtn.classList.remove('is-danger');
             }
         }
         if (!addItemFormVisible) {
@@ -545,20 +545,20 @@
         // Show the "Add More Items" button only for orders and renewal sources
         if (invoiceFor === 'orders' || invoiceFor === 'renewal') {
             if (toggleAddItemFormBtn) {
-                toggleAddItemFormBtn.style.display = 'inline-flex';
+                toggleAddItemFormBtn.classList.remove('is-hidden');
             }
             // Hide the form by default
             if (addItemFormCard) {
-                addItemFormCard.style.display = 'none';
+                addItemFormCard.classList.add('is-hidden');
             }
             addItemFormVisible = false;
         } else {
             // For without_orders, always show the form and hide the button
             if (toggleAddItemFormBtn) {
-                toggleAddItemFormBtn.style.display = 'none';
+                toggleAddItemFormBtn.classList.add('is-hidden');
             }
             if (addItemFormCard) {
-                addItemFormCard.style.display = 'block';
+                addItemFormCard.classList.remove('is-hidden');
             }
             addItemFormVisible = true;
         }
@@ -600,10 +600,10 @@
         const showDurationColumns = invoiceItems.some(itemHasRecurringFrequency);
         const showDateColumns = invoiceItems.some(itemHasRecurringFrequency);
 
-        document.getElementById('itemsUsersHeader').style.display = showUserColumns ? '' : 'none';
-        document.getElementById('itemsDurationHeader').style.display = showDurationColumns ? '' : 'none';
-        document.getElementById('itemsStartHeader').style.display = showDateColumns ? '' : 'none';
-        document.getElementById('itemsEndHeader').style.display = showDateColumns ? '' : 'none';
+        document.getElementById('itemsUsersHeader').classList.toggle('is-hidden', !showUserColumns);
+        document.getElementById('itemsDurationHeader').classList.toggle('is-hidden', !showDurationColumns);
+        document.getElementById('itemsStartHeader').classList.toggle('is-hidden', !showDateColumns);
+        document.getElementById('itemsEndHeader').classList.toggle('is-hidden', !showDateColumns);
     }
 
     function renderOrderSummary(order) {
@@ -612,14 +612,14 @@
             return;
         }
 
-        summaryInline.style.display = 'block';
+        summaryInline.classList.remove('is-hidden');
         currencyCodeInput.value = order.currency || getCurrencyCode();
         document.getElementById('orderSummaryTitle').innerHTML = `<strong>${order.order_title || 'Untitled Order'}</strong>`;
         document.getElementById('orderSummaryDetails').innerHTML =
-            `<span class="invoice-step-badge" style="background:#eef2ff; color:#3730a3;">#${order.order_number}</span>` +
-            `<span class="invoice-step-badge" style="background:#f8fafc; color:#475569;">${order.order_date}</span>` +
-            `<span class="invoice-step-badge" style="background:#f8fafc; color:#475569;">${order.item_count || 0} item(s)</span>` +
-            `<span class="invoice-step-badge" style="background:#f8fafc; color:#475569;">${Number(order.grand_total).toLocaleString('en-US', {minimumFractionDigits: 0})}</span>`;
+            `<span class="invoice-step-badge is-primary">#${order.order_number}</span>` +
+            `<span class="invoice-step-badge is-muted">${order.order_date}</span>` +
+            `<span class="invoice-step-badge is-muted">${order.item_count || 0} item(s)</span>` +
+            `<span class="invoice-step-badge is-muted">${Number(order.grand_total).toLocaleString('en-US', {minimumFractionDigits: 0})}</span>`;
     }
 
     function loadItems() {
@@ -654,17 +654,18 @@
                 }
                 draftPiNumber = data && data.draft ? (data.draft.pi_number || '') : '';
                 draftTiNumber = data && data.draft ? (data.draft.ti_number || '') : '';
+                currentInvoiceId = (data && data.draft && data.draft.invoiceid) ? data.draft.invoiceid : currentInvoiceId;
                 if (data && data.draft && data.draft.invoice_number && piNumberBadgeStep3) {
                     piNumberBadgeStep3.textContent = data.draft.invoice_number;
                 }
                 updateStep3HeaderNumber();
 
-                if (invoiceFor === 'orders' && orderId) {
-                    loadOrderItems(orderId);
-                } else if (draftItems.length > 0) {
+                if (draftItems.length > 0) {
                     invoiceItems = draftItems.map(normalizeItem);
                     renderItems();
                     initializeAddItemFormVisibility();
+                } else if (invoiceFor === 'orders' && orderId) {
+                    loadOrderItems(orderId);
                 }
 
             })
@@ -720,39 +721,39 @@
             const lineAmount = Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0) + Number(item.tax_amount || 0));
             row.innerHTML = `
                 <td>${renderItemCell(item)}</td>
-                <td style="text-align:center;">${Math.round(Number(item.quantity || 1))}</td>
-                <td style="text-align:right;">${formatCurrency(item.unit_price)}</td>
-                <td style="display:${showUserColumns ? '' : 'none'};">
+                <td class="text-center">${Math.round(Number(item.quantity || 1))}</td>
+                <td class="text-right">${formatCurrency(item.unit_price)}</td>
+                <td class="text-center ${showUserColumns ? '' : 'is-hidden'}">
                     ${showUsersForRow
                         ? `${Math.max(1, Number(item.no_of_users || 1))}`
-                        : '<span style="color:#9ca3af;">-</span>'}
+                        : '<span class="text-muted">-</span>'}
                 </td>
-                <td style="text-align:center;">${Number(item.discount_percent || 0).toFixed(0)}%</td>
+                <td class="text-center">${Number(item.discount_percent || 0).toFixed(0)}%</td>
                 @if($account->allow_multi_taxation)
-                <td style="text-align:center;">${Number(item.tax_rate || 0).toFixed(0)}%</td>
+                <td class="text-center">${Number(item.tax_rate || 0).toFixed(0)}%</td>
                 @endif
                 <td>${formattedFrequency}</td>
-                <td style="display:${showDurationColumns ? '' : 'none'};">
+                <td class="${showDurationColumns ? '' : 'is-hidden'}">
                     ${showDatesForRow
                         ? `${item.duration || '-'}`
-                        : '<span style="color:#9ca3af;">-</span>'}
+                        : '<span class="text-muted">-</span>'}
                 </td>
-                <td style="display:${showDateColumns ? '' : 'none'};">
+                <td class="${showDateColumns ? '' : 'is-hidden'}">
                     ${showDatesForRow
                         ? `${item.start_date || '-'}`
-                        : '<span style="color:#9ca3af;">-</span>'}
+                        : '<span class="text-muted">-</span>'}
                 </td>
-                <td style="display:${showDateColumns ? '' : 'none'};">
+                <td class="${showDateColumns ? '' : 'is-hidden'}">
                     ${showDatesForRow
                         ? `${item.end_date || '-'}`
-                        : '<span style="color:#9ca3af;">-</span>'}
+                        : '<span class="text-muted">-</span>'}
                 </td>
-                <td style="text-align:right;"><strong style="color:#111827;">${formatCurrency(lineAmount)}</strong></td>
-                <td style="text-align:center; white-space: nowrap;">
-                    <button type="button" class="edit-item-btn icon-action-btn edit" data-index="${index}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;">
+                <td class="text-right"><strong>${formatCurrency(lineAmount)}</strong></td>
+                <td class="text-center text-nowrap">
+                    <button type="button" class="edit-item-btn icon-action-btn edit" data-index="${index}" title="Edit">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button type="button" class="remove-item-btn icon-action-btn delete" data-index="${index}" title="Delete" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;">
+                    <button type="button" class="remove-item-btn icon-action-btn delete" data-index="${index}" title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -891,7 +892,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify({
-                invoiceid: draftId || undefined,
+                invoiceid: currentInvoiceId || undefined,
                 invoice_for: invoiceFor,
                 clientid: clientId,
                 orderid: hasOrderId ? orderId : null,
@@ -908,9 +909,27 @@
                 throw new Error(text || 'Failed to save draft.');
             }
             const contentType = response.headers.get('content-type') || '';
-            return contentType.includes('application/json') ? response.json() : {};
+            if (contentType.includes('application/json')) {
+                const json = await response.json();
+                if (!response.ok) {
+                    const message =
+                        json?.message ||
+                        (json?.errors ? Object.values(json.errors).flat().join('\n') : '') ||
+                        'Failed to save draft.';
+                    throw new Error(message);
+                }
+                return json;
+            }
+            const text = await response.text();
+            if (!response.ok) {
+                throw new Error(text || 'Failed to save draft.');
+            }
+            return {};
         })
         .then((data) => {
+            if (data && data.invoiceid) {
+                currentInvoiceId = data.invoiceid;
+            }
             if (data && data.invoice_number && piNumberBadgeStep3) {
                 piNumberBadgeStep3.textContent = data.invoice_number;
             }
@@ -930,7 +949,7 @@
         })
         .catch((error) => {
             console.error('Error saving draft:', error);
-            alert('Unable to save draft right now. Please try again.');
+            alert(error?.message || 'Unable to save draft right now. Please try again.');
         });
     });
 
@@ -958,31 +977,3 @@
     loadItems();
 })();
 </script>
-
-<style>
-#addItemFormCard .form-input {
-    padding: 0.36rem 0.5rem;
-    font-size: 0.76rem;
-}
-
-#addItemFormCard .field-label.small {
-    font-size: 0.64rem;
-    margin-bottom: 0.18rem;
-}
-
-#addItemFormCard textarea.form-input {
-    padding: 0.34rem 0.44rem;
-    font-size: 0.74rem;
-    min-height: 26px;
-    resize: none;
-}
-
-#toggleAddItemFormBtn:hover {
-    background: #f8faff !important;
-    border-color: #c7d2fe !important;
-}
-
-#toggleAddItemFormBtn:active {
-    transform: scale(0.98);
-}
-</style>

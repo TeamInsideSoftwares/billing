@@ -25,7 +25,7 @@
                     <tr>
                         <td>
                             <strong>{{ $acc->name }}</strong>
-                            <span style="font-size: 0.8rem; color: var(--slate-400);">ID: {{ $acc->id }}</span>
+                            <span class="superadmin-id">ID: {{ $acc->id }}</span>
                         </td>
                         <td>
                             <strong>{{ $acc->email }}</strong>
@@ -43,7 +43,7 @@
                 @endforeach
             @else
                 <tr>
-                    <td colspan="4" style="padding: 2rem; text-align: center; color: var(--slate-400);">
+                    <td colspan="4" class="no-records-cell">
                         No agencies registered yet.
                     </td>
                 </tr>

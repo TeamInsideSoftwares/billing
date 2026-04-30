@@ -26,11 +26,13 @@ class TermsCondition extends Model
         'type',
         'content',
         'is_active',
+        'is_default',
         'sequence',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_default' => 'boolean',
     ];
 
     public function account(): BelongsTo

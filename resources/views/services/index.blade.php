@@ -2,73 +2,73 @@
 
 @section('header_actions')
     <a href="{{ route('services.create') }}" class="primary-button">Add Item</a>
-    <button class="secondary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal"><i class="fas fa-folder" class="icon-spaced-sm"></i>Manage Categories</button>
+    <button class="secondary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal"><i class="fas fa-folder icon-spaced-sm"></i>Manage Categories</button>
 @endsection
 
 @section('content')
 <div class="modal fade" id="productCategoriesModal" tabindex="-1">
-    <div class="modal-dialog modal-md modal-dialog-centered" style="max-width: 650px;">
-        <div class="modal-content" class="rounded-panel">
-            <div class="modal-header" class="modal-header-custom">
-                <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;"><i class="fas fa-folder" style="margin-right: 0.5rem; color: #64748b;"></i>Manage Categories</h5>
+    <div class="modal-dialog modal-md modal-dialog-centered modal-650">
+        <div class="modal-content rounded-panel">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title service-modal-title"><i class="fas fa-folder icon-spaced text-muted"></i>Manage Categories</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" style="padding: 1.25rem;">
+            <div class="modal-body service-modal-body">
                 <!-- Add/Edit Category Form -->
-                <form id="catForm" method="POST" action="{{ route('product-categories.store') }}" style="background: #f8fafc; padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <form id="catForm" method="POST" action="{{ route('product-categories.store') }}" class="panel-note">
                     @csrf
                     <div id="methodField"></div>
-                    <h6 id="formTitle" class="eyebrow" style="margin-bottom: 0.75rem;">Add New Category</h6>
-                    <div style="margin-bottom: 0.75rem;">
-                        <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Name *</label>
-                        <input type="text" name="name" id="catName" value="{{ old('name') }}" required maxlength="150" style="padding: 0.4rem 0.75rem; font-size: 0.9rem; width: 100%;">
+                    <h6 id="formTitle" class="eyebrow mb-3">Add New Category</h6>
+                    <div class="field-gap">
+                        <label class="label-compact">Name *</label>
+                        <input type="text" name="name" id="catName" value="{{ old('name') }}" required maxlength="150" class="service-input-full">
                     </div>
-                    <div style="margin-bottom: 0.75rem;">
-                        <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Status</label>
-                        <select name="status" id="catStatus" style="padding: 0.4rem 0.75rem; font-size: 0.9rem; width: 100%;">
+                    <div class="field-gap">
+                        <label class="label-compact">Status</label>
+                        <select name="status" id="catStatus" class="service-input-full">
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
-                    <div style="margin-bottom: 1rem;">
-                        <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Description</label>
-                        <textarea name="description" id="catDescription" rows="1" style="padding: 0.4rem 0.75rem; font-size: 0.9rem; width: 100%;">{{ old('description') }}</textarea>
+                    <div class="field-gap">
+                        <label class="label-compact">Description</label>
+                        <textarea name="description" id="catDescription" rows="1" class="service-input-full">{{ old('description') }}</textarea>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="flex-center-gap">
                         <button type="submit" id="catSubmitBtn" class="primary-button small">Save Category</button>
-                        <button type="button" id="catCancelBtn" class="text-link small" class="hidden" onclick="resetCatForm()">Cancel</button>
+                        <button type="button" id="catCancelBtn" class="text-link small hidden" onclick="resetCatForm()">Cancel</button>
                     </div>
                 </form>
 
                 <!-- Categories List -->
-                <div style="margin-top: 1rem; max-height: 220px; overflow-y: auto;">
-                    <h6 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">{{ count($productCategories) }} Categories</h6>
+                <div class="group-list-wrap">
+                    <h6 class="group-list-title">{{ count($productCategories) }} Categories</h6>
                     @forelse($productCategories as $pc)
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 0.25rem; background: #f8fafc;">
+                        <div class="group-list-item">
                             <div class="flex-fill">
-                                <div style="display: flex; align-items: center; gap: 0.4rem;">
-                                    <div style="width: 24px; height: 24px; border-radius: 5px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; flex-shrink: 0;"><i class="fas fa-folder"></i></div>
+                                <div class="group-list-item-head">
+                                    <div class="group-list-item-icon"><i class="fas fa-folder"></i></div>
                                     <div>
-                                        <strong style="font-size: 0.82rem;">{{ $pc['name'] }}</strong>
+                                        <strong class="group-list-item-name">{{ $pc['name'] }}</strong>
                                         @if($pc['description'])
-                                            <div style="font-size: 0.72rem; color: #64748b;">{{ $pc['description'] }}</div>
+                                            <div class="group-list-item-email">{{ $pc['description'] }}</div>
                                         @endif
                                     </div>
                                 </div>
                             </div>
-                            <div style="display: flex; gap: 0.2rem; align-items: center;">
-                                <span style="font-size: 0.7rem; background: #f1f5f9; padding: 0.1rem 0.4rem; border-radius: 8px; color: #64748b;">Seq: {{ $pc['sequence'] }}</span>
-                                <button type="button" class="icon-action-btn edit" onclick="editCategory('{{ $pc['record_id'] }}', '{{ addslashes($pc['name']) }}', '{{ addslashes($pc['description'] ?? '') }}', '{{ strtolower($pc['status']) }}')" title="Edit" style="padding: 0.25rem 0.4rem; font-size: 0.72rem;"><i class="fas fa-edit"></i></button>
+                            <div class="group-list-item-actions">
+                                <span class="small-tag">Seq: {{ $pc['sequence'] }}</span>
+                                <button type="button" class="icon-action-btn edit icon-action-compact" onclick="editCategory('{{ $pc['record_id'] }}', '{{ addslashes($pc['name']) }}', '{{ addslashes($pc['description'] ?? '') }}', '{{ strtolower($pc['status']) }}')" title="Edit"><i class="fas fa-edit"></i></button>
                                 <form method="POST" action="{{ route('product-categories.destroy', $pc['record_id']) }}" class="inline" onsubmit="return confirm('Delete this category?')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="icon-action-btn delete" title="Delete" style="padding: 0.25rem 0.4rem; font-size: 0.72rem; border: none; cursor: pointer;"><i class="fas fa-trash"></i></button>
+                                    <button type="submit" class="icon-action-btn delete icon-action-compact" title="Delete"><i class="fas fa-trash"></i></button>
                                 </form>
                             </div>
                         </div>
                     @empty
-                        <div style="text-align: center; padding: 1.25rem; color: #94a3b8;">
-                            <i class="fas fa-folder-open" style="font-size: 1.25rem; margin-bottom: 0.4rem; opacity: 0.3;"></i>
-                            <p style="margin: 0; font-size: 0.82rem;">No categories yet. Create one above!</p>
+                        <div class="group-list-empty">
+                            <i class="fas fa-folder-open empty-state-icon-sm"></i>
+                            <p class="group-list-empty-text">No categories yet. Create one above!</p>
                         </div>
                     @endforelse
                 </div>
@@ -93,64 +93,64 @@
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th style="width: 35%;">Item</th>
-                            <th style="width: 8%;">Type</th>
-                            <th style="width: 18%;">Costings</th>
-                            <th style="width: 14%;">Add-ons</th>
-                            <th style="width: 8%;">Status</th>
-                            <th style="width: 8%;">Actions</th>
+                            <th class="w-35">Item</th>
+                            <th class="w-8">Type</th>
+                            <th class="w-18">Costings</th>
+                            <th class="w-14">Add-ons</th>
+                            <th class="w-8">Status</th>
+                            <th class="w-8">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="services-sortable-body">
                     @foreach ($servicesInCategory as $index => $service)
-                        <tr draggable="true" data-service-id="{{ $service['record_id'] }}" style="cursor: move; vertical-align: middle;">
+                        <tr draggable="true" data-service-id="{{ $service['record_id'] }}" class="service-row-draggable">
                             <td>
-                                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                    <div style="width: 36px; height: 36px; border-radius: 8px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0;">
+                                <div class="service-item-head">
+                                    <div class="service-item-icon">
                                         <i class="fas fa-{{ $service['type'] === 'product' ? 'box' : 'cog' }}"></i>
                                     </div>
                                     <div>
-                                        <span style="display: inline-block; margin-right: 0.45rem; padding: 0.1rem 0.35rem; border-radius: 0.25rem; font-size: 0.7rem; background: #eef2f7; color: #475569;" data-seq-badge>{{ $service['sequence'] }}</span>
-                                        <strong style="font-size: 0.9rem;">{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $service['name']) : $service['name'] !!}</strong>
+                                        <span class="service-seq-badge" data-seq-badge>{{ $service['sequence'] }}</span>
+                                        <strong class="service-item-name">{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $service['name']) : $service['name'] !!}</strong>
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                <span style="display: inline-block; padding: 0.2rem 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.25rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; color: #374151; background: #f9fafb;">
+                                <span class="service-type-badge">
                                     {{ $service['type'] ?? 'service' }}
                                 </span>
                             </td>
                             <td>
                                 @if(count($service['costings']) > 0)
-                                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                                    <div class="service-pill-wrap">
                                         @foreach($service['costings'] as $costing)
-                                            <span style="display: inline-block; padding: 0.15rem 0.4rem; background: #f1f5f9; color: #475569; border-radius: 0.25rem; font-size: 0.72rem;">
+                                            <span class="service-cost-pill">
                                                 {{ $costing['currency_code'] }} {{ number_format($costing['selling_price'], 0) }}
                                             </span>
                                         @endforeach
                                     </div>
                                 @else
-                                    <span style="color: #94a3b8; font-size: 0.75rem;">No costings</span>
+                                    <span class="service-muted">No costings</span>
                                 @endif
                             </td>
                             <td>
                                 @if(!empty($service['addons']) && count($service['addons']) > 0)
-                                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                                    <div class="service-pill-wrap">
                                         @foreach($service['addons'] as $addon)
-                                            <span style="display: inline-block; padding: 0.15rem 0.35rem; border: 1px solid #e5e7eb; border-radius: 0.25rem; font-size: 0.7rem; color: #374151; background: #f9fafb;">
+                                            <span class="service-addon-pill">
                                                 {{ $addon['name'] }}
                                             </span>
                                         @endforeach
                                     </div>
                                 @else
-                                    <span style="color: #94a3b8; font-size: 0.75rem;">—</span>
+                                    <span class="service-muted">—</span>
                                 @endif
                             </td>
                             <td>
                                 <span class="status-pill {{ strtolower($service['status']) }}">{{ $service['status'] }}</span>
                             </td>
-                            <td style="vertical-align: middle; white-space: nowrap; width: 1%;">
-                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <td class="service-actions-cell">
+                                <div class="service-actions-wrap">
                                     <a href="{{ route('services.edit', $service['record_id']) }}" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>
                                     <form method="POST" action="{{ route('services.destroy', $service['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $service['name'] }}?')">
                                         @csrf @method('DELETE')

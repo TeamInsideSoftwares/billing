@@ -6,6 +6,8 @@ use App\Models\AccountBillingDetail;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\FinancialYear;
+use App\Models\InvoiceEmail;
 use App\Models\Service;
 use App\Models\Tax;
 use App\Models\TermsCondition;
@@ -19,6 +21,16 @@ use App\Traits\ConfiguresBrowsershot;
 class InvoicesController extends Controller
 {
     use ConfiguresBrowsershot;
+
+    private function resolveDefaultFyId(string $accountid): ?string
+    {
+        return FinancialYear::query()
+            ->where('accountid', $accountid)
+            ->orderByDesc('default')
+            ->orderByDesc('created_at')
+            ->value('fy_id');
+    }
+
     public function invoices()
     {
         $clients = Client::orderBy('business_name')->get();
@@ -222,8 +234,6 @@ class InvoicesController extends Controller
     public function getRenewalInvoices(Request $request)
     {
         $clientId = $request->input('clientid');
-        $daysInput = $request->input('days', 0);
-        $daysFilter = is_numeric($daysInput) ? max(0, (int) $daysInput) : 0;
 
         if (!$clientId) {
             return response()->json([]);
@@ -231,15 +241,16 @@ class InvoicesController extends Controller
 
         $recurringFrequencies = ['daily', 'weekly', 'bi-weekly', 'monthly', 'yearly', 'quarterly', 'semi-annually'];
         $invoices = Invoice::where('clientid', $clientId)
+            ->whereNotNull('ti_number')
+            ->where('ti_number', '!=', '')
             ->with('items', 'client')
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($invoice) use ($recurringFrequencies, $daysFilter) {
+            ->map(function ($invoice) use ($recurringFrequencies) {
                 $today = now()->startOfDay();
-                $upcomingThreshold = now()->addDays($daysFilter)->endOfDay();
 
                 $renewalItems = $invoice->items
-                    ->map(function ($item) use ($today, $upcomingThreshold, $recurringFrequencies) {
+                    ->map(function ($item) use ($today, $recurringFrequencies) {
                         if (!$item->end_date) {
                             return null;
                         }
@@ -254,9 +265,7 @@ class InvoicesController extends Controller
                             : \Carbon\Carbon::parse($item->end_date);
 
                         $isExpired = $itemEndDate <= $today;
-                        $isUpcoming = $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
-
-                        if (!$isExpired && !$isUpcoming) {
+                        if (!$isExpired) {
                             return null;
                         }
 
@@ -276,7 +285,6 @@ class InvoicesController extends Controller
                             'end_date' => $item->end_date?->format('Y-m-d'),
                             'line_total' => (float) ($item->line_total ?? 0),
                             'is_expired' => $isExpired,
-                            'is_upcoming' => $isUpcoming,
                         ];
                     })
                     ->filter()
@@ -289,16 +297,14 @@ class InvoicesController extends Controller
                     'currency' => $invoice->client->currency ?? 'INR',
                     'total_items' => $invoice->items->count(),
                     'expired_items' => $renewalItems->where('is_expired', true)->count(),
-                    'upcoming_items' => $renewalItems->where('is_upcoming', true)->count(),
                     'has_expired' => $renewalItems->where('is_expired', true)->isNotEmpty(),
-                    'has_upcoming' => $renewalItems->where('is_upcoming', true)->isNotEmpty(),
                     'items' => $renewalItems,
                 ];
 
                 return $result;
             })
             ->filter(function ($invoice) {
-                return $invoice['has_expired'] || $invoice['has_upcoming'];
+                return $invoice['has_expired'];
             })
             ->values();
 
@@ -332,7 +338,7 @@ class InvoicesController extends Controller
                 'end_date' => $item->end_date?->format('Y-m-d'),
                 'delivery_date' => $item->delivery_date?->format('Y-m-d'),
                 'line_total' => $lineTotal,
-                'requires_user_fields' => (bool) ($item->item?->user_wise ?? false),
+                'requires_user_fields' => !empty($item->no_of_users) && (int) $item->no_of_users > 0,
             ];
         })->values();
 
@@ -674,6 +680,7 @@ class InvoicesController extends Controller
         $user = auth()->user();
         $client = Client::findOrFail($validated['clientid']);
         $validated['accountid'] = $validated['accountid'] ?? ($user->accountid ?? 'ACC0000001');
+        $validated['fy_id'] = $this->resolveDefaultFyId($validated['accountid']);
         $validated['created_by'] = $user?->userid ?? $user?->id;
         // TI number is assigned only when converting PI to Tax Invoice.
         // Keep it empty for PI/draft creation so insert works on older schemas too.
@@ -688,6 +695,10 @@ class InvoicesController extends Controller
             if ($existingDraft) {
                 // Use draft's existing PI number
                 $validated['pi_number'] = $existingDraft->pi_number;
+                if (empty($existingDraft->fy_id) && !empty($validated['fy_id'])) {
+                    $existingDraft->fy_id = $validated['fy_id'];
+                    $existingDraft->save();
+                }
             }
         } else {
             // Generate new number
@@ -874,11 +885,14 @@ class InvoicesController extends Controller
                 'issue_date' => $validated['issue_date'] ?? $draft->issue_date,
                 'due_date' => $validated['due_date'] ?? $draft->due_date,
                 'notes' => $validated['notes'] ?? $draft->notes,
+                'fy_id' => $draft->fy_id ?: $this->resolveDefaultFyId($user->accountid ?? 'ACC0000001'),
             ]);
         } else {
+            $accountid = $user->accountid ?? 'ACC0000001';
             // Create new draft
             $draft = Invoice::create([
-                'accountid' => $user->accountid ?? 'ACC0000001',
+                'accountid' => $accountid,
+                'fy_id' => $this->resolveDefaultFyId($accountid),
                 'clientid' => $validated['clientid'],
                 'pi_number' => $this->generateInvoiceNumber(),
                 'ti_number' => '',
@@ -1022,7 +1036,7 @@ class InvoicesController extends Controller
                     'start_date' => $i->start_date?->format('Y-m-d'),
                     'end_date' => $i->end_date?->format('Y-m-d'),
                     'line_total' => $i->line_total,
-                    'requires_user_fields' => (bool) ($i->item?->user_wise ?? false),
+                    'requires_user_fields' => !empty($i->no_of_users) && (int) $i->no_of_users > 0,
                 ]),
             ],
         ]);
@@ -1303,6 +1317,207 @@ class InvoicesController extends Controller
 
         return redirect()->back()->with('success', 'Tax Invoice created successfully: ' . $tiNumber);
     }
+
+    public function emailCompose(string $invoice): View
+    {
+        $invoice = $this->resolveInvoiceDocument($invoice);
+        $invoice->loadMissing(['client.billingDetail', 'order']);
+
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $account = \App\Models\Account::find($accountid);
+        $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
+        $fromEmail = (string) ($accountBillingDetail?->billing_from_email ?? '');
+        $toEmail = (string) (
+            $invoice->client?->billingDetail?->billing_email
+            ?? $invoice->client?->billing_email
+            ?? ''
+        );
+
+        $defaultType = !empty(trim((string) $invoice->ti_number)) ? 'ti' : 'pi';
+        $defaultSubjectNumber = $defaultType === 'ti' ? $invoice->ti_number : $invoice->pi_number;
+        $billingAddressLines = array_values(array_filter([
+            trim((string) ($accountBillingDetail?->address ?? '')),
+            trim((string) (collect([
+                $accountBillingDetail?->city ?? '',
+                $accountBillingDetail?->postal_code ?? '',
+                $accountBillingDetail?->state ?? '',
+            ])->filter()->implode(', '))),
+            trim((string) ($accountBillingDetail?->country ?? '')),
+        ]));
+
+        $signatureName = trim((string) ($accountBillingDetail?->billing_name ?? ''));
+        $signatureLines = array_values(array_filter(array_merge([
+            $signatureName,
+        ], $billingAddressLines)));
+
+        $defaultBody = "Hello,\n\nPlease find attached your invoice.\n\nInvoice No: " . ($defaultSubjectNumber ?: $invoice->invoice_number);
+        if (!empty($signatureLines)) {
+            $defaultBody .= "\n\nRegards,\n" . implode("\n", $signatureLines);
+        }
+
+        $user = auth()->user();
+        $currentUserId = $user?->userid ?? $user?->id;
+        $requestedEmailId = trim((string) request('e', ''));
+
+        $latestEmail = null;
+        if ($requestedEmailId !== '') {
+            $latestEmail = InvoiceEmail::query()
+                ->where('invoice_emailid', $requestedEmailId)
+                ->where('invoiceid', $invoice->invoiceid)
+                ->where('created_by', $currentUserId)
+                ->first();
+        }
+
+        if (!$latestEmail) {
+            $latestEmail = InvoiceEmail::query()
+                ->where('invoiceid', $invoice->invoiceid)
+                ->where('created_by', $currentUserId)
+                ->where('status', 'draft')
+                ->latest('created_at')
+                ->first();
+        }
+
+        if (!$latestEmail) {
+            $initialAttachmentPath = $defaultType === 'ti'
+                ? route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice'])
+                : route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']);
+
+            $latestEmail = InvoiceEmail::create([
+                'accountid' => $invoice->accountid ?? ($user?->accountid ?? 'ACC0000001'),
+                'invoiceid' => $invoice->invoiceid,
+                'clientid' => $invoice->clientid,
+                'from_email' => $fromEmail,
+                'to_email' => $toEmail,
+                'subject' => trim((string) ($invoice->invoice_title ?? '')) !== ''
+                    ? trim((string) $invoice->invoice_title)
+                    : ('Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number)),
+                'body' => $defaultBody,
+                'attachment_type' => $defaultType,
+                'attachment_path' => $initialAttachmentPath,
+                'status' => 'draft',
+                'created_by' => $currentUserId,
+            ]);
+        }
+
+        $prefillSubject = $latestEmail?->subject;
+        if ($prefillSubject === null || trim((string) $prefillSubject) === '') {
+            $prefillSubject = trim((string) ($invoice->invoice_title ?? '')) !== ''
+                ? trim((string) $invoice->invoice_title)
+                : ('Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number));
+        }
+
+        $prefillBody = $latestEmail?->body;
+        if ($prefillBody === null || trim((string) $prefillBody) === '') {
+            $prefillBody = $defaultBody;
+        }
+
+        $prefillAttachmentTypes = [];
+        if (!empty($latestEmail?->attachment_type)) {
+            $prefillAttachmentTypes = collect(explode(',', (string) $latestEmail->attachment_type))
+                ->map(fn ($type) => trim($type))
+                ->filter()
+                ->values()
+                ->all();
+        }
+        if (empty($prefillAttachmentTypes)) {
+            $prefillAttachmentTypes = [$defaultType];
+        }
+
+        return view('invoices.email-compose', [
+            'title' => 'Compose Invoice Email',
+            'subtitle' => 'Preview and store email details before sending.',
+            'invoice' => $invoice,
+            'fromEmail' => $fromEmail,
+            'toEmail' => $toEmail,
+            'defaultType' => $defaultType,
+            'defaultBody' => $defaultBody,
+            'prefillSubject' => $prefillSubject,
+            'prefillBody' => $prefillBody,
+            'prefillAttachmentTypes' => $prefillAttachmentTypes,
+            'composeEmail' => $latestEmail,
+        ]);
+    }
+
+    public function emailComposeStore(Request $request, string $invoice)
+    {
+        $invoice = $this->resolveInvoiceDocument($invoice);
+        $invoice->loadMissing(['client.billingDetail']);
+
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
+        $forcedFromEmail = (string) ($accountBillingDetail?->billing_from_email ?? '');
+        $forcedToEmail = (string) (
+            $invoice->client?->billingDetail?->billing_email
+            ?? $invoice->client?->billing_email
+            ?? ''
+        );
+
+        if ($forcedFromEmail === '') {
+            return back()->withErrors(['from_email' => 'Set Billing From Email in Account Billing Details first.'])->withInput();
+        }
+        if ($forcedToEmail === '') {
+            return back()->withErrors(['to_email' => 'Set Client Billing Email first.'])->withInput();
+        }
+
+        $validated = $request->validate([
+            'invoice_emailid' => 'required|exists:invoice_emails,invoice_emailid',
+            'action' => 'nullable|in:save,send',
+            'subject' => 'nullable|string|max:255',
+            'body' => 'nullable|string',
+            'attachment_types' => 'required|array|min:1',
+            'attachment_types.*' => 'in:pi,ti,dsc',
+            'custom_attachment' => 'nullable|file|max:10240',
+        ]);
+
+        $user = auth()->user();
+        $currentUserId = $user?->userid ?? $user?->id;
+        $emailDraft = InvoiceEmail::query()
+            ->where('invoice_emailid', $validated['invoice_emailid'])
+            ->where('invoiceid', $invoice->invoiceid)
+            ->where('created_by', $currentUserId)
+            ->firstOrFail();
+
+        $selectedTypes = array_values(array_unique($validated['attachment_types'] ?? []));
+        $attachmentPaths = [];
+
+        if (in_array('pi', $selectedTypes, true)) {
+            $attachmentPaths[] = route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']);
+        }
+        if (in_array('ti', $selectedTypes, true)) {
+            if (empty(trim((string) $invoice->ti_number))) {
+                return back()->withErrors(['attachment_types' => 'Tax Invoice is not available yet.'])->withInput();
+            }
+            $attachmentPaths[] = route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice']);
+        }
+        if (in_array('dsc', $selectedTypes, true)) {
+            if (!($request->hasFile('custom_attachment') && $request->file('custom_attachment')->isValid())) {
+                return back()->withErrors(['custom_attachment' => 'Please upload DSC attachment.'])->withInput();
+            }
+        }
+
+        $customAttachmentPath = null;
+        if ($request->hasFile('custom_attachment') && $request->file('custom_attachment')->isValid()) {
+            $customAttachmentPath = $request->file('custom_attachment')->store('invoice-email-attachments', 'public');
+        }
+
+        $action = $validated['action'] ?? 'save';
+        $isSendAction = $action === 'send';
+
+        $emailDraft->update([
+            'subject' => $validated['subject'] ?? null,
+            'body' => $validated['body'] ?? null,
+            'attachment_type' => implode(',', $selectedTypes),
+            'attachment_path' => !empty($attachmentPaths) ? implode(',', $attachmentPaths) : null,
+            'custom_attachment_path' => $customAttachmentPath ?? $emailDraft->custom_attachment_path,
+            'status' => $isSendAction ? 'sent' : 'draft',
+            'sent_at' => $isSendAction ? now() : null,
+        ]);
+
+        return redirect()
+            ->route('invoices.email-compose', ['invoice' => $invoice->invoiceid, 'e' => $emailDraft->invoice_emailid])
+            ->with('success', $isSendAction ? 'Email marked as sent to client.' : 'Email draft saved successfully.');
+    }
+
     public function downloadPdf(Request $request, string $invoice)
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
@@ -1342,9 +1557,24 @@ class InvoicesController extends Controller
             }
         }
 
+        $invoiceTerms = is_array($invoice->terms) ? array_values(array_filter($invoice->terms)) : [];
+        if (empty($invoiceTerms)) {
+            $invoiceTerms = TermsCondition::query()
+                ->where('accountid', $accountid)
+                ->where('type', 'billing')
+                ->where('is_active', true)
+                ->where('is_default', true)
+                ->orderByRaw('COALESCE(sequence, 999999), created_at ASC')
+                ->pluck('content')
+                ->map(fn ($term) => trim((string) $term))
+                ->filter()
+                ->values()
+                ->all();
+        }
+
         $html = view('invoices.pdf', compact(
             'invoice', 'account', 'accountBillingDetail',
-            'sameStateGst', 'isTaxInvoice', 'documentType', 'signatureUrl'
+            'sameStateGst', 'isTaxInvoice', 'documentType', 'signatureUrl', 'invoiceTerms'
         ))->render();
 
         $filename = $documentType . ' - ' . ($isTaxInvoice ? $invoice->ti_number : $invoice->pi_number) . '.pdf';

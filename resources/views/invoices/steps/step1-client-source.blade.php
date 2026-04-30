@@ -1,6 +1,6 @@
 <!-- Step 1: Client & Source Selection -->
 <div id="step1" class="invoice-step">
-    <div class="invoice-meta-card" style="margin-bottom: 0.75rem;">
+    <div class="invoice-meta-card mb-3">
         <div class="invoice-grid-4">
             <div class="invoice-span-2">
                 <label for="clientid" class="field-label">Client</label>
@@ -16,13 +16,13 @@
         </div>
     </div>
 
-    <div id="existingInvoicesSection" style="display: none; margin-bottom: 0.75rem;">
-        <h4 style="margin: 0 0 0.6rem 0; font-size: 0.92rem; color: #334155;">Existing Invoices</h4>
+    <div id="existingInvoicesSection" class="is-hidden mb-3">
+        <h4 class="invoice-existing-title">Existing Invoices</h4>
         <div id="clientInvoicesAccordion" class="services-accordion-container"></div>
-        <div id="noInvoicesMessage" class="empty-state" style="display: none;">No invoices found for this client yet.</div>
+        <div id="noInvoicesMessage" class="empty-state is-hidden">No invoices found for this client yet.</div>
     </div>
 
-    <div id="sourceSelectionSection" style="display: none; margin-bottom: 0.75rem;">
+    <div id="sourceSelectionSection" class="is-hidden mb-3">
         <div class="section-title-card">
             <h4>Choose Invoice Source</h4>
             <p>Pick how this invoice should be created.</p>
@@ -46,8 +46,8 @@
             </label>
         </div>
 
-        <div style="margin-top: 0.75rem; display: flex; justify-content: flex-end;">
-            <button type="button" id="btnNextToStep2" class="primary-button" style="padding: 0.55rem 1.35rem; font-size: 0.85rem;">Next Step &rarr;</button>
+        <div class="mt-3 d-flex justify-content-end">
+            <button type="button" id="btnNextToStep2" class="primary-button invoice-step1-next-btn">Next Step &rarr;</button>
         </div>
     </div>
 </div>
@@ -76,12 +76,12 @@
         selectedClientId = clientSelect.value;
         syncClientInUrl(selectedClientId);
         if (!selectedClientId) {
-            existingSection.style.display = 'none';
-            sourceSection.style.display = 'none';
+            existingSection.classList.add('is-hidden');
+            sourceSection.classList.add('is-hidden');
             return;
         }
-        existingSection.style.display = 'block';
-        sourceSection.style.display = 'block';
+        existingSection.classList.remove('is-hidden');
+        sourceSection.classList.remove('is-hidden');
         loadInvoices(selectedClientId);
     }
 
@@ -98,8 +98,8 @@
     }
 
     async function loadInvoices(clientId) {
-        accordion.innerHTML = '<div style="padding: 1rem; text-align: center; color: #9ca3af;">Loading...</div>';
-        noMsg.style.display = 'none';
+        accordion.innerHTML = '<div class="invoice-loading">Loading...</div>';
+        noMsg.classList.add('is-hidden');
 
         try {
             const res = await fetch(`{{ route('invoices.index') }}?c=${clientId}`, {
@@ -110,7 +110,7 @@
 
             if (invoices.length === 0) {
                 accordion.innerHTML = '';
-                noMsg.style.display = 'block';
+                noMsg.classList.remove('is-hidden');
                 return;
             }
 
@@ -133,35 +133,34 @@
                     if (item.end_date) dates.push(`End: ${item.end_date}`);
 
                     return `
-                        <div style="padding: 0.55rem 0; border-bottom: 1px dashed #e5e7eb; font-size: 0.78rem;">
-                            <div style="display: flex; justify-content: space-between; gap: 0.75rem;">
-                                <span style="color: #374151; font-weight: 600;">${item.name || 'Item'} (x${Math.max(1, Math.round(Number(item.qty || item.quantity || 1)))})</span>
-                                <strong style="color: #111827;">${item.total || '-'}</strong>
+                        <div class="inv-item-row">
+                            <div class="inv-item-row__top">
+                                <span class="inv-item-row__name">${item.name || 'Item'} (x${Math.max(1, Math.round(Number(item.qty || item.quantity || 1)))})</span>
+                                <strong class="inv-item-row__total">${item.total || '-'}</strong>
                             </div>
-                            ${details.length ? `<div style="margin-top: 0.15rem; color: #6b7280; font-size: 0.72rem;">${details.join(' | ')}</div>` : ''}
-                            ${dates.length ? `<div style="margin-top: 0.1rem; color: #9ca3af; font-size: 0.7rem;">${dates.join(' | ')}</div>` : ''}
+                            ${details.length ? `<div class="inv-item-row__details">${details.join(' | ')}</div>` : ''}
+                            ${dates.length ? `<div class="inv-item-row__dates">${dates.join(' | ')}</div>` : ''}
                         </div>`;
-                }).join('') || '<div style="padding: 0.5rem 0; color: #9ca3af; font-style: italic; font-size: 0.78rem;">No items found</div>';
+                }).join('') || '<div class="inv-item-row inv-item-row--empty">No items found</div>';
 
                 return `
                     <details class="category-accordion">
-                        <summary class="category-accordion-header" 
-                            style="padding: 0.8rem 1rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
-                            <span style="display: inline-flex; flex-direction: column; gap: 0.05rem;">
-                                <span style="font-size: 0.84rem; font-weight: 600; color: #111827;">${title}</span>
-                                <span style="font-size: 0.72rem; color: #6b7280;">Issue: ${inv.issue_date || '-'} | Due: ${inv.due_date || '-'}</span>
+                        <summary class="category-accordion-header invoice-accordion-header">
+                            <span class="invoice-accordion-left">
+                                <span class="invoice-accordion-title">${title}</span>
+                                <span class="invoice-accordion-subtitle">Issue: ${inv.issue_date || '-'} | Due: ${inv.due_date || '-'}</span>
                             </span>
-                            <span style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
-                                <a href="{{ url('invoices') }}/${inv.record_id}/edit" style="font-size: 0.72rem; padding: 0.28rem 0.56rem; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 6px; font-weight: 500; display: inline-flex; align-items: center; gap: 0.2rem; text-decoration: none;">
+                            <span class="invoice-accordion-right">
+                                <a href="{{ url('invoices') }}/${inv.record_id}/edit" class="invoice-accordion-edit">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <span style="font-size: 0.62rem; padding: 0.16rem 0.42rem; background: #f3f4f6; color: #374151; border-radius: 999px; font-weight: 600;">${inv.ti_number ? 'Tax Invoice' : 'Proforma Invoice'}</span>
-                                <span class="status-pill ${statusClass}" style="font-size: 0.65rem; padding: 0.12rem 0.4rem;">${statusLabel}</span>
-                                <span style="font-size: 0.75rem; font-weight: 600; color: #111827;">${inv.amount || '-'}</span>
+                                <span class="invoice-accordion-type">${inv.ti_number ? 'Tax Invoice' : 'Proforma Invoice'}</span>
+                                <span class="status-pill status-pill-sm ${statusClass}">${statusLabel}</span>
+                                <span class="invoice-accordion-amount">${inv.amount || '-'}</span>
                             </span>
                         </summary>
-                        <div class="accordion-content" style="padding: 0.5rem 1rem 0.75rem; background: #fbfcfe; border-top: 1px solid #e5e7eb;">
-                            <div style="padding: 0.2rem 0;" class="items-display">
+                        <div class="accordion-content invoice-accordion-content">
+                            <div class="items-display invoice-accordion-items">
                                 ${itemsHtml}
                             </div>
                         </div>
@@ -170,7 +169,7 @@
             }).join('');
         } catch (err) {
             accordion.innerHTML = '';
-            noMsg.style.display = 'block';
+            noMsg.classList.remove('is-hidden');
         }
     }
 

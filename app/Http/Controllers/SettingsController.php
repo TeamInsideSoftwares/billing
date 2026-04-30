@@ -596,6 +596,7 @@ class SettingsController extends Controller
             'content' => 'required|string',
             'sequence' => 'nullable|integer|min:1',
             'is_active' => 'boolean',
+            'is_default' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -609,6 +610,7 @@ class SettingsController extends Controller
 
         $validated['accountid'] = $accountid;
         $validated['is_active'] = true;
+        $validated['is_default'] = (bool) ($validated['is_default'] ?? false);
 
         if (!empty($tc_id)) {
             // Update existing term
@@ -835,5 +837,4 @@ class SettingsController extends Controller
         return 'ACC0000001';
     }
 }
-
 

@@ -58,6 +58,24 @@ input::placeholder {
   border-top: 1px solid var(--line);
 }
 
+.form-actions-xl {
+  margin-top: 2rem;
+  padding-top: 2rem;
+}
+
+.info-box {
+  margin-top: 2rem;
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.info-box-muted {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid var(--line);
+}
+
 .inline-delete {
   display: inline;
 }
@@ -544,6 +562,16 @@ input::placeholder {
   text-align: center;
 }
 
+.is-hidden {
+  display: none !important;
+}
+
+.is-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .flex-between {
   display: flex;
   justify-content: space-between;
@@ -552,6 +580,10 @@ input::placeholder {
 
 .mb-4 {
   margin-bottom: 1rem;
+}
+
+.mb-6 {
+  margin-bottom: 1.5rem;
 }
 
 .text-base {

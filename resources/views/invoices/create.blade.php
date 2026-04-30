@@ -5,11 +5,7 @@
     $selectedClientId = request('c', request('clientid'));
     $currentStep = (int) request('step', 1);
     $invoiceFor = request('invoice_for', session('invoice_for', ''));
-    
-    // Fix: Default empty invoiceFor to 'orders' when clientid present
-    if(empty($invoiceFor) && $selectedClientId) {
-        $invoiceFor = 'orders';
-    }
+
     session(['invoice_for' => $invoiceFor]);
     
     if($currentStep < 1 || $currentStep > 4) $currentStep = 1;
@@ -71,101 +67,4 @@
         @endif
     </form>
 </section>
-
-<style>
-.invoice-create-shell {
-    max-width: 100%;
-}
-.invoice-create-header {
-    gap: 1rem;
-}
-#invoiceForm .form-input,
-#invoiceForm input[type="text"],
-#invoiceForm input[type="number"],
-#invoiceForm input[type="date"],
-#invoiceForm select,
-#invoiceForm textarea {
-    width: 100%;
-    min-width: 0;
-    padding: 0.4rem 0.55rem;
-    font-size: 0.76rem;
-}
-.invoice-meta-card { padding: 0.65rem; border: 1px solid #e5e7eb; border-radius: 10px; background: #ffffff; }
-.invoice-meta-label, .field-label.small { display: block; margin-bottom: 0.2rem; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #6b7280; }
-.invoice-meta-value { color: #1e293b; font-size: 0.8rem; }
-.field-label { display: block; margin-bottom: 0.2rem; font-size: 0.68rem; font-weight: 600; color: #374151; }
-.invoice-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.55rem; align-items: end; }
-.invoice-span-2 { grid-column: span 2; }
-.invoice-span-3 { grid-column: span 3; }
-.source-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.55rem; }
-.invoice-source-card { position: relative; display: flex; flex-direction: column; gap: 0.34rem; padding: 0.55rem 0.62rem; border: 1px solid #e5e7eb; border-radius: 10px; background: #ffffff; cursor: pointer; transition: 0.2s ease; }
-.invoice-source-card:hover { border-color: #c7d2fe; background: #fafbff; }
-.invoice-source-card input { position: absolute; opacity: 0; pointer-events: none; }
-.invoice-source-card:has(input:checked) { border-color: #4f46e5; background: #f8faff; }
-.source-icon { width: 26px; height: 26px; border-radius: 8px; background: #eef2ff; color: #4f46e5; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; }
-.invoice-source-card strong { color: #1e293b; }
-.workflow-panel { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #e5e7eb; }
-.panel-heading-row { margin-bottom: 0.5rem; }
-.table-shell { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #ffffff; }
-.empty-state { padding: 0.7rem; text-align: center; color: #6b7280; font-size: 0.72rem; }
-.builder-card { padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb; }
-.manual-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.42rem; align-items: start; }
-.totals-card { padding: 0.62rem; border-radius: 10px; background: #f9fafb; border: 1px solid #e5e7eb; }
-.total-row { display: flex; justify-content: space-between; gap: 0.7rem; margin-bottom: 0.3rem; font-size: 0.74rem; color: #4b5563; }
-.total-row:last-child { margin-bottom: 0; }
-.total-row-grand { padding-top: 0.4rem; border-top: 1px solid #d1d5db; font-size: 0.82rem; font-weight: 700; color: #111827; }
-.status-pill.active { background: #dbeafe; color: #1e40af; }
-.status-pill.cancelled { background: #e2e8f0; color: #475569; }
-.invoice-step-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 0.55rem; margin-bottom: 0.5rem; }
-.invoice-step-badge { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.45rem; border: 1px solid #e5e7eb; border-radius: 999px; background: #f9fafb; color: #374151; font-size: 0.64rem; font-weight: 600; }
-.invoice-step-badge i { color: #4f46e5; }
-.invoice-side-meta { text-align: right; }
-.section-note { margin: 0.14rem 0 0; color: #6b7280; font-size: 0.7rem; }
-.section-title-card { margin-bottom: 0.5rem; padding: 0.45rem 0.55rem; border: 1px solid #e5e7eb; background: #f9fafb; border-radius: 10px; }
-.section-title-card h4 { margin: 0; font-size: 0.76rem; color: #111827; }
-.section-title-card p { margin: 0.16rem 0 0; color: #6b7280; font-size: 0.68rem; }
-#invoiceForm table.data-table th,
-#invoiceForm table.data-table td {
-    padding: 0.38rem 0.48rem;
-    font-size: 0.72rem;
-    line-height: 1.25;
-}
-#invoiceForm .primary-button,
-#invoiceForm .secondary-button {
-    padding: 0.46rem 0.72rem;
-    font-size: 0.74rem;
-}
-@media (max-width: 1200px) {
-    .source-grid,
-    .manual-grid,
-    .invoice-grid-4 {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .invoice-span-3 {
-        grid-column: span 2;
-    }
-}
-@media (max-width: 720px) {
-    .invoice-create-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    .invoice-step-toolbar {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    .invoice-side-meta {
-        text-align: left;
-    }
-    .source-grid,
-    .manual-grid,
-    .invoice-grid-4 {
-        grid-template-columns: 1fr;
-    }
-    .invoice-span-2,
-    .invoice-span-3 {
-        grid-column: span 1;
-    }
-}
-</style>
 @endsection

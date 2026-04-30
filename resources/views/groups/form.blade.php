@@ -2,7 +2,7 @@
 
 @section('header_actions')
     <a href="{{ route('groups.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Groups
+        <i class="fas fa-arrow-left icon-spaced"></i>Back to Groups
     </a>
 @endsection
 
@@ -14,7 +14,7 @@
         @endisset
         @csrf
         <div class="form-grid">
-            <div style="grid-column: span 2;">
+            <div class="col-span-2">
                 <label for="group_name">Group Name *</label>
                 <input type="text" id="group_name" name="group_name" value="{{ old('group_name', isset($group) ? $group->group_name : '') }}" required maxlength="150">
                 @error('group_name') <span class="error">{{ $message }}</span> @enderror
@@ -24,12 +24,12 @@
                 <input type="email" id="email" name="email" value="{{ old('email', isset($group) ? $group->email : '') }}" maxlength="150">
                 @error('email') <span class="error">{{ $message }}</span> @enderror
             </div>
-            <div style="grid-column: span 2;">
+            <div class="col-span-2">
                 <label for="address_line_1">Address Line 1</label>
                 <input type="text" id="address_line_1" name="address_line_1" value="{{ old('address_line_1', isset($group) ? $group->address_line_1 : '') }}" maxlength="150">
                 @error('address_line_1') <span class="error">{{ $message }}</span> @enderror
             </div>
-            <div style="grid-column: span 2;">
+            <div class="col-span-2">
                 <label for="address_line_2">Address Line 2</label>
                 <input type="text" id="address_line_2" name="address_line_2" value="{{ old('address_line_2', isset($group) ? $group->address_line_2 : '') }}" maxlength="150">
                 @error('address_line_2') <span class="error">{{ $message }}</span> @enderror

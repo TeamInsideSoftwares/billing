@@ -82,12 +82,6 @@
             <div class="meta-row"><strong>{{ $isTaxInvoice ? 'Tax No:' : 'Proforma No:' }}</strong> {{ $isTaxInvoice ? $invoice->ti_number : $invoice->pi_number }}</div>
             <div class="meta-row"><strong>Issue Date:</strong> {{ optional($invoice->issue_date)->format('d M Y') ?? '-' }}</div>
             <div class="meta-row"><strong>Due Date:</strong> {{ optional($invoice->due_date)->format('d M Y') ?? '-' }}</div>
-            @if(!empty($invoice->order?->po_number))
-            <div class="meta-row"><strong>PO Number:</strong> {{ $invoice->order->po_number }}</div>
-            @endif
-            @if(!empty($invoice->order?->po_date))
-            <div class="meta-row"><strong>PO Date:</strong> {{ optional($invoice->order->po_date)->format('d M Y') ?? '-' }}</div>
-            @endif
         </div>
     </div>
 </div>
@@ -111,6 +105,12 @@
         @if(!empty($cb->gstin))
         <div class="client-gstin"><strong>GSTIN:</strong> {{ $cb->gstin }}</div>
         @endif
+        @if(!empty($invoice->order?->po_number))
+        <div class="client-gstin"><strong>PO Number:</strong> {{ $invoice->order->po_number }}</div>
+        @endif
+        @if(!empty($invoice->order?->po_date))
+        <div class="client-gstin"><strong>PO Date:</strong> {{ optional($invoice->order->po_date)->format('d M Y') ?? '-' }}</div>
+        @endif
     </div>
     @if(!empty($invoice->invoice_title))
     <div class="invoice-title-note">{{ $invoice->invoice_title }}</div>
@@ -120,6 +120,7 @@
 @php
     $hasRecurring = $invoice->items->some(fn($i) => !empty($i->frequency) && $i->frequency !== 'One-Time');
     $currency = $invoice->client->currency ?? 'INR';
+    $hasUsersColumn = $invoice->items->contains(fn($i) => !empty($i->no_of_users) && (int) $i->no_of_users > 0);
     $subtotal = 0; $discountTotal = 0; $taxTotal = 0;
     foreach ($invoice->items as $item) {
         $lt = (float)($item->line_total ?? 0);
@@ -141,7 +142,9 @@
             <th style="width:24px">#</th>
             <th>Description</th>
             <th class="center" style="width:40px">Qty</th>
+            @if($hasUsersColumn)
             <th class="center" style="width:50px">Users</th>
+            @endif
             <th class="center" style="width:80px">Duration</th>
             @if($hasRecurring)
             <th class="center" style="width:70px">Start</th>
@@ -167,7 +170,9 @@
                 @endif
             </td>
             <td class="center">{{ (int)($item->quantity ?? 1) }}</td>
-            <td class="center">{{ $item->no_of_users ?? '-' }}</td>
+            @if($hasUsersColumn)
+            <td class="center">{{ !empty($item->no_of_users) ? (int) $item->no_of_users : '-' }}</td>
+            @endif
             <td class="center">{{ $durationLabel }}</td>
             @if($hasRecurring)
             <td class="center">{{ optional($item->start_date)->format('d M Y') ?? '-' }}</td>
@@ -197,11 +202,11 @@
 <div class="notes-section">{{ $invoice->notes }}</div>
 @endif
 
-@if(!empty($invoice->terms) && is_array($invoice->terms))
+@if(!empty($invoiceTerms) && is_array($invoiceTerms))
 <div class="terms-section">
     <div class="terms-title">Terms &amp; Conditions</div>
     <ul class="terms-list">
-        @foreach(array_filter($invoice->terms) as $term)
+        @foreach(array_filter($invoiceTerms) as $term)
         <li>{{ trim($term) }}</li>
         @endforeach
     </ul>

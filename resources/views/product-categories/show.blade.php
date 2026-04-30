@@ -6,7 +6,7 @@
         <h2>{{ $title }}</h2>
         <div class="button-group">
             <a href="{{ route('product-categories.edit', $productCategory->ps_catid) }}" class="primary-button small">Edit</a>
-            <form method="POST" action="{{ route('product-categories.destroy', $productCategory->ps_catid) }}" class="inline-delete" style="display: inline;" onsubmit="return confirm('Delete this product category?')">
+            <form method="POST" action="{{ route('product-categories.destroy', $productCategory->ps_catid) }}" class="inline-delete" onsubmit="return confirm('Delete this product category?')">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="danger-button small">Delete</button>
@@ -45,4 +45,3 @@
     </div>
 </div>
 @endsection
-

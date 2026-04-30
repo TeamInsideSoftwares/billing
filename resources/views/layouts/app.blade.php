@@ -12,8 +12,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-@vite(['resources/css/app.css', 'resources/js/app.js'])
-<script src="//tiny.skoolready.com/tinymce/js/tinymce/tinymce.min.js" referrerpolicy="origin"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script src="//tiny.skoolready.com/tinymce/js/tinymce/tinymce.min.js" referrerpolicy="origin"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ asset('js/location-picker.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -22,15 +22,15 @@
 <body class="app-shell">
     {{-- Toast Container (outside layout-grid to avoid clipping) --}}
     @if (session('success') || session('error'))
-        <div id="toast-container" class="toast-container">
+        <div id="app-toast-container" class="app-toast-container">
             @if (session('success'))
-                <div class="toast toast-success" onclick="this.remove()">
+                <div class="app-toast app-toast-success" onclick="this.remove()">
                     <i class="fas fa-check-circle toast-icon"></i>
                     <span>{{ session('success') }}</span>
                 </div>
             @endif
             @if (session('error'))
-                <div class="toast toast-error" onclick="this.remove()">
+                <div class="app-toast app-toast-error" onclick="this.remove()">
                     <i class="fas fa-times-circle toast-icon"></i>
                     <span>{{ session('error') }}</span>
                 </div>
@@ -153,10 +153,10 @@
                                 <h6 class="profile-name">{{ auth()->user()->name }}</h6>
                                 <p class="profile-email">{{ auth()->user()->email }}</p>
                             </li>
-                            <li><a class="dropdown-item" href="{{ route('settings.index') }}#personal" style="padding: 0.6rem 1rem; font-size: 0.9rem;">Profile Settings</a></li>
-                            <li><hr class="dropdown-divider" style="margin: 0.5rem 0;"></li>
+                            <li><a class="dropdown-item profile-settings-link" href="{{ route('settings.index') }}#personal">Profile Settings</a></li>
+                            <li><hr class="dropdown-divider profile-divider"></li>
                             <li>
-                                <form action="{{ route('logout') }}" method="POST" style="margin: 0;">
+                                <form action="{{ route('logout') }}" method="POST" class="logout-form">
                                     @csrf
                                     <button type="submit" class="dropdown-item text-danger logout-btn">Sign Out</button>
                                 </form>
@@ -174,7 +174,7 @@
 
         <div class="main-panel">
             <header class="topbar">
-                <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
+                <div class="topbar-title-wrap">
                     <!-- <button type="button" class="menu-toggle" data-sidebar-toggle>Menu</button> -->
                     <div class="page-title-block">
                         <h2 class="page-title">{{ $title ?? 'Dashboard' }}</h2>
@@ -243,10 +243,10 @@
     @if (session('success') || session('error'))
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('.toast').forEach(function (toast) {
+        document.querySelectorAll('.app-toast').forEach(function (toast) {
             setTimeout(function () {
                 if (toast.parentNode) {
-                    toast.classList.add('toast-leaving');
+                    toast.classList.add('app-toast-leaving');
                     setTimeout(function () {
                         if (toast.parentNode) toast.remove();
                     }, 300);

@@ -88,7 +88,7 @@
                     @foreach($billingTerms as $term)
                     <div style="margin-bottom: 0.55rem; padding: 0; width: 100%; max-width: 100%; box-sizing: border-box;" class="term-item-row">
                         <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.45rem; cursor: pointer; margin-bottom: 0.2rem; width: 100%; max-width: 100%; box-sizing: border-box;">
-                            <input type="checkbox" class="term-checkbox" data-tc-id="{{ $term->tc_id }}" data-content="{{ $term->content }}" value="{{ $term->content }}" style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
+                            <input type="checkbox" class="term-checkbox" data-tc-id="{{ $term->tc_id }}" data-is-default="{{ (int) ($term->is_default ?? 0) }}" data-content="{{ $term->content }}" value="{{ $term->content }}" {{ !empty($term->is_default) ? 'checked' : '' }} style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
                             <div style="min-width: 0; width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">
                                 <p style="margin: 0; font-size: 0.78rem; color: #4b5563; line-height: 1.45; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">{{ $term->content }}</p>
                             </div>
@@ -130,20 +130,22 @@
                     </div>
                 </div>
                 <div id="invoicePreviewContainer" style="padding: 1rem; background: #f5f5f5; max-height: 620px; overflow-y: auto;">
-                    <div id="previewContent" style="background: white; padding: 1.5rem; width: 100%; min-height: 640px; border: 1px solid #dddddd; border-radius: 8px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1f2937;">
-                        <div style="text-align: center; color: #6b7280; padding-top: 100px;">
-                            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                            <p>Generating preview...</p>
-                        </div>
+                    <div id="previewContent" style="background: white; padding: 0; width: 100%; min-height: 640px; border: 1px solid #dddddd; border-radius: 8px; overflow: hidden;">
+                        <iframe
+                            id="invoicePdfPreviewFrame"
+                            title="Invoice PDF Preview"
+                            src="about:blank"
+                            style="width: 100%; min-height: 640px; border: 0; background: #fff;"
+                        ></iframe>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div style="margin-top: 0.9rem; display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
-        <button type="button" class="primary-button" id="btnSendEmail" style="padding: 0.75rem 1.5rem; font-size: 0.95rem;">
-            <i class="fas fa-envelope" style="margin-right: 0.5rem;"></i>Send Email
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mt-3">
+        <button type="button" class="primary-button" id="btnSendEmail">
+            <i class="fas fa-envelope me-2"></i>Send Email
         </button>
     </div>
 </div>
@@ -243,6 +245,10 @@
     let draftPoNumber = '';
     let draftPoDate = '';
     let appliedTerms = [];
+    const defaultTerms = Array.from(document.querySelectorAll('.term-checkbox'))
+        .filter(cb => cb.dataset.isDefault === '1')
+        .map(cb => cb.value.trim())
+        .filter(Boolean);
     const fallbackPiNumber = "{{ $nextInvoiceNumber }}";
     const fallbackTiNumber = "{{ $nextTaxInvoiceNumber ?? $nextInvoiceNumber }}";
 
@@ -328,14 +334,16 @@
                 draftPoNumber = data.draft.po_number || '';
                 draftPoDate = data.draft.po_date || '';
 
-                if (data.draft.terms) {
-                    appliedTerms = Array.isArray(data.draft.terms) ? data.draft.terms : [];
-                    const checkboxes = document.querySelectorAll('.term-checkbox');
-                    checkboxes.forEach(cb => {
-                        const val = cb.value.trim();
-                        cb.checked = appliedTerms.some(t => String(t).trim() === val);
-                    });
-                }
+                const checkboxes = document.querySelectorAll('.term-checkbox');
+                const draftTerms = Array.isArray(data.draft.terms) ? data.draft.terms : [];
+                const hasDraftTerms = draftTerms.length > 0;
+                appliedTerms = hasDraftTerms ? draftTerms : defaultTerms;
+                checkboxes.forEach(cb => {
+                    const val = cb.value.trim();
+                    cb.checked = appliedTerms.some(t => String(t).trim() === val);
+                });
+                const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+                if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
 
                 invoiceNumberInput.value = draftInvoiceNumber;
                 invoiceidInput.value = data.draft.invoiceid || '';
@@ -349,12 +357,24 @@
                 updateInvoicePreview();
             } else {
                 console.log('No draft found');
+                const checkboxes = document.querySelectorAll('.term-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.checked = cb.dataset.isDefault === '1';
+                });
+                const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+                if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
                 updateHeaderNumberBadge();
                 updateInvoicePreview();
             }
         })
         .catch(error => {
             console.error('Failed to load draft items:', error);
+            const checkboxes = document.querySelectorAll('.term-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = cb.dataset.isDefault === '1';
+            });
+            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+            if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
             updateHeaderNumberBadge();
             updateInvoicePreview();
         });
@@ -420,207 +440,26 @@
     }
 
     function updateInvoicePreview() {
-        const invoiceNumber = draftInvoiceNumber || invoiceNumberInput.value || "{{ $nextInvoiceNumber }}";
-        const issueDate = draftIssueDate || document.getElementById('step4_issue_date')?.value || '-';
-        const dueDate = draftDueDate || document.getElementById('step4_due_date')?.value || '-';
-        const invoiceTitle = draftInvoiceTitle || document.getElementById('invoice_title')?.value || 'Invoice';
-        const notes = draftNotes || document.getElementById('step4_notes')?.value || '';
+        const previewFrame = document.getElementById('invoicePdfPreviewFrame');
+        const invoiceid = invoiceidInput.value || draftId;
 
-        // Get terms — live checkbox state
-        const terms = Array.from(document.querySelectorAll('.term-checkbox:checked'))
-            .map(cb => cb.value.trim())
-            .filter(Boolean);
+        if (!previewFrame) return;
 
-        const companyAddressLine = [
-            accountData.billing.address,
-            [accountData.billing.city, accountData.billing.state].filter(Boolean).join(', '),
-            accountData.billing.postal_code,
-            accountData.billing.country,
-        ].filter(Boolean).join('<br>');
-
-        const clientAddressLine = [
-            clientData.billing.address_line_1,
-            [clientData.billing.city, clientData.billing.state].filter(Boolean).join(', '),
-            clientData.billing.postal_code,
-            clientData.billing.country,
-        ].filter(Boolean).join('<br>');
-
-        const frequencyLabelMap = {
-            'One-Time': 'One-Time',
-            'Day(s)': 'Day(s)',
-            'Week(s)': 'Week(s)',
-            'Month(s)': 'Month(s)',
-            'Quarter(s)': 'Quarter(s)',
-            'Year(s)': 'Year(s)'
-        };
-        
-        const hasRecurring = invoiceItems.some(item => item.frequency && item.frequency !== 'one-time');
-        const showDates = hasRecurring;
-
-        const formatDate = (dateValue) => {
-            if (!dateValue) return '-';
-            const d = new Date(dateValue);
-            if (Number.isNaN(d.getTime())) return dateValue;
-            return d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
-        };
-
-        const formatFrequencyDuration = (frequency, duration) => {
-            if (!frequency || frequency === 'One-Time') return 'One-Time';
-            return duration ? `${duration} ${frequency}` : frequency;
-        };
-
-        const escapeHtml = (value) => String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-
-        // Build items table
-        let itemsHtml = '';
-        let totalItemsLineTotal = 0;
-        let totalItemsDiscountTotal = 0;
-        let totalItemsTaxTotal = 0;
-
-        invoiceItems.forEach((item, index) => {
-            const qty = Math.max(1, Math.round(Number(item.quantity || 1)));
-            const unitPrice = Number(item.unit_price || 0);
-            const lineTotal = Number(item.line_total || 0);
-            const discountPercent = Number(item.discount_percent || 0);
-            const discountAmount = roundDiscountDown(item.discount_amount || (lineTotal * (discountPercent / 100)) || 0);
-            const taxableAmount = Math.max(0, lineTotal - discountAmount);
-            const taxRate = Number(item.tax_rate || 0);
-            const taxAmount = roundTaxUp(taxableAmount * (taxRate / 100));
-
-            totalItemsLineTotal += lineTotal;
-            totalItemsDiscountTotal += discountAmount;
-            totalItemsTaxTotal += taxAmount;
-
-            const discountedUnitPrice = qty > 0 ? (lineTotal / qty) : unitPrice; // Showing raw rate
-            
-            const users = item.no_of_users ? Number(item.no_of_users) : null;
-            const frequency = item.frequency ? (frequencyLabelMap[item.frequency] || item.frequency) : '-';
-            const duration = item.duration ? Number(item.duration) : null;
-            const itemName = escapeHtml(item.item_name || 'Item');
-            const itemDescription = escapeHtml(item.item_description || '').trim();
-
-            itemsHtml += `
-                <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 0.5rem 0.5rem; border: 1px solid #e5e7eb; font-size: 0.75rem;">${index + 1}</td>
-                    <td style="padding: 0.5rem 0.5rem; border: 1px solid #e5e7eb; font-size: 0.76rem; color: #111827;">
-                        <div style="font-weight: 600;">${itemName}</div>
-                        ${itemDescription ? `<div style="margin-top: 0.1rem; font-size: 0.72rem; color: #6b7280; white-space: pre-wrap;">${itemDescription}</div>` : ''}
-                    </td>
-                    <td style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #e5e7eb; font-size: 0.75rem;">${qty}</td>
-                    <td style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #e5e7eb; font-size: 0.75rem;">${users || '-'}</td>
-                    <td style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #e5e7eb; font-size: 0.75rem;">${formatFrequencyDuration(frequency, duration)}</td>
-                    ${showDates ? `
-                    <td style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #e5e7eb; font-size: 0.75rem;">${formatDate(item.start_date)}</td>
-                    <td style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #e5e7eb; font-size: 0.75rem;">${formatDate(item.end_date)}</td>
-                    ` : ''}
-                    <td style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #e5e7eb; font-size: 0.75rem;">${unitPrice.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
-                    <td style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #e5e7eb; font-weight: 600; font-size: 0.75rem;">${lineTotal.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
-                </tr>
+        if (!invoiceid) {
+            previewFrame.srcdoc = `
+                <div style="display:flex;align-items:center;justify-content:center;min-height:640px;color:#6b7280;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+                    <div style="text-align:center;">
+                        <i class="fas fa-info-circle" style="font-size:1.6rem; margin-bottom:0.5rem;"></i>
+                        <p>Save the invoice draft to load PDF preview.</p>
+                    </div>
+                </div>
             `;
-        });
+            return;
+        }
 
-        const subtotal = totalItemsLineTotal;
-        const discountTotal = roundDiscountDown(totalItemsDiscountTotal);
-        const taxTotal = roundTaxUp(totalItemsTaxTotal);
-        const grandTotal = subtotal - discountTotal + taxTotal;
-
-        const cgstAmount = taxTotal / 2;
-        const sgstAmount = taxTotal - cgstAmount;
-        const taxRowsHtml = sameStateGstForInvoice
-            ? `
-                    <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #e5e7eb;">
-                        <span>Tax (CGST):</span><strong>${(cgstAmount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #e5e7eb;">
-                        <span>Tax (SGST):</span><strong>${(sgstAmount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong>
-                    </div>
-              `
-            : `
-                    <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #e5e7eb;">
-                        <span>Tax (IGST):</span><strong>${(taxTotal).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong>
-                    </div>
-              `;
-
-
-        previewContent.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid #111827; gap: 1rem;">
-                <div style="flex: 1 1 auto; min-width: 0; max-width: 56%;">
-                    <p style="margin: 0 0 0.12rem 0; font-size: 0.92rem; font-weight: 700; color: #111827;">${accountData.billing.name || accountData.name || 'Company Name'}</p>
-                    ${companyAddressLine ? `<p style="margin: 0.2rem 0; font-size: 0.8rem; color: #4b5563; line-height: 1.45;">${companyAddressLine}</p>` : ''}
-                    ${accountData.billing.gstin ? `<p style="margin: 0.15rem 0; font-size: 0.78rem; color: #374151;"><strong>GSTIN:</strong> ${accountData.billing.gstin}</p>` : ''}
-                </div>
-                <div style="text-align: right; min-width: 240px; margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 0.45rem;">
-                    <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 0.25rem;">${draftTiNumber ? 'Tax Invoice' : 'Proforma Invoice'}</div>
-                    ${accountData.logo ? `<img src="${accountData.logo}" style="max-width: 140px; max-height: 56px; object-fit: contain;">` : ''}
-                    <div class="text-right">
-                        <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>${draftTiNumber ? 'Tax No:' : 'Proforma No:'}</strong> ${draftTiNumber || draftPiNumber || invoiceNumber}</p>
-                        <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>Issue Date:</strong> ${formatDate(issueDate)}</p>
-                        <p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>Due Date:</strong> ${formatDate(dueDate)}</p>
-                        ${draftPoNumber ? `<p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>PO Number:</strong> ${draftPoNumber}</p>` : ''}
-                        ${draftPoDate ? `<p style="margin: 0.1rem 0; font-size: 0.8rem;"><strong>PO Date:</strong> ${formatDate(draftPoDate)}</p>` : ''}
-                    </div>
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: flex-start;">
-                <div style="flex: 1; min-width: 0; padding: 0.8rem 0.95rem 0.8rem 0;">
-                    <div style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 0.35rem;">Bill To</div>
-                    <p style="margin: 0.12rem 0; font-size: 0.92rem; font-weight: 700; color: #111827;">${clientData.billing.name || clientData.name || 'Client'}</p>
-                    ${clientAddressLine ? `<p style="margin: 0.2rem 0; font-size: 0.8rem; color: #4b5563; line-height: 1.45;">${clientAddressLine}</p>` : ''}
-                    ${clientData.billing.gstin ? `<p style="margin: 0.15rem 0; font-size: 0.78rem; color: #374151;"><strong>GSTIN:</strong> ${clientData.billing.gstin}</p>` : ''}
-                </div>
-                ${invoiceTitle ? `<div style="flex-shrink: 0; max-width: 45%; text-align: right; padding-top: 0.2rem;"><span style="font-size: 0.95rem; font-weight: 700; color: #111827;">${invoiceTitle}</span></div>` : ''}
-            </div>
-
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
-                <thead style="background: #f3f4f6; color: #111827;">
-                    <tr>
-                        <th style="padding: 0.5rem 0.5rem; text-align: left; border: 1px solid #d1d5db; font-size: 0.75rem;">#</th>
-                        <th style="padding: 0.5rem 0.5rem; text-align: left; border: 1px solid #d1d5db; font-size: 0.75rem;">Description</th>
-                        <th style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #d1d5db; font-size: 0.75rem;">Qty</th>
-                        <th style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #d1d5db; font-size: 0.75rem;">Users</th>
-                        <th style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #d1d5db; font-size: 0.75rem;">Duration</th>
-                        ${showDates ? `
-                        <th style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #d1d5db; font-size: 0.75rem;">Start</th>
-                        <th style="padding: 0.5rem 0.5rem; text-align: center; border: 1px solid #d1d5db; font-size: 0.75rem;">End</th>
-                        ` : ''}
-                        <th style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #d1d5db; font-size: 0.75rem;">Rate ({{ $selectedClientCurrency }})</th>
-                        <th style="padding: 0.5rem 0.5rem; text-align: right; border: 1px solid #d1d5db; font-size: 0.75rem;">Amount ({{ $selectedClientCurrency }})</th>
-                    </tr>
-                </thead>
-                <tbody>${itemsHtml}</tbody>
-            </table>
-
-            <div style="display: flex; justify-content: flex-end;">
-                <div style="min-width: 260px; padding: 0.4rem 0.5rem;">
-                    <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #e5e7eb;">
-                        <span>Subtotal:</span><strong>${(subtotal - discountTotal).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong>
-                    </div>
-                    ${taxRowsHtml}
-                    <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; font-size: 0.95rem; font-weight: 700; color: #111827;">
-                        <span>Grand Total:</span><span>${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-                    </div>
-                </div>
-            </div>
-
-            ${notes ? `<div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; font-size: 0.78rem; color: #6b7280; white-space: pre-wrap;">${notes}</div>` : ''}
-
-            ${terms.length ? `<div style="margin-top: 1rem; padding: 0.75rem 0; border-top: 1px solid #e5e7eb;"><h4 style="margin: 0 0 0.35rem 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: #374151;">Terms & Conditions</h4><ul style="margin: 0; padding-left: 1.25rem; font-size: 0.78rem; line-height: 1.5; color: #4b5563; list-style: disc;">${terms.map(term => `<li style="margin-bottom: 0.25rem;">${term.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</li>`).join('')}</ul></div>` : ''}
-
-            <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
-                <div style="text-align: right; min-width: 220px;">
-                    ${accountData.billing.signature ? `<img src="${accountData.billing.signature}" style="display:block; margin-left:auto; max-width:130px; max-height:52px; object-fit:contain; margin-bottom:0.25rem;">` : ''}
-                    <div style="border-top: 1px solid #6b7280; padding-top: 0.3rem; font-size: 0.78rem; color: #374151; text-align:right;">
-                        ${(accountData.billing.signatory || '').trim() || accountData.billing.name || accountData.name || 'Authorized Signatory'}
-                    </div>
-                </div>
-            </div>
-        `;
+        const type = draftTiNumber ? 'tax_invoice' : 'pi';
+        const base = "{{ url('invoices') }}/" + encodeURIComponent(invoiceid) + "/pdf";
+        previewFrame.src = `${base}?type=${type}&preview=1&_t=${Date.now()}`;
     }
 
     // Terms checkboxes
@@ -631,8 +470,6 @@
             if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
             if (createTaxInvoiceBtn) createTaxInvoiceBtn.disabled = !invoiceidInput.value;
             if (btnApplyTC) btnApplyTC.style.display = invoiceidInput.value ? 'inline-block' : 'none';
-            
-            updateInvoicePreview();
         }
     });
 
@@ -742,7 +579,6 @@
                     termsList.prepend(row);
                     if (finalSubmitBtn) finalSubmitBtn.disabled = false;
                     closeTermModal();
-                    updateInvoicePreview();
                 })
                 .catch(error => {
                     addTermError.textContent = error.message || 'Unable to save term.';
@@ -753,6 +589,7 @@
 
     // Back button
     btnBackToPrev.addEventListener('click', function() {
+        const currentDraftId = invoiceidInput.value || draftId;
         const prevStep = invoiceFor === 'without_orders' ? 2 : 3;
         const clientToken = encodeURIComponent(clientId);
         let prevUrl = "{{ route('invoices.create') }}?step=" + prevStep + "&invoice_for=" + encodeURIComponent(invoiceFor) + "&c=" + clientToken;
@@ -763,14 +600,15 @@
         if (isTaxInvoice) {
             prevUrl += "&tax_invoice=1";
         }
-        if (draftId) {
-            prevUrl += "&d=" + encodeURIComponent(draftId);
+        if (currentDraftId) {
+            prevUrl += "&d=" + encodeURIComponent(currentDraftId);
         }
         window.location.href = prevUrl;
     });
 
     // Edit button
     document.getElementById('btnEditPreview')?.addEventListener('click', function() {
+        const currentDraftId = invoiceidInput.value || draftId;
         const clientToken = encodeURIComponent(clientId);
         const editStep = invoiceFor === 'without_orders' ? 2 : 3;
         let editUrl = "{{ route('invoices.create') }}?step=" + editStep + "&invoice_for=" + encodeURIComponent(invoiceFor) + "&c=" + clientToken;
@@ -781,8 +619,8 @@
         if (isTaxInvoice) {
             editUrl += "&tax_invoice=1";
         }
-        if (draftId) {
-            editUrl += "&d=" + encodeURIComponent(draftId);
+        if (currentDraftId) {
+            editUrl += "&d=" + encodeURIComponent(currentDraftId);
         }
         window.location.href = editUrl;
     });
@@ -795,13 +633,7 @@
             return;
         }
 
-        const recipient = encodeURIComponent(clientData?.email || '');
-        const subject = encodeURIComponent('Invoice ' + (draftTiNumber || draftPiNumber || draftInvoiceNumber || ''));
-        const body = encodeURIComponent(
-            "Hello,\n\nPlease find your invoice details below.\n\nInvoice: " + (draftTiNumber || draftPiNumber || draftInvoiceNumber || 'Invoice') + "\nPDF: " + "{{ url('invoices') }}/" + invoiceid + "/pdf?type=pi" + "\n\nRegards"
-        );
-
-        window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;
+        window.location.href = "{{ url('/invoices') }}/" + invoiceid + "/email-compose";
     });
 
     // Digital Signed button
@@ -813,44 +645,65 @@
     });
 
     // Create Tax Invoice function
-    function createTaxInvoice() {
-        if (!invoiceidInput.value) {
-            alert('Please create PI first.');
-            return;
-        }
+	    function createTaxInvoice() {
+	        if (!invoiceidInput.value) {
+	            alert('Please create PI first.');
+	            return;
+	        }
 
         if (!confirm('This will generate a Tax Invoice number and mark this invoice as a Tax Invoice. Continue?')) {
             return;
         }
 
-        fetch("{{ route('invoices.create-tax-invoice') }}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            },
-            body: JSON.stringify({
-                invoiceid: invoiceidInput.value
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                draftTiNumber = data.ti_number;
-                updateHeaderNumberBadge();
-                syncTaxInvoiceButtons(invoiceidInput.value);
-                updateInvoicePreview();
-                const base = "{{ url('invoices') }}/" + invoiceidInput.value + "/pdf";
-                window.open(base + '?type=tax_invoice', '_blank');
-            } else {
-                alert(data.message || 'Failed to create tax invoice.');
-            }
-        })
-        .catch(error => {
-            console.error('Failed to create tax invoice:', error);
-            alert('Failed to create tax invoice. Please try again.');
-        });
-    }
+	        fetch("{{ route('invoices.create-tax-invoice') }}", {
+	            method: 'POST',
+	            headers: {
+	                'Content-Type': 'application/json',
+	                'Accept': 'application/json',
+	                'X-Requested-With': 'XMLHttpRequest',
+	                'X-CSRF-TOKEN': csrfToken
+	            },
+	            body: JSON.stringify({
+	                invoiceid: invoiceidInput.value
+	            })
+	        })
+	        .then(async (response) => {
+	            // Controller returns JSON only when wantsJson()/ajax(). We enforce that via headers above,
+	            // but keep a safe fallback to avoid false "Failed" while conversion actually succeeds.
+	            let data = null;
+	            try {
+	                data = await response.json();
+	            } catch (e) {
+	                data = null;
+	            }
+	            return { ok: response.ok, data };
+	        })
+		        .then(({ ok, data }) => {
+		            if (ok && data && data.success) {
+		                draftTiNumber = data.ti_number;
+		                updateHeaderNumberBadge();
+		                syncTaxInvoiceButtons(invoiceidInput.value);
+		                updateInvoicePreview();
+		                const base = "{{ url('invoices') }}/" + invoiceidInput.value + "/pdf";
+		                window.open(base + '?type=tax_invoice', '_blank');
+		                return;
+		            }
+
+		            // If server returned non-JSON but status is OK, treat as success and reload draft state.
+		            if (ok && !data) {
+		                loadItems();
+		                const base = "{{ url('invoices') }}/" + invoiceidInput.value + "/pdf";
+		                window.open(base + '?type=tax_invoice', '_blank');
+		                return;
+		            }
+
+		            alert((data && data.message) ? data.message : 'Failed to create tax invoice.');
+		        })
+		        .catch(error => {
+		            console.error('Failed to create tax invoice:', error);
+		            alert('Failed to create tax invoice. Please try again.');
+		        });
+		    }
 
     // Initialize
     createTaxInvoiceBtn?.addEventListener('click', createTaxInvoice);

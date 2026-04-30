@@ -2,7 +2,7 @@
 
 @section('header_actions')
     <a href="{{ route('accounts.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Agencies
+        <i class="fas fa-arrow-left icon-spaced"></i>Back to Agencies
     </a>
 @endsection
 
@@ -53,13 +53,13 @@
                 @error('status') <span class="error">{{ $message }}</span> @enderror
             </div>
         </div>
-        <div class="form-actions" style="margin-top: 2rem; border-top: 1px solid var(--slate-100); padding-top: 2rem;">
+        <div class="form-actions form-actions-xl">
             <button type="submit" class="primary-button">Register & Create Owner</button>
             <a href="{{ route('accounts.index') }}" class="text-link">Cancel</a>
         </div>
     </form>
 
-    <div style="margin-top: 2rem; padding: 1rem; background: var(--slate-50); border-radius: 8px; font-size: 0.85rem; color: var(--slate-500);">
+    <div class="info-box info-box-muted">
         <strong>Info:</strong> When you register an , the system will automatically create an 'Admin' user with the provided email. The default password will be 'password123'. The account owner must update their profile after login.
     </div>
 </section>

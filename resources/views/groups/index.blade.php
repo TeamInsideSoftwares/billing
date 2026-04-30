@@ -2,7 +2,7 @@
 
 @section('header_actions')
     <a href="{{ route('clients.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Clients
+        <i class="fas fa-arrow-left icon-spaced"></i>Back to Clients
     </a>
 @endsection
 
@@ -24,10 +24,10 @@
                         <strong>{{ $group['group_name'] }}</strong>
                     </td>
                     <td>
-                        <span style="color: var(--text-muted);">{{ $group['email'] }}</span>
+                        <span class="text-muted">{{ $group['email'] }}</span>
                     </td>
                     <td>
-                        <span style="color: var(--text-muted);">{{ $group['city'] }}, {{ $group['state'] }}</span>
+                        <span class="text-muted">{{ $group['city'] }}, {{ $group['state'] }}</span>
                     </td>
                     <td class="table-actions">
                         <a href="{{ route('groups.edit', $group['record_id']) }}" class="icon-action-btn edit" title="Edit">

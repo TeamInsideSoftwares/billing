@@ -2,7 +2,7 @@
 
 @section('header_actions')
     <a href="{{ route('subscriptions.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left" style="margin-right: 0.4rem;"></i>Back to Subscriptions
+        <i class="fas fa-arrow-left icon-spaced"></i>Back to Subscriptions
     </a>
 @endsection
 
