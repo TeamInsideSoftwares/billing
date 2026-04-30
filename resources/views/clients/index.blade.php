@@ -120,13 +120,13 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold small">Country</label>
-                            <select id="groupCountry" name="country" class="form-select" data-selected="India">
+                            <select id="groupCountry" name="country" class="form-select country-select" data-selected="India">
                                 <option value="">Select Country</option>
                             </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold small">State</label>
-                            <select id="groupState" name="state" class="form-select" data-selected="">
+                            <select id="groupState" name="state" class="form-select state-select" data-selected="">
                                 <option value="">Select State</option>
                             </select>
                         </div>
@@ -134,7 +134,7 @@
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold small">City</label>
-                            <select id="groupCity" name="city" class="form-select" data-selected="">
+                            <select id="groupCity" name="city" class="form-select city-select" data-selected="">
                                 <option value="">Select City</option>
                             </select>
                         </div>

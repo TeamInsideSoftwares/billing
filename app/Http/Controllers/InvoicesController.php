@@ -14,8 +14,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+use App\Traits\ConfiguresBrowsershot;
+
 class InvoicesController extends Controller
 {
+    use ConfiguresBrowsershot;
     public function invoices()
     {
         $clients = Client::orderBy('business_name')->get();
@@ -125,12 +128,6 @@ class InvoicesController extends Controller
                 ->where('clientid', $clientId)
                 ->where('status', 'draft')
                 ->where('created_by', $currentUserId)
-                ->when(!empty($invoiceFor), function ($q) use ($invoiceFor) {
-                    $q->where(function ($inner) use ($invoiceFor) {
-                        $inner->where('invoice_for', $invoiceFor)
-                            ->orWhereNull('invoice_for');
-                    });
-                })
                 ->when($invoiceFor === 'orders' && !empty($orderId), fn ($q) => $q->where('orderid', $orderId))
                 ->when($invoiceFor === 'orders' && empty($orderId), fn ($q) => $q->whereNull('orderid'))
                 ->when($invoiceFor !== 'orders', fn ($q) => $q->whereNull('orderid'))
@@ -845,7 +842,6 @@ class InvoicesController extends Controller
 
         // Check if draft already exists for this client
         $orderId = $validated['orderid'] ?? null;
-        $invoiceFor = $validated['invoice_for'] ?? ($orderId ? 'orders' : 'without_orders');
 
         $draft = null;
         if (!empty($validated['invoiceid'])) {
@@ -859,10 +855,6 @@ class InvoicesController extends Controller
             $draft = Invoice::where('clientid', $validated['clientid'])
                 ->whereIn('status', ['draft', 'active'])
                 ->where('created_by', $user?->userid ?? $user?->id)
-                ->where(function ($q) use ($invoiceFor) {
-                    $q->where('invoice_for', $invoiceFor)
-                        ->orWhereNull('invoice_for');
-                })
                 ->when(!empty($orderId), fn ($q) => $q->where('orderid', $orderId))
                 ->when(empty($orderId), fn ($q) => $q->whereNull('orderid'))
                 ->where('updated_at', '>', now()->subHours(24))
@@ -968,7 +960,6 @@ class InvoicesController extends Controller
         $user = auth()->user();
         $orderId = request('o', request('orderid'));
         $draftId = request('d');
-        $invoiceFor = request('invoice_for');
 
         $draft = null;
         if (!empty($draftId)) {
@@ -982,12 +973,6 @@ class InvoicesController extends Controller
             $draft = Invoice::where('clientid', $clientid)
                 ->where('status', 'draft')
                 ->where('created_by', $user?->userid ?? $user?->id)
-                ->when(!empty($invoiceFor), function ($q) use ($invoiceFor) {
-                    $q->where(function ($inner) use ($invoiceFor) {
-                        $inner->where('invoice_for', $invoiceFor)
-                            ->orWhereNull('invoice_for');
-                    });
-                })
                 ->when(!empty($orderId), fn ($q) => $q->where('orderid', $orderId))
                 ->when(empty($orderId), fn ($q) => $q->whereNull('orderid'))
                 ->where('updated_at', '>', now()->subHours(24))
@@ -1352,13 +1337,9 @@ class InvoicesController extends Controller
 
         $filename = $documentType . ' - ' . $invoice->invoice_number . '.pdf';
 
-        $pdf = \Spatie\Browsershot\Browsershot::html($html)
-            ->setChromePath('C:\Program Files\Google\Chrome\Application\chrome.exe') // Add this line
-            ->noSandbox()
-            ->format('A4')
-            ->margins(12, 12, 12, 12)
-            ->showBackground()
-            ->pdf();
+        $browsershot = $this->getBrowsershot($html);
+
+        $pdf = $browsershot->pdf();
 
         return response($pdf, 200, [
             'Content-Type'        => 'application/pdf',
