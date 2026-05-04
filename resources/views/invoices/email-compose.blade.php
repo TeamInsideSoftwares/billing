@@ -112,8 +112,37 @@
                     <div class="whatsapp-sms-fields" style="display: none;">
                         <div class="mb-3">
                             <label class="field-label">Phone Number</label>
-                            <input type="text" name="phone" value="{{ old('phone', $prefillPhone ?? '') }}" class="input-full"
-                                readonly>
+                            <input type="text" name="phone" value="{{ old('phone', $prefillPhone ?? '') }}" class="input-full" readonly>
+                        </div>
+
+                        <div class="mb-3 sms-field" style="display: none;">
+                            <label class="field-label">Sender ID (SMS)</label>
+                            <input type="text" name="sender_id" value="{{ old('sender_id', '') }}" class="input-full" placeholder="e.g., CAMPIO">
+                        </div>
+
+                        <div class="mb-3 sms-template-field" style="display: none;">
+                            <label class="field-label">SMS Template (optional)</label>
+                            <select name="template_id" class="input-full">
+                                <option value="">-- Use custom message --</option>
+                                @foreach(($templatesList['sms'] ?? collect()) as $tpl)
+                                    <option value="{{ $tpl->templateid }}" {{ old('template_id') == $tpl->templateid ? 'selected' : '' }}>{{ $tpl->name ?? $tpl->templateid }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-3 whatsapp-field" style="display: none;">
+                            <label class="field-label">WhatsApp Meta Template ID</label>
+                            <input type="text" name="meta_template_id" value="{{ old('meta_template_id', '') }}" class="input-full" placeholder="e.g., 1209484998039912">
+                        </div>
+
+                        <div class="mb-3 whatsapp-template-field" style="display: none;">
+                            <label class="field-label">WhatsApp Template (optional)</label>
+                            <select name="template_id" class="input-full">
+                                <option value="">-- Use custom message --</option>
+                                @foreach(($templatesList['whatsapp'] ?? collect()) as $tpl)
+                                    <option value="{{ $tpl->templateid }}" {{ old('template_id') == $tpl->templateid ? 'selected' : '' }}>{{ $tpl->name ?? $tpl->templateid }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
 
@@ -532,6 +561,12 @@
                 if (attachmentPreviewWrap) {
                     attachmentPreviewWrap.style.display = (channel === 'sms') ? 'none' : '';
                 }
+
+                // Show/hide channel-specific inputs
+                document.querySelectorAll('.sms-field').forEach(el => el.style.display = channel === 'sms' ? '' : 'none');
+                document.querySelectorAll('.sms-template-field').forEach(el => el.style.display = channel === 'sms' ? '' : 'none');
+                document.querySelectorAll('.whatsapp-field').forEach(el => el.style.display = channel === 'whatsapp' ? '' : 'none');
+                document.querySelectorAll('.whatsapp-template-field').forEach(el => el.style.display = channel === 'whatsapp' ? '' : 'none');
 
                 document.querySelector('.email-actions').style.display = channel === 'email' ? '' : 'none';
                 document.querySelector('.whatsapp-actions').style.display = channel === 'whatsapp' ? '' : 'none';
