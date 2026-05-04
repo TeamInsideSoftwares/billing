@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\AccountBillingDetail;
-use App\Models\AccountQuotationDetail;
 use App\Models\FinancialYear;
 use App\Models\MessageTemplate;
 use App\Models\Setting;
@@ -40,7 +39,7 @@ class SettingsController extends Controller
         $accountid = $this->resolveAccountId();
 
         // Optimize: Use with() to eager load relationships
-        $account = Account::with(['financialYears', 'billingDetails', 'quotationDetails', 'taxes'])
+        $account = Account::with(['financialYears', 'billingDetails', 'taxes'])
             ->find($accountid);
 
         if (!$account) {
@@ -54,7 +53,7 @@ class SettingsController extends Controller
                 'status' => 'active'
             ]);
             // Re-load with relations
-            $account->load(['financialYears', 'billingDetails', 'quotationDetails', 'taxes']);
+            $account->load(['financialYears', 'billingDetails', 'taxes']);
         }
         $hasPersistedAccount = (bool) ($account && $account->exists);
 
@@ -82,15 +81,15 @@ class SettingsController extends Controller
             ->get(['iso', 'name']);
 
         $billingDetails = $hasPersistedAccount ? $account->billingDetails : collect();
-        $quotationDetails = $hasPersistedAccount ? $account->quotationDetails : collect();
 
         $editingBillingDetail = ($editId && str_starts_with($editId, 'ABD'))
             ? $account->billingDetails->firstWhere('account_bdid', $editId)
             : ($hasPersistedAccount ? $account->billingDetails->first() : null);
 
-        $editingQuotationDetail = ($editId && str_starts_with($editId, 'AQD'))
-            ? $account->quotationDetails->firstWhere('account_qdid', $editId)
-            : ($hasPersistedAccount ? $account->quotationDetails->first() : null);
+        // Default billing_name to account name if not set (sync with Business Info tab)
+        if ($editingBillingDetail && empty($editingBillingDetail->billing_name)) {
+            $editingBillingDetail->billing_name = $account->name;
+        }
 
         // Serial configurations from dedicated table
         $proformaSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'proforma_invoice')->first();
@@ -109,6 +108,7 @@ class SettingsController extends Controller
         $quotationTerms = (clone $termsQuery)
             ->where('type', 'quotation')
             ->get();
+
         $proformaTerms = (clone $termsQuery)
             ->where('type', 'proforma')
             ->get();
@@ -121,7 +121,7 @@ class SettingsController extends Controller
             ->get();
 
         $editingTerm = null;
-        if ($editId && strlen($editId) === 6 && !str_starts_with($editId, 'SET') && !str_starts_with($editId, 'ABD') && !str_starts_with($editId, 'AQD')) {
+        if ($editId && strlen($editId) === 6 && !str_starts_with($editId, 'SET') && !str_starts_with($editId, 'ABD')) {
             $editingTerm = TermsCondition::query()
                 ->where('accountid', $accountid)
                 ->where('tc_id', $editId)
@@ -152,9 +152,7 @@ class SettingsController extends Controller
             'account' => $account,
             'financialYears' => $financialYears,
             'billingDetails' => $billingDetails,
-            'quotationDetails' => $quotationDetails,
             'editingBillingDetail' => $editingBillingDetail,
-            'editingQuotationDetail' => $editingQuotationDetail,
             'proformaSerialConfig' => $proformaSerialConfig,
             'taxInvoiceSerialConfig' => $taxInvoiceSerialConfig,
             'quotationSerialConfig' => $quotationSerialConfig,
@@ -374,68 +372,6 @@ class SettingsController extends Controller
         return redirect()->to(route('settings.index') . $redirectTo)->with('success', 'Billing details updated successfully.');
     }
 
-    public function accountQuotationUpdate(Request $request)
-    {
-        $accountid = $this->resolveAccountId();
-        $account = Account::find($accountid);
-
-        if (!$account) {
-            return redirect()->to(route('settings.index') . '#quotation-details')->with('error', 'Account not found.');
-        }
-
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'account_qdid' => 'nullable|string|size:6|exists:account_quotation_details,account_qdid',
-            'quotation_name' => 'nullable|string|max:150',
-            'address' => 'nullable|string',
-            'city' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
-            'country' => 'nullable|string|max:100',
-            'postal_code' => 'nullable|string|max:20',
-            'gstin' => 'nullable|string|size:15',
-            'tin' => 'nullable|string|max:50',
-            'authorize_signatory' => 'nullable|string|max:255',
-            'signature_upload' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
-            'billing_from_email' => 'nullable|email|max:255',
-        ]);
-
-        if ($validator->fails()) {
-            return redirect()->to(route('settings.index') . '#quotation-details')
-                ->withErrors($validator)
-                ->withInput();
-        }
-
-        $validated = $validator->validated();
-
-        // Handle file upload
-        if ($request->hasFile('signature_upload') && $request->file('signature_upload')->isValid()) {
-            try {
-                $file = $request->file('signature_upload');
-                $filename = time() . '_' . $file->getClientOriginalName();
-                $uploadDir = public_path('uploads/signatures');
-                File::ensureDirectoryExists($uploadDir, 0755, true);
-                $file->move($uploadDir, $filename);
-                chmod($uploadDir . '/' . $filename, 0644);
-                $validated['signature_upload'] = asset('uploads/signatures/' . $filename);
-            } catch (\Exception $e) {
-                return redirect()->to(route('settings.index') . '#quotation-details')
-                    ->with('error', 'Failed to upload signature: ' . $e->getMessage())
-                    ->withInput();
-            }
-        } else {
-            unset($validated['signature_upload']);
-        }
-
-        if (!empty($validated['account_qdid'])) {
-            $quotationDetail = AccountQuotationDetail::where('account_qdid', $validated['account_qdid'])->where('accountid', $accountid)->firstOrFail();
-            $quotationDetail->update($validated);
-        } else {
-            $validated['accountid'] = $accountid;
-            AccountQuotationDetail::create($validated);
-        }
-
-        $redirectTo = $request->input('from_tab') === 'financial-year' ? '#financial-year' : '#quotation-details';
-        return redirect()->to(route('settings.index') . $redirectTo)->with('success', 'Quotation details updated successfully.');
-    }
 
     /**
      * Reset serial counters in serial_configurations when FY changes.
@@ -618,7 +554,7 @@ class SettingsController extends Controller
         $accountid = $this->resolveAccountId();
 
         $validated = $request->validate([
-            'template_type' => 'required|in:pi,ti,digital_signed',
+            'template_type' => 'required|in:pi,ti',
             'channel' => 'required|in:email,whatsapp,sms',
             'name' => 'required|string|max:120',
             'subject' => 'nullable|string',

@@ -192,12 +192,10 @@
         <button class="tab-button" data-tab="message-templates">Message Templates</button>
         @if($account->allow_multi_taxation)
         <button class="tab-button" data-tab="billing-details">Billing Details</button>
-        <button class="tab-button" data-tab="quotation-details">Quotation Details</button>
         <button class="tab-button" data-tab="terms-conditions">Terms &amp; Conditions</button>
         <button class="tab-button" data-tab="taxes">Taxes</button>
         @else
         <button class="tab-button" data-tab="billing-details">Billing Details</button>
-        <button class="tab-button" data-tab="quotation-details">Quotation Details</button>
         <button class="tab-button" data-tab="terms-conditions">Terms &amp; Conditions</button>
         @endif
     </div>
@@ -630,8 +628,7 @@
         <div class="mt-main-tabs-wrap border-bottom mt-3">
             <div class="mt-main-tabs d-flex gap-4">
                 <button type="button" class="mt-type-tab-btn is-active" data-type="pi">Proforma Invoice (PI)</button>
-                <button type="button" class="mt-type-tab-btn" data-type="ti">Tax Invoice (TI)</button>
-                <button type="button" class="mt-type-tab-btn" data-type="digital_signed">Digital Signed</button>
+                <button type="button" class="mt-type-tab-btn" data-type="ti">Tax Invoice (TI/DSI)</button>
             </div>
         </div>
 
@@ -639,8 +636,7 @@
             @php
                 $templateTypeMeta = [
                     'pi' => 'PI (Proforma Invoice) templates',
-                    'ti' => 'TI (Tax Invoice) templates',
-                    'digital_signed' => 'Digital Signed templates',
+                    'ti' => 'TI/DSI (Tax Invoice) templates',
                 ];
             @endphp
 
@@ -680,13 +676,16 @@
                                 <label class="label-compact font-bold mb-1">Message Body *</label>
                                 <textarea name="body" id="templateBodyInput-{{ $typeKey }}" rows="6" class="settings-input template-body-input" placeholder="Hi @{{client_name}},&#10;Please find attached invoice @{{invoice_number}}."></textarea>
                                 <div class="mt-2 d-flex flex-wrap gap-2">
-                                    <span class="badge bg-light text-muted border px-2 py-1">@{{business_name}}</span>
-                                    <span class="badge bg-light text-muted border px-2 py-1">@{{client_name}}</span>
+                                    <span class="badge bg-light text-muted border px-2 py-1">@{{client_business_name}} (Client's Company)</span>
+                                    <span class="badge bg-light text-muted border px-2 py-1">@{{client_contact_person}} (Client's Contact)</span>
+                                    <span class="badge bg-light text-muted border px-2 py-1">@{{invoice_title}}</span>
                                     <span class="badge bg-light text-muted border px-2 py-1">@{{pi_number}}</span>
                                     <span class="badge bg-light text-muted border px-2 py-1">@{{ti_number}}</span>
+                                    <span class="badge bg-light text-muted border px-2 py-1">@{{pi_link}}</span>
+                                    <span class="badge bg-light text-muted border px-2 py-1">@{{ti_link}}</span>
                                     <span class="badge bg-light text-muted border px-2 py-1">@{{total_amount}}</span>
                                     <span class="badge bg-light text-muted border px-2 py-1">@{{due_date}}</span>
-                                    <span class="badge bg-light text-muted border px-2 py-1">@{{account_name}}</span>
+                                    <span class="badge bg-light text-muted border px-2 py-1">@{{business_name}} (Your Business Name)</span>
                                 </div>
                             </div>
 
@@ -744,8 +743,8 @@
             <input type="hidden" name="accountid" value="{{ $account->accountid }}">
 
             <div>
-                <label class="required">Billing Name</label>
-                <input type="text" name="billing_name" value="{{ old('billing_name', $editingBillingDetail->billing_name ?? '') }}" required>
+                <label class="required">Business Billing Name</label>
+                <input type="text" name="billing_name" value="{{ old('billing_name', $editingBillingDetail->billing_name ?? $account->name ?? '') }}" required>
             </div>
 
             <div>
@@ -825,111 +824,7 @@
     </section>
 </div>
 
-<!-- QUOTATION DETAILS TAB -->
-<div id="quotation-details" class="tab-content">
-    <section class="panel-card panel-card panel-card-compact">
-        <div class="settings-section-head">
-            <div class="settings-section-icon"><i class="fas fa-file-contract"></i></div>
-            <div>
-                <h5 class="settings-section-title">Quotation Details</h5>
-                <p class="settings-section-subtitle">Configure quotation details for quotations</p>
-            </div>
-        </div>
-        @if ($errors->any())
-            <div class="settings-error-box settings-error-box-soft">
-                <ul class="settings-error-list settings-error-list-compact">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-        <form method="POST" action="{{ route('account.quotation.update') }}" enctype="multipart/form-data" class="form-grid settings-form-3col">
-            @csrf
-            @if(isset($editingQuotationDetail))
-                <input type="hidden" name="account_qdid" value="{{ $editingQuotationDetail->account_qdid }}">
-            @endif
-            <input type="hidden" name="accountid" value="{{ $account->accountid }}">
 
-            <div>
-                <label class="required">Quotation Name</label>
-                <input type="text" name="quotation_name" value="{{ old('quotation_name', $editingQuotationDetail->quotation_name ?? '') }}" required>
-            </div>
-            <div>
-                <label>Billing From Email</label>
-                <input type="email" name="billing_from_email" value="{{ old('billing_from_email', $editingQuotationDetail->billing_from_email ?? '') }}">
-            </div>
-            <div>
-                <label>Authorize Signatory</label>
-                <input type="text" name="authorize_signatory" value="{{ old('authorize_signatory', $editingQuotationDetail->authorize_signatory ?? '') }}">
-            </div>
-            <div class="col-span-3">
-                <label class="text-sm">Address</label>
-                <textarea name="address" rows="2" class="settings-textarea">{{ old('address', $editingQuotationDetail->address ?? '') }}</textarea>
-            </div>
-            <div>
-                <label>Country</label>
-                <select name="country" class="country-select settings-input-sm full" data-selected="{{ old('country', $editingQuotationDetail->country ?? 'India') }}">
-                    <option value="">Select Country</option>
-                </select>
-            </div>
-            <div>
-                <label>State</label>
-                <select name="state" class="state-select settings-input-sm full" data-selected="{{ old('state', $editingQuotationDetail->state ?? '') }}">
-                    <option value="">Select State</option>
-                </select>
-            </div>
-            <div>
-                <label>City</label>
-                <select name="city" class="city-select settings-input-sm full" data-selected="{{ old('city', $editingQuotationDetail->city ?? '') }}">
-                    <option value="">Select City</option>
-                </select>
-            </div>
-            <div>
-                <label>Postal Code</label>
-                <input type="text" name="postal_code" value="{{ old('postal_code', $editingQuotationDetail->postal_code ?? '') }}">
-            </div>
-            <div>
-                <label>GSTIN</label>
-                <input type="text" name="gstin" value="{{ old('gstin', $editingQuotationDetail->gstin ?? '') }}"
-                    maxlength="15" minlength="15" pattern="[A-Z0-9]{15}"
-                    title="GSTIN must be exactly 15 characters"
-                    oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
-                    onblur="if(this.value && this.value.length!==15){this.setCustomValidity('GSTIN must be exactly 15 characters');this.reportValidity();}else{this.setCustomValidity('');}">
-                <span class="help-text">Exactly 15 characters required</span>
-            </div>
-            <div>
-                <label>TIN</label>
-                <input type="text" name="tin" value="{{ old('tin', $editingQuotationDetail->tin ?? '') }}">
-            </div>
-            <div>
-                <label>Signature Upload</label>
-                <input type="file" name="signature_upload" id="quotation-signature-upload" accept="image/*" onchange="previewSignature(this, 'quotation-signature-preview')">
-                <small class="help-text help-text-muted">Max file size: 5MB. Supported formats: JPG, PNG, GIF, SVG</small>
-                @if(!empty($editingQuotationDetail->signature_upload))
-                    <div class="signature-block">
-                        <small class="help-text help-text-muted mb-1">Current signature:</small>
-                        <img id="quotation-signature-preview" src="{{ $editingQuotationDetail->signature_upload }}" alt="Signature" class="signature-preview-img">
-                    </div>
-                @else
-                    <div id="quotation-signature-preview" class="signature-block hidden">
-                        <small class="help-text help-text-muted mb-1">Preview:</small>
-                        <img src="" alt="Signature Preview" class="signature-preview-img">
-                    </div>
-                @endif
-            </div>
-
-            <div class="form-actions settings-actions-3col">
-                <button type="submit" class="primary-button primary-button btn-md">Save Quotation Detail</button>
-                @if(isset($editingQuotationDetail) && request('edit_qd'))
-                    <a href="{{ route('settings.index') }}#quotation-details" class="text-link ml-4">Cancel</a>
-                @endif
-            </div>
-        </form>
-
-<!-- Single quotation detail form (no list) -->
-    </section>
-</div>
 
 <!-- TERMS & CONDITIONS TAB -->
 <div id="terms-conditions" class="tab-content">
@@ -1430,7 +1325,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (decodedE.startsWith('TC')) activateTab('terms-conditions');
         else if (decodedE.startsWith('SET')) activateTab('config');
         else if (decodedE.startsWith('ABD')) activateTab('billing-details');
-        else if (decodedE.startsWith('AQD')) activateTab('quotation-details');
         else activateTab('personal');
     } else {
         // Default to personal if no hash
@@ -1610,12 +1504,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const billingRadio = document.querySelector('#billing-details input[name="serial_mode"]:checked');
         if (billingRadio) {
             handleSerialModeChange(billingRadio);
-        }
-
-        // Initialize on page load - trigger for quotation
-        const quotationRadio = document.querySelector('#quotation-details input[name="serial_mode"]:checked');
-        if (quotationRadio) {
-            handleSerialModeChange(quotationRadio);
         }
     }, 100);
 });

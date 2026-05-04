@@ -189,6 +189,8 @@
     const invoiceidInput = document.getElementById('step4_invoiceid');
     const tcTypeBadge = document.getElementById('tcTypeBadge');
     const currencyCodeInput = document.getElementById('step4_currency_code');
+    const pdfVersionsList = document.getElementById('pdfVersionsList');
+    const pdfVersionsMeta = document.getElementById('pdfVersionsMeta');
     const sameStateGstForInvoice = @json($sameStateGstForInvoice);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -427,6 +429,7 @@
                 updateHeaderNumberBadge();
 
                 updateDownloadButtons(data.draft.invoiceid, data.draft.invoice_number);
+                loadPdfVersions(data.draft.invoiceid);
 
                 updateTotals();
                 updateInvoicePreview();
@@ -441,6 +444,7 @@
                 const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
                 if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
                 updateHeaderNumberBadge();
+                loadPdfVersions(invoiceidInput.value || draftId);
                 updateInvoicePreview();
             }
         })
@@ -455,6 +459,7 @@
             const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
             if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
             updateHeaderNumberBadge();
+            loadPdfVersions(invoiceidInput.value || draftId);
             updateInvoicePreview();
         });
     }
@@ -480,6 +485,57 @@
             digitalSignBtn.style.opacity = '1';
             digitalSignBtn.onclick = () => window.open(base + '?type=pi&signed=1', '_blank');
         }
+    }
+
+    function renderPdfVersions(versions) {
+        if (!pdfVersionsList) return;
+        const list = Array.isArray(versions) ? versions : [];
+        pdfVersionsList.innerHTML = '';
+
+        if (!list.length) {
+            const empty = document.createElement('span');
+            empty.style.fontSize = '0.74rem';
+            empty.style.color = '#9ca3af';
+            empty.textContent = 'No saved versions yet';
+            pdfVersionsList.appendChild(empty);
+            if (pdfVersionsMeta) pdfVersionsMeta.textContent = '';
+            return;
+        }
+
+        list.forEach((item) => {
+            const chip = document.createElement('a');
+            chip.href = item.url;
+            chip.target = '_blank';
+            chip.rel = 'noopener';
+            chip.style.textDecoration = 'none';
+            chip.style.padding = '0.2rem 0.55rem';
+            chip.style.border = '1px solid #d1d5db';
+            chip.style.borderRadius = '999px';
+            chip.style.fontSize = '0.73rem';
+            chip.style.fontWeight = '600';
+            chip.style.color = '#374151';
+            chip.style.background = '#f9fafb';
+            chip.textContent = `${String(item.type || '').toUpperCase()} v${item.version}`;
+            pdfVersionsList.appendChild(chip);
+        });
+
+        if (pdfVersionsMeta) {
+            pdfVersionsMeta.textContent = `${list.length} version${list.length === 1 ? '' : 's'}`;
+        }
+    }
+
+    function loadPdfVersions(invoiceid) {
+        if (!invoiceid) {
+            renderPdfVersions([]);
+            return;
+        }
+
+        fetch(`{{ url('invoices') }}/${invoiceid}/pdf-versions`, {
+            headers: { 'Accept': 'application/json' },
+        })
+            .then(r => r.json())
+            .then(data => renderPdfVersions(data && data.ok ? data.versions : []))
+            .catch(() => renderPdfVersions([]));
     }
 
     function syncTaxInvoiceButtons(invoiceid) {
@@ -581,6 +637,7 @@
                 if (data.ok) {
                     appliedTerms = selectedTerms;
                     updateInvoicePreview();
+                    loadPdfVersions(invoiceid);
                     btnApplyTC.textContent = 'Applied ✓';
                     btnApplyTC.style.background = '#d1fae5';
                     btnApplyTC.style.color = '#065f46';
@@ -774,6 +831,7 @@
 		                updateHeaderNumberBadge();
 		                syncTaxInvoiceButtons(invoiceidInput.value);
 		                updateInvoicePreview();
+                        loadPdfVersions(invoiceidInput.value);
 		                const base = "{{ url('invoices') }}/" + invoiceidInput.value + "/pdf";
 		                window.open(base + '?type=tax_invoice', '_blank');
 		                return;
@@ -782,6 +840,7 @@
 		            // If server returned non-JSON but status is OK, treat as success and reload draft state.
 		            if (ok && !data) {
 		                loadItems();
+                        loadPdfVersions(invoiceidInput.value);
 		                const base = "{{ url('invoices') }}/" + invoiceidInput.value + "/pdf";
 		                window.open(base + '?type=tax_invoice', '_blank');
 		                return;
@@ -801,6 +860,7 @@
     if (draftId) {
         updateDownloadButtons(draftId, null);
         if (btnApplyTC) btnApplyTC.style.display = 'inline-block';
+        loadPdfVersions(draftId);
     }
     syncTaxInvoiceButtons(invoiceidInput.value || draftId);
     loadItems();

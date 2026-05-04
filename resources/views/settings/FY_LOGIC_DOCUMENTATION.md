@@ -374,7 +374,6 @@ Serial Configuration (reset_on_fy: boolean)
 | `app/Http/Controllers/BillingUiController.php` | Billing/Quotation updates + reset logic |
 | `app/Models/Account.php` | Account model (fy_startdate) |
 | `app/Models/AccountBillingDetail.php` | Billing detail model (reset_on_fy) |
-| `app/Models/AccountQuotationDetail.php` | Quotation detail model (reset_on_fy) |
 | Database migrations | Schema definitions |
 
 ---

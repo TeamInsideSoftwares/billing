@@ -38,23 +38,18 @@
             <span class="text-muted small">Select document type and channel before sending</span>
         </div>
 
-        <!-- Type Tabs (PI, TI, DSC) -->
+        <!-- Type Tabs (PI, TI/DSI) -->
         <div class="type-tabs-wrap border-bottom mb-3">
             <div class="type-tabs d-flex gap-4">
                 <button type="button"
                     class="type-tab-btn {{ (old('attachment_type', $prefillAttachmentType ?? $defaultType) === 'pi' || !(old('attachment_type', $prefillAttachmentType ?? $defaultType))) ? 'is-active' : '' }}"
                     data-type="pi">
-                    PI
+                    PI (Proforma Invoice)
                 </button>
                 <button type="button"
                     class="type-tab-btn {{ old('attachment_type', $prefillAttachmentType ?? $defaultType) === 'ti' ? 'is-active' : '' }}"
                     data-type="ti" {{ !$hasTiNumber ? 'disabled' : '' }}>
-                    TI
-                </button>
-                <button type="button"
-                    class="type-tab-btn {{ old('attachment_type', $prefillAttachmentType ?? $defaultType) === 'dsc' ? 'is-active' : '' }}"
-                    data-type="dsc">
-                    DSC
+                    TI/DSI (Tax Invoice)
                 </button>
             </div>
         </div>
@@ -87,8 +82,8 @@
         <form method="POST" id="composeForm" action="{{ route('invoices.email-compose.store', $invoice->invoiceid) }}"
             enctype="multipart/form-data">
             @csrf
-            <input type="hidden" name="invoice_emailid" value="{{ $composeEmail->invoice_emailid }}">
-            <input type="hidden" name="channel" id="selectedChannel" value="email">
+            <input type="hidden" name="invoice_emailid" value="{{ $composeEmail->invoice_emailid ?? '' }}">
+            <input type="hidden" name="channel" id="selectedChannel" value="{{ old('channel', $prefillChannel ?? 'email') }}">
             <input type="hidden" name="attachment_type" id="selectedType"
                 value="{{ old('attachment_type', $prefillAttachmentType ?? $defaultType) }}">
 
@@ -117,7 +112,7 @@
                     <div class="whatsapp-sms-fields" style="display: none;">
                         <div class="mb-3">
                             <label class="field-label">Phone Number</label>
-                            <input type="text" name="phone" value="{{ $invoice->client->phone ?? '' }}" class="input-full"
+                            <input type="text" name="phone" value="{{ old('phone', $prefillPhone ?? '') }}" class="input-full"
                                 readonly>
                         </div>
                     </div>
@@ -141,25 +136,19 @@
                             <button type="submit" name="action" value="send" class="primary-button">Send to Client</button>
                         </div>
                         <div class="whatsapp-actions" style="display: none;">
-                            <button type="submit" name="action" value="save" class="secondary-button">Save Draft</button>
+                            <button type="submit" name="action" value="save" class="secondary-button">Save WhatsApp Message</button>
                             <button type="submit" name="action" value="send" id="sendWhatsApp" class="primary-button"
                                 style="background: #25d366; border-color: #25d366;">
                                 <i class="fab fa-whatsapp mr-1"></i> Send via WhatsApp
                             </button>
                         </div>
                         <div class="sms-actions" style="display: none;">
-                            <button type="submit" name="action" value="save" class="secondary-button">Save Draft</button>
+                            <button type="submit" name="action" value="save" class="secondary-button">Save SMS</button>
                             <button type="submit" name="action" value="send" id="sendSms" class="primary-button">Send
                                 SMS</button>
                         </div>
                     </div>
                 </div>
-
-                @if(session('messaging_url'))
-                    <script>
-                        window.open(@json(session('messaging_url')), '_blank');
-                    </script>
-                @endif
 
                 <div class="col-12 col-xl-5">
                     <div class="border rounded overflow-hidden position-sticky" style="top:.8rem; background: #fff;">
@@ -362,7 +351,7 @@
             const allTemplates = @json($allTemplates ?? []);
             const fallbackTemplatesByType = @json($fallbackTemplatesByType ?? []);
 
-            let currentChannel = 'email';
+            let currentChannel = document.getElementById('selectedChannel').value || 'email';
             let currentType = document.getElementById('selectedType').value || 'pi';
             let dscPreviewUrl = savedCustomAttachmentUrl || null;
 
@@ -456,10 +445,6 @@
                     previewAttachmentList.appendChild(renderAttachmentItem('Tax Invoice (TI).pdf', tiPdfUrl, hasTiNumber));
                     hasAnyAttachment = true;
                 }
-                if (currentType === 'dsc') {
-                    previewAttachmentList.appendChild(renderAttachmentItem('DSC.pdf', '#', false));
-                    hasAnyAttachment = true;
-                }
 
                 const customFileName = customAttachmentInput?.files?.[0]?.name || savedCustomAttachmentName;
                 if (dscPreviewUrl && customFileName) {
@@ -488,29 +473,32 @@
                 const labels = [];
                 if (currentType === 'pi') labels.push('PI PDF');
                 if (currentType === 'ti') labels.push('TI PDF');
-                if (currentType === 'dsc') labels.push('DSC file');
                 if (dscPreviewUrl) labels.push('Custom attachment');
 
                 if (attachmentBodyHint) attachmentBodyHint.textContent = labels.length ? ('Attached: ' + labels.join(', ')) : 'No attachment selected.';
 
                 const typeBadge = document.getElementById('previewTypeBadge');
-                if (typeBadge) typeBadge.textContent = currentType.toUpperCase();
+                if (typeBadge) typeBadge.textContent = currentType === 'ti' ? 'TI/DSI' : currentType.toUpperCase();
 
                 updateAttachmentPreview();
             }
 
             function getTemplateKeyForSelection(type) {
-                if (type === 'dsc') return 'digital_signed';
                 return type; // pi, ti
             }
 
-            function applyTemplate() {
+            function applyTemplate(preserveExisting = false) {
                 const templateKey = getTemplateKeyForSelection(currentType);
                 const templatesForChannel = allTemplates[currentChannel] || {};
                 const payload = templatesForChannel[templateKey] || fallbackTemplatesByType[templateKey] || { subject: '', body: '' };
 
                 const nextSubject = (payload.subject || '').trim();
                 const nextBody = payload.body || '';
+
+                if (preserveExisting) {
+                    refreshEmailPreview();
+                    return;
+                }
 
                 if (emailSubjectInput && currentChannel === 'email') {
                     emailSubjectInput.value = nextSubject;
@@ -529,7 +517,7 @@
                 refreshEmailPreview();
             }
 
-            function switchChannel(channel) {
+            function switchChannel(channel, preserveExisting = false) {
                 currentChannel = channel;
                 document.getElementById('selectedChannel').value = channel;
 
@@ -540,6 +528,10 @@
                 document.querySelectorAll('.email-fields').forEach(el => el.style.display = channel === 'email' ? '' : 'none');
                 document.querySelectorAll('.whatsapp-sms-fields').forEach(el => el.style.display = (channel === 'whatsapp' || channel === 'sms') ? '' : 'none');
                 document.querySelectorAll('.preview-email-only').forEach(el => el.style.display = channel === 'email' ? '' : 'none');
+                const attachmentPreviewWrap = previewAttachmentList?.closest('.preview-email-only');
+                if (attachmentPreviewWrap) {
+                    attachmentPreviewWrap.style.display = (channel === 'sms') ? 'none' : '';
+                }
 
                 document.querySelector('.email-actions').style.display = channel === 'email' ? '' : 'none';
                 document.querySelector('.whatsapp-actions').style.display = channel === 'whatsapp' ? '' : 'none';
@@ -551,10 +543,10 @@
                     badge.className = 'badge ' + (channel === 'email' ? 'bg-primary' : (channel === 'whatsapp' ? 'bg-success' : 'bg-info'));
                 }
 
-                applyTemplate();
+                applyTemplate(preserveExisting);
             }
 
-            function switchType(type) {
+            function switchType(type, preserveExisting = false) {
                 currentType = type;
                 document.getElementById('selectedType').value = type;
 
@@ -563,19 +555,42 @@
                 });
 
                 updateContextHints();
-                applyTemplate();
+                applyTemplate(preserveExisting);
             }
 
             // Event Listeners
             typeBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
                     if (btn.disabled) return;
-                    switchType(btn.dataset.type);
+                    const newType = btn.dataset.type;
+                    if (newType === currentType) return;
+
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('channel', currentChannel);
+                    url.searchParams.set('attachment_type', newType);
+                    url.searchParams.delete('e');
+                    window.location.href = url.toString();
                 });
             });
 
             channelBtns.forEach(btn => {
-                btn.addEventListener('click', () => switchChannel(btn.dataset.channel));
+                btn.addEventListener('click', () => {
+                    const newChannel = btn.dataset.channel;
+                    if (newChannel === currentChannel) return;
+
+                    // Store current form data in sessionStorage before switching
+                    if (emailSubjectInput?.value || emailBodyInput?.value) {
+                        sessionStorage.setItem('compose_subject', emailSubjectInput?.value || '');
+                        sessionStorage.setItem('compose_body', emailBodyInput?.value || '');
+                    }
+
+                    // Redirect to reload with new channel - controller will load correct saved message
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('channel', newChannel);
+                    url.searchParams.set('attachment_type', currentType);
+                    url.searchParams.delete('e');
+                    window.location.href = url.toString();
+                });
             });
 
             customAttachmentInput?.addEventListener('change', function () {
@@ -635,26 +650,78 @@
                     toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
                     setup: function (editor) {
                         editor.on('init', function () {
-                            applyTemplate();
+                            editor.save();
                             refreshEmailPreview();
                         });
                         editor.on('input change keyup setcontent undo redo ExecCommand NodeChange', function () {
+                            editor.save();
                             refreshEmailPreview();
                         });
                     }
                 });
             }
 
-            document.querySelector('form')?.addEventListener('submit', function () {
-                if (window.tinymce) tinymce.triggerSave();
+            const composeForm = document.getElementById('composeForm');
+            const actionButtons = Array.from(composeForm?.querySelectorAll('button[type="submit"][name="action"]') || []);
+
+            function syncEditorToTextarea() {
+                if (window.tinymce) {
+                    const editor = tinymce.get('emailBodyInput');
+                    if (editor) {
+                        editor.save();
+                    } else {
+                        tinymce.triggerSave();
+                    }
+                }
+            }
+
+            actionButtons.forEach((btn) => {
+                btn.addEventListener('click', function () {
+                    syncEditorToTextarea();
+                });
             });
+
+            composeForm?.addEventListener('submit', function () {
+                syncEditorToTextarea();
+            }, true);
 
             // Initial load
             if (!hasTiNumber && currentType === 'ti') {
                 currentType = 'pi';
             }
-            switchType(currentType);
-            switchChannel(currentChannel);
+
+            // Read channel from URL parameter and sync with controller-loaded message
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlChannel = urlParams.get('channel');
+            const urlType = urlParams.get('attachment_type');
+            if (urlType && ['pi', 'ti'].includes(urlType)) {
+                currentType = urlType;
+                document.getElementById('selectedType').value = urlType;
+            }
+            if (urlChannel && ['email', 'whatsapp', 'sms'].includes(urlChannel)) {
+                currentChannel = urlChannel;
+                document.getElementById('selectedChannel').value = urlChannel;
+            } else {
+                // Check for channel preserved after save
+                const preservedChannel = @json(session('preserve_channel'));
+                if (preservedChannel && ['email', 'whatsapp', 'sms'].includes(preservedChannel)) {
+                    // Redirect to URL with channel param to reload saved message
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('channel', preservedChannel);
+                    url.searchParams.set('attachment_type', currentType);
+                    url.searchParams.delete('e');
+                    window.location.href = url.toString();
+                    return;
+                }
+            }
+
+            // Update channel button state to match loaded message
+            channelBtns.forEach(btn => {
+                btn.classList.toggle('is-active', btn.dataset.channel === currentChannel);
+            });
+
+            switchType(currentType, true);
+            switchChannel(currentChannel, true);
             refreshEmailPreview();
             renderCurrentCustomAttachment();
         })();

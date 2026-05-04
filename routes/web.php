@@ -66,6 +66,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/invoices/create-tax-invoice', 'createTaxInvoice')->name('invoices.create-tax-invoice');
         Route::get('/invoices/{invoice}/email-compose', 'emailCompose')->name('invoices.email-compose');
         Route::post('/invoices/{invoice}/email-compose', 'emailComposeStore')->name('invoices.email-compose.store');
+        Route::get('/invoices/{invoice}/pdf-versions', 'pdfVersions')->name('invoices.pdf-versions');
         Route::get('/invoices/{invoice}/pdf', 'downloadPdf')->name('invoices.pdf');
         Route::get('/invoices/{invoice}', 'invoicesShow')->name('invoices.show');
         Route::get('/invoices/{invoice}/edit', 'invoicesEdit')->name('invoices.edit');
@@ -153,7 +154,6 @@ Route::controller(SettingsController::class)->group(function () {
         Route::post('/settings/fixed-tax', 'fixedTaxUpdate')->name('account.fixed-tax.update');
         Route::post('/settings/serial-config', 'serialConfigUpdate')->name('serial.config.update');
         Route::post('/settings/billing-details', 'accountBillingUpdate')->name('account.billing.update');
-        Route::post('/settings/quotation-details', 'accountQuotationUpdate')->name('account.quotation.update');
         Route::get('/settings/create', 'settingsCreate')->name('settings.create');
         Route::post('/settings', 'settingsStore')->name('settings.store');
         Route::get('/settings/{setting}', 'settingsShow')->name('settings.show');

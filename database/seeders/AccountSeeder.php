@@ -14,10 +14,10 @@ class AccountSeeder extends Seeder
     public function run(): void
     {
         Account::create([
-            'accountid'      => 'ACC0000001',
+            'accountid'      => 'T499MU1L1l',
             'name'           => 'Test',
             'slug'           => 'test',
-            'email'          => 'team@skoolready.com',
+            'email'          => 'team@insidesoftwares.com',
             'password'       => Hash::make('123456'),
             'status'         => 'active',
             'currency_code'  => 'INR',

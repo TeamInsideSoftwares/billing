@@ -16,7 +16,9 @@ use App\Models\TermsCondition;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 use App\Traits\ConfiguresBrowsershot;
@@ -33,22 +35,39 @@ class InvoicesController extends Controller
     private function renderMessageTemplate(string $value, Invoice $invoice, ?string $companyName = null): string
     {
         $clientBusinessName = trim((string) ($invoice->client->business_name ?? ''));
-        $clientName = trim((string) ($clientBusinessName !== '' ? $clientBusinessName : ($invoice->client->contact_name ?? '')));
+        $clientContactPerson = trim((string) ($invoice->client->contact_name ?? ''));
+        $clientName = trim((string) ($clientBusinessName !== '' ? $clientBusinessName : $clientContactPerson));
         $currency = (string) ($invoice->client->currency ?? 'INR');
         $totalAmount = (float) ($invoice->grand_total ?? $invoice->items->sum('line_total') ?? 0);
         $dueDate = $invoice->due_date?->format('d M Y') ?? '';
 
+        $piLink = route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']);
+        $tiLink = route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice']);
+
+        // Get YOUR billing name from Account Billing Details
+        $accountid = $this->resolveAccountId();
+        $accountBillingDetail = AccountBillingDetail::where('accountid', $accountid)->first();
+        $billingName = $accountBillingDetail->billing_name ?? ($companyName ?? '');
+
         $replace = [
-            '{{client_name}}' => $clientName,
-            '{{business_name}}' => $clientBusinessName !== '' ? $clientBusinessName : $clientName,
+            // Client info - clear unambiguous tags
+            '{{client_business_name}}' => $clientBusinessName,
+            '{{client_contact_person}}' => $clientContactPerson,
+            '{{client_name}}' => $clientName, // Legacy - use client_business_name instead
+            // YOUR business info - from Billing Details tab (or Account as fallback)
+            '{{business_name}}' => $billingName,
+            // Invoice info
             '{{invoice_number}}' => (string) ($invoice->invoice_number ?? ''),
             '{{invoice_title}}' => (string) ($invoice->invoice_title ?? ''),
             '{{pi_number}}' => (string) ($invoice->pi_number ?? ''),
             '{{ti_number}}' => (string) ($invoice->ti_number ?? ''),
+            '{{pi_link}}' => $piLink,
+            '{{ti_link}}' => $tiLink,
             '{{total_amount}}' => $currency . ' ' . number_format($totalAmount, 2),
             '{{due_date}}' => $dueDate,
-            '{{company_name}}' => (string) ($companyName ?? ''), // backwards compatibility
-            '{{account_name}}' => (string) ($companyName ?? ''),
+            // Backwards compatibility
+            '{{company_name}}' => $billingName,
+            '{{account_name}}' => $billingName,
         ];
 
         return strtr($value, $replace);
@@ -62,11 +81,60 @@ class InvoicesController extends Controller
         }
 
         if (preg_match('/^https?:\/\//i', $value)) {
+            $value = str_replace('/storage/app/public/', '/storage/', $value);
             return $value;
         }
 
-        $base = rtrim(url('/'), '/');
-        return $base . '/storage/app/public/' . ltrim($value, '/');
+        $relative = ltrim($value, '/');
+        if (str_starts_with($relative, 'storage/app/public/')) {
+            $relative = substr($relative, strlen('storage/app/public/'));
+        } elseif (str_starts_with($relative, 'app/public/')) {
+            $relative = substr($relative, strlen('app/public/'));
+        } elseif (str_starts_with($relative, 'public/')) {
+            $relative = substr($relative, strlen('public/'));
+        } elseif (str_starts_with($relative, 'storage/')) {
+            $relative = substr($relative, strlen('storage/'));
+        }
+
+        return asset('storage/' . ltrim($relative, '/'));
+    }
+
+    private function resolveCampioInvoicePdfUrl(Invoice $invoice, bool $isTaxInvoice): string
+    {
+        $typeKey = $isTaxInvoice ? 'ti' : 'pi';
+        $existing = collect($this->listStoredInvoicePdfVersions($invoice))
+            ->filter(fn($row) => (string) ($row['type'] ?? '') === $typeKey)
+            ->sortByDesc(fn($row) => (int) ($row['version'] ?? 0))
+            ->first();
+
+        if (!empty($existing['path'])) {
+            return $this->buildFriendlyCampioPdfUrl($invoice, (string) $existing['path'], $isTaxInvoice);
+        }
+
+        $saved = $this->persistInvoicePdfVersion($invoice, $isTaxInvoice);
+        if (!empty($saved['path'])) {
+            return $this->buildFriendlyCampioPdfUrl($invoice, (string) $saved['path'], $isTaxInvoice);
+        }
+
+        // Fallback if versioning/storage fails.
+        return route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => $isTaxInvoice ? 'tax_invoice' : 'pi']);
+    }
+
+    private function buildFriendlyCampioPdfUrl(Invoice $invoice, string $sourcePath, bool $isTaxInvoice): string
+    {
+        $disk = Storage::disk('public');
+        $number = trim((string) ($isTaxInvoice ? ($invoice->ti_number ?: $invoice->invoice_number) : ($invoice->pi_number ?: $invoice->invoice_number)));
+        $prefix = $isTaxInvoice ? 'Tax Invoice - ' : 'Proforma Invoice - ';
+        $friendlyBase = $prefix . ($number !== '' ? $number : $invoice->invoiceid);
+        $friendlyBase = preg_replace('/[\\\\\\/:*?"<>|]+/', '-', $friendlyBase) ?: ($isTaxInvoice ? 'Tax-Invoice' : 'Proforma-Invoice');
+        $friendlyBase = preg_replace('/\s+/', '-', $friendlyBase) ?: $friendlyBase;
+        $targetPath = 'clients/' . $invoice->clientid . '/invoices-share/' . $friendlyBase . '.pdf';
+
+        if (!$disk->exists($targetPath)) {
+            $disk->put($targetPath, (string) $disk->get($sourcePath));
+        }
+
+        return asset('storage/' . $targetPath);
     }
 
     private function buildInvoicePdfAttachment(Invoice $invoice, bool $isTaxInvoice): array
@@ -133,6 +201,75 @@ class InvoicesController extends Controller
         ];
     }
 
+    private function persistInvoicePdfVersion(Invoice $invoice, bool $isTaxInvoice): ?array
+    {
+        $invoice->loadMissing(['client']);
+
+        $pdfAttachment = $this->buildInvoicePdfAttachment($invoice, $isTaxInvoice);
+        $disk = Storage::disk('public');
+        $typeKey = $isTaxInvoice ? 'ti' : 'pi';
+        $directory = 'clients/' . $invoice->clientid . '/invoices-pdf';
+        $baseName = $invoice->invoiceid . '_' . $typeKey;
+        $existing = collect($disk->files($directory))
+            ->map(function (string $path) use ($baseName) {
+                $name = pathinfo($path, PATHINFO_FILENAME);
+                if (preg_match('/^' . preg_quote($baseName, '/') . '__v(\d+)$/', $name, $m)) {
+                    return (int) $m[1];
+                }
+                return null;
+            })
+            ->filter(fn($v) => $v !== null)
+            ->values();
+
+        $nextVersion = ((int) ($existing->max() ?? 0)) + 1;
+        $relativePath = $directory . '/' . $baseName . '__v' . $nextVersion . '.pdf';
+        $disk->put($relativePath, $pdfAttachment['binary']);
+
+        return [
+            'type' => $typeKey,
+            'version' => $nextVersion,
+            'filename' => basename($relativePath),
+            'path' => $relativePath,
+            'url' => asset('storage/' . $relativePath),
+            'saved_at' => now()->toDateTimeString(),
+        ];
+    }
+
+    private function listStoredInvoicePdfVersions(Invoice $invoice): array
+    {
+        $disk = Storage::disk('public');
+        $directory = 'clients/' . $invoice->clientid . '/invoices-pdf';
+        if (!$disk->exists($directory)) {
+            return [];
+        }
+
+        $versions = collect($disk->files($directory))
+            ->map(function (string $path) use ($invoice, $disk) {
+                $name = pathinfo($path, PATHINFO_FILENAME);
+                if (!preg_match('/^' . preg_quote($invoice->invoiceid, '/') . '_(pi|ti)__v(\d+)$/', $name, $m)) {
+                    return null;
+                }
+
+                return [
+                    'type' => $m[1],
+                    'version' => (int) $m[2],
+                    'filename' => basename($path),
+                    'path' => $path,
+                    'url' => asset('storage/' . $path),
+                    'saved_at' => optional($disk->lastModified($path) ? \Carbon\Carbon::createFromTimestamp($disk->lastModified($path)) : null)?->toDateTimeString(),
+                ];
+            })
+            ->filter()
+            ->sortBy([
+                ['type', 'asc'],
+                ['version', 'desc'],
+            ])
+            ->values()
+            ->all();
+
+        return $versions;
+    }
+
     private function getAccountSettingsMap(string $accountid): array
     {
         return Setting::query()
@@ -150,6 +287,169 @@ class InvoicesController extends Controller
             ->pluck('setting_value', 'setting_key')
             ->map(fn($v) => is_string($v) ? trim($v) : $v)
             ->toArray();
+    }
+
+    private function buildCampioRecipientRecord(Invoice $invoice, string $channel, string $toEmail, string $phone): array
+    {
+        $clientName = trim((string) (
+            $invoice->client?->business_name
+            ?: $invoice->client?->contact_name
+            ?: 'Customer'
+        ));
+
+        $record = [
+            'id' => (string) ($invoice->clientid ?? $invoice->invoiceid),
+            'name' => $clientName,
+            'invoice_number' => (string) ($invoice->invoice_number ?? ''),
+            'pi_number' => (string) ($invoice->pi_number ?? ''),
+            'ti_number' => (string) ($invoice->ti_number ?? ''),
+            'invoice_title' => (string) ($invoice->invoice_title ?? ''),
+            'due_date' => $invoice->due_date?->format('Y-m-d') ?? '',
+            'amount' => (string) ($invoice->grand_total ?? '0'),
+        ];
+
+        if ($channel === 'email') {
+            $record['email'] = $toEmail;
+        } else {
+            $record['mobile'] = $phone;
+            $record['phone'] = $phone;
+        }
+
+        return $record;
+    }
+
+    private function sendViaCampio(string $channel, array $payload): array
+    {
+        $baseUrl = rtrim((string) env('CAMPIO_BASE_URL', 'http://alpha.skoolready.com/campio'), '/');
+        if ($baseUrl === '') {
+            return ['ok' => false, 'message' => 'CAMPIO_BASE_URL is not configured.'];
+        }
+
+        $endpoint = $baseUrl . '/api/campaigns/schedule/' . $channel;
+        $token = trim((string) env('CAMPIO_AUTH_TOKEN', ''));
+        $apiKey = trim((string) env('CAMPIO_API_KEY', ''));
+
+        $request = Http::acceptJson()->asJson()->timeout(30);
+        if ($token !== '') {
+            $request = $request->withToken($token);
+        }
+        if ($apiKey !== '') {
+            $request = $request->withHeaders(['X-API-KEY' => $apiKey]);
+        }
+
+        try {
+            $response = $request->post($endpoint, $payload);
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'message' => 'Campio request failed: ' . $e->getMessage()];
+        }
+
+        $json = $response->json();
+        if (!$response->successful()) {
+            $message = is_array($json)
+                ? ((string) ($json['message'] ?? 'Campio API returned an error.'))
+                : ('Campio API returned HTTP ' . $response->status() . '.');
+            return ['ok' => false, 'message' => $message];
+        }
+
+        return [
+            'ok' => true,
+            'campaign_id' => (string) (is_array($json) ? ($json['campaign_id'] ?? '') : ''),
+            'raw' => $json,
+        ];
+    }
+
+    private function buildCampioAttachments(array $attachmentsInput): array
+    {
+        $attachments = [];
+        foreach ($attachmentsInput as $index => $item) {
+            $url = is_array($item) ? ($item['url'] ?? '') : $item;
+            $name = is_array($item) ? ($item['name'] ?? '') : '';
+
+            $cleanUrl = trim((string) $url);
+            if ($cleanUrl === '') {
+                continue;
+            }
+
+            $fileName = trim((string) $name);
+            if ($fileName === '') {
+                $path = (string) parse_url($cleanUrl, PHP_URL_PATH);
+                $fileName = basename($path ?: ('attachment-' . ($index + 1) . '.pdf'));
+                if ($fileName === '' || $fileName === '/' || $fileName === '.') {
+                    $fileName = 'attachment-' . ($index + 1) . '.pdf';
+                }
+            }
+            $fileName = preg_replace('/[\\\\\\/]+/', '-', $fileName) ?? $fileName;
+            $fileName = preg_replace('/\s+/', ' ', trim($fileName)) ?? $fileName;
+            if ($fileName === '' || $fileName === '.' || $fileName === '..') {
+                $fileName = 'attachment-' . ($index + 1) . '.pdf';
+            }
+
+            $normalizedUrl = $this->normalizeUrlForPayload($cleanUrl);
+            if ($normalizedUrl === '') {
+                continue;
+            }
+
+            $attachments[] = [
+                'file_url' => $normalizedUrl,
+                'file_name' => $fileName,
+            ];
+        }
+
+        return $attachments;
+    }
+
+    private function normalizeUrlForPayload(string $url): string
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return '';
+        }
+
+        $parts = parse_url($url);
+        if ($parts === false || empty($parts['scheme']) || empty($parts['host'])) {
+            return '';
+        }
+
+        $path = (string) ($parts['path'] ?? '');
+        $segments = explode('/', $path);
+        $encodedSegments = array_map(fn($s) => rawurlencode($s), $segments);
+        $encodedPath = implode('/', $encodedSegments);
+
+        $rebuilt = $parts['scheme'] . '://' . $parts['host']
+            . (isset($parts['port']) ? ':' . $parts['port'] : '')
+            . $encodedPath
+            . (isset($parts['query']) ? '?' . $parts['query'] : '')
+            . (isset($parts['fragment']) ? '#' . $parts['fragment'] : '');
+
+        return filter_var($rebuilt, FILTER_VALIDATE_URL) ? $rebuilt : '';
+    }
+
+    private function sanitizeComposedMessageBody(string $body): string
+    {
+        $text = str_replace(["\r\n", "\r"], "\n", $body);
+
+        // Remove auto-appended legacy sections that list raw URLs.
+        $text = preg_replace('/\n{2,}(Attachments:|Documents:)\n(?:[^\n]*https?:\/\/[^\n]*\n?)*/i', "\n", $text) ?? $text;
+
+        // Remove any remaining standalone numbered/bulleted URL lines.
+        $text = preg_replace('/^\s*(?:\d+\.\s*|-+\s*)https?:\/\/\S+\s*$/im', '', $text) ?? $text;
+
+        // Normalize extra blank lines.
+        $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
+
+        return trim($text);
+    }
+
+    private function sanitizeForCampioText(string $text): string
+    {
+        $value = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $value = str_replace(["\r\n", "\r"], "\n", $value);
+        // Remove 4-byte Unicode chars (emoji etc.) for non-utf8mb4 downstream DB columns.
+        $value = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $value) ?? $value;
+        // Remove control chars except tab/newline.
+        $value = preg_replace('/[^\P{C}\n\t]+/u', '', $value) ?? $value;
+        $value = preg_replace("/\n{3,}/", "\n\n", $value) ?? $value;
+        return trim($value);
     }
 
     private function resolveDefaultFyId(string $accountid): ?string
@@ -668,6 +968,8 @@ class InvoicesController extends Controller
         $terms = array_values(array_filter($request->input('terms', []), fn($t) => trim($t) !== ''));
         $invoice->update(['terms' => $terms ?: null]);
 
+        $this->persistInvoicePdfVersion($invoice, !empty(trim((string) $invoice->ti_number)));
+
         return response()->json(['ok' => true, 'count' => count($terms)]);
     }
 
@@ -1145,6 +1447,8 @@ class InvoicesController extends Controller
             $calculatedBalanceDue = max(0, $calculatedGrandTotal - $amountPaid);
 
             $draft->update(['status' => 'active']);
+
+            $this->persistInvoicePdfVersion($draft, !empty(trim((string) $draft->ti_number)));
         }
 
         return response()->json([
@@ -1491,6 +1795,8 @@ class InvoicesController extends Controller
             'status' => 'active',
         ]);
 
+        $this->persistInvoicePdfVersion($invoice, true);
+
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
@@ -1517,7 +1823,10 @@ class InvoicesController extends Controller
             ?? ''
         );
 
-        $defaultType = $this->mapInvoiceTemplateType($invoice);
+        $requestedType = strtolower(trim((string) request('attachment_type', '')));
+        $defaultType = in_array($requestedType, ['pi', 'ti'], true)
+            ? $requestedType
+            : $this->mapInvoiceTemplateType($invoice);
         $defaultSubjectNumber = $defaultType === 'ti' ? $invoice->ti_number : $invoice->pi_number;
         $billingAddressLines = array_values(array_filter([
             trim((string) ($accountBillingDetail?->address ?? '')),
@@ -1553,7 +1862,7 @@ class InvoicesController extends Controller
         $allTemplates = MessageTemplate::query()
             ->where('accountid', $currentAccountId)
             ->whereIn('channel', ['email', 'whatsapp', 'sms'])
-            ->whereIn('template_type', ['pi', 'ti', 'digital_signed'])
+            ->whereIn('template_type', ['pi', 'ti'])
             ->where('is_active', true)
             ->get()
             ->groupBy('channel')
@@ -1580,11 +1889,13 @@ class InvoicesController extends Controller
                 'subject' => 'Invoice ' . ((string) ($invoice->ti_number ?: $invoice->invoice_number)),
                 'body' => $defaultBody,
             ],
-            'digital_signed' => [
-                'subject' => 'Invoice ' . ((string) ($invoice->invoice_number ?: $invoice->invoiceid)),
-                'body' => $defaultBody,
-            ],
         ];
+
+        // Get default channel from request or default to email
+        $defaultChannel = trim((string) request('channel', 'email'));
+        if (!in_array($defaultChannel, ['email', 'whatsapp', 'sms'], true)) {
+            $defaultChannel = 'email';
+        }
 
         $templateSubject = null;
         $templateBody = null;
@@ -1595,58 +1906,52 @@ class InvoicesController extends Controller
             $templateBody = trim($templateBody) !== '' ? $templateBody : null;
         }
 
+        $channelTemplate = $allTemplates[$defaultChannel][$defaultType] ?? null;
+        $channelTemplateSubject = trim((string) ($channelTemplate['subject'] ?? '')) ?: null;
+        $channelTemplateBody = trim((string) ($channelTemplate['body'] ?? '')) ?: null;
+
         $requestedEmailId = trim((string) request('e', ''));
 
         $latestEmail = null;
+        
+        // 1. If specific email ID requested, load that first
         if ($requestedEmailId !== '') {
-            $latestEmail = InvoiceEmail::query()
+            $candidateEmail = InvoiceEmail::query()
                 ->where('invoice_emailid', $requestedEmailId)
                 ->where('invoiceid', $invoice->invoiceid)
                 ->where('accountid', $currentAccountId)
                 ->first();
+            if (
+                $candidateEmail
+                && (string) $candidateEmail->channel === $defaultChannel
+                && (string) $candidateEmail->attachment_type === $defaultType
+            ) {
+                $latestEmail = $candidateEmail;
+            }
         }
 
+        // 2. If no specific email, load by document type + channel
         if (!$latestEmail) {
             $latestEmail = InvoiceEmail::query()
                 ->where('invoiceid', $invoice->invoiceid)
                 ->where('accountid', $currentAccountId)
-                ->latest('created_at')
+                ->where('attachment_type', $defaultType)
+                ->where('channel', $defaultChannel)
                 ->first();
-        }
-
-        if (!$latestEmail) {
-            $initialAttachmentPath = $defaultType === 'ti'
-                ? route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice'])
-                : route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']);
-
-            $latestEmail = InvoiceEmail::create([
-                'accountid' => $currentAccountId,
-                'invoiceid' => $invoice->invoiceid,
-                'clientid' => $invoice->clientid,
-                'from_email' => $fromEmail,
-                'to_email' => $toEmail,
-                'subject' => trim((string) ($invoice->invoice_title ?? '')) !== ''
-                    ? ($templateSubject ?? trim((string) $invoice->invoice_title))
-                    : ('Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number)),
-                'body' => $templateBody ?? $defaultBody,
-                'attachment_type' => $defaultType,
-                'attachment_path' => $initialAttachmentPath,
-                'status' => 'draft',
-                'created_by' => $currentUserId,
-            ]);
         }
 
         $prefillSubject = $latestEmail?->subject;
         if ($prefillSubject === null || trim((string) $prefillSubject) === '') {
             $prefillSubject = trim((string) ($invoice->invoice_title ?? '')) !== ''
-                ? ($templateSubject ?? trim((string) $invoice->invoice_title))
+                ? ($channelTemplateSubject ?? $templateSubject ?? trim((string) $invoice->invoice_title))
                 : ('Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number));
         }
 
         $prefillBody = $latestEmail?->body;
         if ($prefillBody === null || trim((string) $prefillBody) === '') {
-            $prefillBody = $templateBody ?? $defaultBody;
+            $prefillBody = $channelTemplateBody ?? $templateBody ?? $defaultBody;
         }
+        $prefillBody = $this->sanitizeComposedMessageBody((string) $prefillBody);
 
         $prefillAttachmentTypes = [];
         if (!empty($latestEmail?->attachment_type)) {
@@ -1660,6 +1965,21 @@ class InvoicesController extends Controller
             $prefillAttachmentTypes = [$defaultType];
         }
         $prefillAttachmentType = $prefillAttachmentTypes[0] ?? $defaultType;
+        if (!in_array($prefillAttachmentType, ['pi', 'ti'], true)) {
+            $prefillAttachmentType = $defaultType;
+        }
+
+        $prefillChannel = (string) ($latestEmail?->channel ?? 'email');
+        if (!in_array($prefillChannel, ['email', 'whatsapp', 'sms'], true)) {
+            $prefillChannel = 'email';
+        }
+        $prefillPhone = trim((string) (
+            $invoice->client?->billingDetail?->billing_phone
+            ?? $latestEmail?->phone_number
+            ?? $invoice->client?->whatsapp_number
+            ?? $invoice->client?->phone
+            ?? ''
+        ));
 
         return view('invoices.email-compose', [
             'title' => 'Compose Invoice Email',
@@ -1673,6 +1993,8 @@ class InvoicesController extends Controller
             'prefillBody' => $prefillBody,
             'prefillAttachmentTypes' => $prefillAttachmentTypes,
             'prefillAttachmentType' => $prefillAttachmentType,
+            'prefillChannel' => $prefillChannel,
+            'prefillPhone' => $prefillPhone,
             'emailTemplatesByType' => $emailTemplatesByType,
             'allTemplates' => $allTemplates,
             'fallbackTemplatesByType' => $fallbackTemplatesByType,
@@ -1693,7 +2015,6 @@ class InvoicesController extends Controller
 
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
-        $settings = $this->getAccountSettingsMap($accountid);
         $forcedFromEmail = (string) ($accountBillingDetail?->billing_from_email ?? '');
         $forcedToEmail = (string) (
             $invoice->client?->billingDetail?->billing_email
@@ -1701,47 +2022,83 @@ class InvoicesController extends Controller
             ?? ''
         );
 
-        if ($forcedFromEmail === '') {
-            return back()->withErrors(['from_email' => 'Set Billing From Email in Account Billing Details first.'])->withInput();
-        }
-        if ($forcedToEmail === '') {
-            return back()->withErrors(['to_email' => 'Set Client Billing Email first.'])->withInput();
-        }
-
         $validated = $request->validate([
-            'invoice_emailid' => 'required|exists:invoice_emails,invoice_emailid',
+            'invoice_emailid' => 'nullable|exists:invoice_emails,invoice_emailid',
             'action' => 'nullable|in:save,send',
             'channel' => 'required|in:email,whatsapp,sms',
             'phone' => 'nullable|string|max:20',
             'subject' => 'nullable|string|max:255',
             'body' => 'nullable|string',
-            'attachment_type' => 'required|in:pi,ti,dsc',
+            'attachment_type' => 'required|in:pi,ti',
             'custom_attachment' => 'nullable|file|max:10240',
         ]);
-
-        $user = auth()->user();
-        $currentAccountId = $invoice->accountid ?? ($user?->accountid ?? 'ACC0000001');
-        $emailDraft = InvoiceEmail::query()
-            ->where('invoice_emailid', $validated['invoice_emailid'])
-            ->where('invoiceid', $invoice->invoiceid)
-            ->where('accountid', $currentAccountId)
-            ->firstOrFail();
 
         $selectedType = (string) ($validated['attachment_type'] ?? 'pi');
         $selectedTypes = [$selectedType];
         $channel = $validated['channel'] ?? 'email';
-        $phone = $validated['phone'] ?? ($invoice->client->phone ?? '');
+        if ($channel === 'email') {
+            if ($forcedFromEmail === '') {
+                return back()->withErrors(['from_email' => 'Set Billing From Email in Account Billing Details first.'])->withInput();
+            }
+            if ($forcedToEmail === '') {
+                return back()->withErrors(['to_email' => 'Set Client Billing Email first.'])->withInput();
+            }
+        }
+        $user = auth()->user();
+        $currentAccountId = $invoice->accountid ?? ($user?->accountid ?? 'ACC0000001');
+        $requestedDraftId = trim((string) ($validated['invoice_emailid'] ?? ''));
+        $seedDraft = null;
+        if ($requestedDraftId !== '') {
+            $seedDraft = InvoiceEmail::query()
+                ->where('invoice_emailid', $requestedDraftId)
+                ->where('invoiceid', $invoice->invoiceid)
+                ->where('accountid', $currentAccountId)
+                ->first();
+        }
+
+        // Keep a dedicated draft for each invoice + document type + channel.
+        // This prevents cross-channel overwrites and supports up to 6 rows (pi/ti x 3 channels).
+        $emailDraft = InvoiceEmail::query()
+            ->where('invoiceid', $invoice->invoiceid)
+            ->where('accountid', $currentAccountId)
+            ->where('attachment_type', $selectedType)
+            ->where('channel', $channel)
+            ->first();
+
+        if (!$emailDraft) {
+            $emailDraft = InvoiceEmail::create([
+                'accountid' => $currentAccountId,
+                'invoiceid' => $invoice->invoiceid,
+                'clientid' => $invoice->clientid,
+                'from_email' => $forcedFromEmail,
+                'to_email' => $forcedToEmail,
+                'subject' => $channel === 'email' ? ($seedDraft?->subject ?? null) : null,
+                'body' => $seedDraft?->body ?? null,
+                'attachment_type' => $selectedType,
+                'channel' => $channel,
+                'status' => 'draft',
+                'created_by' => $user?->userid ?? $user?->id,
+            ]);
+        }
+
+        $phone = trim((string) (
+            $validated['phone']
+            ?? $invoice->client?->billingDetail?->billing_phone
+            ?? $invoice->client?->whatsapp_number
+            ?? $invoice->client?->phone
+            ?? ''
+        ));
         $hasNewCustomFile = $request->hasFile('custom_attachment') && $request->file('custom_attachment')->isValid();
         $attachmentPaths = [];
 
         if (in_array('pi', $selectedTypes, true)) {
-            $attachmentPaths[] = route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']);
+            $attachmentPaths[] = $this->resolveCampioInvoicePdfUrl($invoice, false);
         }
         if (in_array('ti', $selectedTypes, true)) {
             if (empty(trim((string) $invoice->ti_number))) {
                 return back()->withErrors(['attachment_type' => 'Tax Invoice is not available yet.'])->withInput();
             }
-            $attachmentPaths[] = route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice']);
+            $attachmentPaths[] = $this->resolveCampioInvoicePdfUrl($invoice, true);
         }
         $customAttachmentPath = null;
         if ($hasNewCustomFile) {
@@ -1753,23 +2110,12 @@ class InvoicesController extends Controller
         $isSendAction = $action === 'send';
         $finalCustomAttachmentPath = $customAttachmentPath ?? $emailDraft->custom_attachment_path;
 
-        // For non-email channels, we might want to append links to the body if the user didn't
-        $finalBody = $validated['body'] ?? '';
+        // For non-email channels, resolve template tags.
+        $finalBody = $this->sanitizeComposedMessageBody((string) ($validated['body'] ?? ''));
         if ($channel !== 'email' && $isSendAction) {
-            $links = [];
-            if (in_array('pi', $selectedTypes))
-                $links[] = "PI: " . route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']);
-            if (in_array('ti', $selectedTypes))
-                $links[] = "TI: " . route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice']);
-            if ($finalCustomAttachmentPath)
-                $links[] = "Extra: " . $finalCustomAttachmentPath;
-
-            if (!empty($links)) {
-                $linksStr = "\n\nDownload Documents:\n" . implode("\n", $links);
-                if (strpos($finalBody, 'Download Documents:') === false) {
-                    $finalBody .= $linksStr;
-                }
-            }
+            $accountName = (string) (optional(\App\Models\Account::find($currentAccountId))->name ?? '');
+            $finalBody = $this->renderMessageTemplate((string) $finalBody, $invoice, $accountName);
+            $finalBody = $this->sanitizeComposedMessageBody($finalBody);
         }
 
         $updatePayload = [
@@ -1786,32 +2132,147 @@ class InvoicesController extends Controller
             $emailDraft->update($updatePayload + ['status' => 'draft']);
             return redirect()
                 ->route('invoices.email-compose', ['invoice' => $invoice->invoiceid, 'e' => $emailDraft->invoice_emailid])
-                ->with('success', 'Message draft saved successfully.');
+                ->with('success', 'Message draft saved successfully.')
+                ->with('preserve_channel', $channel);
         }
 
         if ($channel === 'whatsapp' || $channel === 'sms') {
-            $emailDraft->update($updatePayload + ['status' => 'sent', 'sent_at' => now()]);
+            if ($phone === '') {
+                return back()->withErrors(['phone' => 'Client phone/whatsapp number is required for this channel.'])->withInput();
+            }
+
+            // Build document links so WhatsApp message includes invoice PDFs like email attachments.
+            $documentLinks = [];
+            if (in_array('pi', $selectedTypes, true)) {
+                $documentLinks[] = [
+                    'label' => 'Proforma Invoice (PDF)',
+                    'url' => $this->resolveCampioInvoicePdfUrl($invoice, false),
+                ];
+            }
+            if (in_array('ti', $selectedTypes, true)) {
+                $documentLinks[] = [
+                    'label' => 'Tax Invoice (PDF)',
+                    'url' => $this->resolveCampioInvoicePdfUrl($invoice, true),
+                ];
+            }
+            if (!empty($finalCustomAttachmentPath)) {
+                $documentLinks[] = [
+                    'label' => 'Attachment',
+                    'url' => $finalCustomAttachmentPath,
+                ];
+            }
 
             // Clean HTML for messaging
             $plainBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $finalBody));
+            
+            // Append invoice document links only for WhatsApp (SMS should not carry attachments).
+            if ($channel === 'whatsapp' && !empty($documentLinks)) {
+                $plainBody .= "\n\nDocuments:\n";
+                foreach ($documentLinks as $doc) {
+                    $plainBody .= '- ' . $doc['label'] . ': ' . $doc['url'] . "\n";
+                }
+            }
+            $plainBody = $this->sanitizeForCampioText($plainBody);
+
+            $payload = [
+                'account_id' => $currentAccountId,
+                'campaign_name' => '',
+                'schedule_at' => now()->toIso8601String(),
+                'message' => $plainBody,
+                'records' => [
+                    $this->buildCampioRecipientRecord($invoice, $channel, $forcedToEmail, $phone),
+                ],
+                'source_url' => url()->current(),
+                'notes' => 'Invoice communication: ' . strtoupper($channel),
+            ];
+            if ($channel === 'whatsapp' && !empty($documentLinks)) {
+                $payload['media_url'] = (string) ($documentLinks[0]['url'] ?? '');
+            }
+
+            $campioResult = $this->sendViaCampio($channel, $payload);
+            if (!$campioResult['ok']) {
+                return back()->withErrors(['general' => $campioResult['message']])->withInput();
+            }
+
+            // Keep rich/original body in DB so compose view formatting is preserved.
+            $updatePayload['body'] = $finalBody;
+            $emailDraft->update($updatePayload + ['status' => 'sent', 'sent_at' => now()]);
 
             return redirect()
-                ->route('invoices.email-compose', ['invoice' => $invoice->invoiceid, 'e' => $emailDraft->invoice_emailid])
-                ->with('success', 'Message logged. Opening ' . ucfirst($channel) . '...')
-                ->with(
-                    'messaging_url',
-                    $channel === 'whatsapp'
-                    ? "https://api.whatsapp.com/send?phone=" . preg_replace('/[^0-9]/', '', $phone) . "&text=" . urlencode($plainBody)
-                    : "sms:" . preg_replace('/[^0-9+]/', '', $phone) . "?body=" . urlencode($plainBody)
-                );
+                ->route('invoices.email-compose', [
+                    'invoice' => $invoice->invoiceid,
+                    'e' => $emailDraft->invoice_emailid,
+                    'channel' => $channel,
+                    'attachment_type' => $selectedType,
+                ])
+                ->with('success', ucfirst($channel) . ' sent via Campio successfully.')
+                ->with('preserve_channel', $channel);
         }
 
-        // Log as sent (logic to actually send email will be added later by user)
+        $emailMessage = $this->sanitizeComposedMessageBody((string) ($validated['body'] ?? ''));
+        $emailAttachmentUrls = [];
+        $emailAttachmentItems = [];
+        if (in_array('pi', $selectedTypes, true)) {
+            $piUrl = $this->resolveCampioInvoicePdfUrl($invoice, false);
+            $piNumber = trim((string) ($invoice->pi_number ?: $invoice->invoice_number));
+            $emailAttachmentUrls[] = $piUrl;
+            $emailAttachmentItems[] = [
+                'url' => $piUrl,
+                'name' => 'Proforma Invoice - ' . ($piNumber !== '' ? $piNumber : $invoice->invoiceid) . '.pdf',
+            ];
+        }
+        if (in_array('ti', $selectedTypes, true)) {
+            $tiUrl = $this->resolveCampioInvoicePdfUrl($invoice, true);
+            $tiNumber = trim((string) ($invoice->ti_number ?: $invoice->invoice_number));
+            $emailAttachmentUrls[] = $tiUrl;
+            $emailAttachmentItems[] = [
+                'url' => $tiUrl,
+                'name' => 'Tax Invoice - ' . ($tiNumber !== '' ? $tiNumber : $invoice->invoiceid) . '.pdf',
+            ];
+        }
+        if (!empty($finalCustomAttachmentPath)) {
+            $customUrl = $this->buildPublicAttachmentUrl((string) $finalCustomAttachmentPath);
+            $emailAttachmentUrls[] = $customUrl;
+            $emailAttachmentItems[] = [
+                'url' => $customUrl,
+                'name' => basename((string) parse_url($customUrl, PHP_URL_PATH) ?: 'Attachment'),
+            ];
+        }
+
+        $payload = [
+            'account_id' => $currentAccountId,
+            'campaign_name' => '',
+            'schedule_at' => now()->toIso8601String(),
+            'subject' => (string) ($validated['subject'] ?? ''),
+            'message' => $emailMessage,
+            'records' => [
+                $this->buildCampioRecipientRecord($invoice, 'email', $forcedToEmail, $phone),
+            ],
+            'source_url' => url()->current(),
+            'notes' => 'Invoice communication: EMAIL',
+        ];
+        $emailAttachments = $this->buildCampioAttachments($emailAttachmentItems);
+        if (!empty($emailAttachments)) {
+            $payload['attachments'] = $emailAttachments;
+        }
+
+        $campioResult = $this->sendViaCampio('email', $payload);
+        if (!$campioResult['ok']) {
+            return back()->withErrors(['general' => $campioResult['message']])->withInput();
+        }
+
+        $updatePayload['body'] = $finalBody;
         $emailDraft->update($updatePayload + ['status' => 'sent', 'sent_at' => now()]);
 
         return redirect()
-            ->route('invoices.email-compose', ['invoice' => $invoice->invoiceid, 'e' => $emailDraft->invoice_emailid])
-            ->with('success', 'Email logged as sent (Actual email sending disabled).');
+            ->route('invoices.email-compose', [
+                'invoice' => $invoice->invoiceid,
+                'e' => $emailDraft->invoice_emailid,
+                'channel' => 'email',
+                'attachment_type' => $selectedType,
+            ])
+            ->with('success', 'Email sent via Campio successfully.')
+            ->with('preserve_channel', 'email');
     }
 
     public function downloadPdf(Request $request, string $invoice)
@@ -1833,6 +2294,17 @@ class InvoicesController extends Controller
         return response($pdfAttachment['binary'], 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $pdfAttachment['filename'] . '"',
+        ]);
+    }
+
+    public function pdfVersions(string $invoice)
+    {
+        $invoice = $this->resolveInvoiceDocument($invoice);
+
+        return response()->json([
+            'ok' => true,
+            'invoiceid' => $invoice->invoiceid,
+            'versions' => $this->listStoredInvoicePdfVersions($invoice),
         ]);
     }
 
