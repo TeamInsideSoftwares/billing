@@ -20,7 +20,7 @@ class OrdersController extends Controller
 {
     public function ordersFile(Order $order, string $type)
     {
-        $userAccountId = (string) (auth()->user()->accountid ?? '');
+        $userAccountId = $this->resolveAccountId();
         $orderAccountId = (string) ($order->accountid ?? '');
 
         if ($userAccountId !== '' && $orderAccountId !== '' && $userAccountId !== $orderAccountId) {
@@ -46,7 +46,9 @@ class OrdersController extends Controller
 
     public function selectClient(): View
     {
-        $clients = Client::orderBy('business_name')
+        $userAccountId = $this->resolveAccountId();
+        $clients = Client::where('accountid', $userAccountId)
+            ->orderBy('business_name')
             ->orderBy('contact_name')
             ->get();
 
@@ -59,10 +61,11 @@ class OrdersController extends Controller
 
     public function orders(): View
     {
+        $userAccountId = $this->resolveAccountId();
         $clientId = request('c');
         $selectedClient = null;
         
-        $query = Order::with(['client', 'items.item', 'invoices']);
+        $query = Order::where('accountid', $userAccountId)->with(['client', 'items.item', 'invoices']);
         
         // Filter by client if client_id is provided
         if ($clientId) {
@@ -73,11 +76,13 @@ class OrdersController extends Controller
         $searchTerm = request('search', '');
 
         if ($searchTerm) {
-            $query->where('order_number', 'like', '%' . $searchTerm . '%')
-                ->orWhereHas('client', function ($q) use ($searchTerm) {
-                    $q->where('business_name', 'like', '%' . $searchTerm . '%')
-                        ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
-                });
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('order_number', 'like', '%' . $searchTerm . '%')
+                    ->orWhereHas('client', function ($q) use ($searchTerm) {
+                        $q->where('business_name', 'like', '%' . $searchTerm . '%')
+                            ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+                    });
+            });
         }
         $resultCount = $query->count();
 
@@ -174,7 +179,7 @@ class OrdersController extends Controller
             'resultCount' => $resultCount,
             'selectedClient' => $selectedClient,
             'clientId' => $clientId,
-            'allClients' => Client::with('billingDetail')->orderBy('business_name')->orderBy('contact_name')->get(),
+            'allClients' => Client::where('accountid', $userAccountId)->with('billingDetail')->orderBy('business_name')->orderBy('contact_name')->get(),
         ]);
     }
 
@@ -196,8 +201,8 @@ class OrdersController extends Controller
         return view('orders.create', [
             'title' => 'Create Order',
             'subtitle' => 'Order Number: ' . $nextOrderNumber,
-            'clients' => Client::all(),
-            'services' => Service::with('costings')->orderBy('name')->get(),
+            'clients' => Client::where('accountid', $accountid)->get(),
+            'services' => Service::where('accountid', $accountid)->with('costings')->orderBy('name')->get(),
             'users' => $this->getSalesPeopleForForm($accountid),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'account' => $account,
@@ -501,8 +506,8 @@ class OrdersController extends Controller
             'title' => 'Edit Order',
             'subtitle' => 'Order Number: ' . ($order->order_number ?? ''),
             'order' => $order,
-            'clients' => Client::all(),
-            'services' => Service::with('costings')->orderBy('name')->get(),
+            'clients' => Client::where('accountid', $accountid)->get(),
+            'services' => Service::where('accountid', $accountid)->with('costings')->orderBy('name')->get(),
             'users' => $this->getSalesPeopleForForm($accountid),
             'items' => $order->items,
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),

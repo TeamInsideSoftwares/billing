@@ -15,9 +15,9 @@ class ClientsController extends Controller
 {
     public function clients(): View
     {
-        $query = Client::query()->with(['invoices.items', 'payments']);
+        $accountId = $this->resolveAccountId();
+        $query = Client::query()->where('accountid', $accountId)->with(['invoices.items', 'payments']);
         $searchTerm = request('search', '');
-        $accountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
@@ -32,7 +32,9 @@ class ClientsController extends Controller
             $invoiceTotal = $client->invoices
                 ->where('status', '!=', 'paid')
                 ->sum(fn ($invoice) => (float) ($invoice->grand_total ?? 0));
-            $paidTotal = (float) $client->payments->sum('amount');
+            $paidTotal = (float) $client->payments->sum(function ($payment) {
+                return ((float) ($payment->received_amount ?? 0)) + ((float) ($payment->tds_amount ?? 0));
+            });
             $outstanding = $invoiceTotal - $paidTotal;
             $account = Account::find($client->accountid);
             $cur = $account?->currency_code ?? 'INR';
@@ -78,7 +80,7 @@ class ClientsController extends Controller
         return view('clients.form', [
             'title' => 'Create New Client',
             'accounts' => Account::where('status', 'active')->get(),
-            'groups' => Group::all(),
+            'groups' => Group::where('accountid', $accountId)->get(),
             'billingProfiles' => $billingProfiles,
             'currencies' => $currencies,
         ]);
@@ -193,7 +195,10 @@ class ClientsController extends Controller
     public function clientsShow(Client $client): View
     {
         $client->load(['invoices', 'payments','billingDetail']);
-        $outstanding = ($client->invoices->sum('grand_total') ?? 0) - ($client->payments->sum('amount') ?? 0);
+        $paidTotal = (float) $client->payments->sum(function ($payment) {
+            return ((float) ($payment->received_amount ?? 0)) + ((float) ($payment->tds_amount ?? 0));
+        });
+        $outstanding = ($client->invoices->sum('grand_total') ?? 0) - $paidTotal;
         $allInvoices = $client->invoices->sortByDesc('created_at')->values();
 
         return view('clients.show', [
@@ -220,7 +225,7 @@ class ClientsController extends Controller
             'title' => 'Edit ' . ($client->business_name ?? $client->contact_name ?? 'Client'),
             'client' => $client,
             'accounts' => Account::where('status', 'active')->get(),
-            'groups' => Group::all(),
+            'groups' => Group::where('accountid', $accountId)->get(),
             'billingProfiles' => $billingProfiles,
             'currencies' => $currencies,
         ]);
@@ -350,5 +355,4 @@ class ClientsController extends Controller
         return redirect()->route('clients.index')->with('success', 'Client deleted successfully.');
     }
 }
-
 

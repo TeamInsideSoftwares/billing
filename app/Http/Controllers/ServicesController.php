@@ -12,9 +12,28 @@ use Illuminate\Support\Facades\DB;
 
 class ServicesController extends Controller
 {
+    private function resolveNextItemSequence(string $accountId, ?string $categoryId = null, ?string $excludeItemId = null): int
+    {
+        $query = Service::query()->where('accountid', $accountId);
+
+        if ($categoryId) {
+            $query->where('ps_catid', $categoryId);
+        } else {
+            $query->whereNull('ps_catid');
+        }
+
+        if ($excludeItemId) {
+            $query->where('itemid', '!=', $excludeItemId);
+        }
+
+        return ((int) ($query->max('sequence') ?? 0)) + 1;
+    }
+
     public function services(): View
     {
+        $userAccountId = $this->resolveAccountId();
         $query = Service::with(['category', 'costings'])
+            ->where('items.accountid', $userAccountId)
             ->join('ps_categories', 'items.ps_catid', '=', 'ps_categories.ps_catid', 'left')
             ->select('items.*', 'ps_categories.name as cat_name')
             ->orderBy('cat_name', 'asc')
@@ -35,6 +54,7 @@ class ServicesController extends Controller
         // For index display, we show the inverse relation: parents list their child add-ons.
         $addonsByParent = [];
         Service::query()
+            ->where('accountid', $userAccountId)
             ->select(['itemid', 'name', 'addons'])
             ->get()
             ->each(function (Service $candidate) use (&$addonsByParent, $visibleItemIds) {
@@ -78,7 +98,10 @@ class ServicesController extends Controller
             ];
         });
 
-        $catQuery = ProductCategory::query()->orderBy('sequence')->orderBy('name');
+        $catQuery = ProductCategory::query()
+            ->where('accountid', $userAccountId)
+            ->orderBy('sequence')
+            ->orderBy('name');
         $catSearch = request('cat_search', '');
         if ($catSearch) {
             $catQuery->where('name', 'like', '%' . $catSearch . '%');
@@ -108,7 +131,8 @@ class ServicesController extends Controller
 
     public function servicesCreate(): View
     {
-        $categories = ProductCategory::where('status', 'active')->orderBy('sequence')->orderBy('name')->get();
+        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $categories = ProductCategory::where('accountid', $accountid)->where('status', 'active')->orderBy('sequence')->orderBy('name')->get();
         $currencies = DB::table('currency')->orderBy('iso')->get(['iso', 'name']);
         $accountCurrency = auth()->check() ? (auth()->user()->account->currency_code ?? 'INR') : 'INR';
         $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
@@ -120,7 +144,8 @@ class ServicesController extends Controller
             : collect();
 
         // Available addons: all items except items being created in current request (via old input)
-        $availableAddonItems = Service::orderBy('sequence')
+        $availableAddonItems = Service::where('accountid', $accountid)
+            ->orderBy('sequence')
             ->orderBy('name')
             ->get(['itemid', 'name', 'type']);
 
@@ -201,7 +226,7 @@ class ServicesController extends Controller
                 'addons' => array_values($validated['addons'] ?? []),
                 'accountid' => $validated['accountid'],
                 'is_active' => true,
-                'sequence' => $validated['sequence'] ?? ((Service::where('accountid', $validated['accountid'])->where('ps_catid', $validated['ps_catid'] ?? null)->max('sequence') ?? 0) + 1),
+                'sequence' => $validated['sequence'] ?? $this->resolveNextItemSequence($validated['accountid'], $validated['ps_catid'] ?? null),
             ]);
 
             $costings->each(function ($costing) use ($item, $validated) {
@@ -225,6 +250,7 @@ class ServicesController extends Controller
         $service->load(['subscriptions', 'category', 'costings']);
 
         $addonItems = Service::query()
+            ->where('accountid', $service->accountid)
             ->select(['itemid', 'name', 'type', 'addons'])
             ->get()
             ->filter(function (Service $candidate) use ($service) {
@@ -243,7 +269,8 @@ class ServicesController extends Controller
 
     public function servicesEdit(Service $service): View
     {
-        $categories = ProductCategory::where('status', 'active')->orderBy('sequence')->orderBy('name')->get();
+        $accountid = $service->accountid;
+        $categories = ProductCategory::where('accountid', $accountid)->where('status', 'active')->orderBy('sequence')->orderBy('name')->get();
         $currencies = DB::table('currency')->orderBy('iso')->get(['iso', 'name']);
         $service->load(['costings']);
         $accountCurrency = auth()->check() ? (auth()->user()->account->currency_code ?? 'INR') : 'INR';
@@ -261,7 +288,7 @@ class ServicesController extends Controller
             'categories' => $categories,
             'defaultCurrency' => $accountCurrency,
             'currencies' => $currencies,
-            'availableAddonItems' => Service::where('itemid', '!=', $service->itemid)->orderBy('sequence')->orderBy('name')->get(['itemid', 'name', 'type']),
+            'availableAddonItems' => Service::where('accountid', $accountid)->where('itemid', '!=', $service->itemid)->orderBy('sequence')->orderBy('name')->get(['itemid', 'name', 'type']),
             'taxes' => $taxes,
             'account' => $account,
         ]);
@@ -319,16 +346,24 @@ class ServicesController extends Controller
                 ];
             });
 
+            $nextSequence = $validated['sequence'] ?? ($service->sequence ?? 0);
+            $targetCategoryId = $validated['ps_catid'] ?? null;
+            $categoryChanged = (string) ($service->ps_catid ?? '') !== (string) ($targetCategoryId ?? '');
+
+            if (!isset($validated['sequence']) && $categoryChanged) {
+                $nextSequence = $this->resolveNextItemSequence($service->accountid, $targetCategoryId, $service->itemid);
+            }
+
             $service->update([
                 'type' => $validated['type'],
                 'sync' => $validated['sync'],
                 'user_wise' => $validated['user_wise'],
                 'name' => $validated['name'],
-                'ps_catid' => $validated['ps_catid'] ?? null,
+                'ps_catid' => $targetCategoryId,
                 'description' => $validated['description'] ?? null,
                 'addons' => array_values($validated['addons'] ?? []),
                 'is_active' => true,
-                'sequence' => $validated['sequence'] ?? ($service->sequence ?? 0),
+                'sequence' => $nextSequence,
             ]);
 
             $service->costings()->delete();
@@ -422,7 +457,7 @@ class ServicesController extends Controller
                     $item = Service::where('itemid', $validated['itemid'])->firstOrFail();
                     $item->update($itemData);
                 } else {
-                    $itemData['sequence'] = (Service::where('accountid', $userAccountId)->max('sequence') ?? 0) + 1;
+                    $itemData['sequence'] = $this->resolveNextItemSequence($userAccountId, $validated['ps_catid'] ?? null);
                     $item = Service::create($itemData);
                 }
 

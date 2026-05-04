@@ -25,7 +25,7 @@
                 </tr>
             </thead>
             <tbody>
-            @foreach ($subscriptions as $subscription)
+            @forelse ($subscriptions as $subscription)
                 <tr>
                     <td>
                         <strong>{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $subscription['client']) : $subscription['client'] !!}</strong>
@@ -51,7 +51,15 @@
                         </form>
                     </td>
                 </tr>
-            @endforeach
+            @empty
+                <tr>
+                    <td colspan="4" class="no-records-cell">
+                        <i class="fas fa-sync empty-state-icon"></i>
+                        <p class="no-empty-state-text">No subscriptions found</p>
+                        <p class="small-text">Set up recurring billing by adding your first subscription.</p>
+                    </td>
+                </tr>
+            @endforelse
             </tbody>
         </table>
     </section>

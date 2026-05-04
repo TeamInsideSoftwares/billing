@@ -3,7 +3,7 @@
     $selectedInvoiceClient = $clients->firstWhere('clientid', request('c', request('clientid')));
     $selectedClientCurrency = optional($selectedInvoiceClient)->currency ?? 'INR';
     $selectedClientName = $selectedInvoiceClient ? ($selectedInvoiceClient->business_name ?? $selectedInvoiceClient->contact_name ?? 'Unknown Client') : 'No Client Selected';
-    $selectedClientEmail = $selectedInvoiceClient->email ?? '';
+    $selectedClientEmail = optional($selectedInvoiceClient)->email ?? '';
     $invoiceClientState = $normalizeTaxState(optional($selectedInvoiceClient)->state ?? '');
     $invoiceAccountState = $normalizeTaxState(optional($account)->state ?? '');
     $sameStateGstForInvoice = $invoiceClientState !== '' && $invoiceAccountState !== '' && $invoiceClientState === $invoiceAccountState;
@@ -38,12 +38,12 @@
         </div>
     </div>
 
-    <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
-    <input type="hidden" name="invoice_for" value="{{ request('invoice_for') }}">
+    <input type="hidden" name="clientid" value="{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}">
+    <input type="hidden" name="invoice_for" value="{{ request('invoice_for', $invoice?->invoice_for ?? '') }}">
     <input type="hidden" name="orderid" value="{{ request('o', request('orderid', '')) === '0' ? '' : request('o', request('orderid', '')) }}">
     <input type="hidden" name="invoiceid" id="step4_invoiceid" value="{{ request('d', '') }}">
     <input type="hidden" name="renewed_item_ids" id="step4_renewed_item_ids" value="">
-    <input type="hidden" name="invoice_number" id="step4_invoice_number" value="{{ $invoice?->pi_number ?? $nextInvoiceNumber }}">
+    <input type="hidden" name="invoice_number" id="step4_invoice_number" value="{{ $isTaxInvoiceStep4 ? ($invoice?->ti_number ?: ($nextTaxInvoiceNumber ?? $nextInvoiceNumber)) : ($invoice?->pi_number ?? $nextInvoiceNumber) }}">
     <input type="hidden" name="issue_date" id="step4_issue_date" value="{{ date('Y-m-d') }}">
     <input type="hidden" name="due_date" id="step4_due_date" value="{{ date('Y-m-d', strtotime('+7 days')) }}">
     <input type="hidden" name="items_data" id="step4_items_data" value="">
@@ -54,7 +54,12 @@
         <div class="col-12 col-md-3" style="min-width: 0;">
             <div class="panel-card" style="padding: 0.85rem; border: 1px solid #e5e7eb; background: #fff; position: relative; height: 100%; overflow: hidden;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e5e7eb;">
-                    <h5 style="margin: 0; font-size: 0.9rem; color: #111827;">Terms & Conditions</h5>
+                    <div style="display: flex; align-items: center; gap: 0.45rem;">
+                        <h5 style="margin: 0; font-size: 0.9rem; color: #111827;">{{ $isTaxInvoiceStep4 ? 'Tax T&C' : 'Proforma T&C' }}</h5>
+                        {{-- <span id="tcTypeBadge" style="font-size: 0.68rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">
+                            {{ $isTaxInvoiceStep4 ? 'Tax T&C' : 'Proforma T&C' }}
+                        </span> --}}
+                    </div>
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <button type="button" id="btnApplyTC" class="primary-button" style="padding: 0.28rem 0.65rem; font-size: 0.72rem; display: none;">Apply</button>
                         <button type="button" id="btnAddTC" class="text-link" style="font-size: 0.75rem; font-weight: 600;">+ Add</button>
@@ -85,7 +90,10 @@
                     </div>
                 </div>
                 <div id="termsList" style="padding-right: 0.2rem;">
-                    @foreach($billingTerms as $term)
+                    @php
+                        $initialTermsForStep4 = $isTaxInvoiceStep4 ? ($billingTerms ?? collect()) : ($proformaTerms ?? collect());
+                    @endphp
+                    @foreach($initialTermsForStep4 as $term)
                     <div style="margin-bottom: 0.55rem; padding: 0; width: 100%; max-width: 100%; box-sizing: border-box;" class="term-item-row">
                         <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.45rem; cursor: pointer; margin-bottom: 0.2rem; width: 100%; max-width: 100%; box-sizing: border-box;">
                             <input type="checkbox" class="term-checkbox" data-tc-id="{{ $term->tc_id }}" data-is-default="{{ (int) ($term->is_default ?? 0) }}" data-content="{{ $term->content }}" value="{{ $term->content }}" {{ !empty($term->is_default) ? 'checked' : '' }} style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
@@ -129,7 +137,7 @@
                         </button>
                     </div>
                 </div>
-                <div id="invoicePreviewContainer" style="padding: 1rem; background: #f5f5f5; max-height: 620px; overflow-y: auto;">
+                <div id="invoicePreviewContainer" style="padding: 1rem; background: #f5f5f5;">
                     <div id="previewContent" style="background: white; padding: 0; width: 100%; min-height: 640px; border: 1px solid #dddddd; border-radius: 8px; overflow: hidden;">
                         <iframe
                             id="invoicePdfPreviewFrame"
@@ -152,8 +160,8 @@
 
 <script>
 (function() {
-    const clientId = "{{ request('c', request('clientid')) }}";
-    const invoiceFor = "{{ request('invoice_for') }}";
+    const clientId = "{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}";
+    const invoiceFor = "{{ request('invoice_for', $invoice?->invoice_for ?? '') }}";
     const orderId = "{{ request('o', request('orderid', '')) }}";
     const draftId = "{{ request('d', '') }}";
     const isTaxInvoice = @json($isTaxInvoiceStep4);
@@ -179,6 +187,7 @@
     const itemsDataInput = document.getElementById('step4_items_data');
     const invoiceNumberInput = document.getElementById('step4_invoice_number');
     const invoiceidInput = document.getElementById('step4_invoiceid');
+    const tcTypeBadge = document.getElementById('tcTypeBadge');
     const currencyCodeInput = document.getElementById('step4_currency_code');
     const sameStateGstForInvoice = @json($sameStateGstForInvoice);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -237,14 +246,19 @@
     let invoiceItems = [];
     let draftInvoiceTitle = '';
     let draftInvoiceNumber = invoiceNumberInput.value || '{{ $invoice?->pi_number ?? $nextInvoiceNumber }}';
-    let draftPiNumber = '';
-    let draftTiNumber = '';
+    let draftPiNumber = "{{ $invoice?->pi_number ?? '' }}";
+    let draftTiNumber = "{{ $invoice?->ti_number ?? '' }}";
     let draftIssueDate = '';
     let draftDueDate = '';
     let draftNotes = '';
     let draftPoNumber = '';
     let draftPoDate = '';
     let appliedTerms = [];
+    let currentTermType = isTaxInvoice ? 'billing' : 'proforma';
+    const termsByType = {
+        proforma: @json(($proformaTerms ?? collect())->map(fn ($term) => ['id' => $term->tc_id, 'content' => $term->content, 'is_default' => (int) ($term->is_default ?? 0)])->values()),
+        billing: @json(($billingTerms ?? collect())->map(fn ($term) => ['id' => $term->tc_id, 'content' => $term->content, 'is_default' => (int) ($term->is_default ?? 0)])->values()),
+    };
     const defaultTerms = Array.from(document.querySelectorAll('.term-checkbox'))
         .filter(cb => cb.dataset.isDefault === '1')
         .map(cb => cb.value.trim())
@@ -252,11 +266,70 @@
     const fallbackPiNumber = "{{ $nextInvoiceNumber }}";
     const fallbackTiNumber = "{{ $nextTaxInvoiceNumber ?? $nextInvoiceNumber }}";
 
+    function getDefaultTermsForType(type) {
+        return (termsByType[type] || [])
+            .filter(t => Number(t.is_default || 0) === 1)
+            .map(t => String(t.content || '').trim())
+            .filter(Boolean);
+    }
+
+    function renderTermsList(type, selectedTerms = null) {
+        if (!termsList) return;
+        const terms = termsByType[type] || [];
+        const defaults = getDefaultTermsForType(type);
+        const chosen = Array.isArray(selectedTerms) ? selectedTerms : defaults;
+        termsList.innerHTML = '';
+        terms.forEach((term) => {
+            const safeContent = String(term.content || '').trim();
+            if (!safeContent) return;
+            const checked = chosen.some(t => String(t).trim() === safeContent);
+            const row = document.createElement('div');
+            row.className = 'term-item-row';
+            row.style.marginBottom = '0.55rem';
+            row.style.padding = '0';
+            row.style.width = '100%';
+            row.style.maxWidth = '100%';
+            row.style.boxSizing = 'border-box';
+            row.innerHTML = `
+                <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.45rem; cursor: pointer; margin-bottom: 0.2rem; width: 100%; max-width: 100%; box-sizing: border-box;">
+                    <input type="checkbox" class="term-checkbox" data-tc-id="${term.id}" data-is-default="${Number(term.is_default || 0)}" data-content="${safeContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')}" value="${safeContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')}" ${checked ? 'checked' : ''} style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
+                    <div style="min-width: 0; width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">
+                        <p style="margin: 0; font-size: 0.78rem; color: #4b5563; line-height: 1.45; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">${safeContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+                    </div>
+                </label>
+            `;
+            termsList.appendChild(row);
+        });
+        const anyChecked = Array.from(document.querySelectorAll('.term-checkbox')).some(cb => cb.checked);
+        if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
+    }
+
+    function syncTermsTypeWithInvoiceStage() {
+        const nextType = (draftTiNumber || isTaxInvoice) ? 'billing' : 'proforma';
+        if (nextType === currentTermType) {
+            updateTcTypeBadge();
+            return;
+        }
+        currentTermType = nextType;
+        renderTermsList(currentTermType, getDefaultTermsForType(currentTermType));
+        updateTcTypeBadge();
+        updateInvoicePreview();
+    }
+
+    function updateTcTypeBadge() {
+        if (!tcTypeBadge) return;
+        const isBillingType = currentTermType === 'billing';
+        tcTypeBadge.textContent = isBillingType ? 'Tax T&C' : 'Proforma T&C';
+        tcTypeBadge.style.background = isBillingType ? '#ecfeff' : '#eff6ff';
+        tcTypeBadge.style.color = isBillingType ? '#155e75' : '#1d4ed8';
+        tcTypeBadge.style.borderColor = isBillingType ? '#a5f3fc' : '#bfdbfe';
+    }
+
     function getHeaderDocumentNumber() {
         if (draftTiNumber) {
             return draftTiNumber;
         }
-        if (isTaxInvoice) {
+        if (draftTiNumber || isTaxInvoice) {
             return draftTiNumber || fallbackTiNumber;
         }
         return draftPiNumber || draftInvoiceNumber || invoiceNumberInput.value || fallbackPiNumber;
@@ -315,7 +388,7 @@
                     invoiceItems = data.draft.items;
                     itemsDataInput.value = JSON.stringify(invoiceItems);
                 }
-                
+
                 draftInvoiceTitle = data.draft.invoice_title || '';
                 draftInvoiceNumber = data.draft.invoice_number || draftInvoiceNumber;
                 draftPiNumber = data.draft.pi_number || '';
@@ -323,21 +396,23 @@
                 draftIssueDate = data.draft.issue_date || '';
                 draftDueDate = data.draft.due_date || '';
                 draftNotes = data.draft.notes || '';
-                
+
                 if (data.draft.issue_date) document.getElementById('step4_issue_date').value = data.draft.issue_date;
                 if (data.draft.due_date) document.getElementById('step4_due_date').value = data.draft.due_date;
                 if (data.draft.notes) document.getElementById('step4_notes').value = data.draft.notes;
                 if (data.draft.currency_code) {
                     currencyCodeInput.value = data.draft.currency_code;
                 }
-                
+
                 draftPoNumber = data.draft.po_number || '';
                 draftPoDate = data.draft.po_date || '';
+                syncTermsTypeWithInvoiceStage();
 
                 const checkboxes = document.querySelectorAll('.term-checkbox');
                 const draftTerms = Array.isArray(data.draft.terms) ? data.draft.terms : [];
                 const hasDraftTerms = draftTerms.length > 0;
-                appliedTerms = hasDraftTerms ? draftTerms : defaultTerms;
+                const currentDefaults = getDefaultTermsForType(currentTermType);
+                appliedTerms = hasDraftTerms ? draftTerms : currentDefaults;
                 checkboxes.forEach(cb => {
                     const val = cb.value.trim();
                     cb.checked = appliedTerms.some(t => String(t).trim() === val);
@@ -348,18 +423,20 @@
                 invoiceNumberInput.value = draftInvoiceNumber;
                 invoiceidInput.value = data.draft.invoiceid || '';
                 if (btnApplyTC && data.draft.invoiceid) btnApplyTC.style.display = 'inline-block';
-                
+
                 updateHeaderNumberBadge();
-                
+
                 updateDownloadButtons(data.draft.invoiceid, data.draft.invoice_number);
-                
+
                 updateTotals();
                 updateInvoicePreview();
             } else {
                 console.log('No draft found');
+                syncTermsTypeWithInvoiceStage();
                 const checkboxes = document.querySelectorAll('.term-checkbox');
+                const currentDefaults = getDefaultTermsForType(currentTermType);
                 checkboxes.forEach(cb => {
-                    cb.checked = cb.dataset.isDefault === '1';
+                    cb.checked = currentDefaults.some(t => t === cb.value.trim());
                 });
                 const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
                 if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
@@ -369,9 +446,11 @@
         })
         .catch(error => {
             console.error('Failed to load draft items:', error);
+            syncTermsTypeWithInvoiceStage();
             const checkboxes = document.querySelectorAll('.term-checkbox');
+            const currentDefaults = getDefaultTermsForType(currentTermType);
             checkboxes.forEach(cb => {
-                cb.checked = cb.dataset.isDefault === '1';
+                cb.checked = currentDefaults.some(t => t === cb.value.trim());
             });
             const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
             if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
@@ -457,7 +536,7 @@
             return;
         }
 
-        const type = draftTiNumber ? 'tax_invoice' : 'pi';
+        const type = (draftTiNumber || isTaxInvoice) ? 'tax_invoice' : 'pi';
         const base = "{{ url('invoices') }}/" + encodeURIComponent(invoiceid) + "/pdf";
         previewFrame.src = `${base}?type=${type}&preview=1&_t=${Date.now()}`;
     }
@@ -555,7 +634,7 @@
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                 },
-                body: JSON.stringify({ title: '', content }),
+                body: JSON.stringify({ content, type: currentTermType }),
             })
                 .then(response => response.json().then(data => ({ ok: response.ok, data })))
                 .then(({ ok, data }) => {
@@ -564,6 +643,16 @@
                     }
 
                     const term = data.term;
+                    const savedType = (term && term.type) ? term.type : currentTermType;
+                    if (!termsByType[savedType]) {
+                        termsByType[savedType] = [];
+                    }
+                    termsByType[savedType].unshift({
+                        id: term.id,
+                        content: term.content,
+                        is_default: 0,
+                    });
+                    currentTermType = savedType;
                     const row = document.createElement('div');
                     row.style.marginBottom = '0.55rem';
                     row.className = 'term-item-row';
@@ -608,7 +697,7 @@
 
     // Edit button
     document.getElementById('btnEditPreview')?.addEventListener('click', function() {
-        const currentDraftId = invoiceidInput.value || draftId;
+        const currentInvoiceId = invoiceidInput.value || draftId;
         const clientToken = encodeURIComponent(clientId);
         const editStep = invoiceFor === 'without_orders' ? 2 : 3;
         let editUrl = "{{ route('invoices.create') }}?step=" + editStep + "&invoice_for=" + encodeURIComponent(invoiceFor) + "&c=" + clientToken;
@@ -619,8 +708,8 @@
         if (isTaxInvoice) {
             editUrl += "&tax_invoice=1";
         }
-        if (currentDraftId) {
-            editUrl += "&d=" + encodeURIComponent(currentDraftId);
+        if (currentInvoiceId) {
+            editUrl += "&d=" + encodeURIComponent(currentInvoiceId);
         }
         window.location.href = editUrl;
     });
@@ -647,7 +736,7 @@
     // Create Tax Invoice function
 	    function createTaxInvoice() {
 	        if (!invoiceidInput.value) {
-	            alert('Please create PI first.');
+	            alert('Please create invoice first.');
 	            return;
 	        }
 
@@ -681,6 +770,7 @@
 		        .then(({ ok, data }) => {
 		            if (ok && data && data.success) {
 		                draftTiNumber = data.ti_number;
+                        syncTermsTypeWithInvoiceStage();
 		                updateHeaderNumberBadge();
 		                syncTaxInvoiceButtons(invoiceidInput.value);
 		                updateInvoicePreview();

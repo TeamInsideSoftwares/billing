@@ -82,7 +82,7 @@
         $groupedServices = collect($services)->groupBy('category_name');
     @endphp
 
-    @foreach ($groupedServices as $categoryName => $servicesInCategory)
+    @forelse ($groupedServices as $categoryName => $servicesInCategory)
         <details class="category-accordion" open>
             <summary class="accordion-header">
                 <span class="category-title">{{ $categoryName }}</span>
@@ -164,7 +164,15 @@
                 </table>
             </div>
         </details>
-    @endforeach
+    @empty
+        <div class="panel-card no-padding">
+            <div class="no-records-cell">
+                <i class="fas fa-boxes empty-state-icon"></i>
+                <p class="no-empty-state-text">No items found</p>
+                <p class="small-text">Get started by adding your first product or service.</p>
+            </div>
+        </div>
+    @endforelse
 </div>
 
 <script>

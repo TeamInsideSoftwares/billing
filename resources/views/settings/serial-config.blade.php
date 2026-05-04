@@ -361,18 +361,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle part toggle checkboxes
         const allPartToggles = document.querySelectorAll('.part-toggle');
         allPartToggles.forEach(function(checkbox) {
-            // Initialize on page load - disable inputs if checkbox is unchecked
-            const part = checkbox.dataset.part;
-            const form = checkbox.closest('form');
-            if (form) {
-                const row = form.querySelector('.serial-part-row[data-part="' + part + '"]');
-                if (row && !checkbox.checked) {
-                    const inputs = row.querySelectorAll('input, select');
-                    inputs.forEach(function(input) {
-                        input.disabled = true;
-                    });
-                }
-            }
+            // Initialize on page load
+            togglePartRow(checkbox);
 
             // Update on change
             checkbox.addEventListener('change', function() {

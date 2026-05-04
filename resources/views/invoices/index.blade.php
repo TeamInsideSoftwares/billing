@@ -183,13 +183,9 @@
                                             <i class="fas fa-file-pdf"></i>
                                         </a>
 
-                                        <a href="{{ route('invoices.create', [
-                                            'step' => ($invoice->invoice_for ?? 'orders') === 'without_orders' ? 2 : 3,
-                                            'invoice_for' => $invoice->invoice_for ?? 'orders',
+                                        <a href="{{ route('invoices.edit', [
+                                            'invoice' => $documentId,
                                             'c' => $selectedClientId ?: $invoice->clientid,
-                                            'd' => $invoice->invoiceid,
-                                            'o' => ($invoice->invoice_for ?? '') === 'orders' ? ($invoice->orderid ?? null) : null,
-                                            'tax_invoice' => !empty($invoice->ti_number) ? 1 : null,
                                         ]) }}" class="icon-action-btn edit" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>

@@ -1,34 +1,37 @@
 @extends('layouts.app')
 
-@section('content')
-    <section class="section-bar">
-        <div></div>
-        <a href="{{ route('payments.create') }}" class="primary-button">Record Payment</a>
-    </section>
+@section('header_actions')
+    <a href="{{ route('payments.create') }}" class="primary-button">Record Payment</a>
+@endsection
 
+@section('content')
     <section class="panel-card">
         <table class="data-table">
             <thead>
                 <tr>
                     <th>Payment</th>
-                    <th>Amount</th>
-                    <th>Status</th>
+                    <th>Received</th>
+                    <th>TDS</th>
+                    <th>Total Settled</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
-            @foreach ($payments as $payment)
+            @forelse ($payments as $payment)
                 <tr>
                     <td>
                         <strong>{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>' . $searchTerm . '</mark>', $payment['number']) : $payment['number'] !!}</strong>
                         <span>{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $payment['client']) : $payment['client'] !!}</span>
+                        <span>{{ $payment['date'] }} via {{ $payment['method'] }}@if($payment['invoice']) · {{ $payment['invoice'] }}@endif</span>
                     </td>
                     <td>
-                        <strong>{{ $payment['amount'] }}</strong>
-                        <span>{{ $payment['date'] }} via {{ $payment['method'] }}</span>
+                        <strong>{{ $payment['currency'] }} {{ number_format($payment['received_amount'], 0) }}</strong>
                     </td>
                     <td>
-                        <span class="status-pill {{ strtolower($payment['status']) }}">{{ $payment['status'] }}</span>
+                        <strong>{{ $payment['currency'] }} {{ number_format($payment['tds_amount'], 0) }}</strong>
+                    </td>
+                    <td>
+                        <strong>{{ $payment['currency'] }} {{ number_format($payment['total_settled'], 0) }}</strong>
                     </td>
                     <td class="table-actions">
                         <a href="{{ route('payments.show', $payment['record_id']) }}" class="icon-action-btn view" title="View">
@@ -46,7 +49,15 @@
                         </form>
                     </td>
                 </tr>
-            @endforeach
+            @empty
+                <tr>
+                    <td colspan="5" class="no-records-cell">
+                        <i class="fas fa-money-bill-wave empty-state-icon"></i>
+                        <p class="no-empty-state-text">No payments recorded</p>
+                        <p class="small-text">Record your first payment to track your collections.</p>
+                    </td>
+                </tr>
+            @endforelse
             </tbody>
         </table>
     </section>

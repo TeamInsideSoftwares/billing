@@ -12,17 +12,20 @@ class SubscriptionsController extends Controller
 {
     public function subscriptions(): View
     {
-        $query = Subscription::with(['client', 'item']);
+        $userAccountId = $this->resolveAccountId();
+        $query = Subscription::where('accountid', $userAccountId)->with(['client', 'item']);
         $searchTerm = request('search', '');
 
         if ($searchTerm) {
-            $query->whereHas('client', function ($q) use ($searchTerm) {
-                $q->where('business_name', 'like', '%' . $searchTerm . '%')
-                    ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
-            })
+            $query->where(function ($q) use ($searchTerm) {
+                $q->whereHas('client', function ($q) use ($searchTerm) {
+                    $q->where('business_name', 'like', '%' . $searchTerm . '%')
+                        ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+                })
                 ->orWhereHas('item', function ($q) use ($searchTerm) {
                     $q->where('name', 'like', '%' . $searchTerm . '%');
                 });
+            });
         }
         $resultCount = $query->count();
 
@@ -50,11 +53,12 @@ class SubscriptionsController extends Controller
 
     public function subscriptionsCreate(): View
     {
+        $userAccountId = $this->resolveAccountId();
         return view('subscriptions.form', [
             'title' => 'New Subscription',
             'subtitle' => 'Recurring Revenue',
-            'clients' => Client::all(),
-            'services' => Service::where('billing_type', 'recurring')->orderBy('sequence')->orderBy('name')->get(),
+            'clients' => Client::where('accountid', $userAccountId)->get(),
+            'services' => Service::where('accountid', $userAccountId)->where('billing_type', 'recurring')->orderBy('sequence')->orderBy('name')->get(),
         ]);
     }
 
@@ -70,7 +74,7 @@ class SubscriptionsController extends Controller
             'status' => 'required|in:active,cancelled,expired',
         ]);
 
-        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $userAccountId = $this->resolveAccountId();
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
 
         Subscription::create($validated);
@@ -80,6 +84,9 @@ class SubscriptionsController extends Controller
 
     public function subscriptionsShow(Subscription $subscription): View
     {
+        if ($subscription->accountid !== $this->resolveAccountId()) {
+            abort(403);
+        }
         $subscription->load('client', 'item');
         return view('subscriptions.show', [
             'title' => $subscription->item->name ?? 'Subscription',
@@ -90,17 +97,23 @@ class SubscriptionsController extends Controller
 
     public function subscriptionsEdit(Subscription $subscription): View
     {
+        if ($subscription->accountid !== $this->resolveAccountId()) {
+            abort(403);
+        }
         return view('subscriptions.form', [
             'title' => 'Edit Subscription',
             'subtitle' => 'Update subscription details',
             'subscription' => $subscription,
-            'clients' => Client::all(),
-            'services' => Service::where('billing_type', 'recurring')->orderBy('sequence')->orderBy('name')->get(),
+            'clients' => Client::where('accountid', $subscription->accountid)->get(),
+            'services' => Service::where('accountid', $subscription->accountid)->where('billing_type', 'recurring')->orderBy('sequence')->orderBy('name')->get(),
         ]);
     }
 
     public function subscriptionsUpdate(Request $request, Subscription $subscription)
     {
+        if ($subscription->accountid !== $this->resolveAccountId()) {
+            abort(403);
+        }
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
             'itemid' => 'required|exists:items,itemid',
@@ -117,6 +130,9 @@ class SubscriptionsController extends Controller
 
     public function subscriptionsDestroy(Subscription $subscription)
     {
+        if ($subscription->accountid !== $this->resolveAccountId()) {
+            abort(403);
+        }
         $subscription->delete();
 
         return redirect()->route('subscriptions.index')->with('success', 'Subscription deleted successfully.');

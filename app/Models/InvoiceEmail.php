@@ -18,9 +18,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'attachment_type',
     'attachment_path',
     'custom_attachment_path',
+    'phone_number',
+    'channel',
     'status',
     'created_by',
-    'sent_at',
 ])]
 class InvoiceEmail extends Model
 {
@@ -30,13 +31,6 @@ class InvoiceEmail extends Model
     protected $primaryKey = 'invoice_emailid';
     public $incrementing = false;
     protected $keyType = 'string';
-
-    protected function casts(): array
-    {
-        return [
-            'sent_at' => 'datetime',
-        ];
-    }
 
     public function invoice(): BelongsTo
     {

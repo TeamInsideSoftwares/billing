@@ -27,7 +27,9 @@
         return ceil($taxableAmount * ((float) ($item->tax_rate ?? 0) / 100));
     });
     $invoiceGrandTotal = max(0, $itemsSubtotal - $itemsDiscountTotal + $invoiceTaxTotal);
-    $totalPaidAmount = (float) $invoice->payments->sum('amount');
+    $totalPaidAmount = (float) $invoice->payments->sum(function ($payment) {
+        return ((float) ($payment->received_amount ?? 0)) + ((float) ($payment->tds_amount ?? 0));
+    });
     $balanceDueAmount = max(0, $invoiceGrandTotal - $totalPaidAmount);
     $cgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 0) : 0;
     $sgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 0) : 0;
@@ -283,10 +285,17 @@
         <tbody>
             @foreach($invoice->payments as $payment)
             <tr class="invoice-item-row">
-                <td class="td-pad">{{ $payment->paid_at instanceof \DateTime ? $payment->paid_at->format('d M Y') : $payment->paid_at }}</td>
-                <td class="td-pad">{{ $payment->method }}</td>
-                <td class="td-pad">{{ $payment->reference ?? 'N/A' }}</td>
-                <td class="td-pad text-right"><strong>{{ number_format($payment->amount, 0) }}</strong></td>
+                <td class="td-pad">{{ optional($payment->payment_date)->format('d M Y') }}</td>
+                <td class="td-pad">{{ $payment->mode ?? '-' }}</td>
+                <td class="td-pad">
+                    {{ $payment->reference_number ?? 'N/A' }}
+                    @if((float)($payment->tds_amount ?? 0) > 0)
+                        <div class="text-muted small">TDS: {{ number_format((float)$payment->tds_amount, 0) }}</div>
+                    @endif
+                </td>
+                <td class="td-pad text-right">
+                    <strong>{{ number_format(((float)($payment->received_amount ?? 0) + (float)($payment->tds_amount ?? 0)), 0) }}</strong>
+                </td>
             </tr>
             @endforeach
         </tbody>
@@ -306,7 +315,7 @@
 <section class="panel-card mt-4">
     <div class="empty-payments">
         <p class="mb-4">No payments recorded for this invoice yet.</p>
-        <a href="{{ route('payments.create', ['invoiceid' => $invoice->invoiceid, 'clientid' => $invoice->clientid, 'amount' => $balanceDueAmount]) }}" class="primary-button">Record a payment</a>
+        <a href="{{ route('payments.create', ['i' => $invoice->invoiceid, 'c' => $invoice->clientid]) }}" class="primary-button">Record a payment</a>
     </div>
 </section>
 @endif

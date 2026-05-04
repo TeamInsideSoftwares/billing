@@ -6,7 +6,7 @@
     $selectedInvoiceClient = $clients->firstWhere('clientid', request('c', request('clientid')));
     $selectedClientCurrency = optional($selectedInvoiceClient)->currency ?? 'INR';
     $selectedClientName = $selectedInvoiceClient ? ($selectedInvoiceClient->business_name ?? $selectedInvoiceClient->contact_name ?? 'Unknown Client') : 'No Client Selected';
-    $selectedClientEmail = $selectedInvoiceClient->email ?? '';
+    $selectedClientEmail = optional($selectedInvoiceClient)->email ?? '';
     $invoiceClientState = $normalizeTaxState(optional($selectedInvoiceClient)->state ?? '');
     $invoiceAccountState = $normalizeTaxState(optional($account)->state ?? '');
     $sameStateGstForInvoice = $invoiceClientState !== '' && $invoiceAccountState !== '' && $invoiceClientState === $invoiceAccountState;
@@ -160,14 +160,10 @@
                 @else
                 <input type="hidden" id="add_item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
                 @endif
-                @if($account->have_users)
                 <div id="add_item_users_wrap" class="is-hidden">
                     <label for="add_item_users" class="field-label small">Users</label>
                     <input type="number" id="add_item_users" class="form-input" value="1" min="1" step="1">
                 </div>
-                @else
-                <input type="hidden" id="add_item_users" value="1">
-                @endif
                 <div>
                     <label for="add_item_frequency" class="field-label small">Freq</label>
                     <select id="add_item_frequency" class="form-input">
@@ -206,7 +202,7 @@
                         <th>Item</th>
                         <th>Qty</th>
                         <th>Price ({{ $selectedClientCurrency }})</th>
-                        <th id="itemsUsersHeader" class="is-hidden">Users</th>
+                        <th id="itemsUsersHeader" class="is-hidden text-center">Users</th>
                         <th>Disc %</th>
                         @if($account->allow_multi_taxation)
                         <th>Tax %</th>
@@ -243,13 +239,12 @@
 
 <script>
 (function() {
-    const clientId = "{{ request('c', request('clientid')) }}";
-    const invoiceFor = "{{ request('invoice_for') }}";
+    const clientId = "{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}";
+    const invoiceFor = "{{ request('invoice_for', $invoice?->invoice_for ?? '') }}";
     const orderId = "{{ request('o', request('orderid', '')) }}";
     const draftId = "{{ request('d', '') }}";
     const isTaxInvoice = @json($isTaxInvoiceStep3);
     const hasOrderId = orderId && orderId !== '0';
-    const accountHasUsers = @json((bool) ($account->have_users ?? false));
     const sameStateGstForInvoice = @json($sameStateGstForInvoice);
     const itemsBody = document.getElementById('itemsBody');
     const currencyCodeInput = document.getElementById('currency_code');
@@ -263,8 +258,8 @@
     const dueDateInput = document.getElementById('due_date');
     const notesInput = document.getElementById('notes');
     let currentInvoiceId = draftId || '';
-    let draftPiNumber = '';
-    let draftTiNumber = '';
+    let draftPiNumber = "{{ $invoice?->pi_number ?? '' }}";
+    let draftTiNumber = "{{ $invoice?->ti_number ?? '' }}";
     const fallbackPiNumber = "{{ $nextInvoiceNumber }}";
     const fallbackTiNumber = "{{ $nextTaxInvoiceNumber ?? $nextInvoiceNumber }}";
 
@@ -272,7 +267,7 @@
         if (draftTiNumber) {
             return draftTiNumber;
         }
-        if (isTaxInvoice) {
+        if (draftTiNumber || isTaxInvoice) {
             return draftTiNumber || fallbackTiNumber;
         }
         return draftPiNumber || fallbackPiNumber;
@@ -355,7 +350,7 @@
     }
 
     function itemSupportsUserFields(item) {
-        return accountHasUsers && Boolean(item && item.requires_user_fields);
+        return Boolean(item && item.requires_user_fields);
     }
 
     function itemHasRecurringFrequency(item) {
@@ -364,12 +359,12 @@
 
     function isAddItemUserWise() {
         const selectedOption = addItemSelect?.options[addItemSelect.selectedIndex];
-        return selectedOption?.dataset?.userWise === '1';
+        return String(selectedOption?.dataset?.userWise ?? '0') === '1';
     }
 
     function toggleAddItemUsersField() {
         if (!addItemUsersWrap || !addItemUsersInput) return;
-        const show = accountHasUsers && isAddItemUserWise();
+        const show = isAddItemUserWise();
         addItemUsersWrap.classList.toggle('is-hidden', !show);
         if (!show) addItemUsersInput.value = 1;
     }
@@ -432,8 +427,32 @@
         return `${y}-${m}-${d}`;
     }
 
+    function setDateInputValue(input, value) {
+        if (!input) return;
+        const normalized = value || '';
+        if (input.value === normalized) return;
+        input.value = normalized;
+    }
+
+    function syncAddItemEndDateFromInputs() {
+        if (!addItemEndInput) return;
+        const nextValue = calculateEndDate(
+            addItemStartInput?.value || '',
+            addItemFrequencyInput?.value || '',
+            addItemDurationInput?.value || ''
+        );
+        setDateInputValue(addItemEndInput, nextValue);
+    }
+
+    function scheduleAddItemEndDateSync() {
+        window.requestAnimationFrame(syncAddItemEndDateFromInputs);
+    }
+
     function normalizeItem(item) {
-        const requiresUserFields = accountHasUsers && Number(item?.no_of_users || 0) > 0;
+        const requiresUserFields = (
+            Boolean(item?.requires_user_fields) ||
+            Number(item?.no_of_users || 0) > 0
+        );
 
         const normalizedItem = {
             ...item,
@@ -504,7 +523,7 @@
         if (addItemUsersInput) addItemUsersInput.value = String(Math.max(1, Number(item.no_of_users || 1)));
 
         toggleAddItemUsersField();
-        if (accountHasUsers && itemSupportsUserFields(item) && addItemUsersWrap) {
+        if (itemSupportsUserFields(item) && addItemUsersWrap) {
             addItemUsersWrap.classList.remove('is-hidden');
         }
         toggleAddItemRecurringFields();
@@ -600,10 +619,15 @@
         const showDurationColumns = invoiceItems.some(itemHasRecurringFrequency);
         const showDateColumns = invoiceItems.some(itemHasRecurringFrequency);
 
-        document.getElementById('itemsUsersHeader').classList.toggle('is-hidden', !showUserColumns);
-        document.getElementById('itemsDurationHeader').classList.toggle('is-hidden', !showDurationColumns);
-        document.getElementById('itemsStartHeader').classList.toggle('is-hidden', !showDateColumns);
-        document.getElementById('itemsEndHeader').classList.toggle('is-hidden', !showDateColumns);
+        const usersHeader = document.getElementById('itemsUsersHeader');
+        const durationHeader = document.getElementById('itemsDurationHeader');
+        const startHeader = document.getElementById('itemsStartHeader');
+        const endHeader = document.getElementById('itemsEndHeader');
+
+        if (usersHeader) usersHeader.classList.toggle('is-hidden', !showUserColumns);
+        if (durationHeader) durationHeader.classList.toggle('is-hidden', !showDurationColumns);
+        if (startHeader) startHeader.classList.toggle('is-hidden', !showDateColumns);
+        if (endHeader) endHeader.classList.toggle('is-hidden', !showDateColumns);
     }
 
     function renderOrderSummary(order) {
@@ -655,9 +679,7 @@
                 draftPiNumber = data && data.draft ? (data.draft.pi_number || '') : '';
                 draftTiNumber = data && data.draft ? (data.draft.ti_number || '') : '';
                 currentInvoiceId = (data && data.draft && data.draft.invoiceid) ? data.draft.invoiceid : currentInvoiceId;
-                if (data && data.draft && data.draft.invoice_number && piNumberBadgeStep3) {
-                    piNumberBadgeStep3.textContent = data.draft.invoice_number;
-                }
+                updateStep3HeaderNumber();
                 updateStep3HeaderNumber();
 
                 if (draftItems.length > 0) {
@@ -722,7 +744,7 @@
             row.innerHTML = `
                 <td>${renderItemCell(item)}</td>
                 <td class="text-center">${Math.round(Number(item.quantity || 1))}</td>
-                <td class="text-right">${formatCurrency(item.unit_price)}</td>
+                <td class="text-center">${formatCurrency(item.unit_price)}</td>
                 <td class="text-center ${showUserColumns ? '' : 'is-hidden'}">
                     ${showUsersForRow
                         ? `${Math.max(1, Number(item.no_of_users || 1))}`
@@ -748,7 +770,7 @@
                         ? `${item.end_date || '-'}`
                         : '<span class="text-muted">-</span>'}
                 </td>
-                <td class="text-right"><strong>${formatCurrency(lineAmount)}</strong></td>
+                <td class="text-center"><strong>${formatCurrency(lineAmount)}</strong></td>
                 <td class="text-center text-nowrap">
                     <button type="button" class="edit-item-btn icon-action-btn edit" data-index="${index}" title="Edit">
                         <i class="fas fa-edit"></i>
@@ -807,21 +829,16 @@
 
     addItemFrequencyInput?.addEventListener('change', function() {
         toggleAddItemRecurringFields();
-        if (addItemEndInput) {
-            addItemEndInput.value = calculateEndDate(addItemStartInput?.value || '', addItemFrequencyInput?.value || '', addItemDurationInput?.value || '');
-        }
+        scheduleAddItemEndDateSync();
     });
 
     toggleAddItemFormBtn?.addEventListener('click', function() {
         toggleAddItemForm();
     });
 
-    [addItemStartInput, addItemDurationInput].forEach((input) => {
-        input?.addEventListener('change', function() {
-            if (addItemEndInput) {
-                addItemEndInput.value = calculateEndDate(addItemStartInput?.value || '', addItemFrequencyInput?.value || '', addItemDurationInput?.value || '');
-            }
-        });
+    [addItemStartInput, addItemDurationInput, addItemFrequencyInput].forEach((input) => {
+        input?.addEventListener('change', scheduleAddItemEndDateSync);
+        input?.addEventListener('input', scheduleAddItemEndDateSync);
     });
 
     btnAddItemStep3?.addEventListener('click', function() {
@@ -844,7 +861,7 @@
         const endDate = itemHasRecurringFrequency({ frequency })
             ? (addItemEndInput?.value || calculateEndDate(startDate, frequency, duration) || null)
             : null;
-        const requiresUserFields = accountHasUsers && isAddItemUserWise();
+        const requiresUserFields = isAddItemUserWise();
         const noOfUsers = requiresUserFields ? Math.max(1, Number(addItemUsersInput?.value || 1)) : null;
 
         const newItem = normalizeItem({
@@ -906,7 +923,7 @@
         .then(async (response) => {
             if (!response.ok) {
                 const text = await response.text();
-                throw new Error(text || 'Failed to save draft.');
+                throw new Error(text || 'Failed to update invoice.');
             }
             const contentType = response.headers.get('content-type') || '';
             if (contentType.includes('application/json')) {
@@ -915,14 +932,14 @@
                     const message =
                         json?.message ||
                         (json?.errors ? Object.values(json.errors).flat().join('\n') : '') ||
-                        'Failed to save draft.';
+                        'Failed to update invoice.';
                     throw new Error(message);
                 }
                 return json;
             }
             const text = await response.text();
             if (!response.ok) {
-                throw new Error(text || 'Failed to save draft.');
+                throw new Error(text || 'Failed to update invoice.');
             }
             return {};
         })
@@ -930,9 +947,11 @@
             if (data && data.invoiceid) {
                 currentInvoiceId = data.invoiceid;
             }
-            if (data && data.invoice_number && piNumberBadgeStep3) {
-                piNumberBadgeStep3.textContent = data.invoice_number;
+            if (data && typeof data === 'object') {
+                draftPiNumber = data.pi_number || draftPiNumber;
+                draftTiNumber = data.ti_number || draftTiNumber;
             }
+            updateStep3HeaderNumber();
             const clientToken = encodeURIComponent(clientId);
             let nextUrl = "{{ route('invoices.create') }}?step=4&invoice_for=" + encodeURIComponent(invoiceFor) + "&c=" + clientToken;
             if (hasOrderId) {
@@ -948,8 +967,8 @@
             window.location.href = nextUrl;
         })
         .catch((error) => {
-            console.error('Error saving draft:', error);
-            alert(error?.message || 'Unable to save draft right now. Please try again.');
+            console.error('Error updating invoice:', error);
+            alert(error?.message || 'Unable to update invoice right now. Please try again.');
         });
     });
 

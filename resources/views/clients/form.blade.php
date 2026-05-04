@@ -29,12 +29,12 @@
         <!-- Basic Info -->
         <div class="section-header">
             <div class="section-icon"><i class="fas fa-building"></i></div>
-            <h4 class="section-title">Business Information</h4>
+            <h4 class="section-title">Client Information</h4>
         </div>
 
         <div class="form-grid grid-cols-4">
             <div class="col-span-2">
-                <label for="business_name" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Business Name *</label>
+                <label for="business_name" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Client Business Name *</label>
                 <input type="text" id="business_name" name="business_name" value="{{ old('business_name', $client->business_name ?? '') }}" required {{ isset($client) ? 'class="input-full"' : '' }}>
                 @error('business_name') <span class="error">{{ $message }}</span> @enderror
             </div>

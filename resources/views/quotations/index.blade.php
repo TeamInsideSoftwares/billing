@@ -17,7 +17,7 @@
                 </tr>
             </thead>
             <tbody>
-            @foreach ($quotations as $quotation)
+            @forelse ($quotations as $quotation)
                 <tr>
                     <td>
                         <strong>{!! $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $quotation['number']) : $quotation['number'] !!}</strong>
@@ -43,7 +43,15 @@
                         </form>
                     </td>
                 </tr>
-            @endforeach
+            @empty
+                <tr>
+                    <td colspan="4" class="no-records-cell">
+                        <i class="fas fa-file-contract empty-state-icon"></i>
+                        <p class="no-empty-state-text">No quotations found</p>
+                        <p class="small-text">Create your first quotation to get started.</p>
+                    </td>
+                </tr>
+            @endforelse
             </tbody>
         </table>
     </section>

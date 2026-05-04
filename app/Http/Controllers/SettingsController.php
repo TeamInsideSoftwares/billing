@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\AccountBillingDetail;
 use App\Models\AccountQuotationDetail;
 use App\Models\FinancialYear;
+use App\Models\MessageTemplate;
 use App\Models\Setting;
 use App\Models\Tax;
 use App\Models\TermsCondition;
@@ -20,7 +21,8 @@ class SettingsController extends Controller
 {
     public function settings(): View
     {
-        $query = Setting::query();
+        $accountid = $this->resolveAccountId();
+        $query = Setting::where('accountid', $accountid);
         $searchTerm = request('search', '');
         if ($searchTerm) {
             $query->where('setting_key', 'like', '%' . $searchTerm . '%');
@@ -36,21 +38,27 @@ class SettingsController extends Controller
         });
 
         $accountid = $this->resolveAccountId();
-        
+
         // Optimize: Use with() to eager load relationships
         $account = Account::with(['financialYears', 'billingDetails', 'quotationDetails', 'taxes'])
             ->find($accountid);
-            
-        if (! $account) {
-            $account = Account::with(['financialYears', 'billingDetails', 'quotationDetails', 'taxes'])
-                ->find('ACC0000001');
-            if ($account) {
-                $accountid = $account->accountid;
-            }
+
+        if (!$account) {
+            // Create a default account record if it doesn't exist for the authenticated ID
+            $account = Account::create([
+                'accountid' => $accountid,
+                'name' => auth()->user()->name ?? 'My Account',
+                'email' => auth()->user()->email ?? '',
+                'currency_code' => 'INR',
+                'timezone' => 'Asia/Kolkata',
+                'status' => 'active'
+            ]);
+            // Re-load with relations
+            $account->load(['financialYears', 'billingDetails', 'quotationDetails', 'taxes']);
         }
         $hasPersistedAccount = (bool) ($account && $account->exists);
 
-        if (! $account) {
+        if (!$account) {
             $account = new Account([
                 'accountid' => $accountid,
                 'allow_multi_taxation' => false,
@@ -66,7 +74,7 @@ class SettingsController extends Controller
 
         $editingSetting = null;
         if ($editId && str_starts_with($editId, 'SET')) {
-            $editingSetting = Setting::find($editId);
+            $editingSetting = Setting::where('settingid', $editId)->where('accountid', $accountid)->first();
         }
 
         $currencies = DB::table('currency')
@@ -85,10 +93,10 @@ class SettingsController extends Controller
             : ($hasPersistedAccount ? $account->quotationDetails->first() : null);
 
         // Serial configurations from dedicated table
-        $proformaSerialConfig   = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'proforma_invoice')->first();
+        $proformaSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'proforma_invoice')->first();
         $taxInvoiceSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'tax_invoice')->first();
-        $quotationSerialConfig  = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'quotation')->first();
-        $orderSerialConfig      = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'order')->first();
+        $quotationSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'quotation')->first();
+        $orderSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'order')->first();
 
         $termsQuery = TermsCondition::query()
             ->where('accountid', $accountid)
@@ -101,8 +109,16 @@ class SettingsController extends Controller
         $quotationTerms = (clone $termsQuery)
             ->where('type', 'quotation')
             ->get();
+        $proformaTerms = (clone $termsQuery)
+            ->where('type', 'proforma')
+            ->get();
 
         $taxes = $hasPersistedAccount ? $account->taxes->sortByDesc('created_at')->values() : collect();
+        $messageTemplates = MessageTemplate::query()
+            ->where('accountid', $accountid)
+            ->orderBy('channel')
+            ->orderBy('template_type')
+            ->get();
 
         $editingTerm = null;
         if ($editId && strlen($editId) === 6 && !str_starts_with($editId, 'SET') && !str_starts_with($editId, 'ABD') && !str_starts_with($editId, 'AQD')) {
@@ -113,15 +129,6 @@ class SettingsController extends Controller
         }
 
         $suggestedKeys = [
-            'Email Settings' => [
-                'MAIL_HOST' => 'SMTP Host',
-                'MAIL_PORT' => 'SMTP Port',
-                'MAIL_USERNAME' => 'SMTP Username',
-                'MAIL_PASSWORD' => 'SMTP Password',
-                'MAIL_ENCRYPTION' => 'SMTP Encryption (tls/ssl)',
-                'MAIL_FROM_ADDRESS' => 'From Email Address',
-                'MAIL_FROM_NAME' => 'From Name',
-            ],
             'Payment Gateways' => [
                 'STRIPE_KEY' => 'Stripe Publishable Key',
                 'STRIPE_SECRET' => 'Stripe Secret Key',
@@ -159,8 +166,10 @@ class SettingsController extends Controller
             'suggestedKeys' => $suggestedKeys,
             'billingTerms' => $billingTerms,
             'quotationTerms' => $quotationTerms,
+            'proformaTerms' => $proformaTerms,
             'editingTerm' => $editingTerm,
             'taxes' => $taxes,
+            'messageTemplates' => $messageTemplates,
         ]);
     }
 
@@ -169,7 +178,7 @@ class SettingsController extends Controller
         $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
 
-        if (! $account) {
+        if (!$account) {
             return redirect()->back()->with('error', 'Profile not found.');
         }
 
@@ -240,7 +249,7 @@ class SettingsController extends Controller
         $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
 
-        if (! $account) {
+        if (!$account) {
             return redirect()->back()->with('error', 'Account not found.');
         }
 
@@ -259,23 +268,23 @@ class SettingsController extends Controller
         $accountid = $this->resolveAccountId();
 
         $validated = $request->validate([
-            'document_type'   => 'required|in:proforma_invoice,tax_invoice,quotation,order',
+            'document_type' => 'required|in:proforma_invoice,tax_invoice,quotation,order',
             'serial_configid' => 'nullable|string|size:6|exists:serial_configurations,serial_configid',
-            'prefix_show'     => 'boolean',
-            'number_show'     => 'boolean',
-            'suffix_show'     => 'boolean',
-            'prefix_type'     => 'nullable|string|max:50',
-            'prefix_value'    => 'nullable|string|max:50',
-            'prefix_length'   => 'nullable|integer|min:0|max:20',
-            'prefix_separator'=> 'nullable|string|max:10',
-            'number_type'     => 'nullable|string|max:50',
-            'number_value'    => 'nullable|string|max:50',
-            'number_length'   => 'nullable|integer|min:0|max:20',
-            'number_separator'=> 'nullable|string|max:10',
-            'suffix_type'     => 'nullable|string|max:50',
-            'suffix_value'    => 'nullable|string|max:50',
-            'suffix_length'   => 'nullable|integer|min:0|max:20',
-            'reset_on_fy'     => 'boolean',
+            'prefix_show' => 'boolean',
+            'number_show' => 'boolean',
+            'suffix_show' => 'boolean',
+            'prefix_type' => 'nullable|string|max:50',
+            'prefix_value' => 'nullable|string|max:50',
+            'prefix_length' => 'nullable|integer|min:0|max:20',
+            'prefix_separator' => 'nullable|string|max:10',
+            'number_type' => 'nullable|string|max:50',
+            'number_value' => 'nullable|string|max:50',
+            'number_length' => 'nullable|integer|min:0|max:20',
+            'number_separator' => 'nullable|string|max:10',
+            'suffix_type' => 'nullable|string|max:50',
+            'suffix_value' => 'nullable|string|max:50',
+            'suffix_length' => 'nullable|integer|min:0|max:20',
+            'reset_on_fy' => 'boolean',
         ]);
 
         // Normalize checkbox values (1/0)
@@ -307,22 +316,22 @@ class SettingsController extends Controller
         $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
 
-        if (! $account) {
+        if (!$account) {
             return redirect()->to(route('settings.index') . '#billing-details')->with('error', 'Account not found.');
         }
 
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'account_bdid'       => 'nullable|string|size:6|exists:account_billing_details,account_bdid',
-            'billing_name'       => 'nullable|string|max:150',
-            'address'            => 'nullable|string',
-            'city'               => 'nullable|string|max:100',
-            'state'              => 'required|string|max:100',
-            'country'            => 'nullable|string|max:100',
-            'postal_code'        => 'nullable|string|max:20',
+            'account_bdid' => 'nullable|string|size:6|exists:account_billing_details,account_bdid',
+            'billing_name' => 'nullable|string|max:150',
+            'address' => 'nullable|string',
+            'city' => 'nullable|string|max:100',
+            'state' => 'required|string|max:100',
+            'country' => 'nullable|string|max:100',
+            'postal_code' => 'nullable|string|max:20',
             'gstin' => 'nullable|string|size:15',
-            'tin'                => 'nullable|string|max:50',
-            'authorize_signatory'=> 'nullable|string|max:255',
-            'signature_upload'   => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
+            'tin' => 'nullable|string|max:50',
+            'authorize_signatory' => 'nullable|string|max:255',
+            'signature_upload' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
             'billing_from_email' => 'nullable|email|max:255',
         ]);
 
@@ -370,22 +379,22 @@ class SettingsController extends Controller
         $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
 
-        if (! $account) {
+        if (!$account) {
             return redirect()->to(route('settings.index') . '#quotation-details')->with('error', 'Account not found.');
         }
 
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'account_qdid'       => 'nullable|string|size:6|exists:account_quotation_details,account_qdid',
-            'quotation_name'     => 'nullable|string|max:150',
-            'address'            => 'nullable|string',
-            'city'               => 'nullable|string|max:100',
-            'state'              => 'nullable|string|max:100',
-            'country'            => 'nullable|string|max:100',
-            'postal_code'        => 'nullable|string|max:20',
+            'account_qdid' => 'nullable|string|size:6|exists:account_quotation_details,account_qdid',
+            'quotation_name' => 'nullable|string|max:150',
+            'address' => 'nullable|string',
+            'city' => 'nullable|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'country' => 'nullable|string|max:100',
+            'postal_code' => 'nullable|string|max:20',
             'gstin' => 'nullable|string|size:15',
-            'tin'                => 'nullable|string|max:50',
-            'authorize_signatory'=> 'nullable|string|max:255',
-            'signature_upload'   => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
+            'tin' => 'nullable|string|max:50',
+            'authorize_signatory' => 'nullable|string|max:255',
+            'signature_upload' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
             'billing_from_email' => 'nullable|email|max:255',
         ]);
 
@@ -442,10 +451,10 @@ class SettingsController extends Controller
         $fyParts = explode('-', $account->fy_startdate);
         $fyMonth = $fyParts[0] ?? '04';
         $fyDay = $fyParts[1] ?? '01';
-        
+
         // If FY starts on 1st of any month, it's a "full year" FY
         $isFullYearFy = ($fyDay == '01');
-        
+
         if (!$isFullYearFy) {
             return; // Don't reset for non-standard FY
         }
@@ -460,7 +469,7 @@ class SettingsController extends Controller
     {
         $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
-        if (! $account) {
+        if (!$account) {
             return redirect()->back()->with('error', 'Account not found.');
         }
 
@@ -488,7 +497,7 @@ class SettingsController extends Controller
 
         // Reset serials if default FY changed
         $defaultChanged = !$previousDefault || $previousDefault->fy_id !== $fy->fy_id;
-        
+
         if ($defaultChanged) {
             $this->resetSerialNumbersIfRequired($accountid);
         }
@@ -537,12 +546,12 @@ class SettingsController extends Controller
             'accountid' => 'nullable|size:10',
         ]);
 
-        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $userAccountId = $this->resolveAccountId();
 
         Setting::create([
             'setting_key' => $validated['key'],
             'setting_value' => $validated['value'],
-            'accountid' => $validated['accountid'] ?? $userAccountId,
+            'accountid' => $userAccountId,
         ]);
 
         return redirect()->to(route('settings.index') . '#config')->with('success', 'Setting created successfully.');
@@ -550,6 +559,11 @@ class SettingsController extends Controller
 
     public function settingsShow(Setting $setting): View
     {
+        $accountid = $this->resolveAccountId();
+        if ($setting->accountid !== $accountid) {
+            abort(403, 'Unauthorized');
+        }
+
         return view('settings.show', [
             'title' => $setting->setting_key ?? $setting->key ?? 'Setting',
             'subtitle' => 'Setting Details',
@@ -559,11 +573,21 @@ class SettingsController extends Controller
 
     public function settingsEdit(Setting $setting)
     {
+        $accountid = $this->resolveAccountId();
+        if ($setting->accountid !== $accountid) {
+            abort(403, 'Unauthorized');
+        }
+
         return redirect()->to(route('settings.index', ['e' => base64_encode($setting->settingid)]) . '#config');
     }
 
     public function settingsUpdate(Request $request, Setting $setting)
     {
+        $accountid = $this->resolveAccountId();
+        if ($setting->accountid !== $accountid) {
+            abort(403, 'Unauthorized');
+        }
+
         $validated = $request->validate([
             'key' => 'required|string|max:255',
             'value' => 'required',
@@ -579,9 +603,83 @@ class SettingsController extends Controller
 
     public function settingsDestroy(Setting $setting)
     {
+        $accountid = $this->resolveAccountId();
+        if ($setting->accountid !== $accountid) {
+            abort(403, 'Unauthorized');
+        }
+
         $setting->delete();
 
         return redirect()->to(route('settings.index') . '#config')->with('success', 'Setting deleted successfully.');
+    }
+
+    public function messageTemplateStore(Request $request): RedirectResponse
+    {
+        $accountid = $this->resolveAccountId();
+
+        $validated = $request->validate([
+            'template_type' => 'required|in:pi,ti,digital_signed',
+            'channel' => 'required|in:email,whatsapp,sms',
+            'name' => 'required|string|max:120',
+            'subject' => 'nullable|string',
+            'body' => 'required|string',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        MessageTemplate::updateOrCreate(
+            [
+                'accountid' => $accountid,
+                'template_type' => $validated['template_type'],
+                'channel' => $validated['channel'],
+            ],
+            [
+                'name' => $validated['name'],
+                'subject' => $validated['subject'] ?? null,
+                'body' => $validated['body'],
+                'is_active' => (bool) ($validated['is_active'] ?? true),
+            ]
+        );
+
+        return redirect()->to(route('settings.index') . '#message-templates')
+            ->with('success', 'Message template saved successfully.');
+    }
+
+    public function messageTemplateUpdate(Request $request, MessageTemplate $template): RedirectResponse
+    {
+        $accountid = $this->resolveAccountId();
+        if ($template->accountid !== $accountid) {
+            abort(403, 'Unauthorized');
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:120',
+            'subject' => 'nullable|string',
+            'body' => 'required|string',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $template->update([
+            'name' => $validated['name'],
+            'subject' => $validated['subject'] ?? null,
+            'body' => $validated['body'],
+            'is_active' => (bool) ($validated['is_active'] ?? false),
+        ]);
+
+        return redirect()->to(route('settings.index') . '#message-templates')
+            ->with('success', 'Message template updated successfully.');
+    }
+
+    public function messageTemplateDestroy(MessageTemplate $template): RedirectResponse
+    {
+        $accountid = $this->resolveAccountId();
+        if ($template->accountid !== $accountid) {
+            abort(403, 'Unauthorized');
+        }
+
+        $template->delete();
+
+        return redirect()->to(route('settings.index') . '#message-templates')
+            ->with('success', 'Message template deleted successfully.');
     }
 
     public function termsConditionsStore(Request $request)
@@ -592,7 +690,7 @@ class SettingsController extends Controller
 
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'tc_id' => 'nullable|string|size:6|exists:terms_conditions,tc_id',
-            'type' => 'required|in:billing,quotation',
+            'type' => 'required|in:billing,quotation,proforma',
             'content' => 'required|string',
             'sequence' => 'nullable|integer|min:1',
             'is_active' => 'boolean',
@@ -622,9 +720,9 @@ class SettingsController extends Controller
             $maxSequence = TermsCondition::where('accountid', $accountid)
                 ->where('type', $validated['type'])
                 ->max('sequence');
-            
+
             $validated['sequence'] = ($maxSequence ?? 0) + 1;
-            
+
             TermsCondition::create($validated);
             $message = 'Term created successfully.';
         }
@@ -817,24 +915,4 @@ class SettingsController extends Controller
         return redirect()->to(route('settings.index') . '#taxes')->with('success', 'Tax status toggled.');
     }
 
-    private function resolveAccountId(): string
-    {
-        if (! auth()->check()) {
-            return 'ACC0000001';
-        }
-
-        $user = auth()->user();
-        $userAccountId = $user->accountid ?? null;
-        if (is_string($userAccountId) && Str::startsWith($userAccountId, 'ACC')) {
-            return $userAccountId;
-        }
-
-        $authId = auth()->id();
-        if (is_string($authId) && Str::startsWith($authId, 'ACC')) {
-            return $authId;
-        }
-
-        return 'ACC0000001';
-    }
 }
-

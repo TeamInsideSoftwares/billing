@@ -11,7 +11,8 @@ class ProductCategoriesController extends Controller
 {
     public function productCategories(): View
     {
-        $query = ProductCategory::query()->orderBy('sequence')->orderBy('name');
+        $userAccountId = $this->resolveAccountId();
+        $query = ProductCategory::where('accountid', $userAccountId)->orderBy('sequence')->orderBy('name');
         $searchTerm = request('search', '');
         if ($searchTerm) {
             $query->where('name', 'like', '%' . $searchTerm . '%');
@@ -49,17 +50,31 @@ class ProductCategoriesController extends Controller
             'status' => 'in:active,inactive',
         ]);
 
-        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $userAccountId = $this->resolveAccountId();
         $validated['accountid'] = $userAccountId;
         $validated['sequence'] = $validated['sequence'] ?? ((ProductCategory::max('sequence') ?? 0) + 1);
 
-        ProductCategory::create($validated);
+        $category = ProductCategory::create($validated);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Product category created successfully.',
+                'category' => [
+                    'ps_catid' => $category->ps_catid,
+                    'name' => $category->name,
+                ],
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Product category created successfully.')->with('open_cat_modal', true);
     }
 
     public function productCategoriesShow(ProductCategory $productCategory): View
     {
+        if ($productCategory->accountid !== $this->resolveAccountId()) {
+            abort(403);
+        }
         return view('product-categories.show', [
             'title' => 'Product Category Details',
             'productCategory' => $productCategory,
@@ -68,12 +83,16 @@ class ProductCategoriesController extends Controller
 
     public function productCategoriesEdit(ProductCategory $productCategory): View
     {
+        if ($productCategory->accountid !== $this->resolveAccountId()) {
+            abort(403);
+        }
         return view('product-categories.form', ['title' => 'Edit Product Category', 'productCategory' => $productCategory]);
     }
 
     public function productCategoriesUpdate(Request $request, $id)
     {
-        $category = ProductCategory::where('ps_catid', $id)->firstOrFail();
+        $userAccountId = $this->resolveAccountId();
+        $category = ProductCategory::where('ps_catid', $id)->where('accountid', $userAccountId)->firstOrFail();
 
         $validated = $request->validate([
             'name' => 'required|string|max:150',
@@ -90,6 +109,9 @@ class ProductCategoriesController extends Controller
 
     public function productCategoriesDestroy(ProductCategory $productCategory)
     {
+        if ($productCategory->accountid !== $this->resolveAccountId()) {
+            abort(403);
+        }
         $productCategory->delete();
 
         return redirect()->back()->with('success', 'Product category deleted successfully.')->with('open_cat_modal', true);

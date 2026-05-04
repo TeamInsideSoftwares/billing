@@ -8,12 +8,15 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\FinancialYear;
 use App\Models\InvoiceEmail;
+use App\Models\MessageTemplate;
+use App\Models\Setting;
 use App\Models\Service;
 use App\Models\Tax;
 use App\Models\TermsCondition;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 use App\Traits\ConfiguresBrowsershot;
@@ -21,6 +24,133 @@ use App\Traits\ConfiguresBrowsershot;
 class InvoicesController extends Controller
 {
     use ConfiguresBrowsershot;
+
+    private function mapInvoiceTemplateType(Invoice $invoice): string
+    {
+        return !empty(trim((string) $invoice->ti_number)) ? 'ti' : 'pi';
+    }
+
+    private function renderMessageTemplate(string $value, Invoice $invoice, ?string $companyName = null): string
+    {
+        $clientBusinessName = trim((string) ($invoice->client->business_name ?? ''));
+        $clientName = trim((string) ($clientBusinessName !== '' ? $clientBusinessName : ($invoice->client->contact_name ?? '')));
+        $currency = (string) ($invoice->client->currency ?? 'INR');
+        $totalAmount = (float) ($invoice->grand_total ?? $invoice->items->sum('line_total') ?? 0);
+        $dueDate = $invoice->due_date?->format('d M Y') ?? '';
+
+        $replace = [
+            '{{client_name}}' => $clientName,
+            '{{business_name}}' => $clientBusinessName !== '' ? $clientBusinessName : $clientName,
+            '{{invoice_number}}' => (string) ($invoice->invoice_number ?? ''),
+            '{{invoice_title}}' => (string) ($invoice->invoice_title ?? ''),
+            '{{pi_number}}' => (string) ($invoice->pi_number ?? ''),
+            '{{ti_number}}' => (string) ($invoice->ti_number ?? ''),
+            '{{total_amount}}' => $currency . ' ' . number_format($totalAmount, 2),
+            '{{due_date}}' => $dueDate,
+            '{{company_name}}' => (string) ($companyName ?? ''), // backwards compatibility
+            '{{account_name}}' => (string) ($companyName ?? ''),
+        ];
+
+        return strtr($value, $replace);
+    }
+
+    private function buildPublicAttachmentUrl(string $pathOrUrl): string
+    {
+        $value = trim($pathOrUrl);
+        if ($value === '') {
+            return '';
+        }
+
+        if (preg_match('/^https?:\/\//i', $value)) {
+            return $value;
+        }
+
+        $base = rtrim(url('/'), '/');
+        return $base . '/storage/app/public/' . ltrim($value, '/');
+    }
+
+    private function buildInvoicePdfAttachment(Invoice $invoice, bool $isTaxInvoice): array
+    {
+        $invoice->loadMissing(['client.billingDetail', 'items', 'order', 'payments']);
+
+        $accountid = $this->resolveAccountId();
+        $account = \App\Models\Account::find($accountid);
+        $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
+
+        $documentType = $isTaxInvoice ? 'Tax Invoice' : 'Proforma Invoice';
+
+        $normalizeTaxState = fn($v) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $v)));
+        $clientState = $normalizeTaxState($invoice->client->state ?? '');
+        $accountState = $normalizeTaxState($account->state ?? '');
+        $sameStateGst = $clientState !== '' && $accountState !== '' && $clientState === $accountState;
+
+        $signatureUrl = null;
+        $sigPath = optional($accountBillingDetail)->signature_upload;
+        if (!empty($sigPath)) {
+            if (str_starts_with($sigPath, 'http://') || str_starts_with($sigPath, 'https://')) {
+                $signatureUrl = $sigPath;
+            } else {
+                $relative = str_starts_with($sigPath, 'storage/') ? $sigPath : 'storage/' . ltrim($sigPath, '/');
+                $signatureUrl = public_path($relative);
+            }
+        }
+
+        $invoiceTerms = is_array($invoice->terms) ? array_values(array_filter($invoice->terms)) : [];
+        if (empty($invoiceTerms)) {
+            $fallbackType = $isTaxInvoice ? 'billing' : 'proforma';
+            $invoiceTerms = TermsCondition::query()
+                ->where('accountid', $accountid)
+                ->where('type', $fallbackType)
+                ->where('is_active', true)
+                ->where('is_default', true)
+                ->orderByRaw('COALESCE(sequence, 999999), created_at ASC')
+                ->pluck('content')
+                ->map(fn($term) => trim((string) $term))
+                ->filter()
+                ->values()
+                ->all();
+        }
+
+        $html = view('invoices.pdf', compact(
+            'invoice',
+            'account',
+            'accountBillingDetail',
+            'sameStateGst',
+            'isTaxInvoice',
+            'documentType',
+            'signatureUrl',
+            'invoiceTerms'
+        ))->render();
+
+        $docNumber = $isTaxInvoice ? $invoice->ti_number : $invoice->pi_number;
+        $filename = $documentType . ' - ' . ($docNumber ?: $invoice->invoice_number) . '.pdf';
+
+        $pdfBinary = $this->getBrowsershot($html)->pdf();
+
+        return [
+            'filename' => $filename,
+            'binary' => $pdfBinary,
+        ];
+    }
+
+    private function getAccountSettingsMap(string $accountid): array
+    {
+        return Setting::query()
+            ->where('accountid', $accountid)
+            ->whereIn('setting_key', [
+                'MAIL_MAILER',
+                'MAIL_HOST',
+                'MAIL_PORT',
+                'MAIL_USERNAME',
+                'MAIL_PASSWORD',
+                'MAIL_ENCRYPTION',
+                'MAIL_FROM_ADDRESS',
+                'MAIL_FROM_NAME',
+            ])
+            ->pluck('setting_value', 'setting_key')
+            ->map(fn($v) => is_string($v) ? trim($v) : $v)
+            ->toArray();
+    }
 
     private function resolveDefaultFyId(string $accountid): ?string
     {
@@ -33,10 +163,13 @@ class InvoicesController extends Controller
 
     public function invoices()
     {
-        $clients = Client::orderBy('business_name')->get();
+        $accountid = $this->resolveAccountId();
+        $clients = Client::where('accountid', $accountid)->orderBy('business_name')->get();
         $selectedClientId = request('c', request('clientid'));
 
-        $invoiceQuery = Invoice::with(['client', 'items', 'payments'])->latest();
+        $invoiceQuery = Invoice::where('accountid', $accountid)
+            ->with(['client', 'items', 'payments'])
+            ->latest();
 
         if ($selectedClientId) {
             $invoiceQuery->where('clientid', $selectedClientId);
@@ -62,6 +195,8 @@ class InvoicesController extends Controller
                     return [
                         'record_id' => $invoice->invoiceid,
                         'number' => $invoice->invoice_number,
+                        'pi_number' => $invoice->pi_number,
+                        'ti_number' => $invoice->ti_number,
                         'title' => $invoice->invoice_title,
                         'clientid' => $invoice->clientid,
                         'issue_date' => $invoice->issue_date?->format('d M Y'),
@@ -118,7 +253,7 @@ class InvoicesController extends Controller
     public function invoicesCreate(): View
     {
         $user = auth()->user();
-        $accountid = auth()->check() ? ($user?->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $legacyAccountId = $user?->id ? (string) $user->id : null;
         $account = \App\Models\Account::find($accountid);
         $orderId = request('o', request('orderid'));
@@ -131,7 +266,7 @@ class InvoicesController extends Controller
         if (!empty($draftId) && !empty($currentUserId)) {
             $existingDraft = Invoice::query()
                 ->where('invoiceid', $draftId)
-                ->where('created_by', $currentUserId)
+                ->where('accountid', $accountid)
                 ->first();
         }
 
@@ -145,9 +280,9 @@ class InvoicesController extends Controller
                 ->where('clientid', $clientId)
                 ->where('status', 'draft')
                 ->where('created_by', $currentUserId)
-                ->when($invoiceFor === 'orders' && !empty($orderId), fn ($q) => $q->where('orderid', $orderId))
-                ->when($invoiceFor === 'orders' && empty($orderId), fn ($q) => $q->whereNull('orderid'))
-                ->when($invoiceFor !== 'orders', fn ($q) => $q->whereNull('orderid'))
+                ->when($invoiceFor === 'orders' && !empty($orderId), fn($q) => $q->where('orderid', $orderId))
+                ->when($invoiceFor === 'orders' && empty($orderId), fn($q) => $q->whereNull('orderid'))
+                ->when($invoiceFor !== 'orders', fn($q) => $q->whereNull('orderid'))
                 ->where('updated_at', '>', now()->subHours(24))
                 ->latest('updated_at')
                 ->first();
@@ -171,6 +306,12 @@ class InvoicesController extends Controller
             ->where('is_active', true)
             ->orderByRaw('COALESCE(sequence, 999999), created_at ASC')
             ->get();
+        $proformaTerms = TermsCondition::query()
+            ->whereIn('accountid', $termAccountIds)
+            ->where('type', 'proforma')
+            ->where('is_active', true)
+            ->orderByRaw('COALESCE(sequence, 999999), created_at ASC')
+            ->get();
 
         $accountBillingDetail = AccountBillingDetail::query()
             ->whereIn('accountid', $termAccountIds)
@@ -187,6 +328,7 @@ class InvoicesController extends Controller
             'account' => $account,
             'accountBillingDetail' => $accountBillingDetail,
             'billingTerms' => $billingTerms,
+            'proformaTerms' => $proformaTerms,
             'orderId' => $orderId,
             'clientId' => $clientId,
             'invoice' => $existingDraft,
@@ -204,7 +346,7 @@ class InvoicesController extends Controller
         }
 
         $orders = \App\Models\Order::where('clientid', $clientId)
-            ->where('is_verified', 'yes') 
+            ->where('is_verified', 'yes')
             ->whereDoesntHave('invoices')
             ->with(['client:clientid,currency', 'salesPerson'])
             ->withCount('items')
@@ -338,7 +480,7 @@ class InvoicesController extends Controller
                 'end_date' => $item->end_date?->format('Y-m-d'),
                 'delivery_date' => $item->delivery_date?->format('Y-m-d'),
                 'line_total' => $lineTotal,
-                'requires_user_fields' => !empty($item->no_of_users) && (int) $item->no_of_users > 0,
+                'requires_user_fields' => $this->isUserWiseEnabled(optional($item->item)->user_wise),
             ];
         })->values();
 
@@ -363,7 +505,7 @@ class InvoicesController extends Controller
     {
         $invoice = Invoice::with('items')->findOrFail($invoiceid);
         $daysFilter = (int) $request->input('days', 1);
-        
+
         $today = now()->startOfDay();
         $upcomingThreshold = now()->addDays($daysFilter)->endOfDay();
 
@@ -378,10 +520,10 @@ class InvoicesController extends Controller
                 $isExpired = false;
                 $isUpcoming = false;
             } else {
-                $itemEndDate = $item->end_date instanceof \Carbon\Carbon 
-                    ? $item->end_date 
+                $itemEndDate = $item->end_date instanceof \Carbon\Carbon
+                    ? $item->end_date
                     : \Carbon\Carbon::parse($item->end_date);
-                
+
                 $isExpired = $itemEndDate <= $today;
                 $isUpcoming = !$isExpired && $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
             }
@@ -462,22 +604,44 @@ class InvoicesController extends Controller
         return max(1, (int) round((float) $value, 0));
     }
 
+    private function isUserWiseEnabled(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value === 1;
+        }
+
+        $normalized = strtolower(trim((string) $value));
+        return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
+    }
+
+    private function hasRecurringFrequency(mixed $frequency): bool
+    {
+        $normalized = strtolower(trim((string) ($frequency ?? '')));
+        return $normalized !== '' && $normalized !== 'one-time';
+    }
+
     public function storeBillingTerm(Request $request)
     {
         $validated = $request->validate([
             'content' => 'required|string',
+            'type' => 'nullable|in:billing,quotation,proforma',
         ]);
 
         $user = auth()->user();
         $accountid = $user?->accountid ?? (string) ($user?->id ?? 'ACC0000001');
+        $termType = $validated['type'] ?? 'billing';
         $maxSequence = TermsCondition::query()
             ->where('accountid', $accountid)
-            ->where('type', 'billing')
+            ->where('type', $termType)
             ->max('sequence');
 
         $term = TermsCondition::create([
             'accountid' => $accountid,
-            'type' => 'billing',
+            'type' => $termType,
             'content' => $validated['content'],
             'is_active' => true,
             'sequence' => ((int) ($maxSequence ?? 0)) + 1,
@@ -488,6 +652,7 @@ class InvoicesController extends Controller
             'term' => [
                 'id' => $term->tc_id,
                 'content' => $term->content,
+                'type' => $term->type,
             ],
         ]);
     }
@@ -561,7 +726,7 @@ class InvoicesController extends Controller
 
         while (
             Invoice::where('accountid', $accountid)
-                ->when($numberColumn, fn ($query) => $query->where($numberColumn, $number), function ($query) use ($number) {
+                ->when($numberColumn, fn($query) => $query->where($numberColumn, $number), function ($query) use ($number) {
                     $query->where(function ($inner) use ($number) {
                         $inner->where('pi_number', $number)
                             ->orWhere('ti_number', $number);
@@ -643,12 +808,16 @@ class InvoicesController extends Controller
 
         // Set default status if not provided
         $validated['status'] = $validated['status'] ?? 'active';
-        
         if (!empty($validated['invoice_number'])) {
             $this->assertDocumentNumberAvailable($validated['invoice_number'], null, 'pi_number');
         }
 
-        $invoiceSource = $validated['orderid'] ? 'orders' : 'without_orders';
+        $invoiceSource = 'without_orders';
+        if (!empty($validated['orderid'])) {
+            $invoiceSource = 'orders';
+        } elseif (!empty($validated['renewed_item_ids'])) {
+            $invoiceSource = 'renewal';
+        }
 
         if ($invoiceSource === 'orders') {
             if (empty($validated['orderid'])) {
@@ -686,7 +855,7 @@ class InvoicesController extends Controller
         // Keep it empty for PI/draft creation so insert works on older schemas too.
         $validated['ti_number'] = $validated['ti_number'] ?? '';
         unset($validated['items_data']);
-        
+
         // Check if we're updating an existing draft
         $existingDraft = null;
         if (!empty($validated['invoiceid'])) {
@@ -714,7 +883,7 @@ class InvoicesController extends Controller
                 'items_data' => 'Add at least one invoice item before submitting.',
             ]);
         }
-        
+
         $subtotal = 0;
         $taxTotal = 0;
         $discountTotal = 0;
@@ -731,8 +900,8 @@ class InvoicesController extends Controller
             $unitPrice = $this->wholeAmount($itemData['unit_price'] ?? 0);
             $taxRate = (float) ($itemData['tax_rate'] ?? 0);
             $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
-            $isUserWiseItem = $accountHasUsers && (bool) ($service?->user_wise ?? false);
-            $hasRecurringFrequency = filled($itemData['frequency'] ?? null) && ($itemData['frequency'] ?? null) !== 'one-time';
+            $isUserWiseItem = $accountHasUsers && $this->isUserWiseEnabled($service?->user_wise);
+            $hasRecurringFrequency = $this->hasRecurringFrequency($itemData['frequency'] ?? null);
             $users = $isUserWiseItem ? max(1, (int) ($itemData['no_of_users'] ?? 1)) : null;
             $lineTotal = $amounts['line_total'];
 
@@ -777,12 +946,12 @@ class InvoicesController extends Controller
         $invoice = null;
 
         try {
-            DB::transaction(function () use ($validated, $preparedItems, &$invoice, $request, $existingDraft) {
+            DB::transaction(function () use ($validated, $preparedItems, &$invoice, $request, $existingDraft, $invoiceSource) {
                 if ($existingDraft) {
                     // Update existing draft
                     $existingDraft->update($validated);
                     $invoice = $existingDraft;
-                    
+
                     // Delete existing items
                     InvoiceItem::where('invoiceid', $invoice->invoiceid)->delete();
                 } else {
@@ -806,14 +975,14 @@ class InvoicesController extends Controller
                 if ($invoiceSource === 'renewal') {
                     $renewedItemIdsRaw = $request->input('renewed_item_ids');
                     $renewedItemIds = json_decode($renewedItemIdsRaw ?? '[]', true);
-                    
+
                     \Log::info('Renewal submission check', [
                         'invoice_for' => $invoiceSource,
                         'renewed_item_ids_raw' => $renewedItemIdsRaw,
                         'renewed_item_ids_parsed' => $renewedItemIds,
                         'new_invoice_id' => $invoice->invoiceid,
                     ]);
-                    
+
                     if (!empty($renewedItemIds)) {
                         \Log::info('Renewal item ids received; skipping legacy renewed_* column updates on merged invoice_items table', [
                             'invoice_id' => $invoice->invoiceid,
@@ -854,27 +1023,39 @@ class InvoicesController extends Controller
         ]);
 
         $user = auth()->user();
+        $accountid = $this->resolveAccountId();
+        $legacyAccountId = $user?->id ? (string) $user->id : null;
+        $accountCandidates = array_values(array_filter(array_unique([$accountid, $legacyAccountId])));
         $client = Client::findOrFail($validated['clientid']);
 
         // Check if draft already exists for this client
         $orderId = $validated['orderid'] ?? null;
 
         $draft = null;
+        $isExplicitInvoiceEdit = !empty($validated['invoiceid']);
         if (!empty($validated['invoiceid'])) {
+            // Explicit edit flow: always target this exact invoice id.
+            // Do not restrict by status here; older records may have different status values.
             $draft = Invoice::where('invoiceid', $validated['invoiceid'])
-                ->whereIn('status', ['draft', 'active'])
-                ->where('created_by', $user?->userid ?? $user?->id)
                 ->first();
         }
 
-        if (!$draft) {
+        if (!$draft && !$isExplicitInvoiceEdit) {
             $draft = Invoice::where('clientid', $validated['clientid'])
-                ->whereIn('status', ['draft', 'active'])
+                ->whereIn('accountid', $accountCandidates)
+                ->whereIn('status', ['active', 'draft'])
                 ->where('created_by', $user?->userid ?? $user?->id)
-                ->when(!empty($orderId), fn ($q) => $q->where('orderid', $orderId))
-                ->when(empty($orderId), fn ($q) => $q->whereNull('orderid'))
+                ->when(!empty($orderId), fn($q) => $q->where('orderid', $orderId))
+                ->when(empty($orderId), fn($q) => $q->whereNull('orderid'))
                 ->where('updated_at', '>', now()->subHours(24))
                 ->first();
+        }
+
+        if (!$draft && $isExplicitInvoiceEdit) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Invoice not found for editing.',
+            ], 404);
         }
 
         if ($draft) {
@@ -888,20 +1069,19 @@ class InvoicesController extends Controller
                 'fy_id' => $draft->fy_id ?: $this->resolveDefaultFyId($user->accountid ?? 'ACC0000001'),
             ]);
         } else {
-            $accountid = $user->accountid ?? 'ACC0000001';
             // Create new draft
             $draft = Invoice::create([
                 'accountid' => $accountid,
                 'fy_id' => $this->resolveDefaultFyId($accountid),
                 'clientid' => $validated['clientid'],
                 'pi_number' => $this->generateInvoiceNumber(),
-                'ti_number' => '',
+                'ti_number' => null,
                 'invoice_title' => $validated['invoice_title'] ?? '',
                 'orderid' => $orderId,
                 'issue_date' => $validated['issue_date'] ?? now(),
                 'due_date' => $validated['due_date'] ?? now()->addDays(7),
                 'notes' => $validated['notes'] ?? '',
-                'status' => 'draft',
+                'status' => 'active',
                 'created_by' => $user?->userid ?? $user?->id,
             ]);
         }
@@ -964,36 +1144,40 @@ class InvoicesController extends Controller
             $amountPaid = (float) ($draft->amount_paid ?? 0);
             $calculatedBalanceDue = max(0, $calculatedGrandTotal - $amountPaid);
 
-            $draft->update(['status' => 'draft']);
+            $draft->update(['status' => 'active']);
         }
 
         return response()->json([
             'ok' => true,
             'invoiceid' => $draft->invoiceid,
             'invoice_number' => $draft->invoice_number,
+            'pi_number' => $draft->pi_number,
+            'ti_number' => $draft->ti_number,
         ]);
     }
 
     public function invoicesGetDraft($clientid)
     {
         $user = auth()->user();
+        $accountid = $this->resolveAccountId();
         $orderId = request('o', request('orderid'));
         $draftId = request('d');
 
         $draft = null;
         if (!empty($draftId)) {
             $draft = Invoice::where('invoiceid', $draftId)
-                ->where('created_by', $user?->userid ?? $user?->id)
+                ->where('accountid', $accountid)
                 ->with(['items.item', 'order'])
                 ->first();
         }
 
         if (!$draft && empty($draftId)) {
             $draft = Invoice::where('clientid', $clientid)
-                ->where('status', 'draft')
+                ->where('accountid', $accountid)
+                ->whereIn('status', ['active', 'draft'])
                 ->where('created_by', $user?->userid ?? $user?->id)
-                ->when(!empty($orderId), fn ($q) => $q->where('orderid', $orderId))
-                ->when(empty($orderId), fn ($q) => $q->whereNull('orderid'))
+                ->when(!empty($orderId), fn($q) => $q->where('orderid', $orderId))
+                ->when(empty($orderId), fn($q) => $q->whereNull('orderid'))
                 ->where('updated_at', '>', now()->subHours(24))
                 ->with(['items.item', 'order'])
                 ->first();
@@ -1036,7 +1220,7 @@ class InvoicesController extends Controller
                     'start_date' => $i->start_date?->format('Y-m-d'),
                     'end_date' => $i->end_date?->format('Y-m-d'),
                     'line_total' => $i->line_total,
-                    'requires_user_fields' => !empty($i->no_of_users) && (int) $i->no_of_users > 0,
+                    'requires_user_fields' => $this->isUserWiseEnabled(optional($i->item)->user_wise),
                 ]),
             ],
         ]);
@@ -1046,7 +1230,7 @@ class InvoicesController extends Controller
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
         $invoice->loadMissing(['client', 'items.service', 'order', 'payments']);
-        
+
         // Load account billing details for preview
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $account = \App\Models\Account::where('accountid', $accountid)->first();
@@ -1093,44 +1277,44 @@ class InvoicesController extends Controller
             ->firstOrFail();
 
         $itemData = $request->validate([
-            'item_name'        => 'required|string|max:255',
+            'item_name' => 'required|string|max:255',
             'item_description' => 'nullable|string',
-            'quantity'         => 'required|numeric|min:1',
-            'unit_price'       => 'required|numeric|min:0',
-            'tax_rate'         => 'nullable|numeric|min:0|max:100',
+            'quantity' => 'required|numeric|min:1',
+            'unit_price' => 'required|numeric|min:0',
+            'tax_rate' => 'nullable|numeric|min:0|max:100',
             'discount_percent' => 'nullable|numeric|min:0|max:100',
-            'duration'         => 'nullable|numeric|min:0',
-            'frequency'        => 'nullable|string',
-            'no_of_users'      => 'nullable|integer|min:1',
-            'start_date'       => 'nullable|date',
-            'end_date'         => 'nullable|date',
-            'line_total'       => 'nullable|numeric|min:0',
+            'duration' => 'nullable|numeric|min:0',
+            'frequency' => 'nullable|string',
+            'no_of_users' => 'nullable|integer|min:1',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
+            'line_total' => 'nullable|numeric|min:0',
         ]);
 
         $taxRate = (float) ($itemData['tax_rate'] ?? 0);
         $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
-        $hasRecurringFrequency = filled($itemData['frequency'] ?? null) && ($itemData['frequency'] ?? null) !== 'one-time';
+        $hasRecurringFrequency = $this->hasRecurringFrequency($itemData['frequency'] ?? null);
 
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $account = \App\Models\Account::find($accountid);
         $accountHasUsers = (bool) ($account?->have_users ?? false);
         $service = Service::find($invoiceItem->itemid);
-        $isUserWiseItem = $accountHasUsers && (bool) ($service?->user_wise ?? false);
+        $isUserWiseItem = $accountHasUsers && $this->isUserWiseEnabled($service?->user_wise);
 
         $invoiceItem->update([
-            'item_name'        => $itemData['item_name'],
+            'item_name' => $itemData['item_name'],
             'item_description' => $itemData['item_description'] ?? null,
-            'quantity'         => $this->wholeQuantity($itemData['quantity']),
-            'unit_price'       => $this->wholeAmount($itemData['unit_price']),
-            'tax_rate'         => $taxRate,
+            'quantity' => $this->wholeQuantity($itemData['quantity']),
+            'unit_price' => $this->wholeAmount($itemData['unit_price']),
+            'tax_rate' => $taxRate,
             'discount_percent' => $amounts['discount_percent'],
-            'discount_amount'  => $amounts['discount_amount'],
-            'duration'         => $itemData['duration'] ?? null,
-            'frequency'        => $itemData['frequency'] ?? null,
-            'no_of_users'      => $isUserWiseItem ? max(1, (int) ($itemData['no_of_users'] ?? 1)) : null,
-            'start_date'       => $hasRecurringFrequency ? ($itemData['start_date'] ?: null) : null,
-            'end_date'         => $hasRecurringFrequency ? ($itemData['end_date'] ?: null) : null,
-            'amount'           => $amounts['line_total'],
+            'discount_amount' => $amounts['discount_amount'],
+            'duration' => $itemData['duration'] ?? null,
+            'frequency' => $itemData['frequency'] ?? null,
+            'no_of_users' => $isUserWiseItem ? max(1, (int) ($itemData['no_of_users'] ?? 1)) : null,
+            'start_date' => $hasRecurringFrequency ? ($itemData['start_date'] ?: null) : null,
+            'end_date' => $hasRecurringFrequency ? ($itemData['end_date'] ?: null) : null,
+            'amount' => $amounts['line_total'],
         ]);
 
         // Recalculate invoice totals
@@ -1149,20 +1333,20 @@ class InvoicesController extends Controller
         return response()->json([
             'success' => true,
             'item' => [
-                'invoice_itemid'   => $invoiceItem->invoice_itemid,
-                'item_name'        => $invoiceItem->item_name,
+                'invoice_itemid' => $invoiceItem->invoice_itemid,
+                'item_name' => $invoiceItem->item_name,
                 'item_description' => $invoiceItem->item_description,
-                'quantity'         => (int) $invoiceItem->quantity,
-                'unit_price'       => (float) $invoiceItem->unit_price,
-                'tax_rate'         => (float) $invoiceItem->tax_rate,
+                'quantity' => (int) $invoiceItem->quantity,
+                'unit_price' => (float) $invoiceItem->unit_price,
+                'tax_rate' => (float) $invoiceItem->tax_rate,
                 'discount_percent' => (float) $invoiceItem->discount_percent,
-                'discount_amount'  => (float) $invoiceItem->discount_amount,
-                'duration'         => $invoiceItem->duration,
-                'frequency'        => $invoiceItem->frequency,
-                'no_of_users'      => $invoiceItem->no_of_users,
-                'start_date'       => $invoiceItem->start_date?->format('Y-m-d'),
-                'end_date'         => $invoiceItem->end_date?->format('Y-m-d'),
-                'line_total'       => (float) $invoiceItem->amount,
+                'discount_amount' => (float) $invoiceItem->discount_amount,
+                'duration' => $invoiceItem->duration,
+                'frequency' => $invoiceItem->frequency,
+                'no_of_users' => $invoiceItem->no_of_users,
+                'start_date' => $invoiceItem->start_date?->format('Y-m-d'),
+                'end_date' => $invoiceItem->end_date?->format('Y-m-d'),
+                'line_total' => (float) $invoiceItem->amount,
             ],
         ]);
     }
@@ -1217,24 +1401,24 @@ class InvoicesController extends Controller
             $service = Service::find($itemData['itemid'] ?? null);
             $taxRate = (float) ($itemData['tax_rate'] ?? 0);
             $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
-            $isUserWiseItem = $accountHasUsers && (bool) ($service?->user_wise ?? false);
-            $hasRecurringFrequency = filled($itemData['frequency'] ?? null) && ($itemData['frequency'] ?? null) !== 'one-time';
+            $isUserWiseItem = $accountHasUsers && $this->isUserWiseEnabled($service?->user_wise);
+            $hasRecurringFrequency = $this->hasRecurringFrequency($itemData['frequency'] ?? null);
             $payload = [
-                'itemid'           => $itemData['itemid'] ?: null,
-                'item_name'        => $itemData['item_name'] ?? ($service?->name ?? 'Custom Item'),
+                'itemid' => $itemData['itemid'] ?: null,
+                'item_name' => $itemData['item_name'] ?? ($service?->name ?? 'Custom Item'),
                 'item_description' => $itemData['item_description'] ?? null,
-                'quantity'         => $this->wholeQuantity($itemData['quantity'] ?? 1),
-                'unit_price'       => $this->wholeAmount($itemData['unit_price'] ?? 0),
-                'tax_rate'         => $taxRate,
+                'quantity' => $this->wholeQuantity($itemData['quantity'] ?? 1),
+                'unit_price' => $this->wholeAmount($itemData['unit_price'] ?? 0),
+                'tax_rate' => $taxRate,
                 'discount_percent' => $amounts['discount_percent'],
                 'discount_amount' => $amounts['discount_amount'],
-                'duration'         => $itemData['duration'] ?? null,
-                'frequency'        => $itemData['frequency'] ?? null,
-                'no_of_users'      => $isUserWiseItem ? max(1, (int) ($itemData['no_of_users'] ?? 1)) : null,
-                'start_date'       => $hasRecurringFrequency ? ($itemData['start_date'] ?: null) : null,
-                'end_date'         => $hasRecurringFrequency ? ($itemData['end_date'] ?: null) : null,
-                'amount'           => $amounts['line_total'],
-                'invoiceid'        => $invoice->invoiceid,
+                'duration' => $itemData['duration'] ?? null,
+                'frequency' => $itemData['frequency'] ?? null,
+                'no_of_users' => $isUserWiseItem ? max(1, (int) ($itemData['no_of_users'] ?? 1)) : null,
+                'start_date' => $hasRecurringFrequency ? ($itemData['start_date'] ?: null) : null,
+                'end_date' => $hasRecurringFrequency ? ($itemData['end_date'] ?: null) : null,
+                'amount' => $amounts['line_total'],
+                'invoiceid' => $invoice->invoiceid,
             ];
 
             $itemModel::create($payload);
@@ -1271,7 +1455,7 @@ class InvoicesController extends Controller
     protected function assertDocumentNumberAvailable(string $invoiceNumber, ?string $ignoreInvoiceId = null, ?string $numberColumn = null): void
     {
         $numberExists = Invoice::query()
-            ->when($numberColumn, fn ($query) => $query->where($numberColumn, $invoiceNumber), function ($query) use ($invoiceNumber) {
+            ->when($numberColumn, fn($query) => $query->where($numberColumn, $invoiceNumber), function ($query) use ($invoiceNumber) {
                 $query->where(function ($inner) use ($invoiceNumber) {
                     $inner->where('pi_number', $invoiceNumber)
                         ->orWhere('ti_number', $invoiceNumber);
@@ -1333,7 +1517,7 @@ class InvoicesController extends Controller
             ?? ''
         );
 
-        $defaultType = !empty(trim((string) $invoice->ti_number)) ? 'ti' : 'pi';
+        $defaultType = $this->mapInvoiceTemplateType($invoice);
         $defaultSubjectNumber = $defaultType === 'ti' ? $invoice->ti_number : $invoice->pi_number;
         $billingAddressLines = array_values(array_filter([
             trim((string) ($accountBillingDetail?->address ?? '')),
@@ -1357,6 +1541,60 @@ class InvoicesController extends Controller
 
         $user = auth()->user();
         $currentUserId = $user?->userid ?? $user?->id;
+        $currentAccountId = $invoice->accountid ?? ($user?->accountid ?? $accountid);
+
+        $template = MessageTemplate::query()
+            ->where('accountid', $currentAccountId)
+            ->where('channel', 'email')
+            ->where('template_type', $defaultType)
+            ->where('is_active', true)
+            ->first();
+
+        $allTemplates = MessageTemplate::query()
+            ->where('accountid', $currentAccountId)
+            ->whereIn('channel', ['email', 'whatsapp', 'sms'])
+            ->whereIn('template_type', ['pi', 'ti', 'digital_signed'])
+            ->where('is_active', true)
+            ->get()
+            ->groupBy('channel')
+            ->map(function ($channelTemplates) use ($invoice, $account) {
+                return $channelTemplates->mapWithKeys(function ($row) use ($invoice, $account) {
+                    return [
+                        $row->template_type => [
+                            'subject' => $this->renderMessageTemplate((string) ($row->subject ?? ''), $invoice, $account?->name),
+                            'body' => $this->renderMessageTemplate((string) ($row->body ?? ''), $invoice, $account?->name),
+                        ],
+                    ];
+                });
+            })
+            ->toArray();
+
+        $emailTemplatesByType = $allTemplates['email'] ?? [];
+
+        $fallbackTemplatesByType = [
+            'pi' => [
+                'subject' => 'Invoice ' . ((string) ($invoice->pi_number ?: $invoice->invoice_number)),
+                'body' => $defaultBody,
+            ],
+            'ti' => [
+                'subject' => 'Invoice ' . ((string) ($invoice->ti_number ?: $invoice->invoice_number)),
+                'body' => $defaultBody,
+            ],
+            'digital_signed' => [
+                'subject' => 'Invoice ' . ((string) ($invoice->invoice_number ?: $invoice->invoiceid)),
+                'body' => $defaultBody,
+            ],
+        ];
+
+        $templateSubject = null;
+        $templateBody = null;
+        if ($template) {
+            $templateSubject = $this->renderMessageTemplate((string) ($template->subject ?? ''), $invoice, $account?->name);
+            $templateBody = $this->renderMessageTemplate((string) ($template->body ?? ''), $invoice, $account?->name);
+            $templateSubject = trim($templateSubject) !== '' ? $templateSubject : null;
+            $templateBody = trim($templateBody) !== '' ? $templateBody : null;
+        }
+
         $requestedEmailId = trim((string) request('e', ''));
 
         $latestEmail = null;
@@ -1364,15 +1602,14 @@ class InvoicesController extends Controller
             $latestEmail = InvoiceEmail::query()
                 ->where('invoice_emailid', $requestedEmailId)
                 ->where('invoiceid', $invoice->invoiceid)
-                ->where('created_by', $currentUserId)
+                ->where('accountid', $currentAccountId)
                 ->first();
         }
 
         if (!$latestEmail) {
             $latestEmail = InvoiceEmail::query()
                 ->where('invoiceid', $invoice->invoiceid)
-                ->where('created_by', $currentUserId)
-                ->where('status', 'draft')
+                ->where('accountid', $currentAccountId)
                 ->latest('created_at')
                 ->first();
         }
@@ -1383,15 +1620,15 @@ class InvoicesController extends Controller
                 : route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']);
 
             $latestEmail = InvoiceEmail::create([
-                'accountid' => $invoice->accountid ?? ($user?->accountid ?? 'ACC0000001'),
+                'accountid' => $currentAccountId,
                 'invoiceid' => $invoice->invoiceid,
                 'clientid' => $invoice->clientid,
                 'from_email' => $fromEmail,
                 'to_email' => $toEmail,
                 'subject' => trim((string) ($invoice->invoice_title ?? '')) !== ''
-                    ? trim((string) $invoice->invoice_title)
+                    ? ($templateSubject ?? trim((string) $invoice->invoice_title))
                     : ('Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number)),
-                'body' => $defaultBody,
+                'body' => $templateBody ?? $defaultBody,
                 'attachment_type' => $defaultType,
                 'attachment_path' => $initialAttachmentPath,
                 'status' => 'draft',
@@ -1402,19 +1639,19 @@ class InvoicesController extends Controller
         $prefillSubject = $latestEmail?->subject;
         if ($prefillSubject === null || trim((string) $prefillSubject) === '') {
             $prefillSubject = trim((string) ($invoice->invoice_title ?? '')) !== ''
-                ? trim((string) $invoice->invoice_title)
+                ? ($templateSubject ?? trim((string) $invoice->invoice_title))
                 : ('Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number));
         }
 
         $prefillBody = $latestEmail?->body;
         if ($prefillBody === null || trim((string) $prefillBody) === '') {
-            $prefillBody = $defaultBody;
+            $prefillBody = $templateBody ?? $defaultBody;
         }
 
         $prefillAttachmentTypes = [];
         if (!empty($latestEmail?->attachment_type)) {
             $prefillAttachmentTypes = collect(explode(',', (string) $latestEmail->attachment_type))
-                ->map(fn ($type) => trim($type))
+                ->map(fn($type) => trim($type))
                 ->filter()
                 ->values()
                 ->all();
@@ -1422,6 +1659,7 @@ class InvoicesController extends Controller
         if (empty($prefillAttachmentTypes)) {
             $prefillAttachmentTypes = [$defaultType];
         }
+        $prefillAttachmentType = $prefillAttachmentTypes[0] ?? $defaultType;
 
         return view('invoices.email-compose', [
             'title' => 'Compose Invoice Email',
@@ -1434,7 +1672,17 @@ class InvoicesController extends Controller
             'prefillSubject' => $prefillSubject,
             'prefillBody' => $prefillBody,
             'prefillAttachmentTypes' => $prefillAttachmentTypes,
+            'prefillAttachmentType' => $prefillAttachmentType,
+            'emailTemplatesByType' => $emailTemplatesByType,
+            'allTemplates' => $allTemplates,
+            'fallbackTemplatesByType' => $fallbackTemplatesByType,
             'composeEmail' => $latestEmail,
+            'customAttachmentUrl' => !empty($latestEmail?->custom_attachment_path)
+                ? $this->buildPublicAttachmentUrl((string) $latestEmail->custom_attachment_path)
+                : null,
+            'customAttachmentName' => !empty($latestEmail?->custom_attachment_path)
+                ? basename((string) $latestEmail->custom_attachment_path)
+                : null,
         ]);
     }
 
@@ -1445,6 +1693,7 @@ class InvoicesController extends Controller
 
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
+        $settings = $this->getAccountSettingsMap($accountid);
         $forcedFromEmail = (string) ($accountBillingDetail?->billing_from_email ?? '');
         $forcedToEmail = (string) (
             $invoice->client?->billingDetail?->billing_email
@@ -1462,22 +1711,27 @@ class InvoicesController extends Controller
         $validated = $request->validate([
             'invoice_emailid' => 'required|exists:invoice_emails,invoice_emailid',
             'action' => 'nullable|in:save,send',
+            'channel' => 'required|in:email,whatsapp,sms',
+            'phone' => 'nullable|string|max:20',
             'subject' => 'nullable|string|max:255',
             'body' => 'nullable|string',
-            'attachment_types' => 'required|array|min:1',
-            'attachment_types.*' => 'in:pi,ti,dsc',
+            'attachment_type' => 'required|in:pi,ti,dsc',
             'custom_attachment' => 'nullable|file|max:10240',
         ]);
 
         $user = auth()->user();
-        $currentUserId = $user?->userid ?? $user?->id;
+        $currentAccountId = $invoice->accountid ?? ($user?->accountid ?? 'ACC0000001');
         $emailDraft = InvoiceEmail::query()
             ->where('invoice_emailid', $validated['invoice_emailid'])
             ->where('invoiceid', $invoice->invoiceid)
-            ->where('created_by', $currentUserId)
+            ->where('accountid', $currentAccountId)
             ->firstOrFail();
 
-        $selectedTypes = array_values(array_unique($validated['attachment_types'] ?? []));
+        $selectedType = (string) ($validated['attachment_type'] ?? 'pi');
+        $selectedTypes = [$selectedType];
+        $channel = $validated['channel'] ?? 'email';
+        $phone = $validated['phone'] ?? ($invoice->client->phone ?? '');
+        $hasNewCustomFile = $request->hasFile('custom_attachment') && $request->file('custom_attachment')->isValid();
         $attachmentPaths = [];
 
         if (in_array('pi', $selectedTypes, true)) {
@@ -1485,48 +1739,84 @@ class InvoicesController extends Controller
         }
         if (in_array('ti', $selectedTypes, true)) {
             if (empty(trim((string) $invoice->ti_number))) {
-                return back()->withErrors(['attachment_types' => 'Tax Invoice is not available yet.'])->withInput();
+                return back()->withErrors(['attachment_type' => 'Tax Invoice is not available yet.'])->withInput();
             }
             $attachmentPaths[] = route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice']);
         }
-        if (in_array('dsc', $selectedTypes, true)) {
-            if (!($request->hasFile('custom_attachment') && $request->file('custom_attachment')->isValid())) {
-                return back()->withErrors(['custom_attachment' => 'Please upload DSC attachment.'])->withInput();
-            }
-        }
-
         $customAttachmentPath = null;
-        if ($request->hasFile('custom_attachment') && $request->file('custom_attachment')->isValid()) {
-            $customAttachmentPath = $request->file('custom_attachment')->store('invoice-email-attachments', 'public');
+        if ($hasNewCustomFile) {
+            $storedPath = $request->file('custom_attachment')->store('invoice-email-attachments', 'public');
+            $customAttachmentPath = $this->buildPublicAttachmentUrl($storedPath);
         }
 
         $action = $validated['action'] ?? 'save';
         $isSendAction = $action === 'send';
+        $finalCustomAttachmentPath = $customAttachmentPath ?? $emailDraft->custom_attachment_path;
 
-        $emailDraft->update([
-            'subject' => $validated['subject'] ?? null,
-            'body' => $validated['body'] ?? null,
+        // For non-email channels, we might want to append links to the body if the user didn't
+        $finalBody = $validated['body'] ?? '';
+        if ($channel !== 'email' && $isSendAction) {
+            $links = [];
+            if (in_array('pi', $selectedTypes))
+                $links[] = "PI: " . route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']);
+            if (in_array('ti', $selectedTypes))
+                $links[] = "TI: " . route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice']);
+            if ($finalCustomAttachmentPath)
+                $links[] = "Extra: " . $finalCustomAttachmentPath;
+
+            if (!empty($links)) {
+                $linksStr = "\n\nDownload Documents:\n" . implode("\n", $links);
+                if (strpos($finalBody, 'Download Documents:') === false) {
+                    $finalBody .= $linksStr;
+                }
+            }
+        }
+
+        $updatePayload = [
+            'subject' => ($channel === 'email') ? ($validated['subject'] ?? null) : null,
+            'body' => $finalBody,
             'attachment_type' => implode(',', $selectedTypes),
             'attachment_path' => !empty($attachmentPaths) ? implode(',', $attachmentPaths) : null,
-            'custom_attachment_path' => $customAttachmentPath ?? $emailDraft->custom_attachment_path,
-            'status' => $isSendAction ? 'sent' : 'draft',
-            'sent_at' => $isSendAction ? now() : null,
-        ]);
+            'custom_attachment_path' => $finalCustomAttachmentPath,
+            'phone_number' => $phone,
+            'channel' => $channel,
+        ];
+
+        if (!$isSendAction) {
+            $emailDraft->update($updatePayload + ['status' => 'draft']);
+            return redirect()
+                ->route('invoices.email-compose', ['invoice' => $invoice->invoiceid, 'e' => $emailDraft->invoice_emailid])
+                ->with('success', 'Message draft saved successfully.');
+        }
+
+        if ($channel === 'whatsapp' || $channel === 'sms') {
+            $emailDraft->update($updatePayload + ['status' => 'sent', 'sent_at' => now()]);
+
+            // Clean HTML for messaging
+            $plainBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $finalBody));
+
+            return redirect()
+                ->route('invoices.email-compose', ['invoice' => $invoice->invoiceid, 'e' => $emailDraft->invoice_emailid])
+                ->with('success', 'Message logged. Opening ' . ucfirst($channel) . '...')
+                ->with(
+                    'messaging_url',
+                    $channel === 'whatsapp'
+                    ? "https://api.whatsapp.com/send?phone=" . preg_replace('/[^0-9]/', '', $phone) . "&text=" . urlencode($plainBody)
+                    : "sms:" . preg_replace('/[^0-9+]/', '', $phone) . "?body=" . urlencode($plainBody)
+                );
+        }
+
+        // Log as sent (logic to actually send email will be added later by user)
+        $emailDraft->update($updatePayload + ['status' => 'sent', 'sent_at' => now()]);
 
         return redirect()
             ->route('invoices.email-compose', ['invoice' => $invoice->invoiceid, 'e' => $emailDraft->invoice_emailid])
-            ->with('success', $isSendAction ? 'Email marked as sent to client.' : 'Email draft saved successfully.');
+            ->with('success', 'Email logged as sent (Actual email sending disabled).');
     }
 
     public function downloadPdf(Request $request, string $invoice)
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
-        $invoice->loadMissing(['client.billingDetail', 'items', 'order', 'payments']);
-
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
-        $account = \App\Models\Account::find($accountid);
-        $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
-
         $type = $request->query('type'); // optional: pi | tax_invoice
 
         // If type is not specified, prefer Tax Invoice if ti_number exists
@@ -1538,54 +1828,11 @@ class InvoicesController extends Controller
             $isTaxInvoice = !empty(trim($invoice->ti_number ?? ''));
         }
 
-        $documentType = $isTaxInvoice ? 'Tax Invoice' : 'Proforma Invoice';
+        $pdfAttachment = $this->buildInvoicePdfAttachment($invoice, $isTaxInvoice);
 
-        $normalizeTaxState = fn ($v) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $v)));
-        $clientState = $normalizeTaxState($invoice->client->state ?? '');
-        $accountState = $normalizeTaxState($account->state ?? '');
-        $sameStateGst = $clientState !== '' && $accountState !== '' && $clientState === $accountState;
-
-        $signatureUrl = null;
-        $sigPath = optional($accountBillingDetail)->signature_upload;
-        if (!empty($sigPath)) {
-            // If already a full URL, use as-is; otherwise build from storage path
-            if (str_starts_with($sigPath, 'http://') || str_starts_with($sigPath, 'https://')) {
-                $signatureUrl = $sigPath;
-            } else {
-                $relative = str_starts_with($sigPath, 'storage/') ? $sigPath : 'storage/' . ltrim($sigPath, '/');
-                $signatureUrl = public_path($relative);
-            }
-        }
-
-        $invoiceTerms = is_array($invoice->terms) ? array_values(array_filter($invoice->terms)) : [];
-        if (empty($invoiceTerms)) {
-            $invoiceTerms = TermsCondition::query()
-                ->where('accountid', $accountid)
-                ->where('type', 'billing')
-                ->where('is_active', true)
-                ->where('is_default', true)
-                ->orderByRaw('COALESCE(sequence, 999999), created_at ASC')
-                ->pluck('content')
-                ->map(fn ($term) => trim((string) $term))
-                ->filter()
-                ->values()
-                ->all();
-        }
-
-        $html = view('invoices.pdf', compact(
-            'invoice', 'account', 'accountBillingDetail',
-            'sameStateGst', 'isTaxInvoice', 'documentType', 'signatureUrl', 'invoiceTerms'
-        ))->render();
-
-        $filename = $documentType . ' - ' . ($isTaxInvoice ? $invoice->ti_number : $invoice->pi_number) . '.pdf';
-
-        $browsershot = $this->getBrowsershot($html);
-
-        $pdf = $browsershot->pdf();
-
-        return response($pdf, 200, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        return response($pdfAttachment['binary'], 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $pdfAttachment['filename'] . '"',
         ]);
     }
 

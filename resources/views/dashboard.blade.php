@@ -13,9 +13,11 @@
                     <p class="eyebrow mb-1">{{ $stat['label'] }}</p>
                     <div class="d-flex align-items-baseline gap-2">
                         <h3 class="mb-0 fw-800">{{ $stat['value'] }}</h3>
-                        <span class="stat-change stat-change-sm {{ str_contains($stat['change'], '+') ? 'positive' : 'warning' }}">
-                            {{ $stat['change'] }}
-                        </span>
+                        @if(!empty($stat['change']))
+                            <span class="stat-change stat-change-sm {{ str_contains($stat['change'], '+') ? 'positive' : 'warning' }}">
+                                {{ $stat['change'] }}
+                            </span>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -115,6 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const labels = @json($monthlyPayments['labels']);
     const dataValues = @json($monthlyPayments['data']);
+    const transactionValues = @json($monthlyPayments['transactions'] ?? []);
 
     // Common options for line charts
     const commonOptions = {
@@ -170,7 +173,7 @@ document.addEventListener('DOMContentLoaded', function() {
             labels: labels,
             datasets: [{
                 label: 'Transactions',
-                data: [45, 52, 38, 65, 48, 70, 62, 85, 75, 90, 82, 95],
+                data: transactionValues,
                 borderColor: '#10b981',
                 borderWidth: 3,
                 fill: true,

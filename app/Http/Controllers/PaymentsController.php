@@ -12,27 +12,40 @@ class PaymentsController extends Controller
 {
     public function payments(): View
     {
-        $query = Payment::with('client');
+        $userAccountId = $this->resolveAccountId();
+        $query = Payment::where('accountid', $userAccountId)->with(['client', 'invoice']);
         $searchTerm = request('search', '');
 
         if ($searchTerm) {
-            $query->where('reference_number', 'like', '%' . $searchTerm . '%')
-                ->orWhereHas('client', function ($q) use ($searchTerm) {
-                    $q->where('business_name', 'like', '%' . $searchTerm . '%')
-                        ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
-                });
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('reference_number', 'like', '%' . $searchTerm . '%')
+                    ->orWhereHas('client', function ($cq) use ($searchTerm) {
+                        $cq->where('business_name', 'like', '%' . $searchTerm . '%')
+                            ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+                    });
+            });
         }
         $resultCount = $query->count();
 
-        $payments = $query->latest()->take(20)->get()->map(function ($payment) {
+        $payments = $query->latest('payment_date')->latest('created_at')->take(50)->get()->map(function ($payment) {
+            $receivedAmount = (float) ($payment->received_amount ?? 0);
+            $tdsAmount = (float) ($payment->tds_amount ?? 0);
+            $totalSettled = $receivedAmount + $tdsAmount;
+            $currency = $payment->client->currency ?? 'INR';
+            $displayTitle = $payment->invoice->invoice_title
+                ?? $payment->invoice->invoice_number
+                ?? $payment->paymentid;
             return [
                 'record_id' => $payment->paymentid,
-                'number' => $payment->payment_number,
+                'number' => $displayTitle,
                 'client' => $payment->client->business_name ?? 'Client',
+                'invoice' => $payment->invoice->invoice_number ?? null,
+                'currency' => $currency,
                 'date' => $payment->payment_date?->format('d M Y'),
-                'method' => $payment->payment_method ?? 'Bank Transfer',
-                'amount' => 'Rs ' . number_format($payment->amount ?? 0),
-                'status' => $payment->status ?? 'Completed',
+                'method' => $payment->mode ?? '-',
+                'received_amount' => $receivedAmount,
+                'tds_amount' => $tdsAmount,
+                'total_settled' => $totalSettled,
             ];
         });
 
@@ -47,12 +60,26 @@ class PaymentsController extends Controller
 
     public function paymentsCreate(): View
     {
+        $selectedClientId = request('c', request('clientid'));
+        $selectedInvoiceId = request('i', request('invoiceid'));
+
+        if ($selectedInvoiceId && !$selectedClientId) {
+            $selectedClientId = Invoice::query()
+                ->where('invoiceid', $selectedInvoiceId)
+                ->value('clientid');
+        }
+
+        $selectedClient = $selectedClientId ? Client::find($selectedClientId) : null;
+
         return view('payments.form', [
             'title' => 'Record New Payment',
-            'clients' => Client::all(),
-            'invoices' => Invoice::with('client')
+            'clients' => Client::where('accountid', auth()->user()->accountid ?? 'ACC0000001')->get(),
+            'invoices' => Invoice::where('accountid', auth()->user()->accountid ?? 'ACC0000001')->with('client')
                 ->where('status', '!=', 'paid')
                 ->get(),
+            'selectedClientId' => $selectedClientId,
+            'selectedInvoiceId' => $selectedInvoiceId,
+            'selectedCurrency' => $selectedClient?->currency ?? 'INR',
         ]);
     }
 
@@ -61,11 +88,11 @@ class PaymentsController extends Controller
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
             'invoiceid' => 'nullable|exists:invoices,invoiceid',
-            'reference' => 'nullable|string|max:255',
-            'amount' => 'required|numeric|min:0.01',
-            'method' => 'required|string',
-            'paid_at' => 'required|date',
-            'notes' => 'nullable|string',
+            'received_amount' => 'required|numeric|min:0.01',
+            'tds_amount' => 'nullable|numeric|min:0',
+            'payment_date' => 'required|date',
+            'mode' => 'required|in:Bank Transfer,Online,Cash',
+            'reference_number' => 'nullable|string|max:100',
         ]);
 
         $invoice = null;
@@ -85,15 +112,12 @@ class PaymentsController extends Controller
         $paymentData = [
             'accountid' => $userAccountId,
             'clientid' => $validated['clientid'],
-            'invoiceid' => $validated['invoiceid'],
-            'payment_number' => 'PAY-' . strtoupper(bin2hex(random_bytes(3))),
-            'payment_date' => $validated['paid_at'],
-            'amount' => $validated['amount'],
-            'payment_method' => $validated['method'],
-            'reference_number' => $validated['reference'],
-            'notes' => $validated['notes'],
-            'status' => 'completed',
-            'received_by' => (auth()->user() instanceof \App\Models\User) ? auth()->id() : null,
+            'invoiceid' => $validated['invoiceid'] ?? null,
+            'received_amount' => $validated['received_amount'],
+            'tds_amount' => $validated['tds_amount'] ?? 0,
+            'payment_date' => $validated['payment_date'],
+            'mode' => $validated['mode'],
+            'reference_number' => $validated['reference_number'] ?? null,
         ];
 
         $payment = Payment::create($paymentData);
@@ -108,21 +132,31 @@ class PaymentsController extends Controller
     public function paymentsShow(Payment $payment): View
     {
         $payment->load(['client', 'invoice']);
+        $displayTitle = $payment->invoice->invoice_title
+            ?? $payment->invoice->invoice_number
+            ?? $payment->paymentid;
         return view('payments.show', [
-            'title' => $payment->payment_number ?? 'Payment',
+            'title' => $displayTitle,
             'subtitle' => 'Payment Details',
             'payment' => $payment,
+            'displayTitle' => $displayTitle,
         ]);
     }
 
     public function paymentsEdit(Payment $payment): View
     {
+        $displayTitle = $payment->invoice->invoice_title
+            ?? $payment->invoice->invoice_number
+            ?? $payment->paymentid;
         return view('payments.form', [
-            'title' => 'Edit ' . ($payment->payment_number ?? 'Payment'),
+            'title' => 'Edit ' . $displayTitle,
             'payment' => $payment,
-            'clients' => Client::all(),
-            'invoices' => Invoice::with('client')
+            'clients' => Client::where('accountid', $payment->accountid)->get(),
+            'invoices' => Invoice::where('accountid', $payment->accountid)->with('client')
                 ->get(),
+            'selectedClientId' => $payment->clientid,
+            'selectedInvoiceId' => $payment->invoiceid,
+            'selectedCurrency' => $payment->client?->currency ?? 'INR',
         ]);
     }
 
@@ -131,11 +165,11 @@ class PaymentsController extends Controller
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
             'invoiceid' => 'nullable|exists:invoices,invoiceid',
-            'reference' => 'nullable|string|max:255',
-            'amount' => 'required|numeric|min:0.01',
-            'method' => 'required|string',
-            'paid_at' => 'required|date',
-            'notes' => 'nullable|string',
+            'received_amount' => 'required|numeric|min:0.01',
+            'tds_amount' => 'nullable|numeric|min:0',
+            'payment_date' => 'required|date',
+            'mode' => 'required|in:Bank Transfer,Online,Cash',
+            'reference_number' => 'nullable|string|max:100',
         ]);
 
         if (!empty($validated['invoiceid'])) {
@@ -150,13 +184,20 @@ class PaymentsController extends Controller
 
         $payment->update([
             'clientid' => $validated['clientid'],
-            'invoiceid' => $validated['invoiceid'],
-            'payment_date' => $validated['paid_at'],
-            'amount' => $validated['amount'],
-            'payment_method' => $validated['method'],
-            'reference_number' => $validated['reference'],
-            'notes' => $validated['notes'],
+            'invoiceid' => $validated['invoiceid'] ?? null,
+            'received_amount' => $validated['received_amount'],
+            'tds_amount' => $validated['tds_amount'] ?? 0,
+            'payment_date' => $validated['payment_date'],
+            'mode' => $validated['mode'],
+            'reference_number' => $validated['reference_number'] ?? null,
         ]);
+
+        if ($payment->invoiceid) {
+            $invoice = Invoice::find($payment->invoiceid);
+            if ($invoice) {
+                $this->refreshInvoicePaymentStatus($invoice);
+            }
+        }
 
         return redirect()->route('payments.index')->with('success', 'Payment updated successfully.');
     }
@@ -179,7 +220,10 @@ class PaymentsController extends Controller
     {
         $invoice->loadMissing('payments');
 
-        $amountPaid = (float) ($invoice->payments->sum('amount') ?? 0);
+        $amountPaid = (float) $invoice->payments->sum(function ($payment) {
+            return ((float) ($payment->received_amount ?? 0)) + ((float) ($payment->tds_amount ?? 0));
+        });
+        $amountPaid = max(0, $amountPaid);
         $grandTotal = (float) ($invoice->grand_total ?? 0);
         $balanceDue = max(0, $grandTotal - $amountPaid);
 

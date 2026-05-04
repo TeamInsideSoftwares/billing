@@ -27,7 +27,10 @@
                 @error('type') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div class="service-field">
-                <label for="ps_catid">Category</label>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem;">
+                    <label for="ps_catid" style="margin-bottom:0;">Category</label>
+                    <button type="button" id="btn-add-category-inline" class="text-link" style="font-size:0.78rem; font-weight:600;">+ Add</button>
+                </div>
                 <select id="ps_catid" name="ps_catid" class="service-input-compact">
                     <option value="">-- No Category --</option>
                     @foreach($categories as $category)
@@ -39,7 +42,7 @@
                 @error('ps_catid') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div class="service-toggle">
-                <label for="sync">Sync</label>
+                <label for="sync">Sync with Superadmin</label>
                 <label class="custom-checkbox service-check">
                     <input type="hidden" name="sync" value="no">
                     <input type="checkbox" name="sync" value="yes" id="sync" {{ old('sync', isset($service) ? $service->sync : 'no') == 'yes' ? 'checked' : '' }}>
@@ -47,7 +50,7 @@
                 @error('sync') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div class="service-toggle">
-                <label for="user_wise">User-wise</label>
+                <label for="user_wise">Is this Product/Service sold by per User?</label>
                 <label class="custom-checkbox service-check">
                     <input type="hidden" name="user_wise" value="0">
                     <input type="checkbox" name="user_wise" value="1" id="user_wise" {{ old('user_wise', isset($service) ? $service->user_wise : 0) ? 'checked' : '' }}>
@@ -206,6 +209,30 @@
 
         </div>
 
+        <div class="modal fade" id="addCategoryInlineModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
+                <div class="modal-content rounded-panel">
+                    <div class="modal-header modal-header-custom">
+                        <h5 class="modal-title service-modal-title">
+                            <i class="fas fa-folder-plus icon-spaced text-muted"></i>Add Category
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body service-modal-body">
+                        <div class="field-gap">
+                            <label class="label-compact" for="inline-category-name">Category Name *</label>
+                            <input type="text" id="inline-category-name" class="service-input-full" maxlength="150" placeholder="Enter category name">
+                        </div>
+                        <div id="inline-category-error" style="display:none; margin-bottom:0.75rem; padding:0.55rem 0.7rem; border-radius:8px; background:#fef2f2; color:#b91c1c; font-size:0.82rem;"></div>
+                        <div class="flex-center-gap">
+                            <button type="button" id="save-inline-category-btn" class="primary-button small">Save Category</button>
+                            <button type="button" class="text-link small" data-bs-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="saved-items-panel" class="section-divider hidden">
             <div class="flex-between">
                 <strong class="small-text">Saved Items</strong>
@@ -271,12 +298,12 @@ function showToast(type, message) {
     const container = document.getElementById('app-toast-container');
     const toast = document.createElement('div');
     toast.className = `app-toast app-toast-${type}`;
-    
+
     const icon = type === 'success' ? 'fa-check-circle' : 'fa-times-circle';
     toast.innerHTML = `<i class="fas ${icon} toast-icon"></i><span>${message}</span>`;
-    
+
     container.appendChild(toast);
-    
+
     // Auto-dismiss after 3.5 seconds
     setTimeout(() => {
         if (toast.parentNode) {
@@ -447,7 +474,11 @@ function showToast(type, message) {
             const costPrice = row.querySelector('input[name*="[cost_price]"]')?.value || '';
             const sellingPrice = row.querySelector('input[name*="[selling_price]"]')?.value || '';
             const sacCode = row.querySelector('input[name*="[sac_code]"]')?.value || '';
-            const taxId = row.querySelector('select[name*="[taxid]"]')?.value || '';
+            const taxSelect = row.querySelector('select[name*="[taxid]"]');
+            const taxId = taxSelect?.value || '';
+            const selectedTaxOption = taxSelect?.selectedOptions?.[0] || null;
+            const selectedTaxRate = selectedTaxOption ? parseFloat(selectedTaxOption.dataset.rate || '0') : 0;
+            const taxRate = isMultiTax ? selectedTaxRate : fixedTaxRate;
 
             if (currency || costPrice || sellingPrice || sacCode || taxId) {
                 costings.push({
@@ -455,7 +486,8 @@ function showToast(type, message) {
                     cost_price: costPrice,
                     selling_price: sellingPrice,
                     sac_code: sacCode,
-                    taxid: taxId || null
+                    taxid: taxId || null,
+                    tax_rate: Number.isFinite(taxRate) ? taxRate : 0
                 });
             }
         });
@@ -468,7 +500,7 @@ function showToast(type, message) {
         const editUrl = editUrlTemplate.replace('SERVICEID', item.itemid);
         const costings = item.costings || [];
         const validCostings = costings.filter((c) => (c.currency_code || '').trim() !== '');
-        
+
         const parentItemNames = Array.from(savedAddons.values());
 
         let costingsHtml;
@@ -481,10 +513,10 @@ function showToast(type, message) {
                 return `<span class="saved-costing-pill">${c.currency_code} ${price} <small class="saved-costing-note">(${tax || 'No Tax'})</small></span>`;
             }).join(' ');
         }
-        
+
         let parentsHtml = '';
         if (parentItemNames.length > 0) {
-            const parentPills = parentItemNames.map(name => 
+            const parentPills = parentItemNames.map(name =>
                 `<span class="saved-parent-pill">↖ ${name}</span>`
             ).join(' ');
             parentsHtml = `<div class="saved-parent-wrap">${parentPills}</div>`;
@@ -551,7 +583,7 @@ function showToast(type, message) {
             const addonsArray = Array.from(savedAddons.keys());
             console.log('Selected addons:', addonsArray);
             console.log('savedAddons Map:', savedAddons);
-            
+
             const payload = {
                 type: document.getElementById('type').value,
                 sync: document.getElementById('sync').checked ? 'yes' : 'no',
@@ -599,7 +631,7 @@ function showToast(type, message) {
                     costings: payload.costings
                 });
                 resetAfterQuickSave();
-                
+
                 showToast('success', 'Item saved successfully!');
             } catch (error) {
                 showToast('error', error.message || 'Unable to save item.');
@@ -663,6 +695,91 @@ function showToast(type, message) {
         openTaxModalLink.addEventListener('click', function(e) {
             e.preventDefault();
             taxModal.show();
+        });
+    }
+
+    const categorySelect = document.getElementById('ps_catid');
+    const addCategoryBtn = document.getElementById('btn-add-category-inline');
+    const addCategoryModalEl = document.getElementById('addCategoryInlineModal');
+    const addCategoryNameInput = document.getElementById('inline-category-name');
+    const addCategoryError = document.getElementById('inline-category-error');
+    const saveCategoryBtn = document.getElementById('save-inline-category-btn');
+    const addCategoryModal = addCategoryModalEl ? new bootstrap.Modal(addCategoryModalEl) : null;
+
+    function showCategoryError(message) {
+        if (!addCategoryError) return;
+        addCategoryError.textContent = message || 'Unable to save category.';
+        addCategoryError.style.display = 'block';
+    }
+
+    if (addCategoryBtn && addCategoryModal) {
+        addCategoryBtn.addEventListener('click', function() {
+            if (addCategoryError) {
+                addCategoryError.style.display = 'none';
+                addCategoryError.textContent = '';
+            }
+            if (addCategoryNameInput) addCategoryNameInput.value = '';
+            addCategoryModal.show();
+            setTimeout(() => addCategoryNameInput?.focus(), 100);
+        });
+    }
+
+    if (saveCategoryBtn) {
+        saveCategoryBtn.addEventListener('click', async function () {
+            const categoryName = (addCategoryNameInput?.value || '').trim();
+            if (!categoryName) {
+                showCategoryError('Category name is required.');
+                addCategoryNameInput?.focus();
+                return;
+            }
+
+            if (addCategoryError) {
+                addCategoryError.style.display = 'none';
+                addCategoryError.textContent = '';
+            }
+
+            try {
+                saveCategoryBtn.disabled = true;
+                saveCategoryBtn.textContent = 'Saving...';
+
+                const response = await fetch("{{ route('product-categories.store') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    },
+                    body: JSON.stringify({
+                        name: categoryName,
+                        status: 'active'
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data.success || !data.category) {
+                    throw new Error(data.message || 'Failed to create category.');
+                }
+
+                const existingOption = Array.from(categorySelect.options)
+                    .find(opt => opt.value === data.category.ps_catid);
+
+                if (!existingOption) {
+                    const option = document.createElement('option');
+                    option.value = data.category.ps_catid;
+                    option.textContent = data.category.name;
+                    categorySelect.appendChild(option);
+                }
+
+                categorySelect.value = data.category.ps_catid;
+                addCategoryModal.hide();
+                showToast('success', 'Category added.');
+            } catch (error) {
+                showCategoryError(error.message || 'Unable to add category right now.');
+            } finally {
+                saveCategoryBtn.disabled = false;
+                saveCategoryBtn.textContent = 'Save Category';
+            }
         });
     }
 })();

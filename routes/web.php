@@ -171,6 +171,9 @@ Route::controller(SettingsController::class)->group(function () {
         Route::patch('/settings/taxes/{tax}', 'taxUpdate')->name('taxes.update');
         Route::delete('/settings/taxes/{tax}', 'taxDestroy')->name('taxes.destroy');
         Route::patch('/settings/taxes/{tax}/toggle', 'taxToggle')->name('taxes.toggle');
+        Route::post('/settings/message-templates', 'messageTemplateStore')->name('message-templates.store');
+        Route::patch('/settings/message-templates/{template}', 'messageTemplateUpdate')->name('message-templates.update');
+        Route::delete('/settings/message-templates/{template}', 'messageTemplateDestroy')->name('message-templates.destroy');
     });
 
     // // Keep terms conditions on legacy controller until moved fully.

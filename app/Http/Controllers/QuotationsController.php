@@ -13,15 +13,18 @@ class QuotationsController extends Controller
 {
     public function quotations(): View
     {
-        $query = Quotation::with('client');
+        $userAccountId = $this->resolveAccountId();
+        $query = Quotation::where('accountid', $userAccountId)->with('client');
         $searchTerm = request('search', '');
 
         if ($searchTerm) {
-            $query->where('quotation_number', 'like', '%' . $searchTerm . '%')
-                ->orWhereHas('client', function ($q) use ($searchTerm) {
-                    $q->where('business_name', 'like', '%' . $searchTerm . '%')
-                        ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
-                });
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('quotation_number', 'like', '%' . $searchTerm . '%')
+                    ->orWhereHas('client', function ($cq) use ($searchTerm) {
+                        $cq->where('business_name', 'like', '%' . $searchTerm . '%')
+                            ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+                    });
+            });
         }
         $resultCount = $query->count();
 
@@ -52,7 +55,7 @@ class QuotationsController extends Controller
 
         return view('quotations.form', [
             'title' => 'Create New Quotation',
-            'clients' => Client::all(),
+            'clients' => Client::where('accountid', $accountid)->get(),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'account' => $account,
         ]);
@@ -95,7 +98,7 @@ class QuotationsController extends Controller
         return view('quotations.form', [
             'title' => 'Edit ' . ($quotation->quotation_number ?? 'Quotation'),
             'quotation' => $quotation,
-            'clients' => Client::all(),
+            'clients' => Client::where('accountid', $accountid)->get(),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'account' => $account,
         ]);

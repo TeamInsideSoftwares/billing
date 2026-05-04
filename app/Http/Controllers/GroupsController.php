@@ -10,7 +10,8 @@ class GroupsController extends Controller
 {
     public function groups(): View
     {
-        $query = Group::query();
+        $userAccountId = $this->resolveAccountId();
+        $query = Group::where('accountid', $userAccountId);
         $searchTerm = request('search', '');
         if ($searchTerm) {
             $query->where('group_name', 'like', '%' . $searchTerm . '%');
@@ -59,7 +60,7 @@ class GroupsController extends Controller
             'gstin' => 'nullable|string|max:20',
         ]);
 
-        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $userAccountId = $this->resolveAccountId();
         $validated['accountid'] = $userAccountId;
 
         Group::create($validated);
@@ -69,6 +70,9 @@ class GroupsController extends Controller
 
     public function groupsShow(Group $group): View
     {
+        if ($group->accountid !== $this->resolveAccountId()) {
+            abort(403);
+        }
         return view('groups.show', [
             'title' => $group->group_name ?? 'Group',
             'subtitle' => 'Group Details',
@@ -78,12 +82,16 @@ class GroupsController extends Controller
 
     public function groupsEdit(Group $group): View
     {
+        if ($group->accountid !== $this->resolveAccountId()) {
+            abort(403);
+        }
         return view('groups.form', ['title' => 'Edit ' . ($group->group_name ?? 'Group'), 'group' => $group]);
     }
 
     public function groupsUpdate(Request $request, $id)
     {
-        $group = Group::where('groupid', $id)->firstOrFail();
+        $userAccountId = $this->resolveAccountId();
+        $group = Group::where('groupid', $id)->where('accountid', $userAccountId)->firstOrFail();
 
         $validated = $request->validate([
             'group_name' => 'required|string|max:150',
@@ -104,6 +112,9 @@ class GroupsController extends Controller
 
     public function groupsDestroy(Group $group)
     {
+        if ($group->accountid !== $this->resolveAccountId()) {
+            abort(403);
+        }
         $group->delete();
 
         return redirect()->back()->with('success', 'Group deleted successfully.')->with('open_group_modal', true);

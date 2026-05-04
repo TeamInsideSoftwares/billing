@@ -6,6 +6,182 @@
     <div></div>
 </section>
 
+<style>
+/* Message Template Modern Tabs & Pills */
+.mt-main-tabs-wrap {
+    margin: -1.25rem -1.25rem 1.5rem -1.25rem;
+    padding: 0 1.25rem;
+}
+
+.mt-type-tab-btn {
+    border: none;
+    background: transparent;
+    padding: 1rem 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mt-type-tab-btn:hover {
+    color: var(--text);
+}
+
+.mt-type-tab-btn.is-active {
+    color: var(--brand);
+}
+
+.mt-type-tab-btn.is-active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--brand);
+    border-radius: 2px 2px 0 0;
+}
+
+.mt-channel-pill-btn {
+    border: 1px solid var(--line);
+    background: #fff;
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.mt-channel-pill-btn:hover {
+    background: #f8fafc;
+    color: var(--text);
+    border-color: #cbd5e1;
+}
+
+.mt-channel-pill-btn.is-active {
+    background: #eff6ff;
+    color: var(--brand);
+    border-color: var(--brand);
+    box-shadow: 0 0 0 1px var(--brand);
+}
+
+.template-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+.col-span-2 {
+    grid-column: span 2;
+}
+
+.template-active-input {
+    width: 1.1rem;
+    height: 1.1rem;
+    cursor: pointer;
+}
+
+.settings-card-soft {
+    border: 1px solid var(--line);
+    background: #fafbfd;
+    border-radius: 12px;
+}
+
+.tc-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+}
+
+.tc-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.tc-card-head {
+    padding: 0.55rem 0.7rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.tc-card-title {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.tc-type-tabs {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.7rem;
+}
+
+.tc-type-tab {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #475569;
+    border-radius: 999px;
+    padding: 0.25rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.tc-type-tab.is-active {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-color: #93c5fd;
+}
+
+.tc-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.tc-table th {
+    padding: 0.45rem 0.4rem;
+    font-size: 0.72rem;
+    color: #64748b;
+    font-weight: 700;
+    border-bottom: 1px solid #e2e8f0;
+    text-transform: uppercase;
+    letter-spacing: .01em;
+}
+
+.tc-table td {
+    padding: 0.45rem 0.4rem;
+    font-size: 0.77rem;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+}
+
+.tc-table tr:last-child td {
+    border-bottom: none;
+}
+
+.tc-col-seq { width: 70px; text-align: center; }
+.tc-col-default { width: 90px; text-align: center; }
+.tc-col-status { width: 90px; text-align: center; }
+.tc-col-action { width: 88px; text-align: right; }
+
+.tc-term-text {
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+</style>
+
 <div class="settings-page">
 <!-- Tabs Wrapper -->
 <div class="settings-tabs-wrap">
@@ -13,6 +189,7 @@
         <button class="tab-button active" data-tab="personal">Business Info</button>
         <button class="tab-button" data-tab="financial-year">Financial Year</button>
 <button class="tab-button" data-tab="config">Configuration Keys</button>
+        <button class="tab-button" data-tab="message-templates">Message Templates</button>
         @if($account->allow_multi_taxation)
         <button class="tab-button" data-tab="billing-details">Billing Details</button>
         <button class="tab-button" data-tab="quotation-details">Quotation Details</button>
@@ -438,6 +615,99 @@
     </section>
 </div>
 
+<!-- MESSAGE TEMPLATES -->
+<div id="message-templates" class="tab-content">
+    <section class="panel-card panel-card panel-card-compact">
+        <div class="settings-section-head mb-0 border-bottom-0">
+            <div class="settings-section-icon"><i class="fas fa-envelope-open-text"></i></div>
+            <div>
+                <h5 class="settings-section-title">Message Templates</h5>
+                <p class="settings-section-subtitle">Manage templates for Email, WhatsApp, and SMS</p>
+            </div>
+        </div>
+
+        <!-- Document Type Tabs (Top Level) -->
+        <div class="mt-main-tabs-wrap border-bottom mt-3">
+            <div class="mt-main-tabs d-flex gap-4">
+                <button type="button" class="mt-type-tab-btn is-active" data-type="pi">Proforma Invoice (PI)</button>
+                <button type="button" class="mt-type-tab-btn" data-type="ti">Tax Invoice (TI)</button>
+                <button type="button" class="mt-type-tab-btn" data-type="digital_signed">Digital Signed</button>
+            </div>
+        </div>
+
+        <div class="settings-card-soft p-4">
+            @php
+                $templateTypeMeta = [
+                    'pi' => 'PI (Proforma Invoice) templates',
+                    'ti' => 'TI (Tax Invoice) templates',
+                    'digital_signed' => 'Digital Signed templates',
+                ];
+            @endphp
+
+            @foreach($templateTypeMeta as $typeKey => $typeLabel)
+                <div class="mt-type-pane {{ $loop->first ? 'active' : '' }}" data-type-pane="{{ $typeKey }}" style="{{ $loop->first ? '' : 'display:none;' }}">
+
+                    <!-- Channel Pills (Sub Level) -->
+                    <div class="mt-channel-pills d-flex gap-2 mb-4">
+                        <button type="button" class="mt-channel-pill-btn is-active" data-type="{{ $typeKey }}" data-channel="email">
+                            <i class="fas fa-envelope mr-1"></i> Email
+                        </button>
+                        <button type="button" class="mt-channel-pill-btn" data-type="{{ $typeKey }}" data-channel="whatsapp">
+                            <i class="fab fa-whatsapp mr-1"></i> WhatsApp
+                        </button>
+                        <button type="button" class="mt-channel-pill-btn" data-type="{{ $typeKey }}" data-channel="sms">
+                            <i class="fas fa-sms mr-1"></i> SMS
+                        </button>
+                    </div>
+
+                    <form method="POST" action="{{ route('message-templates.store') }}" class="message-template-form" data-template-form="{{ $typeKey }}">
+                        @csrf
+                        <input type="hidden" name="template_type" value="{{ $typeKey }}">
+                        <input type="hidden" name="channel" class="template-channel-input" value="email">
+
+                        <div class="template-form-grid">
+                            <div class="form-group mb-3">
+                                <label class="label-compact font-bold mb-1">Template Name *</label>
+                                <input type="text" name="name" class="settings-input template-name-input" placeholder="Invoice Email {{ strtoupper(str_replace('_', ' ', $typeKey)) }}" required>
+                            </div>
+
+                            <div class="form-group mb-3 template-subject-group">
+                                <label class="label-compact font-bold mb-1">Subject (optional)</label>
+                                <input type="text" name="subject" class="settings-input template-subject-input" placeholder="Invoice PI-001 for @{{client_name}}" autocomplete="off">
+                            </div>
+
+                            <div class="form-group mb-3 col-span-2">
+                                <label class="label-compact font-bold mb-1">Message Body *</label>
+                                <textarea name="body" id="templateBodyInput-{{ $typeKey }}" rows="6" class="settings-input template-body-input" placeholder="Hi @{{client_name}},&#10;Please find attached invoice @{{invoice_number}}."></textarea>
+                                <div class="mt-2 d-flex flex-wrap gap-2">
+                                    <span class="badge bg-light text-muted border px-2 py-1">@{{business_name}}</span>
+                                    <span class="badge bg-light text-muted border px-2 py-1">@{{client_name}}</span>
+                                    <span class="badge bg-light text-muted border px-2 py-1">@{{pi_number}}</span>
+                                    <span class="badge bg-light text-muted border px-2 py-1">@{{ti_number}}</span>
+                                    <span class="badge bg-light text-muted border px-2 py-1">@{{total_amount}}</span>
+                                    <span class="badge bg-light text-muted border px-2 py-1">@{{due_date}}</span>
+                                    <span class="badge bg-light text-muted border px-2 py-1">@{{account_name}}</span>
+                                </div>
+                            </div>
+
+                            <div class="d-flex align-items-center justify-content-between col-span-2 mt-3 pt-3 border-top">
+                                <label class="d-inline-flex align-items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="is_active" class="template-active-input" value="1" checked>
+                                    <span class="text-sm fw-medium">Active Template</span>
+                                </label>
+                                <button type="submit" class="primary-button px-4 py-2">
+                                    <i class="fas fa-save mr-2"></i> Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            @endforeach
+        </div>
+
+    </section>
+</div>
+
 <!-- BILLING DETAILS TAB -->
 <div id="billing-details" class="tab-content">
     <section class="panel-card panel-card panel-card-compact">
@@ -688,6 +958,7 @@
                     <select name="type" required style="width: 100%; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">
                         <option value="billing" {{ old('type', $editingTerm->type ?? '') == 'billing' ? 'selected' : '' }}>Billing</option>
                         <option value="quotation" {{ old('type', $editingTerm->type ?? '') == 'quotation' ? 'selected' : '' }}>Quotation</option>
+                        <option value="proforma" {{ old('type', $editingTerm->type ?? '') == 'proforma' ? 'selected' : '' }}>Proforma</option>
                     </select>
                 </div>
                 <div class="flex-fill">
@@ -705,29 +976,36 @@
                 <div style="display: flex; gap: 0.4rem;">
                     <button type="submit" class="primary-button" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">{{ $editingTerm ? 'Update' : 'Add' }}</button>
                     @if($editingTerm)
-                        <a href="{{ route('settings.index') }}#terms-conditions" style="padding: 0.4rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #64748b; font-size: 0.85rem; display: inline-block;">Cancel</a>
+                        <a href="{{ route('settings.index', ['t' => request('t', $editingTerm->type ?? 'billing')]) }}#terms-conditions" style="padding: 0.4rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #64748b; font-size: 0.85rem; display: inline-block;">Cancel</a>
                     @endif
                 </div>
             </form>
         </div>
-        <div class="row">
+
+        <div class="tc-type-tabs" id="tcTypeTabs">
+            <button type="button" class="tc-type-tab" data-tc-type="billing">Billing</button>
+            <button type="button" class="tc-type-tab" data-tc-type="quotation">Quotation</button>
+            <button type="button" class="tc-type-tab" data-tc-type="proforma">Proforma</button>
+        </div>
+
+        <div class="tc-grid">
             {{-- Billing Terms List --}}
-            <div class="col-6" >
-                <h6>Billing T&C</h6>
-                <table class="data-table small-text">
+            <div class="tc-card tc-type-pane" data-tc-type="billing">
+                <div class="tc-card-head"><h6 class="tc-card-title">Billing T&C</h6></div>
+                <table class="tc-table">
                     <thead>
                         <tr>
-                            <th>Seq</th>
-                            <th>Terms and Condition</th>
-                            <th>Default</th>
-                            <th>Status</th>
-                            <th>Action</th>
+                            <th class="tc-col-seq">Seq</th>
+                            <th class="ps-3">Terms and Condition</th>
+                            <th class="tc-col-default">Default</th>
+                            <th class="tc-col-status">Status</th>
+                            <th class="tc-col-action">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($billingTerms as $index => $term)
                             <tr>
-                                <td style="color: #64748b; text-align: center; padding: 0.4rem;">
+                                <td class="tc-col-seq">
                                     <form method="POST" action="{{ route('terms-conditions.update-sequence', $term) }}" style="display: inline-block; margin: 0;">
                                         @csrf @method('PATCH')
                                         <select name="sequence" onchange="this.form.submit()"
@@ -738,24 +1016,24 @@
                                         </select>
                                     </form>
                                 </td>
-                                <td style="padding: 0.4rem;">{{ $term->content }}</td>
-                                <td style="padding: 0.4rem;">
+                                <td class="tc-term-text ps-3">{{ $term->content }}</td>
+                                <td class="tc-col-default">
                                     @if($term->is_default)
                                         <span style="background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Default</span>
                                     @else
                                         <span style="color: #94a3b8; font-size: 0.75rem;">-</span>
                                     @endif
                                 </td>
-                                <td style="padding: 0.4rem;">
+                                <td class="tc-col-status">
                                     @if($term->is_active)
                                         <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Active</span>
                                     @else
                                         <span style="background: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Inactive</span>
                                     @endif
                                 </td>
-                                <td style="text-align: right; padding: 0.4rem;">
+                                <td class="tc-col-action">
                                     <div class="table-actions">
-                                        <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id)]) }}#terms-conditions" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>
+                                        <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'billing']) }}#terms-conditions" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>
                                         <form method="POST" action="{{ route('terms-conditions.destroy', $term) }}" onsubmit="return confirm('Delete this term?')">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="icon-action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
@@ -764,29 +1042,29 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 1.5rem; font-size: 0.85rem;">No billing T&C added yet.</td></tr>
+                            <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 1.1rem; font-size: 0.8rem;">No billing T&C added yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
 
             {{-- Quotation Terms List --}}
-            <div class="col-6 border-left">
-                <h6>Quotation T&C</h6>
-                <table class="data-table small-text">
+            <div class="tc-card tc-type-pane" data-tc-type="quotation">
+                <div class="tc-card-head"><h6 class="tc-card-title">Quotation T&C</h6></div>
+                <table class="tc-table">
                     <thead>
                         <tr>
-                            <th>Seq</th>
-                            <th>Terms and Condition</th>
-                            <th>Default</th>
-                            <th>Status</th>
-                            <th>Action</th>
+                            <th class="tc-col-seq">Seq</th>
+                            <th class="ps-3">Terms and Condition</th>
+                            <th class="tc-col-default">Default</th>
+                            <th class="tc-col-status">Status</th>
+                            <th class="tc-col-action">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($quotationTerms as $index => $term)
                             <tr>
-                                <td style="color: #64748b; text-align: center; padding: 0.4rem;">
+                                <td class="tc-col-seq">
                                     <form method="POST" action="{{ route('terms-conditions.update-sequence', $term) }}">
                                         @csrf @method('PATCH')
                                         <select name="sequence" onchange="this.form.submit()"
@@ -797,24 +1075,24 @@
                                         </select>
                                     </form>
                                 </td>
-                                <td style="padding: 0.4rem;">{{ $term->content }}</td>
-                                <td style="padding: 0.4rem;">
+                                <td class="tc-term-text ps-3">{{ $term->content }}</td>
+                                <td class="tc-col-default">
                                     @if($term->is_default)
                                         <span style="background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Default</span>
                                     @else
                                         <span style="color: #94a3b8; font-size: 0.75rem;">-</span>
                                     @endif
                                 </td>
-                                <td style="padding: 0.4rem;">
+                                <td class="tc-col-status">
                                     @if($term->is_active)
                                         <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Active</span>
                                     @else
                                         <span style="background: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Inactive</span>
                                     @endif
                                 </td>
-                                <td style="text-align: right; padding: 0.4rem;">
+                                <td class="tc-col-action">
                                     <div class="table-actions">
-                                        <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id)]) }}#terms-conditions" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>
+                                        <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'quotation']) }}#terms-conditions" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>
                                         <form method="POST" action="{{ route('terms-conditions.destroy', $term) }}" onsubmit="return confirm('Delete this term?')">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="icon-action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
@@ -823,7 +1101,66 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 1.5rem; font-size: 0.85rem;">No quotation T&C added yet.</td></tr>
+                            <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 1.1rem; font-size: 0.8rem;">No quotation T&C added yet.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- Proforma Terms List --}}
+            <div class="tc-card tc-type-pane" data-tc-type="proforma">
+                <div class="tc-card-head"><h6 class="tc-card-title">Proforma T&C</h6></div>
+                <table class="tc-table">
+                    <thead>
+                        <tr>
+                            <th class="tc-col-seq">Seq</th>
+                            <th class="ps-3">Terms and Condition</th>
+                            <th class="tc-col-default">Default</th>
+                            <th class="tc-col-status">Status</th>
+                            <th class="tc-col-action">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($proformaTerms as $index => $term)
+                            <tr>
+                                <td class="tc-col-seq">
+                                    <form method="POST" action="{{ route('terms-conditions.update-sequence', $term) }}">
+                                        @csrf @method('PATCH')
+                                        <select name="sequence" onchange="this.form.submit()"
+                                                style="width: 50px; padding: 0.2rem 0.3rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem; text-align: center;">
+                                            @for($i = 1; $i <= $proformaTerms->count(); $i++)
+                                                <option value="{{ $i }}" {{ ($term->sequence ?? ($index + 1)) == $i ? 'selected' : '' }}>{{ $i }}</option>
+                                            @endfor
+                                        </select>
+                                    </form>
+                                </td>
+                                <td class="tc-term-text ps-3">{{ $term->content }}</td>
+                                <td class="tc-col-default">
+                                    @if($term->is_default)
+                                        <span style="background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Default</span>
+                                    @else
+                                        <span style="color: #94a3b8; font-size: 0.75rem;">-</span>
+                                    @endif
+                                </td>
+                                <td class="tc-col-status">
+                                    @if($term->is_active)
+                                        <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Active</span>
+                                    @else
+                                        <span style="background: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Inactive</span>
+                                    @endif
+                                </td>
+                                <td class="tc-col-action">
+                                    <div class="table-actions">
+                                        <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'proforma']) }}#terms-conditions" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>
+                                        <form method="POST" action="{{ route('terms-conditions.destroy', $term) }}" onsubmit="return confirm('Delete this term?')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="icon-action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 1.1rem; font-size: 0.8rem;">No proforma T&C added yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -1063,6 +1400,29 @@ document.addEventListener('DOMContentLoaded', function () {
     const urlParams = new URLSearchParams(window.location.search);
     const encodedE = urlParams.get('e');
     const decodedE = encodedE ? atob(encodedE) : null;
+    const tcTypeFromUrl = (urlParams.get('t') || '').toLowerCase();
+
+    function activateTcType(type) {
+        const allowed = ['billing', 'quotation', 'proforma'];
+        const resolved = allowed.includes(type) ? type : 'billing';
+        const tcTabs = document.querySelectorAll('.tc-type-tab');
+        const tcPanes = document.querySelectorAll('.tc-type-pane');
+
+        tcTabs.forEach((tab) => tab.classList.toggle('is-active', tab.dataset.tcType === resolved));
+        tcPanes.forEach((pane) => {
+            pane.style.display = pane.dataset.tcType === resolved ? '' : 'none';
+        });
+
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('t', resolved);
+        window.history.replaceState(null, '', currentUrl.toString());
+    }
+
+    document.querySelectorAll('.tc-type-tab').forEach((tab) => {
+        tab.addEventListener('click', function () {
+            activateTcType(this.dataset.tcType || 'billing');
+        });
+    });
 
     if (hash) {
         activateTab(hash);
@@ -1076,6 +1436,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // Default to personal if no hash
         activateTab('personal');
     }
+
+    const initialTcType = tcTypeFromUrl || "{{ old('type', $editingTerm->type ?? 'billing') }}";
+    activateTcType(initialTcType);
 
     // Serial mode toggle handler - OLD (kept for reference if still needed, but likely replaced)
     function handleSerialModeChange(radio) {
@@ -1323,6 +1686,169 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
+
+    const templateForms = Array.from(document.querySelectorAll('.message-template-form'));
+    const typePanes = Array.from(document.querySelectorAll('.mt-type-pane'));
+    const typeTabs = Array.from(document.querySelectorAll('.mt-type-tab-btn'));
+    @php
+        $templateMapForJs = $messageTemplates->mapWithKeys(function ($template) {
+            $key = $template->channel . '::' . $template->template_type;
+            return [$key => [
+                'name' => $template->name,
+                'subject' => $template->subject,
+                'body' => $template->body,
+                'is_active' => (bool) $template->is_active,
+            ]];
+        })->toArray();
+    @endphp
+    const templatesMap = @json($templateMapForJs);
+
+    function setTinyContent(textareaId, value) {
+        if (window.tinymce && tinymce.get(textareaId)) {
+            const editor = tinymce.get(textareaId);
+            const content = value || '';
+            if (content && !/<[a-z][\s\S]*>/i.test(content)) {
+                editor.setContent(content.replace(/\r\n|\r|\n/g, '<br>'));
+            } else {
+                editor.setContent(content);
+            }
+            return;
+        }
+        const input = document.getElementById(textareaId);
+        if (input) input.value = value || '';
+    }
+
+    function setActiveTab(tabs, matchAttr, value) {
+        tabs.forEach((tab) => {
+            const active = tab.dataset[matchAttr] === value;
+            tab.classList.toggle('is-active', active);
+        });
+    }
+
+    function loadTemplateForm(form) {
+        if (!form) return;
+        const channelInput = form.querySelector('.template-channel-input');
+        const typeInput = form.querySelector('input[name="template_type"]');
+        const nameInput = form.querySelector('.template-name-input');
+        const subjectInput = form.querySelector('.template-subject-input');
+        const subjectGroup = form.querySelector('.template-subject-group');
+        const activeInput = form.querySelector('.template-active-input');
+        const bodyInput = form.querySelector('.template-body-input');
+
+        const channel = channelInput?.value || 'email';
+        const type = typeInput?.value || 'pi';
+        const key = channel + '::' + type;
+        const existing = templatesMap[key] || null;
+
+        const typeLabel = type.replace('_', ' ').toUpperCase();
+        const channelLabel = channel.charAt(0).toUpperCase() + channel.slice(1);
+
+        if (nameInput) {
+            nameInput.value = existing?.name || ('Invoice ' + channelLabel + ' ' + typeLabel);
+        }
+
+        if (subjectGroup) {
+            subjectGroup.style.display = channel === 'email' ? 'block' : 'none';
+        }
+
+        if (subjectInput) {
+            const nextSubject = (existing && existing.subject !== null && existing.subject !== undefined)
+                ? String(existing.subject)
+                : '';
+            subjectInput.value = nextSubject;
+        }
+        if (activeInput) {
+            activeInput.checked = existing ? !!existing.is_active : true;
+        }
+        setTinyContent(bodyInput.id, existing?.body || '');
+    }
+
+    document.querySelectorAll('.mt-channel-pill-btn').forEach((tab) => {
+        tab.addEventListener('click', function () {
+            const type = this.dataset.type;
+            const channel = this.dataset.channel;
+            const pane = document.querySelector('.mt-type-pane[data-type-pane="' + type + '"]');
+            const form = pane?.querySelector('.message-template-form');
+            if (!form) return;
+
+            form.querySelector('.template-channel-input').value = channel;
+            pane.querySelectorAll('.mt-channel-pill-btn').forEach((btn) => {
+                const active = btn.dataset.channel === channel;
+                btn.classList.toggle('is-active', active);
+            });
+            loadTemplateForm(form);
+        });
+    });
+
+    typeTabs.forEach((tab) => {
+        tab.addEventListener('click', function () {
+            setActiveTab(typeTabs, 'type', this.dataset.type);
+            typePanes.forEach((pane) => {
+                pane.style.display = pane.dataset.typePane === this.dataset.type ? '' : 'none';
+            });
+        });
+    });
+
+    function openTemplateEditor(type, channel) {
+        const targetType = type || 'pi';
+        const targetChannel = channel || 'email';
+
+        setActiveTab(typeTabs, 'type', targetType);
+        typePanes.forEach((pane) => {
+            const isTargetPane = pane.dataset.typePane === targetType;
+            pane.style.display = isTargetPane ? '' : 'none';
+            if (!isTargetPane) return;
+
+            const form = pane.querySelector('.message-template-form');
+            if (!form) return;
+            form.querySelector('.template-channel-input').value = targetChannel;
+
+            pane.querySelectorAll('.mt-channel-pill-btn').forEach((btn) => {
+                const active = btn.dataset.channel === targetChannel;
+                btn.classList.toggle('is-active', active);
+            });
+
+            loadTemplateForm(form);
+        });
+    }
+
+    document.querySelectorAll('.js-template-edit').forEach((btn) => {
+        btn.addEventListener('click', function () {
+            const type = this.dataset.type;
+            const channel = this.dataset.channel;
+            openTemplateEditor(type, channel);
+            window.location.hash = 'message-templates';
+        });
+    });
+
+    if (window.tinymce && document.querySelector('.template-body-input')) {
+        tinymce.init({
+            selector: '.template-body-input',
+            menubar: false,
+            height: 280,
+            plugins: 'lists link table code autoresize',
+            toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
+        }).then(() => {
+            typePanes.forEach((pane) => {
+                const form = pane.querySelector('.message-template-form');
+                if (!form) return;
+                loadTemplateForm(form);
+            });
+        });
+    }
+
+    setActiveTab(typeTabs, 'type', 'pi');
+    typePanes.forEach((pane) => {
+        const form = pane.querySelector('.message-template-form');
+        if (!form) return;
+        loadTemplateForm(form);
+    });
+
+    templateForms.forEach((form) => {
+        form.addEventListener('submit', function () {
+            if (window.tinymce) tinymce.triggerSave();
+        });
+    });
 });
 </script>
 
