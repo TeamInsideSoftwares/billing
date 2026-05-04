@@ -1913,7 +1913,7 @@ class InvoicesController extends Controller
         $requestedEmailId = trim((string) request('e', ''));
 
         $latestEmail = null;
-        
+
         // 1. If specific email ID requested, load that first
         if ($requestedEmailId !== '') {
             $candidateEmail = InvoiceEmail::query()
@@ -1981,14 +1981,6 @@ class InvoicesController extends Controller
             ?? ''
         ));
 
-        // Raw templates list for populating channel-specific selects
-        $templatesList = MessageTemplate::query()
-            ->where('accountid', $currentAccountId)
-            ->whereIn('channel', ['whatsapp', 'sms'])
-            ->where('is_active', true)
-            ->get()
-            ->groupBy('channel');
-
         return view('invoices.email-compose', [
             'title' => 'Compose Invoice Email',
             'subtitle' => 'Preview and store email details before sending.',
@@ -2005,7 +1997,6 @@ class InvoicesController extends Controller
             'prefillPhone' => $prefillPhone,
             'emailTemplatesByType' => $emailTemplatesByType,
             'allTemplates' => $allTemplates,
-            'templatesList' => $templatesList,
             'fallbackTemplatesByType' => $fallbackTemplatesByType,
             'composeEmail' => $latestEmail,
             'customAttachmentUrl' => !empty($latestEmail?->custom_attachment_path)
@@ -2040,10 +2031,6 @@ class InvoicesController extends Controller
             'body' => 'nullable|string',
             'attachment_type' => 'required|in:pi,ti',
             'custom_attachment' => 'nullable|file|max:10240',
-            // Campio-specific fields for SMS/WhatsApp
-            'template_id' => 'nullable|string',
-            'meta_template_id' => 'nullable|string',
-            'sender_id' => 'nullable|string',
         ]);
 
         $selectedType = (string) ($validated['attachment_type'] ?? 'pi');
@@ -2154,19 +2141,6 @@ class InvoicesController extends Controller
                 return back()->withErrors(['phone' => 'Client phone/whatsapp number is required for this channel.'])->withInput();
             }
 
-            // Additional Campio fields from compose
-            $templateId = trim((string) ($validated['template_id'] ?? ''));
-            $metaTemplateId = trim((string) ($validated['meta_template_id'] ?? ''));
-            $senderId = trim((string) ($validated['sender_id'] ?? ''));
-
-            // Enforce mandatory Campio fields for sending
-            if ($isSendAction && $channel === 'sms' && $senderId === '') {
-                return back()->withErrors(['sender_id' => 'Sender ID is required for SMS sending.'])->withInput();
-            }
-            if ($isSendAction && $channel === 'whatsapp' && $metaTemplateId === '') {
-                return back()->withErrors(['meta_template_id' => 'WhatsApp meta_template_id is required for WhatsApp sending.'])->withInput();
-            }
-
             // Build document links so WhatsApp message includes invoice PDFs like email attachments.
             $documentLinks = [];
             if (in_array('pi', $selectedTypes, true)) {
@@ -2190,7 +2164,7 @@ class InvoicesController extends Controller
 
             // Clean HTML for messaging
             $plainBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $finalBody));
-            
+
             // Append invoice document links only for WhatsApp (SMS should not carry attachments).
             if ($channel === 'whatsapp' && !empty($documentLinks)) {
                 $plainBody .= "\n\nDocuments:\n";
@@ -2211,18 +2185,6 @@ class InvoicesController extends Controller
                 'source_url' => url()->current(),
                 'notes' => 'Invoice communication: ' . strtoupper($channel),
             ];
-
-            // Attach Campio-specific fields when provided
-            if ($templateId !== '') {
-                $payload['template_id'] = $templateId;
-            }
-            if ($metaTemplateId !== '') {
-                $payload['meta_template_id'] = $metaTemplateId;
-            }
-            if ($senderId !== '') {
-                $payload['sender_id'] = $senderId;
-            }
-
             if ($channel === 'whatsapp' && !empty($documentLinks)) {
                 $payload['media_url'] = (string) ($documentLinks[0]['url'] ?? '');
             }
