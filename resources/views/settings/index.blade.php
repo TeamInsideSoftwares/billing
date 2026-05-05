@@ -1,6 +1,34 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $isMessageTemplateValidation = $errors->any() && (
+        old('template_type') !== null
+        || old('channel') !== null
+        || old('template_id') !== null
+        || session()->has('mt_error_toast')
+    );
+    $isFinancialYearValidation = $errors->any() && (
+        old('year_start') !== null
+        || old('year_end') !== null
+        || old('fy_prefix_type') !== null
+        || old('fy_prefix_value') !== null
+        || old('fy_number_start') !== null
+    );
+    $isBillingDetailsValidation = $errors->any() && (
+        old('account_bdid') !== null
+        || old('billing_name') !== null
+        || old('billing_from_email') !== null
+        || old('authorize_signatory') !== null
+        || old('gstin') !== null
+        || old('signature_upload') !== null
+    );
+    $isBusinessInfoValidation = $errors->any() && !(
+        $isMessageTemplateValidation
+        || $isFinancialYearValidation
+        || $isBillingDetailsValidation
+    );
+@endphp
 
 <section class="section-bar">
     <div></div>
@@ -257,7 +285,7 @@
             </div>
         </div>
 
-        @if ($errors->any())
+        @if ($errors->any() && $isBusinessInfoValidation)
             <div class="settings-error-box">
                 <div class="settings-error-head">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -460,7 +488,7 @@
             </div>
         </div>
 
-        @if ($errors->any())
+        @if ($errors->any() && $isFinancialYearValidation)
             <div class="settings-error-box">
                 <div class="settings-error-head">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -715,14 +743,33 @@
                             </div>
 
                             <div class="template-form-grid d-flex flex-column flex-grow-1">
-                                <div class="form-group mb-3">
-                                    <label class="label-compact font-bold mb-1">Template Name *</label>
-                                    <input type="text" name="name" class="settings-input template-name-input" placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} Email Template" required>
+                                <div class="row g-3">
+                                    <div class="col-12 col-md-6 form-group mb-3">
+                                        <label class="label-compact font-bold mb-1">Template Name *</label>
+                                        <input type="text" name="name" class="settings-input template-name-input" placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} Email Template" required>
+                                    </div>
+
+                                    <div class="col-12 col-md-6 form-group mb-3 template-subject-group">
+                                        <label class="label-compact font-bold mb-1">Subject (optional)</label>
+                                        <input type="text" name="subject" class="settings-input template-subject-input" placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} update for @{{client_name}}" autocomplete="off">
+                                    </div>
+
+                                    <div class="col-12 col-md-6 form-group mb-3 template-wa-template-id-group" style="display:none;">
+                                        <label class="label-compact font-bold mb-1">WhatsApp Template ID *</label>
+                                        <input type="text" class="settings-input template-wa-template-id-input" placeholder="wa_template_42" autocomplete="off">
+                                    </div>
                                 </div>
 
-                                <div class="form-group mb-3 template-subject-group">
-                                    <label class="label-compact font-bold mb-1">Subject (optional)</label>
-                                    <input type="text" name="subject" class="settings-input template-subject-input" placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} update for @{{client_name}}" autocomplete="off">
+                                <div class="row g-3 template-sms-config-row" style="display:none;">
+                                    <div class="col-12 col-md-6 form-group mb-3 template-external-id-group">
+                                        <label class="label-compact font-bold mb-1">SMS Template ID *</label>
+                                        <input type="text" name="template_id" class="settings-input template-external-id-input" placeholder="sms_template_15" autocomplete="off">
+                                    </div>
+
+                                    <div class="col-12 col-md-6 form-group mb-3 template-sender-id-group">
+                                        <label class="label-compact font-bold mb-1">SMS Sender ID (optional)</label>
+                                        <input type="text" name="sender_id" class="settings-input template-sender-id-input" placeholder="" autocomplete="off">
+                                    </div>
                                 </div>
 
                                 <div class="form-group mb-3 col-span-2 flex-grow-1">
@@ -771,7 +818,12 @@
                                             <strong>{{ $template->name }}</strong>
                                             <div class="d-flex flex-wrap gap-2 mt-2">
                                                 <span class="badge bg-light text-muted border px-2 py-1">{{ ucfirst($template->channel) }}</span>
-                                                <span class="badge {{ $template->is_active ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle' }} px-2 py-1">
+                                                <span
+                                                    class="badge js-template-status-badge {{ $template->is_active ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle' }} px-2 py-1"
+                                                    role="button"
+                                                    tabindex="0"
+                                                    title="Click to {{ $template->is_active ? 'Deactivate' : 'Activate' }}"
+                                                >
                                                     {{ $template->is_active ? 'Active' : 'Deactive' }}
                                                 </span>
                                                 @if(!empty($template->subject))
@@ -790,6 +842,8 @@
                                                 data-name="{{ e($template->name) }}"
                                                 data-subject="{{ e($template->subject ?? '') }}"
                                                 data-body="{{ e(base64_encode($template->body)) }}"
+                                                data-template-external-id="{{ e($template->template_id ?? '') }}"
+                                                data-sender-id="{{ e($template->sender_id ?? '') }}"
                                                 data-is-active="{{ $template->is_active ? '1' : '0' }}"
                                             >
                                                 <i class="fas fa-edit"></i>
@@ -797,12 +851,11 @@
 
                                             <button
                                                 type="button"
-                                                class="secondary-button btn-sm template-toggle-btn"
+                                                class="secondary-button small template-toggle-btn"
                                                 data-toggle-url="{{ route('message-templates.toggle', $template) }}"
                                                 data-is-active="{{ $template->is_active ? '1' : '0' }}"
-                                            >
-                                                {{ $template->is_active ? 'Deactivate' : 'Activate' }}
-                                            </button>
+                                                style="display:none;"
+                                            ></button>
                                         </div>
                                     </div>
                                 </div>
@@ -828,7 +881,7 @@
                 <p class="settings-section-subtitle">Configure billing information that appears on invoices</p>
             </div>
         </div>
-        @if ($errors->any())
+        @if ($errors->any() && $isBillingDetailsValidation)
             <div class="settings-error-box settings-error-box-soft">
                 <ul class="settings-error-list settings-error-list-compact">
                     @foreach ($errors->all() as $error)
@@ -1031,11 +1084,15 @@
                                     @endif
                                 </td>
                                 <td class="tc-col-status">
-                                    @if($term->is_active)
-                                        <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Active</span>
-                                    @else
-                                        <span style="background: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Inactive</span>
-                                    @endif
+                                    <span
+                                        class="js-term-status-badge"
+                                        data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
+                                        data-is-active="{{ $term->is_active ? '1' : '0' }}"
+                                        role="button"
+                                        tabindex="0"
+                                        title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}"
+                                        style="{{ $term->is_active ? 'background:#dcfce7;color:#166534;' : 'background:#f1f5f9;color:#64748b;' }} padding:2px 6px; border-radius:10px; font-size:0.7rem; cursor:pointer;"
+                                    >{{ $term->is_active ? 'Active' : 'Inactive' }}</span>
                                 </td>
                                 <td class="tc-col-action">
                                     <div class="table-actions">
@@ -1090,11 +1147,15 @@
                                     @endif
                                 </td>
                                 <td class="tc-col-status">
-                                    @if($term->is_active)
-                                        <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Active</span>
-                                    @else
-                                        <span style="background: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Inactive</span>
-                                    @endif
+                                    <span
+                                        class="js-term-status-badge"
+                                        data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
+                                        data-is-active="{{ $term->is_active ? '1' : '0' }}"
+                                        role="button"
+                                        tabindex="0"
+                                        title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}"
+                                        style="{{ $term->is_active ? 'background:#dcfce7;color:#166534;' : 'background:#f1f5f9;color:#64748b;' }} padding:2px 6px; border-radius:10px; font-size:0.7rem; cursor:pointer;"
+                                    >{{ $term->is_active ? 'Active' : 'Inactive' }}</span>
                                 </td>
                                 <td class="tc-col-action">
                                     <div class="table-actions">
@@ -1149,11 +1210,15 @@
                                     @endif
                                 </td>
                                 <td class="tc-col-status">
-                                    @if($term->is_active)
-                                        <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Active</span>
-                                    @else
-                                        <span style="background: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Inactive</span>
-                                    @endif
+                                    <span
+                                        class="js-term-status-badge"
+                                        data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
+                                        data-is-active="{{ $term->is_active ? '1' : '0' }}"
+                                        role="button"
+                                        tabindex="0"
+                                        title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}"
+                                        style="{{ $term->is_active ? 'background:#dcfce7;color:#166534;' : 'background:#f1f5f9;color:#64748b;' }} padding:2px 6px; border-radius:10px; font-size:0.7rem; cursor:pointer;"
+                                    >{{ $term->is_active ? 'Active' : 'Inactive' }}</span>
                                 </td>
                                 <td class="tc-col-action">
                                     <div class="table-actions">
@@ -1349,6 +1414,21 @@ function cancelEditTax(){
 </script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const __toastSeenAt = {};
+    function showToastDedup(type, message, dedupMs = 1200) {
+        const text = String(message || '').trim();
+        if (!text) return;
+        const key = `${type}:${text}`;
+        const now = Date.now();
+        if (__toastSeenAt[key] && (now - __toastSeenAt[key]) < dedupMs) return;
+        __toastSeenAt[key] = now;
+
+        if (typeof showToast === 'function') {
+            showToast(type, text);
+            return;
+        }
+    }
+
     const buttons = document.querySelectorAll('.tab-button');
     const tabs = document.querySelectorAll('.tab-content');
 
@@ -1691,6 +1771,30 @@ document.addEventListener('DOMContentLoaded', function() {
     const typeTabs = Array.from(document.querySelectorAll('.mt-type-tab-btn'));
     const templateTypeLabels = @json($messageTemplateTypes);
     const defaultTemplateType = @json(array_key_first($messageTemplateTypes));
+    const oldTemplateType = @json(old('template_type'));
+    const oldTemplateChannel = @json(old('channel'));
+    const mtErrorToast = @json(session('mt_error_toast'));
+    const mtStateKey = 'settings_message_template_state_v1';
+
+    function saveMtState(type, channel) {
+        try {
+            sessionStorage.setItem(mtStateKey, JSON.stringify({
+                type: type || '',
+                channel: channel || '',
+            }));
+        } catch (e) {}
+    }
+
+    function loadMtState() {
+        try {
+            const raw = sessionStorage.getItem(mtStateKey);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch (e) {
+            return null;
+        }
+    }
 
     function setTinyContent(textareaId, value) {
         if (window.tinymce && tinymce.get(textareaId)) {
@@ -1727,6 +1831,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const nameInput = form.querySelector('.template-name-input');
         const subjectInput = form.querySelector('.template-subject-input');
         const subjectGroup = form.querySelector('.template-subject-group');
+        const waTemplateIdInput = form.querySelector('.template-wa-template-id-input');
+        const waTemplateIdGroup = form.querySelector('.template-wa-template-id-group');
+        const externalIdInput = form.querySelector('.template-external-id-input');
+        const externalIdGroup = form.querySelector('.template-external-id-group');
+        const smsConfigRow = form.querySelector('.template-sms-config-row');
+        const senderIdInput = form.querySelector('.template-sender-id-input');
+        const senderIdGroup = form.querySelector('.template-sender-id-group');
         const bodyInput = form.querySelector('.template-body-input');
         const submitBtn = form.querySelector('.template-submit-btn');
         const editorTitle = form.querySelector('.template-editor-title');
@@ -1752,14 +1863,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (subjectGroup) {
             subjectGroup.style.display = currentChannel === 'email' ? 'block' : 'none';
         }
+        if (waTemplateIdGroup) waTemplateIdGroup.style.display = currentChannel === 'whatsapp' ? 'block' : 'none';
+        if (smsConfigRow) smsConfigRow.style.display = currentChannel === 'sms' ? 'flex' : 'none';
+        if (externalIdGroup) externalIdGroup.style.display = currentChannel === 'sms' ? 'block' : 'none';
+        if (senderIdGroup) senderIdGroup.style.display = currentChannel === 'sms' ? 'block' : 'none';
         if (subjectInput) {
             subjectInput.value = '';
             subjectInput.placeholder = typeLabel + ' update for @{{client_name}}';
         }
+        if (externalIdInput) externalIdInput.value = '';
+        if (waTemplateIdInput) waTemplateIdInput.value = '';
+        if (senderIdInput) senderIdInput.value = '';
         if (bodyInput) {
             bodyInput.placeholder = 'Hi @{{client_name}},\nPlease find the details below.';
             setTinyContent(bodyInput.id, '');
         }
+
+        saveMtState(currentType, currentChannel);
     }
 
     function enterEditMode(form, template, type) {
@@ -1771,6 +1891,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const nameInput = form.querySelector('.template-name-input');
         const subjectInput = form.querySelector('.template-subject-input');
         const subjectGroup = form.querySelector('.template-subject-group');
+        const waTemplateIdInput = form.querySelector('.template-wa-template-id-input');
+        const waTemplateIdGroup = form.querySelector('.template-wa-template-id-group');
+        const externalIdInput = form.querySelector('.template-external-id-input');
+        const externalIdGroup = form.querySelector('.template-external-id-group');
+        const smsConfigRow = form.querySelector('.template-sms-config-row');
+        const senderIdInput = form.querySelector('.template-sender-id-input');
+        const senderIdGroup = form.querySelector('.template-sender-id-group');
         const bodyInput = form.querySelector('.template-body-input');
         const submitBtn = form.querySelector('.template-submit-btn');
         const editorTitle = form.querySelector('.template-editor-title');
@@ -1795,11 +1922,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (channelInput) channelInput.value = channel;
         if (nameInput) nameInput.value = template.name || '';
         if (subjectGroup) subjectGroup.style.display = channel === 'email' ? 'block' : 'none';
+        if (waTemplateIdGroup) waTemplateIdGroup.style.display = channel === 'whatsapp' ? 'block' : 'none';
+        if (smsConfigRow) smsConfigRow.style.display = channel === 'sms' ? 'flex' : 'none';
+        if (externalIdGroup) externalIdGroup.style.display = channel === 'sms' ? 'block' : 'none';
+        if (senderIdGroup) senderIdGroup.style.display = channel === 'sms' ? 'block' : 'none';
         if (subjectInput) subjectInput.value = template.subject || '';
+        if (externalIdInput) externalIdInput.value = template.template_id || '';
+        if (waTemplateIdInput) waTemplateIdInput.value = template.template_id || '';
+        if (senderIdInput) senderIdInput.value = template.sender_id || '';
         if (bodyInput) setTinyContent(bodyInput.id, template.body || '');
         if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Update Template';
         if (editorTitle) editorTitle.textContent = 'Editing template';
         if (editorNote) editorNote.textContent = template.name || '';
+        saveMtState(typeKey, channel);
     }
 
     function setActiveTab(tabs, matchAttr, value) {
@@ -1836,6 +1971,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             resetTemplateForm(form, type, channel);
+            saveMtState(type, channel);
         });
     });
 
@@ -1851,13 +1987,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    document.querySelectorAll('.template-toggle-btn').forEach((btn) => {
-        btn.addEventListener('click', async function () {
-            const url = this.dataset.toggleUrl;
+    async function toggleTemplateStatus(btnEl) {
+            const url = btnEl?.dataset?.toggleUrl;
             if (!url) return;
 
-            this.disabled = true;
-            const btnEl = this;
+            btnEl.disabled = true;
             try {
                 const response = await fetch(url, {
                     method: 'PATCH',
@@ -1877,7 +2011,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const data = await response.json();
                     const item = btnEl.closest('.mt-template-item');
                     if (item) {
-                        const statusPill = item.querySelector('.badge.bg-success-subtle, .badge.bg-secondary-subtle');
+                        const statusPill = item.querySelector('.js-template-status-badge');
                         if (statusPill) {
                             statusPill.classList.toggle('bg-success-subtle', data.is_active);
                             statusPill.classList.toggle('text-success', data.is_active);
@@ -1886,6 +2020,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             statusPill.classList.toggle('text-secondary', !data.is_active);
                             statusPill.classList.toggle('border-secondary-subtle', !data.is_active);
                             statusPill.textContent = data.is_active ? 'Active' : 'Deactive';
+                            statusPill.setAttribute('title', data.is_active ? 'Click to Deactivate' : 'Click to Activate');
                         }
 
                         // Update toggle button text
@@ -1896,7 +2031,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     try {
                         const messageText = data.message || 'Updated';
                         if (typeof showToast === 'function') {
-                            showToast('success', messageText);
+                            showToastDedup('success', messageText);
                         } else {
                             const container = document.getElementById('app-toast-container') || (function() {
                                 const el = document.createElement('div');
@@ -1922,8 +2057,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.location.reload();
                 }
             } finally {
-                this.disabled = false;
+                btnEl.disabled = false;
             }
+    }
+
+    document.querySelectorAll('.template-toggle-btn').forEach((btn) => {
+        btn.addEventListener('click', async function () {
+            await toggleTemplateStatus(this);
+        });
+    });
+
+    document.querySelectorAll('.js-template-status-badge').forEach((badge) => {
+        badge.addEventListener('click', async function () {
+            const item = this.closest('.mt-template-item');
+            const btn = item?.querySelector('.template-toggle-btn');
+            if (!btn) return;
+            await toggleTemplateStatus(btn);
+        });
+        badge.addEventListener('keydown', async function (event) {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            const item = this.closest('.mt-template-item');
+            const btn = item?.querySelector('.template-toggle-btn');
+            if (!btn) return;
+            await toggleTemplateStatus(btn);
         });
     });
 
@@ -1942,13 +2099,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 resetTemplateForm(form, this.dataset.type, 'email');
                 // also filter the right-side list to the selected type
                 updateTemplateListForType(this.dataset.type);
+                saveMtState(this.dataset.type, 'email');
             }
         });
     });
 
-    // initial state: select default tab and reset the single editor form
-    setActiveTab(typeTabs, 'type', defaultTemplateType);
-    if (form) resetTemplateForm(form, form.querySelector('input[name="template_type"]')?.value || defaultTemplateType, 'email');
+    // initial state (preserve user selection on validation errors)
+    const persistedMtState = loadMtState();
+    const initialTemplateType = (oldTemplateType && templateTypeLabels[oldTemplateType])
+        ? oldTemplateType
+        : ((persistedMtState?.type && templateTypeLabels[persistedMtState.type]) ? persistedMtState.type : defaultTemplateType);
+    const initialTemplateChannel = ['email', 'whatsapp', 'sms'].includes(oldTemplateChannel)
+        ? oldTemplateChannel
+        : (['email', 'whatsapp', 'sms'].includes(persistedMtState?.channel) ? persistedMtState.channel : 'email');
+    setActiveTab(typeTabs, 'type', initialTemplateType);
+    if (form) resetTemplateForm(form, form.querySelector('input[name="template_type"]')?.value || initialTemplateType, initialTemplateChannel);
 
     document.querySelectorAll('.js-template-edit').forEach((btn) => {
         btn.addEventListener('click', function () {
@@ -1962,6 +2127,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 name: this.dataset.name || '',
                 subject: this.dataset.subject || '',
                 body: decodeTemplateBody(this.dataset.body || ''),
+                template_id: this.dataset.templateExternalId || '',
+                sender_id: this.dataset.senderId || '',
                 is_active: this.dataset.isActive === '1',
                 template_type: this.dataset.type || this.dataset.template_type || ''
             };
@@ -1996,15 +2163,108 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // initial state: select default tab and reset the single editor form
-    setActiveTab(typeTabs, 'type', defaultTemplateType);
-    if (form) resetTemplateForm(form, form.querySelector('input[name="template_type"]')?.value || defaultTemplateType, 'email');
-    // filter the right list to the selected default type
-    updateTemplateListForType(defaultTemplateType);
+    // final initial sync
+    setActiveTab(typeTabs, 'type', initialTemplateType);
+    if (form) resetTemplateForm(form, form.querySelector('input[name="template_type"]')?.value || initialTemplateType, initialTemplateChannel);
+    updateTemplateListForType(initialTemplateType);
 
     templateForms.forEach((form) => {
         form.addEventListener('submit', function () {
+            const channel = form.querySelector('.template-channel-input')?.value || '';
+            const waTemplateIdInput = form.querySelector('.template-wa-template-id-input');
+            const templateIdInput = form.querySelector('.template-external-id-input');
+            if (channel === 'whatsapp' && waTemplateIdInput && templateIdInput) {
+                templateIdInput.value = waTemplateIdInput.value || '';
+            }
             if (window.tinymce) tinymce.triggerSave();
+        });
+    });
+
+    if (mtErrorToast) {
+        try {
+            const messageText = String(mtErrorToast);
+            if (typeof showToast === 'function') {
+                showToastDedup('error', messageText, 2000);
+            } else {
+                const container = document.getElementById('app-toast-container') || (function() {
+                    const el = document.createElement('div');
+                    el.id = 'app-toast-container';
+                    el.className = 'app-toast-container';
+                    document.body.appendChild(el);
+                    return el;
+                })();
+
+                const toast = document.createElement('div');
+                toast.className = 'app-toast app-toast-error';
+                toast.innerHTML = `<i class="fas fa-exclamation-circle toast-icon"></i><span style="white-space: pre-line;">${messageText}</span>`;
+                container.appendChild(toast);
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.classList.add('app-toast-leaving');
+                        setTimeout(() => { if (toast.parentNode) toast.remove(); }, 300);
+                    }
+                }, 5000);
+            }
+        } catch (e) {}
+    }
+
+    async function toggleTermStatusBadge(badgeEl) {
+        const url = badgeEl?.dataset?.toggleUrl;
+        if (!url) return;
+
+        badgeEl.style.pointerEvents = 'none';
+        try {
+            const response = await fetch(url, {
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update term status.');
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const data = await response.json();
+                const isActive = !!data.is_active;
+                badgeEl.dataset.isActive = isActive ? '1' : '0';
+                badgeEl.textContent = isActive ? 'Active' : 'Inactive';
+                badgeEl.title = isActive ? 'Click to Deactivate' : 'Click to Activate';
+                badgeEl.style.background = isActive ? '#dcfce7' : '#f1f5f9';
+                badgeEl.style.color = isActive ? '#166534' : '#64748b';
+
+                try {
+                    const messageText = data.message || 'Term status updated.';
+                    if (typeof showToast === 'function') {
+                        showToastDedup('success', messageText);
+                    }
+                } catch (e) {}
+            } else {
+                window.location.reload();
+            }
+        } catch (e) {
+            try {
+                if (typeof showToast === 'function') {
+                    showToastDedup('error', e.message || 'Failed to update term status.');
+                }
+            } catch (_e) {}
+        } finally {
+            badgeEl.style.pointerEvents = '';
+        }
+    }
+
+    document.querySelectorAll('.js-term-status-badge').forEach((badge) => {
+        badge.addEventListener('click', async function () {
+            await toggleTermStatusBadge(this);
+        });
+        badge.addEventListener('keydown', async function (event) {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            await toggleTermStatusBadge(this);
         });
     });
 });

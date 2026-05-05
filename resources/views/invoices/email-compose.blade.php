@@ -57,13 +57,13 @@
         <!-- Channel Pills -->
         <div class="channel-pills-wrap mb-4">
             <div class="d-flex gap-2">
-                <button type="button" class="channel-pill-btn is-active" data-channel="email">
+                <button type="button" class="channel-pill-btn is-active" data-channel="email" id="channelBtnEmail">
                     <i class="fas fa-envelope mr-1"></i> Email
                 </button>
-                <button type="button" class="channel-pill-btn" data-channel="whatsapp">
+                <button type="button" class="channel-pill-btn" data-channel="whatsapp" id="channelBtnWhatsapp">
                     <i class="fab fa-whatsapp mr-1"></i> WhatsApp
                 </button>
-                <button type="button" class="channel-pill-btn" data-channel="sms">
+                <button type="button" class="channel-pill-btn" data-channel="sms" id="channelBtnSms">
                     <i class="fas fa-sms mr-1"></i> SMS
                 </button>
             </div>
@@ -86,6 +86,7 @@
             <input type="hidden" name="channel" id="selectedChannel" value="{{ old('channel', $prefillChannel ?? 'email') }}">
             <input type="hidden" name="attachment_type" id="selectedType"
                 value="{{ old('attachment_type', $prefillAttachmentType ?? $defaultType) }}">
+            <input type="hidden" name="selected_templateid" id="selectedTemplateId" value="{{ old('selected_templateid', '') }}">
 
             <div class="row g-3 align-items-start">
                 <div class="col-12 col-xl-7">
@@ -101,19 +102,35 @@
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="field-label">Subject</label>
-                            <input type="text" name="subject" id="emailSubjectInput"
-                                value="{{ old('subject', $prefillSubject ?? ('Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number))) }}"
-                                class="input-full">
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-md-6">
+                                <label class="field-label">Subject</label>
+                                <input type="text" name="subject" id="emailSubjectInput"
+                                    value="{{ old('subject', $prefillSubject ?? ('Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number))) }}"
+                                    class="input-full">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="field-label">Template</label>
+                                <select id="templatePicker" class="input-full">
+                                    <option value="">Manual (no template)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
                     <div class="whatsapp-sms-fields" style="display: none;">
-                        <div class="mb-3">
-                            <label class="field-label">Phone Number</label>
-                            <input type="text" name="phone" value="{{ old('phone', $prefillPhone ?? '') }}" class="input-full"
-                                readonly>
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-md-6">
+                                <label class="field-label">Phone Number</label>
+                                <input type="text" name="phone" value="{{ old('phone', $prefillPhone ?? '') }}" class="input-full"
+                                    readonly>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="field-label">Template</label>
+                                <select id="templatePickerSmsWa" class="input-full">
+                                    <option value="">Manual (no template)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -347,13 +364,17 @@
             const previewBody = document.getElementById('previewBody');
             const previewAttachmentList = document.getElementById('previewAttachmentList');
             const currentCustomAttachment = document.getElementById('currentCustomAttachment');
+            const templatePicker = document.getElementById('templatePicker');
+            const templatePickerSmsWa = document.getElementById('templatePickerSmsWa');
 
-            const allTemplates = @json($allTemplates ?? []);
+            const templateCatalog = @json($templateCatalog ?? []);
+            const availableChannelsByType = @json($availableChannelsByType ?? []);
             const fallbackTemplatesByType = @json($fallbackTemplatesByType ?? []);
 
             let currentChannel = document.getElementById('selectedChannel').value || 'email';
             let currentType = document.getElementById('selectedType').value || 'pi';
             let dscPreviewUrl = savedCustomAttachmentUrl || null;
+            const hasExistingDraft = !!(document.querySelector('input[name="invoice_emailid"]')?.value || '').trim();
 
             function refreshEmailPreview() {
                 if (previewSubject) previewSubject.textContent = (emailSubjectInput?.value || '').trim() || '(No subject)';
@@ -487,10 +508,79 @@
                 return type; // pi, ti
             }
 
+            function getAvailableChannelsForType(type) {
+                const channels = availableChannelsByType[type] || [];
+                return Array.isArray(channels) ? channels : [];
+            }
+
+            function getTemplatesForSelection(type, channel) {
+                return ((templateCatalog[type] || {})[channel] || []);
+            }
+
+            function refreshChannelVisibilityForType(type) {
+                const allowed = getAvailableChannelsForType(type);
+                channelBtns.forEach((btn) => {
+                    const show = allowed.includes(btn.dataset.channel);
+                    btn.style.display = show ? '' : 'none';
+                });
+
+                if (!allowed.includes(currentChannel)) {
+                    const fallback = allowed[0] || 'email';
+                    currentChannel = fallback;
+                    document.getElementById('selectedChannel').value = fallback;
+                }
+            }
+
+            function populateTemplatePicker(type, channel) {
+                if (!templatePicker && !templatePickerSmsWa) return;
+                const items = getTemplatesForSelection(type, channel);
+                const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
+                if (templatePicker) templatePicker.innerHTML = '';
+                if (templatePickerSmsWa) templatePickerSmsWa.innerHTML = '';
+
+                const manual = document.createElement('option');
+                manual.value = '';
+                manual.textContent = 'Manual (no template)';
+                if (templatePicker) templatePicker.appendChild(manual.cloneNode(true));
+                if (templatePickerSmsWa) templatePickerSmsWa.appendChild(manual.cloneNode(true));
+
+                items.forEach((tpl) => {
+                    const option = document.createElement('option');
+                    option.value = tpl.templateid || '';
+                    option.textContent = tpl.name || ('Template ' + (tpl.templateid || ''));
+                    if (templatePicker) templatePicker.appendChild(option.cloneNode(true));
+                    if (templatePickerSmsWa) templatePickerSmsWa.appendChild(option.cloneNode(true));
+                });
+
+                const firstValue = items.length > 0 ? (items[0].templateid || '') : '';
+                if (items.length > 0) {
+                    if (templatePicker) templatePicker.value = firstValue;
+                    if (templatePickerSmsWa) templatePickerSmsWa.value = firstValue;
+                } else {
+                    if (templatePicker) templatePicker.value = '';
+                    if (templatePickerSmsWa) templatePickerSmsWa.value = '';
+                }
+                if (selectedTemplateIdInput) {
+                    selectedTemplateIdInput.value = firstValue || '';
+                }
+            }
+
             function applyTemplate(preserveExisting = false) {
                 const templateKey = getTemplateKeyForSelection(currentType);
-                const templatesForChannel = allTemplates[currentChannel] || {};
-                const payload = templatesForChannel[templateKey] || fallbackTemplatesByType[templateKey] || { subject: '', body: '' };
+                const pickedTemplateId = (currentChannel === 'email'
+                    ? (templatePicker?.value || '')
+                    : (templatePickerSmsWa?.value || templatePicker?.value || '')
+                );
+                const options = getTemplatesForSelection(templateKey, currentChannel);
+                let payload = null;
+                if (pickedTemplateId) {
+                    payload = options.find((tpl) => (tpl.templateid || '') === pickedTemplateId) || null;
+                } else if (options.length > 0) {
+                    payload = options[0];
+                }
+                if (!payload) {
+                    payload = fallbackTemplatesByType[templateKey] || { subject: '', body: '' };
+                }
 
                 const nextSubject = (payload.subject || '').trim();
                 const nextBody = payload.body || '';
@@ -543,6 +633,7 @@
                     badge.className = 'badge ' + (channel === 'email' ? 'bg-primary' : (channel === 'whatsapp' ? 'bg-success' : 'bg-info'));
                 }
 
+                populateTemplatePicker(currentType, currentChannel);
                 applyTemplate(preserveExisting);
             }
 
@@ -554,7 +645,9 @@
                     btn.classList.toggle('is-active', btn.dataset.type === type);
                 });
 
+                refreshChannelVisibilityForType(type);
                 updateContextHints();
+                populateTemplatePicker(currentType, currentChannel);
                 applyTemplate(preserveExisting);
             }
 
@@ -575,6 +668,7 @@
 
             channelBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
+                    if (btn.style.display === 'none') return;
                     const newChannel = btn.dataset.channel;
                     if (newChannel === currentChannel) return;
 
@@ -591,6 +685,28 @@
                     url.searchParams.delete('e');
                     window.location.href = url.toString();
                 });
+            });
+
+            templatePicker?.addEventListener('change', () => {
+                const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
+                if (selectedTemplateIdInput) {
+                    selectedTemplateIdInput.value = templatePicker.value || '';
+                }
+                if (templatePickerSmsWa) {
+                    templatePickerSmsWa.value = templatePicker.value || '';
+                }
+                applyTemplate(false);
+            });
+
+            templatePickerSmsWa?.addEventListener('change', () => {
+                const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
+                if (selectedTemplateIdInput) {
+                    selectedTemplateIdInput.value = templatePickerSmsWa.value || '';
+                }
+                if (templatePicker) {
+                    templatePicker.value = templatePickerSmsWa.value || '';
+                }
+                applyTemplate(false);
             });
 
             customAttachmentInput?.addEventListener('change', function () {
@@ -721,8 +837,8 @@
                 btn.classList.toggle('is-active', btn.dataset.channel === currentChannel);
             });
 
-            switchType(currentType, true);
-            switchChannel(currentChannel, true);
+            switchType(currentType, hasExistingDraft);
+            switchChannel(currentChannel, hasExistingDraft);
             refreshEmailPreview();
             renderCurrentCustomAttachment();
         })();

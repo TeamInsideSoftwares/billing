@@ -27,6 +27,30 @@ class InvoicesController extends Controller
 {
     use ConfiguresBrowsershot;
 
+    private function normalizeInvoiceTermsByType(mixed $terms): array
+    {
+        if (!is_array($terms) || $terms === []) {
+            return [
+                'proforma' => [],
+                'billing' => [],
+            ];
+        }
+
+        $hasNamedBuckets = array_key_exists('proforma', $terms) || array_key_exists('billing', $terms);
+        if ($hasNamedBuckets) {
+            return [
+                'proforma' => array_values(array_filter((array) ($terms['proforma'] ?? []))),
+                'billing' => array_values(array_filter((array) ($terms['billing'] ?? []))),
+            ];
+        }
+
+        // Legacy shape: one flat array used for all invoice types.
+        return [
+            'proforma' => array_values(array_filter($terms)),
+            'billing' => [],
+        ];
+    }
+
     private function mapInvoiceTemplateType(Invoice $invoice): string
     {
         return !empty(trim((string) $invoice->ti_number)) ? 'ti' : 'pi';
@@ -163,7 +187,8 @@ class InvoicesController extends Controller
             }
         }
 
-        $invoiceTerms = is_array($invoice->terms) ? array_values(array_filter($invoice->terms)) : [];
+        $termsByType = $this->normalizeInvoiceTermsByType($invoice->terms);
+        $invoiceTerms = $isTaxInvoice ? $termsByType['billing'] : $termsByType['proforma'];
         if (empty($invoiceTerms)) {
             $fallbackType = $isTaxInvoice ? 'billing' : 'proforma';
             $invoiceTerms = TermsCondition::query()
@@ -299,6 +324,7 @@ class InvoicesController extends Controller
 
         $record = [
             'id' => (string) ($invoice->clientid ?? $invoice->invoiceid),
+            'name' => $clientName,
             'leadid' => (string) ($invoice->clientid ?? ''),
             'student_customer_name' => $clientName,
             'invoice_number' => (string) ($invoice->invoice_number ?? ''),
@@ -312,18 +338,27 @@ class InvoicesController extends Controller
         if ($channel === 'email') {
             $record['email'] = $toEmail;
         } else {
-            // Ensure phone has country code
-            $phoneWithCode = $phone;
-            if (!empty($phone) && !str_starts_with($phone, '+')) {
-                $phoneClean = preg_replace('/[^0-9]/', '', $phone);
-                if (strlen($phoneClean) === 10) {
-                    $phoneWithCode = '+91' . $phoneClean;
-                } elseif (strlen($phoneClean) === 12 && str_starts_with($phoneClean, '91')) {
-                    $phoneWithCode = '+' . $phoneClean;
+            // Send both local and E.164 variants to avoid downstream gateway format mismatches.
+            $phoneDigits = preg_replace('/[^0-9]/', '', (string) $phone);
+            $localPhone = $phoneDigits;
+            if (strlen($phoneDigits) === 12 && str_starts_with($phoneDigits, '91')) {
+                $localPhone = substr($phoneDigits, 2);
+            }
+
+            $phoneE164 = trim((string) $phone);
+            if ($phoneE164 !== '' && !str_starts_with($phoneE164, '+')) {
+                if (strlen($phoneDigits) === 10) {
+                    $phoneE164 = '+91' . $phoneDigits;
+                } elseif (strlen($phoneDigits) === 12 && str_starts_with($phoneDigits, '91')) {
+                    $phoneE164 = '+' . $phoneDigits;
+                } else {
+                    $phoneE164 = '+' . $phoneDigits;
                 }
             }
-            $record['mobile'] = $phoneWithCode;
-            $record['phone'] = $phoneWithCode;
+
+            $record['mobile'] = $localPhone !== '' ? $localPhone : $phone;
+            $record['phone'] = $phoneE164 !== '' ? $phoneE164 : $phone;
+            $record['mobile_e164'] = $phoneE164 !== '' ? $phoneE164 : null;
         }
 
         return $record;
@@ -345,6 +380,7 @@ class InvoicesController extends Controller
         \Illuminate\Support\Facades\Log::info('Campio: Sending ' . strtoupper($channel), [
             'endpoint' => $endpoint,
             'account_id' => $payload['account_id'] ?? 'MISSING',
+            'credit_transid' => $payload['credit_transid'] ?? null,
             'campaign_name' => $payload['campaign_name'] ?? '',
             'record_count' => count($payload['records'] ?? []),
             'record_0' => $payload['records'][0] ?? 'none',
@@ -1002,7 +1038,10 @@ class InvoicesController extends Controller
         ]);
 
         $terms = array_values(array_filter($request->input('terms', []), fn($t) => trim($t) !== ''));
-        $invoice->update(['terms' => $terms ?: null]);
+        $termBucket = !empty(trim((string) $invoice->ti_number)) ? 'billing' : 'proforma';
+        $storedTerms = $this->normalizeInvoiceTermsByType($invoice->terms);
+        $storedTerms[$termBucket] = $terms;
+        $invoice->update(['terms' => array_filter($storedTerms)]);
 
         $this->persistInvoicePdfVersion($invoice, !empty(trim((string) $invoice->ti_number)));
 
@@ -1543,6 +1582,7 @@ class InvoicesController extends Controller
                 'due_date' => $draft->due_date?->format('Y-m-d'),
                 'notes' => $draft->notes,
                 'terms' => $draft->terms ?? [],
+                'terms_by_type' => $this->normalizeInvoiceTermsByType($draft->terms),
                 'status' => $draft->status,
                 'items' => $draft->items->map(fn($i) => [
                     'invoice_itemid' => $i->invoice_itemid,
@@ -1862,7 +1902,7 @@ class InvoicesController extends Controller
         $requestedType = strtolower(trim((string) request('attachment_type', '')));
         $defaultType = in_array($requestedType, ['pi', 'ti'], true)
             ? $requestedType
-            : $this->mapInvoiceTemplateType($invoice);
+            : (!empty(trim((string) $invoice->ti_number)) ? 'ti' : $this->mapInvoiceTemplateType($invoice));
         $defaultSubjectNumber = $defaultType === 'ti' ? $invoice->ti_number : $invoice->pi_number;
         $billingAddressLines = array_values(array_filter([
             trim((string) ($accountBillingDetail?->address ?? '')),
@@ -1888,33 +1928,47 @@ class InvoicesController extends Controller
         $currentUserId = $user?->userid ?? $user?->id;
         $currentAccountId = $invoice->accountid ?? ($user?->accountid ?? $accountid);
 
-        $template = MessageTemplate::query()
-            ->where('accountid', $currentAccountId)
-            ->where('channel', 'email')
-            ->where('template_type', $defaultType)
-            ->where('is_active', true)
-            ->first();
-
-        $allTemplates = MessageTemplate::query()
+        $templateRows = MessageTemplate::query()
             ->where('accountid', $currentAccountId)
             ->whereIn('channel', ['email', 'whatsapp', 'sms'])
             ->whereIn('template_type', ['pi', 'ti'])
             ->where('is_active', true)
-            ->get()
-            ->groupBy('channel')
-            ->map(function ($channelTemplates) use ($invoice, $account) {
-                return $channelTemplates->mapWithKeys(function ($row) use ($invoice, $account) {
-                    return [
-                        $row->template_type => [
-                            'subject' => $this->renderMessageTemplate((string) ($row->subject ?? ''), $invoice, $account?->name),
-                            'body' => $this->renderMessageTemplate((string) ($row->body ?? ''), $invoice, $account?->name),
-                        ],
-                    ];
-                });
-            })
-            ->toArray();
+            ->orderBy('channel')
+            ->orderBy('template_type')
+            ->orderBy('created_at')
+            ->get();
 
-        $emailTemplatesByType = $allTemplates['email'] ?? [];
+        $templateCatalog = [];
+        $availableChannelsByType = [
+            'pi' => [],
+            'ti' => [],
+        ];
+        $firstTemplateByContext = [];
+
+        foreach ($templateRows as $row) {
+            $channel = (string) $row->channel;
+            $type = (string) $row->template_type;
+            if (!in_array($channel, ['email', 'whatsapp', 'sms'], true) || !in_array($type, ['pi', 'ti'], true)) {
+                continue;
+            }
+
+            $templateCatalog[$type] = $templateCatalog[$type] ?? [];
+            $templateCatalog[$type][$channel] = $templateCatalog[$type][$channel] ?? [];
+            $templateCatalog[$type][$channel][] = [
+                'templateid' => (string) $row->templateid,
+                'name' => (string) $row->name,
+                'subject' => $this->renderMessageTemplate((string) ($row->subject ?? ''), $invoice, $account?->name),
+                'body' => $this->renderMessageTemplate((string) ($row->body ?? ''), $invoice, $account?->name),
+            ];
+
+            if (!in_array($channel, $availableChannelsByType[$type], true)) {
+                $availableChannelsByType[$type][] = $channel;
+            }
+
+            if (!isset($firstTemplateByContext[$type][$channel])) {
+                $firstTemplateByContext[$type][$channel] = end($templateCatalog[$type][$channel]);
+            }
+        }
 
         $fallbackTemplatesByType = [
             'pi' => [
@@ -1933,16 +1987,12 @@ class InvoicesController extends Controller
             $defaultChannel = 'email';
         }
 
-        $templateSubject = null;
-        $templateBody = null;
-        if ($template) {
-            $templateSubject = $this->renderMessageTemplate((string) ($template->subject ?? ''), $invoice, $account?->name);
-            $templateBody = $this->renderMessageTemplate((string) ($template->body ?? ''), $invoice, $account?->name);
-            $templateSubject = trim($templateSubject) !== '' ? $templateSubject : null;
-            $templateBody = trim($templateBody) !== '' ? $templateBody : null;
+        $defaultTypeChannels = $availableChannelsByType[$defaultType] ?? [];
+        if (!in_array($defaultChannel, $defaultTypeChannels, true) && !empty($defaultTypeChannels)) {
+            $defaultChannel = $defaultTypeChannels[0];
         }
 
-        $channelTemplate = $allTemplates[$defaultChannel][$defaultType] ?? null;
+        $channelTemplate = $firstTemplateByContext[$defaultType][$defaultChannel] ?? null;
         $channelTemplateSubject = trim((string) ($channelTemplate['subject'] ?? '')) ?: null;
         $channelTemplateBody = trim((string) ($channelTemplate['body'] ?? '')) ?: null;
 
@@ -1979,13 +2029,13 @@ class InvoicesController extends Controller
         $prefillSubject = $latestEmail?->subject;
         if ($prefillSubject === null || trim((string) $prefillSubject) === '') {
             $prefillSubject = trim((string) ($invoice->invoice_title ?? '')) !== ''
-                ? ($channelTemplateSubject ?? $templateSubject ?? trim((string) $invoice->invoice_title))
+                ? ($channelTemplateSubject ?? trim((string) $invoice->invoice_title))
                 : ('Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number));
         }
 
         $prefillBody = $latestEmail?->body;
         if ($prefillBody === null || trim((string) $prefillBody) === '') {
-            $prefillBody = $channelTemplateBody ?? $templateBody ?? $defaultBody;
+            $prefillBody = $channelTemplateBody ?? $defaultBody;
         }
         $prefillBody = $this->sanitizeComposedMessageBody((string) $prefillBody);
 
@@ -2031,8 +2081,8 @@ class InvoicesController extends Controller
             'prefillAttachmentType' => $prefillAttachmentType,
             'prefillChannel' => $prefillChannel,
             'prefillPhone' => $prefillPhone,
-            'emailTemplatesByType' => $emailTemplatesByType,
-            'allTemplates' => $allTemplates,
+            'templateCatalog' => $templateCatalog,
+            'availableChannelsByType' => $availableChannelsByType,
             'fallbackTemplatesByType' => $fallbackTemplatesByType,
             'composeEmail' => $latestEmail,
             'customAttachmentUrl' => !empty($latestEmail?->custom_attachment_path)
@@ -2052,6 +2102,7 @@ class InvoicesController extends Controller
         $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
         $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
         $forcedFromEmail = (string) ($accountBillingDetail?->billing_from_email ?? '');
+        $forcedFromName = trim((string) ($accountBillingDetail?->billing_name ?? ''));
         $forcedToEmail = (string) (
             $invoice->client?->billingDetail?->billing_email
             ?? $invoice->client?->billing_email
@@ -2062,6 +2113,7 @@ class InvoicesController extends Controller
             'invoice_emailid' => 'nullable|exists:invoice_emails,invoice_emailid',
             'action' => 'nullable|in:save,send',
             'channel' => 'required|in:email,whatsapp,sms',
+            'selected_templateid' => 'nullable|string|size:6',
             'phone' => 'nullable|string|max:20',
             'subject' => 'nullable|string|max:255',
             'body' => 'nullable|string',
@@ -2145,6 +2197,14 @@ class InvoicesController extends Controller
         $action = $validated['action'] ?? 'save';
         $isSendAction = $action === 'send';
         $finalCustomAttachmentPath = $customAttachmentPath ?? $emailDraft->custom_attachment_path;
+        $creditBaseRef = trim((string) (
+            $invoice->invoice_number
+            ?: $invoice->pi_number
+            ?: $invoice->ti_number
+            ?: $invoice->invoiceid
+        ));
+        $creditBaseRef = preg_replace('/[^A-Za-z0-9]/', '', $creditBaseRef) ?: 'DOC';
+        $creditTransId = $creditBaseRef . '-' . now()->format('YmdHisv');
 
         // For non-email channels, resolve template tags.
         $finalBody = $this->sanitizeComposedMessageBody((string) ($validated['body'] ?? ''));
@@ -2167,7 +2227,12 @@ class InvoicesController extends Controller
         if (!$isSendAction) {
             $emailDraft->update($updatePayload + ['status' => 'draft']);
             return redirect()
-                ->route('invoices.email-compose', ['invoice' => $invoice->invoiceid, 'e' => $emailDraft->invoice_emailid])
+                ->route('invoices.email-compose', [
+                    'invoice' => $invoice->invoiceid,
+                    'e' => $emailDraft->invoice_emailid,
+                    'channel' => $channel,
+                    'attachment_type' => $selectedType,
+                ])
                 ->with('success', 'Message draft saved successfully.')
                 ->with('preserve_channel', $channel);
         }
@@ -2175,6 +2240,26 @@ class InvoicesController extends Controller
         if ($channel === 'whatsapp' || $channel === 'sms') {
             if ($phone === '') {
                 return back()->withErrors(['phone' => 'Client phone/whatsapp number is required for this channel.'])->withInput();
+            }
+
+            $selectedTemplateId = trim((string) ($validated['selected_templateid'] ?? ''));
+            $channelTemplateConfig = MessageTemplate::query()
+                ->where('accountid', $currentAccountId)
+                ->where('template_type', $selectedType)
+                ->where('channel', $channel)
+                ->where('is_active', true)
+                ->when($selectedTemplateId !== '', function ($query) use ($selectedTemplateId) {
+                    $query->where('templateid', $selectedTemplateId);
+                })
+                ->first();
+
+            if (!$channelTemplateConfig && $selectedTemplateId !== '') {
+                $channelTemplateConfig = MessageTemplate::query()
+                    ->where('accountid', $currentAccountId)
+                    ->where('templateid', $selectedTemplateId)
+                    ->where('template_type', $selectedType)
+                    ->where('channel', $channel)
+                    ->first();
             }
 
             // Build document links so WhatsApp message includes invoice PDFs like email attachments.
@@ -2213,6 +2298,7 @@ class InvoicesController extends Controller
             $payload = [
                 'account_id' => $currentAccountId,
                 'campaign_name' => '',
+                'credit_transid' => $creditTransId,
                 'schedule_at' => now()->toIso8601String(),
                 'message' => $plainBody,
                 'records' => [
@@ -2221,8 +2307,14 @@ class InvoicesController extends Controller
                 'source_url' => url()->current(),
                 'notes' => 'Invoice communication: ' . strtoupper($channel),
             ];
-            if ($channel === 'sms') {
-                $payload['sender_id'] = 'ISPLAC';
+            if (!empty($channelTemplateConfig?->template_id)) {
+                $payload['template_id'] = (string) $channelTemplateConfig->template_id;
+            }
+            if (!empty($channelTemplateConfig?->sender_id)) {
+                $payload['sender_id'] = (string) $channelTemplateConfig->sender_id;
+            }
+            if ($channel === 'whatsapp' && !empty($channelTemplateConfig?->meta_template_id)) {
+                $payload['meta_template_id'] = (string) $channelTemplateConfig->meta_template_id;
             }
             if ($channel === 'whatsapp' && !empty($documentLinks)) {
                 $payload['media_url'] = (string) ($documentLinks[0]['url'] ?? '');
@@ -2281,10 +2373,11 @@ class InvoicesController extends Controller
         $payload = [
             'account_id' => $currentAccountId,
             'campaign_name' => '',
+            'credit_transid' => $creditTransId,
             'schedule_at' => now()->toIso8601String(),
             'subject' => (string) ($validated['subject'] ?? ''),
             'message' => $emailMessage,
-            'sender_id' => trim((string) ($fromEmailName ?? $fromEmail ?? 'ISPLAC')),
+            'sender_id' => $forcedFromName !== '' ? $forcedFromName : $forcedFromEmail,
             'records' => [
                 $this->buildCampioRecipientRecord($invoice, 'email', $forcedToEmail, $phone),
             ],

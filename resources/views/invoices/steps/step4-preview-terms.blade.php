@@ -275,6 +275,28 @@
             .filter(Boolean);
     }
 
+    function normalizeDraftTermsByType(rawTerms) {
+        if (!rawTerms || typeof rawTerms !== 'object') {
+            return { proforma: [], billing: [] };
+        }
+
+        const hasBuckets = Object.prototype.hasOwnProperty.call(rawTerms, 'proforma')
+            || Object.prototype.hasOwnProperty.call(rawTerms, 'billing');
+
+        if (hasBuckets) {
+            return {
+                proforma: Array.isArray(rawTerms.proforma) ? rawTerms.proforma.map(t => String(t || '').trim()).filter(Boolean) : [],
+                billing: Array.isArray(rawTerms.billing) ? rawTerms.billing.map(t => String(t || '').trim()).filter(Boolean) : [],
+            };
+        }
+
+        const legacyTerms = Array.isArray(rawTerms) ? rawTerms.map(t => String(t || '').trim()).filter(Boolean) : [];
+        return {
+            proforma: legacyTerms,
+            billing: [],
+        };
+    }
+
     function renderTermsList(type, selectedTerms = null) {
         if (!termsList) return;
         const terms = termsByType[type] || [];
@@ -410,15 +432,15 @@
                 draftPoDate = data.draft.po_date || '';
                 syncTermsTypeWithInvoiceStage();
 
-                const checkboxes = document.querySelectorAll('.term-checkbox');
-                const draftTerms = Array.isArray(data.draft.terms) ? data.draft.terms : [];
-                const hasDraftTerms = draftTerms.length > 0;
+                const draftTermsByType = normalizeDraftTermsByType(data.draft.terms_by_type ?? data.draft.terms ?? []);
+                const typedDraftTerms = currentTermType === 'billing'
+                    ? draftTermsByType.billing
+                    : draftTermsByType.proforma;
                 const currentDefaults = getDefaultTermsForType(currentTermType);
-                appliedTerms = hasDraftTerms ? draftTerms : currentDefaults;
-                checkboxes.forEach(cb => {
-                    const val = cb.value.trim();
-                    cb.checked = appliedTerms.some(t => String(t).trim() === val);
-                });
+                appliedTerms = typedDraftTerms.length > 0 ? typedDraftTerms : currentDefaults;
+                renderTermsList(currentTermType, appliedTerms);
+
+                const checkboxes = document.querySelectorAll('.term-checkbox');
                 const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
                 if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
 
