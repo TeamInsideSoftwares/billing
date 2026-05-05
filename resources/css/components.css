@@ -793,6 +793,78 @@ input::placeholder {
   box-shadow: none;
 }
 
+/* Message Templates - Two column simplified layout (use Bootstrap grid: col-md-8 / col-md-4) */
+/* Layout now uses Bootstrap columns; keep minor spacing helpers */
+.mt-two-col {
+  /* spacing handled by Bootstrap row/col; keep this for legacy selectors */
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .mt-two-col {
+    display: block;
+  }
+}
+
+.mt-editor-col,
+.mt-template-list-col {
+  display: flex;
+  align-items: stretch;
+}
+
+.mt-editor-col > .message-template-form,
+.mt-template-list-col > .mt-template-list {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.85rem;
+  background: #fff;
+}
+
+.mt-template-item {
+  padding: 0.65rem;
+  border-radius: 8px;
+  border: 1px solid #eef2f6;
+  margin-bottom: 0.65rem;
+  background: #fff;
+}
+
+.mt-template-item strong {
+  display: block;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.mt-template-item .mt-template-item-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.mt-editor-col { min-width: 0; }
+
+.mt-channel-pills .mt-channel-pill-btn {
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-weight: 600;
+}
+
+.mt-channel-pills .mt-channel-pill-btn.is-active {
+  background: #eff6ff;
+  color: var(--brand);
+  border-color: var(--brand);
+}
+
+.template-editor-title { font-size: 1rem; font-weight: 700; }
+.template-editor-note { color: #64748b; font-size: 0.85rem; }
+
+.template-submit-btn { min-width: 160px; }
+
+/* small helpers */
+.mt-template-list-col { min-width: 240px; }
+
+
 .alert.success {
   background: #ecfdf5;
   color: #065f46;

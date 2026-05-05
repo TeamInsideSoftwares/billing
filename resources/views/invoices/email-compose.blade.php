@@ -643,6 +643,7 @@
 
             if (window.tinymce && emailBodyInput) {
                 tinymce.init({
+                    license_key: 'gpl',
                     selector: '#emailBodyInput',
                     menubar: false,
                     height: 340,

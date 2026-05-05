@@ -173,6 +173,7 @@ Route::controller(SettingsController::class)->group(function () {
         Route::patch('/settings/taxes/{tax}/toggle', 'taxToggle')->name('taxes.toggle');
         Route::post('/settings/message-templates', 'messageTemplateStore')->name('message-templates.store');
         Route::patch('/settings/message-templates/{template}', 'messageTemplateUpdate')->name('message-templates.update');
+        Route::patch('/settings/message-templates/{template}/toggle', 'messageTemplateToggle')->name('message-templates.toggle');
         Route::delete('/settings/message-templates/{template}', 'messageTemplateDestroy')->name('message-templates.destroy');
     });
 

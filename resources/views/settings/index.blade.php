@@ -81,10 +81,53 @@
     grid-column: span 2;
 }
 
-.template-active-input {
-    width: 1.1rem;
-    height: 1.1rem;
-    cursor: pointer;
+.mt-template-list {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.mt-template-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    padding: 1rem;
+    display: block;
+    width: 100%;
+    text-align: left;
+    cursor: default;
+    font: inherit;
+    color: inherit;
+    appearance: none;
+}
+
+.mt-template-item-actions form {
+    margin: 0;
+}
+
+.mt-template-item + .mt-template-item {
+    margin-top: 0.9rem;
+}
+
+.mt-template-item-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.mt-template-item-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.template-form-grid-sm {
+    grid-template-columns: 1fr 1fr;
+}
+
+.template-body-cell {
+    grid-column: span 2;
 }
 
 .settings-card-soft {
@@ -189,7 +232,7 @@
         <button class="tab-button active" data-tab="personal">Business Info</button>
         <button class="tab-button" data-tab="financial-year">Financial Year</button>
 <button class="tab-button" data-tab="config">Configuration Keys</button>
-        <button class="tab-button" data-tab="message-templates">Message Templates</button>
+        <button class="tab-button" data-tab="message-templates">Manage Templates</button>
         @if($account->allow_multi_taxation)
         <button class="tab-button" data-tab="billing-details">Billing Details</button>
         <button class="tab-button" data-tab="terms-conditions">Terms &amp; Conditions</button>
@@ -619,89 +662,157 @@
         <div class="settings-section-head mb-0 border-bottom-0">
             <div class="settings-section-icon"><i class="fas fa-envelope-open-text"></i></div>
             <div>
-                <h5 class="settings-section-title">Message Templates</h5>
-                <p class="settings-section-subtitle">Manage templates for Email, WhatsApp, and SMS</p>
+                <h5 class="settings-section-title">Manage Templates</h5>
+                <p class="settings-section-subtitle">For Email, WhatsApp, and SMS</p>
             </div>
         </div>
 
         <!-- Document Type Tabs (Top Level) -->
         <div class="mt-main-tabs-wrap border-bottom mt-3">
             <div class="mt-main-tabs d-flex gap-4">
-                <button type="button" class="mt-type-tab-btn is-active" data-type="pi">Proforma Invoice (PI)</button>
-                <button type="button" class="mt-type-tab-btn" data-type="ti">Tax Invoice (TI/DSI)</button>
+                @foreach($messageTemplateTypes as $typeKey => $typeLabel)
+                    <button type="button" class="mt-type-tab-btn {{ $loop->first ? 'is-active' : '' }}" data-type="{{ $typeKey }}">
+                        {{ $typeLabel }}
+                    </button>
+                @endforeach
             </div>
         </div>
 
         <div class="settings-card-soft p-4">
-            @php
-                $templateTypeMeta = [
-                    'pi' => 'PI (Proforma Invoice) templates',
-                    'ti' => 'TI/DSI (Tax Invoice) templates',
-                ];
-            @endphp
+                @php
+                    // Flatten all templates into a single collection for the right-side list
+                    $allTemplates = collect();
+                    foreach ($messageTemplatesByType as $t) { $allTemplates = $allTemplates->concat($t); }
+                    $defaultTypeKey = array_key_first($messageTemplateTypes);
+                @endphp
 
-            @foreach($templateTypeMeta as $typeKey => $typeLabel)
-                <div class="mt-type-pane {{ $loop->first ? 'active' : '' }}" data-type-pane="{{ $typeKey }}" style="{{ $loop->first ? '' : 'display:none;' }}">
+                <div class="row align-items-stretch h-100">
+                    <div class="col-12 col-md-8 mt-editor-col d-flex h-100">
+                        <form method="POST" action="{{ route('message-templates.store') }}" class="message-template-form d-flex flex-column w-100 h-100" data-template-form="{{ $defaultTypeKey }}" data-store-action="{{ route('message-templates.store') }}" data-update-base="{{ url('settings/message-templates') }}">
+                            @csrf
+                            <input type="hidden" name="template_type" value="{{ $defaultTypeKey }}">
+                            <input type="hidden" name="templateid" class="template-id-input" value="">
+                            <input type="hidden" name="channel" class="template-channel-input" value="email">
 
-                    <!-- Channel Pills (Sub Level) -->
-                    <div class="mt-channel-pills d-flex gap-2 mb-4">
-                        <button type="button" class="mt-channel-pill-btn is-active" data-type="{{ $typeKey }}" data-channel="email">
-                            <i class="fas fa-envelope mr-1"></i> Email
-                        </button>
-                        <button type="button" class="mt-channel-pill-btn" data-type="{{ $typeKey }}" data-channel="whatsapp">
-                            <i class="fab fa-whatsapp mr-1"></i> WhatsApp
-                        </button>
-                        <button type="button" class="mt-channel-pill-btn" data-type="{{ $typeKey }}" data-channel="sms">
-                            <i class="fas fa-sms mr-1"></i> SMS
-                        </button>
-                    </div>
-
-                    <form method="POST" action="{{ route('message-templates.store') }}" class="message-template-form" data-template-form="{{ $typeKey }}">
-                        @csrf
-                        <input type="hidden" name="template_type" value="{{ $typeKey }}">
-                        <input type="hidden" name="channel" class="template-channel-input" value="email">
-
-                        <div class="template-form-grid">
-                            <div class="form-group mb-3">
-                                <label class="label-compact font-bold mb-1">Template Name *</label>
-                                <input type="text" name="name" class="settings-input template-name-input" placeholder="Invoice Email {{ strtoupper(str_replace('_', ' ', $typeKey)) }}" required>
-                            </div>
-
-                            <div class="form-group mb-3 template-subject-group">
-                                <label class="label-compact font-bold mb-1">Subject (optional)</label>
-                                <input type="text" name="subject" class="settings-input template-subject-input" placeholder="Invoice PI-001 for @{{client_name}}" autocomplete="off">
-                            </div>
-
-                            <div class="form-group mb-3 col-span-2">
-                                <label class="label-compact font-bold mb-1">Message Body *</label>
-                                <textarea name="body" id="templateBodyInput-{{ $typeKey }}" rows="6" class="settings-input template-body-input" placeholder="Hi @{{client_name}},&#10;Please find attached invoice @{{invoice_number}}."></textarea>
-                                <div class="mt-2 d-flex flex-wrap gap-2">
-                                    <span class="badge bg-light text-muted border px-2 py-1">@{{client_business_name}} (Client's Company)</span>
-                                    <span class="badge bg-light text-muted border px-2 py-1">@{{client_contact_person}} (Client's Contact)</span>
-                                    <span class="badge bg-light text-muted border px-2 py-1">@{{invoice_title}}</span>
-                                    <span class="badge bg-light text-muted border px-2 py-1">@{{pi_number}}</span>
-                                    <span class="badge bg-light text-muted border px-2 py-1">@{{ti_number}}</span>
-                                    <span class="badge bg-light text-muted border px-2 py-1">@{{pi_link}}</span>
-                                    <span class="badge bg-light text-muted border px-2 py-1">@{{ti_link}}</span>
-                                    <span class="badge bg-light text-muted border px-2 py-1">@{{total_amount}}</span>
-                                    <span class="badge bg-light text-muted border px-2 py-1">@{{due_date}}</span>
-                                    <span class="badge bg-light text-muted border px-2 py-1">@{{business_name}} (Your Business Name)</span>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <strong class="template-editor-title">Create template</strong>
+                                    <p class="text-sm text-muted mb-0 template-editor-note">Fill the form to add a new template.</p>
                                 </div>
+                                <button type="button" class="secondary-button btn-sm template-reset-btn">New template</button>
                             </div>
 
-                            <div class="d-flex align-items-center justify-content-between col-span-2 mt-3 pt-3 border-top">
-                                <label class="d-inline-flex align-items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="is_active" class="template-active-input" value="1" checked>
-                                    <span class="text-sm fw-medium">Active Template</span>
-                                </label>
-                                <button type="submit" class="primary-button px-4 py-2">
-                                    <i class="fas fa-save mr-2"></i> Save Changes
+                            <div class="mt-channel-pills d-flex gap-2 mb-4">
+                                <button type="button" class="mt-channel-pill-btn is-active" data-type="{{ $defaultTypeKey }}" data-channel="email">
+                                    <i class="fas fa-envelope mr-1"></i> Email
+                                </button>
+                                <button type="button" class="mt-channel-pill-btn" data-type="{{ $defaultTypeKey }}" data-channel="whatsapp">
+                                    <i class="fab fa-whatsapp mr-1"></i> WhatsApp
+                                </button>
+                                <button type="button" class="mt-channel-pill-btn" data-type="{{ $defaultTypeKey }}" data-channel="sms">
+                                    <i class="fas fa-sms mr-1"></i> SMS
                                 </button>
                             </div>
+
+                            <div class="template-form-grid d-flex flex-column flex-grow-1">
+                                <div class="form-group mb-3">
+                                    <label class="label-compact font-bold mb-1">Template Name *</label>
+                                    <input type="text" name="name" class="settings-input template-name-input" placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} Email Template" required>
+                                </div>
+
+                                <div class="form-group mb-3 template-subject-group">
+                                    <label class="label-compact font-bold mb-1">Subject (optional)</label>
+                                    <input type="text" name="subject" class="settings-input template-subject-input" placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} update for @{{client_name}}" autocomplete="off">
+                                </div>
+
+                                <div class="form-group mb-3 col-span-2 flex-grow-1">
+                                    <label class="label-compact font-bold mb-1">Message Body *</label>
+                                    <textarea name="body" id="templateBodyInput-{{ $defaultTypeKey }}" rows="6" class="settings-input template-body-input h-100" placeholder="Hi @{{client_name}},&#10;Please find the details below."></textarea>
+                                    <div class="mt-2 d-flex flex-wrap gap-2">
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{client_business_name}} (Client's Company)</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{client_contact_person}} (Client's Contact)</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{invoice_title}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{pi_number}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{ti_number}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{pi_link}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{ti_link}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{total_amount}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{due_date}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{business_name}} (Your Business Name)</span>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex align-items-center justify-content-end col-span-2 mt-3 pt-3 border-top mt-auto">
+                                    <button type="submit" class="primary-button px-4 py-2 template-submit-btn">
+                                        <i class="fas fa-save mr-2"></i> Save New Template
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="col-12 col-md-4 mt-template-list-col d-flex h-100">
+                        <div class="mt-template-list d-flex flex-column w-100 h-100">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                <div>
+                                    <h6 class="mb-1">Saved templates</h6>
+                                    <p class="text-sm text-muted mb-0">Click a template to edit it here.</p>
+                                </div>
+                                <span id="mt-saved-count" class="badge bg-light text-muted border px-2 py-1">
+                                    {{ ($messageTemplatesByType[$defaultTypeKey] ?? collect())->count() }} saved
+                                </span>
+                            </div>
+
+                            <div class="mt-template-list-body flex-grow-1 overflow-auto">
+                            @forelse($allTemplates as $template)
+                                <div class="mt-template-item" data-type="{{ $template->template_type ?? $template->type ?? '' }}">
+                                    <div class="d-flex justify-content-between align-items-start gap-3">
+                                        <div>
+                                            <strong>{{ $template->name }}</strong>
+                                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                                <span class="badge bg-light text-muted border px-2 py-1">{{ ucfirst($template->channel) }}</span>
+                                                <span class="badge {{ $template->is_active ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle' }} px-2 py-1">
+                                                    {{ $template->is_active ? 'Active' : 'Deactive' }}
+                                                </span>
+                                                @if(!empty($template->subject))
+                                                    <span class="text-sm text-muted">{{ $template->subject }}</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div class="mt-template-item-actions">
+                                            <button
+                                                type="button"
+                                                class="icon-action-btn edit js-template-edit"
+                                                title="Edit"
+                                                data-type="{{ $template->template_type ?? $template->type ?? '' }}"
+                                                data-templateid="{{ $template->templateid }}"
+                                                data-channel="{{ $template->channel }}"
+                                                data-name="{{ e($template->name) }}"
+                                                data-subject="{{ e($template->subject ?? '') }}"
+                                                data-body="{{ e(base64_encode($template->body)) }}"
+                                                data-is-active="{{ $template->is_active ? '1' : '0' }}"
+                                            >
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                class="secondary-button btn-sm template-toggle-btn"
+                                                data-toggle-url="{{ route('message-templates.toggle', $template) }}"
+                                                data-is-active="{{ $template->is_active ? '1' : '0' }}"
+                                            >
+                                                {{ $template->is_active ? 'Deactivate' : 'Activate' }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-sm text-muted">No templates saved yet.</div>
+                            @endforelse
+                            </div>
                         </div>
-                    </form>
+                    </div>
                 </div>
-            @endforeach
         </div>
 
     </section>
@@ -862,10 +973,10 @@
                 </div>
                 <div style="flex: 0 0 130px;">
                     <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b;">Default</label>
-                    <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: #334155;">
+                    <label class="custom-checkbox">
                         <input type="hidden" name="is_default" value="0">
                         <input type="checkbox" name="is_default" value="1" {{ old('is_default', (int) ($editingTerm->is_default ?? 0)) ? 'checked' : '' }}>
-                        Set as default
+                        <span class="checkbox-label">Set as default</span>
                     </label>
                 </div>
                 <div style="display: flex; gap: 0.4rem;">
@@ -1576,20 +1687,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const templateForms = Array.from(document.querySelectorAll('.message-template-form'));
-    const typePanes = Array.from(document.querySelectorAll('.mt-type-pane'));
+    const form = document.querySelector('.message-template-form');
     const typeTabs = Array.from(document.querySelectorAll('.mt-type-tab-btn'));
-    @php
-        $templateMapForJs = $messageTemplates->mapWithKeys(function ($template) {
-            $key = $template->channel . '::' . $template->template_type;
-            return [$key => [
-                'name' => $template->name,
-                'subject' => $template->subject,
-                'body' => $template->body,
-                'is_active' => (bool) $template->is_active,
-            ]];
-        })->toArray();
-    @endphp
-    const templatesMap = @json($templateMapForJs);
+    const templateTypeLabels = @json($messageTemplateTypes);
+    const defaultTemplateType = @json(array_key_first($messageTemplateTypes));
 
     function setTinyContent(textareaId, value) {
         if (window.tinymce && tinymce.get(textareaId)) {
@@ -1606,6 +1707,101 @@ document.addEventListener('DOMContentLoaded', function() {
         if (input) input.value = value || '';
     }
 
+    function decodeTemplateBody(encodedBody) {
+        if (!encodedBody) return '';
+        try {
+            const binary = atob(encodedBody);
+            const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+            return new TextDecoder('utf-8').decode(bytes);
+        } catch (error) {
+            return encodedBody;
+        }
+    }
+
+    function resetTemplateForm(form, type, channel) {
+        if (!form) return;
+
+        const channelInput = form.querySelector('.template-channel-input');
+        const typeInput = form.querySelector('input[name="template_type"]');
+        const templateIdInput = form.querySelector('.template-id-input');
+        const nameInput = form.querySelector('.template-name-input');
+        const subjectInput = form.querySelector('.template-subject-input');
+        const subjectGroup = form.querySelector('.template-subject-group');
+        const bodyInput = form.querySelector('.template-body-input');
+        const submitBtn = form.querySelector('.template-submit-btn');
+        const editorTitle = form.querySelector('.template-editor-title');
+        const editorNote = form.querySelector('.template-editor-note');
+        const methodInput = form.querySelector('input[name="_method"]');
+
+        const currentType = type || typeInput?.value || defaultTemplateType;
+        const currentChannel = channel || channelInput?.value || 'email';
+        const typeLabel = templateTypeLabels[currentType] || currentType.replace(/_/g, ' ').toUpperCase();
+        const channelLabel = currentChannel.charAt(0).toUpperCase() + currentChannel.slice(1);
+
+        if (typeInput) typeInput.value = currentType;
+        if (channelInput) channelInput.value = currentChannel;
+        if (templateIdInput) templateIdInput.value = '';
+        if (methodInput) methodInput.remove();
+        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save New Template';
+        if (editorTitle) editorTitle.textContent = 'Create template';
+        if (editorNote) editorNote.textContent = 'Fill the form to add a new template.';
+        if (nameInput) {
+            nameInput.value = '';
+            nameInput.placeholder = typeLabel + ' ' + channelLabel + ' Template';
+        }
+        if (subjectGroup) {
+            subjectGroup.style.display = currentChannel === 'email' ? 'block' : 'none';
+        }
+        if (subjectInput) {
+            subjectInput.value = '';
+            subjectInput.placeholder = typeLabel + ' update for @{{client_name}}';
+        }
+        if (bodyInput) {
+            bodyInput.placeholder = 'Hi @{{client_name}},\nPlease find the details below.';
+            setTinyContent(bodyInput.id, '');
+        }
+    }
+
+    function enterEditMode(form, template, type) {
+        if (!form || !template) return;
+
+        const channelInput = form.querySelector('.template-channel-input');
+        const typeInput = form.querySelector('input[name="template_type"]');
+        const templateIdInput = form.querySelector('.template-id-input');
+        const nameInput = form.querySelector('.template-name-input');
+        const subjectInput = form.querySelector('.template-subject-input');
+        const subjectGroup = form.querySelector('.template-subject-group');
+        const bodyInput = form.querySelector('.template-body-input');
+        const submitBtn = form.querySelector('.template-submit-btn');
+        const editorTitle = form.querySelector('.template-editor-title');
+        const editorNote = form.querySelector('.template-editor-note');
+        const storeAction = form.dataset.storeAction;
+        const updateBase = form.dataset.updateBase;
+        const methodInput = form.querySelector('input[name="_method"]') || document.createElement('input');
+
+        const typeKey = type || template.template_type || typeInput?.value || defaultTemplateType;
+        const channel = template.channel || channelInput?.value || 'email';
+
+        form.action = updateBase + '/' + encodeURIComponent(template.templateid);
+        if (!methodInput.name) {
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            form.appendChild(methodInput);
+        }
+        methodInput.value = 'PATCH';
+
+        if (typeInput) typeInput.value = typeKey;
+        if (templateIdInput) templateIdInput.value = template.templateid || '';
+        if (channelInput) channelInput.value = channel;
+        if (nameInput) nameInput.value = template.name || '';
+        if (subjectGroup) subjectGroup.style.display = channel === 'email' ? 'block' : 'none';
+        if (subjectInput) subjectInput.value = template.subject || '';
+        if (bodyInput) setTinyContent(bodyInput.id, template.body || '');
+        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Update Template';
+        if (editorTitle) editorTitle.textContent = 'Editing template';
+        if (editorNote) editorNote.textContent = template.name || '';
+    }
+
     function setActiveTab(tabs, matchAttr, value) {
         tabs.forEach((tab) => {
             const active = tab.dataset[matchAttr] === value;
@@ -1613,124 +1809,198 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function loadTemplateForm(form) {
-        if (!form) return;
-        const channelInput = form.querySelector('.template-channel-input');
-        const typeInput = form.querySelector('input[name="template_type"]');
-        const nameInput = form.querySelector('.template-name-input');
-        const subjectInput = form.querySelector('.template-subject-input');
-        const subjectGroup = form.querySelector('.template-subject-group');
-        const activeInput = form.querySelector('.template-active-input');
-        const bodyInput = form.querySelector('.template-body-input');
+    function updateTemplateListForType(type) {
+        // show only templates of the given type in the right column
+        const items = document.querySelectorAll('.mt-template-list .mt-template-item');
+        let visible = 0;
+        items.forEach((it) => {
+            const t = it.dataset.type || '';
+            const show = t === type;
+            it.style.display = show ? '' : 'none';
+            if (show) visible += 1;
+        });
 
-        const channel = channelInput?.value || 'email';
-        const type = typeInput?.value || 'pi';
-        const key = channel + '::' + type;
-        const existing = templatesMap[key] || null;
-
-        const typeLabel = type.replace('_', ' ').toUpperCase();
-        const channelLabel = channel.charAt(0).toUpperCase() + channel.slice(1);
-
-        if (nameInput) {
-            nameInput.value = existing?.name || ('Invoice ' + channelLabel + ' ' + typeLabel);
-        }
-
-        if (subjectGroup) {
-            subjectGroup.style.display = channel === 'email' ? 'block' : 'none';
-        }
-
-        if (subjectInput) {
-            const nextSubject = (existing && existing.subject !== null && existing.subject !== undefined)
-                ? String(existing.subject)
-                : '';
-            subjectInput.value = nextSubject;
-        }
-        if (activeInput) {
-            activeInput.checked = existing ? !!existing.is_active : true;
-        }
-        setTinyContent(bodyInput.id, existing?.body || '');
+        const countEl = document.getElementById('mt-saved-count');
+        if (countEl) countEl.textContent = visible + ' saved';
     }
 
     document.querySelectorAll('.mt-channel-pill-btn').forEach((tab) => {
         tab.addEventListener('click', function () {
             const type = this.dataset.type;
             const channel = this.dataset.channel;
-            const pane = document.querySelector('.mt-type-pane[data-type-pane="' + type + '"]');
-            const form = pane?.querySelector('.message-template-form');
-            if (!form) return;
-
-            form.querySelector('.template-channel-input').value = channel;
-            pane.querySelectorAll('.mt-channel-pill-btn').forEach((btn) => {
-                const active = btn.dataset.channel === channel;
-                btn.classList.toggle('is-active', active);
+            // toggle pills for same type inside the form
+            document.querySelectorAll('.mt-channel-pill-btn').forEach((btn) => {
+                if (btn.dataset.type === type) {
+                    const active = btn.dataset.channel === channel;
+                    btn.classList.toggle('is-active', active);
+                }
             });
-            loadTemplateForm(form);
+            resetTemplateForm(form, type, channel);
+        });
+    });
+
+    document.querySelectorAll('.template-reset-btn').forEach((btn) => {
+        btn.addEventListener('click', function () {
+            const activeTab = document.querySelector('.mt-type-tab-btn.is-active');
+            const type = activeTab?.dataset.type || defaultTemplateType;
+            // reset channel pills to email for this type
+            document.querySelectorAll('.mt-channel-pill-btn').forEach((pill) => {
+                if (pill.dataset.type === type) pill.classList.toggle('is-active', pill.dataset.channel === 'email');
+            });
+            resetTemplateForm(form, type, 'email');
+        });
+    });
+
+    document.querySelectorAll('.template-toggle-btn').forEach((btn) => {
+        btn.addEventListener('click', async function () {
+            const url = this.dataset.toggleUrl;
+            if (!url) return;
+
+            this.disabled = true;
+            const btnEl = this;
+            try {
+                const response = await fetch(url, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update template status.');
+                }
+
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const data = await response.json();
+                    const item = btnEl.closest('.mt-template-item');
+                    if (item) {
+                        const statusPill = item.querySelector('.badge.bg-success-subtle, .badge.bg-secondary-subtle');
+                        if (statusPill) {
+                            statusPill.classList.toggle('bg-success-subtle', data.is_active);
+                            statusPill.classList.toggle('text-success', data.is_active);
+                            statusPill.classList.toggle('border-success-subtle', data.is_active);
+                            statusPill.classList.toggle('bg-secondary-subtle', !data.is_active);
+                            statusPill.classList.toggle('text-secondary', !data.is_active);
+                            statusPill.classList.toggle('border-secondary-subtle', !data.is_active);
+                            statusPill.textContent = data.is_active ? 'Active' : 'Deactive';
+                        }
+
+                        // Update toggle button text
+                        btnEl.textContent = data.is_active ? 'Deactivate' : 'Activate';
+                    }
+
+                    // use existing toast if available, otherwise create an app-toast (styled like other toasts)
+                    try {
+                        const messageText = data.message || 'Updated';
+                        if (typeof showToast === 'function') {
+                            showToast('success', messageText);
+                        } else {
+                            const container = document.getElementById('app-toast-container') || (function() {
+                                const el = document.createElement('div');
+                                el.id = 'app-toast-container';
+                                el.className = 'app-toast-container';
+                                document.body.appendChild(el);
+                                return el;
+                            })();
+
+                            const toast = document.createElement('div');
+                            toast.className = 'app-toast app-toast-success';
+                            toast.innerHTML = `<i class="fas fa-check-circle toast-icon"></i><span>${messageText}</span>`;
+                            container.appendChild(toast);
+                            setTimeout(() => {
+                                if (toast.parentNode) {
+                                    toast.classList.add('app-toast-leaving');
+                                    setTimeout(() => { if (toast.parentNode) toast.remove(); }, 300);
+                                }
+                            }, 3500);
+                        }
+                    } catch (e) {}
+                } else {
+                    window.location.reload();
+                }
+            } finally {
+                this.disabled = false;
+            }
         });
     });
 
     typeTabs.forEach((tab) => {
         tab.addEventListener('click', function () {
             setActiveTab(typeTabs, 'type', this.dataset.type);
-            typePanes.forEach((pane) => {
-                pane.style.display = pane.dataset.typePane === this.dataset.type ? '' : 'none';
-            });
+            // update form type and reset
+            if (form) {
+                form.querySelector('input[name="template_type"]').value = this.dataset.type;
+                // reset channel pills to email for this type
+                document.querySelectorAll('.mt-channel-pill-btn').forEach((btn) => {
+                    if (btn.dataset.type === this.dataset.type) {
+                        btn.classList.toggle('is-active', btn.dataset.channel === 'email');
+                    }
+                });
+                resetTemplateForm(form, this.dataset.type, 'email');
+                // also filter the right-side list to the selected type
+                updateTemplateListForType(this.dataset.type);
+            }
         });
     });
 
-    function openTemplateEditor(type, channel) {
-        const targetType = type || 'pi';
-        const targetChannel = channel || 'email';
-
-        setActiveTab(typeTabs, 'type', targetType);
-        typePanes.forEach((pane) => {
-            const isTargetPane = pane.dataset.typePane === targetType;
-            pane.style.display = isTargetPane ? '' : 'none';
-            if (!isTargetPane) return;
-
-            const form = pane.querySelector('.message-template-form');
-            if (!form) return;
-            form.querySelector('.template-channel-input').value = targetChannel;
-
-            pane.querySelectorAll('.mt-channel-pill-btn').forEach((btn) => {
-                const active = btn.dataset.channel === targetChannel;
-                btn.classList.toggle('is-active', active);
-            });
-
-            loadTemplateForm(form);
-        });
-    }
+    // initial state: select default tab and reset the single editor form
+    setActiveTab(typeTabs, 'type', defaultTemplateType);
+    if (form) resetTemplateForm(form, form.querySelector('input[name="template_type"]')?.value || defaultTemplateType, 'email');
 
     document.querySelectorAll('.js-template-edit').forEach((btn) => {
         btn.addEventListener('click', function () {
-            const type = this.dataset.type;
-            const channel = this.dataset.channel;
-            openTemplateEditor(type, channel);
-            window.location.hash = 'message-templates';
+            const type = this.dataset.type || this.dataset.template_type;
+            const templateId = this.dataset.templateid;
+            if (!form || !templateId) return;
+
+            const template = {
+                templateid: templateId,
+                channel: this.dataset.channel || 'email',
+                name: this.dataset.name || '',
+                subject: this.dataset.subject || '',
+                body: decodeTemplateBody(this.dataset.body || ''),
+                is_active: this.dataset.isActive === '1',
+                template_type: this.dataset.type || this.dataset.template_type || ''
+            };
+
+            // ensure the tab corresponding to this template's type is active
+            setActiveTab(typeTabs, 'type', template.template_type || type || defaultTemplateType);
+            // filter list for the active type
+            updateTemplateListForType(template.template_type || type || defaultTemplateType);
+
+            // ensure channel pills reflect the template channel
+            document.querySelectorAll('.mt-channel-pill-btn').forEach((pill) => {
+                if (pill.dataset.type === (template.template_type || type) || !pill.dataset.type) {
+                    pill.classList.toggle('is-active', pill.dataset.channel === template.channel);
+                }
+            });
+
+            enterEditMode(form, template, template.template_type || type);
+            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     });
 
     if (window.tinymce && document.querySelector('.template-body-input')) {
         tinymce.init({
+            license_key: 'gpl',
             selector: '.template-body-input',
             menubar: false,
             height: 280,
             plugins: 'lists link table code autoresize',
             toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
         }).then(() => {
-            typePanes.forEach((pane) => {
-                const form = pane.querySelector('.message-template-form');
-                if (!form) return;
-                loadTemplateForm(form);
-            });
+            if (form) resetTemplateForm(form, form.querySelector('input[name="template_type"]')?.value || defaultTemplateType, 'email');
         });
     }
 
-    setActiveTab(typeTabs, 'type', 'pi');
-    typePanes.forEach((pane) => {
-        const form = pane.querySelector('.message-template-form');
-        if (!form) return;
-        loadTemplateForm(form);
-    });
+    // initial state: select default tab and reset the single editor form
+    setActiveTab(typeTabs, 'type', defaultTemplateType);
+    if (form) resetTemplateForm(form, form.querySelector('input[name="template_type"]')?.value || defaultTemplateType, 'email');
+    // filter the right list to the selected default type
+    updateTemplateListForType(defaultTemplateType);
 
     templateForms.forEach((form) => {
         form.addEventListener('submit', function () {

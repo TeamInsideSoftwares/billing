@@ -18,6 +18,18 @@ use Illuminate\Http\RedirectResponse;
 
 class SettingsController extends Controller
 {
+    private function messageTemplateTypes(): array
+    {
+        return [
+            'pi' => 'Proforma Invoice (PI)',
+            'ti' => 'Tax Invoice (TI/DSI)',
+            'renewal' => 'Renewal',
+            'expiry' => 'Expiry',
+            'reminder' => 'Reminder',
+            'payment_received' => 'Payment Received',
+        ];
+    }
+
     public function settings(): View
     {
         $accountid = $this->resolveAccountId();
@@ -116,9 +128,11 @@ class SettingsController extends Controller
         $taxes = $hasPersistedAccount ? $account->taxes->sortByDesc('created_at')->values() : collect();
         $messageTemplates = MessageTemplate::query()
             ->where('accountid', $accountid)
-            ->orderBy('channel')
             ->orderBy('template_type')
+            ->orderBy('channel')
+            ->orderByDesc('created_at')
             ->get();
+        $messageTemplatesByType = $messageTemplates->groupBy('template_type');
 
         $editingTerm = null;
         if ($editId && strlen($editId) === 6 && !str_starts_with($editId, 'SET') && !str_starts_with($editId, 'ABD')) {
@@ -168,6 +182,8 @@ class SettingsController extends Controller
             'editingTerm' => $editingTerm,
             'taxes' => $taxes,
             'messageTemplates' => $messageTemplates,
+            'messageTemplatesByType' => $messageTemplatesByType,
+            'messageTemplateTypes' => $this->messageTemplateTypes(),
         ]);
     }
 
@@ -552,9 +568,10 @@ class SettingsController extends Controller
     public function messageTemplateStore(Request $request): RedirectResponse
     {
         $accountid = $this->resolveAccountId();
+        $templateTypes = implode(',', array_keys($this->messageTemplateTypes()));
 
         $validated = $request->validate([
-            'template_type' => 'required|in:pi,ti',
+            'template_type' => 'required|in:' . $templateTypes,
             'channel' => 'required|in:email,whatsapp,sms',
             'name' => 'required|string|max:120',
             'subject' => 'nullable|string',
@@ -562,19 +579,17 @@ class SettingsController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
-        MessageTemplate::updateOrCreate(
-            [
+        DB::transaction(function () use ($accountid, $validated) {
+            MessageTemplate::create([
                 'accountid' => $accountid,
                 'template_type' => $validated['template_type'],
                 'channel' => $validated['channel'],
-            ],
-            [
                 'name' => $validated['name'],
                 'subject' => $validated['subject'] ?? null,
                 'body' => $validated['body'],
                 'is_active' => (bool) ($validated['is_active'] ?? true),
-            ]
-        );
+            ]);
+        });
 
         return redirect()->to(route('settings.index') . '#message-templates')
             ->with('success', 'Message template saved successfully.');
@@ -594,12 +609,14 @@ class SettingsController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
-        $template->update([
-            'name' => $validated['name'],
-            'subject' => $validated['subject'] ?? null,
-            'body' => $validated['body'],
-            'is_active' => (bool) ($validated['is_active'] ?? false),
-        ]);
+        DB::transaction(function () use ($template, $accountid, $validated) {
+            $template->update([
+                'name' => $validated['name'],
+                'subject' => $validated['subject'] ?? null,
+                'body' => $validated['body'],
+                'is_active' => (bool) ($validated['is_active'] ?? false),
+            ]);
+        });
 
         return redirect()->to(route('settings.index') . '#message-templates')
             ->with('success', 'Message template updated successfully.');
@@ -616,6 +633,31 @@ class SettingsController extends Controller
 
         return redirect()->to(route('settings.index') . '#message-templates')
             ->with('success', 'Message template deleted successfully.');
+    }
+
+    public function messageTemplateToggle(Request $request, MessageTemplate $template)
+    {
+        $accountid = $this->resolveAccountId();
+        if ($template->accountid !== $accountid) {
+            abort(403, 'Unauthorized');
+        }
+
+        $template->update([
+            'is_active' => ! (bool) $template->is_active,
+        ]);
+
+        // If the request expects JSON (AJAX), return a JSON response so the frontend
+        // can update the UI immediately without relying on a redirect.
+        if ($request->wantsJson() || $request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'is_active' => (bool) $template->is_active,
+                'message' => 'Message template status updated successfully.',
+            ]);
+        }
+
+        return redirect()->to(route('settings.index') . '#message-templates')
+            ->with('success', 'Message template status updated successfully.');
     }
 
     public function termsConditionsStore(Request $request)

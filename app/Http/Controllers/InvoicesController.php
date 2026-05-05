@@ -299,7 +299,8 @@ class InvoicesController extends Controller
 
         $record = [
             'id' => (string) ($invoice->clientid ?? $invoice->invoiceid),
-            'name' => $clientName,
+            'leadid' => (string) ($invoice->clientid ?? ''),
+            'student_customer_name' => $clientName,
             'invoice_number' => (string) ($invoice->invoice_number ?? ''),
             'pi_number' => (string) ($invoice->pi_number ?? ''),
             'ti_number' => (string) ($invoice->ti_number ?? ''),
@@ -311,8 +312,18 @@ class InvoicesController extends Controller
         if ($channel === 'email') {
             $record['email'] = $toEmail;
         } else {
-            $record['mobile'] = $phone;
-            $record['phone'] = $phone;
+            // Ensure phone has country code
+            $phoneWithCode = $phone;
+            if (!empty($phone) && !str_starts_with($phone, '+')) {
+                $phoneClean = preg_replace('/[^0-9]/', '', $phone);
+                if (strlen($phoneClean) === 10) {
+                    $phoneWithCode = '+91' . $phoneClean;
+                } elseif (strlen($phoneClean) === 12 && str_starts_with($phoneClean, '91')) {
+                    $phoneWithCode = '+' . $phoneClean;
+                }
+            }
+            $record['mobile'] = $phoneWithCode;
+            $record['phone'] = $phoneWithCode;
         }
 
         return $record;
@@ -322,12 +333,22 @@ class InvoicesController extends Controller
     {
         $baseUrl = rtrim((string) env('CAMPIO_BASE_URL', 'http://alpha.skoolready.com/campio'), '/');
         if ($baseUrl === '') {
+            \Illuminate\Support\Facades\Log::error('Campio: CAMPIO_BASE_URL not configured');
             return ['ok' => false, 'message' => 'CAMPIO_BASE_URL is not configured.'];
         }
 
         $endpoint = $baseUrl . '/api/campaigns/schedule/' . $channel;
         $token = trim((string) env('CAMPIO_AUTH_TOKEN', ''));
         $apiKey = trim((string) env('CAMPIO_API_KEY', ''));
+
+        // Log the request
+        \Illuminate\Support\Facades\Log::info('Campio: Sending ' . strtoupper($channel), [
+            'endpoint' => $endpoint,
+            'account_id' => $payload['account_id'] ?? 'MISSING',
+            'campaign_name' => $payload['campaign_name'] ?? '',
+            'record_count' => count($payload['records'] ?? []),
+            'record_0' => $payload['records'][0] ?? 'none',
+        ]);
 
         $request = Http::acceptJson()->asJson()->timeout(30);
         if ($token !== '') {
@@ -340,16 +361,31 @@ class InvoicesController extends Controller
         try {
             $response = $request->post($endpoint, $payload);
         } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Campio: Request failed - ' . $e->getMessage());
             return ['ok' => false, 'message' => 'Campio request failed: ' . $e->getMessage()];
         }
 
+        \Illuminate\Support\Facades\Log::info('Campio: Response received', [
+            'status' => $response->status(),
+            'body' => $response->body(),
+        ]);
+
         $json = $response->json();
         if (!$response->successful()) {
+            \Illuminate\Support\Facades\Log::error('Campio: API error', [
+                'status' => $response->status(),
+                'json' => $json,
+            ]);
             $message = is_array($json)
                 ? ((string) ($json['message'] ?? 'Campio API returned an error.'))
                 : ('Campio API returned HTTP ' . $response->status() . '.');
             return ['ok' => false, 'message' => $message];
         }
+
+        \Illuminate\Support\Facades\Log::info('Campio: SUCCESS', [
+            'campaign_id' => $json['campaign_id'] ?? 'none',
+            'status' => $json['status'] ?? 'none',
+        ]);
 
         return [
             'ok' => true,
@@ -2185,6 +2221,9 @@ class InvoicesController extends Controller
                 'source_url' => url()->current(),
                 'notes' => 'Invoice communication: ' . strtoupper($channel),
             ];
+            if ($channel === 'sms') {
+                $payload['sender_id'] = 'ISPLAC';
+            }
             if ($channel === 'whatsapp' && !empty($documentLinks)) {
                 $payload['media_url'] = (string) ($documentLinks[0]['url'] ?? '');
             }
@@ -2245,6 +2284,7 @@ class InvoicesController extends Controller
             'schedule_at' => now()->toIso8601String(),
             'subject' => (string) ($validated['subject'] ?? ''),
             'message' => $emailMessage,
+            'sender_id' => trim((string) ($fromEmailName ?? $fromEmail ?? 'ISPLAC')),
             'records' => [
                 $this->buildCampioRecipientRecord($invoice, 'email', $forcedToEmail, $phone),
             ],
