@@ -12,10 +12,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'clientid',
     'invoiceid',
     'received_amount',
-    'tds_amount',
+    'tds',
     'payment_date',
     'mode',
     'reference_number',
+    'description',
 ])]
 class Payment extends Model
 {
@@ -27,13 +28,15 @@ class Payment extends Model
         'clientid',
         'invoiceid',
         'received_amount',
-        'tds_amount',
+        'tds',
         'payment_date',
         'mode',
         'reference_number',
+        'description',
     ];
     protected $casts = [
         'payment_date' => 'date',
+        'tds' => 'boolean',
     ];
     public function getRouteKeyName(): string
     {

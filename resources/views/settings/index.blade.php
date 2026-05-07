@@ -475,6 +475,60 @@
             </div>
         </form>
     </section>
+
+    <section class="panel-card panel-card-compact mt-3">
+        <div class="settings-section-head">
+            <div class="settings-section-icon"><i class="fas fa-bell"></i></div>
+            <div>
+                <h5 class="settings-section-title">Reminder Automation</h5>
+                <p class="settings-section-subtitle">Control auto reminder frequency for expiring invoices and services</p>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ route('settings.reminder-automation.update') }}" class="form-grid form-grid grid-cols-4">
+            @csrf
+
+            <div class="settings-wide-card settings-wide-card-sm col-span-2">
+                <div class="flex-between">
+                    <div>
+                        <label class="settings-toggle-title">Enable Automated Reminders</label>
+                        <p class="settings-toggle-note">When enabled, reminders start before expiry, switch to daily in the final 3 days, send expiry on the day, and send renewal after renewal invoices are created.</p>
+                    </div>
+                    <div class="flex-center-gap">
+                        <span class="settings-toggle-state {{ $reminderAutomationEnabled ? 'is-on' : 'is-off' }}">{{ $reminderAutomationEnabled ? 'Yes' : 'No' }}</span>
+                        <label class="toggle-wrap">
+                            <input
+                                type="checkbox"
+                                name="reminder_automation_enabled"
+                                value="1"
+                                {{ old('reminder_automation_enabled', $reminderAutomationEnabled) ? 'checked' : '' }}
+                                class="toggle-input"
+                            >
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-span-1">
+                <label class="text-sm required">Number of days from expiry date *</label>
+                <input
+                    type="number"
+                    name="reminder_start_days"
+                    min="1"
+                    max="365"
+                    required
+                    value="{{ old('reminder_start_days', $reminderStartDays ?? 30) }}"
+                    class="settings-input-sm"
+                >
+                <small class="text-xs text-muted-light">Example: 30 means start weekly reminders 30 days before expiry.</small>
+            </div>
+
+            <div class="form-actions settings-actions col-span-2">
+                <button type="submit" class="primary-button btn-md">Save Reminder Settings</button>
+            </div>
+        </form>
+    </section>
 </div>
 
 <!-- FINANCIAL YEAR -->
@@ -796,13 +850,23 @@
                                     <div class="mt-2 d-flex flex-wrap gap-2">
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{client_business_name}} (Client's Company)</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{client_contact_person}} (Client's Contact)</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{client_name}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{invoice_title}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{invoice_number}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{pi_number}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{ti_number}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{pi_link}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{ti_link}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{total_amount}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{due_date}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{item_name}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{item_start_date}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{item_end_date}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{days_left}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{renewal_date}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{payment_amount}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{payment_date}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{payment_reference}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{business_name}} (Your Business Name)</span>
                                     </div>
                                 </div>
@@ -1859,9 +1923,11 @@ document.addEventListener('DOMContentLoaded', function() {
             nameInput.setAttribute('aria-required', isEmail ? 'true' : 'false');
             nameInput.setCustomValidity('');
         }
-        bodyInput.required = isEmail;
-        if (!isEmail) bodyInput.removeAttribute('required');
-        bodyInput.setAttribute('aria-required', isEmail ? 'true' : 'false');
+        // TinyMCE hides the textarea, so native required validation causes
+        // "invalid form control is not focusable". Validate message body manually on submit.
+        bodyInput.required = false;
+        bodyInput.removeAttribute('required');
+        bodyInput.setAttribute('aria-required', 'false');
         bodyInput.setCustomValidity('');
         if (nameRequiredMark) nameRequiredMark.style.display = isEmail ? '' : 'none';
         if (bodyRequiredMark) bodyRequiredMark.style.display = isEmail ? '' : 'none';
@@ -2275,7 +2341,7 @@ document.addEventListener('DOMContentLoaded', function() {
     ensureTemplateEditorReady(form);
 
     templateForms.forEach((form) => {
-        form.addEventListener('submit', function () {
+        form.addEventListener('submit', function (event) {
             const channel = form.querySelector('.template-channel-input')?.value || '';
             const waTemplateIdInput = form.querySelector('.template-wa-template-id-input');
             const templateIdInput = form.querySelector('.template-external-id-input');
@@ -2285,9 +2351,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const isEmail = channel === 'email';
             form.noValidate = !isEmail;
             if (bodyInput) {
-                bodyInput.required = isEmail;
-                if (!isEmail) bodyInput.removeAttribute('required');
-                bodyInput.setAttribute('aria-required', isEmail ? 'true' : 'false');
+                bodyInput.required = false;
+                bodyInput.removeAttribute('required');
+                bodyInput.setAttribute('aria-required', 'false');
                 bodyInput.setCustomValidity('');
             }
             if (nameInput) {
@@ -2301,6 +2367,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 templateIdInput.value = waTemplateIdInput.value || '';
             }
             if (window.tinymce) tinymce.triggerSave();
+
+            if (isEmail && bodyInput) {
+                const plainTextBody = String(bodyInput.value || '')
+                    .replace(/<br\s*\/?>/gi, '\n')
+                    .replace(/<\/p>/gi, '\n')
+                    .replace(/<[^>]+>/g, '')
+                    .replace(/&nbsp;/gi, ' ')
+                    .trim();
+
+                if (plainTextBody === '') {
+                    event.preventDefault();
+                    if (typeof showToastDedup === 'function') {
+                        showToastDedup('error', 'Message Body is required for Email templates.', 2200);
+                    }
+                    const editor = window.tinymce ? tinymce.get(bodyInput.id) : null;
+                    if (editor) {
+                        editor.focus();
+                    } else {
+                        bodyInput.focus();
+                    }
+                }
+            }
         });
     });
 

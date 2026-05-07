@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('header_actions')
+    <a href="{{ route('invoices.expiry-list') }}" class="secondary-button">
+        <i class="fas fa-hourglass-half icon-spaced"></i>Expiry List
+    </a>
     @if($selectedClientId)
         <a href="{{ route('invoices.create', ['c' => $selectedClientId]) }}" class="primary-button">
             <i class="fas fa-file-invoice icon-spaced"></i>Create Invoice
@@ -112,6 +115,7 @@
                     <table class="data-table table-no-margin">
                         <thead>
                             <tr>
+                                <th class="w-5"></th>
                                 <th class="w-30">Invoice</th>
                                 <th class="w-10">Type</th>
                                 <th class="w-12">For</th>
@@ -131,6 +135,11 @@
                                     $invoiceAmount = (float) $invoice->items->sum('line_total');
                                 @endphp
                                 <tr>
+                                    <td>
+                                        <button type="button" class="expand-order-btn" onclick="toggleInvoiceItems('{{ $documentId }}')">
+                                            <i class="fas fa-chevron-right expand-order-icon" id="invoice-icon-{{ $documentId }}"></i>
+                                        </button>
+                                    </td>
                                     <td>
                                         <div class="invoice-row-title">
                                             <div class="invoice-row-icon">
@@ -201,6 +210,45 @@
                                         @endif
                                     </td>
                                 </tr>
+                                <tr class="order-items-row" id="invoice-items-{{ $documentId }}" style="display: none;">
+                                    <td colspan="8" class="order-items-cell">
+                                        <div class="order-items-inner">
+                                            <div class="order-items-head">
+                                                <i class="fas fa-box-open order-items-head-icon"></i>
+                                                <strong class="order-items-head-title">Invoice Items</strong>
+                                            </div>
+                                            <div class="order-items-content">
+                                                @if($invoice->items->isNotEmpty())
+                                                    <div class="order-items-grid">
+                                                        @foreach($invoice->items as $item)
+                                                            <div class="order-item-card">
+                                                                <div class="order-item-card-row">
+                                                                    <div>
+                                                                        <strong class="order-item-name">{{ $item->item_name ?? 'Item' }}</strong>
+                                                                        <div class="order-item-meta">
+                                                                            Qty: {{ number_format((float) ($item->quantity ?? 1), 0) }}
+                                                                            @if(!empty($item->frequency))
+                                                                                | Freq: {{ ucfirst(str_replace('_', ' ', $item->frequency)) }}
+                                                                            @endif
+                                                                            @if(!empty($item->start_date))
+                                                                                | Start: {{ $item->start_date->format('d M Y') }}
+                                                                            @endif
+                                                                            @if(!empty($item->end_date))
+                                                                                | End: {{ $item->end_date->format('d M Y') }}
+                                                                            @endif
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    <em class="text-muted-light">No items in this invoice</em>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
                             @endforeach
                         </tbody>
                     </table>
@@ -209,7 +257,84 @@
         @endif
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .swal-compact-popup {
+            padding: 0.9rem 1rem 0.8rem !important;
+            border-radius: 12px !important;
+        }
+
+        .swal2-title.swal-compact-title {
+            font-size: 1rem !important;
+            margin: 0 0 0.35rem !important;
+        }
+
+        .swal2-html-container.swal-compact-text {
+            font-size: 0.88rem !important;
+            margin: 0 !important;
+        }
+
+        .swal2-actions.swal-compact-actions {
+            margin-top: 0.75rem !important;
+            gap: 0.45rem !important;
+        }
+
+        .swal2-confirm.swal-compact-btn,
+        .swal2-cancel.swal-compact-btn {
+            font-size: 0.82rem !important;
+            padding: 0.38rem 0.8rem !important;
+            border-radius: 8px !important;
+        }
+    </style>
     <script>
+    function toggleInvoiceItems(invoiceId) {
+        const itemsRow = document.getElementById('invoice-items-' + invoiceId);
+        const icon = document.getElementById('invoice-icon-' + invoiceId);
+        if (!itemsRow || !icon) return;
+
+        if (itemsRow.style.display === 'none') {
+            itemsRow.style.display = 'table-row';
+            icon.style.transform = 'rotate(90deg)';
+        } else {
+            itemsRow.style.display = 'none';
+            icon.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    document.querySelectorAll('.js-item-reminder-confirm').forEach((form) => {
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const itemLabel = this.dataset.itemLabel || 'this item';
+
+            if (typeof Swal === 'undefined') {
+                this.submit();
+                return;
+            }
+
+            Swal.fire({
+                title: 'Send reminder?',
+                text: `Reminder will be sent for ${itemLabel}.`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Send',
+                cancelButtonText: 'Cancel',
+                width: 310,
+                customClass: {
+                    popup: 'swal-compact-popup',
+                    title: 'swal-compact-title',
+                    htmlContainer: 'swal-compact-text',
+                    actions: 'swal-compact-actions',
+                    confirmButton: 'swal-compact-btn',
+                    cancelButton: 'swal-compact-btn',
+                },
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    this.submit();
+                }
+            });
+        });
+    });
+
     document.getElementById('btnViewInvoices')?.addEventListener('click', function() {
         const clientId = document.getElementById('invoice-client-filter')?.value;
         if (clientId) {

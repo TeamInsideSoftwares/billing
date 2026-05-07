@@ -28,7 +28,7 @@
     });
     $invoiceGrandTotal = max(0, $itemsSubtotal - $itemsDiscountTotal + $invoiceTaxTotal);
     $totalPaidAmount = (float) $invoice->payments->sum(function ($payment) {
-        return ((float) ($payment->received_amount ?? 0)) + ((float) ($payment->tds_amount ?? 0));
+        return (float) ($payment->received_amount ?? 0);
     });
     $balanceDueAmount = max(0, $invoiceGrandTotal - $totalPaidAmount);
     $cgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 0) : 0;
@@ -83,6 +83,7 @@
     </form>
     @endif
 @endsection
+<div class="invoice-show-compact">
 <section class="panel-card">
     <div class="invoice-show-head">
         <div>
@@ -95,93 +96,104 @@
         </div>
         <div class="text-right">
             <div class="invoice-show-amount">{{ number_format($invoiceGrandTotal, 0) }}</div>
-            <div>{{ $invoice->issue_date?->format('d M Y') }} due {{ $invoice->due_date?->format('d M Y') }}</div>
+            <div class="small text-muted">Due {{ $invoice->due_date?->format('d M Y') }}</div>
         </div>
     </div>
 </section>
 
-<section class="panel-card mt-2">
-    <h3 class="section-title section-title-sm">Details</h3>
-    <hr class="section-separator">
-
-    <div class="invoice-details-grid">
-
-        <!-- Client Info -->
-        <div class="flex-fill">
-            @if($invoice->client->email)
-            <p class="mb-3">
-                <span class="info-key">
-                    Email
-                </span>
-                <span>{{ $invoice->client->email }}</span>
-            </p>
-            @endif
-
-            @if($invoice->client->phone)
-            <p class="mb-3">
-                <span class="info-key">
-                    Phone
-                </span>
-                <span>{{ $invoice->client->phone }}</span>
-            </p>
-            @endif
-        </div>
-
-        <!-- Invoice Info -->
-        <div class="flex-fill">
-            <p class="mb-3">
-                <span class="info-key">
-                    Issue Date
-                </span>
-                <span>{{ $invoice->issue_date?->format('d M Y') }}</span>
-            </p>
-            <p class="mb-3">
-                <span class="info-key">
-                    Due Date
-                </span>
-                <span>{{ $invoice->due_date?->format('d M Y') }}</span>
-            </p>
-            <p class="mb-3">
-                <span class="info-key">
-                    Status
-                </span>
-                <span class="status-pill {{ ($invoice->status ?? '') === 'cancelled' ? 'status-pill-cancelled' : 'status-pill-running' }}">
-                    {{ ($invoice->status ?? '') === 'cancelled' ? 'Cancelled' : 'Active' }}
-                </span>
-            </p>
-
-            @if($invoice->order?->po_number)
-            <p class="mb-3">
-                <span class="info-key">
-                    PO Number
-                </span>
-                <span>{{ $invoice->order->po_number }}</span>
-            </p>
-            @endif
-
-            @if($invoice->order?->po_date)
-            <p class="mb-3">
-                <span class="info-key">
-                    PO Date
-                </span>
-                <span>{{ $invoice->order->po_date->format('d M Y') }}</span>
-            </p>
-            @endif
-
-            @if($invoice->notes)
-           <p class="mb-3">
-                <span class="info-key">
-                    Notes
-                </span>
-                <span>{{ $invoice->notes }}</span>
-            </p>
-            @endif
-        </div>
+<div class="row g-2 mt-1">
+    <div class="col-12 col-md-6">
+        <section class="panel-card h-100">
+            <h3 class="section-title section-title-sm">Details</h3>
+            <hr class="section-separator">
+            <div class="small">
+                <div class="mb-3">
+                    <div class="text-muted">Client</div>
+                    <div class="fw-semibold">{{ $invoice->client->business_name ?? $invoice->client->contact_name ?? '-' }}</div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-muted">Issue Date</div>
+                    <div class="fw-semibold">{{ $invoice->issue_date?->format('d M Y') ?? '-' }}</div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-muted">Status</div>
+                    <div><span class="status-pill {{ ($invoice->status ?? '') === 'cancelled' ? 'status-pill-cancelled' : 'status-pill-running' }}">{{ ($invoice->status ?? '') === 'cancelled' ? 'Cancelled' : 'Active' }}</span></div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-muted">Total Paid</div>
+                    <div class="fw-semibold">{{ number_format($totalPaidAmount, 0) }}</div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-muted">Balance Due</div>
+                    <div class="fw-semibold">{{ number_format($balanceDueAmount, 0) }}</div>
+                </div>
+                <div>
+                    <div class="text-muted">Payment Entries</div>
+                    <div class="fw-semibold">{{ $invoice->payments->count() }}</div>
+                </div>
+            </div>
+        </section>
     </div>
-</section>
+    <div class="col-12 col-md-6">
+        @if($invoice->payments->count())
+        <section class="panel-card h-100">
+            <h3 class="section-title">Payments received ({{ $invoice->payments->count() }})</h3>
+            <table class="data-table mt-2">
+                <thead>
+                    <tr class="payment-head-row">
+                        <th class="td-pad">Date</th>
+                        <th class="td-pad">Method</th>
+                        <th class="td-pad">Reference</th>
+                        <th class="td-pad text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($invoice->payments as $payment)
+                    <tr class="invoice-item-row">
+                        <td class="td-pad">{{ optional($payment->payment_date)->format('d M Y') }}</td>
+                        <td class="td-pad">{{ $payment->mode ?? '-' }}</td>
+                        <td class="td-pad">
+                            {{ $payment->reference_number ?? 'N/A' }}
+                            @if((bool)($payment->tds ?? false))
+                                <div class="text-muted small">TDS: Yes</div>
+                            @endif
+                            @if(!empty($payment->description))
+                                <div class="text-muted small">{{ $payment->description }}</div>
+                            @endif
+                        </td>
+                        <td class="td-pad text-right">
+                            <strong>{{ number_format((float)($payment->received_amount ?? 0), 0) }}</strong>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="payment-foot">
+                    <tr>
+                        <td colspan="3" class="payment-foot-label"><strong>Total Paid:</strong></td>
+                        <td class="payment-foot-label"><strong>{{ number_format($totalPaidAmount, 0) }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="foot-label-sm"><strong>Balance Due:</strong></td>
+                        <td class="payment-balance-value"><strong>{{ number_format($balanceDueAmount, 0) }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </section>
+        @else
+        <section class="panel-card h-100">
+            <h3 class="section-title section-title-sm">Payment Received</h3>
+            <hr class="section-separator">
+            <div class="empty-payments small">
+                <p class="mb-4">No payments recorded for this invoice yet.</p>
+                <a href="{{ route('payments.create', ['i' => $invoice->invoiceid, 'c' => $invoice->clientid]) }}" class="primary-button">Record a payment</a>
+            </div>
+        </section>
+        @endif
+    </div>
+</div>
 
 <!-- Invoice Items Table -->
-    <section class="panel-card panel-card-full">
+    <section class="panel-card panel-card-full mt-1">
     <table class="invoice-items-table">
         <thead>
             <tr class="invoice-items-head-row">
@@ -269,55 +281,4 @@
         @endif
     </table>
 </section>
-
-@if($invoice->payments->count())
-<section class="panel-card mt-2">
-    <h3 class="section-title">Payments received ({{ $invoice->payments->count() }})</h3>
-    <table class="data-table mt-2">
-        <thead>
-            <tr class="payment-head-row">
-                <th class="td-pad">Date</th>
-                <th class="td-pad">Method</th>
-                <th class="td-pad">Reference</th>
-                <th class="td-pad text-right">Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($invoice->payments as $payment)
-            <tr class="invoice-item-row">
-                <td class="td-pad">{{ optional($payment->payment_date)->format('d M Y') }}</td>
-                <td class="td-pad">{{ $payment->mode ?? '-' }}</td>
-                <td class="td-pad">
-                    {{ $payment->reference_number ?? 'N/A' }}
-                    @if((float)($payment->tds_amount ?? 0) > 0)
-                        <div class="text-muted small">TDS: {{ number_format((float)$payment->tds_amount, 0) }}</div>
-                    @endif
-                </td>
-                <td class="td-pad text-right">
-                    <strong>{{ number_format(((float)($payment->received_amount ?? 0) + (float)($payment->tds_amount ?? 0)), 0) }}</strong>
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-        <tfoot class="payment-foot">
-            <tr>
-                <td colspan="3" class="payment-foot-label"><strong>Total Paid:</strong></td>
-                <td class="payment-foot-label"><strong>{{ number_format($totalPaidAmount, 0) }}</strong></td>
-            </tr>
-            <tr>
-                <td colspan="3" class="foot-label-sm"><strong>Balance Due:</strong></td>
-                <td class="payment-balance-value"><strong>{{ number_format($balanceDueAmount, 0) }}</strong></td>
-            </tr>
-        </tfoot>
-    </table>
-</section>
-@else
-<section class="panel-card mt-4">
-    <div class="empty-payments">
-        <p class="mb-4">No payments recorded for this invoice yet.</p>
-        <a href="{{ route('payments.create', ['i' => $invoice->invoiceid, 'c' => $invoice->clientid]) }}" class="primary-button">Record a payment</a>
-    </div>
-</section>
-@endif
-
 @endsection

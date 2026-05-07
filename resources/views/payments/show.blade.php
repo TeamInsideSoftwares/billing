@@ -19,9 +19,7 @@
 @section('content')
 @php
     $currency = $payment->client->currency ?? 'INR';
-    $received = (float) ($payment->received_amount ?? 0);
-    $tds = (float) ($payment->tds_amount ?? 0);
-    $totalSettled = $received + $tds;
+    $amount = (float) ($payment->received_amount ?? 0);
 @endphp
 <section class="panel-card">
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
@@ -42,8 +40,8 @@
             <thead>
                 <tr>
                     <th>Particulars</th>
-                    <th class="text-end">Received ({{ $currency }})</th>
-                    <th class="text-end">TDS ({{ $currency }})</th>
+                    <th class="text-end">Amount ({{ $currency }})</th>
+                    <th class="text-end">TDS</th>
                 </tr>
             </thead>
             <tbody>
@@ -57,16 +55,19 @@
                         @if($payment->reference_number)
                             <div class="text-muted">Ref: {{ $payment->reference_number }}</div>
                         @endif
+                        @if(!empty($payment->description))
+                            <div class="text-muted">Description: {{ $payment->description }}</div>
+                        @endif
                     </td>
-                    <td class="text-end">{{ number_format($received, 2) }}</td>
-                    <td class="text-end">{{ number_format($tds, 2) }}</td>
+                    <td class="text-end">{{ number_format($amount, 2) }}</td>
+                    <td class="text-end">{{ $payment->tds ? 'Yes' : 'No' }}</td>
                 </tr>
             </tbody>
             <tfoot>
                 <tr>
-                    <th>Total Settled Amount (Received + TDS)</th>
+                    <th>Total Amount</th>
                     <th class="text-end" colspan="2">
-                        {{ $currency }} {{ number_format($totalSettled, 2) }}
+                        {{ $currency }} {{ number_format($amount, 2) }}
                     </th>
                 </tr>
             </tfoot>

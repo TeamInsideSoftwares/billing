@@ -33,7 +33,7 @@ class ClientsController extends Controller
                 ->where('status', '!=', 'paid')
                 ->sum(fn ($invoice) => (float) ($invoice->grand_total ?? 0));
             $paidTotal = (float) $client->payments->sum(function ($payment) {
-                return ((float) ($payment->received_amount ?? 0)) + ((float) ($payment->tds_amount ?? 0));
+                return (float) ($payment->received_amount ?? 0);
             });
             $outstanding = $invoiceTotal - $paidTotal;
             $account = Account::find($client->accountid);
@@ -196,7 +196,7 @@ class ClientsController extends Controller
     {
         $client->load(['invoices', 'payments','billingDetail']);
         $paidTotal = (float) $client->payments->sum(function ($payment) {
-            return ((float) ($payment->received_amount ?? 0)) + ((float) ($payment->tds_amount ?? 0));
+            return (float) ($payment->received_amount ?? 0);
         });
         $outstanding = ($client->invoices->sum('grand_total') ?? 0) - $paidTotal;
         $allInvoices = $client->invoices->sortByDesc('created_at')->values();
@@ -355,4 +355,3 @@ class ClientsController extends Controller
         return redirect()->route('clients.index')->with('success', 'Client deleted successfully.');
     }
 }
-

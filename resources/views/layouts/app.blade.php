@@ -53,7 +53,7 @@
     @endphp
 
     <div class="layout-grid">
-        <aside class="sidebar" data-sidebar>
+        <aside class="sidebar" id="app-sidebar" data-sidebar>
             <div class="brand-block">
                 <div class="brand-mark">SR</div>
                 <div class="brand-text">
@@ -171,11 +171,21 @@
                 </div>
             </div>
         </aside>
+        <div class="sidebar-backdrop" data-sidebar-backdrop aria-hidden="true"></div>
 
         <div class="main-panel">
             <header class="topbar">
                 <div class="topbar-title-wrap">
-                    <!-- <button type="button" class="menu-toggle" data-sidebar-toggle>Menu</button> -->
+                    <button
+                        type="button"
+                        class="sidebar-toggle-btn"
+                        data-sidebar-toggle
+                        aria-label="Open navigation"
+                        aria-controls="app-sidebar"
+                        aria-expanded="false"
+                    >
+                        <i class="fas fa-bars"></i>
+                    </button>
                     <div class="page-title-block">
                         <h2 class="page-title">{{ $title ?? 'Dashboard' }}</h2>
                         @if(!empty($subtitle))

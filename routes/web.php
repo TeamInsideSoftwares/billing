@@ -20,6 +20,9 @@ Route::get('/login', [AuthController::class, 'showLogin'])->name('login')->middl
 Route::post('/login', [AuthController::class, 'login'])->name('login.post')->middleware('guest');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
+// AJAX routes without auth
+Route::get('/invoices/ajax-list', [InvoicesController::class, 'ajaxList'])->name('invoices.ajax-list');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/', function () {
         return redirect()->route('dashboard');
@@ -54,6 +57,7 @@ Route::middleware(['auth'])->group(function () {
     Route::controller(InvoicesController::class)->group(function () {
         Route::get('/invoices', 'invoices')->name('invoices.index');
         Route::get('/invoices/create', 'invoicesCreate')->name('invoices.create');
+        Route::get('/invoices/ajax-list', 'ajaxList')->name('invoices.ajax-list');
         Route::post('/invoices/client-orders', 'getClientOrders')->name('invoices.client-orders');
         Route::post('/invoices/renewal-invoices', 'getRenewalInvoices')->name('invoices.renewal-invoices');
         Route::post('/invoices/terms/billing', 'storeBillingTerm')->name('invoices.terms.billing.store');
@@ -66,6 +70,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/invoices/create-tax-invoice', 'createTaxInvoice')->name('invoices.create-tax-invoice');
         Route::get('/invoices/{invoice}/email-compose', 'emailCompose')->name('invoices.email-compose');
         Route::post('/invoices/{invoice}/email-compose', 'emailComposeStore')->name('invoices.email-compose.store');
+        Route::post('/invoices/{invoice}/send-reminder', 'sendReminder')->name('invoices.send-reminder');
+        Route::post('/invoices/{invoice}/items/{item}/send-reminder', 'sendItemReminder')->name('invoices.items.send-reminder');
+        Route::get('/invoices/items/{item}/renew', 'startRenewalFromItem')->name('invoices.items.renew');
+        Route::get('/invoices/expiry-list', 'invoicesExpiryList')->name('invoices.expiry-list');
         Route::get('/invoices/{invoice}/pdf-versions', 'pdfVersions')->name('invoices.pdf-versions');
         Route::get('/invoices/{invoice}/pdf', 'downloadPdf')->name('invoices.pdf');
         Route::get('/invoices/{invoice}', 'invoicesShow')->name('invoices.show');
@@ -151,6 +159,7 @@ Route::controller(SettingsController::class)->group(function () {
         Route::post('/settings/fy-prefix', 'fyPrefixUpdate')->name('settings.fy-prefix.update');
         Route::get('/settings', 'settings')->name('settings.index');
         Route::put('/settings/account', 'accountUpdate')->name('account.update');
+        Route::post('/settings/reminder-automation', 'reminderAutomationUpdate')->name('settings.reminder-automation.update');
         Route::post('/settings/fixed-tax', 'fixedTaxUpdate')->name('account.fixed-tax.update');
         Route::post('/settings/serial-config', 'serialConfigUpdate')->name('serial.config.update');
         Route::post('/settings/billing-details', 'accountBillingUpdate')->name('account.billing.update');

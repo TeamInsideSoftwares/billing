@@ -78,6 +78,34 @@
     align-items: center;
     gap: 1rem;
     flex: 1;
+    min-width: 0;
+}
+
+.sidebar-toggle-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border: 1px solid var(--line);
+    border-radius: 0.55rem;
+    background: #fff;
+    color: var(--text);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.sidebar-toggle-btn:hover,
+.sidebar-toggle-btn:focus-visible,
+.sidebar-toggle-btn:active {
+    background: #fff;
+    color: var(--text);
+    border-color: #cbd5e1;
+}
+
+.sidebar-backdrop {
+    display: none;
 }
 
 .profile-settings-link {
@@ -798,6 +826,12 @@
     background: rgba(255, 255, 255, 0.2);
     color: white;
 }
+.icon-btn:focus-visible,
+.icon-btn:active,
+.icon-btn.show {
+    background: rgba(255, 255, 255, 0.24);
+    color: white;
+}
 .notification-btn {
     position: relative;
 }
@@ -815,6 +849,13 @@
     background: var(--brand);
     color: white;
     font-weight: 700;
+}
+.profile-btn:hover,
+.profile-btn:focus-visible,
+.profile-btn:active,
+.profile-btn.show {
+    background: var(--brand-deep);
+    color: white;
 }
 
 .user-info {
@@ -1342,6 +1383,7 @@ a {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    min-width: 0;
     background: linear-gradient(180deg, #f8fbff 0%, #f4f7fb 42%, #f4f7fb 100%);
 }
 
@@ -1361,6 +1403,8 @@ a {
 
 .content-panel {
     padding: 0 1.15rem 1.35rem;
+    min-width: 0;
+    overflow-x: hidden;
 }
 
 .alert {
@@ -1378,6 +1422,8 @@ a {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .search-chip {
@@ -2956,25 +3002,100 @@ a {
 }
 
 @media (max-width: 1024px) {
-    .layout-grid { grid-template-columns: 1fr; }
+    .layout-grid {
+        grid-template-columns: 1fr;
+        position: relative;
+    }
     .sidebar {
-        display: none;
-        width: 260px !important;
+        display: flex;
+        width: min(280px, 82vw) !important;
         position: fixed;
         left: 0;
         top: 0;
-        z-index: 999;
+        bottom: 0;
+        z-index: 1100;
+        transform: translateX(-110%);
+        transition: transform 0.28s ease;
+        box-shadow: var(--shadow-lg);
+        overflow-y: auto;
     }
     .sidebar.is-open {
-        display: flex;
+        transform: translateX(0);
     }
     .sidebar:hover {
-        width: 260px !important;
+        width: min(280px, 82vw) !important;
+    }
+    .sidebar .brand-block .brand-text,
+    .sidebar .nav-link .nav-text,
+    .sidebar .user-info {
+        opacity: 1;
+        max-width: 220px;
+    }
+    .sidebar .nav-list {
+        padding: 0;
+    }
+    .sidebar .nav-link .nav-icon {
+        margin-right: 0.625rem;
+    }
+    .sidebar .nav-link::after {
+        display: none;
     }
     .sidebar-toggle-btn {
-        display: none !important;
+        display: inline-flex !important;
+    }
+    .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        z-index: 1090;
+    }
+    body.sidebar-open .sidebar-backdrop {
+        display: block;
+    }
+    .topbar {
+        padding: 0.75rem 0.95rem;
+        gap: 0.75rem;
+    }
+    .topbar-title-wrap {
+        gap: 0.7rem;
+    }
+    .topbar-actions {
+        gap: 0.5rem;
+    }
+    .content-panel {
+        padding: 0 0.95rem 1rem;
+    }
+    .main-panel .panel-card {
+        min-width: 0;
+    }
+    .main-panel table {
+        min-width: 640px;
+    }
+    .main-panel .data-table,
+    .main-panel .invoice-items-table {
+        display: table;
+    }
+    .table-wrap,
+    .invoice-table-wrap,
+    .order-table-wrap,
+    .panel-card {
+        overflow-x: auto;
     }
     .content-grid, .stats-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+    .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    .topbar-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    .topbar-actions > * {
+        max-width: 100%;
+    }
 }
 
 /* Shared Compact Utilities */

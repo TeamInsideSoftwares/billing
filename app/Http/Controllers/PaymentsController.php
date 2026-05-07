@@ -29,8 +29,6 @@ class PaymentsController extends Controller
 
         $payments = $query->latest('payment_date')->latest('created_at')->take(50)->get()->map(function ($payment) {
             $receivedAmount = (float) ($payment->received_amount ?? 0);
-            $tdsAmount = (float) ($payment->tds_amount ?? 0);
-            $totalSettled = $receivedAmount + $tdsAmount;
             $currency = $payment->client->currency ?? 'INR';
             $displayTitle = $payment->invoice->invoice_title
                 ?? $payment->invoice->invoice_number
@@ -43,9 +41,9 @@ class PaymentsController extends Controller
                 'currency' => $currency,
                 'date' => $payment->payment_date?->format('d M Y'),
                 'method' => $payment->mode ?? '-',
-                'received_amount' => $receivedAmount,
-                'tds_amount' => $tdsAmount,
-                'total_settled' => $totalSettled,
+                'amount' => $receivedAmount,
+                'tds' => (bool) ($payment->tds ?? false),
+                'description' => (string) ($payment->description ?? ''),
             ];
         });
 
@@ -89,10 +87,11 @@ class PaymentsController extends Controller
             'clientid' => 'required|exists:clients,clientid',
             'invoiceid' => 'nullable|exists:invoices,invoiceid',
             'received_amount' => 'required|numeric|min:0.01',
-            'tds_amount' => 'nullable|numeric|min:0',
             'payment_date' => 'required|date',
             'mode' => 'required|in:Bank Transfer,Online,Cash',
             'reference_number' => 'nullable|string|max:100',
+            'description' => 'nullable|string|max:2000',
+            'tds' => 'nullable|in:1',
         ]);
 
         $invoice = null;
@@ -113,11 +112,12 @@ class PaymentsController extends Controller
             'accountid' => $userAccountId,
             'clientid' => $validated['clientid'],
             'invoiceid' => $validated['invoiceid'] ?? null,
-            'received_amount' => $validated['received_amount'],
-            'tds_amount' => $validated['tds_amount'] ?? 0,
+            'received_amount' => (float) $validated['received_amount'],
+            'tds' => $request->boolean('tds'),
             'payment_date' => $validated['payment_date'],
             'mode' => $validated['mode'],
             'reference_number' => $validated['reference_number'] ?? null,
+            'description' => $validated['description'] ?? null,
         ];
 
         $payment = Payment::create($paymentData);
@@ -166,10 +166,11 @@ class PaymentsController extends Controller
             'clientid' => 'required|exists:clients,clientid',
             'invoiceid' => 'nullable|exists:invoices,invoiceid',
             'received_amount' => 'required|numeric|min:0.01',
-            'tds_amount' => 'nullable|numeric|min:0',
             'payment_date' => 'required|date',
             'mode' => 'required|in:Bank Transfer,Online,Cash',
             'reference_number' => 'nullable|string|max:100',
+            'description' => 'nullable|string|max:2000',
+            'tds' => 'nullable|in:1',
         ]);
 
         if (!empty($validated['invoiceid'])) {
@@ -185,11 +186,12 @@ class PaymentsController extends Controller
         $payment->update([
             'clientid' => $validated['clientid'],
             'invoiceid' => $validated['invoiceid'] ?? null,
-            'received_amount' => $validated['received_amount'],
-            'tds_amount' => $validated['tds_amount'] ?? 0,
+            'received_amount' => (float) $validated['received_amount'],
+            'tds' => $request->boolean('tds'),
             'payment_date' => $validated['payment_date'],
             'mode' => $validated['mode'],
             'reference_number' => $validated['reference_number'] ?? null,
+            'description' => $validated['description'] ?? null,
         ]);
 
         if ($payment->invoiceid) {
@@ -221,7 +223,7 @@ class PaymentsController extends Controller
         $invoice->loadMissing('payments');
 
         $amountPaid = (float) $invoice->payments->sum(function ($payment) {
-            return ((float) ($payment->received_amount ?? 0)) + ((float) ($payment->tds_amount ?? 0));
+            return (float) ($payment->received_amount ?? 0);
         });
         $amountPaid = max(0, $amountPaid);
         $grandTotal = (float) ($invoice->grand_total ?? 0);

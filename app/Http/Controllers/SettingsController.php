@@ -9,6 +9,7 @@ use App\Models\MessageTemplate;
 use App\Models\Setting;
 use App\Models\Tax;
 use App\Models\TermsCondition;
+use App\Services\InvoiceReminderService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -135,6 +136,7 @@ class SettingsController extends Controller
             ->orderByDesc('created_at')
             ->get();
         $messageTemplatesByType = $messageTemplates->groupBy('template_type');
+        $reminderAutomationSettings = app(InvoiceReminderService::class)->getAutomationSettings($accountid);
 
         $editingTerm = null;
         if ($editId && strlen($editId) === 6 && !str_starts_with($editId, 'SET') && !str_starts_with($editId, 'ABD')) {
@@ -186,6 +188,8 @@ class SettingsController extends Controller
             'messageTemplates' => $messageTemplates,
             'messageTemplatesByType' => $messageTemplatesByType,
             'messageTemplateTypes' => $this->messageTemplateTypes(),
+            'reminderAutomationEnabled' => (bool) ($reminderAutomationSettings['enabled'] ?? false),
+            'reminderStartDays' => (int) ($reminderAutomationSettings['start_days'] ?? 30),
         ]);
     }
 
@@ -258,6 +262,25 @@ class SettingsController extends Controller
         // Determine redirect based on form source
         $redirectTo = $request->input('from_tax_modal') ? '#personal' : '#personal';
         return redirect()->to(route('settings.index') . $redirectTo)->with('success', 'Profile updated successfully.');
+    }
+
+    public function reminderAutomationUpdate(Request $request, InvoiceReminderService $invoiceReminderService): RedirectResponse
+    {
+        $accountid = $this->resolveAccountId();
+
+        $validated = $request->validate([
+            'reminder_automation_enabled' => 'nullable|boolean',
+            'reminder_start_days' => 'required|integer|min:1|max:365',
+        ]);
+
+        $enabled = $request->has('reminder_automation_enabled');
+        $startDays = (int) ($validated['reminder_start_days'] ?? 30);
+
+        $invoiceReminderService->updateAutomationSettings($accountid, $enabled, $startDays);
+
+        return redirect()
+            ->to(route('settings.index') . '#personal')
+            ->with('success', 'Reminder automation settings updated successfully.');
     }
 
     public function fixedTaxUpdate(Request $request)

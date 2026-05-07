@@ -9,10 +9,12 @@ use App\Models\InvoiceItem;
 use App\Models\FinancialYear;
 use App\Models\InvoiceEmail;
 use App\Models\MessageTemplate;
+use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\Service;
 use App\Models\Tax;
 use App\Models\TermsCondition;
+use App\Services\InvoiceReminderService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -64,12 +66,33 @@ class InvoicesController extends Controller
 
     private function buildInvoiceMessageTemplateReplacements(Invoice $invoice, ?string $companyName = null): array
     {
-        $clientBusinessName = trim((string) ($invoice->client->business_name ?? ''));
-        $clientContactPerson = trim((string) ($invoice->client->contact_name ?? ''));
+        $clientBusinessName = trim((string) ($invoice->client?->business_name ?? ''));
+        $clientContactPerson = trim((string) ($invoice->client?->contact_name ?? ''));
         $clientName = trim((string) ($clientBusinessName !== '' ? $clientBusinessName : $clientContactPerson));
-        $currency = (string) ($invoice->client->currency ?? 'INR');
+        $currency = (string) ($invoice->client?->currency ?? 'INR');
         $totalAmount = (float) ($invoice->grand_total ?? $invoice->items->sum('line_total') ?? 0);
         $dueDate = $invoice->due_date?->format('d M Y') ?? '';
+        $primaryItem = $invoice->items
+            ->sortBy(function ($item) {
+                return $item->end_date?->timestamp ?? PHP_INT_MAX;
+            })
+            ->first();
+        $itemName = trim((string) ($primaryItem?->item_name ?? ''));
+        $itemStartDate = $primaryItem?->start_date?->format('d M Y') ?? '';
+        $itemEndDate = $primaryItem?->end_date?->format('d M Y') ?? '';
+        $daysLeft = $primaryItem?->end_date ? now()->startOfDay()->diffInDays($primaryItem->end_date->startOfDay(), false) : null;
+        $templateType = !empty(trim((string) $invoice->ti_number)) ? 'ti' : 'pi';
+        $renewalDate = ($invoice->invoice_for ?? '') === 'renewal'
+            ? ($invoice->created_at?->format('d M Y') ?? '')
+            : '';
+        $latestPayment = Payment::query()
+            ->where('invoiceid', $invoice->invoiceid)
+            ->orderByDesc('payment_date')
+            ->orderByDesc('created_at')
+            ->first();
+        $paymentAmount = (float) ($latestPayment?->received_amount ?? 0);
+        $paymentDate = $latestPayment?->payment_date?->format('d M Y') ?? '';
+        $paymentReference = trim((string) ($latestPayment?->reference_number ?? ''));
 
         $piLink = route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']);
         $tiLink = route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice']);
@@ -95,6 +118,18 @@ class InvoicesController extends Controller
             '{{ti_link}}' => $tiLink,
             '{{total_amount}}' => $currency . ' ' . number_format($totalAmount, 2),
             '{{due_date}}' => $dueDate,
+            // Reminder/Renewal/Expiry focused tags
+            '{{template_type}}' => $templateType,
+            '{{reminder_type}}' => $templateType,
+            '{{item_name}}' => $itemName,
+            '{{item_start_date}}' => $itemStartDate,
+            '{{item_end_date}}' => $itemEndDate,
+            '{{expiry_date}}' => $itemEndDate, // Alias of item_end_date for backward compatibility
+            '{{days_left}}' => (string) max(0, (int) ($daysLeft ?? 0)),
+            '{{renewal_date}}' => $renewalDate,
+            '{{payment_amount}}' => $paymentAmount > 0 ? ($currency . ' ' . number_format($paymentAmount, 2)) : '',
+            '{{payment_date}}' => $paymentDate,
+            '{{payment_reference}}' => $paymentReference,
             // Backwards compatibility
             '{{company_name}}' => $billingName,
             '{{account_name}}' => $billingName,
@@ -446,6 +481,66 @@ class InvoicesController extends Controller
         ];
     }
 
+    private function fetchCampioTemplateHeaderTypes(string $accountid, string $channel): array
+    {
+        if (!in_array($channel, ['whatsapp', 'sms'], true)) {
+            return [];
+        }
+
+        $baseUrl = rtrim((string) env('CAMPIO_BASE_URL', 'http://alpha.skoolready.com/campio'), '/');
+        $token = trim((string) env('CAMPIO_AUTH_TOKEN', ''));
+        $apiKey = trim((string) env('CAMPIO_API_KEY', ''));
+
+        $request = Http::acceptJson()->timeout(20);
+        if ($token !== '') {
+            $request = $request->withToken($token);
+        }
+        if ($apiKey !== '') {
+            $request = $request->withHeaders(['X-API-KEY' => $apiKey]);
+        }
+
+        try {
+            $response = $request->get($baseUrl . '/api/templates/' . $channel, [
+                'account_id' => $accountid,
+            ]);
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        if (!$response->successful()) {
+            return [];
+        }
+
+        $rows = data_get($response->json(), 'data.templates', []);
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $headerType = strtolower(trim((string) ($row['header_type'] ?? '')));
+            if ($headerType === '') {
+                continue;
+            }
+
+            $id = trim((string) ($row['id'] ?? ''));
+            $metaId = trim((string) ($row['meta_template_id'] ?? ''));
+
+            if ($id !== '') {
+                $map[$id] = $headerType;
+            }
+            if ($metaId !== '') {
+                $map[$metaId] = $headerType;
+            }
+        }
+
+        return $map;
+    }
+
     private function buildCampioAttachments(array $attachmentsInput): array
     {
         $attachments = [];
@@ -644,6 +739,143 @@ class InvoicesController extends Controller
             'clients' => $clients,
             'groupedInvoices' => $groupedInvoices,
             'selectedClientId' => $selectedClientId,
+        ]);
+    }
+
+    public function invoicesExpiryList(Request $request): View
+    {
+        $accountid = $this->resolveAccountId();
+        $today = now()->startOfDay();
+        $nextDaysInput = $request->query('next_days');
+        $nextDays = ($nextDaysInput === null || $nextDaysInput === '')
+            ? 30
+            : (int) $nextDaysInput;
+        if ($nextDays < 0) {
+            $nextDays = 0;
+        }
+
+        $expiryItems = InvoiceItem::query()
+            ->where('accountid', $accountid)
+            ->whereNotNull('end_date')
+            ->when($nextDays > 0, function ($query) use ($today, $nextDays) {
+                $query->whereDate('end_date', '<=', $today->copy()->addDays($nextDays)->toDateString());
+            })
+            ->with([
+                'invoice:invoiceid,clientid,invoice_title,pi_number,ti_number,status',
+                'invoice.client:clientid,business_name,contact_name',
+                'item:itemid,name',
+            ])
+            ->whereHas('invoice', function ($q) {
+                $q->where('status', '!=', 'cancelled')
+                    ->whereNotNull('ti_number')
+                    ->where('ti_number', '!=', '');
+            })
+            ->orderBy('end_date')
+            ->paginate(15)
+            ->through(function (InvoiceItem $item) use ($today) {
+                $expiryDate = $item->end_date?->copy()->startOfDay();
+                $daysLeft = $expiryDate ? $today->diffInDays($expiryDate, false) : 0;
+
+                return [
+                    'invoice_itemid' => $item->invoice_itemid,
+                    'invoiceid' => (string) $item->invoiceid,
+                    'clientid' => (string) ($item->invoice?->clientid ?: $item->clientid),
+                    'invoice_label' => (string) (
+                        $item->invoice?->invoice_title
+                        ?: $item->invoice?->invoice_number
+                        ?: $item->invoiceid
+                    ),
+                    'client_name' => (string) (
+                        $item->invoice?->client?->business_name
+                        ?: $item->invoice?->client?->contact_name
+                        ?: 'Client'
+                    ),
+                    'item_name' => (string) ($item->item_name ?: $item->item?->name ?: 'Item'),
+                    'item_description' => (string) ($item->item_description ?? ''),
+                    'frequency' => (string) ($item->frequency ?? ''),
+                    'end_date' => $expiryDate?->format('d M Y'),
+                    'days_left' => $daysLeft,
+                ];
+            });
+
+        return view('invoices.expiry-list', [
+            'title' => 'Invoice Item Expiry List',
+            'subtitle' => 'Showing invoice items with expiry dates across all clients (oldest expiry first).',
+            'expiryItems' => $expiryItems,
+            'nextDays' => $nextDays,
+        ]);
+    }
+
+    public function startRenewalFromItem(string $item)
+    {
+        $accountid = $this->resolveAccountId();
+        $user = auth()->user();
+        $createdBy = $user?->userid ?? $user?->id;
+
+        $sourceItem = InvoiceItem::query()
+            ->where('invoice_itemid', $item)
+            ->where('accountid', $accountid)
+            ->firstOrFail();
+
+        $clientId = (string) ($sourceItem->clientid ?? '');
+        if ($clientId === '') {
+            return redirect()->route('invoices.expiry-list')
+                ->with('error', 'Unable to start renewal for this item.');
+        }
+
+        $draft = Invoice::query()
+            ->where('accountid', $accountid)
+            ->where('clientid', $clientId)
+            ->whereNull('orderid')
+            ->whereIn('status', ['active', 'draft'])
+            ->when(!empty($createdBy), fn($q) => $q->where('created_by', $createdBy))
+            ->where('updated_at', '>', now()->subHours(24))
+            ->latest('updated_at')
+            ->first();
+
+        if (!$draft) {
+            $draft = Invoice::create([
+                'accountid' => $accountid,
+                'fy_id' => $this->resolveDefaultFyId($accountid),
+                'clientid' => $clientId,
+                'pi_number' => $this->generateInvoiceNumber(),
+                'ti_number' => null,
+                'invoice_title' => 'Renewal Invoice',
+                'invoice_for' => 'renewal',
+                'orderid' => null,
+                'issue_date' => now()->toDateString(),
+                'due_date' => now()->addDays(7)->toDateString(),
+                'notes' => '',
+                'status' => 'active',
+                'created_by' => $createdBy,
+            ]);
+        }
+
+        $draft->items()->delete();
+        $draft->items()->create([
+            'accountid' => $accountid,
+            'clientid' => $clientId,
+            'itemid' => $sourceItem->itemid,
+            'item_name' => $sourceItem->item_name,
+            'item_description' => $sourceItem->item_description,
+            'quantity' => max(1, (int) round((float) ($sourceItem->quantity ?? 1), 0)),
+            'unit_price' => $this->wholeAmount($sourceItem->unit_price ?? 0),
+            'tax_rate' => (float) ($sourceItem->tax_rate ?? 0),
+            'discount_percent' => (float) ($sourceItem->discount_percent ?? 0),
+            'discount_amount' => (float) ($sourceItem->discount_amount ?? 0),
+            'duration' => $sourceItem->duration,
+            'frequency' => $sourceItem->frequency,
+            'no_of_users' => !empty($sourceItem->no_of_users) ? max(1, (int) $sourceItem->no_of_users) : null,
+            'start_date' => $sourceItem->start_date?->format('Y-m-d'),
+            'end_date' => $sourceItem->end_date?->format('Y-m-d'),
+            'amount' => $this->wholeAmount($sourceItem->amount ?? $sourceItem->line_total ?? 0),
+        ]);
+
+        return redirect()->route('invoices.create', [
+            'step' => 3,
+            'invoice_for' => 'renewal',
+            'c' => $clientId,
+            'd' => $draft->invoiceid,
         ]);
     }
 
@@ -1909,6 +2141,72 @@ class InvoicesController extends Controller
         return redirect()->back()->with('success', 'Tax Invoice created successfully: ' . $tiNumber);
     }
 
+    public function sendReminder(Request $request, string $invoice, InvoiceReminderService $invoiceReminderService)
+    {
+        $invoice = $this->resolveInvoiceDocument($invoice);
+        $result = $invoiceReminderService->sendManualReminder($invoice);
+
+        $sentCount = (int) ($result['sent'] ?? 0);
+        if ($sentCount > 0) {
+            $message = 'Reminder sent successfully on ' . $sentCount . ' channel(s).';
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => true, 'message' => $message, 'meta' => $result]);
+            }
+
+            return back()->with('success', $message);
+        }
+
+        $failureMessage = ((int) ($result['failed'] ?? 0)) > 0
+            ? 'Reminder could not be delivered. Please verify reminder templates and recipient details.'
+            : 'No active reminder template found for this account.';
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => false, 'message' => $failureMessage, 'meta' => $result], 422);
+        }
+
+        return back()->with('error', $failureMessage);
+    }
+
+    public function sendItemReminder(Request $request, string $invoice, string $item, InvoiceReminderService $invoiceReminderService)
+    {
+        $invoice = $this->resolveInvoiceDocument($invoice);
+        $invoiceItem = $invoice->items()
+            ->where('invoice_itemid', $item)
+            ->first();
+
+        if (!$invoiceItem) {
+            return back()->with('error', 'Invoice item not found for reminder.');
+        }
+
+        $frequency = strtolower(trim((string) ($invoiceItem->frequency ?? '')));
+        $isOneTime = in_array($frequency, ['', 'one_time', 'one-time', 'onetime'], true);
+        if ($isOneTime) {
+            return back()->with('error', 'Reminder can be sent only for recurring items.');
+        }
+
+        $result = $invoiceReminderService->sendManualReminder($invoice, $invoiceItem);
+
+        $sentCount = (int) ($result['sent'] ?? 0);
+        if ($sentCount > 0) {
+            $message = 'Reminder sent for item "' . ($invoiceItem->item_name ?? 'Item') . '" on ' . $sentCount . ' channel(s).';
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => true, 'message' => $message, 'meta' => $result]);
+            }
+
+            return back()->with('success', $message);
+        }
+
+        $failureMessage = ((int) ($result['failed'] ?? 0)) > 0
+            ? 'Item reminder could not be delivered. Please verify reminder templates and recipient details.'
+            : 'No active reminder template found for this account.';
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => false, 'message' => $failureMessage, 'meta' => $result], 422);
+        }
+
+        return back()->with('error', $failureMessage);
+    }
+
     public function emailCompose(string $invoice): View
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
@@ -1962,6 +2260,7 @@ class InvoicesController extends Controller
             ->orderBy('template_type')
             ->orderBy('created_at')
             ->get();
+        $whatsappHeaderTypes = $this->fetchCampioTemplateHeaderTypes($currentAccountId, 'whatsapp');
 
         $templateCatalog = [];
         $availableChannelsByType = [
@@ -1985,6 +2284,13 @@ class InvoicesController extends Controller
                 'subject' => $this->renderMessageTemplate((string) ($row->subject ?? ''), $invoice, $account?->name),
                 'body' => $this->renderMessageTemplate((string) ($row->body ?? ''), $invoice, $account?->name),
                 'raw_body' => (string) ($row->body ?? ''),
+                'header_type' => $channel === 'whatsapp'
+                    ? (
+                        $whatsappHeaderTypes[trim((string) ($row->template_id ?? ''))]
+                        ?? $whatsappHeaderTypes[trim((string) ($row->meta_template_id ?? ''))]
+                        ?? strtolower(trim((string) ($row->header_type ?? '')))
+                    )
+                    : strtolower(trim((string) ($row->header_type ?? ''))),
             ];
 
             if (!in_array($channel, $availableChannelsByType[$type], true)) {
@@ -2223,6 +2529,11 @@ class InvoicesController extends Controller
         $action = $validated['action'] ?? 'save';
         $isSendAction = $action === 'send';
         $finalCustomAttachmentPath = $customAttachmentPath ?? $emailDraft->custom_attachment_path;
+        $sentAt = now();
+        $documentLabel = $selectedType === 'ti' ? 'Tax Invoice (TI)' : 'Proforma Invoice (PI)';
+        $successTitle = $selectedType === 'ti'
+            ? 'Tax Invoice sent successfully.'
+            : 'Proforma Invoice sent successfully.';
 
         // For non-email channels, resolve template tags.
         $finalBody = $this->sanitizeComposedMessageBody((string) ($validated['body'] ?? ''));
@@ -2300,6 +2611,17 @@ class InvoicesController extends Controller
                 ];
             }
 
+            $canUseWhatsappDocumentHeader = true;
+            if ($channel === 'whatsapp' && $channelTemplateConfig) {
+                $headerTypeMap = $this->fetchCampioTemplateHeaderTypes($currentAccountId, 'whatsapp');
+                $resolvedHeaderType = strtolower(trim((string) (
+                    $headerTypeMap[trim((string) ($channelTemplateConfig->template_id ?? ''))]
+                    ?? $headerTypeMap[trim((string) ($channelTemplateConfig->meta_template_id ?? ''))]
+                    ?? ($channelTemplateConfig->header_type ?? '')
+                )));
+                $canUseWhatsappDocumentHeader = $resolvedHeaderType === 'document';
+            }
+
             // Clean HTML for messaging while preserving readable line breaks.
             $plainBodyHtml = str_replace(['<br>', '<br/>', '<br />'], "\n", $finalBody);
             $plainBodyHtml = preg_replace('/<\/(p|div|li|h[1-6])>/i', "\n", (string) $plainBodyHtml) ?? (string) $plainBodyHtml;
@@ -2348,7 +2670,7 @@ class InvoicesController extends Controller
                     ];
                 }
             }
-            if ($channel === 'whatsapp' && !empty($documentLinks)) {
+            if ($channel === 'whatsapp' && !empty($documentLinks) && $canUseWhatsappDocumentHeader) {
                 $payload['media_url'] = (string) ($documentLinks[0]['url'] ?? '');
                 if ($payload['media_url'] !== '' && !str_starts_with(strtolower($payload['media_url']), 'https://')) {
                     return back()->withErrors([
@@ -2371,7 +2693,7 @@ class InvoicesController extends Controller
 
             // Keep rich/original body in DB so compose view formatting is preserved.
             $updatePayload['body'] = $finalBody;
-            $emailDraft->update($updatePayload + ['status' => 'sent', 'sent_at' => now()]);
+            $emailDraft->update($updatePayload + ['status' => 'sent', 'sent_at' => $sentAt]);
 
             return redirect()
                 ->route('invoices.email-compose', [
@@ -2380,7 +2702,14 @@ class InvoicesController extends Controller
                     'channel' => $channel,
                     'attachment_type' => $selectedType,
                 ])
-                ->with('success', ucfirst($channel) . ' sent via Campio successfully.')
+                ->with('success', $successTitle)
+                ->with('send_success_meta', [
+                    'title' => $successTitle,
+                    'document' => $documentLabel,
+                    'channel' => strtoupper($channel),
+                    'sent_at' => $sentAt->format('d M Y, h:i A'),
+                    'attachment_type' => $selectedType,
+                ])
                 ->with('preserve_channel', $channel);
         }
 
@@ -2438,7 +2767,7 @@ class InvoicesController extends Controller
         }
 
         $updatePayload['body'] = $finalBody;
-        $emailDraft->update($updatePayload + ['status' => 'sent', 'sent_at' => now()]);
+        $emailDraft->update($updatePayload + ['status' => 'sent', 'sent_at' => $sentAt]);
 
         return redirect()
             ->route('invoices.email-compose', [
@@ -2447,7 +2776,14 @@ class InvoicesController extends Controller
                 'channel' => 'email',
                 'attachment_type' => $selectedType,
             ])
-            ->with('success', 'Email sent via Campio successfully.')
+            ->with('success', $successTitle)
+            ->with('send_success_meta', [
+                'title' => $successTitle,
+                'document' => $documentLabel,
+                'channel' => 'EMAIL',
+                'sent_at' => $sentAt->format('d M Y, h:i A'),
+                'attachment_type' => $selectedType,
+            ])
             ->with('preserve_channel', 'email');
     }
 
@@ -2481,6 +2817,29 @@ class InvoicesController extends Controller
             'ok' => true,
             'invoiceid' => $invoice->invoiceid,
             'versions' => $this->listStoredInvoicePdfVersions($invoice),
+        ]);
+    }
+
+    public function ajaxList(Request $request)
+    {
+        $clientId = $request->query('clientid');
+        if (!$clientId) {
+            return response()->json(['invoices' => []]);
+        }
+
+        $invoices = Invoice::where('clientid', $clientId)
+            ->where('status', '!=', 'cancelled')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get(['invoiceid', 'invoice_number', 'grand_total', 'currency', 'clientid']);
+
+        return response()->json([
+            'invoices' => $invoices->map(fn($inv) => [
+                'invoiceid' => $inv->invoiceid,
+                'invoice_number' => $inv->invoice_number,
+                'grand_total' => (float) ($inv->grand_total ?? 0),
+                'currency' => $inv->currency ?? 'INR',
+            ])->values(),
         ]);
     }
 

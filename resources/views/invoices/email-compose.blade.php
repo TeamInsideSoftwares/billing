@@ -4,6 +4,7 @@
     @php
         $clientName = $invoice->client->business_name ?? $invoice->client->contact_name ?? 'Client';
         $clientEmail = $invoice->client->email ?? '';
+        $isAlreadySent = (string) ($composeEmail->status ?? '') === 'sent';
         $hasTiNumber = !empty(trim((string) $invoice->ti_number));
         $displayDocNumber = $hasTiNumber
             ? (trim((string) $invoice->ti_number) !== '' ? $invoice->ti_number : $invoice->invoice_number)
@@ -33,39 +34,44 @@
             </div>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-1">
+        <div class="d-flex justify-content-between align-items-center mb-2">
             <h4 class="mb-0">Message Compose</h4>
             <span class="text-muted small">Select document type and channel before sending</span>
         </div>
 
-        <!-- Type Tabs (PI, TI/DSI) -->
-        <div class="type-tabs-wrap border-bottom mb-3">
-            <div class="type-tabs d-flex gap-4">
-                <button type="button"
-                    class="type-tab-btn {{ (old('attachment_type', $prefillAttachmentType ?? $defaultType) === 'pi' || !(old('attachment_type', $prefillAttachmentType ?? $defaultType))) ? 'is-active' : '' }}"
-                    data-type="pi">
-                    PI (Proforma Invoice)
-                </button>
-                <button type="button"
-                    class="type-tab-btn {{ old('attachment_type', $prefillAttachmentType ?? $defaultType) === 'ti' ? 'is-active' : '' }}"
-                    data-type="ti" {{ !$hasTiNumber ? 'disabled' : '' }}>
-                    TI/DSI (Tax Invoice)
-                </button>
-            </div>
-        </div>
+        <div class="border rounded overflow-hidden mb-4" style="background:#fff;">
+            <div class="bg-light border-bottom px-3 py-2 small fw-semibold">Channel & Document Type</div>
+            <div class="p-3">
+                <!-- Type Tabs (PI, TI/DSI) -->
+                <div class="type-tabs-wrap border-bottom mb-3">
+                    <div class="type-tabs d-flex gap-4">
+                        <button type="button"
+                            class="type-tab-btn {{ (old('attachment_type', $prefillAttachmentType ?? $defaultType) === 'pi' || !(old('attachment_type', $prefillAttachmentType ?? $defaultType))) ? 'is-active' : '' }}"
+                            data-type="pi">
+                            PI (Proforma Invoice)
+                        </button>
+                        <button type="button"
+                            class="type-tab-btn {{ old('attachment_type', $prefillAttachmentType ?? $defaultType) === 'ti' ? 'is-active' : '' }}"
+                            data-type="ti" {{ !$hasTiNumber ? 'disabled' : '' }}>
+                            TI/DSI (Tax Invoice)
+                        </button>
+                    </div>
+                </div>
 
-        <!-- Channel Pills -->
-        <div class="channel-pills-wrap mb-4">
-            <div class="d-flex gap-2">
-                <button type="button" class="channel-pill-btn is-active" data-channel="email" id="channelBtnEmail">
-                    <i class="fas fa-envelope mr-1"></i> Email
-                </button>
-                <button type="button" class="channel-pill-btn" data-channel="whatsapp" id="channelBtnWhatsapp">
-                    <i class="fab fa-whatsapp mr-1"></i> WhatsApp
-                </button>
-                <button type="button" class="channel-pill-btn" data-channel="sms" id="channelBtnSms">
-                    <i class="fas fa-sms mr-1"></i> SMS
-                </button>
+                <!-- Channel Pills -->
+                <div class="channel-pills-wrap mb-0">
+                    <div class="d-flex gap-2">
+                        <button type="button" class="channel-pill-btn is-active" data-channel="email" id="channelBtnEmail">
+                            <i class="fas fa-envelope mr-1"></i> Email
+                        </button>
+                        <button type="button" class="channel-pill-btn" data-channel="whatsapp" id="channelBtnWhatsapp">
+                            <i class="fab fa-whatsapp mr-1"></i> WhatsApp
+                        </button>
+                        <button type="button" class="channel-pill-btn" data-channel="sms" id="channelBtnSms">
+                            <i class="fas fa-sms mr-1"></i> SMS
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -89,68 +95,73 @@
 
             <div class="row g-3 align-items-start">
                 <div class="col-12 col-xl-7">
-                    <div class="email-fields">
-                        <div class="row g-2 mb-3">
-                            <div class="col-12 col-md-6">
-                                <label class="field-label">From</label>
-                                <input type="email" name="from_email" value="{{ $fromEmail }}" class="input-full" readonly>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <label class="field-label">To</label>
-                                <input type="email" name="to_email" value="{{ $toEmail }}" class="input-full" readonly>
-                            </div>
-                        </div>
+                    <div class="border rounded overflow-hidden" style="background: #fff;">
+                        <div class="bg-light border-bottom px-3 py-2 small fw-semibold">Compose Form</div>
+                        <div class="p-3">
+                            <div class="email-fields">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-12 col-md-6">
+                                        <label class="field-label">From</label>
+                                        <input type="email" name="from_email" value="{{ $fromEmail }}" class="input-full" readonly>
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <label class="field-label">To</label>
+                                        <input type="email" name="to_email" value="{{ $toEmail }}" class="input-full" readonly>
+                                    </div>
+                                </div>
 
-                        <div class="row g-2 mb-3">
-                            <div class="col-12 col-md-6">
-                                <label class="field-label">Subject</label>
-                                <input type="text" name="subject" id="emailSubjectInput"
-                                    value="{{ old('subject', $prefillSubject ?? ('Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number))) }}"
-                                    class="input-full">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-12 col-md-6">
+                                        <label class="field-label">Subject</label>
+                                        <input type="text" name="subject" id="emailSubjectInput"
+                                            value="{{ old('subject', $prefillSubject ?? ('Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number))) }}"
+                                            class="input-full" {{ $isAlreadySent ? 'readonly' : '' }}>
+                                    </div>
+                                    <div class="col-12 col-md-6"></div>
+                                </div>
                             </div>
-                            <div class="col-12 col-md-6"></div>
-                        </div>
-                    </div>
 
-                    <div class="whatsapp-sms-fields" style="display: none;">
-                        <div class="row g-2 mb-3">
-                            <div class="col-12 col-md-6">
-                                <label class="field-label">Phone Number</label>
-                                <input type="text" name="phone" value="{{ old('phone', $prefillPhone ?? '') }}" class="input-full"
-                                    readonly>
+                            <div class="whatsapp-sms-fields" style="display: none;">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-12 col-md-6">
+                                        <label class="field-label">Phone Number</label>
+                                        <input type="text" name="phone" value="{{ old('phone', $prefillPhone ?? '') }}" class="input-full"
+                                            readonly>
+                                    </div>
+                                    <div class="col-12 col-md-6"></div>
+                                </div>
                             </div>
-                            <div class="col-12 col-md-6"></div>
-                        </div>
-                    </div>
 
-                    <div class="mb-3">
-                        <label class="field-label">Body</label>
-                        <textarea name="body" id="emailBodyInput" rows="8"
-                            class="input-full">{{ old('body', $prefillBody ?? $defaultBody) }}</textarea>
-                        <div id="attachmentBodyHint" class="text-secondary small mt-1"></div>
-                    </div>
-                    <div class="mb-3 email-fields">
-                        <label class="field-label">Extra Attachment (optional)</label>
-                        <input type="file" name="custom_attachment" id="customAttachmentInput" class="input-full">
-                        <div id="currentCustomAttachment" class="mt-2"></div>
-                    </div>
+                            <div class="mb-3">
+                                <label class="field-label">Body</label>
+                                <textarea name="body" id="emailBodyInput" rows="8"
+                                    class="input-full" {{ $isAlreadySent ? 'readonly' : '' }}>{{ old('body', $prefillBody ?? $defaultBody) }}</textarea>
+                                <div id="attachmentBodyHint" class="text-secondary small mt-1"></div>
+                            </div>
+                            <div class="mb-3 email-fields">
+                                <label class="field-label">Extra Attachment (optional)</label>
+                                <input type="file" name="custom_attachment" id="customAttachmentInput" class="input-full" {{ $isAlreadySent ? 'disabled' : '' }}>
+                                <div id="currentCustomAttachment" class="mt-2"></div>
+                            </div>
 
-                    <div class="d-flex justify-content-end flex-wrap gap-2 mt-4 pt-3 border-top">
-                        <div class="email-actions">
-                            <button type="submit" name="action" value="save" class="secondary-button">Save Email</button>
-                            <button type="submit" name="action" value="send" class="primary-button">Send to Client</button>
-                        </div>
-                        <div class="whatsapp-actions" style="display: none;">
-                            <button type="submit" name="action" value="save" class="secondary-button">Save WhatsApp Message</button>
-                            <button type="submit" name="action" value="send" id="sendWhatsApp" class="primary-button"
-                                style="background: #25d366; border-color: #25d366;">
-                                <i class="fab fa-whatsapp mr-1"></i> Send via WhatsApp
-                            </button>
-                        </div>
-                        <div class="sms-actions" style="display: none;">
-                            <button type="submit" name="action" value="save" class="secondary-button">Save SMS</button>
-                            <button type="submit" name="action" value="send" id="sendSms" class="primary-button">Send
-                                SMS</button>
+                            <div class="d-flex justify-content-end flex-wrap gap-2 mt-4 pt-3 border-top">
+                                <div class="email-actions" style="{{ $isAlreadySent ? 'display:none;' : '' }}">
+                                    <button type="submit" name="action" value="save" class="secondary-button">Save Email</button>
+                                    <button type="submit" name="action" value="send" class="primary-button">Send to Client</button>
+                                </div>
+                                <div class="whatsapp-actions" style="{{ $isAlreadySent ? 'display:none;' : 'display: none;' }}">
+                                    <button type="submit" name="action" value="save" class="secondary-button">Save WhatsApp Message</button>
+                                    <button type="submit" name="action" value="send" id="sendWhatsApp" class="primary-button"
+                                        style="background: #25d366; border-color: #25d366;">
+                                        <i class="fab fa-whatsapp mr-1"></i> Send via WhatsApp
+                                    </button>
+                                </div>
+                                <div class="sms-actions" style="{{ $isAlreadySent ? 'display:none;' : 'display: none;' }}">
+                                    <button type="submit" name="action" value="save" class="secondary-button">Save SMS</button>
+                                    <button type="submit" name="action" value="send" id="sendSms" class="primary-button">Send
+                                        SMS</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -160,12 +171,48 @@
                         <div class="bg-light border-bottom px-3 py-2 small fw-semibold">Raw Message</div>
                         <div class="p-3">
                             <pre id="previewRawBody" class="mb-0 mt-0 p-2 border rounded bg-light" style="min-height: 180px; white-space: pre-wrap; word-break: break-word;"></pre>
+                            <div class="mt-3">
+                                <div class="small fw-semibold text-muted mb-1">Attachments</div>
+                                <div id="previewAttachments" class="small text-break"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
             </div>
         </form>
+
+        @php
+            $sendSuccessMeta = session('send_success_meta');
+            $shouldShowPostSendActions = !empty($sendSuccessMeta) || $isAlreadySent;
+            $resolvedAttachmentType = (string) (
+                $sendSuccessMeta['attachment_type']
+                ?? ($composeEmail->attachment_type ?? ($prefillAttachmentType ?? $defaultType))
+            );
+            $resolvedAttachmentType = in_array($resolvedAttachmentType, ['pi', 'ti'], true) ? $resolvedAttachmentType : $defaultType;
+            $successPdfType = $resolvedAttachmentType === 'ti' ? 'tax_invoice' : 'pi';
+            $resolvedChannel = strtoupper((string) ($sendSuccessMeta['channel'] ?? ($composeEmail->channel ?? 'email')));
+            $resolvedDocument = $resolvedAttachmentType === 'ti' ? 'Tax Invoice (TI)' : 'Proforma Invoice (PI)';
+            $resolvedSentAt = !empty($sendSuccessMeta['sent_at'])
+                ? (string) $sendSuccessMeta['sent_at']
+                : ($composeEmail?->sent_at?->format('d M Y, h:i A') ?? null);
+        @endphp
+        @if ($shouldShowPostSendActions)
+            <div class="mt-3 pt-3 border-top">
+                <div class="small text-success fw-semibold mb-2">
+                    {{ $sendSuccessMeta['document'] ?? $resolvedDocument }} sent via {{ $resolvedChannel }}
+                    @if(!empty($resolvedSentAt))
+                        on {{ $resolvedSentAt }}
+                    @endif
+                </div>
+                <div class="d-flex flex-wrap gap-2 p-2 rounded" style="background:#ecfeff;border:1px solid #bae6fd;">
+                    <a href="{{ route('invoices.show', ['invoice' => $invoice->invoiceid, 'c' => $invoice->clientid]) }}" class="primary-button small">View Invoice</a>
+                    <a href="{{ route('payments.create', ['clientid' => $invoice->clientid, 'invoiceid' => $invoice->invoiceid]) }}" class="primary-button small">Record Payment</a>
+                    <a href="{{ route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => $successPdfType]) }}" class="secondary-button small" target="_blank">Download PDF</a>
+                    <a href="{{ route('invoices.index', ['c' => $invoice->clientid]) }}" class="secondary-button small">Back to Invoices</a>
+                </div>
+            </div>
+        @endif
     </section>
 
     <style>
@@ -333,6 +380,7 @@
             const emailSubjectInput = document.getElementById('emailSubjectInput');
             const emailBodyInput = document.getElementById('emailBodyInput');
             const previewRawBody = document.getElementById('previewRawBody');
+            const previewAttachments = document.getElementById('previewAttachments');
             const currentCustomAttachment = document.getElementById('currentCustomAttachment');
             const templatePicker = document.getElementById('templatePicker');
             const templatePickerSmsWa = document.getElementById('templatePickerSmsWa');
@@ -340,6 +388,7 @@
             const templateCatalog = @json($templateCatalog ?? []);
             const availableChannelsByType = @json($availableChannelsByType ?? []);
             const fallbackTemplatesByType = @json($fallbackTemplatesByType ?? []);
+            const isAlreadySent = @json($isAlreadySent);
 
             let currentChannel = document.getElementById('selectedChannel').value || 'email';
             let currentType = document.getElementById('selectedType').value || 'pi';
@@ -347,21 +396,58 @@
             let currentRawTemplateBody = '';
             const hasExistingDraft = !!(document.querySelector('input[name="invoice_emailid"]')?.value || '').trim();
 
+            function buildPreviewAttachments() {
+                const files = [];
+                const selectedTemplate = getSelectedTemplateForCurrentSelection(currentType, currentChannel);
+                const selectedHeaderType = String(selectedTemplate?.header_type || '').toLowerCase();
+                const canAttachDocumentForWhatsapp = currentChannel !== 'whatsapp'
+                    || selectedHeaderType === 'document';
+
+                if (currentType === 'pi' && canAttachDocumentForWhatsapp) {
+                    files.push({ label: 'Proforma Invoice (PI).pdf', url: piPdfUrl });
+                }
+                if (currentType === 'ti' && hasTiNumber && canAttachDocumentForWhatsapp) {
+                    files.push({ label: 'Tax Invoice (TI).pdf', url: tiPdfUrl });
+                }
+
+                const selectedCustomFile = customAttachmentInput?.files?.[0] || null;
+                const customFileName = selectedCustomFile?.name || savedCustomAttachmentName;
+                const customFileUrl = selectedCustomFile ? dscPreviewUrl : savedCustomAttachmentUrl;
+                if (customFileName && customFileUrl) {
+                    files.push({ label: customFileName, url: customFileUrl });
+                }
+
+                return files;
+            }
+
+            function refreshAttachmentPreview() {
+                if (!previewAttachments) return;
+                if (currentChannel === 'sms') {
+                    previewAttachments.innerHTML = '<span class="text-muted">No attachments for SMS.</span>';
+                    return;
+                }
+
+                const files = buildPreviewAttachments();
+                if (files.length === 0) {
+                    previewAttachments.innerHTML = '<span class="text-muted">No attachments selected.</span>';
+                    return;
+                }
+
+                previewAttachments.innerHTML = files
+                    .map((file) => (
+                        '<div><a href="' + file.url + '" target="_blank" rel="noopener noreferrer">' +
+                        String(file.label || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+                        '</a></div>'
+                    ))
+                    .join('');
+            }
+
             function refreshEmailPreview() {
                 if (previewRawBody) {
                     const rawPreview = getPlainTextFromHtml(currentRawTemplateBody || '').trim();
-                    const attachmentNotes = [];
-                    if (currentType === 'pi') attachmentNotes.push('Proforma Invoice (PI).pdf');
-                    if (currentType === 'ti' && hasTiNumber) attachmentNotes.push('Tax Invoice (TI).pdf');
-                    const customFileName = customAttachmentInput?.files?.[0]?.name || savedCustomAttachmentName;
-                    if (customFileName) attachmentNotes.push(customFileName);
-
-                    let composed = rawPreview || '(No raw template body)';
-                    if (attachmentNotes.length > 0 && currentChannel !== 'sms') {
-                        composed += '\n\n[Documents Attached]\n- ' + attachmentNotes.join('\n- ');
-                    }
-                    previewRawBody.textContent = composed;
+                    previewRawBody.textContent = rawPreview || '(No raw template body)';
                 }
+                refreshAttachmentPreview();
             }
 
             function normalizeHtmlForEditor(html) {
@@ -442,7 +528,13 @@
                 if (currentType === 'ti') labels.push('TI PDF');
                 if (dscPreviewUrl) labels.push('Custom attachment');
 
-                if (attachmentBodyHint) attachmentBodyHint.textContent = labels.length ? ('Attached: ' + labels.join(', ')) : 'No attachment selected.';
+                if (!attachmentBodyHint) return;
+                const attachmentText = labels.length ? ('Attached: ' + labels.join(', ')) : 'No attachment selected.';
+                if (isAlreadySent) {
+                    attachmentBodyHint.textContent = attachmentText + ' | This message is already sent and locked for editing.';
+                    return;
+                }
+                attachmentBodyHint.textContent = attachmentText;
             }
 
             function getTemplateKeyForSelection(type) {
@@ -456,6 +548,32 @@
 
             function getTemplatesForSelection(type, channel) {
                 return ((templateCatalog[type] || {})[channel] || []);
+            }
+
+            function getRawTemplateBodyForCurrentSelection(type, channel) {
+                let payload = getSelectedTemplateForCurrentSelection(type, channel);
+
+                if (!payload) {
+                    payload = fallbackTemplatesByType[type] || { raw_body: '' };
+                }
+
+                return String(payload?.raw_body || '');
+            }
+
+            function getSelectedTemplateForCurrentSelection(type, channel) {
+                const options = getTemplatesForSelection(type, channel);
+                const pickedTemplateId = (channel === 'email'
+                    ? (templatePicker?.value || '')
+                    : (templatePickerSmsWa?.value || templatePicker?.value || '')
+                );
+
+                if (pickedTemplateId) {
+                    return options.find((tpl) => (tpl.templateid || '') === pickedTemplateId) || null;
+                }
+                if (options.length > 0) {
+                    return options[0];
+                }
+                return null;
             }
 
             function refreshChannelVisibilityForType(type) {
@@ -507,6 +625,14 @@
             }
 
             function applyTemplate(preserveExisting = false) {
+                currentRawTemplateBody = getRawTemplateBodyForCurrentSelection(currentType, currentChannel);
+                if (isAlreadySent) {
+                    if (emailBodyInput && currentChannel !== 'email') {
+                        emailBodyInput.value = getPlainTextFromHtml(emailBodyInput.value || '');
+                    }
+                    refreshEmailPreview();
+                    return;
+                }
                 const templateKey = getTemplateKeyForSelection(currentType);
                 const pickedTemplateId = (currentChannel === 'email'
                     ? (templatePicker?.value || '')
@@ -650,6 +776,7 @@
             });
 
             customAttachmentInput?.addEventListener('change', function () {
+                if (@json($isAlreadySent)) return;
                 if (dscPreviewUrl) {
                     URL.revokeObjectURL(dscPreviewUrl);
                     dscPreviewUrl = null;
@@ -658,6 +785,7 @@
                 if (selectedFile) dscPreviewUrl = URL.createObjectURL(selectedFile);
                 updateContextHints();
                 renderCurrentCustomAttachment();
+                refreshEmailPreview();
             });
 
             emailSubjectInput?.addEventListener('input', refreshEmailPreview);
@@ -679,6 +807,7 @@
                     selector: '#emailBodyInput',
                     menubar: false,
                     height: 340,
+                    readonly: isAlreadySent ? 1 : 0,
                     plugins: 'lists link table code autoresize',
                     toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
                     valid_elements: '*[*]',
@@ -688,6 +817,9 @@
                             e.content = normalizeHtmlForEditor(e.content || '');
                         });
                         editor.on('init', function () {
+                            if (isAlreadySent) {
+                                editor.mode.set('readonly');
+                            }
                             editor.save();
                             refreshEmailPreview();
                         });

@@ -10,9 +10,8 @@
             <thead>
                 <tr>
                     <th>Payment</th>
-                    <th>Received</th>
+                    <th>Amount</th>
                     <th>TDS</th>
-                    <th>Total Settled</th>
                     <th></th>
                 </tr>
             </thead>
@@ -25,13 +24,10 @@
                         <span>{{ $payment['date'] }} via {{ $payment['method'] }}@if($payment['invoice']) · {{ $payment['invoice'] }}@endif</span>
                     </td>
                     <td>
-                        <strong>{{ $payment['currency'] }} {{ number_format($payment['received_amount'], 0) }}</strong>
+                        <strong>{{ $payment['currency'] }} {{ number_format($payment['amount'], 0) }}</strong>
                     </td>
                     <td>
-                        <strong>{{ $payment['currency'] }} {{ number_format($payment['tds_amount'], 0) }}</strong>
-                    </td>
-                    <td>
-                        <strong>{{ $payment['currency'] }} {{ number_format($payment['total_settled'], 0) }}</strong>
+                        <strong>{{ $payment['tds'] ? 'Yes' : 'No' }}</strong>
                     </td>
                     <td class="table-actions">
                         <a href="{{ route('payments.show', $payment['record_id']) }}" class="icon-action-btn view" title="View">
@@ -51,7 +47,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5" class="no-records-cell">
+                    <td colspan="4" class="no-records-cell">
                         <i class="fas fa-money-bill-wave empty-state-icon"></i>
                         <p class="no-empty-state-text">No payments recorded</p>
                         <p class="small-text">Record your first payment to track your collections.</p>

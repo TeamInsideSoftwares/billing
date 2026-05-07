@@ -16,10 +16,10 @@ class DashboardController extends Controller
 
         $payments = Payment::query()
             ->where('accountid', $accountid)
-            ->get(['paymentid', 'clientid', 'received_amount', 'tds_amount', 'payment_date', 'created_at']);
+            ->get(['paymentid', 'clientid', 'received_amount', 'payment_date', 'created_at']);
 
         $totalRevenue = (float) $payments->sum(function ($payment) {
-            return max(0, ((float) ($payment->received_amount ?? 0)) + ((float) ($payment->tds_amount ?? 0)));
+            return max(0, (float) ($payment->received_amount ?? 0));
         });
 
         $now = now();
@@ -40,7 +40,7 @@ class DashboardController extends Controller
             });
 
             $monthRevenue = (float) $monthPayments->sum(function ($payment) {
-                return max(0, ((float) ($payment->received_amount ?? 0)) + ((float) ($payment->tds_amount ?? 0)));
+                return max(0, (float) ($payment->received_amount ?? 0));
             });
             $monthlyRevenueData[] = round($monthRevenue, 2);
             $monthlyTxnData[] = $monthPayments->count();
@@ -90,7 +90,7 @@ class DashboardController extends Controller
             ->take(5)
             ->get()
             ->map(function($payment) {
-                $net = ((float) ($payment->received_amount ?? 0)) + ((float) ($payment->tds_amount ?? 0));
+                $net = (float) ($payment->received_amount ?? 0);
                 return [
                     'title' => 'Payment from ' . ($payment->client->business_name ?? $payment->client->contact_name ?? 'Unknown Client'),
                     'amount' => 'Rs ' . number_format(abs($net), 0),

@@ -7,11 +7,35 @@
 @endsection
 
 @section('content')
-<section class="panel-card">
+<style>
+    .payments-form-panel {
+        overflow: visible !important;
+    }
+
+    #invoice-dropdown-wrap {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .payments-form-shell,
+    .payments-form-shell .client-form,
+    .payments-form-shell .form-grid {
+        overflow: visible;
+    }
+
+    #invoice-dropdown {
+        z-index: 2000;
+        max-height: min(260px, 46vh);
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+</style>
+<section class="panel-card payments-form-panel">
     @php
         $defaultClientId = old('clientid', isset($payment) ? $payment->clientid : ($selectedClientId ?? ''));
         $defaultInvoiceId = old('invoiceid', isset($payment) ? $payment->invoiceid : ($selectedInvoiceId ?? ''));
         $defaultCurrency = $selectedCurrency ?? (isset($payment) ? ($payment->client->currency ?? 'INR') : 'INR');
+        $defaultTdsChecked = old('tds', isset($payment) ? ((bool) ($payment->tds ?? false) ? '1' : '') : '');
         $clientCurrencies = collect($clients ?? [])->mapWithKeys(fn($client) => [
             (string) $client->clientid => (string) ($client->currency ?? 'INR'),
         ])->all();
@@ -23,13 +47,29 @@
                 ],
             ];
         })->all();
+        $invoiceOptions = collect($invoices ?? [])->map(function ($invoice) {
+            return [
+                'invoiceid' => (string) $invoice->invoiceid,
+                'invoice_number' => (string) ($invoice->invoice_number ?? ''),
+                'invoice_title' => (string) ($invoice->invoice_title ?? ''),
+                'clientid' => (string) ($invoice->clientid ?? ''),
+                'client_name' => (string) ($invoice->client->business_name ?? 'Client'),
+            ];
+        })->values()->all();
     @endphp
-    <form method="POST" action="{{ isset($payment) ? route('payments.update', $payment) : route('payments.store') }}" class="client-form">
+    <form method="POST" action="{{ isset($payment) ? route('payments.update', $payment) : route('payments.store') }}" class="client-form payments-form-shell">
         @isset($payment)
             @method('PUT')
         @endisset
         @csrf
         <div class="form-grid">
+            <div style="margin-top: -0.35rem; grid-column: 1 / -1;">
+                <label class="custom-checkbox" style="padding: 0.35rem 0.55rem; min-height: 36px;">
+                    <input type="checkbox" name="tds" value="1" {{ $defaultTdsChecked === '1' ? 'checked' : '' }}>
+                    <span class="checkbox-label">This is a TDS payment</span>
+                </label>
+                @error('tds') <span class="error">{{ $message }}</span> @enderror
+            </div>
             <div>
                 <label for="clientid">Select Client *</label>
                 <select id="clientid" name="clientid" required>
@@ -42,40 +82,27 @@
                 </select>
                 @error('clientid') <span class="error">{{ $message }}</span> @enderror
             </div>
-            <div>
+            <div style="grid-column: span 2;">
                 <label for="invoiceid">Related Invoice (Optional)</label>
-                <select id="invoiceid" name="invoiceid">
-                    <option value="">-- No Specific Invoice --</option>
-                    @foreach($invoices as $invoice)
-                        <option value="{{ $invoice->invoiceid }}" data-clientid="{{ $invoice->clientid }}" {{ $defaultInvoiceId == $invoice->invoiceid ? 'selected' : '' }}>
-                            {{ $invoice->invoice_number }} ({{ $invoice->client->business_name ?? 'Client' }})
-                        </option>
-                    @endforeach
-                </select>
+                <div class="addons-wrap" id="invoice-dropdown-wrap">
+                    <button type="button" class="secondary-button addons-toggle" id="invoice-toggle" disabled>
+                        <span id="invoice-selected-label">Select invoice</span>
+                        <span aria-hidden="true">&#9662;</span>
+                    </button>
+                    <div id="invoice-dropdown" class="addons-dropdown" style="display: none;">
+                        <p class="addons-empty">Select a client first</p>
+                    </div>
+                </div>
+                <input type="hidden" id="invoiceid" name="invoiceid" value="{{ $defaultInvoiceId }}">
                 <div id="invoiceGrandTotalHint" class="text-muted mt-1"></div>
             </div>
             <div>
-                <label for="received_amount">Received Amount * (<span id="currencyLabel">{{ $defaultCurrency }}</span>)</label>
-                <input type="number" step="0.01" id="received_amount" name="received_amount" value="{{ old('received_amount', isset($payment) ? $payment->received_amount : '') }}" min="0.01" required>
+                <label for="received_amount">Amount * (<span id="currencyLabel">{{ $defaultCurrency }}</span>)</label>
+                <input type="text" id="received_amount" name="received_amount" value="{{ old('received_amount', isset($payment) ? $payment->received_amount : '') }}" required>
                 @error('received_amount') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
-                @php
-                    $defaultTds = old('tds_amount', isset($payment) ? ($payment->tds_amount ?? 0) : 0);
-                    $tdsChecked = (float) $defaultTds > 0;
-                @endphp
-                <label class="custom-checkbox">
-                    <input type="checkbox" id="has_tds" {{ $tdsChecked ? 'checked' : '' }}>
-                    <span class="checkbox-label">TDS Deducted?</span>
-                </label>
-                <div id="tdsAmountWrap" class="mt-2" style="{{ $tdsChecked ? '' : 'display:none;' }}">
-                    <label for="tds_amount">TDS Amount (<span id="currencyLabel2">{{ $defaultCurrency }}</span>)</label>
-                    <input type="number" step="0.01" id="tds_amount" name="tds_amount" value="{{ $defaultTds }}" min="0">
-                    @error('tds_amount') <span class="error">{{ $message }}</span> @enderror
-                </div>
-            </div>
-            <div>
-                <label for="payment_date">Payment Date *</label>
+                <label for="payment_date">Date *</label>
                 <input type="date" id="payment_date" name="payment_date" value="{{ old('payment_date', isset($payment) ? optional($payment->payment_date)->format('Y-m-d') : date('Y-m-d')) }}" required>
                 @error('payment_date') <span class="error">{{ $message }}</span> @enderror
             </div>
@@ -93,6 +120,11 @@
                 <input type="text" id="reference_number" name="reference_number" value="{{ old('reference_number', isset($payment) ? $payment->reference_number : '') }}">
                 @error('reference_number') <span class="error">{{ $message }}</span> @enderror
             </div>
+            <div>
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="2">{{ old('description', isset($payment) ? $payment->description : '') }}</textarea>
+                @error('description') <span class="error">{{ $message }}</span> @enderror
+            </div>
         </div>
         <div class="form-actions">
             <button type="submit" class="primary-button">{{ isset($payment) ? 'Update Payment' : 'Record Payment' }}</button>
@@ -104,30 +136,26 @@
 (function() {
     const clientCurrencies = @json($clientCurrencies);
     const invoiceTotals = @json($invoiceTotals);
+    const invoiceOptions = @json($invoiceOptions);
     const clientSelect = document.getElementById('clientid');
-    const invoiceSelect = document.getElementById('invoiceid');
+    const invoiceHidden = document.getElementById('invoiceid');
     const currencyLabel = document.getElementById('currencyLabel');
-    const currencyLabel2 = document.getElementById('currencyLabel2');
     const invoiceGrandTotalHint = document.getElementById('invoiceGrandTotalHint');
-    const hasTds = document.getElementById('has_tds');
-    const tdsAmountWrap = document.getElementById('tdsAmountWrap');
-    const tdsAmountInput = document.getElementById('tds_amount');
+    const invoiceDropdownWrap = document.getElementById('invoice-dropdown-wrap');
+    const invoiceToggle = document.getElementById('invoice-toggle');
+    const invoiceDropdown = document.getElementById('invoice-dropdown');
+    const invoiceSelectedLabel = document.getElementById('invoice-selected-label');
+    let selectedInvoiceId = invoiceHidden?.value || '';
 
     function setCurrencyFromClient() {
         const clientId = clientSelect?.value || '';
         const currency = clientCurrencies[clientId] || 'INR';
         if (currencyLabel) currencyLabel.textContent = currency;
-        if (currencyLabel2) currencyLabel2.textContent = currency;
     }
 
-    function syncClientFromInvoice() {
-        const selectedOption = invoiceSelect?.options[invoiceSelect.selectedIndex];
-        const invoiceClientId = selectedOption?.dataset?.clientid || '';
-        const invoiceId = invoiceSelect?.value || '';
-        const invoiceMeta = invoiceTotals[invoiceId];
-        if (invoiceClientId && clientSelect && clientSelect.value !== invoiceClientId) {
-            clientSelect.value = invoiceClientId;
-        }
+    function syncInvoiceHint() {
+        const invoiceMeta = invoiceTotals[selectedInvoiceId];
+
         if (invoiceGrandTotalHint) {
             if (invoiceMeta) {
                 const grandTotal = Number(invoiceMeta.grand_total || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -136,18 +164,106 @@
                 invoiceGrandTotalHint.textContent = '';
             }
         }
-        setCurrencyFromClient();
     }
 
-    clientSelect?.addEventListener('change', setCurrencyFromClient);
-    invoiceSelect?.addEventListener('change', syncClientFromInvoice);
-    hasTds?.addEventListener('change', function () {
-        const checked = !!hasTds.checked;
-        if (tdsAmountWrap) tdsAmountWrap.style.display = checked ? '' : 'none';
-        if (!checked && tdsAmountInput) tdsAmountInput.value = '0';
+    function renderInvoiceDropdown() {
+        const clientId = clientSelect?.value || '';
+        if (!clientId) {
+            invoiceToggle.disabled = true;
+            invoiceDropdown.innerHTML = '<p class="addons-empty">Select a client first</p>';
+            selectedInvoiceId = '';
+            if (invoiceHidden) invoiceHidden.value = '';
+            invoiceSelectedLabel.textContent = 'Select invoice';
+            syncInvoiceHint();
+            return;
+        }
+
+        invoiceToggle.disabled = false;
+        const clientInvoices = invoiceOptions.filter((invoice) => invoice.clientid === clientId);
+
+        if (clientInvoices.length === 0) {
+            invoiceDropdown.innerHTML = '<p class="addons-empty">No invoices for this client</p>';
+            selectedInvoiceId = '';
+            if (invoiceHidden) invoiceHidden.value = '';
+            invoiceSelectedLabel.textContent = 'Select invoice';
+            syncInvoiceHint();
+            return;
+        }
+
+        // Clear stale selection if it belongs to another client.
+        const selectedForClient = clientInvoices.some((invoice) => invoice.invoiceid === selectedInvoiceId);
+        if (!selectedForClient) {
+            selectedInvoiceId = '';
+            if (invoiceHidden) invoiceHidden.value = '';
+        }
+
+        const html = clientInvoices.map((invoice) => {
+            const checked = selectedInvoiceId === invoice.invoiceid ? 'checked' : '';
+            const title = (invoice.invoice_title || '').trim();
+            const primary = title !== '' ? title : invoice.invoice_number;
+            const numberText = (invoice.invoice_number || '').trim();
+            return `
+                <label class="custom-checkbox addon-option">
+                    <input type="checkbox" class="invoice-option-checkbox" value="${invoice.invoiceid}" ${checked}>
+                    <span class="checkbox-label">
+                        <strong>${primary}</strong>
+                        <small style="display:block; color:#64748b; font-weight:500; margin-top:2px;">${numberText}</small>
+                    </span>
+                </label>
+            `;
+        }).join('');
+
+        invoiceDropdown.innerHTML = html;
+
+        invoiceDropdown.querySelectorAll('.invoice-option-checkbox').forEach((checkbox) => {
+            checkbox.addEventListener('change', function () {
+                if (!this.checked) {
+                    selectedInvoiceId = '';
+                    if (invoiceHidden) invoiceHidden.value = '';
+                    invoiceSelectedLabel.textContent = 'Select invoice';
+                    syncInvoiceHint();
+                    return;
+                }
+
+                selectedInvoiceId = this.value;
+                if (invoiceHidden) invoiceHidden.value = selectedInvoiceId;
+                invoiceSelectedLabel.textContent = this.closest('label')?.querySelector('.checkbox-label')?.textContent || '1 invoice selected';
+                invoiceDropdown.querySelectorAll('.invoice-option-checkbox').forEach((cb) => {
+                    if (cb !== this) cb.checked = false;
+                });
+                syncInvoiceHint();
+                invoiceDropdown.style.display = 'none';
+            });
+        });
+
+        if (selectedInvoiceId) {
+            const picked = clientInvoices.find((invoice) => invoice.invoiceid === selectedInvoiceId);
+            invoiceSelectedLabel.textContent = picked ? picked.invoice_number : 'Select invoice';
+        } else {
+            invoiceSelectedLabel.textContent = 'Select invoice';
+        }
+
+        syncInvoiceHint();
+    }
+
+    clientSelect?.addEventListener('change', function () {
+        setCurrencyFromClient();
+        renderInvoiceDropdown();
     });
-    syncClientFromInvoice();
+
+    invoiceToggle?.addEventListener('click', function () {
+        if (invoiceToggle.disabled) return;
+        invoiceDropdown.style.display = invoiceDropdown.style.display === 'none' ? 'block' : 'none';
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!invoiceDropdownWrap?.contains(e.target)) {
+            invoiceDropdown.style.display = 'none';
+        }
+    });
+
     setCurrencyFromClient();
+    renderInvoiceDropdown();
 })();
 </script>
 @endsection

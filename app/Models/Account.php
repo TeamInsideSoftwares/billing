@@ -45,6 +45,8 @@ class Account extends Authenticatable
         'have_users',
         'fixed_tax_rate',
         'fixed_tax_type',
+        'reminder_automation_enabled',
+        'reminder_days_before',
     ];
 
     protected $hidden = [
@@ -59,6 +61,8 @@ class Account extends Authenticatable
             'allow_multi_taxation' => 'boolean',
             'have_users' => 'boolean',
             'fixed_tax_rate' => 'decimal:2',
+            'reminder_automation_enabled' => 'boolean',
+            'reminder_days_before' => 'integer',
         ];
     }
 
