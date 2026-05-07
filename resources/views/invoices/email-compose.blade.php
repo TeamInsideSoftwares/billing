@@ -86,7 +86,6 @@
             <input type="hidden" name="channel" id="selectedChannel" value="{{ old('channel', $prefillChannel ?? 'email') }}">
             <input type="hidden" name="attachment_type" id="selectedType"
                 value="{{ old('attachment_type', $prefillAttachmentType ?? $defaultType) }}">
-            <input type="hidden" name="selected_templateid" id="selectedTemplateId" value="{{ old('selected_templateid', '') }}">
 
             <div class="row g-3 align-items-start">
                 <div class="col-12 col-xl-7">
@@ -109,12 +108,7 @@
                                     value="{{ old('subject', $prefillSubject ?? ('Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number))) }}"
                                     class="input-full">
                             </div>
-                            <div class="col-12 col-md-6">
-                                <label class="field-label">Template</label>
-                                <select id="templatePicker" class="input-full">
-                                    <option value="">Manual (no template)</option>
-                                </select>
-                            </div>
+                            <div class="col-12 col-md-6"></div>
                         </div>
                     </div>
 
@@ -125,12 +119,7 @@
                                 <input type="text" name="phone" value="{{ old('phone', $prefillPhone ?? '') }}" class="input-full"
                                     readonly>
                             </div>
-                            <div class="col-12 col-md-6">
-                                <label class="field-label">Template</label>
-                                <select id="templatePickerSmsWa" class="input-full">
-                                    <option value="">Manual (no template)</option>
-                                </select>
-                            </div>
+                            <div class="col-12 col-md-6"></div>
                         </div>
                     </div>
 
@@ -140,7 +129,6 @@
                             class="input-full">{{ old('body', $prefillBody ?? $defaultBody) }}</textarea>
                         <div id="attachmentBodyHint" class="text-secondary small mt-1"></div>
                     </div>
-
                     <div class="mb-3 email-fields">
                         <label class="field-label">Extra Attachment (optional)</label>
                         <input type="file" name="custom_attachment" id="customAttachmentInput" class="input-full">
@@ -169,32 +157,13 @@
 
                 <div class="col-12 col-xl-5">
                     <div class="border rounded overflow-hidden position-sticky" style="top:.8rem; background: #fff;">
-                        <div
-                            class="bg-light border-bottom px-3 py-2 small fw-semibold d-flex justify-content-between align-items-center">
-                            <span>Preview</span>
-                            <div class="d-flex gap-1">
-                                <span id="previewTypeBadge" class="badge bg-secondary">PI</span>
-                                <span id="previewChannelBadge" class="badge bg-primary">Email</span>
-                            </div>
-                        </div>
+                        <div class="bg-light border-bottom px-3 py-2 small fw-semibold">Raw Message</div>
                         <div class="p-3">
-                            <div class="preview-email-only">
-                                <div class="small mb-2">
-                                    <span class="text-muted">Subject:</span>
-                                    <span id="previewSubject" class="fw-semibold text-dark"></span>
-                                </div>
-                            </div>
-                            <div class="small mb-1 text-muted">Message Content:</div>
-                            <div id="previewBody" class="mb-3 mt-0 p-2 border rounded bg-light" style="min-height: 100px;">
-                            </div>
-
-                            <div class="preview-email-only">
-                                <div class="small mb-1 text-muted">Attachments:</div>
-                                <div id="previewAttachmentList" class="d-flex flex-column gap-2"></div>
-                            </div>
+                            <pre id="previewRawBody" class="mb-0 mt-0 p-2 border rounded bg-light" style="min-height: 180px; white-space: pre-wrap; word-break: break-word;"></pre>
                         </div>
                     </div>
                 </div>
+
             </div>
         </form>
     </section>
@@ -334,6 +303,10 @@
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
 
+        #emailBodyInput {
+            min-height: 400px !important;
+        }
+
         .invoice-number-badge {
             background: #f1f5f9;
             color: #475569;
@@ -343,7 +316,6 @@
             font-weight: 600;
         }
     </style>
-    </section>
 
     <script>
         (function () {
@@ -360,9 +332,7 @@
             const savedCustomAttachmentName = @json($customAttachmentName ?? null);
             const emailSubjectInput = document.getElementById('emailSubjectInput');
             const emailBodyInput = document.getElementById('emailBodyInput');
-            const previewSubject = document.getElementById('previewSubject');
-            const previewBody = document.getElementById('previewBody');
-            const previewAttachmentList = document.getElementById('previewAttachmentList');
+            const previewRawBody = document.getElementById('previewRawBody');
             const currentCustomAttachment = document.getElementById('currentCustomAttachment');
             const templatePicker = document.getElementById('templatePicker');
             const templatePickerSmsWa = document.getElementById('templatePickerSmsWa');
@@ -374,20 +344,39 @@
             let currentChannel = document.getElementById('selectedChannel').value || 'email';
             let currentType = document.getElementById('selectedType').value || 'pi';
             let dscPreviewUrl = savedCustomAttachmentUrl || null;
+            let currentRawTemplateBody = '';
             const hasExistingDraft = !!(document.querySelector('input[name="invoice_emailid"]')?.value || '').trim();
 
             function refreshEmailPreview() {
-                if (previewSubject) previewSubject.textContent = (emailSubjectInput?.value || '').trim() || '(No subject)';
-                if (!previewBody) return;
+                if (previewRawBody) {
+                    const rawPreview = getPlainTextFromHtml(currentRawTemplateBody || '').trim();
+                    const attachmentNotes = [];
+                    if (currentType === 'pi') attachmentNotes.push('Proforma Invoice (PI).pdf');
+                    if (currentType === 'ti' && hasTiNumber) attachmentNotes.push('Tax Invoice (TI).pdf');
+                    const customFileName = customAttachmentInput?.files?.[0]?.name || savedCustomAttachmentName;
+                    if (customFileName) attachmentNotes.push(customFileName);
 
-                let content = '';
-                if (window.tinymce && tinymce.get('emailBodyInput')) {
-                    content = tinymce.get('emailBodyInput').getContent() || '<span class="text-muted">(No body)</span>';
-                } else {
-                    const plainBody = (emailBodyInput?.value || '').trim();
-                    content = plainBody ? plainBody.replace(/\n/g, '<br>') : '<span class="text-muted">(No body)</span>';
+                    let composed = rawPreview || '(No raw template body)';
+                    if (attachmentNotes.length > 0 && currentChannel !== 'sms') {
+                        composed += '\n\n[Documents Attached]\n- ' + attachmentNotes.join('\n- ');
+                    }
+                    previewRawBody.textContent = composed;
                 }
-                previewBody.innerHTML = content;
+            }
+
+            function normalizeHtmlForEditor(html) {
+                const value = (html || '').trim();
+                if (!value) return '';
+                if (!/<html[\s>]|<head[\s>]|<body[\s>]/i.test(value)) return value;
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(value, 'text/html');
+                const bodyHtml = doc.body ? doc.body.innerHTML : value;
+                const headStyles = Array.from(doc.querySelectorAll('head style'))
+                    .map((node) => node.outerHTML)
+                    .join('\n');
+
+                return (headStyles ? (headStyles + '\n') : '') + bodyHtml;
             }
 
             function getPlainTextFromHtml(html) {
@@ -395,7 +384,11 @@
                 let text = html;
 
                 // Handle basic WhatsApp markdown-like conversions
+                text = text.replace(/\\r\\n/g, '\n');
+                text = text.replace(/\\n/g, '\n');
                 text = text.replace(/<br\s*\/?>/gi, '\n');
+                text = text.replace(/<\/(div|li|h[1-6])>/gi, '\n');
+                text = text.replace(/<(ul|ol)[^>]*>/gi, '\n');
                 text = text.replace(/<\/p>/gi, '\n');
                 text = text.replace(/<p>/gi, '');
                 text = text.replace(/<strong>(.*?)<\/strong>/gi, '*$1*');
@@ -409,18 +402,8 @@
                 // Strip remaining HTML tags
                 const tmp = document.createElement('DIV');
                 tmp.innerHTML = text;
-                return tmp.textContent || tmp.innerText || '';
-            }
-
-            function renderAttachmentItem(label, href, enabled = true) {
-                const a = document.createElement('a');
-                a.className = 'd-inline-flex align-items-center gap-2 border rounded-pill px-2 py-1 text-decoration-none';
-                a.href = enabled ? href : '#';
-                a.target = '_blank';
-                a.style.pointerEvents = enabled ? 'auto' : 'none';
-                a.style.opacity = enabled ? '1' : '0.55';
-                a.innerHTML = '<i class="fas fa-paperclip text-muted small"></i><span class="small text-dark">' + label + '</span>';
-                return a;
+                const out = tmp.textContent || tmp.innerText || '';
+                return out.replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n');
             }
 
             function isImageFileName(name) {
@@ -453,43 +436,6 @@
                     '<a href="' + fileUrl + '" target="_blank" class="small">' + fileName + '</a>';
             }
 
-            function updateAttachmentPreview() {
-                if (!previewAttachmentList) return;
-                previewAttachmentList.innerHTML = '';
-                let hasAnyAttachment = false;
-
-                if (currentType === 'pi') {
-                    previewAttachmentList.appendChild(renderAttachmentItem('Proforma Invoice (PI).pdf', piPdfUrl, true));
-                    hasAnyAttachment = true;
-                }
-                if (currentType === 'ti') {
-                    previewAttachmentList.appendChild(renderAttachmentItem('Tax Invoice (TI).pdf', tiPdfUrl, hasTiNumber));
-                    hasAnyAttachment = true;
-                }
-
-                const customFileName = customAttachmentInput?.files?.[0]?.name || savedCustomAttachmentName;
-                if (dscPreviewUrl && customFileName) {
-                    if (isImageFileName(customFileName)) {
-                        const thumbWrap = document.createElement('a');
-                        thumbWrap.href = dscPreviewUrl;
-                        thumbWrap.target = '_blank';
-                        thumbWrap.className = 'd-inline-block text-decoration-none';
-                        thumbWrap.innerHTML = '<img src="' + dscPreviewUrl + '" alt="' + customFileName.replace(/"/g, '&quot;') + '" style="max-height:110px;max-width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:2px;background:#fff;">';
-                        previewAttachmentList.appendChild(thumbWrap);
-                    } else {
-                        previewAttachmentList.appendChild(renderAttachmentItem(customFileName, dscPreviewUrl, true));
-                    }
-                    hasAnyAttachment = true;
-                }
-
-                if (!hasAnyAttachment) {
-                    const muted = document.createElement('span');
-                    muted.className = 'small text-muted';
-                    muted.textContent = 'No attachment';
-                    previewAttachmentList.appendChild(muted);
-                }
-            }
-
             function updateContextHints() {
                 const labels = [];
                 if (currentType === 'pi') labels.push('PI PDF');
@@ -497,11 +443,6 @@
                 if (dscPreviewUrl) labels.push('Custom attachment');
 
                 if (attachmentBodyHint) attachmentBodyHint.textContent = labels.length ? ('Attached: ' + labels.join(', ')) : 'No attachment selected.';
-
-                const typeBadge = document.getElementById('previewTypeBadge');
-                if (typeBadge) typeBadge.textContent = currentType === 'ti' ? 'TI/DSI' : currentType.toUpperCase();
-
-                updateAttachmentPreview();
             }
 
             function getTemplateKeyForSelection(type) {
@@ -584,8 +525,15 @@
 
                 const nextSubject = (payload.subject || '').trim();
                 const nextBody = payload.body || '';
+                const hasRawTemplateBody = typeof payload.raw_body === 'string' && payload.raw_body.trim() !== '';
+                currentRawTemplateBody = hasRawTemplateBody
+                    ? payload.raw_body
+                    : getPlainTextFromHtml(payload.body || nextBody || '');
 
                 if (preserveExisting) {
+                    if (currentChannel !== 'email' && emailBodyInput) {
+                        emailBodyInput.value = getPlainTextFromHtml(emailBodyInput.value || '');
+                    }
                     refreshEmailPreview();
                     return;
                 }
@@ -594,15 +542,18 @@
                     emailSubjectInput.value = nextSubject;
                 }
 
-                if (window.tinymce && tinymce.get('emailBodyInput')) {
+                if (currentChannel !== 'email') {
+                    emailBodyInput.value = getPlainTextFromHtml(nextBody || '');
+                } else if (window.tinymce && tinymce.get('emailBodyInput')) {
                     const editor = tinymce.get('emailBodyInput');
-                    if (nextBody && !/<[a-z][\s\S]*>/i.test(nextBody)) {
-                        editor.setContent(nextBody.replace(/\r\n|\r|\n/g, '<br>'));
+                    const normalizedBody = normalizeHtmlForEditor(nextBody);
+                    if (normalizedBody && !/<[a-z][\s\S]*>/i.test(normalizedBody)) {
+                        editor.setContent(normalizedBody.replace(/\r\n|\r|\n/g, '<br>'));
                     } else {
-                        editor.setContent(nextBody);
+                        editor.setContent(normalizedBody);
                     }
                 } else if (emailBodyInput) {
-                    emailBodyInput.value = nextBody;
+                    emailBodyInput.value = normalizeHtmlForEditor(nextBody);
                 }
                 refreshEmailPreview();
             }
@@ -610,6 +561,7 @@
             function switchChannel(channel, preserveExisting = false) {
                 currentChannel = channel;
                 document.getElementById('selectedChannel').value = channel;
+                syncBodyEditorByChannel(channel);
 
                 channelBtns.forEach(btn => {
                     btn.classList.toggle('is-active', btn.dataset.channel === channel);
@@ -617,21 +569,9 @@
 
                 document.querySelectorAll('.email-fields').forEach(el => el.style.display = channel === 'email' ? '' : 'none');
                 document.querySelectorAll('.whatsapp-sms-fields').forEach(el => el.style.display = (channel === 'whatsapp' || channel === 'sms') ? '' : 'none');
-                document.querySelectorAll('.preview-email-only').forEach(el => el.style.display = channel === 'email' ? '' : 'none');
-                const attachmentPreviewWrap = previewAttachmentList?.closest('.preview-email-only');
-                if (attachmentPreviewWrap) {
-                    attachmentPreviewWrap.style.display = (channel === 'sms') ? 'none' : '';
-                }
-
                 document.querySelector('.email-actions').style.display = channel === 'email' ? '' : 'none';
                 document.querySelector('.whatsapp-actions').style.display = channel === 'whatsapp' ? '' : 'none';
                 document.querySelector('.sms-actions').style.display = channel === 'sms' ? '' : 'none';
-
-                const badge = document.getElementById('previewChannelBadge');
-                if (badge) {
-                    badge.textContent = channel.charAt(0).toUpperCase() + channel.slice(1);
-                    badge.className = 'badge ' + (channel === 'email' ? 'bg-primary' : (channel === 'whatsapp' ? 'bg-success' : 'bg-info'));
-                }
 
                 populateTemplatePicker(currentType, currentChannel);
                 applyTemplate(preserveExisting);
@@ -730,6 +670,51 @@
                 return emailBodyInput.value;
             }
 
+            function enableTinyMceForEmail() {
+                if (!window.tinymce || !emailBodyInput) return;
+                if (tinymce.get('emailBodyInput')) return;
+
+                tinymce.init({
+                    license_key: 'gpl',
+                    selector: '#emailBodyInput',
+                    menubar: false,
+                    height: 340,
+                    plugins: 'lists link table code autoresize',
+                    toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
+                    valid_elements: '*[*]',
+                    extended_valid_elements: 'style[type|media],link[rel|href|type|media],meta[charset|name|content]',
+                    setup: function (editor) {
+                        editor.on('BeforeSetContent', function (e) {
+                            e.content = normalizeHtmlForEditor(e.content || '');
+                        });
+                        editor.on('init', function () {
+                            editor.save();
+                            refreshEmailPreview();
+                        });
+                        editor.on('input change keyup setcontent undo redo ExecCommand NodeChange', function () {
+                            editor.save();
+                            refreshEmailPreview();
+                        });
+                    }
+                });
+            }
+
+            function disableTinyMceForTextarea() {
+                if (!window.tinymce) return;
+                const editor = tinymce.get('emailBodyInput');
+                if (!editor) return;
+                editor.save();
+                editor.remove();
+            }
+
+            function syncBodyEditorByChannel(channel) {
+                if (channel === 'email') {
+                    enableTinyMceForEmail();
+                    return;
+                }
+                disableTinyMceForTextarea();
+            }
+
             // Actions
             document.getElementById('copyToClipboard')?.addEventListener('click', function () {
                 const htmlContent = getActiveMessageBody();
@@ -756,27 +741,6 @@
                 document.body.removeChild(dummy);
                 alert('SMS copied to clipboard!');
             });
-
-            if (window.tinymce && emailBodyInput) {
-                tinymce.init({
-                    license_key: 'gpl',
-                    selector: '#emailBodyInput',
-                    menubar: false,
-                    height: 340,
-                    plugins: 'lists link table code autoresize',
-                    toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
-                    setup: function (editor) {
-                        editor.on('init', function () {
-                            editor.save();
-                            refreshEmailPreview();
-                        });
-                        editor.on('input change keyup setcontent undo redo ExecCommand NodeChange', function () {
-                            editor.save();
-                            refreshEmailPreview();
-                        });
-                    }
-                });
-            }
 
             const composeForm = document.getElementById('composeForm');
             const actionButtons = Array.from(composeForm?.querySelectorAll('button[type="submit"][name="action"]') || []);
@@ -837,6 +801,7 @@
                 btn.classList.toggle('is-active', btn.dataset.channel === currentChannel);
             });
 
+            syncBodyEditorByChannel(currentChannel);
             switchType(currentType, hasExistingDraft);
             switchChannel(currentChannel, hasExistingDraft);
             refreshEmailPreview();

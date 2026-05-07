@@ -350,6 +350,20 @@
                     <strong>Due Date:</strong>
                     {{ optional($invoice->due_date)->format('d M Y') ?? '-' }}
                 </div>
+
+                @if(!empty($invoice->order?->po_number))
+                    <div class="meta-row">
+                        <strong>PO Number:</strong>
+                        {{ $invoice->order->po_number }}
+                    </div>
+                @endif
+
+                @if(!empty($invoice->order?->po_date))
+                    <div class="meta-row">
+                        <strong>PO Date:</strong>
+                        {{ optional($invoice->order->po_date)->format('d M Y') ?? '-' }}
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -387,18 +401,6 @@
             @if(!empty(optional($cb)->gstin))
                 <div class="client-gstin">
                     <strong>GSTIN:</strong> {{ $cb->gstin }}
-                </div>
-            @endif
-
-            @if(!empty($invoice->order?->po_number))
-                <div class="client-gstin">
-                    <strong>PO Number:</strong> {{ $invoice->order->po_number }}
-                </div>
-            @endif
-
-            @if(!empty($invoice->order?->po_date))
-                <div class="client-gstin">
-                    <strong>PO Date:</strong> {{ optional($invoice->order->po_date)->format('d M Y') ?? '-' }}
                 </div>
             @endif
         </div>

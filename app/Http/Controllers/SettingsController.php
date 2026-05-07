@@ -575,12 +575,12 @@ class SettingsController extends Controller
         $validator = Validator::make($request->all(), [
             'template_type' => 'required|in:' . $templateTypes,
             'channel' => 'required|in:email,whatsapp,sms',
-            'name' => 'required|string|max:120',
+            'name' => 'nullable|required_if:channel,email|string|max:120',
             'template_id' => 'nullable|required_if:channel,sms,whatsapp|string|max:120',
             'meta_template_id' => 'nullable|string|max:160',
             'sender_id' => 'nullable|string|max:120',
             'subject' => 'nullable|string',
-            'body' => 'required|string',
+            'body' => 'nullable|required_if:channel,email|string',
             'is_active' => 'nullable|boolean',
         ]);
         if ($validator->fails()) {
@@ -588,28 +588,53 @@ class SettingsController extends Controller
             return redirect()->to(route('settings.index') . '#message-templates')
                 ->withErrors($validator)
                 ->with('mt_error_toast', $errorText)
+                ->with('mt_active_type', (string) $request->input('template_type', 'pi'))
+                ->with('mt_active_channel', (string) $request->input('channel', 'email'))
                 ->withInput();
         }
         $validated = $validator->validated();
+        $channel = (string) ($validated['channel'] ?? '');
+        $templateType = (string) ($validated['template_type'] ?? '');
+        $incomingTemplateId = trim((string) ($validated['template_id'] ?? ''));
+        $existingTemplate = MessageTemplate::query()
+            ->where('accountid', $accountid)
+            ->where('template_type', $templateType)
+            ->where('channel', $channel)
+            ->first();
+        $previousTemplateId = trim((string) ($existingTemplate?->template_id ?? ''));
+        $templateIdChanged = $previousTemplateId !== $incomingTemplateId;
+        $prefetchedCampioTemplate = null;
+        if (in_array($channel, ['sms', 'whatsapp'], true) && $incomingTemplateId !== '') {
+            $prefetchedCampioTemplate = $this->findCampioTemplateById($accountid, $channel, $incomingTemplateId);
+            if ($templateIdChanged && !is_array($prefetchedCampioTemplate)) {
+                return redirect()->to(route('settings.index') . '#message-templates')
+                    ->withErrors(['template_id' => 'Template ID not found in provider. Please verify and try again.'])
+                    ->with('mt_error_toast', 'Template ID not found in provider. Please verify and try again.')
+                    ->with('mt_active_type', $templateType)
+                    ->with('mt_active_channel', $channel)
+                    ->withInput();
+            }
+        }
 
-        DB::transaction(function () use ($accountid, $validated) {
+        DB::transaction(function () use ($accountid, $validated, $templateType, $prefetchedCampioTemplate, $templateIdChanged) {
             $channel = (string) ($validated['channel'] ?? '');
             $templateId = $validated['template_id'] ?? null;
-            $campioTemplate = null;
-            if (in_array($channel, ['sms', 'whatsapp'], true) && !empty($templateId)) {
-                $campioTemplate = $this->findCampioTemplateById($accountid, $channel, (string) $templateId);
-            }
+            $campioTemplate = $prefetchedCampioTemplate;
 
-            $resolvedName = $validated['name'];
-            $resolvedBody = $validated['body'];
+            $resolvedName = trim((string) ($validated['name'] ?? ''));
+            $resolvedBody = (string) ($validated['body'] ?? '');
             $resolvedSenderId = $validated['sender_id'] ?? null;
             $resolvedMetaTemplateId = null;
 
             if (is_array($campioTemplate)) {
-                if (!empty($campioTemplate['name'])) {
+                if ($templateIdChanged && !empty($campioTemplate['name'])) {
+                    $resolvedName = (string) $campioTemplate['name'];
+                } elseif ($resolvedName === '' && !empty($campioTemplate['name'])) {
                     $resolvedName = (string) $campioTemplate['name'];
                 }
-                if (!empty($campioTemplate['body'])) {
+                if ($templateIdChanged && !empty($campioTemplate['body'])) {
+                    $resolvedBody = (string) $campioTemplate['body'];
+                } elseif (trim($resolvedBody) === '' && !empty($campioTemplate['body'])) {
                     $resolvedBody = (string) $campioTemplate['body'];
                 }
                 if ($channel === 'sms' && empty($resolvedSenderId) && !empty($campioTemplate['sender_id'])) {
@@ -622,10 +647,20 @@ class SettingsController extends Controller
                 $resolvedMetaTemplateId = (string) $templateId;
             }
 
-            MessageTemplate::create([
+            if ($channel !== 'email') {
+                if ($resolvedName === '') {
+                    $resolvedName = ucfirst($channel) . ' Template ' . (string) $templateId;
+                }
+                if (trim($resolvedBody) === '') {
+                    $resolvedBody = '@{{client_name}}';
+                }
+            }
+
+            MessageTemplate::updateOrCreate([
                 'accountid' => $accountid,
-                'template_type' => $validated['template_type'],
+                'template_type' => $templateType,
                 'channel' => $channel,
+            ], [
                 'name' => $resolvedName,
                 'template_id' => $templateId,
                 'meta_template_id' => $resolvedMetaTemplateId,
@@ -651,12 +686,12 @@ class SettingsController extends Controller
 
         $validator = Validator::make($request->all(), [
             'channel' => 'required|in:email,whatsapp,sms',
-            'name' => 'required|string|max:120',
+            'name' => 'nullable|required_if:channel,email|string|max:120',
             'template_id' => 'nullable|required_if:channel,sms,whatsapp|string|max:120',
             'meta_template_id' => 'nullable|string|max:160',
             'sender_id' => 'nullable|string|max:120',
             'subject' => 'nullable|string',
-            'body' => 'required|string',
+            'body' => 'nullable|required_if:channel,email|string',
             'is_active' => 'nullable|boolean',
         ]);
         if ($validator->fails()) {
@@ -664,24 +699,51 @@ class SettingsController extends Controller
             return redirect()->to(route('settings.index') . '#message-templates')
                 ->withErrors($validator)
                 ->with('mt_error_toast', $errorText)
+                ->with('mt_active_type', (string) $request->input('template_type', (string) $template->template_type))
+                ->with('mt_active_channel', (string) $request->input('channel', 'email'))
                 ->withInput();
         }
         $validated = $validator->validated();
+        $channel = (string) ($validated['channel'] ?? '');
+        $templateType = (string) ($template->template_type ?? '');
+        $incomingTemplateId = trim((string) ($validated['template_id'] ?? ''));
+        $previousTemplateId = trim((string) ($template->template_id ?? ''));
+        $templateIdChanged = $previousTemplateId !== $incomingTemplateId;
+        $prefetchedCampioTemplate = null;
+        if (in_array($channel, ['sms', 'whatsapp'], true) && $incomingTemplateId !== '') {
+            $prefetchedCampioTemplate = $this->findCampioTemplateById($accountid, $channel, $incomingTemplateId);
+            if ($templateIdChanged && !is_array($prefetchedCampioTemplate)) {
+                return redirect()->to(route('settings.index') . '#message-templates')
+                    ->withErrors(['template_id' => 'Template ID not found in provider. Please verify and try again.'])
+                    ->with('mt_error_toast', 'Template ID not found in provider. Please verify and try again.')
+                    ->with('mt_active_type', $templateType)
+                    ->with('mt_active_channel', $channel)
+                    ->withInput();
+            }
+        }
 
-        DB::transaction(function () use ($template, $accountid, $validated) {
+        DB::transaction(function () use ($template, $validated, $prefetchedCampioTemplate, $templateIdChanged) {
             $channel = (string) ($validated['channel'] ?? '');
             $templateId = $validated['template_id'] ?? null;
-            $campioTemplate = null;
-            if (in_array($channel, ['sms', 'whatsapp'], true) && !empty($templateId)) {
-                $campioTemplate = $this->findCampioTemplateById($accountid, $channel, (string) $templateId);
-            }
+            $campioTemplate = $prefetchedCampioTemplate;
 
-            $resolvedName = $validated['name'];
-            $resolvedBody = $validated['body'];
+            $resolvedName = trim((string) ($validated['name'] ?? ''));
+            $resolvedBody = (string) ($validated['body'] ?? '');
             $resolvedSenderId = $validated['sender_id'] ?? null;
             $resolvedMetaTemplateId = null;
 
             if (is_array($campioTemplate)) {
+                // Refresh from provider when template ID changes; otherwise keep user-edited values.
+                if ($templateIdChanged && !empty($campioTemplate['name'])) {
+                    $resolvedName = (string) $campioTemplate['name'];
+                } elseif ($resolvedName === '' && !empty($campioTemplate['name'])) {
+                    $resolvedName = (string) $campioTemplate['name'];
+                }
+                if ($templateIdChanged && !empty($campioTemplate['body'])) {
+                    $resolvedBody = (string) $campioTemplate['body'];
+                } elseif (trim($resolvedBody) === '' && !empty($campioTemplate['body'])) {
+                    $resolvedBody = (string) $campioTemplate['body'];
+                }
                 if ($channel === 'sms' && empty($resolvedSenderId) && !empty($campioTemplate['sender_id'])) {
                     $resolvedSenderId = (string) $campioTemplate['sender_id'];
                 }
@@ -690,6 +752,15 @@ class SettingsController extends Controller
                 }
             } elseif ($channel === 'whatsapp') {
                 $resolvedMetaTemplateId = (string) $templateId;
+            }
+
+            if ($channel !== 'email') {
+                if ($resolvedName === '') {
+                    $resolvedName = $template->name ?: (ucfirst($channel) . ' Template ' . (string) $templateId);
+                }
+                if (trim($resolvedBody) === '') {
+                    $resolvedBody = $template->body ?: '@{{client_name}}';
+                }
             }
 
             $template->update([

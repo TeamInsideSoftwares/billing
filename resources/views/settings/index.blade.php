@@ -712,10 +712,26 @@
                     $allTemplates = collect();
                     foreach ($messageTemplatesByType as $t) { $allTemplates = $allTemplates->concat($t); }
                     $defaultTypeKey = array_key_first($messageTemplateTypes);
+                    $templateContextMap = [];
+                    foreach ($allTemplates as $tpl) {
+                        $ctxKey = ($tpl->template_type ?? '') . '|' . ($tpl->channel ?? '');
+                        if ($ctxKey !== '|') {
+                            $templateContextMap[$ctxKey] = [
+                                'templateid' => (string) ($tpl->templateid ?? ''),
+                                'template_type' => (string) ($tpl->template_type ?? ''),
+                                'channel' => (string) ($tpl->channel ?? ''),
+                                'name' => (string) ($tpl->name ?? ''),
+                                'subject' => (string) ($tpl->subject ?? ''),
+                                'body' => (string) ($tpl->body ?? ''),
+                                'template_id' => (string) ($tpl->template_id ?? ''),
+                                'sender_id' => (string) ($tpl->sender_id ?? ''),
+                            ];
+                        }
+                    }
                 @endphp
 
                 <div class="row align-items-stretch h-100">
-                    <div class="col-12 col-md-8 mt-editor-col d-flex h-100">
+                    <div class="col-12 col-md-12 mt-editor-col d-flex h-100">
                         <form method="POST" action="{{ route('message-templates.store') }}" class="message-template-form d-flex flex-column w-100 h-100" data-template-form="{{ $defaultTypeKey }}" data-store-action="{{ route('message-templates.store') }}" data-update-base="{{ url('settings/message-templates') }}">
                             @csrf
                             <input type="hidden" name="template_type" value="{{ $defaultTypeKey }}">
@@ -727,7 +743,6 @@
                                     <strong class="template-editor-title">Create template</strong>
                                     <p class="text-sm text-muted mb-0 template-editor-note">Fill the form to add a new template.</p>
                                 </div>
-                                <button type="button" class="secondary-button btn-sm template-reset-btn">New template</button>
                             </div>
 
                             <div class="mt-channel-pills d-flex gap-2 mb-4">
@@ -745,8 +760,8 @@
                             <div class="template-form-grid d-flex flex-column flex-grow-1">
                                 <div class="row g-3">
                                     <div class="col-12 col-md-6 form-group mb-3">
-                                        <label class="label-compact font-bold mb-1">Template Name *</label>
-                                        <input type="text" name="name" class="settings-input template-name-input" placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} Email Template" required>
+                                        <label class="label-compact font-bold mb-1">Template Name <span class="template-name-required-mark">*</span></label>
+                                        <input type="text" name="name" class="settings-input template-name-input" placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} Email Template">
                                     </div>
 
                                     <div class="col-12 col-md-6 form-group mb-3 template-subject-group">
@@ -773,8 +788,11 @@
                                 </div>
 
                                 <div class="form-group mb-3 col-span-2 flex-grow-1">
-                                    <label class="label-compact font-bold mb-1">Message Body *</label>
+                                    <label class="label-compact font-bold mb-1">Message Body <span class="template-body-required-mark">*</span></label>
                                     <textarea name="body" id="templateBodyInput-{{ $defaultTypeKey }}" rows="6" class="settings-input template-body-input h-100" placeholder="Hi @{{client_name}},&#10;Please find the details below."></textarea>
+                                    <p class="text-sm text-muted mt-2 mb-1 template-variable-only-note" style="display:none;">
+                                        For WhatsApp/SMS, message text is fixed by the provider template. Only keep/update dynamic variables here.
+                                    </p>
                                     <div class="mt-2 d-flex flex-wrap gap-2">
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{client_business_name}} (Client's Company)</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{client_contact_person}} (Client's Contact)</span>
@@ -798,7 +816,7 @@
                         </form>
                     </div>
 
-                    <div class="col-12 col-md-4 mt-template-list-col d-flex h-100">
+                    <div class="col-12 col-md-4 mt-template-list-col d-flex h-100" style="display:none !important;">
                         <div class="mt-template-list d-flex flex-column w-100 h-100">
                             <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
                                 <div>
@@ -1448,6 +1466,7 @@ document.addEventListener('DOMContentLoaded', function () {
             tab.classList.add('active');
             // Update URL hash without jumping
             window.history.replaceState(null, null, `#${tabId}`);
+            document.dispatchEvent(new CustomEvent('settings:tab-activated', { detail: { tabId } }));
         }
     }
 
@@ -1771,10 +1790,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const typeTabs = Array.from(document.querySelectorAll('.mt-type-tab-btn'));
     const templateTypeLabels = @json($messageTemplateTypes);
     const defaultTemplateType = @json(array_key_first($messageTemplateTypes));
-    const oldTemplateType = @json(old('template_type'));
-    const oldTemplateChannel = @json(old('channel'));
+    const oldTemplateType = @json(old('template_type', session('mt_active_type')));
+    const oldTemplateChannel = @json(old('channel', session('mt_active_channel')));
     const mtErrorToast = @json(session('mt_error_toast'));
     const mtStateKey = 'settings_message_template_state_v1';
+    const templateContextMap = @json($templateContextMap ?? []);
 
     function saveMtState(type, channel) {
         try {
@@ -1809,6 +1829,88 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         const input = document.getElementById(textareaId);
         if (input) input.value = value || '';
+    }
+
+    function htmlToPlainText(value) {
+        if (!value) return '';
+        const withBreaks = String(value)
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/p>/gi, '\n')
+            .replace(/<p[^>]*>/gi, '');
+        const temp = document.createElement('div');
+        temp.innerHTML = withBreaks;
+        return (temp.textContent || temp.innerText || '').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    function toggleTemplateBodyEditor(form, channel) {
+        if (!form) return;
+        const bodyInput = form.querySelector('.template-body-input');
+        const nameInput = form.querySelector('.template-name-input');
+        const nameRequiredMark = form.querySelector('.template-name-required-mark');
+        const bodyRequiredMark = form.querySelector('.template-body-required-mark');
+        const variableOnlyNote = form.querySelector('.template-variable-only-note');
+        if (!bodyInput) return;
+
+        const isEmail = channel === 'email';
+        form.noValidate = !isEmail;
+        if (nameInput) {
+            nameInput.required = isEmail;
+            if (!isEmail) nameInput.removeAttribute('required');
+            nameInput.setAttribute('aria-required', isEmail ? 'true' : 'false');
+            nameInput.setCustomValidity('');
+        }
+        bodyInput.required = isEmail;
+        if (!isEmail) bodyInput.removeAttribute('required');
+        bodyInput.setAttribute('aria-required', isEmail ? 'true' : 'false');
+        bodyInput.setCustomValidity('');
+        if (nameRequiredMark) nameRequiredMark.style.display = isEmail ? '' : 'none';
+        if (bodyRequiredMark) bodyRequiredMark.style.display = isEmail ? '' : 'none';
+        bodyInput.readOnly = false;
+        bodyInput.style.backgroundColor = '';
+        bodyInput.style.cursor = '';
+        if (variableOnlyNote) {
+            variableOnlyNote.style.display = isEmail ? 'none' : 'block';
+        }
+
+        if (!window.tinymce) return;
+
+        const editor = tinymce.get(bodyInput.id);
+        if (isEmail) {
+            const messageTemplatesTab = document.getElementById('message-templates');
+            const isTemplatesTabVisible = messageTemplatesTab?.classList.contains('active');
+            if (!isTemplatesTabVisible) return;
+            if (!editor) {
+                tinymce.init({
+                    license_key: 'gpl',
+                    selector: '#' + bodyInput.id,
+                    menubar: false,
+                    height: 280,
+                    plugins: 'lists link table code autoresize',
+                    toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
+                });
+            }
+            return;
+        }
+
+        if (editor) {
+            editor.save();
+            editor.remove();
+        }
+        bodyInput.value = htmlToPlainText(bodyInput.value);
+    }
+
+    function ensureTemplateEditorReady(form, tries = 12) {
+        if (!form) return;
+        const channel = form.querySelector('.template-channel-input')?.value || 'email';
+        if (channel !== 'email') return;
+
+        if (window.tinymce) {
+            toggleTemplateBodyEditor(form, 'email');
+            return;
+        }
+
+        if (tries <= 0) return;
+        setTimeout(() => ensureTemplateEditorReady(form, tries - 1), 150);
     }
 
     function decodeTemplateBody(encodedBody) {
@@ -1853,9 +1955,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (channelInput) channelInput.value = currentChannel;
         if (templateIdInput) templateIdInput.value = '';
         if (methodInput) methodInput.remove();
-        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save New Template';
-        if (editorTitle) editorTitle.textContent = 'Create template';
-        if (editorNote) editorNote.textContent = 'Fill the form to add a new template.';
+        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Template';
+        if (editorTitle) editorTitle.textContent = 'Template';
+        if (editorNote) editorNote.textContent = 'One template per type and channel.';
         if (nameInput) {
             nameInput.value = '';
             nameInput.placeholder = typeLabel + ' ' + channelLabel + ' Template';
@@ -1878,6 +1980,18 @@ document.addEventListener('DOMContentLoaded', function() {
             bodyInput.placeholder = 'Hi @{{client_name}},\nPlease find the details below.';
             setTinyContent(bodyInput.id, '');
         }
+        const contextKey = currentType + '|' + currentChannel;
+        const contextTemplate = templateContextMap[contextKey] || null;
+        if (contextTemplate) {
+            if (nameInput) nameInput.value = contextTemplate.name || '';
+            if (subjectInput) subjectInput.value = contextTemplate.subject || '';
+            if (externalIdInput) externalIdInput.value = contextTemplate.template_id || '';
+            if (waTemplateIdInput) waTemplateIdInput.value = contextTemplate.template_id || '';
+            if (senderIdInput) senderIdInput.value = contextTemplate.sender_id || '';
+            if (bodyInput) setTinyContent(bodyInput.id, contextTemplate.body || '');
+            if (editorNote) editorNote.textContent = 'Editing existing template for this type/channel.';
+        }
+        toggleTemplateBodyEditor(form, currentChannel);
 
         saveMtState(currentType, currentChannel);
     }
@@ -1931,6 +2045,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (waTemplateIdInput) waTemplateIdInput.value = template.template_id || '';
         if (senderIdInput) senderIdInput.value = template.sender_id || '';
         if (bodyInput) setTinyContent(bodyInput.id, template.body || '');
+        toggleTemplateBodyEditor(form, channel);
         if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Update Template';
         if (editorTitle) editorTitle.textContent = 'Editing template';
         if (editorNote) editorNote.textContent = template.name || '';
@@ -1959,31 +2074,25 @@ document.addEventListener('DOMContentLoaded', function() {
         if (countEl) countEl.textContent = visible + ' saved';
     }
 
+    function getCurrentTemplateType() {
+        const activeTypeTab = document.querySelector('.mt-type-tab-btn.is-active');
+        return activeTypeTab?.dataset.type || form?.querySelector('input[name="template_type"]')?.value || defaultTemplateType;
+    }
+
+    function setActiveChannelPill(channel) {
+        document.querySelectorAll('.mt-channel-pill-btn').forEach((btn) => {
+            btn.classList.toggle('is-active', btn.dataset.channel === channel);
+        });
+    }
+
     document.querySelectorAll('.mt-channel-pill-btn').forEach((tab) => {
         tab.addEventListener('click', function () {
-            const type = this.dataset.type;
+            const type = getCurrentTemplateType();
             const channel = this.dataset.channel;
-            // toggle pills for same type inside the form
-            document.querySelectorAll('.mt-channel-pill-btn').forEach((btn) => {
-                if (btn.dataset.type === type) {
-                    const active = btn.dataset.channel === channel;
-                    btn.classList.toggle('is-active', active);
-                }
-            });
+            // single pill group: switch by channel only
+            setActiveChannelPill(channel);
             resetTemplateForm(form, type, channel);
             saveMtState(type, channel);
-        });
-    });
-
-    document.querySelectorAll('.template-reset-btn').forEach((btn) => {
-        btn.addEventListener('click', function () {
-            const activeTab = document.querySelector('.mt-type-tab-btn.is-active');
-            const type = activeTab?.dataset.type || defaultTemplateType;
-            // reset channel pills to email for this type
-            document.querySelectorAll('.mt-channel-pill-btn').forEach((pill) => {
-                if (pill.dataset.type === type) pill.classList.toggle('is-active', pill.dataset.channel === 'email');
-            });
-            resetTemplateForm(form, type, 'email');
         });
     });
 
@@ -2090,12 +2199,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // update form type and reset
             if (form) {
                 form.querySelector('input[name="template_type"]').value = this.dataset.type;
-                // reset channel pills to email for this type
-                document.querySelectorAll('.mt-channel-pill-btn').forEach((btn) => {
-                    if (btn.dataset.type === this.dataset.type) {
-                        btn.classList.toggle('is-active', btn.dataset.channel === 'email');
-                    }
-                });
+                // reset channel pills to email
+                setActiveChannelPill('email');
                 resetTemplateForm(form, this.dataset.type, 'email');
                 // also filter the right-side list to the selected type
                 updateTemplateListForType(this.dataset.type);
@@ -2113,7 +2218,16 @@ document.addEventListener('DOMContentLoaded', function() {
         ? oldTemplateChannel
         : (['email', 'whatsapp', 'sms'].includes(persistedMtState?.channel) ? persistedMtState.channel : 'email');
     setActiveTab(typeTabs, 'type', initialTemplateType);
-    if (form) resetTemplateForm(form, form.querySelector('input[name="template_type"]')?.value || initialTemplateType, initialTemplateChannel);
+    setActiveChannelPill(initialTemplateChannel);
+    if (form) resetTemplateForm(form, initialTemplateType, initialTemplateChannel);
+
+    document.addEventListener('settings:tab-activated', function (event) {
+        if (event.detail?.tabId !== 'message-templates' || !form) return;
+        const currentChannel = form.querySelector('.template-channel-input')?.value || 'email';
+        requestAnimationFrame(() => {
+            toggleTemplateBodyEditor(form, currentChannel);
+        });
+    });
 
     document.querySelectorAll('.js-template-edit').forEach((btn) => {
         btn.addEventListener('click', function () {
@@ -2140,9 +2254,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // ensure channel pills reflect the template channel
             document.querySelectorAll('.mt-channel-pill-btn').forEach((pill) => {
-                if (pill.dataset.type === (template.template_type || type) || !pill.dataset.type) {
-                    pill.classList.toggle('is-active', pill.dataset.channel === template.channel);
-                }
+                pill.classList.toggle('is-active', pill.dataset.channel === template.channel);
             });
 
             enterEditMode(form, template, template.template_type || type);
@@ -2150,29 +2262,41 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    if (window.tinymce && document.querySelector('.template-body-input')) {
-        tinymce.init({
-            license_key: 'gpl',
-            selector: '.template-body-input',
-            menubar: false,
-            height: 280,
-            plugins: 'lists link table code autoresize',
-            toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
-        }).then(() => {
-            if (form) resetTemplateForm(form, form.querySelector('input[name="template_type"]')?.value || defaultTemplateType, 'email');
-        });
+    if (window.tinymce && document.querySelector('.template-body-input') && form) {
+        const currentChannel = form.querySelector('.template-channel-input')?.value || 'email';
+        toggleTemplateBodyEditor(form, currentChannel);
     }
 
     // final initial sync
     setActiveTab(typeTabs, 'type', initialTemplateType);
-    if (form) resetTemplateForm(form, form.querySelector('input[name="template_type"]')?.value || initialTemplateType, initialTemplateChannel);
+    setActiveChannelPill(initialTemplateChannel);
+    if (form) resetTemplateForm(form, initialTemplateType, initialTemplateChannel);
     updateTemplateListForType(initialTemplateType);
+    ensureTemplateEditorReady(form);
 
     templateForms.forEach((form) => {
         form.addEventListener('submit', function () {
             const channel = form.querySelector('.template-channel-input')?.value || '';
             const waTemplateIdInput = form.querySelector('.template-wa-template-id-input');
             const templateIdInput = form.querySelector('.template-external-id-input');
+            const bodyInput = form.querySelector('.template-body-input');
+            const nameInput = form.querySelector('.template-name-input');
+
+            const isEmail = channel === 'email';
+            form.noValidate = !isEmail;
+            if (bodyInput) {
+                bodyInput.required = isEmail;
+                if (!isEmail) bodyInput.removeAttribute('required');
+                bodyInput.setAttribute('aria-required', isEmail ? 'true' : 'false');
+                bodyInput.setCustomValidity('');
+            }
+            if (nameInput) {
+                nameInput.required = isEmail;
+                if (!isEmail) nameInput.removeAttribute('required');
+                nameInput.setAttribute('aria-required', isEmail ? 'true' : 'false');
+                nameInput.setCustomValidity('');
+            }
+
             if (channel === 'whatsapp' && waTemplateIdInput && templateIdInput) {
                 templateIdInput.value = waTemplateIdInput.value || '';
             }

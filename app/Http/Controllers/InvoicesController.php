@@ -58,6 +58,12 @@ class InvoicesController extends Controller
 
     private function renderMessageTemplate(string $value, Invoice $invoice, ?string $companyName = null): string
     {
+        $replace = $this->buildInvoiceMessageTemplateReplacements($invoice, $companyName);
+        return strtr($value, $replace);
+    }
+
+    private function buildInvoiceMessageTemplateReplacements(Invoice $invoice, ?string $companyName = null): array
+    {
         $clientBusinessName = trim((string) ($invoice->client->business_name ?? ''));
         $clientContactPerson = trim((string) ($invoice->client->contact_name ?? ''));
         $clientName = trim((string) ($clientBusinessName !== '' ? $clientBusinessName : $clientContactPerson));
@@ -73,7 +79,7 @@ class InvoicesController extends Controller
         $accountBillingDetail = AccountBillingDetail::where('accountid', $accountid)->first();
         $billingName = $accountBillingDetail->billing_name ?? ($companyName ?? '');
 
-        $replace = [
+        return [
             // Client info - clear unambiguous tags
             '{{client_business_name}}' => $clientBusinessName,
             '{{client_contact_person}}' => $clientContactPerson,
@@ -93,8 +99,32 @@ class InvoicesController extends Controller
             '{{company_name}}' => $billingName,
             '{{account_name}}' => $billingName,
         ];
+    }
 
-        return strtr($value, $replace);
+    private function extractCampioTemplateVariables(string $templateBody, Invoice $invoice, ?string $companyName = null): array
+    {
+        $body = trim($templateBody);
+        if ($body === '') {
+            return [];
+        }
+
+        preg_match_all('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', $body, $matches);
+        $tokens = $matches[1] ?? [];
+        if (empty($tokens)) {
+            return [];
+        }
+
+        $replace = $this->buildInvoiceMessageTemplateReplacements($invoice, $companyName);
+        $variables = [];
+        foreach ($tokens as $token) {
+            $placeholder = '{{' . $token . '}}';
+            $resolved = array_key_exists($placeholder, $replace)
+                ? (string) $replace[$placeholder]
+                : (string) $token;
+            $variables[] = $this->sanitizeForCampioText($resolved);
+        }
+
+        return $variables;
     }
 
     private function buildPublicAttachmentUrl(string $pathOrUrl): string
@@ -338,27 +368,14 @@ class InvoicesController extends Controller
         if ($channel === 'email') {
             $record['email'] = $toEmail;
         } else {
-            // Send both local and E.164 variants to avoid downstream gateway format mismatches.
+            // Phone number without country code for Campio.
             $phoneDigits = preg_replace('/[^0-9]/', '', (string) $phone);
             $localPhone = $phoneDigits;
             if (strlen($phoneDigits) === 12 && str_starts_with($phoneDigits, '91')) {
                 $localPhone = substr($phoneDigits, 2);
             }
 
-            $phoneE164 = trim((string) $phone);
-            if ($phoneE164 !== '' && !str_starts_with($phoneE164, '+')) {
-                if (strlen($phoneDigits) === 10) {
-                    $phoneE164 = '+91' . $phoneDigits;
-                } elseif (strlen($phoneDigits) === 12 && str_starts_with($phoneDigits, '91')) {
-                    $phoneE164 = '+' . $phoneDigits;
-                } else {
-                    $phoneE164 = '+' . $phoneDigits;
-                }
-            }
-
             $record['mobile'] = $localPhone !== '' ? $localPhone : $phone;
-            $record['phone'] = $phoneE164 !== '' ? $phoneE164 : $phone;
-            $record['mobile_e164'] = $phoneE164 !== '' ? $phoneE164 : null;
         }
 
         return $record;
@@ -376,14 +393,13 @@ class InvoicesController extends Controller
         $token = trim((string) env('CAMPIO_AUTH_TOKEN', ''));
         $apiKey = trim((string) env('CAMPIO_API_KEY', ''));
 
-        // Log the request
+        // Log the full payload for debugging
         \Illuminate\Support\Facades\Log::info('Campio: Sending ' . strtoupper($channel), [
             'endpoint' => $endpoint,
             'account_id' => $payload['account_id'] ?? 'MISSING',
-            'credit_transid' => $payload['credit_transid'] ?? null,
             'campaign_name' => $payload['campaign_name'] ?? '',
             'record_count' => count($payload['records'] ?? []),
-            'record_0' => $payload['records'][0] ?? 'none',
+            'full_payload' => $payload,
         ]);
 
         $request = Http::acceptJson()->asJson()->timeout(30);
@@ -498,7 +514,15 @@ class InvoicesController extends Controller
 
     private function sanitizeComposedMessageBody(string $body): string
     {
-        $text = str_replace(["\r\n", "\r"], "\n", $body);
+        $text = trim($body);
+
+        // If a full HTML document was pasted/saved, keep only <body> inner HTML.
+        if (preg_match('/<body[^>]*>([\s\S]*?)<\/body>/i', $text, $matches) === 1) {
+            $text = (string) ($matches[1] ?? '');
+        }
+
+        $text = str_replace(["\r\n", "\r"], "\n", $text);
+        $text = str_replace(["\\r\\n", "\\n"], "\n", $text);
 
         // Remove auto-appended legacy sections that list raw URLs.
         $text = preg_replace('/\n{2,}(Attachments:|Documents:)\n(?:[^\n]*https?:\/\/[^\n]*\n?)*/i', "\n", $text) ?? $text;
@@ -516,6 +540,7 @@ class InvoicesController extends Controller
     {
         $value = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $value = str_replace(["\r\n", "\r"], "\n", $value);
+        $value = str_replace(["\\r\\n", "\\n"], "\n", $value);
         // Remove 4-byte Unicode chars (emoji etc.) for non-utf8mb4 downstream DB columns.
         $value = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $value) ?? $value;
         // Remove control chars except tab/newline.
@@ -1959,6 +1984,7 @@ class InvoicesController extends Controller
                 'name' => (string) $row->name,
                 'subject' => $this->renderMessageTemplate((string) ($row->subject ?? ''), $invoice, $account?->name),
                 'body' => $this->renderMessageTemplate((string) ($row->body ?? ''), $invoice, $account?->name),
+                'raw_body' => (string) ($row->body ?? ''),
             ];
 
             if (!in_array($channel, $availableChannelsByType[$type], true)) {
@@ -1974,10 +2000,12 @@ class InvoicesController extends Controller
             'pi' => [
                 'subject' => 'Invoice ' . ((string) ($invoice->pi_number ?: $invoice->invoice_number)),
                 'body' => $defaultBody,
+                'raw_body' => '',
             ],
             'ti' => [
                 'subject' => 'Invoice ' . ((string) ($invoice->ti_number ?: $invoice->invoice_number)),
                 'body' => $defaultBody,
+                'raw_body' => '',
             ],
         ];
 
@@ -1987,10 +2015,8 @@ class InvoicesController extends Controller
             $defaultChannel = 'email';
         }
 
-        $defaultTypeChannels = $availableChannelsByType[$defaultType] ?? [];
-        if (!in_array($defaultChannel, $defaultTypeChannels, true) && !empty($defaultTypeChannels)) {
-            $defaultChannel = $defaultTypeChannels[0];
-        }
+        // Keep the user-requested channel even if no template exists for it.
+        // In that case we use fallback template content.
 
         $channelTemplate = $firstTemplateByContext[$defaultType][$defaultChannel] ?? null;
         $channelTemplateSubject = trim((string) ($channelTemplate['subject'] ?? '')) ?: null;
@@ -2113,7 +2139,7 @@ class InvoicesController extends Controller
             'invoice_emailid' => 'nullable|exists:invoice_emails,invoice_emailid',
             'action' => 'nullable|in:save,send',
             'channel' => 'required|in:email,whatsapp,sms',
-            'selected_templateid' => 'nullable|string|size:6',
+            'selected_templateid' => 'nullable|string|max:20',
             'phone' => 'nullable|string|max:20',
             'subject' => 'nullable|string|max:255',
             'body' => 'nullable|string',
@@ -2197,14 +2223,6 @@ class InvoicesController extends Controller
         $action = $validated['action'] ?? 'save';
         $isSendAction = $action === 'send';
         $finalCustomAttachmentPath = $customAttachmentPath ?? $emailDraft->custom_attachment_path;
-        $creditBaseRef = trim((string) (
-            $invoice->invoice_number
-            ?: $invoice->pi_number
-            ?: $invoice->ti_number
-            ?: $invoice->invoiceid
-        ));
-        $creditBaseRef = preg_replace('/[^A-Za-z0-9]/', '', $creditBaseRef) ?: 'DOC';
-        $creditTransId = $creditBaseRef . '-' . now()->format('YmdHisv');
 
         // For non-email channels, resolve template tags.
         $finalBody = $this->sanitizeComposedMessageBody((string) ($validated['body'] ?? ''));
@@ -2243,23 +2261,22 @@ class InvoicesController extends Controller
             }
 
             $selectedTemplateId = trim((string) ($validated['selected_templateid'] ?? ''));
-            $channelTemplateConfig = MessageTemplate::query()
+            $channelTemplateQuery = MessageTemplate::query()
                 ->where('accountid', $currentAccountId)
                 ->where('template_type', $selectedType)
                 ->where('channel', $channel)
-                ->where('is_active', true)
-                ->when($selectedTemplateId !== '', function ($query) use ($selectedTemplateId) {
-                    $query->where('templateid', $selectedTemplateId);
-                })
-                ->first();
+                ->where('is_active', true);
 
-            if (!$channelTemplateConfig && $selectedTemplateId !== '') {
-                $channelTemplateConfig = MessageTemplate::query()
-                    ->where('accountid', $currentAccountId)
-                    ->where('templateid', $selectedTemplateId)
-                    ->where('template_type', $selectedType)
-                    ->where('channel', $channel)
-                    ->first();
+            if ($selectedTemplateId !== '') {
+                $channelTemplateQuery->where('templateid', $selectedTemplateId);
+            }
+
+            $channelTemplateConfig = $channelTemplateQuery->first();
+
+            if ($selectedTemplateId !== '' && !$channelTemplateConfig) {
+                return back()->withErrors([
+                    'selected_templateid' => 'Selected template is invalid for this channel/type.',
+                ])->withInput();
             }
 
             // Build document links so WhatsApp message includes invoice PDFs like email attachments.
@@ -2283,22 +2300,18 @@ class InvoicesController extends Controller
                 ];
             }
 
-            // Clean HTML for messaging
-            $plainBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $finalBody));
-
-            // Append invoice document links only for WhatsApp (SMS should not carry attachments).
-            if ($channel === 'whatsapp' && !empty($documentLinks)) {
-                $plainBody .= "\n\nDocuments:\n";
-                foreach ($documentLinks as $doc) {
-                    $plainBody .= '- ' . $doc['label'] . ': ' . $doc['url'] . "\n";
-                }
-            }
+            // Clean HTML for messaging while preserving readable line breaks.
+            $plainBodyHtml = str_replace(['<br>', '<br/>', '<br />'], "\n", $finalBody);
+            $plainBodyHtml = preg_replace('/<\/(p|div|li|h[1-6])>/i', "\n", (string) $plainBodyHtml) ?? (string) $plainBodyHtml;
+            $plainBodyHtml = preg_replace('/<(ul|ol)[^>]*>/i', "\n", (string) $plainBodyHtml) ?? (string) $plainBodyHtml;
+            $plainBody = trim(strip_tags((string) $plainBodyHtml));
             $plainBody = $this->sanitizeForCampioText($plainBody);
+            $plainBody = str_replace("\n", "\r\n", $plainBody);
 
+            // Build payload - for WhatsApp with template, don't include message body
             $payload = [
                 'account_id' => $currentAccountId,
                 'campaign_name' => '',
-                'credit_transid' => $creditTransId,
                 'schedule_at' => now()->toIso8601String(),
                 'message' => $plainBody,
                 'records' => [
@@ -2310,14 +2323,45 @@ class InvoicesController extends Controller
             if (!empty($channelTemplateConfig?->template_id)) {
                 $payload['template_id'] = (string) $channelTemplateConfig->template_id;
             }
+            if (!empty($channelTemplateConfig?->meta_template_id)) {
+                $payload['meta_template_id'] = (string) $channelTemplateConfig->meta_template_id;
+            } elseif (!empty($channelTemplateConfig?->template_id)) {
+                $payload['meta_template_id'] = (string) $channelTemplateConfig->template_id;
+            }
             if (!empty($channelTemplateConfig?->sender_id)) {
                 $payload['sender_id'] = (string) $channelTemplateConfig->sender_id;
             }
-            if ($channel === 'whatsapp' && !empty($channelTemplateConfig?->meta_template_id)) {
-                $payload['meta_template_id'] = (string) $channelTemplateConfig->meta_template_id;
+            if (!empty($channelTemplateConfig?->template_id)) {
+                $accountName = (string) (optional(\App\Models\Account::find($currentAccountId))->name ?? '');
+                $templateVariables = $this->extractCampioTemplateVariables((string) ($channelTemplateConfig->body ?? ''), $invoice, $accountName);
+                if (!empty($templateVariables)) {
+                    $payload['variables'] = $templateVariables;
+                    $payload['dynamic_context'] = [
+                        'fields' => collect($templateVariables)->values()->map(
+                            fn($value, $index) => [
+                                // Campio scheduler resolves WhatsApp template vars only for Body_/Header_/Button_ prefixes.
+                                'key' => 'Body_' . ((int) $index + 1),
+                                'type' => 'custom',
+                                'value' => (string) $value,
+                            ]
+                        )->all(),
+                    ];
+                }
             }
             if ($channel === 'whatsapp' && !empty($documentLinks)) {
                 $payload['media_url'] = (string) ($documentLinks[0]['url'] ?? '');
+                if ($payload['media_url'] !== '' && !str_starts_with(strtolower($payload['media_url']), 'https://')) {
+                    return back()->withErrors([
+                        'general' => 'WhatsApp media delivery requires a public HTTPS document URL. Current PDF URL is HTTP. Please enable SSL/HTTPS for this domain, then try again.',
+                    ])->withInput();
+                }
+                if ($payload['media_url'] !== '') {
+                    if (!isset($payload['dynamic_context']) || !is_array($payload['dynamic_context'])) {
+                        $payload['dynamic_context'] = [];
+                    }
+                    // Campio WhatsApp job reads media_url from dynamic_context for header media templates.
+                    $payload['dynamic_context']['media_url'] = $payload['media_url'];
+                }
             }
 
             $campioResult = $this->sendViaCampio($channel, $payload);
@@ -2373,7 +2417,6 @@ class InvoicesController extends Controller
         $payload = [
             'account_id' => $currentAccountId,
             'campaign_name' => '',
-            'credit_transid' => $creditTransId,
             'schedule_at' => now()->toIso8601String(),
             'subject' => (string) ($validated['subject'] ?? ''),
             'message' => $emailMessage,
