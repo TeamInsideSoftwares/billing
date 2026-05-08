@@ -187,12 +187,14 @@
     const itemsDataInput = document.getElementById('step4_items_data');
     const invoiceNumberInput = document.getElementById('step4_invoice_number');
     const invoiceidInput = document.getElementById('step4_invoiceid');
+    const renewedItemIdsInput = document.getElementById('step4_renewed_item_ids');
     const tcTypeBadge = document.getElementById('tcTypeBadge');
     const currencyCodeInput = document.getElementById('step4_currency_code');
     const pdfVersionsList = document.getElementById('pdfVersionsList');
     const pdfVersionsMeta = document.getElementById('pdfVersionsMeta');
     const sameStateGstForInvoice = @json($sameStateGstForInvoice);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const renewalFinalIdsStorageKey = `invoice-renewal-final-ids:${clientId}`;
 
     @php
         $signatureUploadPath = optional($accountBillingDetail)->signature_upload;
@@ -374,6 +376,25 @@
         return `${currency} ${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     }
 
+    function syncRenewedItemIdsInput() {
+        if (!renewedItemIdsInput) return;
+        if (invoiceFor !== 'renewal') {
+            renewedItemIdsInput.value = '';
+            return;
+        }
+
+        try {
+            const stored = window.sessionStorage.getItem(renewalFinalIdsStorageKey);
+            const renewedIds = JSON.parse(stored || '[]');
+            renewedItemIdsInput.value = Array.isArray(renewedIds)
+                ? JSON.stringify(renewedIds.filter(Boolean))
+                : '[]';
+        } catch (error) {
+            console.warn('Unable to read renewal final ids:', error);
+            renewedItemIdsInput.value = '[]';
+        }
+    }
+
     function openTermModal() {
         addTermError.style.display = 'none';
         addTermError.textContent = '';
@@ -449,6 +470,7 @@
                 if (btnApplyTC && data.draft.invoiceid) btnApplyTC.style.display = 'inline-block';
 
                 updateHeaderNumberBadge();
+                syncRenewedItemIdsInput();
 
                 updateDownloadButtons(data.draft.invoiceid, data.draft.invoice_number);
                 loadPdfVersions(data.draft.invoiceid);
@@ -466,6 +488,7 @@
                 const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
                 if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
                 updateHeaderNumberBadge();
+                syncRenewedItemIdsInput();
                 loadPdfVersions(invoiceidInput.value || draftId);
                 updateInvoicePreview();
             }
@@ -481,6 +504,7 @@
             const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
             if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
             updateHeaderNumberBadge();
+            syncRenewedItemIdsInput();
             loadPdfVersions(invoiceidInput.value || draftId);
             updateInvoicePreview();
         });
@@ -652,7 +676,10 @@
                     'X-CSRF-TOKEN': csrfToken,
                     'Accept': 'application/json',
                 },
-                body: JSON.stringify({ terms: selectedTerms }),
+                body: JSON.stringify({
+                    terms: selectedTerms,
+                    renewed_item_ids: renewedItemIdsInput?.value || '[]',
+                }),
             })
             .then(r => r.json())
             .then(data => {
@@ -801,7 +828,11 @@
             return;
         }
 
-        window.location.href = "{{ url('/invoices') }}/" + invoiceid + "/email-compose";
+        const composeUrl = new URL("{{ url('/invoices') }}/" + invoiceid + "/email-compose", window.location.origin);
+        if ((renewedItemIdsInput?.value || '').trim() !== '') {
+            composeUrl.searchParams.set('renewed_item_ids', renewedItemIdsInput.value);
+        }
+        window.location.href = composeUrl.toString();
     });
 
     // Digital Signed button
@@ -885,6 +916,7 @@
         loadPdfVersions(draftId);
     }
     syncTaxInvoiceButtons(invoiceidInput.value || draftId);
+    syncRenewedItemIdsInput();
     loadItems();
 })();
 </script>

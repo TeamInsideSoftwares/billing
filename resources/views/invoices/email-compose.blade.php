@@ -24,7 +24,7 @@
                     style="width:36px;height:36px;background:#e0e7ff;color:#4f46e5;">
                     <i class="fas fa-user"></i>
                 </div>
-                <div class="flex-grow-1">
+                <div class="grow">
                     <div class="fw-semibold text-dark">{{ $clientName }}</div>
                     @if($clientEmail)
                         <div class="text-muted small">{{ $clientEmail }}</div>
@@ -175,44 +175,44 @@
                                 <div class="small fw-semibold text-muted mb-1">Attachments</div>
                                 <div id="previewAttachments" class="small text-break"></div>
                             </div>
+
+                            @php
+                                $sendSuccessMeta = session('send_success_meta');
+                                $shouldShowPostSendActions = !empty($sendSuccessMeta) || $isAlreadySent;
+                                $resolvedAttachmentType = (string) (
+                                    $sendSuccessMeta['attachment_type']
+                                    ?? ($composeEmail->attachment_type ?? ($prefillAttachmentType ?? $defaultType))
+                                );
+                                $resolvedAttachmentType = in_array($resolvedAttachmentType, ['pi', 'ti'], true) ? $resolvedAttachmentType : $defaultType;
+                                $successPdfType = $resolvedAttachmentType === 'ti' ? 'tax_invoice' : 'pi';
+                                $resolvedChannel = strtoupper((string) ($sendSuccessMeta['channel'] ?? ($composeEmail->channel ?? 'email')));
+                                $resolvedDocument = $resolvedAttachmentType === 'ti' ? 'Tax Invoice (TI)' : 'Proforma Invoice (PI)';
+                                $resolvedSentAt = !empty($sendSuccessMeta['sent_at'])
+                                    ? (string) $sendSuccessMeta['sent_at']
+                                    : ($composeEmail?->sent_at?->format('d M Y, h:i A') ?? null);
+                            @endphp
+                            @if ($shouldShowPostSendActions)
+                                <div class="mt-4 pt-3 border-top">
+                                    <div class="small text-success fw-semibold mb-2">
+                                        {{ $sendSuccessMeta['document'] ?? $resolvedDocument }} sent via {{ $resolvedChannel }}
+                                        @if(!empty($resolvedSentAt))
+                                            on {{ $resolvedSentAt }}
+                                        @endif
+                                    </div>
+                                    <div class="d-flex flex-row flex-wrap gap-2">
+                                        <a href="{{ route('invoices.show', ['invoice' => $invoice->invoiceid, 'c' => $invoice->clientid]) }}" class="primary-button small px-2 grow text-center" style="font-size: 0.8rem;">View Invoice</a>
+                                        <a href="{{ route('payments.create', ['clientid' => $invoice->clientid, 'invoiceid' => $invoice->invoiceid]) }}" class="primary-button small px-2 grow text-center" style="font-size: 0.8rem;">Record Payment</a>
+                                        <a href="{{ route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => $successPdfType]) }}" class="secondary-button small px-2 grow text-center" style="font-size: 0.8rem;">Download PDF</a>
+                                        <a href="{{ route('invoices.index', ['c' => $invoice->clientid]) }}" class="secondary-button small px-2 grow text-center" style="font-size: 0.8rem;">Back to Invoices</a>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
 
             </div>
         </form>
-
-        @php
-            $sendSuccessMeta = session('send_success_meta');
-            $shouldShowPostSendActions = !empty($sendSuccessMeta) || $isAlreadySent;
-            $resolvedAttachmentType = (string) (
-                $sendSuccessMeta['attachment_type']
-                ?? ($composeEmail->attachment_type ?? ($prefillAttachmentType ?? $defaultType))
-            );
-            $resolvedAttachmentType = in_array($resolvedAttachmentType, ['pi', 'ti'], true) ? $resolvedAttachmentType : $defaultType;
-            $successPdfType = $resolvedAttachmentType === 'ti' ? 'tax_invoice' : 'pi';
-            $resolvedChannel = strtoupper((string) ($sendSuccessMeta['channel'] ?? ($composeEmail->channel ?? 'email')));
-            $resolvedDocument = $resolvedAttachmentType === 'ti' ? 'Tax Invoice (TI)' : 'Proforma Invoice (PI)';
-            $resolvedSentAt = !empty($sendSuccessMeta['sent_at'])
-                ? (string) $sendSuccessMeta['sent_at']
-                : ($composeEmail?->sent_at?->format('d M Y, h:i A') ?? null);
-        @endphp
-        @if ($shouldShowPostSendActions)
-            <div class="mt-3 pt-3 border-top">
-                <div class="small text-success fw-semibold mb-2">
-                    {{ $sendSuccessMeta['document'] ?? $resolvedDocument }} sent via {{ $resolvedChannel }}
-                    @if(!empty($resolvedSentAt))
-                        on {{ $resolvedSentAt }}
-                    @endif
-                </div>
-                <div class="d-flex flex-wrap gap-2 p-2 rounded" style="background:#ecfeff;border:1px solid #bae6fd;">
-                    <a href="{{ route('invoices.show', ['invoice' => $invoice->invoiceid, 'c' => $invoice->clientid]) }}" class="primary-button small">View Invoice</a>
-                    <a href="{{ route('payments.create', ['clientid' => $invoice->clientid, 'invoiceid' => $invoice->invoiceid]) }}" class="primary-button small">Record Payment</a>
-                    <a href="{{ route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => $successPdfType]) }}" class="secondary-button small" target="_blank">Download PDF</a>
-                    <a href="{{ route('invoices.index', ['c' => $invoice->clientid]) }}" class="secondary-button small">Back to Invoices</a>
-                </div>
-            </div>
-        @endif
     </section>
 
     <style>

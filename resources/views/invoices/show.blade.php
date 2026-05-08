@@ -51,7 +51,15 @@
     <a href="{{ route('invoices.index', request('c') ? ['c' => request('c')] : []) }}" class="secondary-button">
         <i class="fas fa-arrow-left icon-spaced"></i>Back to Invoices
     </a>
-    @if(($invoice->status ?? '') !== 'cancelled')
+    @if(($invoice->status ?? '') === 'cancelled')
+        <form method="POST" action="{{ route('invoices.restore', [$invoice, 'c' => request('c')]) }}" class="inline-delete" onsubmit="return confirm('Restore this invoice?')">
+            @csrf
+            @method('PATCH')
+            <button type="submit" class="secondary-button">
+                Restore Invoice
+            </button>
+        </form>
+    @else
         <a href="{{ route('invoices.pdf', $invoice) }}" class="secondary-button small" target="_blank">
             <i class="fas fa-file-pdf icon-spaced-sm"></i>View PDF
         </a>
@@ -64,23 +72,23 @@
                 </button>
             </form>
         @endif
-    <a href="{{ route('invoices.create', [
-        'step' => ($invoice->invoice_for ?? 'orders') === 'without_orders' ? 2 : 3,
-        'invoice_for' => $invoice->invoice_for ?? 'orders',
-        'c' => request('c', $invoice->clientid),
-        'd' => $invoice->invoiceid,
-        'o' => ($invoice->invoice_for ?? '') === 'orders' ? ($invoice->orderid ?? null) : null,
-        'tax_invoice' => !empty($invoice->ti_number) ? 1 : null,
-    ]) }}" class="primary-button small">
-        <i class="fas fa-edit icon-spaced-sm"></i>Edit
-    </a>
-    <form method="POST" action="{{ route('invoices.destroy', [$invoice, 'c' => request('c')]) }}" class="inline-delete" onsubmit="return confirm('Cancel this invoice?')">
-        @csrf
-        @method('DELETE')
-        <button type="submit" class="secondary-button">
-            <i class="fas fa-ban icon-spaced-sm"></i>Cancel Invoice
-        </button>
-    </form>
+        <a href="{{ route('invoices.create', [
+            'step' => ($invoice->invoice_for ?? 'orders') === 'without_orders' ? 2 : 3,
+            'invoice_for' => $invoice->invoice_for ?? 'orders',
+            'c' => request('c', $invoice->clientid),
+            'd' => $invoice->invoiceid,
+            'o' => ($invoice->invoice_for ?? '') === 'orders' ? ($invoice->orderid ?? null) : null,
+            'tax_invoice' => !empty($invoice->ti_number) ? 1 : null,
+        ]) }}" class="primary-button small">
+            <i class="fas fa-edit icon-spaced-sm"></i>Edit
+        </a>
+        <form method="POST" action="{{ route('invoices.destroy', [$invoice, 'c' => request('c')]) }}" class="inline-delete" onsubmit="return confirm('Cancel this invoice?')">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="secondary-button">
+                <i class="fas fa-ban icon-spaced-sm"></i>Cancel Invoice
+            </button>
+        </form>
     @endif
 @endsection
 <div class="invoice-show-compact">
@@ -223,7 +231,11 @@
                         <span class="ml-2">(Start: {{ $item->start_date->format('d M Y') }})</span>
                         @endif
                         @if($item->end_date)
-                        <span class="ml-2">(End: {{ $item->end_date->format('d M Y') }})</span>
+                        @php($itemExpired = $item->end_date < now())
+                        <span class="ml-2">(End: <span class="invoice-end-date {{ $itemExpired ? 'is-expired' : '' }}">{{ $item->end_date->format('d M Y') }}</span>)</span>
+                        @if($itemExpired)
+                            <span class="invoice-expired-badge">expired</span>
+                        @endif
                         @endif
                     </div>
                     @endif

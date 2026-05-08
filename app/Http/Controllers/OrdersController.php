@@ -185,7 +185,7 @@ class OrdersController extends Controller
 
     public function ordersCreate(): View
     {
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = \App\Models\Account::find($accountid);
         $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
         $preSelectedClientId = request('c');
@@ -311,7 +311,7 @@ class OrdersController extends Controller
             'accountid' => 'nullable|size:10',
         ]);
 
-        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $userAccountId = $this->resolveAccountId();
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
         $validated['status'] = 'running'; // Default status for new orders
         $validated['is_verified'] = 'yes';
@@ -383,7 +383,7 @@ class OrdersController extends Controller
         $order->load(['client', 'items.item']);
         $salesPersonName = $this->getSalesPeopleLookup(collect([(string) ($order->sales_person_id ?? '')]))[(string) ($order->sales_person_id ?? '')]
             ?? ($order->salesPerson->name ?? '-');
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = \App\Models\Account::where('accountid', $accountid)->first();
         $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
 
@@ -498,7 +498,7 @@ class OrdersController extends Controller
     public function ordersEdit(Order $order): View
     {
         $order->load(['items.item']);
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = \App\Models\Account::find($accountid);
         $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
 
@@ -687,7 +687,7 @@ class OrdersController extends Controller
 
     private function resolveTaxRate(?Service $service, array $itemData): float
     {
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = \App\Models\Account::find($accountid);
 
         if ($account && !$account->allow_multi_taxation) {
@@ -1001,7 +1001,7 @@ class OrdersController extends Controller
                 'agreement_file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120',
             ]);
 
-            $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+            $userAccountId = $this->resolveAccountId();
             $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
             $validated['status'] = 'unverified'; // Default status
             $validated['is_verified'] = 'yes';

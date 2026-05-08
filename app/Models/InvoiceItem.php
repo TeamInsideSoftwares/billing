@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'no_of_users',
     'start_date',
     'end_date',
+    'status',
     'line_total',
     'amount',
 ])]
@@ -67,6 +68,10 @@ class InvoiceItem extends Model
                     $item->accountid = $item->accountid ?: $invoice->accountid;
                     $item->clientid = $item->clientid ?: $invoice->clientid;
                 }
+            }
+
+            if (empty($item->status)) {
+                $item->status = 'active';
             }
         });
     }

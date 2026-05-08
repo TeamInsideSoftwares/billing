@@ -137,7 +137,7 @@
                     <td>${order.delivery_date || 'N/A'}</td>
                     <td>${order.sales_person || '-'}</td>
                     <td>${order.item_count || 0} item(s)</td>
-                    <td>${(order.currency || 'INR')} ${Number(order.grand_total).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
+                    <td>${Number(order.grand_total).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
                     <td>
                         <span class="order-status-badge ${verified ? 'is-verified' : 'is-unverified'}">
                             ${verified ? 'Verified' : 'Unverified'}
@@ -312,13 +312,13 @@
 	                        ${description ? `<div class="order-item-desc">${description}</div>` : ''}
 	                    </td>
 	                    <td class="text-center">${Math.max(1, Math.round(Number(item.quantity || 1))).toLocaleString('en-US')}</td>
-	                    <td class="text-end">${(order.currency || 'INR')} ${Number(item.unit_price || 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
+	                    <td class="text-end">${Number(item.unit_price || 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
 	                    <td class="text-end">${Number(item.tax_rate || 0).toFixed(0)}%</td>
 	                    <td class="text-end">${discount}</td>
 	                    <td>${frequencyDuration}</td>
 	                    <td class="text-center">${item.no_of_users || '-'}</td>
 	                    <td class="order-item-dates">${dates || '-'}</td>
-	                    <td class="text-end"><strong>${(order.currency || 'INR')} ${Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || ((Number(item.line_total || 0) * Number(item.discount_percent || 0)) / 100) || 0)).toLocaleString('en-US', { minimumFractionDigits: 0 })}</strong></td>
+	                    <td class="text-end"><strong>${Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || ((Number(item.line_total || 0) * Number(item.discount_percent || 0)) / 100) || 0)).toLocaleString('en-US', { minimumFractionDigits: 0 })}</strong></td>
 	                </tr>
 	            `;
             }).join('');

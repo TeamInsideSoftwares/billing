@@ -14,6 +14,7 @@
     $initialHeaderNumberStep3 = $isTaxInvoiceStep3
         ? ($invoice?->ti_number ?: ($nextTaxInvoiceNumber ?? $nextInvoiceNumber))
         : ($invoice?->pi_number ?: $nextInvoiceNumber);
+    $hasExistingDraftStep3 = !empty(request('d')) || !empty($invoice?->invoiceid);
 @endphp
 <!-- Step 3: Edit Items (For Orders & Renewal) -->
 <div id="step3" class="invoice-step">
@@ -50,12 +51,12 @@
 
         <div class="d-flex flex-column">
             <label for="issue_date" class="field-label">Issue Date</label>
-            <input type="date" id="issue_date" name="issue_date" class="form-input invoice-input-compact" required value="{{ old('issue_date', $invoice?->issue_date?->format('Y-m-d') ?? date('Y-m-d')) }}">
+            <input type="date" id="issue_date" name="issue_date" class="form-input invoice-input-compact" required value="{{ old('issue_date', $hasExistingDraftStep3 ? ($invoice?->issue_date?->format('Y-m-d') ?? date('Y-m-d')) : '') }}">
         </div>
 
         <div class="d-flex flex-column">
             <label for="due_date" class="field-label">Due Date</label>
-            <input type="date" id="due_date" name="due_date" class="form-input invoice-input-compact" required value="{{ old('due_date', $invoice?->due_date?->format('Y-m-d') ?? date('Y-m-d', strtotime('+7 days'))) }}">
+            <input type="date" id="due_date" name="due_date" class="form-input invoice-input-compact" required value="{{ old('due_date', $hasExistingDraftStep3 ? ($invoice?->due_date?->format('Y-m-d') ?? date('Y-m-d', strtotime('+7 days'))) : '') }}">
         </div>
 
         <div class="d-flex flex-column">
@@ -237,6 +238,15 @@
     </div>
 </div>
 
+<style>
+    .invoice-item-inline-note {
+        margin-top: 0.12rem;
+        font-size: 0.7rem;
+        color: #64748b;
+        line-height: 1.15;
+    }
+</style>
+
 <script>
 (function() {
     const clientId = "{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}";
@@ -258,6 +268,8 @@
     const dueDateInput = document.getElementById('due_date');
     const notesInput = document.getElementById('notes');
     let currentInvoiceId = draftId || '';
+    const renewalSelectionStorageKey = `invoice-renewal-selection:${clientId}`;
+    const renewalFinalIdsStorageKey = `invoice-renewal-final-ids:${clientId}`;
     let draftPiNumber = "{{ $invoice?->pi_number ?? '' }}";
     let draftTiNumber = "{{ $invoice?->ti_number ?? '' }}";
     const fallbackPiNumber = "{{ $nextInvoiceNumber }}";
@@ -434,6 +446,24 @@
         input.value = normalized;
     }
 
+    function addDaysToDate(dateString, days) {
+        if (!dateString) {
+            return '';
+        }
+
+        const parts = String(dateString).split('-');
+        const date = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
+        if (Number.isNaN(date.getTime())) {
+            return '';
+        }
+
+        date.setDate(date.getDate() + Number(days || 0));
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
     function syncAddItemEndDateFromInputs() {
         if (!addItemEndInput) return;
         const nextValue = calculateEndDate(
@@ -470,6 +500,24 @@
             start_date: item.start_date || null,
             end_date: item.end_date || null,
         };
+
+        if (
+            invoiceFor === 'renewal' &&
+            normalizedItem.renewed_from_invoice_itemid &&
+            itemHasRecurringFrequency(normalizedItem) &&
+            normalizedItem.end_date
+        ) {
+            const previousEndDate = normalizedItem.end_date;
+            const renewalStartDate = addDaysToDate(previousEndDate, 1);
+
+            normalizedItem.previous_end_date = previousEndDate;
+            normalizedItem.start_date = renewalStartDate || normalizedItem.start_date;
+            normalizedItem.end_date = calculateEndDate(
+                normalizedItem.start_date,
+                normalizedItem.frequency,
+                normalizedItem.duration
+            ) || normalizedItem.end_date;
+        }
 
         if (itemSupportsUserFields(normalizedItem)) {
             normalizedItem.no_of_users = Math.max(1, Number(item.no_of_users || 1));
@@ -647,6 +695,34 @@
     }
 
     function loadItems() {
+        if (invoiceFor === 'renewal' && !draftId) {
+            try {
+                const raw = window.sessionStorage.getItem(renewalSelectionStorageKey);
+                const storedSelection = raw ? JSON.parse(raw) : null;
+                const storedItems = Array.isArray(storedSelection?.items) ? storedSelection.items : [];
+
+                if (storedSelection?.issue_date && issueDateInput) {
+                    issueDateInput.value = storedSelection.issue_date;
+                }
+                if (storedSelection?.due_date && dueDateInput) {
+                    dueDateInput.value = storedSelection.due_date;
+                }
+                if (storedSelection?.notes && notesInput) {
+                    notesInput.value = storedSelection.notes;
+                }
+
+                if (storedItems.length > 0) {
+                    invoiceItems = storedItems.map(normalizeItem);
+                    renderItems();
+                    initializeAddItemFormVisibility();
+                    updateStep3HeaderNumber();
+                    return;
+                }
+            } catch (error) {
+                console.warn('Unable to load renewal selection:', error);
+            }
+        }
+
         const draftUrl = new URL("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace('__CLIENTID__', clientId), window.location.origin);
         if (invoiceFor) {
             draftUrl.searchParams.set('invoice_for', invoiceFor);
@@ -686,6 +762,11 @@
                     invoiceItems = draftItems.map(normalizeItem);
                     renderItems();
                     initializeAddItemFormVisibility();
+                    try {
+                        window.sessionStorage.removeItem(renewalSelectionStorageKey);
+                    } catch (error) {
+                        console.warn('Unable to clear renewal selection:', error);
+                    }
                 } else if (invoiceFor === 'orders' && orderId) {
                     loadOrderItems(orderId);
                 }
@@ -762,7 +843,7 @@
                 </td>
                 <td class="${showDateColumns ? '' : 'is-hidden'}">
                     ${showDatesForRow
-                        ? `${item.start_date || '-'}`
+                        ? `${item.start_date || '-'}${item.previous_end_date ? `<div class="invoice-item-inline-note">Prev End: ${item.previous_end_date}</div>` : ''}`
                         : '<span class="text-muted">-</span>'}
                 </td>
                 <td class="${showDateColumns ? '' : 'is-hidden'}">
@@ -905,6 +986,17 @@
             return;
         }
 
+        if (invoiceFor === 'renewal') {
+            try {
+                const renewedIds = invoiceItems
+                    .map(item => item?.renewed_from_invoice_itemid || item?.invoice_itemid || null)
+                    .filter(Boolean);
+                window.sessionStorage.setItem(renewalFinalIdsStorageKey, JSON.stringify(renewedIds));
+            } catch (error) {
+                console.warn('Unable to persist renewal final ids:', error);
+            }
+        }
+
         fetch("{{ route('invoices.save-draft') }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
@@ -917,7 +1009,10 @@
                 issue_date: document.getElementById('issue_date').value,
                 due_date: document.getElementById('due_date').value,
                 notes: document.getElementById('notes').value,
-                items_data: itemsDataInput.value
+                items_data: itemsDataInput.value,
+                renewed_item_ids: invoiceFor === 'renewal'
+                    ? (window.sessionStorage.getItem(renewalFinalIdsStorageKey) || '[]')
+                    : undefined
             })
         })
         .then(async (response) => {
@@ -950,6 +1045,11 @@
             if (data && typeof data === 'object') {
                 draftPiNumber = data.pi_number || draftPiNumber;
                 draftTiNumber = data.ti_number || draftTiNumber;
+            }
+            try {
+                window.sessionStorage.removeItem(renewalSelectionStorageKey);
+            } catch (error) {
+                console.warn('Unable to clear renewal selection:', error);
             }
             updateStep3HeaderNumber();
             const clientToken = encodeURIComponent(clientId);

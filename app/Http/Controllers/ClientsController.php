@@ -68,7 +68,7 @@ class ClientsController extends Controller
 
     public function clientsCreate(): View
     {
-        $accountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountId = $this->resolveAccountId();
         $billingProfiles = ClientBillingDetail::query()
             ->where('accountid', $accountId)
             ->orderBy('business_name')
@@ -88,7 +88,7 @@ class ClientsController extends Controller
 
     public function clientsStore(Request $request)
     {
-        $userAccountId = auth()->check() ? auth()->user()->accountid ?? 'ACC0000001' : 'ACC0000001';
+        $userAccountId = $this->resolveAccountId();
 
         $validated = $request->validate([
             'accountid' => 'required|exists:accounts,accountid|size:10',
@@ -212,7 +212,7 @@ class ClientsController extends Controller
 
     public function clientsEdit(Client $client): View
     {
-        $accountId = $client->accountid ?: (auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001');
+        $accountId = $client->accountid ?: $this->resolveAccountId();
         $billingProfiles = ClientBillingDetail::query()
             ->where('accountid', $accountId)
             ->orderBy('business_name')

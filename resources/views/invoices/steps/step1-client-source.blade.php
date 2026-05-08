@@ -119,90 +119,147 @@
             window.history.replaceState({}, '', currentUrl.toString());
         }
 
+        let allInvoices = [];
+        let currentPage = 1;
+        const PAGE_SIZE = 5;
+
         async function loadInvoices(clientId) {
             accordion.innerHTML = '<div class="invoice-loading">Loading...</div>';
             noMsg.classList.add('is-hidden');
+            invoiceLimitInfo.classList.add('is-hidden');
+            if (document.getElementById('invoicePagination')) {
+                document.getElementById('invoicePagination').classList.add('is-hidden');
+            }
 
             try {
                 const res = await fetch(`{{ route('invoices.index') }}?c=${clientId}`, {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 const data = await res.json();
-                const invoices = data.invoices || [];
-                const visibleInvoices = invoices.slice(0, MAX_INVOICES_VISIBLE);
-
-                if (invoices.length === 0) {
-                    accordion.innerHTML = '';
-                    noMsg.classList.remove('is-hidden');
-                    invoiceLimitInfo.classList.add('is-hidden');
-                    return;
-                }
-
-                if (invoices.length > MAX_INVOICES_VISIBLE) {
-                    invoiceLimitInfo.textContent = `Showing latest ${MAX_INVOICES_VISIBLE} of ${invoices.length} invoices.`;
-                    invoiceLimitInfo.classList.remove('is-hidden');
-                } else {
-                    invoiceLimitInfo.classList.add('is-hidden');
-                }
-
-                accordion.innerHTML = visibleInvoices.map(inv => {
-                    const statusLabel = String(inv.status || 'active').toLowerCase() === 'cancelled' ? 'Cancelled' : 'Active';
-                    const statusClass = statusLabel.toLowerCase();
-                    const title = inv.title ? `${inv.title} (${inv.number || ''})` : (inv.number || 'Untitled');
-
-                    // Build items HTML
-                    const itemsHtml = (inv.items || []).map(item => {
-                        const details = [];
-                        // if (item.price && item.price !== '0') details.push(`Unit: ${item.price}`);
-                        if (item.tax_rate) details.push(`Tax: ${item.tax_rate}%`);
-                        if (item.users && item.users > 1) details.push(`Users: ${item.users}`);
-                        if (item.frequency) details.push(`Freq: ${item.frequency}`);
-                        if (item.duration) details.push(`Dur: ${item.duration}`);
-
-                        const dates = [];
-                        if (item.start_date) dates.push(`Start: ${item.start_date}`);
-                        if (item.end_date) dates.push(`End: ${item.end_date}`);
-
-                        return `
-                        <div class="inv-item-row">
-                            <div class="inv-item-row__top">
-                                <span class="inv-item-row__name">${item.name || 'Item'} (x${Math.max(1, Math.round(Number(item.qty || item.quantity || 1)))})</span>
-                                <strong class="inv-item-row__total">${item.total || '-'}</strong>
-                            </div>
-                            ${details.length ? `<div class="inv-item-row__details">${details.join(' | ')}</div>` : ''}
-                            ${dates.length ? `<div class="inv-item-row__dates">${dates.join(' | ')}</div>` : ''}
-                        </div>`;
-                    }).join('') || '<div class="inv-item-row inv-item-row--empty">No items found</div>';
-
-                    return `
-                    <details class="category-accordion">
-                        <summary class="category-accordion-header invoice-accordion-header">
-                            <span class="invoice-accordion-left">
-                                <span class="invoice-accordion-title">${title}</span>
-                                <span class="invoice-accordion-subtitle">Issue: ${inv.issue_date || '-'} | Due: ${inv.due_date || '-'}</span>
-                            </span>
-                            <span class="invoice-accordion-right">
-                                <a href="{{ url('invoices') }}/${inv.record_id}/edit" class="invoice-accordion-edit">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <span class="invoice-accordion-type">${inv.ti_number ? 'Tax Invoice' : 'Proforma Invoice'}</span>
-                                <span class="badge bg-secondary rounded-pill ${statusClass}">${statusLabel}</span>
-                                <span class="invoice-accordion-amount">${inv.amount || '-'}</span>
-                            </span>
-                        </summary>
-                        <div class="accordion-content invoice-accordion-content">
-                            <div class="items-display invoice-accordion-items">
-                                ${itemsHtml}
-                            </div>
-                        </div>
-                    </details>
-                `;
-                }).join('');
+                allInvoices = (data.invoices || []).filter(inv => String(inv.status || '').toLowerCase() !== 'cancelled');
+                currentPage = 1;
+                renderPage();
             } catch (err) {
                 accordion.innerHTML = '';
                 noMsg.classList.remove('is-hidden');
                 invoiceLimitInfo.classList.add('is-hidden');
             }
+        }
+
+        function renderPage() {
+            if (allInvoices.length === 0) {
+                accordion.innerHTML = '';
+                noMsg.classList.remove('is-hidden');
+                invoiceLimitInfo.classList.add('is-hidden');
+                updatePaginationControls(0);
+                return;
+            }
+
+            const totalInvoices = allInvoices.length;
+            const startIndex = (currentPage - 1) * PAGE_SIZE;
+            const endIndex = Math.min(startIndex + PAGE_SIZE, totalInvoices);
+            const visibleInvoices = allInvoices.slice(startIndex, endIndex);
+
+            invoiceLimitInfo.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalInvoices} invoices.`;
+            invoiceLimitInfo.classList.remove('is-hidden');
+
+            accordion.innerHTML = visibleInvoices.map(inv => {
+                const statusLabel = String(inv.status || 'active').toLowerCase() === 'cancelled' ? 'Cancelled' : 'Active';
+                const statusClass = statusLabel.toLowerCase();
+                const title = inv.title || inv.number || 'Invoice';
+                const numberLabel = inv.number && inv.title ? inv.number : '';
+
+                const itemsHtml = (inv.items || []).map(item => {
+                    const details = [];
+                    if (item.tax_rate) details.push(`Tax: ${item.tax_rate}%`);
+                    if (item.users && item.users > 1) details.push(`Users: ${item.users}`);
+                    if (item.frequency) details.push(`Freq: ${item.frequency}`);
+                    if (item.duration) details.push(`Dur: ${item.duration}`);
+
+                    const dates = [];
+                    if (item.start_date) dates.push(`Start: ${item.start_date}`);
+                    if (item.end_date) dates.push(`End: ${item.end_date}`);
+
+                    return `
+                    <div class="inv-item-row">
+                        <div class="inv-item-row__top">
+                            <span class="inv-item-row__name">${item.name || 'Item'} (x${Math.max(1, Math.round(Number(item.qty || item.quantity || 1)))})</span>
+                            <strong class="inv-item-row__total">${item.total || '-'}</strong>
+                        </div>
+                        ${details.length ? `<div class="inv-item-row__details">${details.join(' | ')}</div>` : ''}
+                        ${dates.length ? `<div class="inv-item-row__dates">${dates.join(' | ')}</div>` : ''}
+                    </div>`;
+                }).join('') || '<div class="inv-item-row inv-item-row--empty">No items found</div>';
+
+                return `
+                <details class="category-accordion">
+                    <summary class="category-accordion-header invoice-accordion-header">
+                        <span class="invoice-accordion-left">
+                            <span class="invoice-accordion-title">${title}</span>
+                            ${numberLabel ? `<span class="invoice-accordion-subtitle">${numberLabel}</span>` : ''}
+                            <span class="invoice-accordion-subtitle">Issue: ${inv.issue_date || '-'} | Due: ${inv.due_date || '-'}</span>
+                        </span>
+                        <span class="invoice-accordion-right">
+                            <a href="{{ url('invoices') }}/${inv.record_id}/edit" class="invoice-accordion-edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <span class="invoice-accordion-type">${inv.ti_number ? 'Tax Invoice' : 'Proforma Invoice'}</span>
+                            <span class="badge bg-secondary rounded-pill ${statusClass}">${statusLabel}</span>
+                            <span class="invoice-accordion-amount">${inv.amount || '-'}</span>
+                        </span>
+                    </summary>
+                    <div class="accordion-content invoice-accordion-content">
+                        <div class="items-display invoice-accordion-items">
+                            ${itemsHtml}
+                        </div>
+                    </div>
+                </details>
+            `;
+            }).join('');
+
+            updatePaginationControls(totalInvoices);
+        }
+
+        function updatePaginationControls(totalInvoices) {
+            let paginationContainer = document.getElementById('invoicePagination');
+            if (!paginationContainer) {
+                paginationContainer = document.createElement('div');
+                paginationContainer.id = 'invoicePagination';
+                paginationContainer.className = 'd-flex justify-content-center align-items-center gap-3 mt-2';
+                accordion.parentNode.insertBefore(paginationContainer, accordion.nextSibling);
+            }
+
+            if (totalInvoices <= PAGE_SIZE) {
+                paginationContainer.classList.add('is-hidden');
+                return;
+            }
+
+            paginationContainer.classList.remove('is-hidden');
+            const totalPages = Math.ceil(totalInvoices / PAGE_SIZE);
+
+            paginationContainer.innerHTML = `
+                <button type="button" class="secondary-button small px-2" id="prevInvoices" ${currentPage === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="small-text font-semibold">Page ${currentPage} of ${totalPages}</span>
+                <button type="button" class="secondary-button small px-2" id="nextInvoices" ${currentPage === totalPages ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            `;
+
+            document.getElementById('prevInvoices').onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderPage();
+                }
+            };
+
+            document.getElementById('nextInvoices').onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderPage();
+                }
+            };
         }
 
         btnNext.addEventListener('click', function () {

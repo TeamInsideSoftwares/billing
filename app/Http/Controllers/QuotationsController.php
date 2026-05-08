@@ -50,7 +50,7 @@ class QuotationsController extends Controller
 
     public function quotationsCreate(): View
     {
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
 
         return view('quotations.form', [
@@ -72,7 +72,7 @@ class QuotationsController extends Controller
             'status' => 'required|in:draft,sent,accepted,declined,expired',
         ]);
 
-        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $userAccountId = $this->resolveAccountId();
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
 
         Quotation::create($validated);
@@ -92,7 +92,7 @@ class QuotationsController extends Controller
 
     public function quotationsEdit(Quotation $quotation): View
     {
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
 
         return view('quotations.form', [

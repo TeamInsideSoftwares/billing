@@ -73,6 +73,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/invoices/{invoice}/send-reminder', 'sendReminder')->name('invoices.send-reminder');
         Route::post('/invoices/{invoice}/items/{item}/send-reminder', 'sendItemReminder')->name('invoices.items.send-reminder');
         Route::get('/invoices/items/{item}/renew', 'startRenewalFromItem')->name('invoices.items.renew');
+        Route::patch('/invoices/{invoice}/items/{item}/suspend', 'suspendInvoiceItem')->name('invoices.items.suspend');
+        Route::patch('/invoices/{invoice}/items/{item}/unsuspend', 'unsuspendInvoiceItem')->name('invoices.items.unsuspend');
         Route::get('/invoices/expiry-list', 'invoicesExpiryList')->name('invoices.expiry-list');
         Route::get('/invoices/{invoice}/pdf-versions', 'pdfVersions')->name('invoices.pdf-versions');
         Route::get('/invoices/{invoice}/pdf', 'downloadPdf')->name('invoices.pdf');
@@ -80,11 +82,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/invoices/{invoice}/edit', 'invoicesEdit')->name('invoices.edit');
         Route::patch('/invoices/{invoice}/items/{item}', 'invoicesUpdateItem')->name('invoices.items.update');
         Route::put('/invoices/{invoice}', 'invoicesUpdate')->name('invoices.update');
+        Route::patch('/invoices/{invoice}/restore', 'invoicesRestore')->name('invoices.restore');
         Route::delete('/invoices/{invoice}', 'invoicesDestroy')->name('invoices.destroy');
     });
 
     Route::controller(PaymentsController::class)->group(function () {
         Route::get('/payments', 'payments')->name('payments.index');
+        Route::get('/payments/ledger', 'paymentsLedger')->name('payments.ledger');
+        Route::get('/payments/gst-report', 'paymentsGstReport')->name('payments.gst-report');
         Route::get('/payments/create', 'paymentsCreate')->name('payments.create');
         Route::post('/payments', 'paymentsStore')->name('payments.store');
         Route::get('/payments/{payment}', 'paymentsShow')->name('payments.show');

@@ -6,6 +6,7 @@ use App\Models\AccountBillingDetail;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\Ledger;
 use App\Models\FinancialYear;
 use App\Models\InvoiceEmail;
 use App\Models\MessageTemplate;
@@ -17,8 +18,10 @@ use App\Models\TermsCondition;
 use App\Services\InvoiceReminderService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -51,6 +54,45 @@ class InvoicesController extends Controller
             'proforma' => array_values(array_filter($terms)),
             'billing' => [],
         ];
+    }
+
+    private function getDefaultInvoiceTermsForBucket(Invoice $invoice, string $termBucket): array
+    {
+        $accountid = (string) ($invoice->accountid ?: $this->resolveAccountId());
+        if ($accountid === '') {
+            return [];
+        }
+
+        return TermsCondition::query()
+            ->where('accountid', $accountid)
+            ->where('type', $termBucket)
+            ->where('is_active', true)
+            ->where('is_default', true)
+            ->orderByRaw('COALESCE(sequence, 999999), created_at ASC')
+            ->pluck('content')
+            ->map(fn ($content) => trim((string) $content))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function ensureInvoiceDefaultTerms(Invoice $invoice): void
+    {
+        $termBucket = !empty(trim((string) $invoice->ti_number)) ? 'billing' : 'proforma';
+        $storedTerms = $this->normalizeInvoiceTermsByType($invoice->terms);
+
+        if (!empty($storedTerms[$termBucket] ?? [])) {
+            return;
+        }
+
+        $defaultTerms = $this->getDefaultInvoiceTermsForBucket($invoice, $termBucket);
+        if (empty($defaultTerms)) {
+            return;
+        }
+
+        $storedTerms[$termBucket] = $defaultTerms;
+        $invoice->update(['terms' => array_filter($storedTerms)]);
+        $invoice->refresh();
     }
 
     private function mapInvoiceTemplateType(Invoice $invoice): string
@@ -99,7 +141,7 @@ class InvoicesController extends Controller
 
         // Get YOUR billing name from Account Billing Details
         $accountid = $this->resolveAccountId();
-        $accountBillingDetail = AccountBillingDetail::where('accountid', $accountid)->first();
+        $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
         $billingName = $accountBillingDetail->billing_name ?? ($companyName ?? '');
 
         return [
@@ -658,6 +700,9 @@ class InvoicesController extends Controller
         $accountid = $this->resolveAccountId();
         $clients = Client::where('accountid', $accountid)->orderBy('business_name')->get();
         $selectedClientId = request('c', request('clientid'));
+        $selectedTab = request('tab', 'invoices');
+        $today = now()->startOfDay();
+        $upcomingThreshold = now()->addDays(30)->endOfDay();
 
         $invoiceQuery = Invoice::where('accountid', $accountid)
             ->with(['client', 'items', 'payments'])
@@ -668,10 +713,99 @@ class InvoicesController extends Controller
         }
 
         $allInvoices = $invoiceQuery->get();
+        $filteredInvoices = $allInvoices->values();
+
+        // Get window for upcoming expiry
+        $upcomingWindowDays = (int) request('next_days', 30);
+        $upcomingThreshold = now()->addDays($upcomingWindowDays)->endOfDay();
+
+        $expiryItemBaseQuery = InvoiceItem::query()
+            ->where('accountid', $accountid)
+            ->whereNotNull('end_date')
+            ->with([
+                'invoice:invoiceid,clientid,invoice_title,pi_number,ti_number,status',
+                'invoice.client:clientid,business_name,contact_name,currency',
+                'item:itemid,name',
+            ])
+            ->whereHas('invoice', function ($query) {
+                $query->where('status', '!=', 'cancelled')
+                    ->whereNotNull('ti_number')
+                    ->where('ti_number', '!=', '');
+            });
+
+        if ($selectedClientId) {
+            $expiryItemBaseQuery->where('clientid', $selectedClientId);
+        }
+
+        $mapExpiryItem = function (InvoiceItem $item) use ($today) {
+            $expiryDate = $item->end_date?->copy()->startOfDay();
+            $daysLeft = $expiryDate ? $today->diffInDays($expiryDate, false) : null;
+
+            return [
+                'invoice_itemid' => (string) $item->invoice_itemid,
+                'invoiceid' => (string) $item->invoiceid,
+                'clientid' => (string) ($item->invoice?->clientid ?: $item->clientid),
+                'client_name' => (string) (
+                    $item->invoice?->client?->business_name
+                    ?: $item->invoice?->client?->contact_name
+                    ?: 'Client'
+                ),
+                'invoice_label' => (string) (
+                    $item->invoice?->invoice_title
+                    ?: $item->invoice?->invoice_number
+                    ?: $item->invoiceid
+                ),
+                'invoice_number' => (string) (
+                    $item->invoice?->ti_number
+                    ?: $item->invoice?->pi_number
+                    ?: $item->invoice?->invoice_number
+                    ?: $item->invoiceid
+                ),
+                'currency' => (string) ($item->invoice?->client?->currency ?? 'INR'),
+                'item_name' => (string) ($item->item_name ?: $item->item?->name ?: 'Item'),
+                'item_description' => (string) ($item->item_description ?? ''),
+                'frequency' => (string) ($item->frequency ?? ''),
+                'duration' => $item->duration,
+                'status' => (string) ($item->status ?? 'active'),
+                'end_date' => $expiryDate,
+                'end_date_display' => $expiryDate?->format('d M Y') ?? '-',
+                'days_left' => $daysLeft,
+            ];
+        };
+
+        $upcomingExpiryItems = (clone $expiryItemBaseQuery)
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                    ->orWhereNull('status');
+            })
+            ->whereDate('end_date', '>', $today->toDateString())
+            ->whereDate('end_date', '<=', $upcomingThreshold->toDateString())
+            ->orderBy('end_date')
+            ->get()
+            ->map($mapExpiryItem)
+            ->values();
+
+        $expiredItems = (clone $expiryItemBaseQuery)
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                    ->orWhereNull('status');
+            })
+            ->whereDate('end_date', '<=', $today->toDateString())
+            ->orderBy('end_date')
+            ->get()
+            ->map($mapExpiryItem)
+            ->values();
+
+        $suspendedItems = (clone $expiryItemBaseQuery)
+            ->where('status', 'suspended')
+            ->orderBy('end_date')
+            ->get()
+            ->map($mapExpiryItem)
+            ->values();
 
         if (request()->wantsJson() || request()->ajax()) {
             return response()->json([
-                'invoices' => $allInvoices->map(function ($invoice) {
+                'invoices' => $filteredInvoices->map(function ($invoice) {
                     $amountPaid = (float) ($invoice->amount_paid ?? 0);
                     $grandTotal = (float) ($invoice->grand_total ?? 0);
                     $balanceDue = (float) ($invoice->balance_due ?? max(0, $grandTotal - $amountPaid));
@@ -692,10 +826,7 @@ class InvoicesController extends Controller
                         'title' => $invoice->invoice_title,
                         'clientid' => $invoice->clientid,
                         'issue_date' => $invoice->issue_date?->format('d M Y'),
-                        'issue_date_raw' => $invoice->issue_date?->format('Y-m-d'),
                         'due_date' => $invoice->due_date?->format('d M Y'),
-                        'due_date_raw' => $invoice->due_date?->format('Y-m-d'),
-                        'invoice_for' => ucfirst(str_replace('_', ' ', $invoice->invoice_for ?? 'without orders')),
                         'amount' => $currency . ' ' . number_format($invoice->grand_total ?? 0, 0),
                         'amount_paid' => $currency . ' ' . number_format($amountPaid, 0),
                         'balance_due' => $currency . ' ' . number_format($balanceDue, 0),
@@ -717,32 +848,35 @@ class InvoicesController extends Controller
                                 'frequency' => $item->frequency,
                                 'users' => (int) ($item->no_of_users ?? 1),
                                 'no_of_users' => (int) ($item->no_of_users ?? 1),
-                                'start_date' => $item->start_date?->format('Y-m-d'),
-                                'end_date' => $item->end_date?->format('Y-m-d'),
+                                'start_date' => $item->start_date?->format('d M Y'),
+                                'end_date' => $item->end_date?->format('d M Y'),
                                 'total' => $currency . ' ' . number_format($item->line_total, 0),
                                 'line_total' => (float) $item->line_total,
                             ];
                         }),
                     ];
-                }),
-                'selectedClientId' => $selectedClientId,
+                })->values(),
+                'upcoming' => $upcomingExpiryItems,
+                'expired' => $expiredItems,
+                'suspended' => $suspendedItems,
             ]);
         }
 
-        $groupedInvoices = $allInvoices->groupBy(function ($invoice) {
-            return $invoice->client->business_name ?? $invoice->client->contact_name ?? 'N/A';
-        });
-
         return view('invoices.index', [
-            'title' => $selectedClientId ? 'All Invoices' : 'Manage Invoices',
-            'subtitle' => $selectedClientId ? 'Filtered by selected client.' : 'Choose a client first to view invoices.',
+            'title' => 'Invoices',
+            'subtitle' => $selectedClientId ? 'Filtered by selected client.' : 'Showing invoices for all clients.',
             'clients' => $clients,
-            'groupedInvoices' => $groupedInvoices,
+            'allInvoices' => $filteredInvoices,
             'selectedClientId' => $selectedClientId,
+            'selectedTab' => $selectedTab,
+            'upcomingExpiryItems' => $upcomingExpiryItems,
+            'expiredItems' => $expiredItems,
+            'suspendedItems' => $suspendedItems,
+            'upcomingWindowDays' => $upcomingWindowDays,
         ]);
     }
 
-    public function invoicesExpiryList(Request $request): View
+    public function invoicesExpiryList(Request $request): View|\Illuminate\Http\RedirectResponse
     {
         $accountid = $this->resolveAccountId();
         $today = now()->startOfDay();
@@ -798,19 +932,15 @@ class InvoicesController extends Controller
                 ];
             });
 
-        return view('invoices.expiry-list', [
-            'title' => 'Invoice Item Expiry List',
-            'subtitle' => 'Showing invoice items with expiry dates across all clients (oldest expiry first).',
-            'expiryItems' => $expiryItems,
-            'nextDays' => $nextDays,
+        return redirect()->route('invoices.index', [
+            'tab' => 'upcoming',
+            'next_days' => $nextDays,
         ]);
     }
 
     public function startRenewalFromItem(string $item)
     {
         $accountid = $this->resolveAccountId();
-        $user = auth()->user();
-        $createdBy = $user?->userid ?? $user?->id;
 
         $sourceItem = InvoiceItem::query()
             ->where('invoice_itemid', $item)
@@ -819,75 +949,27 @@ class InvoicesController extends Controller
 
         $clientId = (string) ($sourceItem->clientid ?? '');
         if ($clientId === '') {
-            return redirect()->route('invoices.expiry-list')
+            return redirect()->route('invoices.index', ['tab' => 'expired'])
                 ->with('error', 'Unable to start renewal for this item.');
         }
 
-        $draft = Invoice::query()
-            ->where('accountid', $accountid)
-            ->where('clientid', $clientId)
-            ->whereNull('orderid')
-            ->whereIn('status', ['active', 'draft'])
-            ->when(!empty($createdBy), fn($q) => $q->where('created_by', $createdBy))
-            ->where('updated_at', '>', now()->subHours(24))
-            ->latest('updated_at')
-            ->first();
-
-        if (!$draft) {
-            $draft = Invoice::create([
-                'accountid' => $accountid,
-                'fy_id' => $this->resolveDefaultFyId($accountid),
-                'clientid' => $clientId,
-                'pi_number' => $this->generateInvoiceNumber(),
-                'ti_number' => null,
-                'invoice_title' => 'Renewal Invoice',
-                'invoice_for' => 'renewal',
-                'orderid' => null,
-                'issue_date' => now()->toDateString(),
-                'due_date' => now()->addDays(7)->toDateString(),
-                'notes' => '',
-                'status' => 'active',
-                'created_by' => $createdBy,
-            ]);
-        }
-
-        $draft->items()->delete();
-        $draft->items()->create([
-            'accountid' => $accountid,
-            'clientid' => $clientId,
-            'itemid' => $sourceItem->itemid,
-            'item_name' => $sourceItem->item_name,
-            'item_description' => $sourceItem->item_description,
-            'quantity' => max(1, (int) round((float) ($sourceItem->quantity ?? 1), 0)),
-            'unit_price' => $this->wholeAmount($sourceItem->unit_price ?? 0),
-            'tax_rate' => (float) ($sourceItem->tax_rate ?? 0),
-            'discount_percent' => (float) ($sourceItem->discount_percent ?? 0),
-            'discount_amount' => (float) ($sourceItem->discount_amount ?? 0),
-            'duration' => $sourceItem->duration,
-            'frequency' => $sourceItem->frequency,
-            'no_of_users' => !empty($sourceItem->no_of_users) ? max(1, (int) $sourceItem->no_of_users) : null,
-            'start_date' => $sourceItem->start_date?->format('Y-m-d'),
-            'end_date' => $sourceItem->end_date?->format('Y-m-d'),
-            'amount' => $this->wholeAmount($sourceItem->amount ?? $sourceItem->line_total ?? 0),
-        ]);
-
         return redirect()->route('invoices.create', [
-            'step' => 3,
+            'step' => 2,
             'invoice_for' => 'renewal',
             'c' => $clientId,
-            'd' => $draft->invoiceid,
+            'source_item' => $sourceItem->invoice_itemid,
         ]);
     }
 
     public function invoicesCreate(): View
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $accountid = $this->resolveAccountId();
         $legacyAccountId = $user?->id ? (string) $user->id : null;
         $account = \App\Models\Account::find($accountid);
         $orderId = request('o', request('orderid'));
         $clientId = request('c', request('clientid'));
-        $invoiceFor = request('invoice_for', session('invoice_for'));
+        $invoiceFor = request('invoice_for');
         $currentUserId = $user?->userid ?? $user?->id;
         $draftId = request('d');
 
@@ -899,14 +981,20 @@ class InvoicesController extends Controller
                 ->first();
         }
 
-        if (empty($invoiceFor) && !empty($existingDraft?->invoice_for)) {
-            $invoiceFor = $existingDraft->invoice_for;
-            session(['invoice_for' => $invoiceFor]);
+        if (empty($invoiceFor) && $existingDraft) {
+            $invoiceFor = $existingDraft->orderid ? 'orders' : 'without_orders';
         }
 
-        if (empty($existingDraft) && empty($draftId) && !empty($clientId) && !empty($currentUserId)) {
+        if (
+            empty($existingDraft)
+            && empty($draftId)
+            && !empty($clientId)
+            && !empty($currentUserId)
+            && $invoiceFor !== 'renewal'
+        ) {
             $existingDraft = Invoice::query()
                 ->where('clientid', $clientId)
+                ->where('accountid', $accountid)
                 ->where('status', 'draft')
                 ->where('created_by', $currentUserId)
                 ->when($invoiceFor === 'orders' && !empty($orderId), fn($q) => $q->where('orderid', $orderId))
@@ -1005,29 +1093,33 @@ class InvoicesController extends Controller
     public function getRenewalInvoices(Request $request)
     {
         $clientId = $request->input('clientid');
+        $daysFilter = max(0, (int) $request->input('days', 30));
 
         if (!$clientId) {
             return response()->json([]);
         }
 
-        $recurringFrequencies = ['daily', 'weekly', 'bi-weekly', 'monthly', 'yearly', 'quarterly', 'semi-annually'];
+        $today = now()->startOfDay();
+        $upcomingThreshold = now()->addDays($daysFilter)->endOfDay();
+
         $invoices = Invoice::where('clientid', $clientId)
             ->whereNotNull('ti_number')
             ->where('ti_number', '!=', '')
             ->with('items', 'client')
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($invoice) use ($recurringFrequencies) {
-                $today = now()->startOfDay();
-
+            ->map(function ($invoice) use ($today, $upcomingThreshold) {
                 $renewalItems = $invoice->items
-                    ->map(function ($item) use ($today, $recurringFrequencies) {
+                    ->map(function ($item) use ($today, $upcomingThreshold) {
                         if (!$item->end_date) {
                             return null;
                         }
 
-                        $hasRecurringFrequency = in_array($item->frequency, $recurringFrequencies, true);
-                        if (!$hasRecurringFrequency) {
+                        if (!$this->hasRecurringFrequency($item->frequency)) {
+                            return null;
+                        }
+
+                        if (($item->status ?? 'active') !== 'active') {
                             return null;
                         }
 
@@ -1036,7 +1128,8 @@ class InvoicesController extends Controller
                             : \Carbon\Carbon::parse($item->end_date);
 
                         $isExpired = $itemEndDate <= $today;
-                        if (!$isExpired) {
+                        $isUpcoming = !$isExpired && $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
+                        if (!$isExpired && !$isUpcoming) {
                             return null;
                         }
 
@@ -1056,6 +1149,7 @@ class InvoicesController extends Controller
                             'end_date' => $item->end_date?->format('Y-m-d'),
                             'line_total' => (float) ($item->line_total ?? 0),
                             'is_expired' => $isExpired,
+                            'is_upcoming' => $isUpcoming,
                         ];
                     })
                     ->filter()
@@ -1068,14 +1162,15 @@ class InvoicesController extends Controller
                     'currency' => $invoice->client->currency ?? 'INR',
                     'total_items' => $invoice->items->count(),
                     'expired_items' => $renewalItems->where('is_expired', true)->count(),
-                    'has_expired' => $renewalItems->where('is_expired', true)->isNotEmpty(),
+                    'upcoming_items' => $renewalItems->where('is_upcoming', true)->count(),
+                    'has_renewal_candidates' => $renewalItems->isNotEmpty(),
                     'items' => $renewalItems,
                 ];
 
                 return $result;
             })
             ->filter(function ($invoice) {
-                return $invoice['has_expired'];
+                return $invoice['has_renewal_candidates'];
             })
             ->values();
 
@@ -1145,6 +1240,10 @@ class InvoicesController extends Controller
         ]);
 
         $items = $invoice->items->map(function ($item) use ($today, $upcomingThreshold) {
+            if (($item->status ?? 'active') !== 'active') {
+                return null;
+            }
+
             if (!$item->end_date) {
                 $isExpired = false;
                 $isUpcoming = false;
@@ -1179,7 +1278,7 @@ class InvoicesController extends Controller
                 'is_expired' => $isExpired,
                 'is_upcoming' => $isUpcoming,
             ];
-        })->values();
+        })->filter()->values();
 
         return response()->json([
             'invoice' => [
@@ -1260,8 +1359,8 @@ class InvoicesController extends Controller
             'type' => 'nullable|in:billing,quotation,proforma',
         ]);
 
-        $user = auth()->user();
-        $accountid = $user?->accountid ?? (string) ($user?->id ?? 'ACC0000001');
+        $user = Auth::user();
+        $accountid = $this->resolveAccountId();
         $termType = $validated['type'] ?? 'billing';
         $maxSequence = TermsCondition::query()
             ->where('accountid', $accountid)
@@ -1292,13 +1391,23 @@ class InvoicesController extends Controller
         $request->validate([
             'terms' => 'nullable|array',
             'terms.*' => 'string',
+            'renewed_item_ids' => 'nullable|string',
         ]);
 
-        $terms = array_values(array_filter($request->input('terms', []), fn($t) => trim($t) !== ''));
         $termBucket = !empty(trim((string) $invoice->ti_number)) ? 'billing' : 'proforma';
+        $terms = array_values(array_filter($request->input('terms', []), fn($t) => trim($t) !== ''));
+        if (empty($terms)) {
+            $terms = $this->getDefaultInvoiceTermsForBucket($invoice, $termBucket);
+        }
         $storedTerms = $this->normalizeInvoiceTermsByType($invoice->terms);
         $storedTerms[$termBucket] = $terms;
-        $invoice->update(['terms' => array_filter($storedTerms)]);
+        $updatePayload = ['terms' => array_filter($storedTerms)];
+        if (($invoice->status ?? '') === 'draft') {
+            $updatePayload['status'] = 'active';
+        }
+        $invoice->update($updatePayload);
+        $renewedItemIds = json_decode((string) $request->input('renewed_item_ids', '[]'), true);
+        $this->finalizeRenewedSourceItems($invoice, is_array($renewedItemIds) ? $renewedItemIds : null);
 
         $this->persistInvoicePdfVersion($invoice, !empty(trim((string) $invoice->ti_number)));
 
@@ -1308,7 +1417,7 @@ class InvoicesController extends Controller
 
     protected function generateInvoiceNumber(): string
     {
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
 
         // Use dedicated proforma configuration for PI generation.
         $serialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)
@@ -1328,7 +1437,7 @@ class InvoicesController extends Controller
 
     protected function generateTaxInvoiceNumber(): string
     {
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
 
         // Check for SerialConfiguration
         $serialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)
@@ -1480,9 +1589,9 @@ class InvoicesController extends Controller
             $validated['orderid'] = null;
         }
 
-        $user = auth()->user();
+        $user = Auth::user();
         $client = Client::findOrFail($validated['clientid']);
-        $validated['accountid'] = $validated['accountid'] ?? ($user->accountid ?? 'ACC0000001');
+        $validated['accountid'] = $validated['accountid'] ?? $this->resolveAccountId();
         $validated['fy_id'] = $this->resolveDefaultFyId($validated['accountid']);
         $validated['created_by'] = $user?->userid ?? $user?->id;
         // TI number is assigned only when converting PI to Tax Invoice.
@@ -1493,7 +1602,7 @@ class InvoicesController extends Controller
         // Check if we're updating an existing draft
         $existingDraft = null;
         if (!empty($validated['invoiceid'])) {
-            $existingDraft = Invoice::whereIn('status', ['draft', 'active', 'cancelled'])
+            $existingDraft = Invoice::where('status', 'draft')
                 ->find($validated['invoiceid']);
             if ($existingDraft) {
                 // Use draft's existing PI number
@@ -1523,7 +1632,7 @@ class InvoicesController extends Controller
         $discountTotal = 0;
         $preparedItems = [];
 
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = \App\Models\Account::find($accountid);
         $accountHasUsers = (bool) ($account?->have_users ?? false);
 
@@ -1570,6 +1679,7 @@ class InvoicesController extends Controller
                 'no_of_users' => $users,
                 'start_date' => $hasRecurringFrequency ? ($itemData['start_date'] ?? null) : null,
                 'end_date' => $hasRecurringFrequency ? ($itemData['end_date'] ?? null) : null,
+                'status' => 'active',
                 'amount' => $lineTotal,
             ];
         }
@@ -1580,7 +1690,7 @@ class InvoicesController extends Controller
         $invoice = null;
 
         try {
-            DB::transaction(function () use ($validated, $preparedItems, &$invoice, $request, $existingDraft, $invoiceSource) {
+            DB::transaction(function () use ($validated, $preparedItems, &$invoice, $request, $existingDraft, $invoiceSource, $grandTotal) {
                 if ($existingDraft) {
                     // Update existing draft
                     $existingDraft->update($validated);
@@ -1598,6 +1708,8 @@ class InvoicesController extends Controller
                     InvoiceItem::create($itemData);
                 }
 
+                $this->syncInvoiceLedgerEntry($invoice, $grandTotal);
+
                 // Mark the linked order as completed when PI is created
                 if (!empty($validated['orderid'])) {
                     \App\Models\Order::where('orderid', $validated['orderid'])
@@ -1609,6 +1721,9 @@ class InvoicesController extends Controller
                 if ($invoiceSource === 'renewal') {
                     $renewedItemIdsRaw = $request->input('renewed_item_ids');
                     $renewedItemIds = json_decode($renewedItemIdsRaw ?? '[]', true);
+                    if (!is_array($renewedItemIds) || empty($renewedItemIds)) {
+                        $renewedItemIds = $this->extractRenewedItemIdsFromItemsData($itemsData ?? []);
+                    }
 
                     \Log::info('Renewal submission check', [
                         'invoice_for' => $invoiceSource,
@@ -1618,7 +1733,15 @@ class InvoicesController extends Controller
                     ]);
 
                     if (!empty($renewedItemIds)) {
-                        \Log::info('Renewal item ids received; skipping legacy renewed_* column updates on merged invoice_items table', [
+                        $renewedItemIds = array_values(array_filter(array_map('strval', (array) $renewedItemIds)));
+                        InvoiceItem::query()
+                            ->whereIn('invoice_itemid', $renewedItemIds)
+                            ->update([
+                                'status' => 'renewed',
+                            ]);
+                        $this->forgetRenewalSourceItemIds($invoice->invoiceid);
+
+                        \Log::info('Renewal item ids marked as renewed', [
                             'invoice_id' => $invoice->invoiceid,
                             'renewed_invoice_item_ids' => $renewedItemIds,
                         ]);
@@ -1641,6 +1764,95 @@ class InvoicesController extends Controller
         return redirect()->route('invoices.index')->with('success', 'Invoice created successfully with items.');
     }
 
+    private function syncInvoiceLedgerEntry(Invoice $invoice, float $grandTotal): void
+    {
+        $description = $invoice->invoice_title;
+
+        if (empty($description)) {
+            $description = trim((string) ($invoice->ti_number ?: $invoice->pi_number));
+        }
+
+        Ledger::query()->updateOrCreate(
+            [
+                'reference_number' => $invoice->invoiceid,
+                'type' => 'invoice',
+            ],
+            [
+                'accountid' => $invoice->accountid,
+                'clientid' => $invoice->clientid,
+                'date' => $invoice->issue_date,
+                'amount' => $grandTotal,
+                'description' => $description ?: null,
+            ]
+        );
+    }
+
+    private function renewalSourceItemsSessionKey(string $invoiceid): string
+    {
+        return 'invoice_renewal_source_items.' . $invoiceid;
+    }
+
+    private function extractRenewedItemIdsFromItemsData(?array $itemsData): array
+    {
+        if (!is_array($itemsData)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(array_map(
+            static fn ($item) => is_array($item) ? (string) ($item['renewed_from_invoice_itemid'] ?? '') : '',
+            $itemsData
+        ))));
+    }
+
+    private function storeRenewalSourceItemIds(string $invoiceid, array $itemIds): void
+    {
+        session()->put($this->renewalSourceItemsSessionKey($invoiceid), array_values(array_unique(array_filter(array_map('strval', $itemIds)))));
+    }
+
+    private function forgetRenewalSourceItemIds(string $invoiceid): void
+    {
+        session()->forget($this->renewalSourceItemsSessionKey($invoiceid));
+    }
+
+    private function markRenewedSourceItemsByIds(array $renewedItemIds): void
+    {
+        $renewedItemIds = array_values(array_unique(array_filter(array_map('strval', $renewedItemIds))));
+        if (empty($renewedItemIds)) {
+            return;
+        }
+
+        InvoiceItem::query()
+            ->whereIn('invoice_itemid', $renewedItemIds)
+            ->update([
+                'status' => 'renewed',
+            ]);
+    }
+
+    private function finalizeRenewedSourceItems(Invoice $invoice, ?array $explicitRenewedItemIds = null): void
+    {
+        $invoiceid = (string) ($invoice->invoiceid ?? '');
+        if ($invoiceid === '') {
+            return;
+        }
+
+        $renewedItemIds = is_array($explicitRenewedItemIds) && !empty($explicitRenewedItemIds)
+            ? $explicitRenewedItemIds
+            : session()->get($this->renewalSourceItemsSessionKey($invoiceid), []);
+        if (!is_array($renewedItemIds) || empty($renewedItemIds)) {
+            return;
+        }
+
+        $renewedItemIds = array_values(array_unique(array_filter(array_map('strval', $renewedItemIds))));
+        if (empty($renewedItemIds)) {
+            $this->forgetRenewalSourceItemIds($invoiceid);
+            return;
+        }
+
+        $this->markRenewedSourceItemsByIds($renewedItemIds);
+
+        $this->forgetRenewalSourceItemIds($invoiceid);
+    }
+
     public function invoicesSaveDraft(Request $request)
     {
         $validated = $request->validate([
@@ -1654,9 +1866,10 @@ class InvoicesController extends Controller
             'notes' => 'nullable|string',
             'status' => 'nullable|in:draft,active,cancelled',
             'items_data' => 'nullable|json',
+            'renewed_item_ids' => 'nullable|string',
         ]);
 
-        $user = auth()->user();
+        $user = Auth::user();
         $accountid = $this->resolveAccountId();
         $legacyAccountId = $user?->id ? (string) $user->id : null;
         $accountCandidates = array_values(array_filter(array_unique([$accountid, $legacyAccountId])));
@@ -1664,6 +1877,7 @@ class InvoicesController extends Controller
 
         // Check if draft already exists for this client
         $orderId = $validated['orderid'] ?? null;
+        $invoiceFor = $validated['invoice_for'] ?? ($orderId ? 'orders' : 'without_orders');
 
         $draft = null;
         $isExplicitInvoiceEdit = !empty($validated['invoiceid']);
@@ -1674,10 +1888,10 @@ class InvoicesController extends Controller
                 ->first();
         }
 
-        if (!$draft && !$isExplicitInvoiceEdit) {
+        if (!$draft && !$isExplicitInvoiceEdit && $invoiceFor !== 'renewal') {
             $draft = Invoice::where('clientid', $validated['clientid'])
                 ->whereIn('accountid', $accountCandidates)
-                ->whereIn('status', ['active', 'draft'])
+                ->where('status', 'draft')
                 ->where('created_by', $user?->userid ?? $user?->id)
                 ->when(!empty($orderId), fn($q) => $q->where('orderid', $orderId))
                 ->when(empty($orderId), fn($q) => $q->whereNull('orderid'))
@@ -1700,7 +1914,8 @@ class InvoicesController extends Controller
                 'issue_date' => $validated['issue_date'] ?? $draft->issue_date,
                 'due_date' => $validated['due_date'] ?? $draft->due_date,
                 'notes' => $validated['notes'] ?? $draft->notes,
-                'fy_id' => $draft->fy_id ?: $this->resolveDefaultFyId($user->accountid ?? 'ACC0000001'),
+                'status' => 'draft',
+                'fy_id' => $draft->fy_id ?: $this->resolveDefaultFyId($accountid),
             ]);
         } else {
             // Create new draft
@@ -1715,7 +1930,7 @@ class InvoicesController extends Controller
                 'issue_date' => $validated['issue_date'] ?? now(),
                 'due_date' => $validated['due_date'] ?? now()->addDays(7),
                 'notes' => $validated['notes'] ?? '',
-                'status' => 'active',
+                'status' => 'draft',
                 'created_by' => $user?->userid ?? $user?->id,
             ]);
         }
@@ -1761,6 +1976,7 @@ class InvoicesController extends Controller
                     'no_of_users' => !empty($itemData['no_of_users']) ? max(1, (int) $itemData['no_of_users']) : null,
                     'start_date' => $itemData['start_date'] ?? null,
                     'end_date' => $itemData['end_date'] ?? null,
+                    'status' => 'active',
                     'amount' => $this->wholeAmount($amounts['line_total'] ?? 0),
                 ];
             }
@@ -1771,6 +1987,17 @@ class InvoicesController extends Controller
             }
         }
 
+        if (($validated['invoice_for'] ?? '') === 'renewal') {
+            $renewedItemIds = json_decode((string) ($validated['renewed_item_ids'] ?? '[]'), true);
+            if (!is_array($renewedItemIds) || empty($renewedItemIds)) {
+                $renewedItemIds = $this->extractRenewedItemIdsFromItemsData($itemsData ?? []);
+            }
+            if (!empty($renewedItemIds)) {
+                $renewedItemIds = array_values(array_filter(array_map('strval', $renewedItemIds)));
+                $this->storeRenewalSourceItemIds($draft->invoiceid, $renewedItemIds);
+            }
+        }
+
         if ($rawItemsData !== null) {
             $calculatedDiscountTotal = $this->roundDiscountDown($calculatedDiscountTotal);
             $calculatedTaxTotal = $this->roundTaxUp($calculatedTaxTotal);
@@ -1778,9 +2005,7 @@ class InvoicesController extends Controller
             $amountPaid = (float) ($draft->amount_paid ?? 0);
             $calculatedBalanceDue = max(0, $calculatedGrandTotal - $amountPaid);
 
-            $draft->update(['status' => 'active']);
-
-            $this->persistInvoicePdfVersion($draft, !empty(trim((string) $draft->ti_number)));
+            $draft->update(['status' => 'draft']);
         }
 
         return response()->json([
@@ -1794,10 +2019,11 @@ class InvoicesController extends Controller
 
     public function invoicesGetDraft($clientid)
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $accountid = $this->resolveAccountId();
         $orderId = request('o', request('orderid'));
         $draftId = request('d');
+        $invoiceFor = request('invoice_for');
 
         $draft = null;
         if (!empty($draftId)) {
@@ -1807,10 +2033,10 @@ class InvoicesController extends Controller
                 ->first();
         }
 
-        if (!$draft && empty($draftId)) {
+        if (!$draft && empty($draftId) && $invoiceFor !== 'renewal') {
             $draft = Invoice::where('clientid', $clientid)
                 ->where('accountid', $accountid)
-                ->whereIn('status', ['active', 'draft'])
+                ->where('status', 'draft')
                 ->where('created_by', $user?->userid ?? $user?->id)
                 ->when(!empty($orderId), fn($q) => $q->where('orderid', $orderId))
                 ->when(empty($orderId), fn($q) => $q->whereNull('orderid'))
@@ -1869,7 +2095,7 @@ class InvoicesController extends Controller
         $invoice->loadMissing(['client', 'items.service', 'order', 'payments']);
 
         // Load account billing details for preview
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = \App\Models\Account::where('accountid', $accountid)->first();
         $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
 
@@ -1885,7 +2111,7 @@ class InvoicesController extends Controller
     public function invoicesEdit(string $invoice)
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
-        $invoiceFor = $invoice->invoice_for ?: 'orders';
+        $invoiceFor = $invoice->orderid ? 'orders' : 'without_orders';
         $step = $invoiceFor === 'without_orders' ? 2 : 3;
         $query = [
             'step' => $step,
@@ -1925,6 +2151,7 @@ class InvoicesController extends Controller
             'no_of_users' => 'nullable|integer|min:1',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date',
+            'status' => 'nullable|in:active,suspended,renewed',
             'line_total' => 'nullable|numeric|min:0',
         ]);
 
@@ -1932,7 +2159,7 @@ class InvoicesController extends Controller
         $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
         $hasRecurringFrequency = $this->hasRecurringFrequency($itemData['frequency'] ?? null);
 
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = \App\Models\Account::find($accountid);
         $accountHasUsers = (bool) ($account?->have_users ?? false);
         $service = Service::find($invoiceItem->itemid);
@@ -1951,6 +2178,7 @@ class InvoicesController extends Controller
             'no_of_users' => $isUserWiseItem ? max(1, (int) ($itemData['no_of_users'] ?? 1)) : null,
             'start_date' => $hasRecurringFrequency ? ($itemData['start_date'] ?: null) : null,
             'end_date' => $hasRecurringFrequency ? ($itemData['end_date'] ?: null) : null,
+            'status' => $itemData['status'] ?? ($invoiceItem->status ?? 'active'),
             'amount' => $amounts['line_total'],
         ]);
 
@@ -1983,6 +2211,7 @@ class InvoicesController extends Controller
                 'no_of_users' => $invoiceItem->no_of_users,
                 'start_date' => $invoiceItem->start_date?->format('Y-m-d'),
                 'end_date' => $invoiceItem->end_date?->format('Y-m-d'),
+                'status' => $invoiceItem->status ?? 'active',
                 'line_total' => (float) $invoiceItem->amount,
             ],
         ]);
@@ -2030,7 +2259,7 @@ class InvoicesController extends Controller
 
         $invoice->items()->delete();
 
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $account = \App\Models\Account::find($accountid);
         $accountHasUsers = (bool) ($account?->have_users ?? false);
 
@@ -2054,6 +2283,7 @@ class InvoicesController extends Controller
                 'no_of_users' => $isUserWiseItem ? max(1, (int) ($itemData['no_of_users'] ?? 1)) : null,
                 'start_date' => $hasRecurringFrequency ? ($itemData['start_date'] ?: null) : null,
                 'end_date' => $hasRecurringFrequency ? ($itemData['end_date'] ?: null) : null,
+                'status' => 'active',
                 'amount' => $amounts['line_total'],
                 'invoiceid' => $invoice->invoiceid,
             ];
@@ -2082,6 +2312,57 @@ class InvoicesController extends Controller
         return redirect()
             ->route('invoices.index', $selectedClientId ? ['c' => $selectedClientId] : [])
             ->with('success', 'Invoice cancelled successfully.');
+    }
+
+    public function invoicesRestore(string $invoice)
+    {
+        $invoice = $this->resolveInvoiceDocument($invoice);
+        $selectedClientId = request('c') ?: $invoice->clientid;
+        $invoice->update(['status' => 'active']);
+
+        return redirect()
+            ->route('invoices.index', $selectedClientId ? ['c' => $selectedClientId] : [])
+            ->with('success', 'Invoice restored successfully.');
+    }
+
+    public function suspendInvoiceItem(Request $request, string $invoice, string $item)
+    {
+        $invoice = $this->resolveInvoiceDocument($invoice);
+        $invoiceItem = InvoiceItem::query()
+            ->where('invoice_itemid', $item)
+            ->where('invoiceid', $invoice->invoiceid)
+            ->firstOrFail();
+
+        $invoiceItem->update(['status' => 'suspended']);
+
+        $params = array_filter([
+            'c' => request('c') ?: $invoice->clientid,
+            'tab' => 'expired',
+        ]);
+
+        return redirect()
+            ->route('invoices.index', $params)
+            ->with('success', 'Item suspended successfully.');
+    }
+
+    public function unsuspendInvoiceItem(Request $request, string $invoice, string $item)
+    {
+        $invoice = $this->resolveInvoiceDocument($invoice);
+        $invoiceItem = InvoiceItem::query()
+            ->where('invoice_itemid', $item)
+            ->where('invoiceid', $invoice->invoiceid)
+            ->firstOrFail();
+
+        $invoiceItem->update(['status' => 'active']);
+
+        $params = array_filter([
+            'c' => request('c') ?: $invoice->clientid,
+            'tab' => 'suspended',
+        ]);
+
+        return redirect()
+            ->route('invoices.index', $params)
+            ->with('success', 'Item unsuspended successfully.');
     }
 
     protected function resolveInvoiceDocument(string $invoiceid): Invoice
@@ -2117,28 +2398,36 @@ class InvoicesController extends Controller
         ]);
 
         $invoice = Invoice::findOrFail($validated['invoiceid']);
+        $clientContext = $request->input('c', $request->query('c', $invoice->clientid));
 
-        // Generate tax invoice number
-        $tiNumber = $this->generateTaxInvoiceNumber();
-        $this->assertDocumentNumberAvailable($tiNumber, $invoice->invoiceid, 'ti_number');
+        $tiNumber = trim((string) ($invoice->ti_number ?? ''));
+        if ($tiNumber === '') {
+            $tiNumber = $this->generateTaxInvoiceNumber();
+            $this->assertDocumentNumberAvailable($tiNumber, $invoice->invoiceid, 'ti_number');
 
-        // Update invoice with tax invoice number
-        $invoice->update([
-            'ti_number' => $tiNumber,
-            'status' => 'active',
-        ]);
+            $invoice->update([
+                'ti_number' => $tiNumber,
+                'status' => 'active',
+            ]);
 
-        $this->persistInvoicePdfVersion($invoice, true);
+            $this->persistInvoicePdfVersion($invoice, true);
+        }
+
+        $editUrl = route('invoices.edit', array_filter([
+            'invoice' => $invoice->invoiceid,
+            'c' => $clientContext,
+        ]));
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Tax Invoice created successfully.',
                 'ti_number' => $tiNumber,
+                'redirect_url' => $editUrl,
             ]);
         }
 
-        return redirect()->back()->with('success', 'Tax Invoice created successfully: ' . $tiNumber);
+        return redirect($editUrl)->with('success', 'Tax Invoice ready: ' . $tiNumber);
     }
 
     public function sendReminder(Request $request, string $invoice, InvoiceReminderService $invoiceReminderService)
@@ -2207,12 +2496,22 @@ class InvoicesController extends Controller
         return back()->with('error', $failureMessage);
     }
 
-    public function emailCompose(string $invoice): View
+    public function emailCompose(Request $request, string $invoice): View
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
         $invoice->loadMissing(['client.billingDetail', 'order']);
 
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        if (($invoice->status ?? '') === 'draft') {
+            $this->ensureInvoiceDefaultTerms($invoice);
+            $invoice->update(['status' => 'active']);
+            $renewedItemIds = json_decode((string) $request->query('renewed_item_ids', '[]'), true);
+            $this->finalizeRenewedSourceItems($invoice, is_array($renewedItemIds) ? $renewedItemIds : null);
+            $invoice->refresh();
+        } else {
+            $this->ensureInvoiceDefaultTerms($invoice);
+        }
+
+        $accountid = $this->resolveAccountId();
         $account = \App\Models\Account::find($accountid);
         $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
         $fromEmail = (string) ($accountBillingDetail?->billing_from_email ?? '');
@@ -2247,7 +2546,7 @@ class InvoicesController extends Controller
             $defaultBody .= "\n\nRegards,\n" . implode("\n", $signatureLines);
         }
 
-        $user = auth()->user();
+        $user = Auth::user();
         $currentUserId = $user?->userid ?? $user?->id;
         $currentAccountId = $invoice->accountid ?? ($user?->accountid ?? $accountid);
 
@@ -2431,7 +2730,7 @@ class InvoicesController extends Controller
         $invoice = $this->resolveInvoiceDocument($invoice);
         $invoice->loadMissing(['client.billingDetail']);
 
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
         $forcedFromEmail = (string) ($accountBillingDetail?->billing_from_email ?? '');
         $forcedFromName = trim((string) ($accountBillingDetail?->billing_name ?? ''));
@@ -2464,8 +2763,8 @@ class InvoicesController extends Controller
                 return back()->withErrors(['to_email' => 'Set Client Billing Email first.'])->withInput();
             }
         }
-        $user = auth()->user();
-        $currentAccountId = $invoice->accountid ?? ($user?->accountid ?? 'ACC0000001');
+        $user = Auth::user();
+        $currentAccountId = $invoice->accountid ?? $this->resolveAccountId();
         $requestedDraftId = trim((string) ($validated['invoice_emailid'] ?? ''));
         $seedDraft = null;
         if ($requestedDraftId !== '') {
@@ -2694,6 +2993,10 @@ class InvoicesController extends Controller
             // Keep rich/original body in DB so compose view formatting is preserved.
             $updatePayload['body'] = $finalBody;
             $emailDraft->update($updatePayload + ['status' => 'sent', 'sent_at' => $sentAt]);
+            if (($invoice->status ?? '') === 'draft') {
+                $invoice->update(['status' => 'active']);
+                $this->finalizeRenewedSourceItems($invoice);
+            }
 
             return redirect()
                 ->route('invoices.email-compose', [
@@ -2768,6 +3071,10 @@ class InvoicesController extends Controller
 
         $updatePayload['body'] = $finalBody;
         $emailDraft->update($updatePayload + ['status' => 'sent', 'sent_at' => $sentAt]);
+        if (($invoice->status ?? '') === 'draft') {
+            $invoice->update(['status' => 'active']);
+            $this->finalizeRenewedSourceItems($invoice);
+        }
 
         return redirect()
             ->route('invoices.email-compose', [
@@ -2843,4 +3150,35 @@ class InvoicesController extends Controller
         ]);
     }
 
+    protected function calculateRenewalEndDate(\Carbon\Carbon $startDate, string $frequency, int $duration): ?\Carbon\Carbon
+    {
+        if ($duration <= 0 || $frequency === 'One-Time') {
+            return null;
+        }
+
+        $date = $startDate->copy();
+
+        switch ($frequency) {
+            case 'Day(s)':
+                $date->addDays($duration);
+                break;
+            case 'Week(s)':
+                $date->addWeeks($duration);
+                break;
+            case 'Month(s)':
+                $date->addMonths($duration);
+                break;
+            case 'Quarter(s)':
+                $date->addMonths($duration * 3);
+                break;
+            case 'Year(s)':
+                $date->addYears($duration);
+                break;
+            default:
+                return null;
+        }
+
+        // Subtract 1 day to make it inclusive (e.g., 1st Jan to 31st Dec)
+        return $date->subDay();
+    }
 }

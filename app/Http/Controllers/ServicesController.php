@@ -131,11 +131,10 @@ class ServicesController extends Controller
 
     public function servicesCreate(): View
     {
-        $accountid = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $accountid = $this->resolveAccountId();
         $categories = ProductCategory::where('accountid', $accountid)->where('status', 'active')->orderBy('sequence')->orderBy('name')->get();
         $currencies = DB::table('currency')->orderBy('iso')->get(['iso', 'name']);
         $accountCurrency = auth()->check() ? (auth()->user()->account->currency_code ?? 'INR') : 'INR';
-        $accountid = auth()->check() ? auth()->id() : 'ACC0000001';
         $account = \App\Models\Account::find($accountid);
         
         // Only load taxes if multi-taxation is enabled
@@ -182,7 +181,7 @@ class ServicesController extends Controller
             'addons.*' => 'required|string|distinct|exists:items,itemid',
         ]);
 
-        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $userAccountId = $this->resolveAccountId();
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
         $validated['user_wise'] = $request->boolean('user_wise');
 
@@ -436,7 +435,7 @@ class ServicesController extends Controller
             ], 422);
         }
 
-        $userAccountId = auth()->check() ? (auth()->user()->accountid ?? 'ACC0000001') : 'ACC0000001';
+        $userAccountId = $this->resolveAccountId();
 
         try {
             $validated['user_wise'] = $request->boolean('user_wise');

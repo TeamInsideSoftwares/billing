@@ -43,8 +43,14 @@
             style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div>
                 <h4 style="margin: 0; font-size: 1rem; color: #111827;">Renewal Candidates</h4>
-                <p style="margin: 0.2rem 0 0 0; color: #6b7280; font-size: 0.85rem;">Showing only expired recurring
-                    items from tax invoices</p>
+                <p style="margin: 0.2rem 0 0 0; color: #6b7280; font-size: 0.85rem;">Showing expired items and items
+                    expiring within the selected number of days from tax invoices</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <label for="renewal_days_filter" style="font-size: 0.8rem; color: #64748b; margin: 0;">Next Days</label>
+                <input type="text" id="renewal_days_filter" inputmode="numeric" value="30"
+                    style="width: 84px; padding: 0.35rem 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.82rem;">
+                <button type="button" id="btnApplyRenewalDays" class="secondary-button small">Apply</button>
             </div>
         </div>
         <div class="table-shell">
@@ -55,7 +61,7 @@
                         <th>Invoice #</th>
                         <th>Item</th>
                         <th>Renewal Window</th>
-                        <th class="text-right">Amount ({{ $selectedClientCurrency }})</th>
+                        <th class="text-center">Amount ({{ $selectedClientCurrency }})</th>
                     </tr>
                 </thead>
                 <tbody id="renewalBody"></tbody>
@@ -74,13 +80,18 @@
 <script>
     (function () {
         const clientId = "{{ request('c', request('clientid')) }}";
+        const sourceItemId = "{{ request('source_item', '') }}";
         const renewalBody = document.getElementById('renewalBody');
         const noRenewalMessage = document.getElementById('noRenewalMessage');
         const btnNextToStep3 = document.getElementById('btnNextToStep3');
         const btnBackToStep1 = document.getElementById('btnBackToStep1');
+        const renewalDaysFilterInput = document.getElementById('renewal_days_filter');
+        const btnApplyRenewalDays = document.getElementById('btnApplyRenewalDays');
         const itemsDataInput = document.getElementById('items_data');
         const renewedItemIdsInput = document.getElementById('renewed_item_ids');
         const renewalItemStore = new Map();
+        const pendingSelectedItemIds = new Set(sourceItemId ? [sourceItemId] : []);
+        const renewalSelectionStorageKey = `invoice-renewal-selection:${clientId}`;
 
         let selectedRenewalItems = [];
         let latestRenewalRequestId = 0;
@@ -94,12 +105,56 @@
                 .replace(/'/g, '&#39;');
         }
 
+        function getRenewalDaysFilter() {
+            return Math.max(0, Number(renewalDaysFilterInput?.value || 30));
+        }
+
+        function persistRenewalSelection() {
+            try {
+                window.sessionStorage.setItem(renewalSelectionStorageKey, JSON.stringify({
+                    items: selectedRenewalItems,
+                    issue_date: document.getElementById('step2_select_renewal_issue_date')?.value || '',
+                    due_date: document.getElementById('step2_select_renewal_due_date')?.value || '',
+                    notes: document.getElementById('step2_select_renewal_notes')?.value || '',
+                }));
+            } catch (error) {
+                console.warn('Unable to persist renewal selection:', error);
+            }
+        }
+
+        function loadStoredRenewalSelection() {
+            try {
+                const raw = window.sessionStorage.getItem(renewalSelectionStorageKey);
+                if (!raw) {
+                    return null;
+                }
+
+                const parsed = JSON.parse(raw);
+                return parsed && typeof parsed === 'object' ? parsed : null;
+            } catch (error) {
+                console.warn('Unable to load renewal selection:', error);
+                return null;
+            }
+        }
+
+        function syncSelectionToCheckboxes() {
+            renewalItemStore.forEach((item, key) => {
+                const checkbox = document.querySelector(`.renewal-item-checkbox[data-item-key="${key}"]`);
+                if (!checkbox) {
+                    return;
+                }
+
+                checkbox.checked = pendingSelectedItemIds.has(String(item.invoice_itemid));
+            });
+
+            updateSelectedItems();
+        }
+
         function loadRenewals() {
             const requestId = ++latestRenewalRequestId;
             renewalBody.innerHTML = '';
             noRenewalMessage.style.display = 'none';
-            noRenewalMessage.textContent = 'No expired renewal items found from tax invoices for this client.';
-            selectedRenewalItems = [];
+            noRenewalMessage.textContent = 'No renewal candidates found for this client in the selected days range.';
             renewalItemStore.clear();
             itemsDataInput.value = '[]';
             renewedItemIdsInput.value = '[]';
@@ -111,7 +166,10 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                 },
-                body: JSON.stringify({ clientid: clientId })
+                body: JSON.stringify({
+                    clientid: clientId,
+                    days: getRenewalDaysFilter(),
+                })
             })
                 .then(response => response.json())
                 .then(invoices => {
@@ -132,7 +190,7 @@
                         const items = Array.isArray(invoice.items) ? invoice.items : [];
 
                         items.forEach(item => {
-                            if (!item || !item.is_expired) {
+                            if (!item || (!item.is_expired && !item.is_upcoming)) {
                                 return;
                             }
 
@@ -158,14 +216,7 @@
                             </label>
                         </td>
                         <td>
-                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.45rem;">
-                                <span>${invoice.invoice_number || '-'}</span>
-                                <a href="{{ url('invoices') }}/${invoice.invoiceid}/edit"
-                                   style="font-size: 0.72rem; padding: 0.26rem 0.52rem; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 6px; font-weight: 500; display: inline-flex; align-items: center; gap: 0.2rem; text-decoration: none;"
-                                   title="Edit source invoice">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                            </div>
+                            <span>${invoice.invoice_number || '-'}</span>
                         </td>
                         <td>
                             <div style="font-weight: 600; color: #111827;">${itemName}</div>
@@ -175,13 +226,13 @@
                             </div>
                         </td>
                         <td>
-                            <span class="status-pill cancelled" style="font-size: 0.65rem; padding: 0.12rem 0.45rem;">
-                                Expired
+                            <span class="status-pill ${item.is_expired ? 'cancelled' : ''}" style="font-size: 0.65rem; padding: 0.12rem 0.45rem;">
+                                ${item.is_expired ? 'Expired' : 'Upcoming'}
                             </span>
                             <div style="font-size: 0.78rem; color: #6b7280; margin-top: 0.15rem;">Ends: ${item.end_date || '-'}</div>
                         </td>
-                        <td style="text-align: right; font-weight: 600;">
-                            ${invoice.currency || 'INR'} ${Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || ((Number(item.line_total || 0) * Number(item.discount_percent || 0)) / 100) || 0)).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        <td style="text-align: center; font-weight: 600;">
+                            ${Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || ((Number(item.line_total || 0) * Number(item.discount_percent || 0)) / 100) || 0)).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </td>
                     `;
                             renewalBody.appendChild(row);
@@ -199,13 +250,15 @@
                             updateSelectedItems();
                         });
                     });
+
+                    syncSelectionToCheckboxes();
                 })
                 .catch(error => {
                     if (requestId !== latestRenewalRequestId) {
                         return;
                     }
                     console.error('Error loading renewals:', error);
-                    noRenewalMessage.textContent = 'No expired renewal items found from tax invoices for this client.';
+                    noRenewalMessage.textContent = 'No renewal candidates found for this client in the selected days range.';
                     noRenewalMessage.style.display = 'block';
                 });
         }
@@ -213,6 +266,7 @@
         function updateSelectedItems() {
             selectedRenewalItems = [];
             const renewedIds = new Set();
+            pendingSelectedItemIds.clear();
 
             document.querySelectorAll('.renewal-item-checkbox:checked').forEach(checkbox => {
                 const selectedItem = renewalItemStore.get(checkbox.dataset.itemKey);
@@ -225,11 +279,13 @@
                     renewed_from_invoice_itemid: selectedItem.invoice_itemid
                 });
                 renewedIds.add(selectedItem.invoice_itemid);
+                pendingSelectedItemIds.add(String(selectedItem.invoice_itemid));
             });
 
             itemsDataInput.value = JSON.stringify(selectedRenewalItems);
             renewedItemIdsInput.value = JSON.stringify(Array.from(renewedIds));
             btnNextToStep3.disabled = selectedRenewalItems.length === 0;
+            persistRenewalSelection();
         }
 
         btnNextToStep3.addEventListener('click', function () {
@@ -238,46 +294,14 @@
                 return;
             }
 
-            const issueDateValue = document.getElementById('step2_select_renewal_issue_date')?.value || '';
-            const dueDateValue = document.getElementById('step2_select_renewal_due_date')?.value || '';
-            const notesValue = document.getElementById('step2_select_renewal_notes')?.value || '';
+            persistRenewalSelection();
 
-            fetch("{{ route('invoices.save-draft') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-                },
-                body: JSON.stringify({
-                    invoiceid: "{{ request('d', '') }}" || undefined,
-                    invoice_for: 'renewal',
-                    clientid: clientId,
-                    issue_date: issueDateValue,
-                    due_date: dueDateValue,
-                    notes: notesValue,
-                    items_data: JSON.stringify(selectedRenewalItems)
-                })
-            })
-                .then(async (response) => {
-                    if (!response.ok) {
-                        const text = await response.text();
-                        throw new Error(text || 'Failed to save draft.');
-                    }
-                    const contentType = response.headers.get('content-type') || '';
-                    return contentType.includes('application/json') ? response.json() : {};
-                })
-                .then((data) => {
-                    const clientToken = encodeURIComponent(clientId);
-                    let nextUrl = "{{ route('invoices.create') }}?step=3&invoice_for=renewal&c=" + clientToken;
-                    if (data && data.invoiceid) {
-                        nextUrl += "&d=" + encodeURIComponent(data.invoiceid);
-                    }
-                    window.location.href = nextUrl;
-                })
-                .catch((error) => {
-                    console.error('Error saving draft:', error);
-                    alert('Unable to save draft right now. Please try again.');
-                });
+            const clientToken = encodeURIComponent(clientId);
+            let nextUrl = "{{ route('invoices.create') }}?step=3&invoice_for=renewal&c=" + clientToken;
+            if (sourceItemId) {
+                nextUrl += "&source_item=" + encodeURIComponent(sourceItemId);
+            }
+            window.location.href = nextUrl;
         });
 
         btnBackToStep1.addEventListener('click', function () {
@@ -285,11 +309,47 @@
             window.location.href = "{{ route('invoices.create') }}?step=1&c=" + clientToken;
         });
 
+        btnApplyRenewalDays?.addEventListener('click', function () {
+            loadRenewals();
+        });
+
+        renewalDaysFilterInput?.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                loadRenewals();
+            }
+        });
+
         // Load draft items when editing
         function loadItems() {
             const draftId = "{{ request('d', '') }}";
 
-            if (!draftId) return;
+            if (!draftId) {
+                const storedSelection = loadStoredRenewalSelection();
+                if (storedSelection) {
+                    if (Array.isArray(storedSelection.items) && storedSelection.items.length > 0) {
+                        selectedRenewalItems = storedSelection.items;
+                        itemsDataInput.value = JSON.stringify(selectedRenewalItems);
+                        pendingSelectedItemIds.clear();
+                        selectedRenewalItems.forEach(item => {
+                            if (item && item.invoice_itemid) {
+                                pendingSelectedItemIds.add(String(item.invoice_itemid));
+                            }
+                        });
+                    }
+
+                    if (storedSelection.issue_date) {
+                        document.getElementById('step2_select_renewal_issue_date').value = storedSelection.issue_date;
+                    }
+                    if (storedSelection.due_date) {
+                        document.getElementById('step2_select_renewal_due_date').value = storedSelection.due_date;
+                    }
+                    if (storedSelection.notes) {
+                        document.getElementById('step2_select_renewal_notes').value = storedSelection.notes;
+                    }
+                }
+                return;
+            }
 
             const draftUrl = new URL("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace('__CLIENTID__', clientId), window.location.origin);
             draftUrl.searchParams.set('invoice_for', 'renewal');
@@ -302,17 +362,14 @@
                         if (data.draft.items && data.draft.items.length > 0) {
                             selectedRenewalItems = data.draft.items;
                             itemsDataInput.value = JSON.stringify(selectedRenewalItems);
-
-                            // Update checkboxes based on loaded items
-                            renewalItemStore.forEach((item, key) => {
-                                const checkbox = document.querySelector(`.renewal-item-checkbox[data-item-key="${key}"]`);
-                                if (checkbox) {
-                                    const isSelected = selectedRenewalItems.some(si => si.invoice_itemid === item.invoice_itemid);
-                                    checkbox.checked = isSelected;
+                            pendingSelectedItemIds.clear();
+                            selectedRenewalItems.forEach(item => {
+                                if (item && item.invoice_itemid) {
+                                    pendingSelectedItemIds.add(String(item.invoice_itemid));
                                 }
                             });
 
-                            updateSelectedItems();
+                            syncSelectionToCheckboxes();
                         }
 
                         if (data.draft.issue_date) {

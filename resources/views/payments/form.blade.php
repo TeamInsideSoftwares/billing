@@ -10,24 +10,27 @@
 <style>
     .payments-form-panel {
         overflow: visible !important;
+        min-height: 520px; /* Ensure enough space for the absolute dropdown */
     }
 
     #invoice-dropdown-wrap {
         max-width: 100%;
         width: 100%;
+        position: relative; /* Ensure the absolute dropdown is positioned correctly */
     }
 
     .payments-form-shell,
     .payments-form-shell .client-form,
     .payments-form-shell .form-grid {
-        overflow: visible;
+        overflow: visible !important;
     }
 
     #invoice-dropdown {
         z-index: 2000;
-        max-height: min(260px, 46vh);
+        max-height: 250px;
         overflow-y: auto;
         overflow-x: hidden;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
     }
 </style>
 <section class="panel-card payments-form-panel">
@@ -63,12 +66,19 @@
         @endisset
         @csrf
         <div class="form-grid">
-            <div style="margin-top: -0.35rem; grid-column: 1 / -1;">
-                <label class="custom-checkbox" style="padding: 0.35rem 0.55rem; min-height: 36px;">
-                    <input type="checkbox" name="tds" value="1" {{ $defaultTdsChecked === '1' ? 'checked' : '' }}>
-                    <span class="checkbox-label">This is a TDS payment</span>
-                </label>
-                @error('tds') <span class="error">{{ $message }}</span> @enderror
+            <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 1.25rem; margin-bottom: 0.5rem; background: #f8fafc; padding: 0.65rem 1rem; border-radius: 8px; border: 1px solid #e5e7eb;">
+                <label style="font-weight: 700; font-size: 0.85rem; color: #475569; margin: 0;">Entry Type:</label>
+                <div style="display: flex; gap: 1rem;">
+                    <label class="custom-radio">
+                        <input type="radio" name="tds" value="0" {{ $defaultTdsChecked !== '1' ? 'checked' : '' }}>
+                        <span class="radio-label">Standard Payment</span>
+                    </label>
+                    <label class="custom-radio">
+                        <input type="radio" name="tds" value="1" {{ $defaultTdsChecked === '1' ? 'checked' : '' }}>
+                        <span class="radio-label">TDS (Tax Deducted at Source)</span>
+                    </label>
+                </div>
+                @error('tds') <span class="error" style="margin-left: auto;">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="clientid">Select Client *</label>
