@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('header_actions')
-    <a href="{{ route('payments.index') }}" class="secondary-button">
+    <a href="{{ route('payments.index', !empty($selectedClientId) ? ['c' => $selectedClientId] : []) }}" class="secondary-button">
         <i class="fas fa-arrow-left" class="icon-spaced"></i>Back to Payments
     </a>
 @endsection
@@ -38,7 +38,7 @@
         $defaultClientId = old('clientid', isset($payment) ? $payment->clientid : ($selectedClientId ?? ''));
         $defaultInvoiceId = old('invoiceid', isset($payment) ? $payment->invoiceid : ($selectedInvoiceId ?? ''));
         $defaultCurrency = $selectedCurrency ?? (isset($payment) ? ($payment->client->currency ?? 'INR') : 'INR');
-        $defaultTdsChecked = old('tds', isset($payment) ? ((bool) ($payment->tds ?? false) ? '1' : '') : '');
+        $defaultPaymentType = old('type', isset($payment) ? ($payment->type ?? 'payment') : 'payment');
         $clientCurrencies = collect($clients ?? [])->mapWithKeys(fn($client) => [
             (string) $client->clientid => (string) ($client->currency ?? 'INR'),
         ])->all();
@@ -70,15 +70,15 @@
                 <label style="font-weight: 700; font-size: 0.85rem; color: #475569; margin: 0;">Entry Type:</label>
                 <div style="display: flex; gap: 1rem;">
                     <label class="custom-radio">
-                        <input type="radio" name="tds" value="0" {{ $defaultTdsChecked !== '1' ? 'checked' : '' }}>
+                        <input type="radio" name="type" value="payment" {{ $defaultPaymentType !== 'tds' ? 'checked' : '' }}>
                         <span class="radio-label">Standard Payment</span>
                     </label>
                     <label class="custom-radio">
-                        <input type="radio" name="tds" value="1" {{ $defaultTdsChecked === '1' ? 'checked' : '' }}>
+                        <input type="radio" name="type" value="tds" {{ $defaultPaymentType === 'tds' ? 'checked' : '' }}>
                         <span class="radio-label">TDS (Tax Deducted at Source)</span>
                     </label>
                 </div>
-                @error('tds') <span class="error" style="margin-left: auto;">{{ $message }}</span> @enderror
+                @error('type') <span class="error" style="margin-left: auto;">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="clientid">Select Client *</label>
@@ -138,7 +138,7 @@
         </div>
         <div class="form-actions">
             <button type="submit" class="primary-button">{{ isset($payment) ? 'Update Payment' : 'Record Payment' }}</button>
-            <a href="{{ route('payments.index') }}" class="text-link">Cancel</a>
+            <a href="{{ route('payments.index', !empty($selectedClientId) ? ['c' => $selectedClientId] : []) }}" class="text-link">Cancel</a>
         </div>
     </form>
 </section>

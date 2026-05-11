@@ -1,138 +1,165 @@
 @extends('layouts.app')
 
 @section('header_actions')
-    <a href="{{ route('payments.gst-report') }}" class="secondary-button">GST Report</a>
-    <a href="{{ route('payments.ledger') }}" class="secondary-button">View Ledger</a>
-    <a href="{{ route('payments.create') }}" class="primary-button">Record Payment</a>
+    <div class="header-actions-wrapper">
+        @if($clientId)
+            <a href="{{ route('payments.gst-report', ['c' => $clientId]) }}" class="secondary-button">GST Report</a>
+            <a href="{{ route('payments.ledger', ['c' => $clientId]) }}" class="secondary-button">View Ledger</a>
+            <a href="{{ route('payments.create', ['c' => $clientId]) }}" class="primary-button">Record Payment</a>
+        @endif
+    </div>
 @endsection
 
 @section('content')
-    <section class="panel-card">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Payment</th>
-                    <th>Client</th>
-                    <th>Invoice</th>
-                    <th>Reference</th>
-                    <th>Date</th>
-                    <th>Method</th>
-                    <th class="text-center">TDS</th>
-                    <th class="text-end">Amount{{ !empty($selectedCurrency) ? ' (' . $selectedCurrency . ')' : '' }}</th>
-                    <th class="text-center">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-            @forelse ($payments as $payment)
-                <tr>
-                    <td>
-                        <strong class="payment-row-title">{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>' . $searchTerm . '</mark>', $payment['number']) : $payment['number'] !!}</strong>
-                        @if(!empty($payment['description']))
-                            <div class="payment-row-note">{{ $payment['description'] }}</div>
-                        @endif
-                    </td>
-                    <td class="payment-cell-text">{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $payment['client']) : $payment['client'] !!}</td>
-                    <td class="payment-cell-text">{{ $payment['invoice'] ?: '-' }}</td>
-                    <td class="payment-cell-text">{{ $payment['reference_number'] ?: '-' }}</td>
-                    <td class="payment-cell-text">{{ $payment['date'] ?: '-' }}</td>
-                    <td class="payment-cell-text">{{ $payment['method'] }}</td>
-                    <td class="text-center">
-                        <span class="payment-tds-badge {{ $payment['tds'] ? 'is-yes' : 'is-no' }}">
-                            {{ $payment['tds'] ? 'Yes' : 'No' }}
-                        </span>
-                    </td>
-                    <td class="text-end">
-                        <strong class="payment-row-amount">{{ number_format($payment['amount'], 0) }}</strong>
-                    </td>
-                    <td class="text-center">
-                        <div class="table-actions payment-table-actions">
-                            <a href="{{ route('payments.show', $payment['record_id']) }}" class="icon-action-btn view" title="View">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            <a href="{{ route('payments.edit', $payment['record_id']) }}" class="icon-action-btn edit" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <form method="POST" action="{{ route('payments.destroy', $payment['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $payment['number'] }}?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="icon-action-btn delete" title="Delete">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
+    @if(!$clientId)
+        <div class="payment-client-picker-wrap">
+            <div class="payment-client-picker">
+                <div class="payment-client-picker-head">
+                    <div class="payment-client-picker-title">
+                        <div class="payment-client-picker-icon">
+                            <i class="fas fa-building"></i>
                         </div>
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                <td colspan="9" class="no-records-cell">
-                        <i class="fas fa-money-bill-wave empty-state-icon"></i>
-                        <p class="no-empty-state-text">No payments recorded</p>
-                        <p class="small-text">Record your first payment to track your collections.</p>
-                    </td>
-                </tr>
-            @endforelse
-            </tbody>
-        </table>
-    </section>
+                        <div>
+                            <strong>Manage Payments</strong>
+                            <p>Choose a client first to view and record payments in a focused view.</p>
+                        </div>
+                    </div>
+                    <span class="payment-client-count">{{ $clients->count() }} client(s)</span>
+                </div>
+                <form action="{{ route('payments.index') }}" method="GET" class="payment-client-picker-form">
+                    <div class="payment-client-picker-field">
+                        <label for="payment-client-select">Client</label>
+                        <select name="c" id="payment-client-select" class="form-control" autofocus>
+                            <option value="" selected disabled>Select a client</option>
+                            @foreach($clients as $client)
+                                <option value="{{ $client->clientid }}">
+                                    {{ $client->business_name ?? $client->contact_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="payment-client-picker-actions">
+                        <button type="button" id="btnViewPayments" class="secondary-button action-btn-lg">
+                            <i class="fas fa-list icon-spaced"></i> View Payments
+                        </button>
+                        <button type="button" id="btnCreatePayment" class="primary-button action-btn-lg">
+                            <i class="fas fa-plus icon-spaced"></i> Record Payment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @else
+        <section class="panel-card module-filter-panel">
+            <form action="{{ route('payments.index') }}" method="GET" class="module-filter-grid">
+                <div class="module-filter-field">
+                    <label class="module-filter-label" for="payments_client_filter">Client</label>
+                    <select name="c" id="payments_client_filter" class="form-control">
+                        @foreach($clients as $client)
+                            <option value="{{ $client->clientid }}" {{ (string) $clientId === (string) $client->clientid ? 'selected' : '' }}>
+                                {{ $client->business_name ?? $client->contact_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-    <style>
-        .data-table th,
-        .data-table td {
-            padding-top: 0.55rem;
-            padding-bottom: 0.55rem;
-            vertical-align: middle;
-        }
+                <div class="module-filter-field">
+                    <label class="module-filter-label" for="payments_from_filter">From</label>
+                    <input type="date" name="from" id="payments_from_filter" class="form-control module-date-input" value="{{ request('from') }}">
+                </div>
 
-        .payment-row-title {
-            color: #0f172a;
-            font-size: 0.88rem;
-            line-height: 1.15;
-        }
+                <div class="module-filter-field">
+                    <label class="module-filter-label" for="payments_to_filter">To</label>
+                    <input type="date" name="to" id="payments_to_filter" class="form-control module-date-input" value="{{ request('to') }}">
+                </div>
 
-        .payment-cell-text {
-            color: #475569;
-            font-size: 0.76rem;
-            line-height: 1.15;
-        }
+                <div class="module-filter-actions">
+                    <button type="submit" class="primary-button">Apply</button>
+                    <a href="{{ route('payments.index', ['c' => $clientId]) }}" class="secondary-button">Reset</a>
+                </div>
+            </form>
+        </section>
 
-        .payment-row-note {
-            color: #64748b;
-            font-size: 0.72rem;
-            line-height: 1.2;
-            margin-top: 0.14rem;
-        }
+        <section class="panel-card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Payment</th>
+                        <th>Client</th>
+                        <th>Invoice</th>
+                        <th>Reference</th>
+                        <th>Date</th>
+                        <th>Method</th>
+                        <th class="text-center">Type</th>
+                        <th class="text-end">Amount{{ !empty($selectedCurrency) ? ' (' . $selectedCurrency . ')' : '' }}</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @forelse ($payments as $payment)
+                    <tr>
+                        <td>
+                            <strong class="payment-row-title">{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>' . $searchTerm . '</mark>', $payment['number']) : $payment['number'] !!}</strong>
+                            @if(!empty($payment['description']))
+                                <div class="payment-row-note">{{ $payment['description'] }}</div>
+                            @endif
+                        </td>
+                        <td class="payment-cell-text">{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $payment['client']) : $payment['client'] !!}</td>
+                        <td class="payment-cell-text">{{ $payment['invoice'] ?: '-' }}</td>
+                        <td class="payment-cell-text">{{ $payment['reference_number'] ?: '-' }}</td>
+                        <td class="payment-cell-text">{{ $payment['date'] ?: '-' }}</td>
+                        <td class="payment-cell-text">{{ $payment['method'] }}</td>
+                        <td class="text-center">
+                            <span class="payment-tds-badge {{ ($payment['type'] ?? 'payment') === 'tds' ? 'is-yes' : 'is-no' }}">
+                                {{ strtoupper($payment['type'] ?? 'payment') }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <strong class="payment-row-amount">{{ number_format($payment['amount'], 0) }}</strong>
+                        </td>
+                        <td class="text-center">
+                            <div class="table-actions payment-table-actions">
+                                <a href="{{ route('payments.show', $payment['record_id']) }}" class="text-action-btn view">View</a>
+                                <a href="{{ route('payments.edit', $payment['record_id']) }}" class="text-action-btn edit">Edit</a>
+                                <form method="POST" action="{{ route('payments.destroy', $payment['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $payment['number'] }}?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-action-btn delete">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                    <td colspan="9" class="no-records-cell">
+                            <i class="fas fa-money-bill-wave empty-state-icon"></i>
+                            <p class="no-empty-state-text">No payments recorded</p>
+                            <p class="small-text">Record your first payment to track your collections.</p>
+                        </td>
+                    </tr>
+                @endforelse
+                </tbody>
+            </table>
+        </section>
+    @endif
 
-        .payment-row-amount {
-            color: #0f172a;
-            font-size: 0.88rem;
-            font-weight: 700;
-            white-space: nowrap;
-        }
+    <script>
+        document.getElementById('btnViewPayments')?.addEventListener('click', function () {
+            const clientId = document.getElementById('payment-client-select')?.value;
+            if (clientId) {
+                window.location.href = "{{ route('payments.index') }}?c=" + encodeURIComponent(clientId);
+            } else {
+                alert('Please select a client first.');
+            }
+        });
 
-        .payment-tds-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 54px;
-            padding: 0.12rem 0.42rem;
-            border-radius: 999px;
-            font-size: 0.68rem;
-            font-weight: 700;
-        }
-
-        .payment-tds-badge.is-yes {
-            background: #fef3c7;
-            color: #b45309;
-        }
-
-        .payment-tds-badge.is-no {
-            background: #e2e8f0;
-            color: #475569;
-        }
-
-        .payment-table-actions {
-            justify-content: center;
-            gap: 0.28rem;
-        }
-    </style>
+        document.getElementById('btnCreatePayment')?.addEventListener('click', function () {
+            const clientId = document.getElementById('payment-client-select')?.value;
+            if (clientId) {
+                window.location.href = "{{ route('payments.create') }}?c=" + encodeURIComponent(clientId);
+            } else {
+                alert('Please select a client first.');
+            }
+        });
+    </script>
 @endsection

@@ -18,6 +18,8 @@ class ClientsController extends Controller
         $accountId = $this->resolveAccountId();
         $query = Client::query()->where('accountid', $accountId)->with(['invoices.items', 'payments']);
         $searchTerm = request('search', '');
+        $fromDate = request('from');
+        $toDate = request('to');
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
@@ -26,11 +28,20 @@ class ClientsController extends Controller
                     ->orWhere('email', 'like', '%' . $searchTerm . '%');
             });
         }
+
+        if ($fromDate) {
+            $query->whereDate('created_at', '>=', $fromDate);
+        }
+
+        if ($toDate) {
+            $query->whereDate('created_at', '<=', $toDate);
+        }
         $resultCount = $query->count();
 
         $clients = $query->latest()->take(20)->get()->map(function ($client) {
             $invoiceTotal = $client->invoices
-                ->where('status', '!=', 'paid')
+                ->where('status', '!=', 'cancelled')
+                ->where('payment_status', '!=', 'paid')
                 ->sum(fn ($invoice) => (float) ($invoice->grand_total ?? 0));
             $paidTotal = (float) $client->payments->sum(function ($payment) {
                 return (float) ($payment->received_amount ?? 0);

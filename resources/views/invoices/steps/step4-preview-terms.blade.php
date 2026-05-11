@@ -121,19 +121,19 @@
                             Live Preview
                         </span>
                         <a id="btnDownloadPI" href="#" target="_blank" class="secondary-button" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none; align-items: center; gap: 0.35rem; text-decoration: none;">
-                            <i class="fas fa-file-download"></i>Download PI
+                            Download PI
                         </a>
                         <button type="button" class="text-button" id="digitalSignBtn" disabled style="padding: 0.35rem 0.7rem; font-size: 0.8rem; opacity: 0.5;">
-                            <i class="fas fa-signature"></i>Download Signed
+                            Download Signed
                         </button>
                         <button type="button" id="createTaxInvoiceBtn" class="secondary-button" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none;">
-                            <i class="fas fa-check-double" class="icon-spaced-sm"></i>Convert to Tax Invoice
+                            Convert to Tax Invoice
                         </button>
                         <button type="button" id="btnDownloadTaxInvoice" class="secondary-button" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none;">
-                            <i class="fas fa-file-invoice-dollar" class="icon-spaced-sm"></i>Download Tax Invoice
+                            Download Tax Invoice
                         </button>
                         <button type="button" id="btnEditPreview" class="secondary-button" style="padding: 0.35rem 0.7rem; font-size: 0.8rem;">
-                            <i class="fas fa-edit" class="icon-spaced-sm"></i>Edit
+                            Edit
                         </button>
                     </div>
                 </div>

@@ -34,18 +34,12 @@
                         <span class="status-pill {{ strtolower($category['status']) }}">{{ $category['status'] }}</span>
                     </td>
                     <td class="table-actions">
-                        <a href="{{ route('product-categories.show', $category['record_id']) }}" class="icon-action-btn view" title="View">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                        <a href="{{ route('product-categories.edit', $category['record_id']) }}" class="icon-action-btn edit" title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </a>
+                        <a href="{{ route('product-categories.show', $category['record_id']) }}" class="text-action-btn view">View</a>
+                        <a href="{{ route('product-categories.edit', $category['record_id']) }}" class="text-action-btn edit">Edit</a>
                         <form method="POST" action="{{ route('product-categories.destroy', $category['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $category['name'] }}?')">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="icon-action-btn delete" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <button type="submit" class="text-action-btn delete">Delete</button>
                         </form>
                     </td>
                 </tr>

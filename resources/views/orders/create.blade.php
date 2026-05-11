@@ -1016,8 +1016,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.delivery_date || '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${formatAmount(Math.round(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0))))}</strong></td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
-                    <button type="button" class="edit-item icon-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;"><i class="fas fa-edit"></i></button>
-                    <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button>
+                    <button type="button" class="edit-item text-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;">Edit</button>
+                    <button type="button" class="remove-item text-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;">Delete</button>
                 </td>
             `;
             tbody.appendChild(row);
@@ -1382,8 +1382,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.delivery_date || '—'}</td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${formatAmount(Math.round(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0))))}</strong></td>
                 <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
-                    <button type="button" class="edit-item icon-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;"><i class="fas fa-edit"></i></button>
-                    <button type="button" class="remove-item icon-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;"><i class="fas fa-trash"></i></button>
+                    <button type="button" class="edit-item text-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;">Edit</button>
+                    <button type="button" class="remove-item text-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;">Delete</button>
                 </td>
             `;
             tbody.appendChild(row);

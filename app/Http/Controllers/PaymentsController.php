@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Models\FinancialYear;
 use App\Models\Invoice;
 use App\Models\Ledger;
 use App\Models\Payment;
@@ -14,11 +15,39 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentsController extends Controller
 {
+    private function resolveDefaultFyId(string $accountid): ?string
+    {
+        return FinancialYear::query()
+            ->where('accountid', $accountid)
+            ->where('default', 1)
+            ->value('fy_id');
+    }
+
+    private function ensurePaymentBelongsToAccount(Payment $payment): void
+    {
+        if ((string) $payment->accountid !== $this->resolveAccountId()) {
+            abort(404);
+        }
+    }
+
     public function payments(): View
     {
         $userAccountId = $this->resolveAccountId();
+        $clientId = request('c');
+        $selectedClient = null;
+
         $query = Payment::query()->where('accountid', $userAccountId)->with(['client', 'invoice']);
+        
+        if ($clientId) {
+            $query->where('clientid', $clientId);
+            $selectedClient = Client::query()
+                ->where('accountid', $userAccountId)
+                ->find($clientId);
+        }
+
         $searchTerm = request('search', '');
+        $fromDate = request('from');
+        $toDate = request('to');
 
         if ($searchTerm) {
             $query->where(function($q) use ($searchTerm) {
@@ -28,6 +57,14 @@ class PaymentsController extends Controller
                             ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
                     });
             });
+        }
+
+        if ($fromDate) {
+            $query->whereDate('payment_date', '>=', $fromDate);
+        }
+
+        if ($toDate) {
+            $query->whereDate('payment_date', '<=', $toDate);
         }
         $resultCount = $query->count();
 
@@ -52,7 +89,7 @@ class PaymentsController extends Controller
                 'date' => $payment->payment_date?->format('d M Y'),
                 'method' => $payment->mode ?? '-',
                 'amount' => $receivedAmount,
-                'tds' => (bool) ($payment->tds ?? false),
+                'type' => (string) ($payment->type ?? 'payment'),
                 'description' => (string) ($payment->description ?? ''),
                 'reference_number' => (string) ($payment->reference_number ?? ''),
             ];
@@ -65,6 +102,9 @@ class PaymentsController extends Controller
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
             'selectedCurrency' => $paymentCurrencies->count() === 1 ? $paymentCurrencies->first() : null,
+            'clientId' => $clientId,
+            'selectedClient' => $selectedClient,
+            'clients' => Client::where('accountid', $userAccountId)->orderBy('business_name')->get(),
         ]);
     }
 
@@ -72,15 +112,27 @@ class PaymentsController extends Controller
     {
         $accountid = $this->resolveAccountId();
         $clientId = trim((string) request('c', ''));
-        $type = trim((string) request('type', ''));
-        $searchTerm = trim((string) request('search', ''));
-        $fromDate = trim((string) request('from', ''));
-        $toDate = trim((string) request('to', ''));
-
-        $allowedTypes = ['payment', 'tds', 'invoice'];
-        if (!in_array($type, $allowedTypes, true)) {
-            $type = '';
+        $financialYears = FinancialYear::query()
+            ->where('accountid', $accountid)
+            ->orderByDesc('default')
+            ->orderByDesc('financial_year')
+            ->get(['fy_id', 'financial_year', 'default']);
+        $defaultFyId = (string) ($financialYears->firstWhere('default', true)?->fy_id ?? '');
+        $selectedFyId = trim((string) request('fy', $defaultFyId !== '' ? $defaultFyId : 'all'));
+        if ($selectedFyId === '') {
+            $selectedFyId = $defaultFyId !== '' ? $defaultFyId : 'all';
         }
+        if ($selectedFyId !== 'all' && !$financialYears->contains('fy_id', $selectedFyId)) {
+            $selectedFyId = $defaultFyId !== '' ? $defaultFyId : 'all';
+        }
+        $searchTerm = trim((string) request('search', ''));
+        $clients = Client::query()
+            ->where('accountid', $accountid)
+            ->orderBy('business_name')
+            ->get(['clientid', 'business_name', 'contact_name']);
+        $selectedClient = $clientId !== ''
+            ? $clients->firstWhere('clientid', $clientId)
+            : null;
 
         $query = Ledger::query()
             ->where('accountid', $accountid)
@@ -88,18 +140,9 @@ class PaymentsController extends Controller
             ->when($clientId !== '', function ($ledgerQuery) use ($clientId) {
                 $ledgerQuery->where('clientid', $clientId);
             })
-            ->when($type !== '', function ($ledgerQuery) use ($type) {
-                $ledgerQuery->where('type', $type);
-            })
-            ->when($fromDate !== '', function ($ledgerQuery) use ($fromDate) {
-                $ledgerQuery->whereDate('date', '>=', $fromDate);
-            })
-            ->when($toDate !== '', function ($ledgerQuery) use ($toDate) {
-                $ledgerQuery->whereDate('date', '<=', $toDate);
-            })
             ->when($searchTerm !== '', function ($ledgerQuery) use ($searchTerm) {
                 $ledgerQuery->where(function ($searchQuery) use ($searchTerm) {
-                    $searchQuery->where('reference_number', 'like', '%' . $searchTerm . '%')
+                    $searchQuery->where('invoiceid_paymentid', 'like', '%' . $searchTerm . '%')
                         ->orWhere('description', 'like', '%' . $searchTerm . '%')
                         ->orWhereHas('client', function ($clientQuery) use ($searchTerm) {
                             $clientQuery->where('business_name', 'like', '%' . $searchTerm . '%')
@@ -113,41 +156,77 @@ class PaymentsController extends Controller
 
         $entries = $query->get();
 
-        $invoiceIds = $entries->where('type', 'invoice')->pluck('reference_number')->filter()->unique()->values();
-        $paymentIds = $entries->whereIn('type', ['payment', 'tds'])->pluck('reference_number')->filter()->unique()->values();
+        $invoiceIds = $entries->where('type', 'dr')->pluck('invoiceid_paymentid')->filter()->unique()->values();
+        $paymentIds = $entries->where('type', 'cr')->pluck('invoiceid_paymentid')->filter()->unique()->values();
 
         $invoiceMap = Invoice::query()
             ->whereIn('invoiceid', $invoiceIds)
-            ->get(['invoiceid', 'invoice_title', 'pi_number', 'ti_number', 'clientid'])
+            ->with('items')
+            ->get(['invoiceid', 'invoice_title', 'pi_number', 'ti_number', 'clientid', 'fy_id'])
             ->keyBy('invoiceid');
 
         $paymentMap = Payment::query()
             ->whereIn('paymentid', $paymentIds)
-            ->get(['paymentid', 'invoiceid', 'reference_number', 'clientid'])
+            ->with('invoice')
+            ->get(['paymentid', 'invoiceid', 'reference_number', 'mode', 'clientid', 'received_amount', 'type', 'fy_id'])
             ->keyBy('paymentid');
 
+        if ($selectedFyId !== 'all') {
+            $entries = $entries->filter(function (Ledger $entry) use ($selectedFyId, $invoiceMap, $paymentMap) {
+                if ($entry->type === 'dr') {
+                    return (string) ($invoiceMap->get($entry->invoiceid_paymentid)?->fy_id ?? '') === $selectedFyId;
+                }
+
+                return (string) ($paymentMap->get($entry->invoiceid_paymentid)?->fy_id ?? '') === $selectedFyId;
+            })->values();
+        }
+
         $runningBalance = 0;
+        
         $ledgerEntries = $entries->map(function (Ledger $entry) use (&$runningBalance, $invoiceMap, $paymentMap) {
             $amount = (float) ($entry->amount ?? 0);
-            $isInvoice = $entry->type === 'invoice';
-            $debit = $isInvoice ? $amount : 0;
-            $credit = $isInvoice ? 0 : $amount;
-            $runningBalance += $debit - $credit;
-
-            $referenceLabel = $entry->reference_number;
-            $referenceUrl = null;
+            $isInvoice = $entry->type === 'dr';
+            $debit = 0;
+            $credit = 0;
 
             if ($isInvoice) {
-                $invoice = $invoiceMap->get($entry->reference_number);
+                $invoice = $invoiceMap->get($entry->invoiceid_paymentid);
+                if ($invoice) {
+                    $amount = (float) ($invoice->grand_total ?? 0);
+                }
+                $debit = $amount;
+            } else {
+                $payment = $paymentMap->get($entry->invoiceid_paymentid);
+                if ($payment) {
+                    $credit = (float) ($payment->received_amount ?? 0);
+                } else {
+                    $credit = $amount;
+                }
+            }
+
+            $runningBalance = $runningBalance + $debit - $credit;
+
+            $referenceLabel = $entry->invoiceid_paymentid;
+            $referenceMeta = '';
+            $referenceUrl = null;
+            $entryKind = 'payment';
+
+            if ($isInvoice) {
+                $invoice = $invoiceMap->get($entry->invoiceid_paymentid);
                 if ($invoice) {
                     $referenceLabel = $invoice->ti_number ?: $invoice->pi_number ?: $invoice->invoiceid;
                     $referenceUrl = route('invoices.show', ['invoice' => $invoice->invoiceid, 'c' => $invoice->clientid]);
                 }
+                $entryKind = 'invoice';
             } else {
-                $payment = $paymentMap->get($entry->reference_number);
+                $payment = $paymentMap->get($entry->invoiceid_paymentid);
                 if ($payment) {
-                    $referenceLabel = $payment->reference_number ?: $payment->paymentid;
+                    $modeLabel = trim((string) ($payment->mode ?? '')) ?: '-';
+                    $referenceNumber = trim((string) ($payment->reference_number ?? '')) ?: (string) $payment->paymentid;
+                    $referenceLabel = $modeLabel;
+                    $referenceMeta = $referenceNumber;
                     $referenceUrl = route('payments.show', $payment->paymentid);
+                    $entryKind = ($payment->type ?? 'payment') === 'tds' ? 'tds' : 'payment';
                 }
             }
 
@@ -157,9 +236,11 @@ class PaymentsController extends Controller
                 'raw_date' => $entry->date?->format('Y-m-d') ?? '',
                 'client_name' => $entry->client?->business_name ?? $entry->client?->contact_name ?? 'Client',
                 'type' => $entry->type,
-                'type_label' => $entry->type === 'invoice' ? 'Invoice' : ($entry->type === 'tds' ? 'TDS' : 'Payment'),
-                'reference_number' => $entry->reference_number,
+                'type_label' => strtoupper($entry->type),
+                'entry_kind' => $entryKind,
+                'invoiceid_paymentid' => $entry->invoiceid_paymentid,
                 'reference_label' => $referenceLabel,
+                'reference_meta' => $referenceMeta,
                 'reference_url' => $referenceUrl,
                 'description' => (string) ($entry->description ?? ''),
                 'amount' => $amount,
@@ -171,20 +252,19 @@ class PaymentsController extends Controller
 
         $invoiceTotal = (float) $ledgerEntries->sum('debit');
         $creditTotal = (float) $ledgerEntries->sum('credit');
-        $tdsTotal = (float) $ledgerEntries->where('type', 'tds')->sum('credit');
-        $paymentTotal = (float) $ledgerEntries->where('type', 'payment')->sum('credit');
-        $closingBalance = $invoiceTotal - $creditTotal;
+        $tdsTotal = (float) $ledgerEntries->where('entry_kind', 'tds')->sum('credit');
+        $paymentTotal = (float) $ledgerEntries->where('entry_kind', 'payment')->sum('credit');
+        $closingBalance = $runningBalance;
 
         return view('payments.ledger', [
             'title' => 'Ledger',
             'subtitle' => 'Statement-style view of invoices, payments, and TDS entries.',
             'ledgerEntries' => $ledgerEntries,
-            'clients' => Client::query()->where('accountid', $accountid)->orderBy('business_name')->get(['clientid', 'business_name', 'contact_name']),
             'selectedClientId' => $clientId,
-            'selectedType' => $type,
+            'selectedClientName' => $selectedClient?->business_name ?? $selectedClient?->contact_name ?? 'All Clients',
+            'financialYears' => $financialYears,
+            'selectedFyId' => $selectedFyId,
             'searchTerm' => $searchTerm,
-            'fromDate' => $fromDate,
-            'toDate' => $toDate,
             'invoiceTotal' => $invoiceTotal,
             'paymentTotal' => $paymentTotal,
             'tdsTotal' => $tdsTotal,
@@ -195,6 +275,7 @@ class PaymentsController extends Controller
     public function paymentsGstReport(): View
     {
         $accountid = $this->resolveAccountId();
+        $selectedClientId = trim((string) request('c', ''));
         $selectedMonth = max(1, min(12, (int) request('month', now()->month)));
         $selectedYear = max(2000, (int) request('year', now()->year));
 
@@ -212,7 +293,10 @@ class PaymentsController extends Controller
             ->where('ti_number', '!=', '')
             ->whereMonth('issue_date', $selectedMonth)
             ->whereYear('issue_date', $selectedYear)
-            ->with(['client:clientid,business_name,contact_name,state', 'items'])
+            ->when($selectedClientId !== '', function ($query) use ($selectedClientId) {
+                $query->where('clientid', $selectedClientId);
+            })
+            ->with(['client.billingDetail', 'items'])
             ->orderBy('issue_date')
             ->orderBy('created_at')
             ->get();
@@ -238,8 +322,9 @@ class PaymentsController extends Controller
             return [
                 'invoiceid' => $invoice->invoiceid,
                 'ti_number' => (string) ($invoice->ti_number ?? ''),
-                'invoice_title' => (string) ($invoice->invoice_title ?: $invoice->ti_number ?: $invoice->invoiceid),
                 'client_name' => (string) ($invoice->client?->business_name ?? $invoice->client?->contact_name ?? 'Client'),
+                'gstin' => (string) ($invoice->client?->billingDetail?->gstin ?? '-'),
+                'state' => (string) ($invoice->client?->billingDetail?->state ?? '-'),
                 'grand_total' => (float) ($invoice->grand_total ?? 0),
                 'igst' => (float) $igst,
                 'sgst' => (float) $sgst,
@@ -253,6 +338,9 @@ class PaymentsController extends Controller
             ->whereNotNull('ti_number')
             ->where('ti_number', '!=', '')
             ->whereNotNull('issue_date')
+            ->when($selectedClientId !== '', function ($query) use ($selectedClientId) {
+                $query->where('clientid', $selectedClientId);
+            })
             ->selectRaw('DISTINCT YEAR(issue_date) as year_value')
             ->orderByDesc('year_value')
             ->pluck('year_value')
@@ -270,6 +358,7 @@ class PaymentsController extends Controller
             'rows' => $rows,
             'selectedMonth' => $selectedMonth,
             'selectedYear' => $selectedYear,
+            'selectedClientId' => $selectedClientId,
             'availableYears' => $availableYears,
             'grandTotalSum' => (float) $rows->sum('grand_total'),
             'igstTotal' => (float) $rows->sum('igst'),
@@ -296,7 +385,8 @@ class PaymentsController extends Controller
             'title' => 'Record New Payment',
             'clients' => Client::query()->where('accountid', $this->resolveAccountId())->get(),
             'invoices' => Invoice::query()->where('accountid', $this->resolveAccountId())->with('client')
-                ->where('status', '!=', 'paid')
+                ->where('status', '!=', 'cancelled')
+                ->where('payment_status', '!=', 'paid')
                 ->get(),
             'selectedClientId' => $selectedClientId,
             'selectedInvoiceId' => $selectedInvoiceId,
@@ -314,7 +404,7 @@ class PaymentsController extends Controller
             'mode' => 'required|in:Bank Transfer,Online,Cash',
             'reference_number' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:2000',
-            'tds' => 'nullable|in:0,1',
+            'type' => 'required|in:payment,tds',
         ]);
 
         $invoice = null;
@@ -333,10 +423,11 @@ class PaymentsController extends Controller
 
         $paymentData = [
             'accountid' => $userAccountId,
+            'fy_id' => $this->resolveDefaultFyId($userAccountId),
             'clientid' => $validated['clientid'],
             'invoiceid' => $validated['invoiceid'] ?? null,
             'received_amount' => (float) $validated['received_amount'],
-            'tds' => $request->boolean('tds'),
+            'type' => $validated['type'],
             'payment_date' => $validated['payment_date'],
             'mode' => $validated['mode'],
             'reference_number' => $validated['reference_number'] ?? null,
@@ -354,11 +445,14 @@ class PaymentsController extends Controller
             }
         });
 
-        return redirect()->route('payments.index')->with('success', 'Payment recorded successfully.');
+        return redirect()
+            ->route('payments.index', ['c' => $payment->clientid])
+            ->with('success', 'Payment recorded successfully.');
     }
 
     public function paymentsShow(Payment $payment): View
     {
+        $this->ensurePaymentBelongsToAccount($payment);
         $payment->load(['client', 'invoice']);
         $displayTitle = $payment->invoice->invoice_title
             ?? $payment->invoice->invoice_number
@@ -373,6 +467,7 @@ class PaymentsController extends Controller
 
     public function paymentsEdit(Payment $payment): View
     {
+        $this->ensurePaymentBelongsToAccount($payment);
         $displayTitle = $payment->invoice->invoice_title
             ?? $payment->invoice->invoice_number
             ?? $payment->paymentid;
@@ -390,6 +485,7 @@ class PaymentsController extends Controller
 
     public function paymentsUpdate(Request $request, Payment $payment)
     {
+        $this->ensurePaymentBelongsToAccount($payment);
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
             'invoiceid' => 'nullable|exists:invoices,invoiceid',
@@ -398,7 +494,7 @@ class PaymentsController extends Controller
             'mode' => 'required|in:Bank Transfer,Online,Cash',
             'reference_number' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:2000',
-            'tds' => 'nullable|in:0,1',
+            'type' => 'required|in:payment,tds',
         ]);
 
         if (!empty($validated['invoiceid'])) {
@@ -415,10 +511,11 @@ class PaymentsController extends Controller
 
         DB::transaction(function () use ($payment, $validated, $request, $previousInvoiceId) {
             $payment->update([
+                'fy_id' => $payment->fy_id ?: $this->resolveDefaultFyId($payment->accountid),
                 'clientid' => $validated['clientid'],
                 'invoiceid' => $validated['invoiceid'] ?? null,
                 'received_amount' => (float) $validated['received_amount'],
-                'tds' => $request->boolean('tds'),
+                'type' => $validated['type'],
                 'payment_date' => $validated['payment_date'],
                 'mode' => $validated['mode'],
                 'reference_number' => $validated['reference_number'] ?? null,
@@ -436,11 +533,14 @@ class PaymentsController extends Controller
             }
         });
 
-        return redirect()->route('payments.index')->with('success', 'Payment updated successfully.');
+        return redirect()
+            ->route('payments.index', ['c' => $payment->clientid])
+            ->with('success', 'Payment updated successfully.');
     }
 
     public function paymentsDestroy(Payment $payment)
     {
+        $this->ensurePaymentBelongsToAccount($payment);
         $invoiceId = $payment->invoiceid;
 
         DB::transaction(function () use ($payment, $invoiceId) {
@@ -455,7 +555,9 @@ class PaymentsController extends Controller
             }
         });
 
-        return redirect()->route('payments.index')->with('success', 'Payment deleted successfully.');
+        return redirect()
+            ->route('payments.index', ['c' => $payment->clientid])
+            ->with('success', 'Payment deleted successfully.');
     }
 
     private function refreshInvoicePaymentStatus(Invoice $invoice): void
@@ -469,34 +571,31 @@ class PaymentsController extends Controller
         $grandTotal = (float) ($invoice->grand_total ?? 0);
         $balanceDue = max(0, $grandTotal - $amountPaid);
 
-        if ($amountPaid > 0 && $balanceDue <= 0 && $grandTotal > 0) {
-            $invoice->status = 'paid';
-        } elseif ($amountPaid > 0) {
-            $invoice->status = 'partially-paid';
-        } else {
-            $invoice->status = 'unpaid';
-        }
-
+        $invoice->payment_status = $amountPaid > 0 && $balanceDue <= 0 && $grandTotal > 0
+            ? 'paid'
+            : ($amountPaid > 0 ? 'partly_paid' : 'unpaid');
         $invoice->save();
     }
 
     private function syncPaymentLedgerEntry(Payment $payment): void
     {
         $ledgerEntry = Ledger::query()
-            ->where('reference_number', $payment->paymentid)
-            ->whereIn('type', ['payment', 'tds'])
+            ->where('invoiceid_paymentid', $payment->paymentid)
+            ->where('type', 'cr')
             ->first();
 
         if (!$ledgerEntry) {
             $ledgerEntry = new Ledger();
-            $ledgerEntry->reference_number = $payment->paymentid;
+            $ledgerEntry->invoiceid_paymentid = $payment->paymentid;
         }
 
         $ledgerEntry->accountid = $payment->accountid;
         $ledgerEntry->clientid = $payment->clientid;
         $ledgerEntry->date = $payment->payment_date;
         $ledgerEntry->amount = (float) ($payment->received_amount ?? 0);
-        $ledgerEntry->type = $payment->tds ? 'tds' : 'payment';
+        $ledgerEntry->type = 'cr';
+        $ledgerEntry->mode = $payment->mode;
+        $ledgerEntry->reference_number = $payment->reference_number;
         $ledgerEntry->description = $payment->description;
         $ledgerEntry->save();
     }
@@ -504,8 +603,8 @@ class PaymentsController extends Controller
     private function deletePaymentLedgerEntry(Payment $payment): void
     {
         Ledger::query()
-            ->where('reference_number', $payment->paymentid)
-            ->whereIn('type', ['payment', 'tds'])
+            ->where('invoiceid_paymentid', $payment->paymentid)
+            ->where('type', 'cr')
             ->delete();
     }
 }

@@ -1,11 +1,32 @@
 @extends('layouts.app')
 
 @section('header_actions')
-    <a href="{{ route('clients.create') }}" class="primary-button">Add Client</a>
-    <button type="button" class="secondary-button" data-bs-toggle="modal" data-bs-target="#manageGroupsModal"><i class="fas fa-layer-group icon-spaced-sm"></i>Manage Groups</button>
+    <div class="header-actions-wrapper">
+        <a href="{{ route('clients.create') }}" class="primary-button">Add Client</a>
+        <button type="button" class="secondary-button" data-bs-toggle="modal" data-bs-target="#manageGroupsModal"><i class="fas fa-layer-group icon-spaced-sm"></i>Manage Groups</button>
+    </div>
 @endsection
 
 @section('content')
+    <section class="panel-card module-filter-panel">
+        <form action="{{ route('clients.index') }}" method="GET" class="module-filter-grid">
+            <div class="module-filter-field">
+                <label class="module-filter-label" for="clients_from_filter">From</label>
+                <input type="date" name="from" id="clients_from_filter" class="form-control module-date-input" value="{{ request('from') }}">
+            </div>
+
+            <div class="module-filter-field">
+                <label class="module-filter-label" for="clients_to_filter">To</label>
+                <input type="date" name="to" id="clients_to_filter" class="form-control module-date-input" value="{{ request('to') }}">
+            </div>
+
+            <div class="module-filter-actions">
+                <button type="submit" class="primary-button">Apply</button>
+                <a href="{{ route('clients.index') }}" class="secondary-button">Reset</a>
+            </div>
+        </form>
+    </section>
+
     <section class="panel-card no-padding">
         <table class="data-table">
             <thead>
@@ -59,18 +80,12 @@
                         <span class="status-pill {{ strtolower($client['status']) }}">{{ ucfirst(strtolower($client['status'])) }}</span>
                     </td>
                     <td class="table-actions">
-                        <a href="{{ route('clients.show', $client['record_id']) }}" class="icon-action-btn view" title="View">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                        <a href="{{ route('clients.edit', $client['record_id']) }}" class="icon-action-btn edit" title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </a>
+                        <a href="{{ route('clients.show', $client['record_id']) }}" class="text-action-btn view">View</a>
+                        <a href="{{ route('clients.edit', $client['record_id']) }}" class="text-action-btn edit">Edit</a>
                         <form method="POST" action="{{ route('clients.destroy', $client['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $client['name'] }}?')">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="icon-action-btn delete" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <button type="submit" class="text-action-btn delete">Delete</button>
                         </form>
                     </td>
                 </tr>
@@ -163,17 +178,14 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="group-list-item-actions">
-                                <button type="button" class="icon-action-btn edit" onclick="editGroup('{{ $group->groupid }}', '{{ addslashes($group->group_name) }}', '{{ addslashes($group->email ?? '') }}', '{{ addslashes($group->address_line_1 ?? '') }}', '{{ addslashes($group->address_line_2 ?? '') }}', '{{ addslashes($group->city ?? '') }}', '{{ addslashes($group->state ?? '') }}', '{{ addslashes($group->postal_code ?? '') }}', '{{ addslashes($group->country ?? '') }}')" title="Edit">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <form method="POST" action="{{ route('groups.destroy', $group->groupid) }}" class="inline-delete" onsubmit="return confirm('Delete this group?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="icon-action-btn delete" title="Delete">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </div>
+                                <div class="table-actions">
+                                    <button type="button" class="text-action-btn edit" onclick="editGroup('{{ $group->groupid }}', '{{ addslashes($group->group_name) }}', '{{ addslashes($group->email ?? '') }}', '{{ addslashes($group->address_line_1 ?? '') }}', '{{ addslashes($group->address_line_2 ?? '') }}', '{{ addslashes($group->city ?? '') }}', '{{ addslashes($group->state ?? '') }}', '{{ addslashes($group->postal_code ?? '') }}', '{{ addslashes($group->country ?? '') }}')">Edit</button>
+                                    <form method="POST" action="{{ route('groups.destroy', $group->groupid) }}" class="inline-delete" onsubmit="return confirm('Delete group {{ $group->group_name }}?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-action-btn delete">Delete</button>
+                                    </form>
+                                </div>
                         </div>
                     @empty
                         <div class="group-list-empty">

@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'accountid',
+    'fy_id',
     'clientid',
     'invoiceid',
     'received_amount',
-    'tds',
+    'type',
     'payment_date',
     'mode',
     'reference_number',
@@ -25,10 +26,11 @@ class Payment extends Model
     protected $keyType = 'string';
     protected $fillable = [
         'accountid',
+        'fy_id',
         'clientid',
         'invoiceid',
         'received_amount',
-        'tds',
+        'type',
         'payment_date',
         'mode',
         'reference_number',
@@ -36,7 +38,6 @@ class Payment extends Model
     ];
     protected $casts = [
         'payment_date' => 'date',
-        'tds' => 'boolean',
     ];
     public function getRouteKeyName(): string
     {

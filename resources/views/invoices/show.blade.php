@@ -49,7 +49,7 @@
 @endphp
 @section('header_actions')
     <a href="{{ route('invoices.index', request('c') ? ['c' => request('c')] : []) }}" class="secondary-button">
-        <i class="fas fa-arrow-left icon-spaced"></i>Back to Invoices
+        Back to Invoices
     </a>
     @if(($invoice->status ?? '') === 'cancelled')
         <form method="POST" action="{{ route('invoices.restore', [$invoice, 'c' => request('c')]) }}" class="inline-delete" onsubmit="return confirm('Restore this invoice?')">
@@ -61,14 +61,14 @@
         </form>
     @else
         <a href="{{ route('invoices.pdf', $invoice) }}" class="secondary-button small" target="_blank">
-            <i class="fas fa-file-pdf icon-spaced-sm"></i>View PDF
+            View PDF
         </a>
         @if(empty(trim($invoice->ti_number ?? '')))
             <form method="POST" action="{{ route('invoices.create-tax-invoice') }}" class="inline-delete" onsubmit="return confirm('Convert this Proforma to Tax Invoice? This will generate a Tax Invoice number.')">
                 @csrf
                 <input type="hidden" name="invoiceid" value="{{ $invoice->invoiceid }}">
                 <button type="submit" class="primary-button small btn-success-solid">
-                    <i class="fas fa-check-double icon-spaced-sm"></i>Convert to Tax Invoice
+                    Convert to Tax Invoice
                 </button>
             </form>
         @endif
@@ -80,13 +80,13 @@
             'o' => ($invoice->invoice_for ?? '') === 'orders' ? ($invoice->orderid ?? null) : null,
             'tax_invoice' => !empty($invoice->ti_number) ? 1 : null,
         ]) }}" class="primary-button small">
-            <i class="fas fa-edit icon-spaced-sm"></i>Edit
+            Edit
         </a>
         <form method="POST" action="{{ route('invoices.destroy', [$invoice, 'c' => request('c')]) }}" class="inline-delete" onsubmit="return confirm('Cancel this invoice?')">
             @csrf
             @method('DELETE')
             <button type="submit" class="secondary-button">
-                <i class="fas fa-ban icon-spaced-sm"></i>Cancel Invoice
+                Cancel Invoice
             </button>
         </form>
     @endif
@@ -162,7 +162,7 @@
                         <td class="td-pad">{{ $payment->mode ?? '-' }}</td>
                         <td class="td-pad">
                             {{ $payment->reference_number ?? 'N/A' }}
-                            @if((bool)($payment->tds ?? false))
+                            @if(($payment->type ?? 'payment') === 'tds')
                                 <div class="text-muted small">TDS: Yes</div>
                             @endif
                             @if(!empty($payment->description))

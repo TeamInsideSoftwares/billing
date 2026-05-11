@@ -2,16 +2,16 @@
 
 @section('header_actions')
     <a href="{{ route('clients.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left" class="icon-spaced"></i>Back to Clients
+        Back to Clients
     </a>
     <a href="{{ route('clients.edit', $client) }}" class="primary-button small">
-        <i class="fas fa-edit" class="icon-spaced-sm"></i>Edit
+        Edit
     </a>
     <form method="POST" action="{{ route('clients.destroy', $client) }}" class="inline-delete" onsubmit="return confirm('Delete this client?')" class="inline-delete">
         @csrf
         @method('DELETE')
         <button type="submit" class="secondary-button">
-            <i class="fas fa-trash" class="icon-spaced-sm"></i>Delete
+            Delete
         </button>
     </form>
 @endsection

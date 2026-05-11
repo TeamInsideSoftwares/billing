@@ -4,13 +4,13 @@
 
 <section class="section-bar">
     <div class="flex-center-gap-sm">
-        <a href="{{ route('quotations.edit', $quotation) }}" class="icon-action-btn edit" title="Edit" class="icon-action-small">
-            <i class="fas fa-edit"></i>
+        <a href="{{ route('quotations.edit', $quotation) }}" class="text-action-btn edit">
+            Edit
         </a>
         <form method="POST" action="{{ route('quotations.destroy', $quotation) }}" class="inline-delete" onsubmit="return confirm('Delete this quotation?')">
             @csrf @method('DELETE')
-            <button type="submit" class="icon-action-btn delete" title="Delete" class="icon-action-small">
-                <i class="fas fa-trash"></i>
+            <button type="submit" class="text-action-btn delete">
+                Delete
             </button>
         </form>
     </div>

@@ -14,22 +14,22 @@
 
 @section('header_actions')
     <a href="{{ route('orders.index', ['c' => $order->clientid]) }}" class="secondary-button">
-        <i class="fas fa-arrow-left icon-spaced"></i>Back to Orders
+        Back to Orders
     </a>
     @if(($order->status ?? '') !== 'cancelled' && ($order->status ?? '') !== 'completed')
     <a href="{{ route('invoices.create', ['step' => 3, 'invoice_for' => 'orders', 'o' => $order->orderid, 'c' => $order->clientid]) }}" class="primary-button small">
-        <i class="fas fa-file-invoice icon-spaced-sm"></i>Create PI
+        Create PI
     </a>
     @endif
     @if(($order->status ?? '') !== 'cancelled')
         <a href="{{ route('orders.edit', ['order' => $order->orderid, 'c' => $order->clientid]) }}" class="primary-button small">
-            <i class="fas fa-edit icon-spaced-sm"></i>Edit
+            Edit
         </a>
         <form method="POST" action="{{ route('orders.destroy', ['order' => $order->orderid, 'c' => $order->clientid]) }}" class="inline-delete" onsubmit="return confirm('Cancel this order?')" class="inline-delete">
             @csrf
             @method('DELETE')
             <button type="submit" class="secondary-button">
-                <i class="fas fa-ban icon-spaced-sm"></i>Cancel Order
+                Cancel Order
             </button>
         </form>
     @else
@@ -37,7 +37,7 @@
             @csrf
             @method('PATCH')
             <button type="submit" class="primary-button small">
-                <i class="fas fa-undo icon-spaced-sm"></i>Restore Order
+                Restore Order
             </button>
         </form>
     @endif

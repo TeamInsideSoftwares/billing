@@ -443,7 +443,7 @@
                             {{ $account->fixed_tax_type ?? 'GST' }} {{ number_format($account->fixed_tax_rate ?? 0, 2) }}%
                         </span>
                         <button type="button" id="open-fixed-tax-modal" class="primary-button btn-md">
-                            <i class="fas fa-edit icon-spaced-sm"></i> {{ ($account->fixed_tax_rate ?? 0) > 0 ? 'Edit Tax' : 'Add Tax' }}
+                            {{ ($account->fixed_tax_rate ?? 0) > 0 ? 'Edit Tax' : 'Add Tax' }}
                         </button>
                         @else
                         <span class="settings-toggle-state is-disabled">Disabled</span>
@@ -716,13 +716,13 @@
                         <td>{{ $setting['value'] }}</td>
                         <td class="text-left">
                             <div class="table-actions justify-content-start">
-                                <a href="{{ route('settings.index', ['e' => base64_encode($setting['record_id'])]) }}#config" class="icon-action-btn edit" title="Edit">
-                                    <i class="fas fa-edit"></i>
+                                <a href="{{ route('settings.index', ['e' => base64_encode($setting['record_id'])]) }}#config" class="text-action-btn edit" title="Edit">
+                                    Edit
                                 </a>
                                 <form method="POST" action="{{ route('settings.destroy', $setting['record_id']) }}" onsubmit="return confirm('Delete this setting?')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="icon-action-btn delete" title="Delete">
-                                        <i class="fas fa-trash"></i>
+                                    <button type="submit" class="text-action-btn delete" title="Delete">
+                                        Delete
                                     </button>
                                 </form>
                             </div>
@@ -852,7 +852,7 @@
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{client_contact_person}} (Client's Contact)</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{client_name}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{invoice_title}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{invoice_number}}</span>
+                                        {{-- <span class="badge bg-light text-muted border px-2 py-1">@{{invoice_number}}</span> --}}
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{pi_number}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{ti_number}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{pi_link}}</span>
@@ -873,7 +873,7 @@
 
                                 <div class="d-flex align-items-center justify-content-end col-span-2 mt-3 pt-3 border-top mt-auto">
                                     <button type="submit" class="primary-button px-4 py-2 template-submit-btn">
-                                        <i class="fas fa-save mr-2"></i> Save New Template
+                                        Save New Template
                                     </button>
                                 </div>
                             </div>
@@ -916,7 +916,7 @@
                                         <div class="mt-template-item-actions">
                                             <button
                                                 type="button"
-                                                class="icon-action-btn edit js-template-edit"
+                                                class="text-action-btn edit js-template-edit"
                                                 title="Edit"
                                                 data-type="{{ $template->template_type ?? $template->type ?? '' }}"
                                                 data-templateid="{{ $template->templateid }}"
@@ -928,7 +928,7 @@
                                                 data-sender-id="{{ e($template->sender_id ?? '') }}"
                                                 data-is-active="{{ $template->is_active ? '1' : '0' }}"
                                             >
-                                                <i class="fas fa-edit"></i>
+                                                Edit
                                             </button>
 
                                             <button
@@ -1178,10 +1178,10 @@
                                 </td>
                                 <td class="tc-col-action">
                                     <div class="table-actions">
-                                        <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'billing']) }}#terms-conditions" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>
+                                        <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'billing']) }}#terms-conditions" class="text-action-btn edit" title="Edit">Edit</a>
                                         <form method="POST" action="{{ route('terms-conditions.destroy', $term) }}" onsubmit="return confirm('Delete this term?')">
                                             @csrf @method('DELETE')
-                                            <button type="submit" class="icon-action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
+                                            <button type="submit" class="text-action-btn delete" title="Delete">Delete</button>
                                         </form>
                                     </div>
                                 </td>
@@ -1241,10 +1241,10 @@
                                 </td>
                                 <td class="tc-col-action">
                                     <div class="table-actions">
-                                        <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'quotation']) }}#terms-conditions" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>
+                                        <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'quotation']) }}#terms-conditions" class="text-action-btn edit" title="Edit">Edit</a>
                                         <form method="POST" action="{{ route('terms-conditions.destroy', $term) }}" onsubmit="return confirm('Delete this term?')">
                                             @csrf @method('DELETE')
-                                            <button type="submit" class="icon-action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
+                                            <button type="submit" class="text-action-btn delete" title="Delete">Delete</button>
                                         </form>
                                     </div>
                                 </td>
@@ -1304,10 +1304,10 @@
                                 </td>
                                 <td class="tc-col-action">
                                     <div class="table-actions">
-                                        <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'proforma']) }}#terms-conditions" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>
+                                        <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'proforma']) }}#terms-conditions" class="text-action-btn edit" title="Edit">Edit</a>
                                         <form method="POST" action="{{ route('terms-conditions.destroy', $term) }}" onsubmit="return confirm('Delete this term?')">
                                             @csrf @method('DELETE')
-                                            <button type="submit" class="icon-action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
+                                            <button type="submit" class="text-action-btn delete" title="Delete">Delete</button>
                                         </form>
                                     </div>
                                 </td>
@@ -1397,19 +1397,15 @@
                                 </td>
                                 <td class="tax-cell-action">
                                     <div class="table-actions">
-                                        {{-- <form method="POST" action="{{ route('taxes.toggle', $tax) }}" class="inline-delete">
-                                            @csrf @method('PATCH')
-                                            <button type="submit" class="icon-action-btn" title="Toggle Status"><i class="fas fa-toggle-on"></i></button>
-                                        </form> --}}
-                                        <a href="javascript:void(0)" class="icon-action-btn edit" title="Edit"
+                                        <a href="javascript:void(0)" class="text-action-btn edit" title="Edit"
                                            data-id="{{ $tax->taxid }}"
                                            data-rate="{{ $tax->rate }}"
                                            data-type="{{ $tax->type }}"
                                            data-name="{{ $tax->tax_name }}"
-                                           onclick="startEditTax(this)"><i class="fas fa-edit"></i></a>
+                                           onclick="startEditTax(this)">Edit</a>
                                         <form method="POST" action="{{ route('taxes.destroy', $tax) }}" class="inline-delete" onsubmit="return confirm('Delete this tax?')">
                                             @csrf @method('DELETE')
-                                            <button type="submit" class="icon-action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
+                                            <button type="submit" class="text-action-btn delete" title="Delete">Delete</button>
                                         </form>
                                     </div>
                                 </td>
@@ -1432,7 +1428,7 @@
         <div class="modal-content rounded-panel">
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title modal-title service-modal-title">
-                    <i class="fas fa-receipt icon-spaced text-muted"></i>Add Tax
+                    Add Tax
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>

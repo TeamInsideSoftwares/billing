@@ -1,10 +1,13 @@
 @extends('layouts.app')
 
 @section('header_actions')
-    <a href="{{ route('payments.index') }}" class="secondary-button">
+    <a href="{{ route('payments.index', $selectedClientId !== '' ? ['c' => $selectedClientId] : []) }}" class="secondary-button">
         <i class="fas fa-arrow-left icon-spaced"></i>Back to Payments
     </a>
-    <a href="{{ route('payments.create') }}" class="primary-button">
+    <a href="{{ route('payments.gst-report', $selectedClientId !== '' ? ['c' => $selectedClientId] : []) }}" class="secondary-button">
+        GST Report
+    </a>
+    <a href="{{ route('payments.create', $selectedClientId !== '' ? ['c' => $selectedClientId] : []) }}" class="primary-button">
         <i class="fas fa-plus icon-spaced"></i>Record Payment
     </a>
 @endsection
@@ -13,37 +16,23 @@
     <div class="ledger-shell">
         <section class="panel-card ledger-filter-panel">
             <form method="GET" action="{{ route('payments.ledger') }}" class="ledger-filter-grid">
+                @if($selectedClientId !== '')
+                    <input type="hidden" name="c" value="{{ $selectedClientId }}">
+                @endif
                 <div>
-                    <label class="ledger-label" for="ledger_client_filter">Client</label>
-                    <select name="c" id="ledger_client_filter" class="form-control">
-                        <option value="">All Clients</option>
-                        @foreach($clients as $client)
-                            <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
-                                {{ $client->business_name ?? $client->contact_name ?? 'Client' }}
+                    <label class="ledger-label">Client</label>
+                    <div class="ledger-static-value">{{ $selectedClientName }}</div>
+                </div>
+                <div>
+                    <label class="ledger-label" for="ledger_fy_filter">Financial Year</label>
+                    <select name="fy" id="ledger_fy_filter" class="form-control">
+                        <option value="all" {{ $selectedFyId === 'all' ? 'selected' : '' }}>All</option>
+                        @foreach($financialYears as $fy)
+                            <option value="{{ $fy->fy_id }}" {{ (string) $selectedFyId === (string) $fy->fy_id ? 'selected' : '' }}>
+                                {{ $fy->financial_year }}{{ $fy->default ? ' (Default)' : '' }}
                             </option>
                         @endforeach
                     </select>
-                </div>
-                <div>
-                    <label class="ledger-label" for="ledger_type_filter">Type</label>
-                    <select name="type" id="ledger_type_filter" class="form-control">
-                        <option value="">All Entries</option>
-                        <option value="invoice" {{ $selectedType === 'invoice' ? 'selected' : '' }}>Invoice</option>
-                        <option value="payment" {{ $selectedType === 'payment' ? 'selected' : '' }}>Payment</option>
-                        <option value="tds" {{ $selectedType === 'tds' ? 'selected' : '' }}>TDS</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="ledger-label" for="ledger_from_filter">From</label>
-                    <input type="date" name="from" id="ledger_from_filter" class="form-control" value="{{ $fromDate }}">
-                </div>
-                <div>
-                    <label class="ledger-label" for="ledger_to_filter">To</label>
-                    <input type="date" name="to" id="ledger_to_filter" class="form-control" value="{{ $toDate }}">
-                </div>
-                <div class="ledger-filter-search">
-                    <label class="ledger-label" for="ledger_search_filter">Search</label>
-                    <input type="text" name="search" id="ledger_search_filter" class="form-control" value="{{ $searchTerm }}" placeholder="Reference, client, description">
                 </div>
                 <div class="ledger-filter-actions">
                     <button type="submit" class="primary-button">Apply</button>
@@ -60,44 +49,49 @@
                     <p class="small-text">Try widening the filters or record invoices and payments first.</p>
                 </div>
             @else
+                <div class="ledger-table-toolbar">
+                    <div>
+                        <strong class="ledger-table-title">Ledger Entries</strong>
+                        <div class="ledger-table-subtitle">{{ $ledgerEntries->count() }} row(s) in statement view</div>
+                    </div>
+                </div>
                 <div class="ledger-table-wrap">
                     <table class="data-table ledger-table">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Particulars</th>
-                                <th>Reference</th>
-                                <th>Type</th>
-                                <th class="text-end">Amount</th>
-                                <th class="text-end">Balance</th>
+                                <th scope="col">Date</th>
+                                <th scope="col">Narration</th>
+                                <th scope="col">Reference</th>
+                                <th scope="col" class="text-end">Billed</th>
+                                <th scope="col" class="text-end">Received</th>
+                                <th scope="col" class="text-end">Balance</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($ledgerEntries as $entry)
                                 <tr>
-                                    <td class="ledger-date-cell">{{ $entry['date'] }}</td>
+                                    <td class="ledger-date-cell ledger-cell-text">{{ $entry['date'] }}</td>
                                     <td>
-                                        <strong>{{ $entry['client_name'] }}</strong>
-                                        @if($entry['description'] !== '')
-                                            <div class="ledger-note">{{ $entry['description'] }}</div>
-                                        @endif
+                                        {{ $entry['description'] !== '' ? $entry['description'] : '-' }}
                                     </td>
-                                    <td>
+                                    <td class="ledger-cell-text">
                                         @if($entry['reference_url'])
                                             <a href="{{ $entry['reference_url'] }}" class="ledger-ref-link">{{ $entry['reference_label'] }}</a>
                                         @else
                                             <span class="ledger-ref-link">{{ $entry['reference_label'] }}</span>
                                         @endif
-                                        <div class="ledger-meta">{{ $entry['reference_number'] }}</div>
-                                    </td>
-                                    <td>
-                                        <span class="ledger-type-badge is-{{ $entry['type'] }}">{{ $entry['type_label'] }}</span>
+                                        @if(!empty($entry['reference_meta']))
+                                            <div class="ledger-ref-meta">{{ $entry['reference_meta'] }}</div>
+                                        @endif
                                     </td>
                                     <td class="text-end ledger-amount-cell">
-                                        {{ number_format($entry['amount'], 2) }}
+                                        {{ $entry['debit'] > 0 ? number_format($entry['debit']) : '-' }}
+                                    </td>
+                                    <td class="text-end ledger-amount-cell">
+                                        {{ $entry['credit'] > 0 ? number_format($entry['credit']) : '-' }}
                                     </td>
                                     <td class="text-end ledger-balance-cell">
-                                        {{ number_format($entry['balance'], 2) }}
+                                        {{ number_format($entry['balance']) }}
                                     </td>
                                 </tr>
                             @endforeach
@@ -105,7 +99,7 @@
                         <tfoot>
                             <tr>
                                 <th colspan="5">Closing Balance</th>
-                                <th class="text-end">{{ number_format($closingBalance, 2) }}</th>
+                                <th class="text-end">{{ number_format($closingBalance) }}</th>
                             </tr>
                         </tfoot>
                     </table>
@@ -126,7 +120,7 @@
 
         .ledger-filter-grid {
             display: grid;
-            grid-template-columns: 1.1fr 0.8fr 0.8fr 0.8fr 1.2fr auto;
+            grid-template-columns: 1.15fr 1fr auto;
             gap: 0.6rem;
             align-items: end;
         }
@@ -147,8 +141,17 @@
             font-size: 0.82rem;
         }
 
-        .ledger-filter-search {
-            min-width: 180px;
+        .ledger-static-value {
+            min-height: 34px;
+            display: flex;
+            align-items: center;
+            padding: 0.32rem 0.7rem;
+            border: 1px solid #dbe2ea;
+            border-radius: 0.55rem;
+            background: #f8fafc;
+            color: #0f172a;
+            font-size: 0.84rem;
+            font-weight: 600;
         }
 
         .ledger-filter-actions {
@@ -169,17 +172,46 @@
             overflow: hidden;
         }
 
+        .ledger-table-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.8rem 0.9rem;
+            border-bottom: 1px solid #e2e8f0;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        }
+
+        .ledger-table-title {
+            display: block;
+            font-size: 0.88rem;
+            color: #0f172a;
+            line-height: 1.1;
+        }
+
+        .ledger-table-subtitle {
+            margin-top: 0.16rem;
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
         .ledger-table-wrap {
             overflow-x: auto;
+            margin: 0;
+            background: #fff;
         }
 
         .ledger-table {
             margin: 0;
+            border-collapse: collapse;
         }
 
         .ledger-table th,
         .ledger-table td {
-            padding: 0.8rem 0.9rem;
+            padding-top: 0.55rem;
+            padding-bottom: 0.55rem;
+            padding-left: 0.9rem;
+            padding-right: 0.9rem;
             vertical-align: middle;
         }
 
@@ -190,12 +222,31 @@
             letter-spacing: 0.04em;
             color: #475569;
             background: #f8fafc;
+            border-bottom: 1px solid #dbe2ea;
+        }
+
+        .ledger-table tbody td {
+            border-bottom: 1px solid #eef2f7;
+            color: #475569;
+            line-height: 1.15;
+        }
+
+        .ledger-table tbody tr:last-child td {
+            border-bottom: 1px solid #dbe2ea;
         }
 
         .ledger-date-cell {
             white-space: nowrap;
             color: #334155;
             font-weight: 600;
+            font-size: 0.76rem;
+            line-height: 1.15;
+        }
+
+        .ledger-cell-text {
+            color: #475569;
+            font-size: 0.76rem;
+            line-height: 1.15;
         }
 
         .ledger-note,
@@ -209,56 +260,47 @@
         .ledger-ref-link {
             color: #0f172a;
             font-weight: 600;
+            font-size: 0.88rem;
+            line-height: 1.15;
             text-decoration: none;
+            word-break: break-word;
         }
 
         .ledger-ref-link:hover {
             color: #2563eb;
         }
 
-        .ledger-type-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 88px;
-            padding: 0.25rem 0.65rem;
-            border-radius: 999px;
+        .ledger-ref-meta {
+            margin-top: 0.14rem;
             font-size: 0.72rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-        }
-
-        .ledger-type-badge.is-invoice {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-
-        .ledger-type-badge.is-payment {
-            background: #dcfce7;
-            color: #15803d;
-        }
-
-        .ledger-type-badge.is-tds {
-            background: #fef3c7;
-            color: #b45309;
+            line-height: 1.2;
+            color: #64748b;
+            word-break: break-word;
         }
 
         .ledger-amount-cell {
             font-variant-numeric: tabular-nums;
             color: #0f172a;
-            font-weight: 600;
+            font-size: 0.88rem;
+            font-weight: 700;
+            white-space: nowrap;
         }
 
         .ledger-balance-cell {
             font-variant-numeric: tabular-nums;
             color: #0f172a;
             font-weight: 700;
+            font-size: 0.88rem;
+            white-space: nowrap;
         }
 
         .ledger-table tfoot th {
             background: #f8fafc;
             font-weight: 700;
+            border-top: 1px solid #dbe2ea;
+            border-bottom: 0;
+            color: #0f172a;
+            font-size: 0.78rem;
         }
 
         @media (max-width: 1100px) {

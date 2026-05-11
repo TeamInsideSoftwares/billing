@@ -2,10 +2,10 @@
 
 @section('header_actions')
     <a href="{{ route('groups.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left icon-spaced"></i>Back to Groups
+        Back to Groups
     </a>
     <a href="{{ route('groups.edit', $group) }}" class="primary-button small">
-        <i class="fas fa-edit icon-spaced-sm"></i>Edit
+        Edit
     </a>
 @endsection
 

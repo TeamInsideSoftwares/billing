@@ -11,9 +11,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'accountid',
     'clientid',
     'date',
-    'reference_number',
+    'invoiceid_paymentid',
     'amount',
     'type',
+    'mode',
+    'reference_number',
     'description',
 ])]
 class Ledger extends Model
@@ -29,9 +31,11 @@ class Ledger extends Model
         'accountid',
         'clientid',
         'date',
-        'reference_number',
+        'invoiceid_paymentid',
         'amount',
         'type',
+        'mode',
+        'reference_number',
         'description',
     ];
 

@@ -58,10 +58,10 @@
                             </div>
                             <div class="group-list-item-actions">
                                 <span class="small-tag">Seq: {{ $pc['sequence'] }}</span>
-                                <button type="button" class="icon-action-btn edit icon-action-compact" onclick="editCategory('{{ $pc['record_id'] }}', '{{ addslashes($pc['name']) }}', '{{ addslashes($pc['description'] ?? '') }}', '{{ strtolower($pc['status']) }}')" title="Edit"><i class="fas fa-edit"></i></button>
+                                <button type="button" class="text-action-btn edit" onclick="editCategory('{{ $pc['record_id'] }}', '{{ addslashes($pc['name']) }}', '{{ addslashes($pc['description'] ?? '') }}', '{{ strtolower($pc['status']) }}')">Edit</button>
                                 <form method="POST" action="{{ route('product-categories.destroy', $pc['record_id']) }}" class="inline" onsubmit="return confirm('Delete this category?')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="icon-action-btn delete icon-action-compact" title="Delete"><i class="fas fa-trash"></i></button>
+                                    <button type="submit" class="text-action-btn delete">Delete</button>
                                 </form>
                             </div>
                         </div>
@@ -149,12 +149,12 @@
                             <td>
                                 <span class="status-pill {{ strtolower($service['status']) }}">{{ $service['status'] }}</span>
                             </td>
-                            <td class="service-actions-cell">
-                                <div class="service-actions-wrap">
-                                    <a href="{{ route('services.edit', $service['record_id']) }}" class="icon-action-btn edit" title="Edit"><i class="fas fa-edit"></i></a>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="{{ route('services.edit', $service['record_id']) }}" class="text-action-btn edit">Edit</a>
                                     <form method="POST" action="{{ route('services.destroy', $service['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $service['name'] }}?')">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="icon-action-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
+                                        <button type="submit" class="text-action-btn delete">Delete</button>
                                     </form>
                                 </div>
                             </td>

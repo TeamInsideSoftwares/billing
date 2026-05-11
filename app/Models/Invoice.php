@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Schema;
     'ti_number',
     'invoice_title',
     'status',
+    'payment_status',
     'issue_date',
     'due_date',
     'notes',
@@ -159,23 +160,8 @@ class Invoice extends Model
 
     public function getAmountPaidAttribute(): float
     {
-        static $paymentAmountColumn = null;
-
-        if ($paymentAmountColumn === null) {
-            if (Schema::hasColumn('payments', 'amount')) {
-                $paymentAmountColumn = 'amount';
-            } elseif (Schema::hasColumn('payments', 'credit')) {
-                $paymentAmountColumn = 'credit';
-            } else {
-                $paymentAmountColumn = false;
-            }
-        }
-
-        if ($paymentAmountColumn === false) {
-            return 0.0;
-        }
-
-        return (float) ($this->payments()->sum($paymentAmountColumn) ?? 0);
+        // The payments table uses 'received_amount' column
+        return (float) ($this->payments()->sum('received_amount') ?? 0);
     }
 
     public function getBalanceDueAttribute(): float

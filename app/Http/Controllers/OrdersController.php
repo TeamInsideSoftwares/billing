@@ -70,10 +70,14 @@ class OrdersController extends Controller
         // Filter by client if client_id is provided
         if ($clientId) {
             $query->where('clientid', $clientId);
-            $selectedClient = Client::find($clientId);
+            $selectedClient = Client::query()
+                ->where('accountid', $userAccountId)
+                ->find($clientId);
         }
         
         $searchTerm = request('search', '');
+        $fromDate = request('from');
+        $toDate = request('to');
 
         if ($searchTerm) {
             $query->where(function($q) use ($searchTerm) {
@@ -83,6 +87,14 @@ class OrdersController extends Controller
                             ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
                     });
             });
+        }
+
+        if ($fromDate) {
+            $query->whereDate('order_date', '>=', $fromDate);
+        }
+
+        if ($toDate) {
+            $query->whereDate('order_date', '<=', $toDate);
         }
         $resultCount = $query->count();
 
@@ -224,9 +236,12 @@ class OrdersController extends Controller
 
         // Check if we're updating an existing order (orderid is present)
         $existingOrderId = $request->input('orderid');
-        $existingOrder = $existingOrderId ? Order::find($existingOrderId) : null;
+        $existingOrder = $existingOrderId
+            ? Order::where('accountid', $this->resolveAccountId())->find($existingOrderId)
+            : null;
 
         if ($existingOrder) {
+            $accountid = $this->resolveAccountId();
             // Update existing order instead of creating new one
             $validated = $request->validate([
                 'clientid' => 'required|exists:clients,clientid',
@@ -244,7 +259,7 @@ class OrdersController extends Controller
             $discountTotal = 0;
             $taxTotal = 0;
             foreach ($itemsData as $itemData) {
-                $service = Service::with('costings')->find($itemData['itemid'] ?? null);
+                $service = Service::where('accountid', $accountid)->with('costings')->find($itemData['itemid'] ?? null);
                 $taxRate = $this->resolveTaxRate($service, $itemData);
                 $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
                 $subtotal += $amounts['line_total'];
@@ -270,7 +285,7 @@ class OrdersController extends Controller
             $existingOrder->items()->delete();
 
             foreach ($itemsData as $index => $itemData) {
-                $service = Service::with('costings')->find($itemData['itemid'] ?? null);
+                $service = Service::where('accountid', $accountid)->with('costings')->find($itemData['itemid'] ?? null);
                 $taxRate = $this->resolveTaxRate($service, $itemData);
                 $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
                 $recurringDates = $this->normalizeRecurringDates($itemData);
@@ -322,7 +337,7 @@ class OrdersController extends Controller
         $discountTotal = 0;
         $taxTotal = 0;
         foreach ($itemsData as $itemData) {
-            $service = Service::with('costings')->find($itemData['itemid'] ?? null);
+            $service = Service::where('accountid', $userAccountId)->with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
             $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
             $subtotal += $amounts['line_total'];
@@ -336,7 +351,7 @@ class OrdersController extends Controller
         $order = Order::create($validated);
 
         foreach ($itemsData as $index => $itemData) {
-            $service = Service::with('costings')->find($itemData['itemid'] ?? null);
+            $service = Service::where('accountid', $userAccountId)->with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
             $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
             $recurringDates = $this->normalizeRecurringDates($itemData);
@@ -380,6 +395,9 @@ class OrdersController extends Controller
 
     public function ordersShow(Order $order): View
     {
+        if ((string) $order->accountid !== $this->resolveAccountId()) {
+            abort(404);
+        }
         $order->load(['client', 'items.item']);
         $salesPersonName = $this->getSalesPeopleLookup(collect([(string) ($order->sales_person_id ?? '')]))[(string) ($order->sales_person_id ?? '')]
             ?? ($order->salesPerson->name ?? '-');
@@ -401,7 +419,10 @@ class OrdersController extends Controller
      */
     public function getOrderJson(Request $request, $order)
     {
-        $orderModel = Order::where('orderid', $order)->with(['items.service'])->first();
+        $orderModel = Order::where('orderid', $order)
+            ->where('accountid', $this->resolveAccountId())
+            ->with(['items.service'])
+            ->first();
         
         if (!$orderModel) {
             return response()->json(['error' => 'Order not found'], 404);
@@ -579,8 +600,9 @@ class OrdersController extends Controller
         $subtotal = 0;
         $discountTotal = 0;
         $taxTotal = 0;
+        $accountid = $this->resolveAccountId();
         foreach ($itemsData as $itemData) {
-            $service = Service::with('costings')->find($itemData['itemid'] ?? null);
+            $service = Service::where('accountid', $accountid)->with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
             $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
             $subtotal += $amounts['line_total'];
@@ -629,7 +651,7 @@ class OrdersController extends Controller
         $order->items()->delete();
 
         foreach ($itemsData as $index => $itemData) {
-            $service = Service::with('costings')->find($itemData['itemid'] ?? null);
+            $service = Service::where('accountid', $accountid)->with('costings')->find($itemData['itemid'] ?? null);
             $taxRate = $this->resolveTaxRate($service, $itemData);
             $amounts = $this->calculateOrderItemAmounts($itemData, $taxRate);
             $recurringDates = $this->normalizeRecurringDates($itemData);
@@ -1130,7 +1152,8 @@ class OrdersController extends Controller
                 'tax_rate' => 'required|numeric|min:0',
             ]);
 
-            $service = Service::with('costings')->find($validated['itemid']);
+            $accountid = $this->resolveAccountId();
+            $service = Service::where('accountid', $accountid)->with('costings')->find($validated['itemid']);
             $taxRate = $this->resolveTaxRate($service, $validated);
             $amounts = $this->calculateOrderItemAmounts($validated, $taxRate);
             $recurringDates = $this->normalizeRecurringDates($validated);
@@ -1238,7 +1261,8 @@ class OrdersController extends Controller
                 'tax_rate' => 'required|numeric|min:0',
             ]);
 
-            $service = Service::with('costings')->find($validated['itemid']);
+            $accountid = $this->resolveAccountId();
+            $service = Service::where('accountid', $accountid)->with('costings')->find($validated['itemid']);
             $taxRate = $this->resolveTaxRate($service, $validated);
             $amounts = $this->calculateOrderItemAmounts($validated, $taxRate);
             $recurringDates = $this->normalizeRecurringDates($validated);

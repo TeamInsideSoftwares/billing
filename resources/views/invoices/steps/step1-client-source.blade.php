@@ -38,6 +38,7 @@
         <h4 class="invoice-existing-title">Existing Invoices</h4>
         <div id="invoiceLimitInfo" class="small-text text-muted mb-2 is-hidden"></div>
         <div id="clientInvoicesAccordion" class="services-accordion-container"></div>
+        <div id="invoicePagination" class="d-flex justify-content-center align-items-center gap-3 mt-2 is-hidden"></div>
         <div id="noInvoicesMessage" class="empty-state is-hidden">No invoices found for this client yet.</div>
     </div>
 
@@ -132,7 +133,7 @@
             }
 
             try {
-                const res = await fetch(`{{ route('invoices.index') }}?c=${clientId}`, {
+                const res = await fetch(`{{ route('invoices.index') }}?c=${clientId}&for_create_picker=1`, {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 const data = await res.json();
@@ -164,7 +165,10 @@
             invoiceLimitInfo.classList.remove('is-hidden');
 
             accordion.innerHTML = visibleInvoices.map(inv => {
-                const statusLabel = String(inv.status || 'active').toLowerCase() === 'cancelled' ? 'Cancelled' : 'Active';
+                const normalizedStatus = String(inv.status || 'active').toLowerCase();
+                const statusLabel = normalizedStatus === 'cancelled'
+                    ? 'Cancelled'
+                    : (normalizedStatus === 'draft' ? 'Draft' : 'Active');
                 const statusClass = statusLabel.toLowerCase();
                 const title = inv.title || inv.number || 'Invoice';
                 const numberLabel = inv.number && inv.title ? inv.number : '';
@@ -201,7 +205,7 @@
                         </span>
                         <span class="invoice-accordion-right">
                             <a href="{{ url('invoices') }}/${inv.record_id}/edit" class="invoice-accordion-edit">
-                                <i class="fas fa-edit"></i>
+                                Edit
                             </a>
                             <span class="invoice-accordion-type">${inv.ti_number ? 'Tax Invoice' : 'Proforma Invoice'}</span>
                             <span class="badge bg-secondary rounded-pill ${statusClass}">${statusLabel}</span>
@@ -221,16 +225,11 @@
         }
 
         function updatePaginationControls(totalInvoices) {
-            let paginationContainer = document.getElementById('invoicePagination');
-            if (!paginationContainer) {
-                paginationContainer = document.createElement('div');
-                paginationContainer.id = 'invoicePagination';
-                paginationContainer.className = 'd-flex justify-content-center align-items-center gap-3 mt-2';
-                accordion.parentNode.insertBefore(paginationContainer, accordion.nextSibling);
-            }
+            const paginationContainer = document.getElementById('invoicePagination');
 
             if (totalInvoices <= PAGE_SIZE) {
                 paginationContainer.classList.add('is-hidden');
+                paginationContainer.innerHTML = '';
                 return;
             }
 
@@ -238,12 +237,12 @@
             const totalPages = Math.ceil(totalInvoices / PAGE_SIZE);
 
             paginationContainer.innerHTML = `
-                <button type="button" class="secondary-button small px-2" id="prevInvoices" ${currentPage === 1 ? 'disabled' : ''}>
-                    <i class="fas fa-chevron-left"></i>
+                <button type="button" class="secondary-button small px-3" id="prevInvoices" ${currentPage === 1 ? 'disabled' : ''}>
+                    Prev
                 </button>
                 <span class="small-text font-semibold">Page ${currentPage} of ${totalPages}</span>
-                <button type="button" class="secondary-button small px-2" id="nextInvoices" ${currentPage === totalPages ? 'disabled' : ''}>
-                    <i class="fas fa-chevron-right"></i>
+                <button type="button" class="secondary-button small px-3" id="nextInvoices" ${currentPage === totalPages ? 'disabled' : ''}>
+                    Next
                 </button>
             `;
 

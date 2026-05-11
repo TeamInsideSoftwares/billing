@@ -1,14 +1,13 @@
 @extends('layouts.app')
 
 @section('header_actions')
-    @if($clientId)
-        <a href="{{ route('orders.create', ['c' => $clientId]) }}" class="primary-button">
-            <i class="fas fa-plus icon-spaced"></i>Create Order
-        </a>
-        <!-- <a href="{{ route('orders.index', ['c' => $clientId]) }}" class="secondary-button">
-            <i class="fas fa-list icon-spaced"></i>View Orders
-        </a> -->
-    @endif
+    <div class="header-actions-wrapper">
+        @if($clientId)
+            <a href="{{ route('orders.create', ['c' => $clientId]) }}" class="primary-button">
+                <i class="fas fa-plus icon-spaced"></i>Create Order
+            </a>
+        @endif
+    </div>
 @endsection
 
 @section('content')
@@ -56,6 +55,36 @@
             </div>
         </div>
     @else
+        <section class="panel-card module-filter-panel">
+            <form action="{{ route('orders.index') }}" method="GET" class="module-filter-grid">
+                <div class="module-filter-field">
+                    <label class="module-filter-label" for="orders_client_filter">Client</label>
+                    <select name="c" id="orders_client_filter" class="form-control">
+                        @foreach($allClients as $client)
+                            <option value="{{ $client->clientid }}" {{ (string) $clientId === (string) $client->clientid ? 'selected' : '' }}>
+                                {{ $client->business_name ?? $client->contact_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="module-filter-field">
+                    <label class="module-filter-label" for="orders_from_filter">From</label>
+                    <input type="date" name="from" id="orders_from_filter" class="form-control module-date-input" value="{{ request('from') }}">
+                </div>
+
+                <div class="module-filter-field">
+                    <label class="module-filter-label" for="orders_to_filter">To</label>
+                    <input type="date" name="to" id="orders_to_filter" class="form-control module-date-input" value="{{ request('to') }}">
+                </div>
+
+                <div class="module-filter-actions">
+                    <button type="submit" class="primary-button">Apply</button>
+                    <a href="{{ route('orders.index', $clientId ? ['c' => $clientId] : []) }}" class="secondary-button">Reset</a>
+                </div>
+            </form>
+        </section>
+
         {{-- Orders List View - Grouped by Client --}}
         @forelse ($groupedOrders as $clientName => $clientOrders)
             @php
@@ -70,25 +99,7 @@
             <section class="order-group">
                 <div class="order-group-head">
                     <span class="order-client-meta" onclick="event.stopPropagation();">
-                        @if($clientId)
-                            <form action="{{ route('orders.index') }}" method="GET" class="m-0">
-                                <select
-                                    name="c"
-                                    class="form-control select-client-compact"
-                                    onchange="this.form.submit()"
-                                    onclick="event.stopPropagation();"
-                                >
-                                    @foreach($allClients as $clientOption)
-                                        @php($optionName = $clientOption->business_name ?? $clientOption->contact_name ?? 'Client')
-                                        <option value="{{ $clientOption->clientid }}" {{ (string) $clientId === (string) $clientOption->clientid ? 'selected' : '' }}>
-                                            {{ $optionName }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </form>
-                        @else
-                            <span class="category-title">{{ $clientName }}</span>
-                        @endif
+                        <span class="category-title">{{ $clientName }}</span>
                     </span>
                     <span class="order-client-summary">
                         <span class="service-count">{{ count($clientOrders) }} order(s)</span>
@@ -145,12 +156,10 @@
                                 </td>
                                 <td>
                                     <div class="table-actions">
-                                        <a href="{{ route('orders.show', ['order' => $order['record_id'] ?? '' ]) }}" class="icon-action-btn view" title="View">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
+                                        <a href="{{ route('orders.show', ['order' => $order['record_id'] ?? '' ]) }}" class="text-action-btn view">View</a>
                                         @if(($order['verified'] ?? false) && (($order['status'] ?? '') !== 'cancelled'))
                                             @if(!($order['has_pi'] ?? false))
-                                            <a href="{{ route('invoices.create', ['step' => 3, 'invoice_for' => 'orders', 'o' => $order['record_id'] ?? '', 'c' => $clientId]) }}" class="order-create-pi-link" title="Create PI">
+                                            <a href="{{ route('invoices.create', ['step' => 3, 'invoice_for' => 'orders', 'o' => $order['record_id'] ?? '', 'c' => $clientId]) }}" class="order-create-pi-link">
                                                 Create PI
                                             </a>
                                             @else
@@ -161,29 +170,23 @@
                                                 'd' => $order['linked_invoice_id'],
                                                 'o' => (($order['linked_invoice_for'] ?? 'orders') === 'orders') ? ($order['record_id'] ?? '') : null,
                                                 'tax_invoice' => !empty($order['linked_invoice_has_ti']) ? 1 : null,
-                                            ]) }}" class="order-create-pi-link order-pill-created" title="Edit PI">
+                                            ]) }}" class="order-create-pi-link order-pill-created">
                                                 Edit PI
                                             </a>
                                             @endif
                                         @endif
                                         @if(($order['status'] ?? '') !== 'cancelled')
-                                            <a href="{{ route('orders.edit', ['order' => $order['record_id'] ?? '' ]) }}" class="icon-action-btn edit" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
+                                            <a href="{{ route('orders.edit', ['order' => $order['record_id'] ?? '' ]) }}" class="text-action-btn edit">Edit</a>
                                             <form method="POST" action="{{ route('orders.destroy', ['order' => $order['record_id'] ?? '' ]) }}" class="inline-delete" onsubmit="return confirm('Cancel {{ $order['number'] ?? 'this order' }}?')">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="icon-action-btn delete" title="Cancel Order">
-                                                    <i class="fas fa-ban"></i>
-                                                </button>
+                                                <button type="submit" class="text-action-btn delete">Cancel</button>
                                             </form>
                                         @else
                                             <form method="POST" action="{{ route('orders.restore', ['order' => $order['record_id'] ?? '' ]) }}" class="inline-delete" onsubmit="return confirm('Restore {{ $order['number'] ?? 'this order' }}?')">
                                                 @csrf
                                                 @method('PATCH')
-                                                <button type="submit" class="order-create-pi-link order-pill-created" title="Restore Order">
-                                                    Restore
-                                                </button>
+                                                <button type="submit" class="text-action-btn secondary">Restore</button>
                                             </form>
                                         @endif
                                     </div>
@@ -250,16 +253,12 @@
     function toggleOrderItems(orderRecordId) {
         const itemsRow = document.getElementById('items-' + orderRecordId);
         const icon = document.getElementById('icon-' + orderRecordId);
-        
-        if (itemsRow.style.display === 'none') {
-            // Show items
-            itemsRow.style.display = 'table-row';
-            icon.style.transform = 'rotate(90deg)';
-        } else {
-            // Hide items
-            itemsRow.style.display = 'none';
-            icon.style.transform = 'rotate(0deg)';
-        }
+
+        if (!itemsRow || !icon) return;
+
+        const isActive = itemsRow.classList.toggle('active');
+        itemsRow.style.display = isActive ? 'table-row' : 'none';
+        icon.style.transform = isActive ? 'rotate(90deg)' : 'rotate(0deg)';
     }
 
     // Handle View Orders button

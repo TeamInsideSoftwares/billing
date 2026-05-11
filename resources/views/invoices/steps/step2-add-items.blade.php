@@ -575,12 +575,8 @@
                 <td class="${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.end_date || '-') : '-'}</td>
                 <td class="text-right">${formatCurrency(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0)))}</td>
                 <td class="text-center text-nowrap">
-                    <button type="button" class="edit-item-btn icon-action-btn edit" data-index="${index}" title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button type="button" class="remove-item-btn icon-action-btn delete" data-index="${index}" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <button type="button" class="text-action-btn edit edit-item-btn" data-index="${index}">Edit</button>
+                    <button type="button" class="text-action-btn delete remove-item-btn" data-index="${index}">Delete</button>
                 </td>
             `;
                 manualItemsBody.appendChild(row);

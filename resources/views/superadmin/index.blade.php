@@ -35,8 +35,8 @@
                             <span class="status-pill {{ $acc->status }}">{{ ucfirst($acc->status) }}</span>
                         </td>
                         <td class="table-actions">
-                            <a href="#" class="icon-action-btn view" title="Manage">
-                                <i class="fas fa-cog"></i>
+                            <a href="#" class="text-action-btn view" title="Manage">
+                                Manage
                             </a>
                         </td>
                     </tr>

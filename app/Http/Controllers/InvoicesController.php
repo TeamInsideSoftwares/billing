@@ -701,8 +701,10 @@ class InvoicesController extends Controller
         $clients = Client::where('accountid', $accountid)->orderBy('business_name')->get();
         $selectedClientId = request('c', request('clientid'));
         $selectedTab = request('tab', 'invoices');
-        $today = now()->startOfDay();
-        $upcomingThreshold = now()->addDays(30)->endOfDay();
+        $selectedType = trim((string) request('type', ''));
+        $selectedStatus = strtolower(trim((string) request('status', 'active')));
+        $fromDate = trim((string) request('from', ''));
+        $toDate = trim((string) request('to', ''));
 
         $invoiceQuery = Invoice::where('accountid', $accountid)
             ->with(['client', 'items', 'payments'])
@@ -711,13 +713,157 @@ class InvoicesController extends Controller
         if ($selectedClientId) {
             $invoiceQuery->where('clientid', $selectedClientId);
         }
+        if ($fromDate !== '') {
+            $invoiceQuery->whereDate('issue_date', '>=', $fromDate);
+        }
+        if ($toDate !== '') {
+            $invoiceQuery->whereDate('issue_date', '<=', $toDate);
+        }
 
-        $allInvoices = $invoiceQuery->get();
-        $filteredInvoices = $allInvoices->values();
+        if ($selectedTab === 'proforma' && $selectedType === '') {
+            $selectedType = 'pi';
+            $selectedTab = 'invoices';
+        } elseif ($selectedTab === 'tax' && $selectedType === '') {
+            $selectedType = 'tax';
+            $selectedTab = 'invoices';
+        }
 
-        // Get window for upcoming expiry
-        $upcomingWindowDays = (int) request('next_days', 30);
-        $upcomingThreshold = now()->addDays($upcomingWindowDays)->endOfDay();
+        $allInvoices = $invoiceQuery->get()->values();
+
+        $selectedTab = in_array($selectedTab, ['invoices', 'upcoming', 'proforma', 'tax'], true)
+            ? $selectedTab
+            : 'invoices';
+        $selectedType = in_array($selectedType, ['', 'pi', 'tax'], true) ? $selectedType : '';
+        $selectedStatus = in_array($selectedStatus, ['active', 'cancelled'], true) ? $selectedStatus : 'active';
+
+        $typedInvoices = $allInvoices;
+        if ($selectedType !== '') {
+            $typedInvoices = $typedInvoices->filter(function (Invoice $invoice) use ($selectedType) {
+                $isTaxInvoice = trim((string) ($invoice->ti_number ?? '')) !== '';
+                return $selectedType === 'tax' ? $isTaxInvoice : !$isTaxInvoice;
+            })->values();
+        }
+
+        $draftInvoices = $typedInvoices->filter(function (Invoice $invoice) {
+            return strtolower(trim((string) ($invoice->status ?? ''))) === 'draft';
+        })->values();
+
+        $filteredInvoices = $typedInvoices->filter(function (Invoice $invoice) use ($selectedStatus) {
+            $status = strtolower(trim((string) ($invoice->status ?? 'active')));
+            if ($selectedStatus === 'cancelled') {
+                return $status === 'cancelled';
+            }
+            return !in_array($status, ['cancelled', 'draft'], true);
+        })->values();
+
+        if ($selectedTab === 'upcoming') {
+            $filteredInvoices = $draftInvoices;
+        }
+
+        if (request()->wantsJson() || request()->ajax()) {
+            $forCreatePicker = request()->boolean('for_create_picker');
+            $jsonInvoices = $forCreatePicker
+                ? $typedInvoices->filter(function (Invoice $invoice) {
+                    $status = strtolower(trim((string) ($invoice->status ?? 'active')));
+                    return $status !== 'cancelled';
+                })->values()
+                : $filteredInvoices;
+
+            return response()->json([
+                'invoices' => $jsonInvoices->map(function ($invoice) {
+                    $amountPaid = (float) ($invoice->amount_paid ?? 0);
+                    $grandTotal = (float) ($invoice->grand_total ?? 0);
+                    $balanceDue = (float) ($invoice->balance_due ?? max(0, $grandTotal - $amountPaid));
+                    $currency = $invoice->client->currency ?? 'INR';
+
+                    $statusValue = strtolower(trim((string) ($invoice->status ?? 'draft')));
+                    $paymentStatus = strtolower(trim((string) ($invoice->payment_status ?? '')));
+                    if (!in_array($paymentStatus, ['paid', 'partly_paid', 'unpaid'], true)) {
+                        $paymentStatus = 'unpaid';
+                        if ($amountPaid > 0 && $balanceDue <= 0 && $grandTotal > 0) {
+                            $paymentStatus = 'paid';
+                        } elseif ($amountPaid > 0) {
+                            $paymentStatus = 'partly_paid';
+                        }
+                    }
+
+                    return [
+                        'record_id' => $invoice->invoiceid,
+                        'number' => $invoice->invoice_number,
+                        'pi_number' => $invoice->pi_number,
+                        'ti_number' => $invoice->ti_number,
+                        'title' => $invoice->invoice_title,
+                        'clientid' => $invoice->clientid,
+                        'issue_date' => $invoice->issue_date?->format('d M Y'),
+                        'due_date' => $invoice->due_date?->format('d M Y'),
+                        'amount' => $currency . ' ' . number_format($invoice->grand_total ?? 0, 0),
+                        'amount_paid' => $currency . ' ' . number_format($amountPaid, 0),
+                        'balance_due' => $currency . ' ' . number_format($balanceDue, 0),
+                        'status' => $statusValue !== '' ? $statusValue : 'draft',
+                        'payment_status' => $paymentStatus,
+                        'items' => $invoice->items->map(function ($item) use ($currency) {
+                            return [
+                                'itemid' => $item->itemid ?? $item->invoice_itemid ?? '',
+                                'name' => $item->item_name,
+                                'item_name' => $item->item_name,
+                                'qty' => $item->quantity,
+                                'quantity' => $item->quantity,
+                                'price' => $currency . ' ' . number_format($item->unit_price, 0),
+                                'unit_price' => (float) $item->unit_price,
+                                'tax_rate' => (float) ($item->tax_rate ?? 0),
+                                'discount_percent' => (float) ($item->discount_percent ?? 0),
+                                'discount_amount' => (float) ($item->discount_amount ?? 0),
+                                'duration' => $item->duration,
+                                'frequency' => $item->frequency,
+                                'users' => (int) ($item->no_of_users ?? 1),
+                                'no_of_users' => (int) ($item->no_of_users ?? 1),
+                                'start_date' => $item->start_date?->format('d M Y'),
+                                'end_date' => $item->end_date?->format('d M Y'),
+                                'total' => $currency . ' ' . number_format($item->line_total, 0),
+                                'line_total' => (float) $item->line_total,
+                            ];
+                        }),
+                    ];
+                })->values(),
+                'selected_type' => $selectedType,
+                'selected_status' => $selectedStatus,
+                'selected_tab' => $selectedTab,
+            ]);
+        }
+
+        return view('invoices.index', [
+            'title' => 'Invoices',
+            'subtitle' => $selectedClientId ? 'Filtered by selected client.' : 'Showing invoices for all clients.',
+            'clients' => $clients,
+            'allInvoices' => $filteredInvoices,
+            'allInvoiceRows' => $allInvoices,
+            'selectedClientId' => $selectedClientId,
+            'selectedTab' => $selectedTab,
+            'selectedType' => $selectedType,
+            'selectedStatus' => $selectedStatus,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'upcomingInvoicesCount' => $draftInvoices->count(),
+        ]);
+    }
+
+    public function invoicesExpiryList(Request $request): View
+    {
+        $accountid = $this->resolveAccountId();
+        $clients = Client::where('accountid', $accountid)->orderBy('business_name')->get();
+        $selectedClientId = $request->query('c', $request->query('clientid'));
+        $selectedTab = $request->query('tab', 'expired');
+        $selectedTab = in_array($selectedTab, ['upcoming', 'expired', 'suspended'], true)
+            ? $selectedTab
+            : 'expired';
+        $fromDate = trim((string) $request->query('from', ''));
+        $toDate = trim((string) $request->query('to', ''));
+        $today = now()->startOfDay();
+        $nextDays = (int) $request->query('next_days', 60);
+        if ($nextDays <= 0) {
+            $nextDays = 60;
+        }
+        $upcomingThreshold = $today->copy()->addDays($nextDays)->endOfDay();
 
         $expiryItemBaseQuery = InvoiceItem::query()
             ->where('accountid', $accountid)
@@ -727,14 +873,20 @@ class InvoicesController extends Controller
                 'invoice.client:clientid,business_name,contact_name,currency',
                 'item:itemid,name',
             ])
-            ->whereHas('invoice', function ($query) {
-                $query->where('status', '!=', 'cancelled')
+            ->whereHas('invoice', function ($q) {
+                $q->where('status', '!=', 'cancelled')
                     ->whereNotNull('ti_number')
                     ->where('ti_number', '!=', '');
             });
 
         if ($selectedClientId) {
             $expiryItemBaseQuery->where('clientid', $selectedClientId);
+        }
+        if ($fromDate !== '') {
+            $expiryItemBaseQuery->whereDate('end_date', '>=', $fromDate);
+        }
+        if ($toDate !== '') {
+            $expiryItemBaseQuery->whereDate('end_date', '<=', $toDate);
         }
 
         $mapExpiryItem = function (InvoiceItem $item) use ($today) {
@@ -773,7 +925,7 @@ class InvoicesController extends Controller
             ];
         };
 
-        $upcomingExpiryItems = (clone $expiryItemBaseQuery)
+        $upcomingItems = (clone $expiryItemBaseQuery)
             ->where(function ($query) {
                 $query->where('status', 'active')
                     ->orWhereNull('status');
@@ -803,138 +955,20 @@ class InvoicesController extends Controller
             ->map($mapExpiryItem)
             ->values();
 
-        if (request()->wantsJson() || request()->ajax()) {
-            return response()->json([
-                'invoices' => $filteredInvoices->map(function ($invoice) {
-                    $amountPaid = (float) ($invoice->amount_paid ?? 0);
-                    $grandTotal = (float) ($invoice->grand_total ?? 0);
-                    $balanceDue = (float) ($invoice->balance_due ?? max(0, $grandTotal - $amountPaid));
-                    $currency = $invoice->client->currency ?? 'INR';
-
-                    $paymentStatus = 'unpaid';
-                    if ($amountPaid > 0 && $balanceDue <= 0 && $grandTotal > 0) {
-                        $paymentStatus = 'paid';
-                    } elseif ($amountPaid > 0) {
-                        $paymentStatus = 'partially paid';
-                    }
-
-                    return [
-                        'record_id' => $invoice->invoiceid,
-                        'number' => $invoice->invoice_number,
-                        'pi_number' => $invoice->pi_number,
-                        'ti_number' => $invoice->ti_number,
-                        'title' => $invoice->invoice_title,
-                        'clientid' => $invoice->clientid,
-                        'issue_date' => $invoice->issue_date?->format('d M Y'),
-                        'due_date' => $invoice->due_date?->format('d M Y'),
-                        'amount' => $currency . ' ' . number_format($invoice->grand_total ?? 0, 0),
-                        'amount_paid' => $currency . ' ' . number_format($amountPaid, 0),
-                        'balance_due' => $currency . ' ' . number_format($balanceDue, 0),
-                        'status' => $invoice->status ?? 'draft',
-                        'payment_status' => $paymentStatus,
-                        'items' => $invoice->items->map(function ($item) use ($currency) {
-                            return [
-                                'itemid' => $item->itemid ?? $item->invoice_itemid ?? '',
-                                'name' => $item->item_name,
-                                'item_name' => $item->item_name,
-                                'qty' => $item->quantity,
-                                'quantity' => $item->quantity,
-                                'price' => $currency . ' ' . number_format($item->unit_price, 0),
-                                'unit_price' => (float) $item->unit_price,
-                                'tax_rate' => (float) ($item->tax_rate ?? 0),
-                                'discount_percent' => (float) ($item->discount_percent ?? 0),
-                                'discount_amount' => (float) ($item->discount_amount ?? 0),
-                                'duration' => $item->duration,
-                                'frequency' => $item->frequency,
-                                'users' => (int) ($item->no_of_users ?? 1),
-                                'no_of_users' => (int) ($item->no_of_users ?? 1),
-                                'start_date' => $item->start_date?->format('d M Y'),
-                                'end_date' => $item->end_date?->format('d M Y'),
-                                'total' => $currency . ' ' . number_format($item->line_total, 0),
-                                'line_total' => (float) $item->line_total,
-                            ];
-                        }),
-                    ];
-                })->values(),
-                'upcoming' => $upcomingExpiryItems,
-                'expired' => $expiredItems,
-                'suspended' => $suspendedItems,
-            ]);
-        }
-
-        return view('invoices.index', [
-            'title' => 'Invoices',
-            'subtitle' => $selectedClientId ? 'Filtered by selected client.' : 'Showing invoices for all clients.',
+        return view('invoices.expiry-list', [
+            'title' => 'Expiry List',
+            'subtitle' => $selectedClientId
+                ? 'Recurring invoice items filtered by selected client.'
+                : 'Recurring invoice items across all clients.',
             'clients' => $clients,
-            'allInvoices' => $filteredInvoices,
             'selectedClientId' => $selectedClientId,
             'selectedTab' => $selectedTab,
-            'upcomingExpiryItems' => $upcomingExpiryItems,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'nextDays' => $nextDays,
+            'upcomingItems' => $upcomingItems,
             'expiredItems' => $expiredItems,
             'suspendedItems' => $suspendedItems,
-            'upcomingWindowDays' => $upcomingWindowDays,
-        ]);
-    }
-
-    public function invoicesExpiryList(Request $request): View|\Illuminate\Http\RedirectResponse
-    {
-        $accountid = $this->resolveAccountId();
-        $today = now()->startOfDay();
-        $nextDaysInput = $request->query('next_days');
-        $nextDays = ($nextDaysInput === null || $nextDaysInput === '')
-            ? 30
-            : (int) $nextDaysInput;
-        if ($nextDays < 0) {
-            $nextDays = 0;
-        }
-
-        $expiryItems = InvoiceItem::query()
-            ->where('accountid', $accountid)
-            ->whereNotNull('end_date')
-            ->when($nextDays > 0, function ($query) use ($today, $nextDays) {
-                $query->whereDate('end_date', '<=', $today->copy()->addDays($nextDays)->toDateString());
-            })
-            ->with([
-                'invoice:invoiceid,clientid,invoice_title,pi_number,ti_number,status',
-                'invoice.client:clientid,business_name,contact_name',
-                'item:itemid,name',
-            ])
-            ->whereHas('invoice', function ($q) {
-                $q->where('status', '!=', 'cancelled')
-                    ->whereNotNull('ti_number')
-                    ->where('ti_number', '!=', '');
-            })
-            ->orderBy('end_date')
-            ->paginate(15)
-            ->through(function (InvoiceItem $item) use ($today) {
-                $expiryDate = $item->end_date?->copy()->startOfDay();
-                $daysLeft = $expiryDate ? $today->diffInDays($expiryDate, false) : 0;
-
-                return [
-                    'invoice_itemid' => $item->invoice_itemid,
-                    'invoiceid' => (string) $item->invoiceid,
-                    'clientid' => (string) ($item->invoice?->clientid ?: $item->clientid),
-                    'invoice_label' => (string) (
-                        $item->invoice?->invoice_title
-                        ?: $item->invoice?->invoice_number
-                        ?: $item->invoiceid
-                    ),
-                    'client_name' => (string) (
-                        $item->invoice?->client?->business_name
-                        ?: $item->invoice?->client?->contact_name
-                        ?: 'Client'
-                    ),
-                    'item_name' => (string) ($item->item_name ?: $item->item?->name ?: 'Item'),
-                    'item_description' => (string) ($item->item_description ?? ''),
-                    'frequency' => (string) ($item->frequency ?? ''),
-                    'end_date' => $expiryDate?->format('d M Y'),
-                    'days_left' => $daysLeft,
-                ];
-            });
-
-        return redirect()->route('invoices.index', [
-            'tab' => 'upcoming',
-            'next_days' => $nextDays,
         ]);
     }
 
@@ -949,7 +983,7 @@ class InvoicesController extends Controller
 
         $clientId = (string) ($sourceItem->clientid ?? '');
         if ($clientId === '') {
-            return redirect()->route('invoices.index', ['tab' => 'expired'])
+            return redirect()->route('invoices.expiry-list', ['tab' => 'expired'])
                 ->with('error', 'Unable to start renewal for this item.');
         }
 
@@ -1011,7 +1045,9 @@ class InvoicesController extends Controller
         // Get selected client currency
         $selectedClientCurrency = 'INR';
         if (!empty($clientId)) {
-            $client = Client::find($clientId);
+            $client = Client::query()
+                ->where('accountid', $accountid)
+                ->find($clientId);
             $selectedClientCurrency = $client?->currency ?? 'INR';
         }
 
@@ -1037,8 +1073,8 @@ class InvoicesController extends Controller
 
         return view('invoices.create', [
             'title' => 'Create Invoice',
-            'clients' => Client::orderBy('business_name')->get(),
-            'services' => Service::with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),
+            'clients' => Client::where('accountid', $accountid)->orderBy('business_name')->get(),
+            'services' => Service::where('accountid', $accountid)->with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'nextInvoiceNumber' => $nextInvoiceNumber,
             'nextTaxInvoiceNumber' => $nextTaxInvoiceNumber,
@@ -1638,7 +1674,9 @@ class InvoicesController extends Controller
 
         foreach ($itemsData as $index => $itemData) {
             $itemId = $itemData['itemid'] ?? null;
-            $service = $itemId ? Service::find($itemId) : null;
+            $service = $itemId
+                ? Service::where('accountid', $accountid)->find($itemId)
+                : null;
             $quantity = $this->wholeQuantity($itemData['quantity'] ?? 1);
             $unitPrice = $this->wholeAmount($itemData['unit_price'] ?? 0);
             $taxRate = (float) ($itemData['tax_rate'] ?? 0);
@@ -1767,21 +1805,24 @@ class InvoicesController extends Controller
     private function syncInvoiceLedgerEntry(Invoice $invoice, float $grandTotal): void
     {
         $description = $invoice->invoice_title;
+        $referenceNumber = trim((string) ($invoice->ti_number ?: $invoice->pi_number ?: $invoice->invoiceid));
 
         if (empty($description)) {
-            $description = trim((string) ($invoice->ti_number ?: $invoice->pi_number));
+            $description = $referenceNumber;
         }
 
         Ledger::query()->updateOrCreate(
             [
-                'reference_number' => $invoice->invoiceid,
-                'type' => 'invoice',
+                'invoiceid_paymentid' => $invoice->invoiceid,
+                'type' => 'dr',
             ],
             [
                 'accountid' => $invoice->accountid,
                 'clientid' => $invoice->clientid,
                 'date' => $invoice->issue_date,
                 'amount' => $grandTotal,
+                'mode' => 'invoice',
+                'reference_number' => $referenceNumber,
                 'description' => $description ?: null,
             ]
         );
@@ -2006,6 +2047,7 @@ class InvoicesController extends Controller
             $calculatedBalanceDue = max(0, $calculatedGrandTotal - $amountPaid);
 
             $draft->update(['status' => 'draft']);
+            $this->syncInvoiceLedgerEntry($draft->fresh(), $calculatedGrandTotal);
         }
 
         return response()->json([
@@ -2162,7 +2204,7 @@ class InvoicesController extends Controller
         $accountid = $this->resolveAccountId();
         $account = \App\Models\Account::find($accountid);
         $accountHasUsers = (bool) ($account?->have_users ?? false);
-        $service = Service::find($invoiceItem->itemid);
+        $service = Service::where('accountid', $accountid)->find($invoiceItem->itemid);
         $isUserWiseItem = $accountHasUsers && $this->isUserWiseEnabled($service?->user_wise);
 
         $invoiceItem->update([
@@ -2264,7 +2306,7 @@ class InvoicesController extends Controller
         $accountHasUsers = (bool) ($account?->have_users ?? false);
 
         foreach ($itemsData as $index => $itemData) {
-            $service = Service::find($itemData['itemid'] ?? null);
+            $service = Service::where('accountid', $accountid)->find($itemData['itemid'] ?? null);
             $taxRate = (float) ($itemData['tax_rate'] ?? 0);
             $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
             $isUserWiseItem = $accountHasUsers && $this->isUserWiseEnabled($service?->user_wise);
@@ -2290,6 +2332,11 @@ class InvoicesController extends Controller
 
             $itemModel::create($payload);
         }
+
+        $discountTotal = $this->roundDiscountDown($discountTotal);
+        $taxTotal = $this->roundTaxUp($taxTotal);
+        $grandTotal = max(0, $subtotal - $discountTotal + $taxTotal);
+        $this->syncInvoiceLedgerEntry($invoice->fresh(), $grandTotal);
 
         // Return JSON response for AJAX requests
         if ($request->wantsJson() || $request->ajax()) {
@@ -2337,11 +2384,11 @@ class InvoicesController extends Controller
 
         $params = array_filter([
             'c' => request('c') ?: $invoice->clientid,
-            'tab' => 'expired',
+            'tab' => request('tab', 'expired'),
         ]);
 
         return redirect()
-            ->route('invoices.index', $params)
+            ->route('invoices.expiry-list', $params)
             ->with('success', 'Item suspended successfully.');
     }
 
@@ -2357,17 +2404,19 @@ class InvoicesController extends Controller
 
         $params = array_filter([
             'c' => request('c') ?: $invoice->clientid,
-            'tab' => 'suspended',
+            'tab' => request('tab', 'suspended'),
         ]);
 
         return redirect()
-            ->route('invoices.index', $params)
+            ->route('invoices.expiry-list', $params)
             ->with('success', 'Item unsuspended successfully.');
     }
 
     protected function resolveInvoiceDocument(string $invoiceid): Invoice
     {
-        return Invoice::findOrFail($invoiceid);
+        return Invoice::query()
+            ->where('accountid', $this->resolveAccountId())
+            ->findOrFail($invoiceid);
     }
 
     protected function assertDocumentNumberAvailable(string $invoiceNumber, ?string $ignoreInvoiceId = null, ?string $numberColumn = null): void

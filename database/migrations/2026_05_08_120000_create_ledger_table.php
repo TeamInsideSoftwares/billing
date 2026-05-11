@@ -13,15 +13,15 @@ return new class extends Migration
             $table->string('accountid', 10);
             $table->string('clientid', 6);
             $table->date('date');
-            $table->string('reference_number', 20);
+            $table->string('invoiceid_paymentid', 20);
             $table->decimal('amount', 12, 2)->default(0);
-            $table->enum('type', ['payment', 'tds', 'invoice']);
+            $table->enum('type', ['dr', 'cr']);
             $table->text('description')->nullable();
             $table->timestamps();
 
             $table->index(['accountid', 'date']);
             $table->index(['clientid', 'date']);
-            $table->unique(['reference_number', 'type'], 'ledger_reference_type_unique');
+            $table->unique(['invoiceid_paymentid', 'type'], 'ledger_invoice_payment_type_unique');
         });
     }
 

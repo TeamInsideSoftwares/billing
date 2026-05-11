@@ -2,7 +2,7 @@
 
 @section('header_actions')
     <a href="{{ route('services.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left icon-spaced"></i>Back to Items
+        Back to Items
     </a>
 @endsection
 
@@ -199,7 +199,7 @@
                                     @endif
                                 </td>
                                 <td class="cell-actions">
-                                    <button type="button" class="icon-action-btn delete remove-costing remove-costing-compact"><i class="fas fa-trash"></i></button>
+                                    <button type="button" class="text-action-btn delete remove-costing remove-costing-compact">Delete</button>
                                 </td>
                             </tr>
                         @endforeach
@@ -396,7 +396,7 @@ function showToast(type, message) {
                 <td><input type="text" maxlength="20" name="costings[${i}][sac_code]" class="cell-input cell-input-80"></td>
                 <td>${taxSelectHtml(i)}</td>
                 <td class="cell-actions">
-                    <button type="button" class="icon-action-btn delete remove-costing remove-costing-compact"><i class="fas fa-trash"></i></button>
+                    <button type="button" class="text-action-btn delete remove-costing remove-costing-compact">Delete</button>
                 </td>
             </tr>
         `;
@@ -539,7 +539,7 @@ function showToast(type, message) {
                 ${parentsHtml}
             </div>
             <div class="saved-item-actions">
-                <a href="${editUrl}" class="icon-action-btn edit" title="Edit Item"><i class="fas fa-edit"></i></a>
+                <a href="${editUrl}" class="text-action-btn edit" title="Edit Item">Edit</a>
             </div>
         `;
         savedItemsList.prepend(row);

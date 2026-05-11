@@ -207,11 +207,37 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const isManagedDateFilter = (element) => {
+            return element.classList.contains('header-date-input') || element.classList.contains('module-date-input');
+        };
+
         // Initialize Flatpickr on all date inputs
         flatpickr('input[type="date"]', {
             dateFormat: 'Y-m-d',
             allowInput: true,
             disableMobile: true,
+            onReady: function(selectedDates, dateStr, instance) {
+                if (isManagedDateFilter(instance.element)) {
+                    instance.set('maxDate', 'today');
+                    if (instance.element.name === 'to') {
+                        const fromInput = instance.element.closest('form').querySelector('input[name="from"]');
+                        if (fromInput && fromInput.value) {
+                            instance.set('minDate', fromInput.value);
+                        }
+                    }
+                }
+            },
+            onChange: function(selectedDates, dateStr, instance) {
+                if (isManagedDateFilter(instance.element) && instance.element.name === 'from') {
+                    const toInput = instance.element.closest('form').querySelector('input[name="to"]');
+                    if (toInput && toInput._flatpickr) {
+                        toInput._flatpickr.set('minDate', dateStr);
+                        if (toInput.value && toInput.value < dateStr) {
+                            toInput._flatpickr.setDate(dateStr);
+                        }
+                    }
+                }
+            }
         });
 
         // Also handle dynamically added date inputs using MutationObserver
@@ -224,6 +250,11 @@
                                 dateFormat: 'Y-m-d',
                                 allowInput: true,
                                 disableMobile: true,
+                                onReady: function(selectedDates, dateStr, instance) {
+                                    if (isManagedDateFilter(instance.element)) {
+                                        instance.set('maxDate', 'today');
+                                    }
+                                }
                             });
                         }
                         // Check for date inputs inside added nodes
@@ -234,6 +265,11 @@
                                     dateFormat: 'Y-m-d',
                                     allowInput: true,
                                     disableMobile: true,
+                                    onReady: function(selectedDates, dateStr, instance) {
+                                        if (isManagedDateFilter(instance.element)) {
+                                            instance.set('maxDate', 'today');
+                                        }
+                                    }
                                 });
                             }
                         });
@@ -266,5 +302,67 @@
     });
     </script>
     @endif
+    {{-- Global Header Date Filter Logic --}}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const enforceHeaderDates = () => {
+            const fromInputs = document.querySelectorAll('.header-date-input[name="from"], .module-date-input[name="from"]');
+            const toInputs = document.querySelectorAll('.header-date-input[name="to"], .module-date-input[name="to"]');
+            const today = new Date().toISOString().split('T')[0];
+
+            fromInputs.forEach((fromInput, index) => {
+                const toInput = toInputs[index];
+                if (!fromInput || !toInput) return;
+
+                // Max date is today
+                fromInput.setAttribute('max', today);
+                toInput.setAttribute('max', today);
+
+                // Min date for "To" is "From" value
+                if (fromInput.value) {
+                    toInput.setAttribute('min', fromInput.value);
+                } else {
+                    toInput.removeAttribute('min');
+                }
+
+                // Support for Flatpickr if it exists
+                if (fromInput._flatpickr) {
+                    fromInput._flatpickr.set('maxDate', today);
+                }
+                if (toInput._flatpickr) {
+                    toInput._flatpickr.set('maxDate', today);
+                    toInput._flatpickr.set('minDate', fromInput.value || null);
+                }
+
+                // If "To" is before "From", reset "To" to "From"
+                if (fromInput.value && toInput.value && toInput.value < fromInput.value) {
+                    toInput.value = fromInput.value;
+                    if (toInput._flatpickr) {
+                        toInput._flatpickr.setDate(toInput.value, false);
+                    }
+                }
+            };
+
+            // Delegate events for dynamically added content or just general robustness
+            document.querySelectorAll('.header-date-input, .module-date-input').forEach(input => {
+                if (!input.dataset.listenerAttached) {
+                    input.addEventListener('change', enforceHeaderDates);
+                    input.addEventListener('focus', enforceHeaderDates);
+                    input.dataset.listenerAttached = 'true';
+                }
+            });
+
+            enforceHeaderDates();
+        };
+
+        // Initial run
+        enforceHeaderDates();
+        // Secondary run to catch any late initializations (like flatpickr)
+        setTimeout(enforceHeaderDates, 500);
+        
+        // Expose to global window if needed manually
+        window.reapplyDateFilters = enforceHeaderDates;
+    });
+    </script>
 </body>
 </html>
