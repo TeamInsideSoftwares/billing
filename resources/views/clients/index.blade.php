@@ -8,16 +8,35 @@
 @endsection
 
 @section('content')
-    <section class="panel-card module-filter-panel">
+    <section class="panel-card module-filter-panel filter-panel-regular">
         <form action="{{ route('clients.index') }}" method="GET" class="module-filter-grid">
             <div class="module-filter-field">
-                <label class="module-filter-label" for="clients_from_filter">From</label>
-                <input type="date" name="from" id="clients_from_filter" class="form-control module-date-input" value="{{ request('from') }}">
+                <label class="module-filter-label" for="clients_state_filter">State</label>
+                <select name="state" id="clients_state_filter" class="form-control">
+                    <option value="">All States</option>
+                    @foreach(($stateOptions ?? collect()) as $stateOption)
+                        <option value="{{ $stateOption }}" {{ (string) ($selectedState ?? '') === (string) $stateOption ? 'selected' : '' }}>
+                            {{ $stateOption }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
 
             <div class="module-filter-field">
-                <label class="module-filter-label" for="clients_to_filter">To</label>
-                <input type="date" name="to" id="clients_to_filter" class="form-control module-date-input" value="{{ request('to') }}">
+                <label class="module-filter-label" for="clients_city_filter">City</label>
+                <select name="city" id="clients_city_filter" class="form-control">
+                    <option value="">All Cities</option>
+                    @foreach(($cityOptions ?? collect()) as $cityOption)
+                        <option value="{{ $cityOption }}" {{ (string) ($selectedCity ?? '') === (string) $cityOption ? 'selected' : '' }}>
+                            {{ $cityOption }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="module-filter-field">
+                <label class="module-filter-label" for="clients_search_filter">Search</label>
+                <input type="text" name="search" id="clients_search_filter" class="form-control" value="{{ $searchTerm ?? '' }}" placeholder="Business name or contact person">
             </div>
 
             <div class="module-filter-actions">
@@ -79,8 +98,9 @@
                     <td>
                         <span class="status-pill {{ strtolower($client['status']) }}">{{ ucfirst(strtolower($client['status'])) }}</span>
                     </td>
-                    <td class="table-actions">
+                    <td class="">
                         <a href="{{ route('clients.show', $client['record_id']) }}" class="text-action-btn view">View</a>
+                        <a href="{{ route('clients.documents.create', ['client' => $client['record_id']]) }}" class="text-action-btn edit">PO & Agreement</a>
                         <a href="{{ route('clients.edit', $client['record_id']) }}" class="text-action-btn edit">Edit</a>
                         <form method="POST" action="{{ route('clients.destroy', $client['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $client['name'] }}?')">
                             @csrf
@@ -178,7 +198,7 @@
                                     </div>
                                 </div>
                             </div>
-                                <div class="table-actions">
+                                <div class="">
                                     <button type="button" class="text-action-btn edit" onclick="editGroup('{{ $group->groupid }}', '{{ addslashes($group->group_name) }}', '{{ addslashes($group->email ?? '') }}', '{{ addslashes($group->address_line_1 ?? '') }}', '{{ addslashes($group->address_line_2 ?? '') }}', '{{ addslashes($group->city ?? '') }}', '{{ addslashes($group->state ?? '') }}', '{{ addslashes($group->postal_code ?? '') }}', '{{ addslashes($group->country ?? '') }}')">Edit</button>
                                     <form method="POST" action="{{ route('groups.destroy', $group->groupid) }}" class="inline-delete" onsubmit="return confirm('Delete group {{ $group->group_name }}?')">
                                         @csrf

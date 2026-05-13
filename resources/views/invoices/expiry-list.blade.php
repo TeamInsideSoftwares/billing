@@ -23,7 +23,7 @@
     @endphp
 
     <div class="invoice-index-shell">
-        <section class="panel-card module-filter-panel">
+        <section class="panel-card module-filter-panel filter-panel-regular">
             <form action="{{ route('invoices.expiry-list') }}" method="GET" class="module-filter-grid">
                 <input type="hidden" name="tab" value="{{ $selectedTab ?? 'expired' }}">
 
@@ -126,7 +126,6 @@
                         <thead>
                             <tr>
                                 <th>Client</th>
-                                <th>Invoice</th>
                                 <th>Item</th>
                                 <th>Expiry Date</th>
                                 <th>Days</th>
@@ -138,29 +137,14 @@
                                 <tr>
                                     <td>{{ $row['client_name'] }}</td>
                                     <td>
-                                        <a href="{{ route('invoices.show', ['invoice' => $row['invoiceid'], 'c' => $row['clientid']]) }}"
-                                            class="invoice-muted">
-                                            <strong>{{ $row['invoice_label'] }}</strong>
-                                        </a>
-                                        <div class="small-text">{{ $row['invoice_number'] }}</div>
+                                        <strong>{{ $row['item_name'] }}</strong>
                                     </td>
                                     <td>
-                                        <strong>{{ $row['item_name'] }}</strong>
-                                        @if (!empty($row['frequency']) || !empty($row['duration']))
-                                            <div class="small-text">
-                                                @if (!empty($row['duration']))
-                                                    Duration: {{ $row['duration'] }}
-                                                @endif
-                                                @if (!empty($row['duration']) && !empty($row['frequency']))
-                                                    |
-                                                @endif
-                                                @if (!empty($row['frequency']))
-                                                    {{ ucfirst(str_replace('_', ' ', $row['frequency'])) }}
-                                                @endif
-                                            </div>
-                                        @endif
+                                        <span class="{{ (($row['days_left'] ?? null) !== null && $row['days_left'] < 0) ? 'text-danger' : '' }}"
+                                            style="{{ (($row['days_left'] ?? null) !== null && $row['days_left'] < 0) ? 'font-weight: 600;' : '' }}">
+                                            {{ $row['end_date_display'] }}
+                                        </span>
                                     </td>
-                                    <td>{{ $row['end_date_display'] }}</td>
                                     <td>
                                         @if ($row['days_left'] === null)
                                             <span class="invoice-muted">-</span>
@@ -169,36 +153,61 @@
                                         @elseif($row['days_left'] === 0)
                                             <span class="text-warning" style="font-weight: 600;">Today</span>
                                         @else
-                                            <span class="text-danger" style="font-weight: 600;">{{ abs($row['days_left']) }} day(s) ago</span>
+                                            <span class="text-danger" style="font-weight: 600;">-{{ abs($row['days_left']) }} day(s)</span>
                                         @endif
                                     </td>
                                     <td class="text-center">
-                                        <div class="table-actions" style="justify-content: center;">
-                                            <a href="{{ route('invoices.items.renew', ['item' => $row['invoice_itemid']]) }}"
-                                                class="text-action-btn view" title="Renew">
+                                        <div class="" style="justify-content: center;">
+                                            <button
+                                                type="button"
+                                                class="text-action-btn view js-renew-order-btn"
+                                                title="Renew"
+                                                data-order-id="{{ $row['orderid'] }}"
+                                                data-order-number="{{ $row['order_number'] }}"
+                                                data-client-name="{{ $row['client_name'] }}"
+                                                data-invoice-number="{{ $row['invoice_number'] }}"
+                                                data-item-name="{{ $row['item_name'] }}"
+                                                data-item-description="{{ $row['item_description'] }}"
+                                                data-start-date="{{ $row['start_date_display'] }}"
+                                                data-end-date-display="{{ $row['end_date_display'] }}"
+                                                data-days-left="{{ $row['days_left'] }}"
+                                                data-status="{{ ucfirst($row['status']) }}"
+                                                data-end-date="{{ $row['end_date'] ? $row['end_date']->format('Y-m-d') : '' }}"
+                                                data-client-id="{{ $row['clientid'] }}"
+                                                data-frequency="{{ $row['frequency'] ?? '' }}"
+                                                data-duration="{{ $row['duration'] ?? 1 }}"
+                                            >
                                                 Renew
-                                            </a>
+                                            </button>
 
                                             @if ($currentTab === 'expired' && $row['status'] !== 'suspended')
                                                 <form method="POST"
-                                                    action="{{ route('invoices.items.suspend', ['invoice' => $row['invoiceid'], 'item' => $row['invoice_itemid'], 'c' => $selectedClientId]) }}"
+                                                    action="{{ route('invoices.orders.suspend', ['order' => $row['orderid']]) }}"
                                                     class="inline-delete m-0"
-                                                    onsubmit="return confirm('Suspend this item?')">
+                                                    onsubmit="return confirm('Suspend this order?')">
                                                     @csrf
                                                     @method('PATCH')
+                                                    <input type="hidden" name="c" value="{{ $selectedClientId }}">
                                                     <input type="hidden" name="tab" value="{{ $currentTab }}">
+                                                    <input type="hidden" name="from" value="{{ $fromDate ?? '' }}">
+                                                    <input type="hidden" name="to" value="{{ $toDate ?? '' }}">
+                                                    <input type="hidden" name="next_days" value="{{ $nextDays ?? '' }}">
                                                     <button type="submit" class="text-action-btn delete" title="Suspend">
                                                         Suspend
                                                     </button>
                                                 </form>
                                             @elseif($row['status'] === 'suspended')
                                                 <form method="POST"
-                                                    action="{{ route('invoices.items.unsuspend', ['invoice' => $row['invoiceid'], 'item' => $row['invoice_itemid'], 'c' => $selectedClientId]) }}"
+                                                    action="{{ route('invoices.orders.unsuspend', ['order' => $row['orderid']]) }}"
                                                     class="inline-delete m-0"
-                                                    onsubmit="return confirm('Unsuspend this item?')">
+                                                    onsubmit="return confirm('Unsuspend this order?')">
                                                     @csrf
                                                     @method('PATCH')
+                                                    <input type="hidden" name="c" value="{{ $selectedClientId }}">
                                                     <input type="hidden" name="tab" value="{{ $currentTab }}">
+                                                    <input type="hidden" name="from" value="{{ $fromDate ?? '' }}">
+                                                    <input type="hidden" name="to" value="{{ $toDate ?? '' }}">
+                                                    <input type="hidden" name="next_days" value="{{ $nextDays ?? '' }}">
                                                     <button type="submit" class="text-action-btn secondary" title="Unsuspend">
                                                         Unsuspend
                                                     </button>
@@ -214,4 +223,228 @@
             @endif
         </section>
     </div>
+    @include('invoices.partials.renew-order-modal')
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const renewModalEl = document.getElementById('renewOrderModal');
+            if (!renewModalEl || typeof bootstrap === 'undefined') return;
+
+            const renewModal = new bootstrap.Modal(renewModalEl);
+            const renewForm = document.getElementById('renewOrderForm');
+            const itemName = document.getElementById('renewOrderItemName');
+            const clientName = document.getElementById('renewOrderClientName');
+            const orderNumber = document.getElementById('renewOrderNumber');
+            const invoiceNumber = document.getElementById('renewOrderInvoiceRef');
+            const startDateDisplay = document.getElementById('renewOrderStartDate');
+            const currentEndDateDisplay = document.getElementById('renewOrderCurrentEndDate');
+            const statusDisplay = document.getElementById('renewOrderStatus');
+            const endDateInput = document.getElementById('renew_order_end_date');
+            const clientInput = document.getElementById('renew_order_client');
+            const tabInput = document.getElementById('renew_order_tab');
+            const fromInput = document.getElementById('renew_order_from');
+            const toInput = document.getElementById('renew_order_to');
+            const nextDaysInput = document.getElementById('renew_order_next_days');
+            const frequencyInput = document.getElementById('renew_order_frequency');
+            const durationInput = document.getElementById('renew_order_duration');
+            const durationWrapper = document.getElementById('renew_order_duration_wrapper');
+
+            const currentTab = @json($currentTab);
+            const currentClient = @json($selectedClientId);
+            const currentFrom = @json($fromDate ?? '');
+            const currentTo = @json($toDate ?? '');
+            const currentNextDays = @json($nextDays ?? 60);
+            const renewRouteTemplate = @json(route('invoices.orders.renew', ['order' => '__ORDER__']));
+            let pendingRenewEndDate = '';
+            let renewalBaseStartDate = '';
+            const setText = (element, value) => {
+                if (!element) return;
+                element.textContent = value;
+            };
+
+            function normalizeIsoDate(rawValue) {
+                const value = String(rawValue || '').trim();
+                if (!value) return '';
+
+                const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (isoMatch) {
+                    return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+                }
+
+                return '';
+            }
+
+            function applyRenewEndDate(rawValue) {
+                const iso = normalizeIsoDate(rawValue);
+                pendingRenewEndDate = iso;
+
+                endDateInput.value = '';
+                endDateInput.removeAttribute('value');
+
+                if (!iso) return;
+
+                endDateInput.value = iso;
+                endDateInput.setAttribute('value', iso);
+            }
+
+            function syncRenewEndDateStateFromInput() {
+                pendingRenewEndDate = normalizeIsoDate(endDateInput.value);
+            }
+
+            document.querySelectorAll('.js-renew-order-btn').forEach((button) => {
+                button.addEventListener('click', function () {
+                    const orderId = this.dataset.orderId || '';
+                    const orderNo = this.dataset.orderNumber || '-';
+                    const client = this.dataset.clientName || '-';
+                    const invoiceRef = this.dataset.invoiceNumber || '-';
+                    const item = this.dataset.itemName || '-';
+                    const startDate = this.dataset.startDate || '-';
+                    const endDateDisplay = this.dataset.endDateDisplay || '-';
+                    const status = this.dataset.status || '-';
+                    const endDate = normalizeIsoDate(this.dataset.endDate);
+                    const frequency = this.dataset.frequency || '';
+                    const duration = this.dataset.duration || 1;
+
+                    if (!orderId) return;
+
+                    renewForm.action = renewRouteTemplate.replace('__ORDER__', orderId);
+                    setText(itemName, item);
+                    setText(clientName, client);
+                    setText(orderNumber, orderNo);
+                    setText(invoiceNumber, invoiceRef);
+                    setText(startDateDisplay, startDate);
+                    setText(currentEndDateDisplay, endDateDisplay);
+                    setText(statusDisplay, status);
+                    renewalBaseStartDate = plusOneDay(endDate);
+                    applyRenewEndDate(renewalBaseStartDate || endDate);
+                    clientInput.value = currentClient || '';
+                    tabInput.value = currentTab || 'expired';
+                    fromInput.value = currentFrom || '';
+                    toInput.value = currentTo || '';
+                    nextDaysInput.value = currentNextDays || '';
+
+                    // Set frequency and duration
+                    if (frequencyInput) {
+                        frequencyInput.value = frequency || '';
+                        frequencyInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    if (durationInput) {
+                        durationInput.value = duration || 1;
+                    }
+                    if (durationWrapper) {
+                        durationWrapper.style.display = (frequency && frequency !== 'One-Time') ? 'block' : 'none';
+                    }
+                    refreshEndDate();
+
+                    renewModal.show();
+                });
+            });
+
+            renewModalEl.addEventListener('shown.bs.modal', function () {
+                if (!pendingRenewEndDate) return;
+                requestAnimationFrame(() => {
+                    applyRenewEndDate(pendingRenewEndDate);
+                    endDateInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    endDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            });
+
+            renewModalEl.addEventListener('hidden.bs.modal', function () {
+                pendingRenewEndDate = '';
+                renewalBaseStartDate = '';
+            });
+
+            endDateInput.addEventListener('change', syncRenewEndDateStateFromInput);
+            endDateInput.addEventListener('input', syncRenewEndDateStateFromInput);
+
+            // Frequency/Duration auto-calculation
+            function isOneTimeFrequency() {
+                const selectedFrequency = frequencyInput?.value || '';
+                return selectedFrequency === '' || selectedFrequency === 'One-Time';
+            }
+
+            function toggleDurationField() {
+                if (!durationWrapper) return;
+                durationWrapper.style.display = isOneTimeFrequency() ? 'none' : 'block';
+            }
+
+            function formatDateLocal(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+            function plusOneDay(isoDate) {
+                if (!isoDate) return '';
+                const date = new Date(isoDate + 'T00:00:00');
+                if (Number.isNaN(date.getTime())) return '';
+                date.setDate(date.getDate() + 1);
+                return formatDateLocal(date);
+            }
+
+            function calculateNewEndDate(baseStartDate, frequency, duration) {
+                if (!baseStartDate) {
+                    return '';
+                }
+
+                const start = new Date(baseStartDate + 'T00:00:00');
+                const end = new Date(start);
+                const count = Math.max(1, parseInt(duration, 10) || 1);
+
+                if (!frequency || frequency === 'One-Time') {
+                    return formatDateLocal(end);
+                }
+
+                switch (frequency) {
+                    case 'Day(s)':
+                        end.setDate(end.getDate() + count);
+                        break;
+                    case 'Week(s)':
+                        end.setDate(end.getDate() + (count * 7));
+                        break;
+                    case 'Month(s)':
+                        end.setMonth(end.getMonth() + count);
+                        break;
+                    case 'Quarter(s)':
+                        end.setMonth(end.getMonth() + (count * 3));
+                        break;
+                    case 'Year(s)':
+                        end.setFullYear(end.getFullYear() + count);
+                        break;
+                    default:
+                        break;
+                }
+
+                // Inclusive range: end date is one day before the next cycle boundary.
+                end.setDate(end.getDate() - 1);
+                return formatDateLocal(end);
+            }
+
+            function refreshEndDate() {
+                if (!frequencyInput || !durationInput || !endDateInput) return;
+                toggleDurationField();
+
+                if (!renewalBaseStartDate) return;
+
+                const newEndDate = calculateNewEndDate(
+                    renewalBaseStartDate,
+                    frequencyInput.value,
+                    durationInput.value
+                );
+
+                if (newEndDate) {
+                    endDateInput.value = newEndDate;
+                    endDateInput.setAttribute('value', newEndDate);
+                }
+            }
+
+            if (frequencyInput) {
+                frequencyInput.addEventListener('change', refreshEndDate);
+            }
+            if (durationInput) {
+                durationInput.addEventListener('input', refreshEndDate);
+            }
+        });
+    </script>
 @endsection

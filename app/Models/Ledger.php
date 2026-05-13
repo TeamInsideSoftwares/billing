@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'mode',
     'reference_number',
     'description',
+    'status',
 ])]
 class Ledger extends Model
 {
@@ -37,6 +38,7 @@ class Ledger extends Model
         'mode',
         'reference_number',
         'description',
+        'status',
     ];
 
     protected $casts = [

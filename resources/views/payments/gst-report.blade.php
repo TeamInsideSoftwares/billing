@@ -1,16 +1,5 @@
 @extends('layouts.app')
 
-@section('header_actions')
-    <a href="{{ route('payments.index', $selectedClientId ? ['c' => $selectedClientId] : []) }}" class="secondary-button">
-        <i class="fas fa-arrow-left icon-spaced"></i>Back to Payments
-    </a>
-    <a href="{{ route('payments.ledger', $selectedClientId ? ['c' => $selectedClientId] : []) }}" class="secondary-button">View Ledger</a>
-    @if($selectedClientId)
-        <a href="{{ route('payments.create', ['c' => $selectedClientId]) }}" class="primary-button">
-            <i class="fas fa-plus icon-spaced"></i>Record Payment
-        </a>
-    @endif
-@endsection
 
 @section('content')
     @php
@@ -32,7 +21,7 @@
 
     <div class="gst-report-shell">
         <section class="panel-card gst-filter-panel">
-            <form method="GET" action="{{ route('payments.gst-report') }}" class="gst-filter-grid">
+            <form method="GET" action="{{ route('gst-report.index') }}" class="gst-filter-grid">
                 @if(!empty($selectedClientId))
                     <input type="hidden" name="c" value="{{ $selectedClientId }}">
                 @endif
@@ -58,7 +47,7 @@
                 </div>
                 <div class="gst-filter-actions">
                     <button type="submit" class="primary-button">Apply</button>
-                    <a href="{{ route('payments.gst-report', $selectedClientId ? ['c' => $selectedClientId] : []) }}" class="secondary-button">Reset</a>
+                    <a href="{{ route('gst-report.index', $selectedClientId ? ['c' => $selectedClientId] : []) }}" class="secondary-button">Reset</a>
                 </div>
             </form>
         </section>
@@ -97,7 +86,7 @@
                         <thead>
                             <tr>
                                 <th scope="col">S.No</th>
-                                <th scope="col">TI Number</th>
+                                <th scope="col">Invoice Number</th>
                                 <th scope="col">Client</th>
                                 <th scope="col">State</th>
                                 <th scope="col">GSTIN</th>

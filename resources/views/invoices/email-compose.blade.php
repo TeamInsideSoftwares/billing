@@ -15,7 +15,7 @@
     <section class="panel-card w-100 p-3">
         <div class="bg-light border rounded p-3 mb-3">
             <div class="d-flex align-items-center gap-2">
-                <a href="{{ route('invoices.create', ['step' => 4, 'invoice_for' => $invoice->invoice_for, 'c' => $invoice->clientid, 'd' => $invoice->invoiceid, 'o' => $invoice->orderid]) }}"
+                <a href="{{ route('invoices.create', ['step' => 3, 'c' => $invoice->clientid, 'd' => $invoice->invoiceid, 'o' => $invoice->orderid]) }}"
                     class="secondary-button">
                     <i class="fas fa-arrow-left"></i>
                 </a>

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'invoiceid',
+    'orderid',
     'accountid',
     'clientid',
     'itemid',
@@ -43,6 +44,7 @@ class InvoiceItem extends Model
     protected function casts(): array
     {
         return [
+            'orderid' => 'string',
             'quantity' => 'decimal:2',
             'unit_price' => 'decimal:2',
             'tax_rate' => 'decimal:2',

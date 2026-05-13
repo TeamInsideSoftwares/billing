@@ -1,1729 +1,556 @@
 @extends('layouts.app')
 
-@section('content')
-@php
-    $isEditMode = (bool) ($isEditMode ?? false);
-    $editingOrder = $order ?? null;
-    $clientFallback = $isEditMode ? ($editingOrder->clientid ?? '') : ($preSelectedClientId ?? request('c') ?? '');
-    $displayOrderNumber = old('order_number', $isEditMode ? ($editingOrder->order_number ?? $nextOrderNumber) : $nextOrderNumber);
-    $defaultOrderDate = $isEditMode
-        ? ($editingOrder?->order_date?->format('Y-m-d') ?? date('Y-m-d'))
-        : date('Y-m-d');
-    $defaultDeliveryDate = $isEditMode ? ($editingOrder?->delivery_date?->format('Y-m-d') ?? '') : '';
-    $defaultSalesPersonId = $isEditMode ? ($editingOrder->sales_person_id ?? null) : null;
-    $defaultNotes = $isEditMode ? ($editingOrder->notes ?? '') : '';
-    $defaultPoNumber = $isEditMode ? ($editingOrder->po_number ?? '') : '';
-    $defaultPoDate = $isEditMode ? ($editingOrder?->po_date?->format('Y-m-d') ?? '') : '';
-    $defaultAgreementRef = $isEditMode ? ($editingOrder->agreement_ref ?? '') : '';
-    $defaultAgreementDate = $isEditMode ? ($editingOrder?->agreement_date?->format('Y-m-d') ?? '') : '';
-    $selectedClientId = old('clientid', $clientFallback);
-    $selectedClient = collect($clients ?? [])->firstWhere('clientid', $selectedClientId);
-    $selectedClientCurrency = $selectedClient->currency ?? 'INR';
-    $selectedClientName = $selectedClient->business_name ?? $selectedClient->contact_name ?? 'Select client';
-    $selectedClientEmail = $selectedClient->email ?? 'No client email';
-    $accountStateForGst = strtoupper(trim((string) ($account->state ?? '')));
-    $clientDirectoryPayload = collect($clients ?? [])->mapWithKeys(function ($client) {
-        return [
-            (string) ($client->clientid ?? '') => [
-                'name' => (string) ($client->business_name ?? $client->contact_name ?? 'Select client'),
-                'email' => (string) ($client->email ?? ''),
-                'state' => strtoupper(trim((string) ($client->state ?? ''))),
-                'currency' => (string) ($client->currency ?? 'INR'),
-            ],
-        ];
-    })->all();
-@endphp
-
 @section('header_actions')
-    <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? $clientFallback]) }}" class="secondary-button">
-        <i class="fas fa-arrow-left icon-spaced"></i>Back to Orders
+    <a href="{{ route('orders.index', ['c' => $preSelectedClientId ?? ($order->clientid ?? request('c'))]) }}" class="secondary-button">
+        Back to Orders
     </a>
 @endsection
 
+@section('content')
+@php
+    $selectedClientId = old('clientid', $preSelectedClientId ?? ($order->clientid ?? request('c')));
+    $todayDate = now()->format('Y-m-d');
+    $maxEndDate = '2099-12-31';
+@endphp
 
-<section class="order-create-shell no-padding">
-    <form method="POST" action="{{ route('orders.store') }}" class="client-form" id="orderForm" enctype="multipart/form-data">
+<section class="panel-card panel-card-lg">
+    <form method="POST" action="{{ $isEditMode ? route('orders.update', $order->orderid) : route('orders.store') }}" id="orderForm" class="client-form">
         @csrf
+        @if($isEditMode)
+            @method('PUT')
+        @endif
 
-        <div class="order-details-panel">
-            <div class="order-top-summary order-lockable">
-                <div class="order-top-summary__client">
-                    <div class="order-top-summary__icon">
-                        <i class="fas fa-receipt"></i>
-                    </div>
-                    <div>
-                        <p class="order-top-summary__client-name" id="summaryClientName">{{ $selectedClientName }}</p>
-                        <p class="order-top-summary__client-email" id="summaryClientEmail">{{ $selectedClientEmail ?: 'No client email' }}</p>
+        <div class="form-grid order-create-meta-grid">
+            <div>
+                <label for="clientid">Client</label>
+                <select id="clientid" name="clientid" class="form-control" required {{ $isEditMode ? 'disabled' : '' }}>
+                    <option value="">Select Client</option>
+                    @foreach($clients as $client)
+                        <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
+                            {{ $client->business_name ?? $client->contact_name }}
+                        </option>
+                    @endforeach
+                </select>
+                @if($isEditMode)
+                    <input type="hidden" name="clientid" value="{{ $selectedClientId }}">
+                @endif
+            </div>
 
-                        <div class="mt-2 min-w-240">
-                            <input type="hidden" id="clientid" name="clientid" required value="{{ old('clientid', $clientFallback) }}">
-                            @error('clientid') <span class="error">{{ $message }}</span> @enderror
-                            <input type="hidden" id="order_number" name="order_number" value="{{ $displayOrderNumber }}">
-                        </div>
-                    </div>
-                </div>
-                <div class="order-top-summary__fields">
-                    <div>
-                        <label class="order-label" for="order_title">Order Title</label>
-                        <input type="text" id="order_title" name="order_title" required value="{{ old('order_title', $isEditMode ? ($editingOrder->order_title ?? '') : '') }}" class="form-control form-control-sm" placeholder="Order Title/Details">
-                    </div>
+        </div>
 
-                    <div>
-                        <label class="order-label" for="delivery_date">Delivery Date</label>
-                        <input type="date" id="delivery_date" name="delivery_date" value="{{ old('delivery_date', $defaultDeliveryDate) }}" class="form-control form-control-sm" placeholder="Delivery Date">
-                    </div>
+        <hr class="my-4">
 
-                    <div>
-                        <label class="order-label" for="sales_person_id">Sales Person</label>
-                        <select id="sales_person_id" name="sales_person_id" class="form-control form-control-sm">
-                            <option value="">-- Select Sales Person --</option>
-                            @foreach($users as $user)
-                                <option value="{{ $user->id }}" {{ old('sales_person_id', $defaultSalesPersonId) == $user->id ? 'selected' : '' }}>
-                                    {{ $user->name }}
+        <div class="section-header mb-3">
+            <div class="section-icon"><i class="fas fa-box"></i></div>
+            <h4 class="section-title">{{ $isEditMode ? 'Edit Item' : 'Add Items' }}</h4>
+        </div>
+
+        <div class="add-item-row form-grid form-input-row order-create-item-box">
+            <div class="order-field order-field-item">
+                <label>Item</label>
+                <select id="item_itemid" class="form-control">
+                    <option value="">Select Item</option>
+                    @php
+                        $groupedServices = $services->groupBy(fn($service) => $service->category->name ?? 'No Category');
+                    @endphp
+                    @foreach($groupedServices as $categoryName => $categoryServices)
+                        <optgroup label="{{ $categoryName }}">
+                            @foreach($categoryServices as $service)
+                                <option
+                                    value="{{ $service->itemid }}"
+                                    data-description="{{ $service->description ?? '' }}"
+                                    data-user-wise="{{ (int) ($service->user_wise ?? 0) }}"
+                                >
+                                    {{ $service->name }}
                                 </option>
                             @endforeach
-                        </select>
-                    </div>
+                        </optgroup>
+                    @endforeach
+                </select>
+            </div>
 
-                    <div>
-                        <label class="order-label" for="order_date">Order Date</label>
-                        <input type="date" id="order_date" name="order_date" value="{{ old('order_date', $defaultOrderDate) }}" required class="form-control form-control-sm">
-                        @error('order_date') <span class="error">{{ $message }}</span> @enderror
-                    </div>
+            <div class="order-field">
+                <label>Qty</label>
+                <input type="number" id="item_quantity" class="form-control" min="1" step="1" value="1">
+            </div>
+
+            @if($account?->have_users)
+                <div id="item_users_wrapper" class="order-field" style="display:none;">
+                    <label>Users</label>
+                    <input type="number" id="item_users" class="form-control" min="1" step="1" value="1">
                 </div>
+            @else
+                <input type="hidden" id="item_users" value="1">
+            @endif
+
+            <div class="order-field">
+                <label>Frequency</label>
+                <select id="item_frequency" class="form-control">
+                    <option value="">None</option>
+                    <option value="One-Time">One-Time</option>
+                    <option value="Day(s)">Day(s)</option>
+                    <option value="Week(s)">Week(s)</option>
+                    <option value="Month(s)">Month(s)</option>
+                    <option value="Quarter(s)">Quarter(s)</option>
+                    <option value="Year(s)">Year(s)</option>
+                </select>
             </div>
 
-            <div class="row g-3 order-lockable">
-            {{-- PO --}}
-            <div class="col-12 col-lg-6">
-                <details class="order-accordion" {{ (old('po_number', $defaultPoNumber) || old('po_date', $defaultPoDate)) ? 'open' : '' }}>
-                    <summary>
-                        <span><i class="fas fa-file-alt icon-spaced-sm text-muted"></i>Purchase Order</span>
-                    </summary>
-                    <div class="order-accordion__content">
-                        
-                        <div class="row">
-                            <div class="col-6 mb-2">
-                                <label class="order-label">PO Number</label>
-                                <input type="text" id="po_number" name="po_number"
-                                    value="{{ old('po_number', $defaultPoNumber) }}"
-                                    class="form-control form-control-sm">
-                            </div>
-
-                            <div class="col-6 mb-2">
-                                <label class="order-label">PO Date</label>
-                                <input type="date" id="po_date" name="po_date"
-                                    value="{{ old('po_date', $defaultPoDate) }}"
-                                    class="form-control form-control-sm">
-                            </div>
-                        </div>
-
-                        <div class="mb-2">
-                            <label class="order-label">PO Upload</label>
-                            @if($isEditMode && !empty($editingOrder?->po_file))
-                                <div class="text-xs mb-1">
-                                    <a href="{{ route('orders.file', ['order' => $editingOrder->orderid, 'type' => 'po']) }}" target="_blank" class="text-link">
-                                        <i class="fas fa-file"></i> View Current File
-                                    </a>
-                                </div>
-                            @endif
-                            <input type="file" id="po_file" name="po_file"
-                                class="form-control form-control-sm"
-                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                        </div>
-
-                    </div>
-                </details>
+            <div id="item_duration_wrapper" class="order-field" style="display:none;">
+                <label>Duration</label>
+                <input type="number" id="item_duration" class="form-control" min="1" step="1" value="1">
             </div>
 
-            {{-- AGREEMENT --}}
-            <div class="col-12 col-lg-6">
-                <details class="order-accordion" {{ (old('agreement_ref', $defaultAgreementRef) || old('agreement_date', $defaultAgreementDate)) ? 'open' : '' }}>
-                    <summary>
-                        <span><i class="fas fa-file-signature icon-spaced-sm text-muted"></i>Agreement</span>
-                    </summary>
-                    <div class="order-accordion__content">
-
-                        <div class="row">
-                            <div class="col-6 mb-2">
-                                <label class="order-label">Agreement Ref</label>
-                                <input type="text" id="agreement_ref" name="agreement_ref"
-                                    value="{{ old('agreement_ref', $defaultAgreementRef) }}"
-                                    class="form-control form-control-sm">
-                            </div>
-
-                            <div class="col-6 mb-2">
-                                <label class="order-label">Agreement Date</label>
-                                <input type="date" id="agreement_date" name="agreement_date"
-                                    value="{{ old('agreement_date', $defaultAgreementDate) }}"
-                                    class="form-control form-control-sm">
-                            </div>
-                        </div>
-
-                        <div class="mb-2">
-                            <label class="order-label">Agreement Upload</label>
-                            @if($isEditMode && !empty($editingOrder?->agreement_file))
-                                <div class="text-xs mb-1">
-                                    <a href="{{ route('orders.file', ['order' => $editingOrder->orderid, 'type' => 'agreement']) }}" target="_blank" class="text-link">
-                                        <i class="fas fa-file"></i> View Current File
-                                    </a>
-                                </div>
-                            @endif
-                            <input type="file" id="agreement_file" name="agreement_file"
-                                class="form-control form-control-sm"
-                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                        </div>
-
-                    </div>
-                </details>
+            <div class="order-field">
+                <label>Start Date</label>
+                <input type="date" id="item_start_date" class="form-control" value="{{ $todayDate }}" readonly>
             </div>
 
+            <div class="order-field">
+                <label>End Date</label>
+                <input type="date" id="item_end_date" class="form-control" value="{{ $maxEndDate }}" readonly>
+            </div>
+
+            <div class="order-field">
+                <label>Delivery Date</label>
+                <input type="date" id="item_delivery_date" class="form-control">
+            </div>
+            <div class="order-field">
+                <label for="client_docid">PO</label>
+                <select id="client_docid" name="client_docid" class="form-control">
+                    <option value="">Select Document</option>
+                    @foreach($clientDocuments as $document)
+                        <option value="{{ $document->client_docid }}" {{ old('client_docid', $order->client_docid ?? '') == $document->client_docid ? 'selected' : '' }}>
+                            {{ $document->title ?: 'Untitled' }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="order-field order-field-description">
+                <label>Description</label>
+                <textarea id="item_description" class="form-control" rows=""></textarea>
+            </div>
+
+            @if(!$isEditMode)
+                <div class="order-field order-field-action text-end">
+                    <button type="button" id="addItemBtn" class="secondary-button">
+                        Add Order
+                    </button>
+                </div>
+            @endif
         </div>
 
-            <div class="order-save-simple">
-                <button type="button" id="saveOrderBtn" class="primary-button small">
-                    <i class="fas fa-save icon-spaced-sm"></i>{{ $isEditMode ? 'Update Order Details' : 'Save Order Details' }}
-                </button>
-            </div>
-        </div>
-
-        <div class="order-items-shell position-relative">
-                {{-- Disabled overlay until order is saved --}}
-                <div id="itemsDisabledOverlay" class="overlay-disabled">
-                    <div class="text-center text-muted">
-                        <i class="fas fa-lock text-4xl mb-2 text-muted"></i>
-                        <p class="mb-0 text-base">{{ $isEditMode ? 'Loading order details...' : 'Save order details first to add items' }}</p>
-                    </div>
-                </div>
-
-                {{-- Items Section --}}
-                <div class="items-section">
-                    <div class="flex-between mb-4">
-                        <p class="mb-0 text-sm text-muted">
-                            <!-- <i class="fas fa-info-circle" class="icon-spaced-sm"></i> -->
-                            <!-- Items will be saved when you click "Create Order" -->
-                        </p>
-                    </div>
-
-                    <div class="add-item-row form-grid form-input-row">
-                        <div class="flex-2 min-w-150">
-                            <label class="text-xs">Item</label>
-                            <select id="item_itemid" class="input-form input-full">
-                                <option value="">-- Select Item --</option>
-                                @php
-                                    $groupedServices = $services->groupBy(fn($s) => $s->category->name ?? 'No Category');
-                                @endphp
-                                @foreach($groupedServices as $catName => $catServices)
-                                    <optgroup label="{{ $catName }}">
-                                        @foreach($catServices as $service)
-                                            @php
-                                                $costings = $service->costings->sortBy('currency_code');
-                                                $defaultCosting = $costings->first();
-                                                $sellingPrice = $defaultCosting?->selling_price ?? 0;
-                                                $taxRate = $defaultCosting?->tax_rate ?? 0;
-                                            @endphp
-                                            <option value="{{ $service->itemid }}"
-                                                    data-selling-price="{{ $sellingPrice }}"
-                                                    data-tax-rate="{{ (float) $taxRate }}"
-                                                    data-description="{{ $service->description ?? '' }}"
-                                                    data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
-                                                {{ $service->name }} ({{ number_format($sellingPrice, 0) }})
-                                            </option>
-                                        @endforeach
-                                    </optgroup>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="flex-06 min-w-60">
-                            <label class="text-xs">Qty</label>
-                            <input type="number" id="item_quantity" value="1" min="1" step="1" class="input-form input-full">
-                        </div>
-                        <div style="flex: 0.8; min-width: 80px;">
-                            <label class="text-xs">Price</label>
-                            <input type="number" id="item_unit_price" min="0" step="1" class="input-form input-full">
-                        </div>
-                        @if($account->allow_multi_taxation)
-                        <div style="flex: 0.8; min-width: 80px;">
-                            <label class="text-xs">Tax% <a href="#" id="open-tax-modal-order" style="font-size:10px;margin-left:2px;" class="text-link">+</a></label>
-                            <select id="item_tax_rate" class="input-form input-full">
-                                <option value="0">No Tax</option>
-                                @foreach($taxes as $tax)
-                                    <option value="{{ (float) $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        @else
-                        <input type="hidden" id="item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
-                        @endif
-                        @if($account->have_users)
-                        <div id="item_users_wrapper" style="flex: 0.6; min-width: 55px; display: none;">
-                            <label class="text-xs">Users</label>
-                            <input type="number" id="item_users" value="1" min="1" class="input-form input-full">
-                        </div>
-                        @else
-                        <input type="hidden" id="item_users" value="1">
-                        @endif
-                        <div style="flex: 0.6; min-width: 70px;">
-                            <label class="text-xs">Disc%</label>
-                            <input type="number" id="item_discount" value="0" min="0" max="100" step="1" class="input-form input-full">
-                        </div>
-                        <div style="flex: 0.8; min-width: 80px;">
-                            <label class="text-xs">Freq</label>
-                            <select id="item_frequency" class="input-form input-full">
-                                <option value="">--</option>
-                                <option value="One-Time">One-Time</option>
-                                <option value="Day(s)">Day(s)</option>
-                                <option value="Week(s)">Week(s)</option>
-                                <option value="Month(s)">Month(s)</option>
-                                <option value="Quarter(s)">Quarter(s)</option>
-                                <option value="Year(s)">Year(s)</option>
-                            </select>
-                        </div>
-                        <div id="item_duration_wrapper" class="flex-06 min-w-60">
-                            <label class="text-xs">Dur</label>
-                            <input type="text" id="item_duration" placeholder="12" class="input-form input-full">
-                        </div>
-                        <div id="item_start_date_wrapper" style="flex: 0.8; min-width: 90px;">
-                            <label class="text-xs">Start</label>
-                            <input type="date" id="item_start_date" class="input-form input-full">
-                        </div>
-                        <div id="item_end_date_wrapper" style="flex: 0.8; min-width: 90px;">
-                            <label class="text-xs">End</label>
-                            <input type="date" id="item_end_date" class="input-form input-full">
-                        </div>
-                        <div style="flex: 0.8; min-width: 90px;">
-                            <label class="text-xs">Delivery</label>
-                            <input type="date" id="item_delivery_date" class="input-form input-full">
-                        </div>
-                        <div style="flex: 1 1 100%; display: flex; gap: 0.5rem; align-items: flex-end;">
-                            <textarea id="item_description" rows="1" placeholder="Description (optional)" style="flex: 1 1 auto; font-size: 0.8rem; padding: 0.45rem 0.6rem; min-height: 36px; resize: vertical; line-height: 1.2;"></textarea>
-                            <button type="button" id="addItemBtn" class="btn btn-sm btn-primary" style="padding: 0.45rem 0.95rem; font-size: 0.8rem; white-space: nowrap;">Add</button>
-                        </div>
-                    </div>
-                    <table id="itemsTable" style="width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; display: none; font-size: 0.9rem;">
+        @if(!$isEditMode)
+            @if(!empty($selectedClientId) && ($recentOrders ?? collect())->isNotEmpty())
+                <div class="order-create-table-wrap">
+                    <table class="data-table">
                         <thead>
-                            <tr style="background: #f3f4f6;">
-                                <th style="padding: 0.75rem 0.85rem; text-align: left; font-size: 0.82rem; font-weight: 600;">Item</th>
-                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 85px; font-size: 0.82rem; font-weight: 600;">Qty</th>
-                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 120px; font-size: 0.82rem; font-weight: 600;">Price</th>
-                                @if($account->allow_multi_taxation)
-                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 85px; font-size: 0.82rem; font-weight: 600;">Tax %</th>
-                                @endif
-                                @if($account->have_users)
-                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 85px; font-size: 0.82rem; font-weight: 600;">Users</th>
-                                @endif
-                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 75px; font-size: 0.82rem; font-weight: 600;">Disc%</th>
-                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 115px; font-size: 0.82rem; font-weight: 600;">Freq / Dur</th>
-                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 105px; font-size: 0.82rem; font-weight: 600;">Start</th>
-                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 105px; font-size: 0.82rem; font-weight: 600;">End</th>
-                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 90px; font-size: 0.82rem; font-weight: 600;">Delivery</th>
-                                <th style="padding: 0.75rem 0.6rem; text-align: right; width: 115px; font-size: 0.82rem; font-weight: 600;">Total</th>
-                                <th style="padding: 0.7rem 0.55rem; width: 85px;"></th>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Start</th>
+                                <th>End</th>
+                                <th>Status</th>
+                                <th></th>
                             </tr>
                         </thead>
-                        <tbody id="itemsTbody">
+                        <tbody>
+                            @foreach($recentOrders as $recentOrder)
+                                <tr>
+                                <td>{{ $recentOrder->order_number ?? 'N/A' }}</td>
+                                <td>{{ $recentOrder->item_name ?? 'Item' }}</td>
+                                <td>{{ (int) ($recentOrder->quantity ?? 1) }}</td>
+                                <td>{{ $recentOrder->start_date?->format('d M Y') ?? '-' }}</td>
+                                <td>{{ $recentOrder->end_date?->format('d M Y') ?? '-' }}</td>
+                                <td>{{ ($recentOrder->status ?? '') === 'running' ? 'Active' : ucfirst((string) ($recentOrder->status ?? 'active')) }}</td>
+                                <td class="text-end">
+                                    <a
+                                        href="{{ route('orders.edit', ['order' => $recentOrder->orderid, 'return_to' => 'create', 'c' => $selectedClientId]) }}"
+                                            class="text-action-btn edit"
+                                        >
+                                            Edit
+                                        </a>
+                                        <form
+                                            method="POST"
+                                            action="{{ route('orders.destroy', ['order' => $recentOrder->orderid, 'return_to' => 'create', 'c' => $selectedClientId]) }}"
+                                            style="display:inline;"
+                                        >
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-action-btn delete">Cancel</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @endforeach
                         </tbody>
                     </table>
-
-                    <div style="max-width: 350px; margin-left: auto;">
-                        <div id="orderSummary" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
-                            <h4 style="margin-top: 0; margin-bottom: 0.75rem; font-size: 0.95rem; font-weight: 600;">Order Summary</h4>
-
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
-                                <span style="color: #64748b;">Subtotal:</span>
-                                <strong id="subtotal">0</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
-                                <span style="color: #64748b;">Discount:</span>
-                                <strong id="discountTotal" style="color: #dc2626;">0</strong>
-                            </div>
-                            <div id="taxIgstRow" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
-                                <span id="taxLabel" style="color: #64748b;">Tax (IGST):</span>
-                                <strong id="taxTotal">0</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: 700; border-top: 2px solid #e2e8f0; padding-top: 0.5rem; margin-top: 0.5rem;">
-                                <span>Total:</span>
-                                <strong id="grandTotal" style="color: #3b82f6;">0</strong>
-                            </div>
-                        </div>
-
-                        <div id="finalActions" class="order-complete-row" style="display: none; gap: 0.5rem; flex-wrap: wrap;">
-                            <a id="actionCreateNewOrder" href="{{ route('orders.create', ['c' => $preSelectedClientId ?? $clientFallback]) }}" class="order-action-btn order-action-btn--primary">
-                                Create New Order
-                            </a>
-                            <a id="actionViewAllOrders" href="{{ route('orders.index', ['c' => $preSelectedClientId ?? $clientFallback]) }}" class="order-action-btn order-action-btn--secondary">
-                                View All Orders
-                            </a>
-                            <a id="actionCreatePi" href="{{ route('invoices.create', ['step' => 3, 'invoice_for' => 'orders', 'o' => $editingOrder->orderid ?? '', 'c' => $preSelectedClientId ?? $clientFallback]) }}" class="order-action-btn order-action-btn--secondary">
-                                Create PI
-                            </a>
-                            <button type="button" id="actionAllotTeam" class="order-action-btn order-action-btn--muted" disabled title="Coming soon">
-                                Allot Team
-                            </button>
-                            <button type="button" id="actionReceivePayment" class="order-action-btn order-action-btn--muted" disabled title="Coming soon">
-                                Receive Payment
-                            </button>
-                        </div>
-                    </div>
                 </div>
-            </div>
+            @endif
+        @endif
 
-        <input type="hidden" name="orderid" id="savedOrderId">
+        <input type="hidden" name="items_data" id="items_data">
+
+        <div class="mt-4 flex items-center gap-2 order-create-submit-bar">
+            @if($isEditMode)
+                <button type="submit" class="primary-button">
+                    Update Order
+                </button>
+            @endif
+            <span class="text-sm text-muted">
+                {{ $isEditMode ? '' : 'Add Order saves directly to the orders table.' }}
+            </span>
+        </div>
     </form>
 </section>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const clientDirectory = @json($clientDirectoryPayload);
-    const accountStateForGst = @json($accountStateForGst ?? '');
-
-    const isEditMode = @json($isEditMode);
-    const serverExistingOrderId = @json($isEditMode ? (string) ($editingOrder->orderid ?? '') : '');
-    const editUrlTemplate = @json(route('orders.edit', ['order' => '__ORDER__']));
-    const initialOrderPayload = @json($initialOrderPayload ?? null);
-    const initialItemsPayload = @json($initialItemsPayload ?? []);
-    const saveButtonIdleLabel = isEditMode ? 'Update Order Details' : 'Save Order Details';
-    const saveButtonDoneLabel = isEditMode ? 'Order Updated' : 'Order Saved';
-    const saveSuccessMessage = isEditMode ? 'Order updated successfully! You can continue managing items.' : 'Order saved successfully! You can now add items.';
-    const ordersCreateBaseUrl = @json(route('orders.create'));
-    const ordersIndexBaseUrl = @json(route('orders.index'));
-    const invoicesCreateBaseUrl = @json(route('invoices.create'));
-
-    let itemCounter = 0;
+document.addEventListener('DOMContentLoaded', function () {
     const items = [];
-    const tbody = document.getElementById('itemsTbody');
-    let editingItemId = null;
-    let savedOrderId = null;
-
-    function buildUrl(baseUrl, params = {}) {
-        const url = new URL(baseUrl, window.location.origin);
-        Object.entries(params).forEach(([key, value]) => {
-            if (value !== null && value !== undefined && String(value).trim() !== '') {
-                url.searchParams.set(key, String(value));
-            }
-        });
-        return url.toString();
-    }
-
-    function updateFinalActionLinks() {
-        const clientId = String(document.getElementById('clientid')?.value || '').trim();
-        const orderId = String(savedOrderId || document.getElementById('savedOrderId')?.value || '').trim();
-
-        const createNewOrderLink = document.getElementById('actionCreateNewOrder');
-        const viewAllOrdersLink = document.getElementById('actionViewAllOrders');
-        const createPiLink = document.getElementById('actionCreatePi');
-
-        if (createNewOrderLink) {
-            createNewOrderLink.href = buildUrl(ordersCreateBaseUrl, { c: clientId || null });
-        }
-
-        if (viewAllOrdersLink) {
-            viewAllOrdersLink.href = buildUrl(ordersIndexBaseUrl, { c: clientId || null });
-        }
-
-        if (createPiLink) {
-            createPiLink.href = buildUrl(invoicesCreateBaseUrl, {
-                step: 3,
-                invoice_for: 'orders',
-                c: clientId || null,
-                o: orderId || null,
-            });
-        }
-    }
-
-    // For edit mode, prefill from server-rendered payload first.
-    if (isEditMode && initialOrderPayload && initialOrderPayload.orderid) {
-        savedOrderId = String(initialOrderPayload.orderid);
-        document.getElementById('savedOrderId').value = savedOrderId;
-
-        const fields = ['clientid', 'order_number', 'order_title', 'order_date', 'delivery_date', 'sales_person_id', 'notes', 'po_number', 'po_date', 'agreement_ref', 'agreement_date'];
-        fields.forEach(field => {
-            const el = document.getElementById(field);
-            if (el && initialOrderPayload[field] !== undefined && initialOrderPayload[field] !== null) {
-                el.value = initialOrderPayload[field];
-            }
-        });
-        syncSelectedClientDisplay();
-        updateFinalActionLinks();
-
-        document.getElementById('itemsDisabledOverlay').style.display = 'none';
-        document.getElementById('finalActions').style.display = 'flex';
-
-        const btn = document.getElementById('saveOrderBtn');
-        btn.innerHTML = `<i class="fas fa-check icon-spaced-sm"></i>${saveButtonDoneLabel}`;
-        btn.classList.remove('btn-primary');
-        btn.classList.add('btn-success');
-        btn.disabled = false;
-
-        if (Array.isArray(initialItemsPayload) && initialItemsPayload.length > 0) {
-            loadOrderItemsFromData(initialItemsPayload);
-        }
-    }
-
-    // Check if there's an existing order ID in server-provided context or URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const existingOrderId = serverExistingOrderId || urlParams.get('order');
-    if (existingOrderId && !(isEditMode && initialOrderPayload && initialOrderPayload.orderid)) {
-        savedOrderId = existingOrderId;
-        document.getElementById('savedOrderId').value = savedOrderId;
-        updateFinalActionLinks();
-
-        // Load order details into the form
-        loadOrderDetails(existingOrderId);
-    }
-
-    // Save Order button handler
-    document.getElementById('saveOrderBtn').addEventListener('click', function() {
-        const form = document.getElementById('orderForm');
-
-        // Trigger HTML5 validation manually since we use type="button" + fetch
-        if (!form.checkValidity()) {
-            form.reportValidity();
-            return;
-        }
-
-        const formData = new FormData(form);
-
-        // Disable button and show loading
-        const btn = document.getElementById('saveOrderBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin icon-spaced-sm"></i>Saving...';
-
-        fetch('{{ route("orders.save-ajax") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                savedOrderId = data.orderid;
-                document.getElementById('savedOrderId').value = savedOrderId;
-
-                // Keep refresh-safe URL after first save.
-                // In create mode, switch to edit URL for this order.
-                // In edit mode, stay on the existing route.
-                if (!isEditMode) {
-                    const editUrl = editUrlTemplate.replace('__ORDER__', encodeURIComponent(savedOrderId));
-                    window.history.replaceState({}, '', editUrl);
-                } else {
-                    const url = new URL(window.location);
-                    url.searchParams.set('order', savedOrderId);
-                    window.history.replaceState({}, '', url);
-                }
-
-                // Enable items section
-                document.getElementById('itemsDisabledOverlay').style.display = 'none';
-                document.getElementById('finalActions').style.display = 'flex';
-                updateFinalActionLinks();
-
-                // Update button
-                btn.innerHTML = `<i class="fas fa-check icon-spaced-sm"></i>${saveButtonDoneLabel}`;
-                btn.classList.remove('btn-primary');
-                btn.classList.add('btn-success');
-                btn.disabled = false;
-
-                showToast('success', saveSuccessMessage);
-            } else {
-                throw new Error(data.message || 'Failed to save order');
-            }
-        })
-        .catch(error => {
-            btn.disabled = false;
-            btn.innerHTML = `<i class="fas fa-save icon-spaced-sm"></i>${saveButtonIdleLabel}`;
-            alert('Error: ' + error.message);
-        });
-    });
-
-    // Helper function to set date value and notify flatpickr
-    function setDateValue(fieldId, value) {
-        const el = document.getElementById(fieldId);
-        if (!el) return;
-        el.value = value;
-        if (el._flatpickr) {
-            el._flatpickr.setDate(value, false);
-        }
-    }
-
-    // Helper function to calculate end date based on frequency and duration
-    function calculateEndDate(startDate, frequency, duration) {
-        if (!startDate || !frequency || !duration) return '';
-
-        const parts = startDate.split('-');
-        const start = new Date(parts[0], parts[1] - 1, parts[2]); // Parse as local
-        const durationNum = parseFloat(duration);
-        if (isNaN(durationNum) || durationNum <= 0) return '';
-
-        let endDate = new Date(start);
-
-        switch(frequency) {
-            case 'Day(s)':
-                endDate.setDate(endDate.getDate() + durationNum - 1);
-                break;
-            case 'Week(s)':
-                endDate.setDate(endDate.getDate() + (durationNum * 7) - 1);
-                break;
-            case 'Month(s)':
-                endDate.setMonth(endDate.getMonth() + durationNum);
-                endDate.setDate(endDate.getDate() - 1);
-                break;
-            case 'Quarter(s)':
-                endDate.setMonth(endDate.getMonth() + (durationNum * 3));
-                endDate.setDate(endDate.getDate() - 1);
-                break;
-            case 'Year(s)':
-                endDate.setFullYear(endDate.getFullYear() + durationNum);
-                endDate.setDate(endDate.getDate() - 1);
-                break;
-            case 'One-Time':
-            default:
-                return '';
-        }
-
-        const y = endDate.getFullYear();
-        const m = String(endDate.getMonth() + 1).padStart(2, '0');
-        const d = String(endDate.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-    }
-
-    // Helper function to calculate line total: qty x price x users
-    // If duration exists, also multiply by duration
-    function calculateLineTotal(qty, unitPrice, users, frequency, duration) {
-        let total = qty * unitPrice * users;
-        
-        // If duration is provided, multiply by duration
-        if (duration && frequency && frequency !== 'One-Time') {
-            const durationNum = parseFloat(duration);
-            if (!isNaN(durationNum) && durationNum > 0) {
-                total = total * durationNum;
-            }
-        }
-        
-        return total;
-    }
-
-    // Normalize amounts so line_total always represents amount before tax.
-    function round2(value) {
-        return Math.round(Number(value) || 0);
-    }
-
-    function roundTaxUp(value) {
-        return Math.ceil(Math.max(0, Number(value) || 0));
-    }
-
-    function roundDiscountDown(value) {
-        return Math.floor(Math.max(0, Number(value) || 0));
-    }
-
-    function calculateTaxBreakdown(lineTotalInput, discountPercent, taxRate) {
-        const rate = Number(taxRate) || 0;
-        const lineTotal = Number(lineTotalInput) || 0;
-
-        const discountAmount = roundDiscountDown((lineTotal * (Number(discountPercent) || 0)) / 100);
-        const taxableAmount = Math.max(0, lineTotal - discountAmount);
-        const taxAmount = roundTaxUp((taxableAmount * rate) / 100);
-
-        return {
-            lineTotal: round2(lineTotal),
-            discountAmount,
-            taxAmount
-        };
-    }
-
-    function renderLineTotalHtml(lineTotal) {
-        const base = Number(lineTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-        return `<strong>${base}</strong>`;
-    }
-
-    function formatAmount(value) {
-        return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-    }
-
-    function formatDiscountPercentDisplay(value) {
-        const numeric = Number(value);
-        if (!Number.isFinite(numeric) || numeric <= 0) {
-            return '—';
-        }
-
-        const compact = Number.isInteger(numeric)
-            ? String(numeric)
-            : String(numeric).replace(/\.?0+$/, '');
-
-        return `${compact}%`;
-    }
-
-    function escapeHtml(value) {
-        return String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    function renderItemCellContent(itemName, itemDescription) {
-        const safeName = escapeHtml(itemName || '');
-        const safeDescription = escapeHtml(itemDescription || '').trim();
-        if (!safeDescription) {
-            return safeName;
-        }
-
-        return `
-            <div style="font-weight: 600; color: #111827;">${safeName}</div>
-            <div style="margin-top: 0.15rem; color: #64748b; font-size: 0.78rem; white-space: pre-wrap;">${safeDescription}</div>
-        `;
-    }
-
-    function setTaxRateInputValue(rawRate) {
-        const taxInput = document.getElementById('item_tax_rate');
-        if (!taxInput) return;
-
-        const targetRate = Number(rawRate || 0);
-        if (taxInput.tagName !== 'SELECT') {
-            taxInput.value = String(targetRate);
-            return;
-        }
-
-        const options = Array.from(taxInput.options || []);
-        const matched = options.find(opt => Number(opt.value || 0) === targetRate);
-
-        if (matched) {
-            taxInput.value = matched.value;
-            return;
-        }
-
-        // Keep historical/custom rates selectable even if not currently in the tax list.
-        const fallbackOption = document.createElement('option');
-        fallbackOption.value = String(targetRate);
-        fallbackOption.textContent = `Tax ${targetRate}%`;
-        fallbackOption.dataset.dynamicTax = '1';
-        taxInput.appendChild(fallbackOption);
-        taxInput.value = fallbackOption.value;
-    }
-
-    // When order delivery date changes, update the input field for the next item
-    document.getElementById('delivery_date').addEventListener('change', function() {
-        const orderDeliveryDate = this.value || '';
-        const itemDeliveryInput = document.getElementById('item_delivery_date');
-        if (itemDeliveryInput) {
-            itemDeliveryInput.value = orderDeliveryDate;
-            if (itemDeliveryInput._flatpickr) {
-                itemDeliveryInput._flatpickr.setDate(orderDeliveryDate, false);
-            }
-        }
-    });
-    
-    // Initialize delivery date on page load
-    const initialOrderDeliveryDate = document.getElementById('delivery_date').value || '';
-    if (initialOrderDeliveryDate) {
-        setDateValue('item_delivery_date', initialOrderDeliveryDate);
-    }
-
-    function syncSelectedClientDisplay() {
-        const clientSelect = document.getElementById('clientid');
-        if (!clientSelect) return;
-
-        const fallbackName = 'Select client';
-        const fallbackEmail = 'No client email';
-        let name = fallbackName;
-        let email = fallbackEmail;
-
-        if (clientSelect.tagName === 'SELECT') {
-            const selectedOption = clientSelect.options[clientSelect.selectedIndex];
-            const hasSelectedClient = Boolean(selectedOption?.value);
-            name = hasSelectedClient
-                ? (selectedOption?.dataset?.name || selectedOption?.textContent?.trim() || fallbackName)
-                : fallbackName;
-            email = hasSelectedClient
-                ? (selectedOption?.dataset?.email || fallbackEmail)
-                : fallbackEmail;
-        } else {
-            const selectedClientId = (clientSelect.value || '').trim();
-            const selectedClient = selectedClientId ? clientDirectory[selectedClientId] : null;
-            name = selectedClient?.name || fallbackName;
-            email = selectedClient?.email || fallbackEmail;
-        }
-
-        const summaryName = document.getElementById('summaryClientName');
-        const summaryEmail = document.getElementById('summaryClientEmail');
-        const cardName = document.getElementById('clientCardName');
-        const cardEmail = document.getElementById('clientCardEmail');
-        const displayName = document.getElementById('clientDisplayName');
-
-        if (summaryName) summaryName.textContent = name;
-        if (summaryEmail) summaryEmail.textContent = email;
-        if (cardName) cardName.textContent = name;
-        if (cardEmail) cardEmail.textContent = email;
-        if (displayName) displayName.textContent = name;
-        updateSummary();
-        updateFinalActionLinks();
-    }
-
-    function normalizeState(value) {
-        return String(value || '')
-            .trim()
-            .toUpperCase()
-            .replace(/[^A-Z0-9]/g, '');
-    }
-
-    function isSameStateGstForSelectedClient() {
-        const clientSelect = document.getElementById('clientid');
-        if (!clientSelect) return false;
-
-        const selectedClientId = String(clientSelect.value || '').trim();
-        const clientState = normalizeState(clientDirectory[selectedClientId]?.state || '');
-        const accountState = normalizeState(accountStateForGst);
-
-        return clientState !== '' && accountState !== '' && clientState === accountState;
-    }
-
-    function updateTaxBreakupDisplay(taxTotal) {
-        const igstRow = document.getElementById('taxIgstRow');
-        const taxTotalEl = document.getElementById('taxTotal');
-        const taxLabelEl = document.getElementById('taxLabel');
-
-        if (!igstRow || !taxTotalEl || !taxLabelEl) {
-            return;
-        }
-
-        if (isSameStateGstForSelectedClient()) {
-            taxLabelEl.textContent = 'Tax (CGST + SGST):';
-            taxTotalEl.textContent = formatAmount(taxTotal);
-            igstRow.style.display = 'flex';
-        } else {
-            taxLabelEl.textContent = 'Tax (IGST):';
-            taxTotalEl.textContent = formatAmount(taxTotal);
-            igstRow.style.display = 'flex';
-        }
-    }
-
+    const isEditMode = @json((bool) $isEditMode);
+    const todayDate = @json($todayDate);
+    const maxEndDate = @json($maxEndDate);
+    @php
+        $existingOrderData = $order ? [
+            'itemid' => $order->itemid,
+            'item_name' => $order->item_name,
+            'item_description' => $order->item_description,
+            'quantity' => (float) ($order->quantity ?? 1),
+            'no_of_users' => $order->no_of_users,
+            'frequency' => '',
+            'duration' => 1,
+            'start_date' => $order->start_date?->format('Y-m-d') ?? now()->format('Y-m-d'),
+            'end_date' => $order->end_date?->format('Y-m-d') ?? '2099-12-31',
+            'delivery_date' => $order->delivery_date?->format('Y-m-d'),
+        ] : null;
+    @endphp
+    const existingOrder = @json($existingOrderData);
+    const existingClientItemIds = new Set((@json($existingClientItemIds ?? []))
+        .map(value => String(value || ''))
+        .filter(Boolean));
+    const itemSelect = document.getElementById('item_itemid');
     const clientSelect = document.getElementById('clientid');
-    if (clientSelect) {
-        if (clientSelect.tagName === 'SELECT') {
-            clientSelect.addEventListener('change', syncSelectedClientDisplay);
-        } else {
-            clientSelect.addEventListener('input', syncSelectedClientDisplay);
-        }
-        syncSelectedClientDisplay();
-    }
+    const addItemBtn = document.getElementById('addItemBtn');
+    const itemsInput = document.getElementById('items_data');
+    const usersWrapper = document.getElementById('item_users_wrapper');
+    const frequencyInput = document.getElementById('item_frequency');
+    const durationInput = document.getElementById('item_duration');
+    const durationWrapper = document.getElementById('item_duration_wrapper');
+    const startDateInput = document.getElementById('item_start_date');
+    const endDateInput = document.getElementById('item_end_date');
+    let editingItemIndex = null;
 
-    // Item select change
-    document.getElementById('item_itemid').addEventListener('change', function() {
-        const option = this.options[this.selectedIndex];
-        const descriptionInput = document.getElementById('item_description');
-        if (option.value) {
-            const price = Math.round(Number(option.dataset.sellingPrice || 0));
-            const taxRate = Number(option.dataset.taxRate || 0);
-            document.getElementById('item_unit_price').value = String(price);
-            setTaxRateInputValue(taxRate);
-            if (descriptionInput) {
-                descriptionInput.value = option.dataset.description || '';
-            }
-        } else {
-            document.getElementById('item_unit_price').value = '';
-            if (descriptionInput) {
-                descriptionInput.value = '';
-            }
-        }
-        @if($account->have_users)
-        toggleUsersField();
-        @endif
-    });
-
-    @if($account->have_users)
     function isSelectedItemUserWise() {
-        const itemSelect = document.getElementById('item_itemid');
-        const option = itemSelect?.options[itemSelect.selectedIndex];
-        return option?.dataset?.userWise === '1';
-    }
-
-    function enforceUsersInputConstraint() {
-        const usersInput = document.getElementById('item_users');
-        if (!usersInput) return 1;
-
-        let raw = String(usersInput.value ?? '').replace(/[^\d]/g, '');
-        if (!raw || Number(raw) < 1) {
-            raw = '1';
-        }
-
-        usersInput.value = String(parseInt(raw, 10));
-        return parseInt(usersInput.value, 10) || 1;
+        const option = itemSelect.options[itemSelect.selectedIndex];
+        return option && option.dataset.userWise === '1';
     }
 
     function toggleUsersField() {
-        const wrapper = document.getElementById('item_users_wrapper');
-        const usersInput = document.getElementById('item_users');
-        if (!wrapper || !usersInput) return;
-
+        if (!usersWrapper) return;
         const show = isSelectedItemUserWise();
-        wrapper.style.display = show ? 'block' : 'none';
-        if (show) {
-            enforceUsersInputConstraint();
-        } else {
-            usersInput.value = 1;
+        usersWrapper.style.display = show ? 'block' : 'none';
+        if (!show) {
+            document.getElementById('item_users').value = 1;
         }
     }
 
-    const itemUsersInput = document.getElementById('item_users');
-    if (itemUsersInput) {
-        itemUsersInput.addEventListener('input', enforceUsersInputConstraint);
-        itemUsersInput.addEventListener('change', enforceUsersInputConstraint);
-        itemUsersInput.addEventListener('blur', enforceUsersInputConstraint);
+    function syncItemsInput() {
+        itemsInput.value = JSON.stringify(items);
     }
-    @endif
 
-    function toggleRecurringFields(frequency) {
-        const isRecurring = frequency && frequency !== 'One-Time';
-        const durationField = document.getElementById('item_duration_wrapper');
-        const startDateField = document.getElementById('item_start_date_wrapper');
-        const endDateField = document.getElementById('item_end_date_wrapper');
-        const durationInput = document.getElementById('item_duration');
+    function isOneTimeFrequency() {
+        const selectedFrequency = frequencyInput.value || '';
+        return selectedFrequency === '' || selectedFrequency === 'One-Time';
+    }
 
-        if (durationField) durationField.style.display = isRecurring ? 'block' : 'none';
-        if (startDateField) startDateField.style.display = isRecurring ? 'block' : 'none';
-        if (endDateField) endDateField.style.display = isRecurring ? 'block' : 'none';
+    function toggleDurationField() {
+        if (!durationWrapper) return;
 
-        if (isRecurring) {
-            const durationValue = Number(durationInput?.value || 0);
-            if (durationInput && (!durationInput.value || durationValue <= 0)) {
-                durationInput.value = '1';
-            }
-        } else {
-            document.getElementById('item_duration').value = '';
-            document.getElementById('item_start_date').value = '';
-            document.getElementById('item_end_date').value = '';
+        const show = !isOneTimeFrequency();
+        durationWrapper.style.display = show ? 'block' : 'none';
+
+        if (!show) {
+            durationInput.value = 1;
+        } else if (!durationInput.value || Number(durationInput.value) < 1) {
+            durationInput.value = 1;
         }
     }
 
-    document.getElementById('item_frequency').addEventListener('change', function() {
-        toggleRecurringFields(this.value);
-    });
+    function formatDateLocal(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
 
-    toggleRecurringFields(document.getElementById('item_frequency').value || '');
-    @if($account->have_users)
-    toggleUsersField();
-    @endif
+    function calculateEndDate(startDate, frequency, duration) {
+        if (!frequency || frequency === 'One-Time') {
+            return maxEndDate;
+        }
 
-    // Auto-calculate end date when start date, frequency, or duration changes
-    ['item_start_date', 'item_frequency', 'item_duration'].forEach(fieldId => {
-        document.getElementById(fieldId).addEventListener('change', function() {
-            const startDate = document.getElementById('item_start_date').value;
-            const frequency = document.getElementById('item_frequency').value;
-            const duration = document.getElementById('item_duration').value;
+        if (!startDate) {
+            return maxEndDate;
+        }
+
+        const start = new Date(startDate + 'T00:00:00');
+        const end = new Date(start);
+        const count = Math.max(1, parseInt(duration, 10) || 1);
+
+        switch (frequency) {
+            case 'Day(s)':
+                end.setDate(end.getDate() + count - 1);
+                break;
+            case 'Week(s)':
+                end.setDate(end.getDate() + (count * 7) - 1);
+                break;
+            case 'Month(s)':
+                end.setMonth(end.getMonth() + count);
+                end.setDate(end.getDate() - 1);
+                break;
+            case 'Quarter(s)':
+                end.setMonth(end.getMonth() + (count * 3));
+                end.setDate(end.getDate() - 1);
+                break;
+            case 'Year(s)':
+                end.setFullYear(end.getFullYear() + count);
+                end.setDate(end.getDate() - 1);
+                break;
+            default:
+                break;
+        }
+
+        const max = new Date(maxEndDate + 'T00:00:00');
+        if (end > max) {
+            return maxEndDate;
+        }
+
+        return formatDateLocal(end);
+    }
+
+    function refreshEndDate() {
+        toggleDurationField();
+        endDateInput.value = calculateEndDate(
+            startDateInput.value || todayDate,
+            frequencyInput.value || '',
+            durationInput.value || 1
+        );
+    }
+
+
+    function populateFromSelection() {
+        const option = itemSelect.options[itemSelect.selectedIndex];
+        if (!option || !option.value) return;
+        document.getElementById('item_description').value = option.dataset.description || '';
+        startDateInput.value = todayDate;
+        refreshEndDate();
+        toggleUsersField();
+    }
+
+    function currentItemPayload() {
+        const option = itemSelect.options[itemSelect.selectedIndex];
+        return {
+            itemid: itemSelect.value,
+            item_name: option ? option.text.trim() : '',
+            item_description: document.getElementById('item_description').value || '',
+            quantity: document.getElementById('item_quantity').value || 1,
+            no_of_users: usersWrapper && usersWrapper.style.display !== 'none'
+                ? (document.getElementById('item_users').value || 1)
+                : null,
+            frequency: frequencyInput.value || 'One-Time',
             
-            if (startDate && frequency && duration) {
-                const endDate = calculateEndDate(startDate, frequency, duration);
-                setDateValue('item_end_date', endDate);
+            duration: isOneTimeFrequency() ? null : (durationInput.value || 1),
+            start_date: startDateInput.value || todayDate,
+            end_date: endDateInput.value || maxEndDate,
+            delivery_date: document.getElementById('item_delivery_date').value || '',
+        };
+    }
+
+    function hasDuplicateItemId(itemid, ignoreIndex = null) {
+        return items.some((item, index) => {
+            if (ignoreIndex !== null && index === ignoreIndex) {
+                return false;
             }
-        });
-    });
-
-    // Helper function to add a new item
-    function addNewItem(serviceId, serviceName, itemDescription, qty, unitPrice, frequency, duration, users, startDate, endDate, deliveryDate, lineTotal, discountPercent, discountAmount, taxRate, taxAmount) {
-        qty = Math.max(1, Math.round(Number(qty) || 1));
-
-        // Disable button during save
-        const btn = document.getElementById('addItemBtn');
-        btn.disabled = true;
-        btn.textContent = 'Saving...';
-
-        // Save item via AJAX
-        fetch(`{{ url('/orders') }}/${savedOrderId}/add-item`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                itemid: serviceId,
-                quantity: qty,
-                unit_price: unitPrice,
-                frequency: frequency,
-                duration: duration,
-                no_of_users: users,
-                start_date: startDate,
-                end_date: endDate,
-                delivery_date: deliveryDate,
-                line_total: lineTotal,
-                discount_percent: discountPercent,
-                discount_amount: discountAmount,
-                item_description: itemDescription,
-                tax_rate: taxRate
-            })
-        })
-        .then(response => {
-            // Check if response is JSON
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                return response.text().then(text => {
-                    throw new Error('Server returned HTML instead of JSON. Please refresh the page.');
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // Add to local array for display
-                itemCounter++;
-                const item = {
-                    id: itemCounter,
-                    order_item_id: data.order_item_id || null,
-                    itemid: serviceId,
-                    item_name: serviceName,
-                    item_description: itemDescription,
-                    quantity: qty,
-                    unit_price: unitPrice,
-                    frequency: frequency,
-                    duration: duration,
-                    no_of_users: users,
-                    start_date: startDate,
-                    end_date: endDate,
-                    delivery_date: deliveryDate,
-                    line_total: lineTotal,
-                    discount_percent: discountPercent,
-                    discount_amount: discountAmount,
-                    tax_rate: taxRate,
-                    tax_amount: taxAmount
-                };
-                items.push(item);
-
-                const freqLabels = {'One-Time':'One-Time','Day(s)':'Day(s)','Week(s)':'Week(s)','Month(s)':'Month(s)','Quarter(s)':'Quarter(s)','Year(s)':'Year(s)'};
-            const freqDurationText = duration && frequency && frequency !== 'One-Time'
-                ? `${duration} ${frequency}`
-                : (frequency ? (freqLabels[frequency] || frequency) : '—');
-
-            const row = document.createElement('tr');
-            row.dataset.itemId = itemCounter;
-            row.dataset.orderItemId = data.order_item_id || '';
-            row.innerHTML = `
-                <td style="padding: 0.4rem 0.6rem;">${renderItemCellContent(item.item_name, item.item_description)}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${Math.round(Number(item.quantity) || 0)}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${formatAmount(item.unit_price)}</td>
-                @if($account->allow_multi_taxation)
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.tax_rate}%</td>
-                @endif
-                @if($account->have_users)
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.no_of_users ?? '—'}</td>
-                @endif
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${formatDiscountPercentDisplay(item.discount_percent)}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqDurationText}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.start_date || '—'}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.end_date || '—'}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.delivery_date || '—'}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${formatAmount(Math.round(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0))))}</strong></td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
-                    <button type="button" class="edit-item text-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;">Edit</button>
-                    <button type="button" class="remove-item text-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-
-                document.getElementById('itemsTable').style.display = 'table';
-                updateSummary();
-                resetItemInputs();
-                showToast('success', 'Item added successfully!');
-            } else {
-                throw new Error(data.message || 'Failed to add item');
-            }
-        })
-        .catch(error => {
-            alert('Error: ' + error.message);
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.textContent = 'Add';
+            return String(item.itemid || '') === String(itemid || '');
         });
     }
 
-    // Add/Update Item click handler
-    document.getElementById('addItemBtn').addEventListener('click', function() {
-        if (!savedOrderId) {
-            alert('Please save the order details first!');
+    function hasDuplicateInSavedOrders(itemid) {
+        return existingClientItemIds.has(String(itemid || ''));
+    }
+
+    function setAddButtonState() {
+        if (!addItemBtn) return;
+        addItemBtn.textContent = editingItemIndex === null ? 'Add Order' : 'Update Order';
+    }
+
+    function resetItemForm() {
+        itemSelect.value = '';
+        document.getElementById('item_quantity').value = 1;
+        document.getElementById('item_users').value = 1;
+        frequencyInput.value = '';
+        durationInput.value = 1;
+        startDateInput.value = todayDate;
+        document.getElementById('item_delivery_date').value = '';
+        document.getElementById('item_description').value = '';
+        editingItemIndex = null;
+        toggleUsersField();
+        refreshEndDate();
+        setAddButtonState();
+    }
+
+    function loadItemIntoForm(item) {
+        if (!item) return;
+        itemSelect.value = item.itemid || '';
+        document.getElementById('item_quantity').value = item.quantity || 1;
+        document.getElementById('item_users').value = item.no_of_users || 1;
+        frequencyInput.value = item.frequency || '';
+        durationInput.value = item.duration || 1;
+        startDateInput.value = item.start_date || todayDate;
+        endDateInput.value = item.end_date || maxEndDate;
+        document.getElementById('item_delivery_date').value = item.delivery_date || '';
+        document.getElementById('item_description').value = item.item_description || '';
+        toggleUsersField();
+        toggleDurationField();
+    }
+
+    if (clientSelect && !isEditMode) {
+        clientSelect.addEventListener('change', function () {
+            if (!this.value) return;
+            const url = new URL(window.location.href);
+            url.searchParams.set('c', this.value);
+            window.location.href = url.toString();
+        });
+    }
+
+    frequencyInput.addEventListener('change', refreshEndDate);
+    durationInput.addEventListener('input', refreshEndDate);
+
+    async function confirmDuplicateItem() {
+        if (typeof window.appConfirm === 'function') {
+            return await window.appConfirm(
+                'This Product/Service already exists in the list. Do you want to add it again?',
+                {
+                    title: 'Duplicate Item',
+                    icon: 'warning',
+                    confirmButtonText: 'Add Again',
+                    cancelButtonText: 'Cancel',
+                    width: 430,
+                }
+            );
+        }
+
+        return confirm('This Product/Service already exists in the list. Do you want to add it again?');
+    }
+
+    async function confirmDuplicateSavedItem() {
+        if (typeof window.appConfirm === 'function') {
+            return await window.appConfirm(
+                'This Product/Service already exists in the list. Do you want to add it again?',
+                {
+                    title: 'Duplicate Product/Service',
+                    icon: 'warning',
+                    confirmButtonText: 'Add Again',
+                    cancelButtonText: 'Cancel',
+                    width: 430,
+                }
+            );
+        }
+
+        return confirm('This Product/Service already exists in the list. Do you want to add it again?');
+    }
+
+    async function handleItemSelectionDuplicateCheck() {
+        const selectedItemId = String(itemSelect.value || '');
+        if (!selectedItemId || isEditMode) {
+            return true;
+        }
+
+        if (hasDuplicateItemId(selectedItemId, editingItemIndex)) {
+            const shouldKeepDuplicate = await confirmDuplicateItem();
+            if (!shouldKeepDuplicate) {
+                resetItemForm();
+                return false;
+            }
+        }
+
+        if (editingItemIndex === null && hasDuplicateInSavedOrders(selectedItemId)) {
+            const shouldKeepSavedDuplicate = await confirmDuplicateSavedItem();
+            if (!shouldKeepSavedDuplicate) {
+                resetItemForm();
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    itemSelect.addEventListener('change', async function () {
+        populateFromSelection();
+        await handleItemSelectionDuplicateCheck();
+    });
+
+    if (addItemBtn) {
+    addItemBtn.addEventListener('click', async function () {
+        if (!itemSelect.value) {
+            alert('Select an item first.');
             return;
         }
 
-        const serviceId = document.getElementById('item_itemid').value;
-        if (!serviceId) return alert('Select an item');
-
-        const serviceOption = document.getElementById('item_itemid').options[document.getElementById('item_itemid').selectedIndex];
-        const serviceName = serviceOption.text.split(' (')[0];
-        const itemDescription = (document.getElementById('item_description')?.value || '').trim();
-        
-        const qty = Math.max(1, Math.round(Number(document.getElementById('item_quantity').value) || 1));
-        const unitPrice = Math.round(parseFloat(document.getElementById('item_unit_price').value) || 0);
-        const frequency = document.getElementById('item_frequency').value || '';
-        const rawDuration = Number(document.getElementById('item_duration').value || 0);
-        const duration = (frequency && frequency !== 'One-Time') ? String(rawDuration > 0 ? rawDuration : 1) : '';
-        @if($account->have_users)
-        const isUserWiseItem = isSelectedItemUserWise();
-        const users = isUserWiseItem ? Math.max(1, enforceUsersInputConstraint()) : 1;
-        const usersForStorage = isUserWiseItem ? users : null;
-        @else
-        const users = parseInt(document.getElementById('item_users').value) || 1;
-        const usersForStorage = users;
-        @endif
-        const startDate = document.getElementById('item_start_date').value || '';
-        const endDate = document.getElementById('item_end_date').value || '';
-        const deliveryDate = document.getElementById('item_delivery_date').value || '';
-
-        const discountPercent = parseFloat(document.getElementById('item_discount').value) || 0;
-        const lineInputTotal = calculateLineTotal(qty, unitPrice, users, frequency, duration);
-
-        let taxRate = parseFloat(document.getElementById('item_tax_rate')?.value) || 0;
-        const serviceTaxRate = Number(serviceOption?.dataset?.taxRate || 0);
-        if (taxRate <= 0 && serviceTaxRate > 0) {
-            taxRate = serviceTaxRate;
-            setTaxRateInputValue(taxRate);
+        if (!isEditMode) {
+            refreshEndDate();
         }
-        
-        const { lineTotal, discountAmount, taxAmount } = calculateTaxBreakdown(lineInputTotal, discountPercent, taxRate);
+        const payload = currentItemPayload();
+        if (!payload.end_date) {
+            alert('End date is required.');
+            return;
+        }
 
-        if (editingItemId) {
-            const item = items.find(i => i.id === editingItemId);
-            const orderItemId = item?.order_item_id;
+        const orderForm = document.getElementById('orderForm');
+        if (isEditMode) {
+            items.splice(0, items.length, payload);
+            syncItemsInput();
+            orderForm.submit();
+            return;
+        } else {
+            items.splice(0, items.length, payload);
+            syncItemsInput();
+            orderForm.submit();
+            return;
+        }
+    });
+    }
 
-            if (orderItemId) {
-                fetch(`{{ url('/orders') }}/${savedOrderId}/remove-item/${orderItemId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.message || 'Failed to update item');
-                    }
-
-                    const index = items.findIndex(i => i.id === editingItemId);
-                    if (index > -1) items.splice(index, 1);
-                    const row = tbody.querySelector(`[data-item-id="${editingItemId}"]`);
-                    if (row) row.remove();
-
-                    editingItemId = null;
-                    document.getElementById('addItemBtn').textContent = 'Add';
-                    addNewItem(serviceId, serviceName, itemDescription, qty, unitPrice, frequency, duration, usersForStorage, startDate, endDate, deliveryDate, lineTotal, discountPercent, discountAmount, taxRate, taxAmount);
-                })
-                .catch(error => {
-                    alert('Error updating item: ' + error.message);
-                });
+    document.getElementById('orderForm').addEventListener('submit', function (event) {
+        if (isEditMode) {
+            if (!itemSelect.value) {
+                event.preventDefault();
+                alert('Select an item first.');
                 return;
             }
-        }
-
-        addNewItem(serviceId, serviceName, itemDescription, qty, unitPrice, frequency, duration, usersForStorage, startDate, endDate, deliveryDate, lineTotal, discountPercent, discountAmount, taxRate, taxAmount);
-    });
-
-    // Edit and Remove items
-    tbody.addEventListener('click', function(e) {
-        // Edit item
-        const editBtn = e.target.closest('.edit-item');
-        if (editBtn) {
-            const itemId = parseInt(editBtn.dataset.id);
-            const item = items.find(i => i.id === itemId);
-            if (item) {
-                // Load item data into form
-                document.getElementById('item_itemid').value = item.itemid;
-                document.getElementById('item_quantity').value = item.quantity;
-                document.getElementById('item_unit_price').value = Math.round(Number(item.unit_price || 0));
-                document.getElementById('item_frequency').value = item.frequency || '';
-                document.getElementById('item_duration').value = item.duration || '';
-                document.getElementById('item_users').value = item.no_of_users || 1;
-                document.getElementById('item_description').value = item.item_description || '';
-                @if($account->have_users)
-                toggleUsersField();
-                @endif
-                document.getElementById('item_discount').value = item.discount_percent || 0;
-                setTaxRateInputValue(item.tax_rate || 0);
-                
-                setDateValue('item_start_date', item.start_date || '');
-                setDateValue('item_end_date', item.end_date || '');
-                // Use item's delivery date, or fall back to order's delivery date if item's is empty
-                const orderDeliveryDate = document.getElementById('delivery_date')?.value || '';
-                setDateValue('item_delivery_date', item.delivery_date || orderDeliveryDate);
-                
-                toggleRecurringFields(item.frequency || '');
-
-                // Change button text to indicate update
-                document.getElementById('addItemBtn').textContent = 'Update';
-                editingItemId = itemId;
-
-                // Scroll to form
-                document.querySelector('.add-item-row').scrollIntoView({ behavior: 'smooth' });
+            const payload = currentItemPayload();
+            if (!payload.end_date) {
+                event.preventDefault();
+                alert('End date is required.');
+                return;
             }
+            items.splice(0, items.length, payload);
+            syncItemsInput();
             return;
         }
 
-        // Remove item
-        const btn = e.target.closest('.remove-item');
-        if (btn) {
-            if (!confirm('Are you sure you want to remove this item?')) return;
-
-            const itemId = parseInt(btn.dataset.id);
-            const item = items.find(i => i.id === itemId);
-            const orderItemId = item?.order_item_id;
-
-            // Delete from DB via AJAX
-            if (orderItemId) {
-                fetch(`{{ url('/orders') }}/${savedOrderId}/remove-item/${orderItemId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const index = items.findIndex(i => i.id === itemId);
-                        if (index > -1) items.splice(index, 1);
-                        btn.closest('tr').remove();
-                        updateSummary();
-                        if (items.length === 0) {
-                            document.getElementById('itemsTable').style.display = 'none';
-                        }
-                        showToast('success', 'Item removed successfully!');
-                    } else {
-                        throw new Error(data.message || 'Failed to remove item');
-                    }
-                })
-                .catch(error => {
-                    alert('Error: ' + error.message);
-                });
-            }
+        if (!items.length) {
+            event.preventDefault();
+            alert('Add at least one item before saving.');
         }
     });
 
-    function updateSummary() {
-        const subtotal = round2(items.reduce((sum, item) => sum + Number(item.line_total || 0), 0));
-        const discountTotal = roundDiscountDown(items.reduce((sum, item) => sum + Number(item.discount_amount || 0), 0));
-        const taxTotal = roundTaxUp(items.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0));
-        const grandTotal = round2(subtotal - discountTotal + taxTotal);
+    toggleUsersField();
+    refreshEndDate();
+    setAddButtonState();
 
-        document.getElementById('subtotal').textContent = formatAmount(subtotal);
-        document.getElementById('discountTotal').textContent = formatAmount(discountTotal);
-        updateTaxBreakupDisplay(taxTotal);
-        document.getElementById('grandTotal').textContent = formatAmount(grandTotal);
-
-        // Note: In create form, we don't need hidden fields since items are saved via AJAX
-        // The hidden fields are only used in edit form for batch submission
-    }
-
-    function resetItemInputs() {
-        const fields = {
-            'item_itemid': '',
-            'item_quantity': 1,
-            'item_unit_price': '',
-            'item_discount': 0,
-            'item_frequency': '',
-            'item_duration': '',
-            'item_users': 1,
-            'item_description': ''
-        };
-        
-        for (const [id, value] of Object.entries(fields)) {
-            const el = document.getElementById(id);
-            if (el) el.value = value;
-        }
-        @if($account->have_users)
-        toggleUsersField();
-        @endif
-
-        setDateValue('item_start_date', '');
-        setDateValue('item_end_date', '');
-
-        toggleRecurringFields('');
-
-        const itemTaxRate = document.getElementById('item_tax_rate');
-        if (itemTaxRate) {
-            setTaxRateInputValue({{ $account->allow_multi_taxation ? '0' : ($account->fixed_tax_rate ?? 0) }});
-        }
-
-        // Reset delivery date to order's delivery date
-        const orderDeliveryDate = document.getElementById('delivery_date')?.value || '';
-        setDateValue('item_delivery_date', orderDeliveryDate);
-    }
-
-    // Load order details from database
-    function loadOrderDetails(orderId) {
-        fetch(`{{ url('/orders') }}/${orderId}/json`, {
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Server returned non-JSON response');
-            }
-            return response.json();
-        })
-        .then(data => {
-            // Populate form with order details
-            if (data.order) {
-                const fields = ['clientid', 'order_number', 'order_title', 'order_date', 'delivery_date', 'sales_person_id', 'notes', 'po_number', 'po_date', 'agreement_ref', 'agreement_date'];
-                fields.forEach(field => {
-                    const el = document.getElementById(field);
-                    if (el && data.order[field] !== undefined && data.order[field] !== null) {
-                        el.value = data.order[field];
-                    }
-                });
-
-                if (!isEditMode) {
-                    // For create mode, lock details after initial save.
-                    document.querySelectorAll('#orderForm .order-lockable input, #orderForm .order-lockable select, #orderForm .order-lockable textarea').forEach(el => {
-                        el.disabled = true;
-                    });
-                }
-
-                syncSelectedClientDisplay();
-
-                // Enable items section
-                document.getElementById('itemsDisabledOverlay').style.display = 'none';
-                document.getElementById('finalActions').style.display = 'flex';
-                updateFinalActionLinks();
-
-                const btn = document.getElementById('saveOrderBtn');
-                btn.innerHTML = `<i class="fas fa-check icon-spaced-sm"></i>${saveButtonDoneLabel}`;
-                btn.classList.remove('btn-primary');
-                btn.classList.add('btn-success');
-                btn.disabled = false;
-
-                // Load items
-                if (data.items && data.items.length > 0) {
-                    loadOrderItemsFromData(data.items);
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error loading order details:', error);
-        });
-    }
-
-    // Load existing order items from database
-    function loadOrderItems(orderId) {
-        fetch(`{{ url('/orders') }}/${orderId}/json`, {
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Server returned non-JSON response');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.items && data.items.length > 0) {
-                loadOrderItemsFromData(data.items);
-            }
-        })
-        .catch(error => {
-            console.error('Error loading order items:', error);
-        });
-    }
-
-    // Helper function to load items from data array
-    function loadOrderItemsFromData(itemsArray) {
-        itemsArray.forEach((itemData) => {
-            itemCounter++;
-            const item = {
-                id: itemCounter,
-                order_item_id: itemData.orderitemid,
-                itemid: itemData.itemid,
-                item_name: itemData.item_name,
-                item_description: itemData.item_description || '',
-                quantity: Math.max(1, Math.round(Number(itemData.quantity) || 1)),
-                unit_price: Math.round(Number(itemData.unit_price) || 0),
-                frequency: itemData.frequency || '',
-                duration: itemData.duration || '',
-                no_of_users: itemData.no_of_users ?? null,
-                start_date: itemData.start_date || '',
-                end_date: itemData.end_date || '',
-                delivery_date: itemData.delivery_date || '',
-                line_total: Math.round(Number(itemData.line_total) || 0),
-                discount_percent: itemData.discount_percent || 0,
-                discount_amount: roundDiscountDown(Number(itemData.discount_amount) || 0),
-                tax_rate: itemData.tax_rate || 0,
-                tax_amount: roundTaxUp(Math.max(0, (Number(itemData.line_total) || 0) - (Number(itemData.discount_amount) || 0)) * ((Number(itemData.tax_rate) || 0) / 100))
-            };
-            items.push(item);
-
-            const freqLabels = {'One-Time':'One-Time','Day(s)':'Day(s)','Week(s)':'Week(s)','Month(s)':'Month(s)','Quarter(s)':'Quarter(s)','Year(s)':'Year(s)'};
-            const freqDurationText = itemData.duration && itemData.frequency && itemData.frequency !== 'One-Time'
-                ? `${itemData.duration} ${itemData.frequency}`
-                : (itemData.frequency ? (freqLabels[itemData.frequency] || itemData.frequency) : '—');
-
-            const row = document.createElement('tr');
-            row.dataset.itemId = itemCounter;
-            row.dataset.orderItemId = itemData.orderitemid;
-            row.innerHTML = `
-                <td style="padding: 0.4rem 0.6rem;">${renderItemCellContent(item.item_name, item.item_description)}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${Math.round(Number(item.quantity) || 0)}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.82rem;">${formatAmount(item.unit_price)}</td>
-                @if($account->allow_multi_taxation)
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.tax_rate}%</td>
-                @endif
-                @if($account->have_users)
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.no_of_users ?? '—'}</td>
-                @endif
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${formatDiscountPercentDisplay(item.discount_percent)}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${freqDurationText}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.start_date || '—'}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.end_date || '—'}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; font-size: 0.78rem;">${item.delivery_date || '—'}</td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right;" class="item-line-total"><strong>${formatAmount(Math.round(Math.max(0, Number(item.line_total || 0) - Number(item.discount_amount || 0))))}</strong></td>
-                <td style="padding: 0.4rem 0.5rem; text-align: right; white-space: nowrap;">
-                    <button type="button" class="edit-item text-action-btn edit" data-id="${itemCounter}" title="Edit" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-right: 0.2rem;">Edit</button>
-                    <button type="button" class="remove-item text-action-btn delete" data-id="${itemCounter}" title="Remove" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
-
-        document.getElementById('itemsTable').style.display = 'table';
-        updateSummary();
-    }
-
-    // Toast notification function
-    function showToast(type, message) {
-        const container = document.getElementById('toast-container') || document.body;
-        const toast = document.createElement('div');
-        toast.style.cssText = `position: fixed; top: 20px; right: 20px; background: ${type === 'success' ? '#10b981' : '#ef4444'}; color: white; padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.9rem; z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.1); animation: slideIn 0.3s ease;`;
-        toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'times-circle'}" style="margin-right: 0.5rem;"></i>${message}`;
-        container.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+    if (existingOrder) {
+        loadItemIntoForm(existingOrder);
     }
 });
 </script>
-
-<style>
-.order-create-shell {
-    background: transparent !important;
-    border: 0 !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-}
-.order-top-summary {
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    background: #ffffff;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    display: flex;
-    gap: 1rem;
-    align-items: flex-start;
-    flex-wrap: wrap;
-}
-.order-top-summary__client {
-    min-width: 220px;
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-}
-.order-top-summary__icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    background: #e2e8f0;
-    color: #475569;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.order-top-summary__eyebrow {
-    margin: 0;
-    font-size: 0.72rem;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-weight: 700;
-}
-.order-top-summary__client-name {
-    margin: 0.12rem 0 0;
-    color: #0f172a;
-    font-size: 0.96rem;
-    font-weight: 700;
-}
-.order-top-summary__client-email {
-    margin: 0.1rem 0 0;
-    color: #64748b;
-    font-size: 0.8rem;
-}
-.order-top-summary__fields {
-    flex: 1 1 540px;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(150px, 1fr));
-    gap: 0.65rem;
-}
-.order-details-panel {
-    margin-bottom: 1rem;
-    padding: 0.95rem;
-    border: 1px solid #dbe3ee;
-    border-radius: 14px;
-    background: #ffffff;
-}
-.order-details-panel__head {
-    margin-bottom: 0.85rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid #e2e8f0;
-}
-.order-details-panel__head h3 {
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: #0f172a;
-}
-.order-details-panel__head p {
-    margin: 0.2rem 0 0;
-    font-size: 0.78rem;
-    color: #64748b;
-}
-.order-save-simple {
-    margin-top: 0.9rem;
-    display: flex;
-    justify-content: flex-end;
-}
-.order-complete-row {
-    margin-top: 0.9rem;
-    display: flex;
-    justify-content: flex-end;
-    text-align: right;
-}
-.order-action-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 34px;
-    padding: 0.45rem 0.9rem;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-decoration: none;
-    line-height: 1;
-    transition: all 0.15s ease;
-    cursor: pointer;
-}
-.order-action-btn--primary {
-    background: #2563eb;
-    color: #fff;
-    border-color: #2563eb;
-}
-.order-action-btn--primary:hover {
-    background: #1d4ed8;
-    border-color: #1d4ed8;
-    color: #fff;
-}
-.order-action-btn--secondary {
-    background: #fff;
-    color: #334155;
-    border-color: #cbd5e1;
-}
-.order-action-btn--secondary:hover {
-    background: #f8fafc;
-    border-color: #94a3b8;
-    color: #0f172a;
-}
-.order-action-btn--muted {
-    background: #f8fafc;
-    color: #94a3b8;
-    border-color: #e2e8f0;
-}
-.order-action-btn--muted:disabled {
-    opacity: 1;
-    cursor: not-allowed;
-}
-.order-info-card {
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    background: #ffffff;
-    padding: 1rem;
-    height: 100%;
-}
-.order-info-card__head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.8rem;
-}
-.order-number-pill {
-    background: #f1f5f9;
-    color: #0f172a;
-    border-radius: 999px;
-    padding: 0.22rem 0.7rem;
-    font-size: 0.78rem;
-    font-weight: 600;
-}
-.order-label {
-    font-size: 0.72rem;
-    color: #64748b;
-    display: block;
-    margin-bottom: 0.2rem;
-    font-weight: 600;
-}
-.order-client-meta,
-.order-details-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.8rem;
-}
-.order-meta-label {
-    margin: 0;
-    color: #64748b;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    font-weight: 700;
-}
-.order-meta-value {
-    margin: 0.15rem 0 0;
-    color: #0f172a;
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-.order-accordion-wrap {
-    margin-top: 1rem;
-    display: grid;
-    gap: 0.75rem;
-}
-.order-accordion {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    background: #fff;
-}
-.order-accordion summary {
-    list-style: none;
-    cursor: pointer;
-    padding: 0.75rem 0.95rem;
-    font-size: 0.88rem;
-    color: #334155;
-    font-weight: 700;
-}
-.order-accordion__content {
-    border-top: 1px solid #e2e8f0;
-    padding: 0.75rem 0.95rem 0.2rem;
-}
-.order-items-shell {
-    margin-top: 1rem;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 1rem;
-}
-.order-items-shell .items-section {
-    background: #ffffff;
-    border-radius: 10px;
-}
-#itemsTable thead th {
-    border-bottom: 1px solid #dbe1ea;
-}
-#itemsTable tbody td {
-    border-bottom: 1px solid #e5e7eb;
-    vertical-align: middle;
-}
-#itemsTable tbody tr:last-child td {
-    border-bottom: none;
-}
-@media (max-width: 1199px) {
-    .order-top-summary__fields {
-        grid-template-columns: repeat(2, minmax(150px, 1fr));
-    }
-}
-@media (max-width: 767px) {
-    .order-top-summary__fields,
-    .order-client-meta,
-    .order-details-grid {
-        grid-template-columns: 1fr;
-    }
-    .order-save-simple {
-        width: 100%;
-        justify-content: stretch;
-    }
-    .order-save-simple #saveOrderBtn {
-        width: 100%;
-    }
-    .order-complete-row {
-        justify-content: flex-start;
-    }
-}
-@keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-@keyframes slideOut {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
-}
-</style>
-
-<div id="toast-container"></div>
-</section>
-
-{{-- Add Tax Modal --}}
-@if($account->allow_multi_taxation)
-<div class="modal fade" id="addTaxModalOrder" tabindex="-1">
-    <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
-        <div class="modal-content rounded-panel">
-            <div class="modal-header modal-header-custom">
-                <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;">
-                    <i class="fas fa-receipt" style="margin-right: 0.5rem; color: #64748b;"></i>Add Tax
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" style="padding: 1.25rem;">
-                <form method="POST" action="{{ route('taxes.store') }}" id="quick-tax-form-order">
-                    @csrf
-                    <input type="hidden" name="redirect_back" value="1">
-                    <div style="margin-bottom: 0.75rem;">
-                        <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Rate (%)</label>
-                        <input type="number" name="rate" placeholder="18" step="0.01" min="0" max="100" required
-                               style="padding: 0.4rem 0.75rem; font-size: 0.9rem; width: 100%;">
-                    </div>
-                    <div style="margin-bottom: 0.75rem;">
-                        <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem;">Type</label>
-                        <select name="type" required
-                                style="padding: 0.4rem 0.75rem; font-size: 0.9rem; width: 100%;">
-                            @foreach(['GST'=>'GST','VAT'=>'VAT'] as $v=>$l)
-                                <option value="{{ $v }}">{{ $l }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <button type="submit" class="primary-button small">Add Tax</button>
-                        <button type="button" class="text-link small" data-bs-dismiss="modal">Cancel</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-(function() {
-    const taxModalEl = document.getElementById('addTaxModalOrder');
-    const openTaxModalLink = document.getElementById('open-tax-modal-order');
-    if (taxModalEl && openTaxModalLink) {
-        const taxModal = new bootstrap.Modal(taxModalEl);
-        openTaxModalLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            taxModal.show();
-        });
-    }
-})();
-</script>
-@endif
-
 @endsection

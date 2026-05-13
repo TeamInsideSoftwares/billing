@@ -4,6 +4,12 @@
     <a href="{{ route('clients.index') }}" class="secondary-button">
         Back to Clients
     </a>
+    <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'po']) }}" class="secondary-button">
+        Add PO
+    </a>
+    <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'agreement']) }}" class="secondary-button">
+        Add Agreement
+    </a>
     <a href="{{ route('clients.edit', $client) }}" class="primary-button small">
         Edit
     </a>
@@ -138,6 +144,43 @@
         <div>{{ $client->billingDetail->postal_code ?? '-' }}</div>
     </div>
 </section>
+
+@if($client->documents->count())
+<section class="panel-card mt-3 mb-3">
+    <div class="section-header">
+        <div class="section-icon"><i class="fas fa-folder-open"></i></div>
+        <h4 class="section-title">Client Documents</h4>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Title</th>
+                <th>Number</th>
+                <th>Date</th>
+                <th>File</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($client->documents->sortByDesc('created_at') as $document)
+                <tr>
+                    <td>{{ strtoupper($document->type) }}</td>
+                    <td>{{ $document->title ?: '—' }}</td>
+                    <td>{{ $document->document_number ?: '—' }}</td>
+                    <td>{{ $document->document_date?->format('d M Y') ?? '—' }}</td>
+                    <td>
+                        @if($document->file_path)
+                            <a href="{{ route('clients.documents.file', ['client' => $client->clientid, 'document' => $document->client_docid]) }}" target="_blank" class="text-action-btn view">View File</a>
+                        @else
+                            —
+                        @endif
+                    </td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+</section>
+@endif
 
 @if(isset($allInvoices) && $allInvoices->count())
 <section class="panel-card" class="panel-card mt-2">

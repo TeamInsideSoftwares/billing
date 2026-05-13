@@ -4,27 +4,31 @@
     <a href="{{ route('payments.index', $selectedClientId !== '' ? ['c' => $selectedClientId] : []) }}" class="secondary-button">
         <i class="fas fa-arrow-left icon-spaced"></i>Back to Payments
     </a>
-    <a href="{{ route('payments.gst-report', $selectedClientId !== '' ? ['c' => $selectedClientId] : []) }}" class="secondary-button">
-        GST Report
-    </a>
     <a href="{{ route('payments.create', $selectedClientId !== '' ? ['c' => $selectedClientId] : []) }}" class="primary-button">
         <i class="fas fa-plus icon-spaced"></i>Record Payment
     </a>
 @endsection
 
 @section('content')
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+
     <div class="ledger-shell">
-        <section class="panel-card ledger-filter-panel">
-            <form method="GET" action="{{ route('payments.ledger') }}" class="ledger-filter-grid">
-                @if($selectedClientId !== '')
-                    <input type="hidden" name="c" value="{{ $selectedClientId }}">
-                @endif
-                <div>
-                    <label class="ledger-label">Client</label>
-                    <div class="ledger-static-value">{{ $selectedClientName }}</div>
+        <section class="panel-card module-filter-panel filter-panel-regular">
+            <form method="GET" action="{{ route('payments.ledger') }}" class="module-filter-grid">
+                <div class="module-filter-field">
+                    <label class="module-filter-label" for="ledger_client_filter">Client</label>
+                    <select name="c" id="ledger_client_filter" class="form-control">
+                        <option value="">All Clients</option>
+                        @foreach($clients as $client)
+                            <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
+                                {{ $client->business_name ?? $client->contact_name }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
-                <div>
-                    <label class="ledger-label" for="ledger_fy_filter">Financial Year</label>
+                <div class="module-filter-field">
+                    <label class="module-filter-label" for="ledger_fy_filter">Financial Year</label>
                     <select name="fy" id="ledger_fy_filter" class="form-control">
                         <option value="all" {{ $selectedFyId === 'all' ? 'selected' : '' }}>All</option>
                         @foreach($financialYears as $fy)
@@ -34,7 +38,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="ledger-filter-actions">
+                <div class="module-filter-actions">
                     <button type="submit" class="primary-button">Apply</button>
                     <a href="{{ route('payments.ledger') }}" class="secondary-button">Reset</a>
                 </div>
@@ -56,7 +60,7 @@
                     </div>
                 </div>
                 <div class="ledger-table-wrap">
-                    <table class="data-table ledger-table">
+                    <table id="ledgerDataTable" class="data-table ledger-table">
                         <thead>
                             <tr>
                                 <th scope="col">Date</th>
@@ -70,13 +74,23 @@
                         <tbody>
                             @foreach($ledgerEntries as $entry)
                                 <tr>
-                                    <td class="ledger-date-cell ledger-cell-text">{{ $entry['date'] }}</td>
+                                    <td class="ledger-date-cell ledger-cell-text" data-order="{{ $entry['raw_date'] }}">{{ $entry['date'] }}</td>
                                     <td>
                                         {{ $entry['description'] !== '' ? $entry['description'] : '-' }}
                                     </td>
                                     <td class="ledger-cell-text">
                                         @if($entry['reference_url'])
-                                            <a href="{{ $entry['reference_url'] }}" class="ledger-ref-link">{{ $entry['reference_label'] }}</a>
+                                            @php
+                                                $previewUrl = $entry['entry_kind'] === 'invoice'
+                                                    ? $entry['reference_url']
+                                                    : $entry['reference_url'] . (str_contains($entry['reference_url'], '?') ? '&' : '?') . 'preview=1';
+                                            @endphp
+                                            <a href="{{ $entry['reference_url'] }}"
+                                               class="ledger-ref-link js-ledger-preview-link"
+                                               data-preview-url="{{ $previewUrl }}"
+                                               data-preview-title="{{ $entry['entry_kind'] === 'invoice' ? 'Invoice PDF Preview' : 'Payment Preview' }}">
+                                                {{ $entry['reference_label'] }}
+                                            </a>
                                         @else
                                             <span class="ledger-ref-link">{{ $entry['reference_label'] }}</span>
                                         @endif
@@ -108,220 +122,98 @@
         </section>
     </div>
 
-    <style>
-        .ledger-shell {
-            display: grid;
-            gap: 0.85rem;
-        }
+    <div class="offcanvas offcanvas-end ledger-preview-canvas" tabindex="-1" id="ledgerPreviewCanvas" aria-labelledby="ledgerPreviewCanvasLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="ledgerPreviewCanvasLabel">Preview</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-0">
+            <iframe id="ledgerPreviewFrame" class="ledger-preview-frame" src="about:blank" title="Ledger Preview"></iframe>
+        </div>
+    </div>
 
-        .ledger-filter-panel {
-            padding: 0.7rem 0.85rem;
-        }
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.jQuery && jQuery.fn.DataTable && document.getElementById('ledgerDataTable')) {
+                jQuery('#ledgerDataTable').DataTable({
+                    pageLength: 25,
+                    order: [[0, 'desc']],
+                    dom: "<'row align-items-center g-2 mb-2'<'col-md-7'B><'col-md-5'f>>" +
+                         "<'row'<'col-12'tr>>" +
+                         "<'row mt-2'<'col-md-5'i><'col-md-7'p>>",
+                    buttons: [
+                        { extend: 'excelHtml5', text: 'Excel' },
+                        {
+                            extend: 'pdfHtml5',
+                            text: 'PDF',
+                            orientation: 'landscape',
+                            pageSize: 'A4',
+                            exportOptions: { columns: ':visible' },
+                            customize: function (doc) {
+                                doc.pageMargins = [26, 28, 26, 28];
+                                doc.defaultStyle = {
+                                    fontSize: 10,
+                                    lineHeight: 1.25
+                                };
+                                doc.styles.tableHeader = {
+                                    fontSize: 10.5,
+                                    bold: true,
+                                    fillColor: '#f8fafc',
+                                    color: '#334155',
+                                    margin: [0, 5, 0, 5]
+                                };
 
-        .ledger-filter-grid {
-            display: grid;
-            grid-template-columns: 1.15fr 1fr auto;
-            gap: 0.6rem;
-            align-items: end;
-        }
-
-        .ledger-label {
-            display: block;
-            margin-bottom: 0.18rem;
-            font-size: 0.72rem;
-            font-weight: 600;
-            color: #475569;
-        }
-
-        .ledger-filter-panel .form-control {
-            min-height: 34px;
-            height: 34px;
-            padding-top: 0.32rem;
-            padding-bottom: 0.32rem;
-            font-size: 0.82rem;
-        }
-
-        .ledger-static-value {
-            min-height: 34px;
-            display: flex;
-            align-items: center;
-            padding: 0.32rem 0.7rem;
-            border: 1px solid #dbe2ea;
-            border-radius: 0.55rem;
-            background: #f8fafc;
-            color: #0f172a;
-            font-size: 0.84rem;
-            font-weight: 600;
-        }
-
-        .ledger-filter-actions {
-            display: flex;
-            gap: 0.45rem;
-            align-items: center;
-        }
-
-        .ledger-filter-actions .primary-button,
-        .ledger-filter-actions .secondary-button {
-            padding-top: 0.42rem;
-            padding-bottom: 0.42rem;
-            font-size: 0.82rem;
-        }
-
-        .ledger-table-card {
-            padding: 0;
-            overflow: hidden;
-        }
-
-        .ledger-table-toolbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.75rem;
-            padding: 0.8rem 0.9rem;
-            border-bottom: 1px solid #e2e8f0;
-            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-        }
-
-        .ledger-table-title {
-            display: block;
-            font-size: 0.88rem;
-            color: #0f172a;
-            line-height: 1.1;
-        }
-
-        .ledger-table-subtitle {
-            margin-top: 0.16rem;
-            font-size: 0.75rem;
-            color: #64748b;
-        }
-
-        .ledger-table-wrap {
-            overflow-x: auto;
-            margin: 0;
-            background: #fff;
-        }
-
-        .ledger-table {
-            margin: 0;
-            border-collapse: collapse;
-        }
-
-        .ledger-table th,
-        .ledger-table td {
-            padding-top: 0.55rem;
-            padding-bottom: 0.55rem;
-            padding-left: 0.9rem;
-            padding-right: 0.9rem;
-            vertical-align: middle;
-        }
-
-        .ledger-table thead th {
-            white-space: nowrap;
-            font-size: 0.76rem;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: #475569;
-            background: #f8fafc;
-            border-bottom: 1px solid #dbe2ea;
-        }
-
-        .ledger-table tbody td {
-            border-bottom: 1px solid #eef2f7;
-            color: #475569;
-            line-height: 1.15;
-        }
-
-        .ledger-table tbody tr:last-child td {
-            border-bottom: 1px solid #dbe2ea;
-        }
-
-        .ledger-date-cell {
-            white-space: nowrap;
-            color: #334155;
-            font-weight: 600;
-            font-size: 0.76rem;
-            line-height: 1.15;
-        }
-
-        .ledger-cell-text {
-            color: #475569;
-            font-size: 0.76rem;
-            line-height: 1.15;
-        }
-
-        .ledger-note,
-        .ledger-meta {
-            margin-top: 0.18rem;
-            font-size: 0.76rem;
-            color: #64748b;
-            line-height: 1.3;
-        }
-
-        .ledger-ref-link {
-            color: #0f172a;
-            font-weight: 600;
-            font-size: 0.88rem;
-            line-height: 1.15;
-            text-decoration: none;
-            word-break: break-word;
-        }
-
-        .ledger-ref-link:hover {
-            color: #2563eb;
-        }
-
-        .ledger-ref-meta {
-            margin-top: 0.14rem;
-            font-size: 0.72rem;
-            line-height: 1.2;
-            color: #64748b;
-            word-break: break-word;
-        }
-
-        .ledger-amount-cell {
-            font-variant-numeric: tabular-nums;
-            color: #0f172a;
-            font-size: 0.88rem;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-
-        .ledger-balance-cell {
-            font-variant-numeric: tabular-nums;
-            color: #0f172a;
-            font-weight: 700;
-            font-size: 0.88rem;
-            white-space: nowrap;
-        }
-
-        .ledger-table tfoot th {
-            background: #f8fafc;
-            font-weight: 700;
-            border-top: 1px solid #dbe2ea;
-            border-bottom: 0;
-            color: #0f172a;
-            font-size: 0.78rem;
-        }
-
-        @media (max-width: 1100px) {
-            .ledger-filter-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+                                if (doc.content && doc.content[1] && doc.content[1].table) {
+                                    doc.content[1].layout = {
+                                        hLineWidth: function () { return 0.6; },
+                                        vLineWidth: function () { return 0.4; },
+                                        hLineColor: function () { return '#dbe2ea'; },
+                                        vLineColor: function () { return '#e2e8f0'; },
+                                        paddingLeft: function () { return 8; },
+                                        paddingRight: function () { return 8; },
+                                        paddingTop: function () { return 6; },
+                                        paddingBottom: function () { return 6; }
+                                    };
+                                }
+                            }
+                        },
+                        { extend: 'print', text: 'Print' }
+                    ],
+                    columnDefs: [
+                        { orderable: false, targets: [1, 2] }
+                    ]
+                });
             }
 
-            .ledger-filter-actions {
-                grid-column: 1 / -1;
-            }
-        }
+            const panelEl = document.getElementById('ledgerPreviewCanvas');
+            const frameEl = document.getElementById('ledgerPreviewFrame');
+            const titleEl = document.getElementById('ledgerPreviewCanvasLabel');
+            if (!panelEl || !frameEl || typeof bootstrap === 'undefined') return;
 
-        @media (max-width: 768px) {
-            .ledger-summary-grid,
-            .ledger-filter-grid {
-                grid-template-columns: 1fr;
-            }
+            const previewPanel = new bootstrap.Offcanvas(panelEl);
+            document.querySelectorAll('.js-ledger-preview-link').forEach((link) => {
+                link.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    const url = this.dataset.previewUrl || this.getAttribute('href') || '';
+                    const title = this.dataset.previewTitle || 'Preview';
+                    if (!url) return;
+                    titleEl.textContent = title;
+                    frameEl.src = url;
+                    previewPanel.show();
+                });
+            });
 
-            .ledger-filter-actions {
-                flex-wrap: wrap;
-            }
-        }
-    </style>
+            panelEl.addEventListener('hidden.bs.offcanvas', function () {
+                frameEl.src = 'about:blank';
+            });
+        });
+    </script>
 @endsection

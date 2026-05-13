@@ -29,7 +29,7 @@
                     <td>
                         <span class="text-muted">{{ $group['city'] }}, {{ $group['state'] }}</span>
                     </td>
-                    <td class="table-actions">
+                    <td class="">
                         <a href="{{ route('groups.edit', $group['record_id']) }}" class="text-action-btn edit">Edit</a>
                         <form method="POST" action="{{ route('groups.destroy', $group['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $group['group_name'] }}?')">
                             @csrf

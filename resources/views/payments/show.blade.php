@@ -9,17 +9,29 @@
         Edit
     </a>
 
-    <form method="POST"
-          action="{{ route('payments.destroy', $payment) }}"
-          class="inline-delete"
-          onsubmit="return confirm('Delete this payment?')">
-        @csrf
-        @method('DELETE')
-
-        <button type="submit" class="secondary-button">
-            Delete
-        </button>
-    </form>
+    @if(strtolower(trim((string) ($payment->status ?? 'active'))) === 'cancelled')
+        <form method="POST"
+              action="{{ route('payments.restore', $payment) }}"
+              class="inline-delete"
+              onsubmit="return confirm('Restore this payment?')">
+            @csrf
+            @method('PATCH')
+            <button type="submit" class="secondary-button">
+                Restore
+            </button>
+        </form>
+    @else
+        <form method="POST"
+              action="{{ route('payments.destroy', $payment) }}"
+              class="inline-delete"
+              onsubmit="return confirm('Cancel this payment?')">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="secondary-button">
+                Cancel
+            </button>
+        </form>
+    @endif
 @endsection
 
 @section('content')

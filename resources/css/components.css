@@ -893,7 +893,7 @@ input::placeholder {
   background: none;
   color: var(--danger);
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.7rem;
   cursor: pointer;
   border-radius: 0.5rem;
   transition: all 0.2s;

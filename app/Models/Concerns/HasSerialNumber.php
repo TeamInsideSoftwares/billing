@@ -78,9 +78,9 @@ trait HasSerialNumber
     {
         $start = $this->{$part . '_value'} ?? null;
 
-        $start = (int) ($start ?: 1);
+        $start = (int) ($start ?: 0);
 
-        return max(1, $start);
+        return max(0, $start) + 1;
     }
 
     protected function resolveNextAutoIncrementNumber(string $part): int
@@ -145,14 +145,9 @@ trait HasSerialNumber
 
     protected function formatAutoIncrementNumber(int $number, string $part = 'number'): string
     {
-        $length = $this->{$part . '_length'} ?? null;
-        $value = (string) $number;
-
-        if ($length && is_numeric($length) && (int) $length > strlen($value)) {
-            return str_pad($value, (int) $length, '0', STR_PAD_LEFT);
-        }
-
-        return $value;
+        // Auto increment should use the configured numeric start/progression only.
+        // Length-based padding belongs to "auto generate", not "auto increment".
+        return (string) $number;
     }
 
     protected function normalizeSeparator(?string $separator): string

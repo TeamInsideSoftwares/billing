@@ -10,6 +10,7 @@ use App\Models\Ledger;
 use App\Models\FinancialYear;
 use App\Models\InvoiceEmail;
 use App\Models\MessageTemplate;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\Service;
@@ -23,8 +24,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Carbon\Carbon;
 
 use App\Traits\ConfiguresBrowsershot;
 
@@ -703,8 +706,6 @@ class InvoicesController extends Controller
         $selectedTab = request('tab', 'invoices');
         $selectedType = trim((string) request('type', ''));
         $selectedStatus = strtolower(trim((string) request('status', 'active')));
-        $fromDate = trim((string) request('from', ''));
-        $toDate = trim((string) request('to', ''));
 
         $invoiceQuery = Invoice::where('accountid', $accountid)
             ->with(['client', 'items', 'payments'])
@@ -712,12 +713,6 @@ class InvoicesController extends Controller
 
         if ($selectedClientId) {
             $invoiceQuery->where('clientid', $selectedClientId);
-        }
-        if ($fromDate !== '') {
-            $invoiceQuery->whereDate('issue_date', '>=', $fromDate);
-        }
-        if ($toDate !== '') {
-            $invoiceQuery->whereDate('issue_date', '<=', $toDate);
         }
 
         if ($selectedTab === 'proforma' && $selectedType === '') {
@@ -730,11 +725,16 @@ class InvoicesController extends Controller
 
         $allInvoices = $invoiceQuery->get()->values();
 
-        $selectedTab = in_array($selectedTab, ['invoices', 'upcoming', 'proforma', 'tax'], true)
+        $selectedTab = in_array($selectedTab, ['invoices', 'upcoming', 'cancelled', 'proforma', 'tax'], true)
             ? $selectedTab
             : 'invoices';
         $selectedType = in_array($selectedType, ['', 'pi', 'tax'], true) ? $selectedType : '';
         $selectedStatus = in_array($selectedStatus, ['active', 'cancelled'], true) ? $selectedStatus : 'active';
+        if ($selectedTab === 'cancelled') {
+            $selectedStatus = 'cancelled';
+        } elseif ($selectedStatus === 'cancelled') {
+            $selectedStatus = 'active';
+        }
 
         $typedInvoices = $allInvoices;
         if ($selectedType !== '') {
@@ -748,6 +748,10 @@ class InvoicesController extends Controller
             return strtolower(trim((string) ($invoice->status ?? ''))) === 'draft';
         })->values();
 
+        $cancelledInvoices = $typedInvoices->filter(function (Invoice $invoice) {
+            return strtolower(trim((string) ($invoice->status ?? ''))) === 'cancelled';
+        })->values();
+
         $filteredInvoices = $typedInvoices->filter(function (Invoice $invoice) use ($selectedStatus) {
             $status = strtolower(trim((string) ($invoice->status ?? 'active')));
             if ($selectedStatus === 'cancelled') {
@@ -758,6 +762,8 @@ class InvoicesController extends Controller
 
         if ($selectedTab === 'upcoming') {
             $filteredInvoices = $draftInvoices;
+        } elseif ($selectedTab === 'cancelled') {
+            $filteredInvoices = $cancelledInvoices;
         }
 
         if (request()->wantsJson() || request()->ajax()) {
@@ -841,9 +847,8 @@ class InvoicesController extends Controller
             'selectedTab' => $selectedTab,
             'selectedType' => $selectedType,
             'selectedStatus' => $selectedStatus,
-            'fromDate' => $fromDate,
-            'toDate' => $toDate,
             'upcomingInvoicesCount' => $draftInvoices->count(),
+            'cancelledInvoicesCount' => $cancelledInvoices->count(),
         ]);
     }
 
@@ -865,19 +870,14 @@ class InvoicesController extends Controller
         }
         $upcomingThreshold = $today->copy()->addDays($nextDays)->endOfDay();
 
-        $expiryItemBaseQuery = InvoiceItem::query()
+        $expiryItemBaseQuery = \App\Models\Order::query()
             ->where('accountid', $accountid)
             ->whereNotNull('end_date')
             ->with([
-                'invoice:invoiceid,clientid,invoice_title,pi_number,ti_number,status',
-                'invoice.client:clientid,business_name,contact_name,currency',
+                'client:clientid,business_name,contact_name,currency',
+                'invoices:invoiceid,orderid,invoice_title,pi_number,ti_number,status,created_at',
                 'item:itemid,name',
-            ])
-            ->whereHas('invoice', function ($q) {
-                $q->where('status', '!=', 'cancelled')
-                    ->whereNotNull('ti_number')
-                    ->where('ti_number', '!=', '');
-            });
+            ]);
 
         if ($selectedClientId) {
             $expiryItemBaseQuery->where('clientid', $selectedClientId);
@@ -889,36 +889,43 @@ class InvoicesController extends Controller
             $expiryItemBaseQuery->whereDate('end_date', '<=', $toDate);
         }
 
-        $mapExpiryItem = function (InvoiceItem $item) use ($today) {
-            $expiryDate = $item->end_date?->copy()->startOfDay();
+        $mapExpiryItem = function (\App\Models\Order $order) use ($today) {
+            $expiryDate = $order->end_date?->copy()->startOfDay();
             $daysLeft = $expiryDate ? $today->diffInDays($expiryDate, false) : null;
+            $linkedInvoice = $order->invoices
+                ->where('status', '!=', 'cancelled')
+                ->sortByDesc('created_at')
+                ->first();
 
             return [
-                'invoice_itemid' => (string) $item->invoice_itemid,
-                'invoiceid' => (string) $item->invoiceid,
-                'clientid' => (string) ($item->invoice?->clientid ?: $item->clientid),
+                'orderid' => (string) $order->orderid,
+                'order_number' => (string) ($order->order_number ?? '-'),
+                'invoiceid' => (string) ($linkedInvoice?->invoiceid ?? ''),
+                'clientid' => (string) $order->clientid,
                 'client_name' => (string) (
-                    $item->invoice?->client?->business_name
-                    ?: $item->invoice?->client?->contact_name
+                    $order->client?->business_name
+                    ?: $order->client?->contact_name
                     ?: 'Client'
                 ),
                 'invoice_label' => (string) (
-                    $item->invoice?->invoice_title
-                    ?: $item->invoice?->invoice_number
-                    ?: $item->invoiceid
+                    $linkedInvoice?->invoice_title
+                    ?: $linkedInvoice?->ti_number
+                    ?: $linkedInvoice?->pi_number
+                    ?: '-'
                 ),
                 'invoice_number' => (string) (
-                    $item->invoice?->ti_number
-                    ?: $item->invoice?->pi_number
-                    ?: $item->invoice?->invoice_number
-                    ?: $item->invoiceid
+                    $linkedInvoice?->ti_number
+                    ?: $linkedInvoice?->pi_number
+                    ?: '-'
                 ),
-                'currency' => (string) ($item->invoice?->client?->currency ?? 'INR'),
-                'item_name' => (string) ($item->item_name ?: $item->item?->name ?: 'Item'),
-                'item_description' => (string) ($item->item_description ?? ''),
-                'frequency' => (string) ($item->frequency ?? ''),
-                'duration' => $item->duration,
-                'status' => (string) ($item->status ?? 'active'),
+                'currency' => (string) ($order->client?->currency ?? 'INR'),
+                'item_name' => (string) ($order->item_name ?: $order->item?->name ?: 'Item'),
+                'item_description' => (string) ($order->item_description ?? ''),
+                'frequency' => '',
+                'duration' => null,
+                'status' => (string) ($order->status ?? 'active'),
+                'start_date' => $order->start_date?->copy()->startOfDay(),
+                'start_date_display' => $order->start_date?->format('d M Y') ?? '-',
                 'end_date' => $expiryDate,
                 'end_date_display' => $expiryDate?->format('d M Y') ?? '-',
                 'days_left' => $daysLeft,
@@ -927,7 +934,7 @@ class InvoicesController extends Controller
 
         $upcomingItems = (clone $expiryItemBaseQuery)
             ->where(function ($query) {
-                $query->where('status', 'active')
+                $query->whereIn('status', ['active', 'running'])
                     ->orWhereNull('status');
             })
             ->whereDate('end_date', '>', $today->toDateString())
@@ -939,7 +946,7 @@ class InvoicesController extends Controller
 
         $expiredItems = (clone $expiryItemBaseQuery)
             ->where(function ($query) {
-                $query->where('status', 'active')
+                $query->whereIn('status', ['active', 'running'])
                     ->orWhereNull('status');
             })
             ->whereDate('end_date', '<=', $today->toDateString())
@@ -958,8 +965,8 @@ class InvoicesController extends Controller
         return view('invoices.expiry-list', [
             'title' => 'Expiry List',
             'subtitle' => $selectedClientId
-                ? 'Recurring invoice items filtered by selected client.'
-                : 'Recurring invoice items across all clients.',
+                ? 'Orders filtered by selected client.'
+                : 'Orders across all clients.',
             'clients' => $clients,
             'selectedClientId' => $selectedClientId,
             'selectedTab' => $selectedTab,
@@ -1003,7 +1010,6 @@ class InvoicesController extends Controller
         $account = \App\Models\Account::find($accountid);
         $orderId = request('o', request('orderid'));
         $clientId = request('c', request('clientid'));
-        $invoiceFor = request('invoice_for');
         $currentUserId = $user?->userid ?? $user?->id;
         $draftId = request('d');
 
@@ -1015,28 +1021,58 @@ class InvoicesController extends Controller
                 ->first();
         }
 
-        if (empty($invoiceFor) && $existingDraft) {
-            $invoiceFor = $existingDraft->orderid ? 'orders' : 'without_orders';
-        }
-
         if (
             empty($existingDraft)
             && empty($draftId)
             && !empty($clientId)
             && !empty($currentUserId)
-            && $invoiceFor !== 'renewal'
         ) {
             $existingDraft = Invoice::query()
                 ->where('clientid', $clientId)
                 ->where('accountid', $accountid)
                 ->where('status', 'draft')
                 ->where('created_by', $currentUserId)
-                ->when($invoiceFor === 'orders' && !empty($orderId), fn($q) => $q->where('orderid', $orderId))
-                ->when($invoiceFor === 'orders' && empty($orderId), fn($q) => $q->whereNull('orderid'))
-                ->when($invoiceFor !== 'orders', fn($q) => $q->whereNull('orderid'))
+                ->when(!empty($orderId), fn($q) => $q->where('orderid', $orderId))
+                ->when(empty($orderId), fn($q) => $q->whereNull('orderid'))
                 ->where('updated_at', '>', now()->subHours(24))
                 ->latest('updated_at')
                 ->first();
+        }
+
+        $orderItemsForClient = collect();
+        if (!empty($clientId)) {
+            $orderItemsForClient = \App\Models\Order::query()
+                ->where('accountid', $accountid)
+                ->where('clientid', $clientId)
+                ->where('status', '!=', 'cancelled')
+                ->with([
+                    'item:itemid,user_wise',
+                    'item.costings',
+                    'client:clientid,currency',
+                ])
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(function ($order) {
+                    $pricing = $this->deriveOrderPricing($order);
+
+                    return [
+                        'orderid' => (string) $order->orderid,
+                        'order_number' => (string) ($order->order_number ?? ''),
+                        'itemid' => (string) ($order->itemid ?? ''),
+                        'item_name' => (string) ($order->item_name ?? 'Item'),
+                        'item_description' => (string) ($order->item_description ?? ''),
+                        'quantity' => (int) max(1, (int) ($order->quantity ?? 1)),
+                        'unit_price' => (float) ($pricing['unit_price'] ?? 0),
+                        'tax_rate' => (float) ($pricing['tax_rate'] ?? 0),
+                        'no_of_users' => $order->no_of_users ? (int) $order->no_of_users : null,
+                        'frequency' => 'One-Time',
+                        'duration' => null,
+                        'start_date' => $order->start_date?->format('Y-m-d'),
+                        'end_date' => $order->end_date?->format('Y-m-d'),
+                        'requires_user_fields' => $this->isUserWiseEnabled(optional($order->item)->user_wise),
+                    ];
+                })
+                ->values();
         }
 
         $nextInvoiceNumber = $existingDraft?->pi_number ?: $this->generateInvoiceNumber();
@@ -1087,6 +1123,7 @@ class InvoicesController extends Controller
             'invoice' => $existingDraft,
             'isTaxInvoice' => request('tax_invoice', 0) == 1,
             'selectedClientCurrency' => $selectedClientCurrency,
+            'orderItemsForClient' => $orderItemsForClient,
         ]);
     }
 
@@ -1099,27 +1136,27 @@ class InvoicesController extends Controller
         }
 
         $orders = \App\Models\Order::where('clientid', $clientId)
-            ->where('is_verified', 'yes')
+            ->where('status', '!=', 'cancelled')
             ->whereDoesntHave('invoices')
-            ->with(['client:clientid,currency', 'salesPerson'])
-            ->withCount('items')
-            ->orderBy('order_date', 'desc')
-            ->get(['orderid', 'order_number', 'order_title', 'order_date', 'delivery_date', 'status', 'clientid', 'is_verified', 'sales_person_id', 'grand_total'])
+            ->with(['client:clientid,currency', 'item.costings'])
+            ->orderBy('created_at', 'desc')
+            ->get(['orderid', 'order_number', 'delivery_date', 'status', 'clientid', 'item_name', 'itemid', 'quantity', 'no_of_users', 'created_at'])
             ->map(function ($order) {
                 $currency = $order->client->currency ?? 'INR';
+                $pricing = $this->deriveOrderPricing($order);
 
                 return [
                     'orderid' => $order->orderid,
                     'order_number' => $order->order_number,
-                    'order_title' => $order->order_title,
-                    'order_date' => $order->order_date?->format('d M Y') ?? 'N/A',
+                    'order_title' => $order->item_name,
+                    'order_date' => $order->created_at?->format('d M Y') ?? 'N/A',
                     'delivery_date' => $order->delivery_date?->format('d M Y') ?? 'N/A',
-                    'grand_total' => $order->grand_total ?? '0',
+                    'grand_total' => $pricing['grand_total'],
                     'currency' => $currency,
                     'status' => $order->status ?? 'draft',
-                    'is_verified' => $order->is_verified ?? 'no',
-                    'sales_person' => $order->salesPerson->name ?? '-',
-                    'item_count' => (int) ($order->items_count ?? 0),
+                    'is_verified' => 'yes',
+                    'sales_person' => '-',
+                    'item_count' => 1,
                 ];
             });
 
@@ -1216,49 +1253,102 @@ class InvoicesController extends Controller
     public function getOrderItems(Request $request, $orderid)
     {
         $order = \App\Models\Order::with([
-            'items.item:itemid,user_wise',
+            'item:itemid,user_wise',
+            'item.costings',
             'client:clientid,currency',
-            'salesPerson',
         ])->findOrFail($orderid);
 
-        $items = $order->items->map(function ($item) {
-            $taxRate = (float) ($item->tax_rate ?? 0);
-            $lineTotal = (float) ($item->line_total ?? 0);
-            return [
-                'itemid' => $item->itemid,
-                'item_name' => $item->item_name,
-                'item_description' => $item->item_description,
-                'quantity' => $item->quantity,
-                'unit_price' => $item->unit_price,
-                'tax_rate' => $taxRate,
-                'discount_percent' => $item->discount_percent ?? 0,
-                'discount_amount' => $item->discount_amount ?? 0,
-                'duration' => $item->duration,
-                'frequency' => $item->frequency,
-                'no_of_users' => $item->no_of_users,
-                'start_date' => $item->start_date?->format('Y-m-d'),
-                'end_date' => $item->end_date?->format('Y-m-d'),
-                'delivery_date' => $item->delivery_date?->format('Y-m-d'),
-                'line_total' => $lineTotal,
-                'requires_user_fields' => $this->isUserWiseEnabled(optional($item->item)->user_wise),
-            ];
-        })->values();
+        $pricing = $this->deriveOrderPricing($order);
+        $items = collect([[
+            'itemid' => $order->itemid,
+            'item_name' => $order->item_name,
+            'item_description' => $order->item_description,
+            'quantity' => $order->quantity,
+            'unit_price' => $pricing['unit_price'],
+            'tax_rate' => $pricing['tax_rate'],
+            'discount_percent' => 0,
+            'discount_amount' => 0,
+            'duration' => null,
+            'frequency' => 'One-Time',
+            'no_of_users' => $order->no_of_users,
+            'start_date' => $order->start_date?->format('Y-m-d'),
+            'end_date' => $order->end_date?->format('Y-m-d'),
+            'delivery_date' => $order->delivery_date?->format('Y-m-d'),
+            'line_total' => $pricing['line_total'],
+            'requires_user_fields' => $this->isUserWiseEnabled(optional($order->item)->user_wise),
+        ]]);
 
         return response()->json([
             'order' => [
                 'orderid' => $order->orderid,
                 'order_number' => $order->order_number,
-                'order_title' => $order->order_title,
-                'order_date' => $order->order_date?->format('d M Y') ?? 'N/A',
+                'order_title' => $order->item_name,
+                'order_date' => $order->created_at?->format('d M Y') ?? 'N/A',
                 'delivery_date' => $order->delivery_date?->format('d M Y') ?? 'N/A',
-                'grand_total' => $order->grand_total,
+                'grand_total' => $pricing['grand_total'],
                 'currency' => $order->client->currency ?? 'INR',
-                'sales_person' => $order->salesPerson->name ?? '-',
-                'is_verified' => $order->is_verified ?? 'no',
-                'item_count' => $order->items->count(),
+                'sales_person' => '-',
+                'is_verified' => 'yes',
+                'item_count' => 1,
             ],
             'items' => $items,
+            'date_prefill' => $this->resolveOrderDatePrefill($order),
         ]);
+    }
+
+    private function resolveOrderDatePrefill(Order $order): array
+    {
+        $orderStartDate = $order->start_date?->toDateString();
+        $orderEndDate = $order->end_date?->toDateString();
+
+        $result = [
+            'source' => 'orders',
+            'order_start_date' => $orderStartDate,
+            'order_end_date' => $orderEndDate,
+            'suggested_start_date' => $orderStartDate,
+        ];
+
+        if (!Schema::hasColumn('invoice_items', 'orderid')) {
+            return $result;
+        }
+
+        $maxEndDate = InvoiceItem::query()
+            ->where('clientid', $order->clientid)
+            ->where('orderid', $order->orderid)
+            ->whereNotNull('end_date')
+            ->max('end_date');
+
+        if (!empty($maxEndDate)) {
+            $result['source'] = 'invoice_items';
+            $result['suggested_start_date'] = Carbon::parse((string) $maxEndDate)->addDay()->toDateString();
+            return $result;
+        }
+
+        return $result;
+    }
+
+    private function deriveOrderPricing(\App\Models\Order $order): array
+    {
+        $account = \App\Models\Account::find($order->accountid);
+        $serviceCosting = $order->item?->costings?->sortBy('currency_code')->first();
+        $unitPrice = (float) ($serviceCosting->selling_price ?? 0);
+        $taxRate = (float) ($serviceCosting->tax_rate ?? 0);
+
+        if ($account && !$account->allow_multi_taxation && (float) ($account->fixed_tax_rate ?? 0) > 0) {
+            $taxRate = (float) $account->fixed_tax_rate;
+        }
+
+        $quantity = max(1, (int) round((float) ($order->quantity ?? 1), 0));
+        $users = max(1, (int) round((float) ($order->no_of_users ?? 1), 0));
+        $lineTotal = (float) round($quantity * $users * $unitPrice, 0);
+        $taxAmount = (float) ceil($lineTotal * ($taxRate / 100));
+
+        return [
+            'unit_price' => $unitPrice,
+            'tax_rate' => $taxRate,
+            'line_total' => $lineTotal,
+            'grand_total' => max(0, $lineTotal + $taxAmount),
+        ];
     }
 
     public function getRenewalItems(Request $request, $invoiceid)
@@ -1331,14 +1421,15 @@ class InvoicesController extends Controller
         $lineTotal = $this->wholeAmount($itemData['line_total'] ?? 0);
         $discountPercent = $this->wholePercent($itemData['discount_percent'] ?? 0);
 
-        $discountAmount = ($lineTotal * $discountPercent) / 100;
-        $taxableAmount = max(0, $lineTotal - $discountAmount);
+        $discountValue = ($lineTotal * $discountPercent) / 100;
+        $taxableAmount = max(0, $lineTotal - $discountValue);
         $taxAmount = ($taxableAmount * $taxRate) / 100;
 
         return [
             'line_total' => round($lineTotal, 0),
             'discount_percent' => $discountPercent,
-            'discount_amount' => $this->roundDiscountDown($discountAmount),
+            // discount_amount stores final discounted line amount.
+            'discount_amount' => $this->roundDiscountDown($taxableAmount),
             'tax_amount' => $this->roundTaxUp($taxAmount),
         ];
     }
@@ -1568,7 +1659,6 @@ class InvoicesController extends Controller
                 'status' => 'nullable|in:active,cancelled',
                 'items_data' => 'required|json',
                 'accountid' => 'nullable|size:10',
-                'renewed_item_ids' => 'nullable|string',
             ]);
         } catch (ValidationException $e) {
             throw $e;
@@ -1591,12 +1681,7 @@ class InvoicesController extends Controller
             $this->assertDocumentNumberAvailable($validated['invoice_number'], null, 'pi_number');
         }
 
-        $invoiceSource = 'without_orders';
-        if (!empty($validated['orderid'])) {
-            $invoiceSource = 'orders';
-        } elseif (!empty($validated['renewed_item_ids'])) {
-            $invoiceSource = 'renewal';
-        }
+        $invoiceSource = !empty($validated['orderid']) ? 'orders' : 'without_orders';
 
         if ($invoiceSource === 'orders') {
             if (empty($validated['orderid'])) {
@@ -1621,8 +1706,6 @@ class InvoicesController extends Controller
                     'orderid' => 'The selected order already has an invoice.',
                 ]);
             }
-        } elseif ($invoiceSource === 'renewal') {
-            $validated['orderid'] = null;
         }
 
         $user = Auth::user();
@@ -1654,7 +1737,6 @@ class InvoicesController extends Controller
             $this->assertDocumentNumberAvailable($validated['pi_number'], null, 'pi_number');
         }
         unset($validated['invoice_number']);
-        unset($validated['invoice_for']);
 
         $itemsData = json_decode($request->items_data, true);
         if (!is_array($itemsData) || empty($itemsData)) {
@@ -1699,11 +1781,12 @@ class InvoicesController extends Controller
             }
 
             $subtotal += $lineTotal;
-            $discountTotal += $amounts['discount_amount'];
+            $discountTotal += max(0, $lineTotal - $amounts['discount_amount']);
             $taxTotal += $amounts['tax_amount'];
 
             $preparedItems[] = [
                 'invoiceid' => null,
+                'orderid' => $itemData['orderid'] ?? ($validated['orderid'] ?? null),
                 'itemid' => $itemId,
                 'item_name' => $itemData['item_name'] ?? ($service?->name ?? 'Custom Item'),
                 'item_description' => $itemData['item_description'] ?? null,
@@ -1755,38 +1838,6 @@ class InvoicesController extends Controller
                         ->update(['status' => 'completed']);
                 }
 
-                // If this is a renewal, mark the original items as renewed
-                if ($invoiceSource === 'renewal') {
-                    $renewedItemIdsRaw = $request->input('renewed_item_ids');
-                    $renewedItemIds = json_decode($renewedItemIdsRaw ?? '[]', true);
-                    if (!is_array($renewedItemIds) || empty($renewedItemIds)) {
-                        $renewedItemIds = $this->extractRenewedItemIdsFromItemsData($itemsData ?? []);
-                    }
-
-                    \Log::info('Renewal submission check', [
-                        'invoice_for' => $invoiceSource,
-                        'renewed_item_ids_raw' => $renewedItemIdsRaw,
-                        'renewed_item_ids_parsed' => $renewedItemIds,
-                        'new_invoice_id' => $invoice->invoiceid,
-                    ]);
-
-                    if (!empty($renewedItemIds)) {
-                        $renewedItemIds = array_values(array_filter(array_map('strval', (array) $renewedItemIds)));
-                        InvoiceItem::query()
-                            ->whereIn('invoice_itemid', $renewedItemIds)
-                            ->update([
-                                'status' => 'renewed',
-                            ]);
-                        $this->forgetRenewalSourceItemIds($invoice->invoiceid);
-
-                        \Log::info('Renewal item ids marked as renewed', [
-                            'invoice_id' => $invoice->invoiceid,
-                            'renewed_invoice_item_ids' => $renewedItemIds,
-                        ]);
-                    } else {
-                        \Log::warning('No renewed_item_ids found for renewal invoice');
-                    }
-                }
             });
         } catch (\Exception $e) {
             \Log::error('Failed to create invoice: ' . $e->getMessage(), [
@@ -1811,20 +1862,25 @@ class InvoicesController extends Controller
             $description = $referenceNumber;
         }
 
+        $ledgerPayload = [
+            'accountid' => $invoice->accountid,
+            'clientid' => $invoice->clientid,
+            'date' => $invoice->issue_date,
+            'amount' => $grandTotal,
+            'mode' => 'invoice',
+            'reference_number' => $referenceNumber,
+            'description' => $description ?: null,
+        ];
+        if (Schema::hasColumn('ledger', 'status')) {
+            $ledgerPayload['status'] = strtolower(trim((string) ($invoice->status ?? 'active')));
+        }
+
         Ledger::query()->updateOrCreate(
             [
                 'invoiceid_paymentid' => $invoice->invoiceid,
                 'type' => 'dr',
             ],
-            [
-                'accountid' => $invoice->accountid,
-                'clientid' => $invoice->clientid,
-                'date' => $invoice->issue_date,
-                'amount' => $grandTotal,
-                'mode' => 'invoice',
-                'reference_number' => $referenceNumber,
-                'description' => $description ?: null,
-            ]
+            $ledgerPayload
         );
     }
 
@@ -1898,7 +1954,6 @@ class InvoicesController extends Controller
     {
         $validated = $request->validate([
             'invoiceid' => 'nullable|exists:invoices,invoiceid',
-            'invoice_for' => 'nullable|in:orders,renewal,without_orders',
             'clientid' => 'required|exists:clients,clientid',
             'orderid' => 'nullable|exists:orders,orderid',
             'invoice_title' => 'sometimes|required|string|max:255',
@@ -1907,7 +1962,6 @@ class InvoicesController extends Controller
             'notes' => 'nullable|string',
             'status' => 'nullable|in:draft,active,cancelled',
             'items_data' => 'nullable|json',
-            'renewed_item_ids' => 'nullable|string',
         ]);
 
         $user = Auth::user();
@@ -1918,8 +1972,6 @@ class InvoicesController extends Controller
 
         // Check if draft already exists for this client
         $orderId = $validated['orderid'] ?? null;
-        $invoiceFor = $validated['invoice_for'] ?? ($orderId ? 'orders' : 'without_orders');
-
         $draft = null;
         $isExplicitInvoiceEdit = !empty($validated['invoiceid']);
         if (!empty($validated['invoiceid'])) {
@@ -1929,7 +1981,7 @@ class InvoicesController extends Controller
                 ->first();
         }
 
-        if (!$draft && !$isExplicitInvoiceEdit && $invoiceFor !== 'renewal') {
+        if (!$draft && !$isExplicitInvoiceEdit) {
             $draft = Invoice::where('clientid', $validated['clientid'])
                 ->whereIn('accountid', $accountCandidates)
                 ->where('status', 'draft')
@@ -2000,10 +2052,11 @@ class InvoicesController extends Controller
                 $taxRate = (float) ($itemData['tax_rate'] ?? 0);
                 $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
                 $calculatedSubtotal += (float) $amounts['line_total'];
-                $calculatedDiscountTotal += (float) $amounts['discount_amount'];
+                $calculatedDiscountTotal += max(0, (float) $amounts['line_total'] - (float) $amounts['discount_amount']);
                 $calculatedTaxTotal += (float) $amounts['tax_amount'];
 
                 $draftItems[] = [
+                    'orderid' => $itemData['orderid'] ?? $orderId,
                     'itemid' => $itemData['itemid'] ?? null,
                     'item_name' => $itemName,
                     'item_description' => $itemData['item_description'] ?? null,
@@ -2025,17 +2078,6 @@ class InvoicesController extends Controller
             $draft->items()->delete();
             if (!empty($draftItems)) {
                 $draft->items()->createMany($draftItems);
-            }
-        }
-
-        if (($validated['invoice_for'] ?? '') === 'renewal') {
-            $renewedItemIds = json_decode((string) ($validated['renewed_item_ids'] ?? '[]'), true);
-            if (!is_array($renewedItemIds) || empty($renewedItemIds)) {
-                $renewedItemIds = $this->extractRenewedItemIdsFromItemsData($itemsData ?? []);
-            }
-            if (!empty($renewedItemIds)) {
-                $renewedItemIds = array_values(array_filter(array_map('strval', $renewedItemIds)));
-                $this->storeRenewalSourceItemIds($draft->invoiceid, $renewedItemIds);
             }
         }
 
@@ -2065,7 +2107,6 @@ class InvoicesController extends Controller
         $accountid = $this->resolveAccountId();
         $orderId = request('o', request('orderid'));
         $draftId = request('d');
-        $invoiceFor = request('invoice_for');
 
         $draft = null;
         if (!empty($draftId)) {
@@ -2075,7 +2116,7 @@ class InvoicesController extends Controller
                 ->first();
         }
 
-        if (!$draft && empty($draftId) && $invoiceFor !== 'renewal') {
+        if (!$draft && empty($draftId)) {
             $draft = Invoice::where('clientid', $clientid)
                 ->where('accountid', $accountid)
                 ->where('status', 'draft')
@@ -2099,10 +2140,9 @@ class InvoicesController extends Controller
                 'pi_number' => $draft->pi_number,
                 'ti_number' => $draft->ti_number,
                 'invoice_title' => $draft->invoice_title,
-                'invoice_for' => $draft->invoice_for,
                 'orderid' => $draft->orderid,
-                'po_number' => $draft->order?->po_number,
-                'po_date' => $draft->order?->po_date?->format('Y-m-d'),
+                'po_number' => $draft->client?->latestPurchaseOrder()?->document_number,
+                'po_date' => $draft->client?->latestPurchaseOrder()?->document_date?->format('Y-m-d'),
                 'issue_date' => $draft->issue_date?->format('Y-m-d'),
                 'due_date' => $draft->due_date?->format('Y-m-d'),
                 'notes' => $draft->notes,
@@ -2153,16 +2193,15 @@ class InvoicesController extends Controller
     public function invoicesEdit(string $invoice)
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
-        $invoiceFor = $invoice->orderid ? 'orders' : 'without_orders';
-        $step = $invoiceFor === 'without_orders' ? 2 : 3;
+        $invoiceFor = 'without_orders';
+        $step = 2;
         $query = [
             'step' => $step,
-            'invoice_for' => $invoiceFor,
             'c' => request('c', $invoice->clientid),
             'd' => $invoice->invoiceid,
         ];
 
-        if ($invoiceFor === 'orders' && !empty($invoice->orderid)) {
+        if (!empty($invoice->orderid)) {
             $query['o'] = $invoice->orderid;
         }
 
@@ -2232,7 +2271,7 @@ class InvoicesController extends Controller
         foreach ($invoice->items as $it) {
             $a = $this->calculateInvoiceItemAmounts(['line_total' => $it->amount, 'discount_percent' => $it->discount_percent], (float) $it->tax_rate);
             $subtotal += $a['line_total'];
-            $discountTotal += $a['discount_amount'];
+            $discountTotal += max(0, (float) $a['line_total'] - (float) $a['discount_amount']);
             $taxTotal += $a['tax_amount'];
         }
         // Totals are derived from invoice_items and not stored on invoices table.
@@ -2286,7 +2325,7 @@ class InvoicesController extends Controller
             $taxRate = (float) ($itemData['tax_rate'] ?? 0);
             $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
             $subtotal += $amounts['line_total'];
-            $discountTotal += $amounts['discount_amount'];
+            $discountTotal += max(0, (float) $amounts['line_total'] - (float) $amounts['discount_amount']);
             $taxTotal += $amounts['tax_amount'];
         }
 
@@ -2312,6 +2351,7 @@ class InvoicesController extends Controller
             $isUserWiseItem = $accountHasUsers && $this->isUserWiseEnabled($service?->user_wise);
             $hasRecurringFrequency = $this->hasRecurringFrequency($itemData['frequency'] ?? null);
             $payload = [
+                'orderid' => $itemData['orderid'] ?? ($invoice->orderid ?? null),
                 'itemid' => $itemData['itemid'] ?: null,
                 'item_name' => $itemData['item_name'] ?? ($service?->name ?? 'Custom Item'),
                 'item_description' => $itemData['item_description'] ?? null,
@@ -2353,8 +2393,28 @@ class InvoicesController extends Controller
     public function invoicesDestroy(string $invoice)
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
-        $selectedClientId = request('c') ?: $invoice->clientid;
-        $invoice->update(['status' => 'cancelled']);
+        $selectedClientId = trim((string) request('c', ''));
+        DB::transaction(function () use ($invoice) {
+            $invoice->update(['status' => 'cancelled']);
+
+            if (Schema::hasColumn('ledger', 'status')) {
+                Ledger::query()
+                    ->where('invoiceid_paymentid', $invoice->invoiceid)
+                    ->where('type', 'dr')
+                    ->update(['status' => 'cancelled']);
+            }
+
+            $paymentIds = Payment::query()
+                ->where('invoiceid', $invoice->invoiceid)
+                ->pluck('paymentid');
+
+            if (Schema::hasColumn('ledger', 'status')) {
+                Ledger::query()
+                    ->whereIn('invoiceid_paymentid', $paymentIds)
+                    ->where('type', 'cr')
+                    ->update(['status' => 'cancelled']);
+            }
+        });
 
         return redirect()
             ->route('invoices.index', $selectedClientId ? ['c' => $selectedClientId] : [])
@@ -2364,8 +2424,28 @@ class InvoicesController extends Controller
     public function invoicesRestore(string $invoice)
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
-        $selectedClientId = request('c') ?: $invoice->clientid;
-        $invoice->update(['status' => 'active']);
+        $selectedClientId = trim((string) request('c', ''));
+        DB::transaction(function () use ($invoice) {
+            $invoice->update(['status' => 'active']);
+
+            if (Schema::hasColumn('ledger', 'status')) {
+                Ledger::query()
+                    ->where('invoiceid_paymentid', $invoice->invoiceid)
+                    ->where('type', 'dr')
+                    ->update(['status' => 'active']);
+            }
+
+            $paymentIds = Payment::query()
+                ->where('invoiceid', $invoice->invoiceid)
+                ->pluck('paymentid');
+
+            if (Schema::hasColumn('ledger', 'status')) {
+                Ledger::query()
+                    ->whereIn('invoiceid_paymentid', $paymentIds)
+                    ->where('type', 'cr')
+                    ->update(['status' => 'active']);
+            }
+        });
 
         return redirect()
             ->route('invoices.index', $selectedClientId ? ['c' => $selectedClientId] : [])
@@ -2382,8 +2462,10 @@ class InvoicesController extends Controller
 
         $invoiceItem->update(['status' => 'suspended']);
 
+        $requestedClient = trim((string) $request->input('c', ''));
+
         $params = array_filter([
-            'c' => request('c') ?: $invoice->clientid,
+            'c' => $requestedClient,
             'tab' => request('tab', 'expired'),
         ]);
 
@@ -2402,14 +2484,108 @@ class InvoicesController extends Controller
 
         $invoiceItem->update(['status' => 'active']);
 
+        $requestedClient = trim((string) $request->input('c', ''));
+
         $params = array_filter([
-            'c' => request('c') ?: $invoice->clientid,
+            'c' => $requestedClient,
             'tab' => request('tab', 'suspended'),
         ]);
 
         return redirect()
             ->route('invoices.expiry-list', $params)
             ->with('success', 'Item unsuspended successfully.');
+    }
+
+    public function suspendExpiryOrder(Request $request, string $order)
+    {
+        $orderModel = Order::query()
+            ->where('accountid', $this->resolveAccountId())
+            ->findOrFail($order);
+
+        if (($orderModel->status ?? '') === 'cancelled') {
+            return $this->redirectExpiryListWithFilters($request, 'expired')
+                ->with('error', 'Cancelled order cannot be suspended.');
+        }
+
+        $today = now()->startOfDay();
+        $endDate = $orderModel->end_date?->copy()->startOfDay();
+        if (!$endDate || $endDate->gt($today)) {
+            return $this->redirectExpiryListWithFilters($request, 'expired')
+                ->with('error', 'Only expired orders can be suspended.');
+        }
+
+        $orderModel->update(['status' => 'suspended']);
+
+        return $this->redirectExpiryListWithFilters($request, 'expired')
+            ->with('success', 'Order suspended successfully.');
+    }
+
+    public function unsuspendExpiryOrder(Request $request, string $order)
+    {
+        $orderModel = Order::query()
+            ->where('accountid', $this->resolveAccountId())
+            ->findOrFail($order);
+
+        if (($orderModel->status ?? '') !== 'suspended') {
+            return $this->redirectExpiryListWithFilters($request, 'suspended')
+                ->with('error', 'Only suspended orders can be unsuspended.');
+        }
+
+        $orderModel->update(['status' => 'active']);
+
+        return $this->redirectExpiryListWithFilters($request, 'suspended')
+            ->with('success', 'Order unsuspended successfully.');
+    }
+
+    public function renewExpiryOrder(Request $request, string $order)
+    {
+        $orderModel = Order::query()
+            ->where('accountid', $this->resolveAccountId())
+            ->findOrFail($order);
+
+        $validated = $request->validate([
+            'end_date' => 'required|date',
+        ]);
+
+        $newEndDate = (string) $validated['end_date'];
+        $startDate = $orderModel->start_date?->toDateString();
+        if (!empty($startDate) && $newEndDate < $startDate) {
+            return $this->redirectExpiryListWithFilters($request, request('tab', 'expired'))
+                ->with('error', 'End date cannot be before start date.');
+        }
+
+        $orderModel->update([
+            'end_date' => $newEndDate,
+        ]);
+
+        if ($request->input('return_to') === 'orders') {
+            $clientId = (string) ($request->input('c') ?: $orderModel->clientid);
+            $params = array_filter([
+                'c' => $clientId,
+            ], fn ($value) => (string) $value !== '');
+
+            return redirect()
+                ->route('orders.index', $params)
+                ->with('success', 'Order renewed successfully.');
+        }
+
+        return $this->redirectExpiryListWithFilters($request, request('tab', 'expired'))
+            ->with('success', 'Order renewed successfully.');
+    }
+
+    private function redirectExpiryListWithFilters(Request $request, string $fallbackTab)
+    {
+        $requestedClient = trim((string) $request->input('c', ''));
+
+        $params = array_filter([
+            'c' => $requestedClient,
+            'tab' => (string) ($request->input('tab') ?: $fallbackTab),
+            'from' => trim((string) $request->input('from', '')),
+            'to' => trim((string) $request->input('to', '')),
+            'next_days' => trim((string) $request->input('next_days', '')),
+        ], fn ($value) => (string) $value !== '');
+
+        return redirect()->route('invoices.expiry-list', $params);
     }
 
     protected function resolveInvoiceDocument(string $invoiceid): Invoice

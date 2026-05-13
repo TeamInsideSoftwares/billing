@@ -36,6 +36,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/clients', 'clients')->name('clients.index');
         Route::get('/clients/create', 'clientsCreate')->name('clients.create');
         Route::post('/clients', 'clientsStore')->name('clients.store');
+        Route::get('/clients/{client}/documents/create', 'clientsDocumentsCreate')->name('clients.documents.create');
+        Route::post('/clients/{client}/documents', 'clientsDocumentsStore')->name('clients.documents.store');
+        Route::put('/clients/{client}/documents/{document}', 'clientsDocumentsUpdate')->name('clients.documents.update');
+        Route::patch('/clients/{client}/documents/{document}/cancel', 'clientsDocumentsCancel')->name('clients.documents.cancel');
+        Route::patch('/clients/{client}/documents/{document}/restore', 'clientsDocumentsRestore')->name('clients.documents.restore');
+        Route::get('/clients/{client}/documents/{document}/file', 'clientsDocumentsFile')->name('clients.documents.file');
         Route::get('/clients/{client}', 'clientsShow')->name('clients.show');
         Route::get('/clients/{client}/edit', 'clientsEdit')->name('clients.edit');
         Route::put('/clients/{client}', 'clientsUpdate')->name('clients.update');
@@ -75,6 +81,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/invoices/items/{item}/renew', 'startRenewalFromItem')->name('invoices.items.renew');
         Route::patch('/invoices/{invoice}/items/{item}/suspend', 'suspendInvoiceItem')->name('invoices.items.suspend');
         Route::patch('/invoices/{invoice}/items/{item}/unsuspend', 'unsuspendInvoiceItem')->name('invoices.items.unsuspend');
+        Route::patch('/invoices/orders/{order}/suspend', 'suspendExpiryOrder')->name('invoices.orders.suspend');
+        Route::patch('/invoices/orders/{order}/unsuspend', 'unsuspendExpiryOrder')->name('invoices.orders.unsuspend');
+        Route::patch('/invoices/orders/{order}/renew', 'renewExpiryOrder')->name('invoices.orders.renew');
         Route::get('/invoices/expiry-list', 'invoicesExpiryList')->name('invoices.expiry-list');
         Route::get('/invoices/{invoice}/pdf-versions', 'pdfVersions')->name('invoices.pdf-versions');
         Route::get('/invoices/{invoice}/pdf', 'downloadPdf')->name('invoices.pdf');
@@ -95,7 +104,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/payments/{payment}', 'paymentsShow')->name('payments.show');
         Route::get('/payments/{payment}/edit', 'paymentsEdit')->name('payments.edit');
         Route::put('/payments/{payment}', 'paymentsUpdate')->name('payments.update');
+        Route::patch('/payments/{payment}/restore', 'paymentsRestore')->name('payments.restore');
         Route::delete('/payments/{payment}', 'paymentsDestroy')->name('payments.destroy');
+    });
+
+    Route::controller(PaymentsController::class)->group(function () {
+        Route::get('/gst-report', 'paymentsGstReport')->name('gst-report.index');
     });
 
     Route::controller(SubscriptionsController::class)->group(function () {
@@ -144,14 +158,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/orders/json', 'getOrderJsonByNumber')->name('orders.json-by-number');
         Route::get('/orders', 'orders')->name('orders.index');
         Route::get('/orders/create', 'ordersCreate')->name('orders.create');
-        // AJAX routes (before parameterized routes)
-        Route::post('/orders/save-order', 'saveOrderAjax')->name('orders.save-ajax');
-        Route::post('/orders/{order}/add-item', 'addOrderItemAjax')->name('orders.items.add');
-        Route::post('/orders/{order}/update-item/{orderItemId}', 'updateOrderItemAjax')->name('orders.items.update');
-        Route::delete('/orders/{order}/remove-item/{orderItemId}', 'deleteOrderItemAjax')->name('orders.items.delete');
         Route::get('/orders/{order}/file/{type}', 'ordersFile')->name('orders.file');
         // Parameterized routes
-        Route::get('/orders/{order}', 'ordersShow')->name('orders.show');
         Route::get('/orders/{order}/json', 'getOrderJson')->name('orders.json');
         Route::get('/orders/{order}/edit', 'ordersEdit')->name('orders.edit');
         Route::post('/orders', 'ordersStore')->name('orders.store');

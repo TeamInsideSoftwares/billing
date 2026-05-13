@@ -143,6 +143,30 @@
             text-align: right;
         }
 
+        .invoice-title-text {
+            margin-bottom: 6pt;
+        }
+
+        .invoice-qr-wrap {
+            display: inline-block;
+            text-align: center;
+        }
+
+        .invoice-qr-img {
+            width: 90px;
+            height: 90px;
+            border: 1px solid #000;
+            padding: 2px;
+            background: #fff;
+        }
+
+        .invoice-qr-caption {
+            margin-top: 3pt;
+            font-size: 7pt;
+            font-weight: 600;
+            color: #000;
+        }
+
         table {
             width: 100%;
             margin-bottom: 14pt;
@@ -351,17 +375,17 @@
                     {{ optional($invoice->due_date)->format('d M Y') ?? '-' }}
                 </div>
 
-                @if(!empty($invoice->order?->po_number))
+                @if(!empty($invoice->purchase_order?->document_number))
                     <div class="meta-row">
                         <strong>PO Number:</strong>
-                        {{ $invoice->order->po_number }}
+                        {{ $invoice->purchase_order->document_number }}
                     </div>
                 @endif
 
-                @if(!empty($invoice->order?->po_date))
+                @if(!empty($invoice->purchase_order?->document_date))
                     <div class="meta-row">
                         <strong>PO Date:</strong>
-                        {{ optional($invoice->order->po_date)->format('d M Y') ?? '-' }}
+                        {{ optional($invoice->purchase_order->document_date)->format('d M Y') ?? '-' }}
                     </div>
                 @endif
             </div>
@@ -405,9 +429,30 @@
             @endif
         </div>
 
-        @if(!empty($invoice->invoice_title))
+        @php
+            $qrGrandTotal = (float) ($invoice->grand_total ?? 0);
+            $qrPayload = implode('|', array_filter([
+                'INV:' . ($invoice->invoice_number ?? $invoice->invoiceid ?? ''),
+                'AMT:' . number_format($qrGrandTotal, 0, '.', ''),
+                'CUR:' . ($invoice->client->currency ?? 'INR'),
+            ]));
+            $qrCodeUrl = $qrPayload !== ''
+                ? 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' . urlencode($qrPayload)
+                : null;
+        @endphp
+
+        @if(!empty($invoice->invoice_title) || !empty($qrCodeUrl))
             <div class="invoice-title-note">
-                {{ $invoice->invoice_title }}
+                @if(!empty($invoice->invoice_title))
+                    <div class="invoice-title-text">{{ $invoice->invoice_title }}</div>
+                @endif
+
+                @if(!empty($qrCodeUrl))
+                    <div class="invoice-qr-wrap">
+                        <img src="{{ $qrCodeUrl }}" class="invoice-qr-img" alt="Invoice QR">
+                        <div class="invoice-qr-caption">Scan • {{ number_format($qrGrandTotal, 0) }}</div>
+                    </div>
+                @endif
             </div>
         @endif
     </div>
@@ -424,10 +469,11 @@
         foreach ($invoice->items as $item) {
             $lt = (float)($item->line_total ?? 0);
             $da = (float)($item->discount_amount ?? 0);
-            $ta = ceil(max(0, $lt - $da) * ((float)($item->tax_rate ?? 0) / 100));
+            $discountedAmount = max(0, $da > 0 ? $da : $lt);
+            $ta = ceil($discountedAmount * ((float)($item->tax_rate ?? 0) / 100));
 
             $subtotal += $lt;
-            $discountTotal += $da;
+            $discountTotal += max(0, $lt - $discountedAmount);
             $taxTotal += $ta;
         }
 
@@ -500,11 +546,11 @@
                     </td>
 
                     <td class="right">
-                        {{ number_format((float)($item->unit_price ?? 0), 0) }}
+                        {{ number_format(max(0, (float)($item->discount_amount ?? 0) ?: (float)($item->line_total ?? 0)), 0) }}
                     </td>
 
                     <td class="right">
-                        {{ number_format((float)($item->line_total ?? 0), 0) }}
+                        {{ number_format(max(0, (float)($item->discount_amount ?? 0) ?: (float)($item->line_total ?? 0)), 0) }}
                     </td>
                 </tr>
             @endforeach
@@ -519,7 +565,7 @@
             <td class="center" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">{{ $sgst > 0 ? number_format($sgst, 0) : '-' }}</td>
             <td class="right" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;"><strong>IGST</strong></td>
             <td class="center" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">{{ $igst > 0 ? number_format($igst, 0) : '-' }}</td>
-            <td class="right" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;"><strong>Tax Total</strong></td>
+            <td class="right" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;"><strong>Total GST</strong></td>
             <td class="right" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">{{ number_format($taxTotal, 0) }}</td>
         </tr>
     </table>

@@ -18,13 +18,13 @@
     @php
         $selectedClient = $clients->firstWhere('clientid', $selectedClientId);
         $selectedClientCurrency = $selectedClient->currency ?? null;
-        $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'upcoming'], true)
+        $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'upcoming', 'cancelled'], true)
             ? $selectedTab
             : 'invoices';
     @endphp
 
     <div class="invoice-index-shell">
-        <section class="panel-card module-filter-panel">
+        <section class="panel-card module-filter-panel filter-panel-regular">
             <form action="{{ route('invoices.index') }}" method="GET" class="module-filter-grid">
                 <input type="hidden" name="tab" value="{{ $selectedTab ?? 'invoices' }}">
                 <input type="hidden" name="type" value="{{ $selectedType ?? '' }}">
@@ -43,18 +43,6 @@
                     </select>
                 </div>
 
-                <div class="module-filter-field">
-                    <label class="module-filter-label" for="invoice_from_filter">From</label>
-                    <input type="date" name="from" id="invoice_from_filter" class="form-control module-date-input"
-                        value="{{ $fromDate ?? '' }}" max="{{ now()->toDateString() }}">
-                </div>
-
-                <div class="module-filter-field">
-                    <label class="module-filter-label" for="invoice_to_filter">To</label>
-                    <input type="date" name="to" id="invoice_to_filter" class="form-control module-date-input"
-                        value="{{ $toDate ?? '' }}" max="{{ now()->toDateString() }}" min="{{ $fromDate ?? '' }}">
-                </div>
-
                 <div class="module-filter-actions">
                     <button type="submit" class="primary-button">Apply</button>
                     <a href="{{ route('invoices.index', array_filter([
@@ -69,13 +57,17 @@
 
         <div class="invoice-tabs-container">
             <div class="invoice-tabs">
-                <a href="{{ route('invoices.index', array_filter(['tab' => 'invoices', 'c' => $selectedClientId, 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'type' => $selectedType ?? '', 'status' => $selectedStatus ?? 'active'])) }}"
+                <a href="{{ route('invoices.index', array_filter(['tab' => 'invoices', 'c' => $selectedClientId, 'type' => $selectedType ?? '', 'status' => 'active'])) }}"
                     class="invoice-tab {{ $currentTab === 'invoices' ? 'is-active' : '' }}">
                     All <span>{{ ($allInvoiceRows ?? $allInvoices)->count() }}</span>
                 </a>
-                <a href="{{ route('invoices.index', array_filter(['tab' => 'upcoming', 'c' => $selectedClientId, 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'type' => $selectedType ?? '', 'status' => $selectedStatus ?? 'active'])) }}"
+                <a href="{{ route('invoices.index', array_filter(['tab' => 'upcoming', 'c' => $selectedClientId, 'type' => $selectedType ?? '', 'status' => 'active'])) }}"
                     class="invoice-tab {{ $currentTab === 'upcoming' ? 'is-active' : '' }}">
                     Upcoming <span>{{ $upcomingInvoicesCount ?? 0 }}</span>
+                </a>
+                <a href="{{ route('invoices.index', array_filter(['tab' => 'cancelled', 'c' => $selectedClientId, 'type' => $selectedType ?? '', 'status' => 'cancelled'])) }}"
+                    class="invoice-tab {{ $currentTab === 'cancelled' ? 'is-active' : '' }}">
+                    Cancelled <span>{{ $cancelledInvoicesCount ?? 0 }}</span>
                 </a>
             </div>
         </div>
@@ -86,6 +78,13 @@
                     <div class="meta-info">
                         <strong>Upcoming invoices</strong>
                         <span class="small-text">Draft invoices that are not finalized yet.</span>
+                    </div>
+                </div>
+            @elseif ($currentTab === 'cancelled')
+                <div class="invoice-list-meta">
+                    <div class="meta-info">
+                        <strong>Cancelled invoices</strong>
+                        <span class="small-text">All invoices that have been cancelled.</span>
                     </div>
                 </div>
             @endif
@@ -178,19 +177,19 @@
                                             @endif
                                         </td>
                                         <td class="text-center">
-                                            <div class="table-actions">
-                                                <a href="{{ route('invoices.show', [$documentId, 'c' => $selectedClientId ?: $invoice->clientid]) }}" class="text-action-btn view">View</a>
+                                            <div class="">
+                                                <a href="{{ route('invoices.show', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}" class="text-action-btn view">View</a>
 
                                                 @if (($invoice->status ?? '') === 'cancelled')
-                                                    <form method="POST" action="{{ route('invoices.restore', [$documentId, 'c' => $selectedClientId ?: $invoice->clientid]) }}" class="inline-delete" onsubmit="return confirm('Restore this invoice?')">
+                                                    <form method="POST" action="{{ route('invoices.restore', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}" class="inline-delete" onsubmit="return confirm('Restore this invoice?')">
                                                         @csrf
                                                         @method('PATCH')
                                                         <button type="submit" class="text-action-btn secondary">Restore</button>
                                                     </form>
                                                 @else
                                                     <a href="{{ route('invoices.pdf', $invoice) }}" class="text-action-btn pdf" target="_blank">PDF</a>
-                                                    <a href="{{ route('invoices.edit', ['invoice' => $documentId, 'c' => $selectedClientId ?: $invoice->clientid]) }}" class="text-action-btn edit">Edit</a>
-                                                    <form method="POST" action="{{ route('invoices.destroy', [$documentId, 'c' => $selectedClientId ?: $invoice->clientid]) }}" class="inline-delete" onsubmit="return confirm('Cancel this invoice?')">
+                                                    <a href="{{ route('invoices.edit', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}" class="text-action-btn edit">Edit</a>
+                                                    <form method="POST" action="{{ route('invoices.destroy', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}" class="inline-delete" onsubmit="return confirm('Cancel this invoice?')">
                                                         @csrf
                                                         @method('DELETE')
                                                         <button type="submit" class="text-action-btn delete">Cancel</button>

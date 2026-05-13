@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'mode',
     'reference_number',
     'description',
+    'status',
 ])]
 class Payment extends Model
 {
@@ -35,6 +36,7 @@ class Payment extends Model
         'mode',
         'reference_number',
         'description',
+        'status',
     ];
     protected $casts = [
         'payment_date' => 'date',

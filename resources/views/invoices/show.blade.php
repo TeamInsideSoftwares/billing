@@ -11,19 +11,13 @@
     });
     $itemsDiscountTotal = (float) $invoice->items->sum(function ($item) {
         $lineTotal = (float) ($item->line_total ?? 0);
-        $discountPercent = (float) ($item->discount_percent ?? 0);
-        $discountAmount = isset($item->discount_amount)
-            ? (float) ($item->discount_amount ?? 0)
-            : floor(max(0, $lineTotal * ($discountPercent / 100)));
-        return max(0, $discountAmount);
+        $discountedAmount = (float) ($item->discount_amount ?? 0);
+        return max(0, $lineTotal - ($discountedAmount > 0 ? $discountedAmount : $lineTotal));
     });
     $invoiceTaxTotal = (float) $invoice->items->sum(function ($item) {
         $lineTotal = (float) ($item->line_total ?? 0);
-        $discountPercent = (float) ($item->discount_percent ?? 0);
-        $discountAmount = isset($item->discount_amount)
-            ? (float) ($item->discount_amount ?? 0)
-            : floor(max(0, $lineTotal * ($discountPercent / 100)));
-        $taxableAmount = max(0, $lineTotal - max(0, $discountAmount));
+        $discountedAmount = (float) ($item->discount_amount ?? 0);
+        $taxableAmount = max(0, $discountedAmount > 0 ? $discountedAmount : $lineTotal);
         return ceil($taxableAmount * ((float) ($item->tax_rate ?? 0) / 100));
     });
     $invoiceGrandTotal = max(0, $itemsSubtotal - $itemsDiscountTotal + $invoiceTaxTotal);
@@ -73,11 +67,10 @@
             </form>
         @endif
         <a href="{{ route('invoices.create', [
-            'step' => ($invoice->invoice_for ?? 'orders') === 'without_orders' ? 2 : 3,
-            'invoice_for' => $invoice->invoice_for ?? 'orders',
+            'step' => 2,
             'c' => request('c', $invoice->clientid),
             'd' => $invoice->invoiceid,
-            'o' => ($invoice->invoice_for ?? '') === 'orders' ? ($invoice->orderid ?? null) : null,
+            'o' => $invoice->orderid ?? null,
             'tax_invoice' => !empty($invoice->ti_number) ? 1 : null,
         ]) }}" class="primary-button small">
             Edit

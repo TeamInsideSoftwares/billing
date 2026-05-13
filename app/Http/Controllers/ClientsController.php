@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\Client;
 use App\Models\ClientBillingDetail;
+use App\Models\ClientDocument;
 use App\Models\Group;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -17,24 +18,23 @@ class ClientsController extends Controller
     {
         $accountId = $this->resolveAccountId();
         $query = Client::query()->where('accountid', $accountId)->with(['invoices.items', 'payments']);
-        $searchTerm = request('search', '');
-        $fromDate = request('from');
-        $toDate = request('to');
+        $searchTerm = trim((string) request('search', ''));
+        $selectedState = trim((string) request('state', ''));
+        $selectedCity = trim((string) request('city', ''));
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('business_name', 'like', '%' . $searchTerm . '%')
-                    ->orWhere('contact_name', 'like', '%' . $searchTerm . '%')
-                    ->orWhere('email', 'like', '%' . $searchTerm . '%');
+                    ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
             });
         }
 
-        if ($fromDate) {
-            $query->whereDate('created_at', '>=', $fromDate);
+        if ($selectedState !== '') {
+            $query->where('state', $selectedState);
         }
 
-        if ($toDate) {
-            $query->whereDate('created_at', '<=', $toDate);
+        if ($selectedCity !== '') {
+            $query->where('city', $selectedCity);
         }
         $resultCount = $query->count();
 
@@ -66,6 +66,23 @@ class ClientsController extends Controller
         });
 
         $groups = Group::where('accountid', $accountId)->orderBy('group_name')->get();
+        $stateOptions = Client::query()
+            ->where('accountid', $accountId)
+            ->whereNotNull('state')
+            ->where('state', '!=', '')
+            ->select('state')
+            ->distinct()
+            ->orderBy('state')
+            ->pluck('state');
+        $cityOptions = Client::query()
+            ->where('accountid', $accountId)
+            ->whereNotNull('city')
+            ->where('city', '!=', '')
+            ->when($selectedState !== '', fn ($cityQuery) => $cityQuery->where('state', $selectedState))
+            ->select('city')
+            ->distinct()
+            ->orderBy('city')
+            ->pluck('city');
 
         return view('clients.index', [
             'title' => 'All Clients',
@@ -74,6 +91,10 @@ class ClientsController extends Controller
             'groups' => $groups,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
+            'selectedState' => $selectedState,
+            'selectedCity' => $selectedCity,
+            'stateOptions' => $stateOptions,
+            'cityOptions' => $cityOptions,
         ]);
     }
 
@@ -205,7 +226,7 @@ class ClientsController extends Controller
 
     public function clientsShow(Client $client): View
     {
-        $client->load(['invoices', 'payments','billingDetail']);
+        $client->load(['invoices', 'payments', 'billingDetail', 'documents']);
         $paidTotal = (float) $client->payments->sum(function ($payment) {
             return (float) ($payment->received_amount ?? 0);
         });
@@ -219,6 +240,187 @@ class ClientsController extends Controller
             'outstanding' => $outstanding,
             'allInvoices' => $allInvoices,
         ]);
+    }
+
+    public function clientsDocumentsCreate(Request $request, Client $client): View
+    {
+        $accountId = $this->resolveAccountId();
+        if ((string) $client->accountid !== $accountId) {
+            abort(404);
+        }
+
+        $focusType = strtolower((string) $request->query('type', 'po'));
+        if (!in_array($focusType, ['po', 'agreement'], true)) {
+            $focusType = 'po';
+        }
+
+        $client->load(['documents' => function ($query) {
+            $query->latest('document_date')
+                ->latest('created_at');
+        }]);
+
+        $editDocument = null;
+        $editId = (string) $request->query('edit', '');
+        if ($editId !== '') {
+            $candidate = $client->documents->firstWhere('client_docid', $editId);
+            if (
+                $candidate &&
+                (string) $candidate->accountid === $accountId &&
+                ($candidate->status ?? 'active') !== 'cancelled'
+            ) {
+                $editDocument = $candidate;
+                $focusType = $candidate->type;
+            }
+        }
+
+        return view('clients.documents-form', [
+            'title' => 'PO & Agreements for ' . ($client->business_name ?? $client->contact_name ?? 'Client'),
+            'client' => $client,
+            'focusType' => $focusType,
+            'editDocument' => $editDocument,
+            'poDocuments' => $client->documents->where('type', 'po')->values(),
+            'agreementDocuments' => $client->documents->where('type', 'agreement')->values(),
+        ]);
+    }
+
+    public function clientsDocumentsStore(Request $request, Client $client)
+    {
+        $accountId = $this->resolveAccountId();
+        if ((string) $client->accountid !== $accountId) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'type' => 'required|in:po,agreement',
+            'title' => 'nullable|string|max:150',
+            'document_number' => 'nullable|string|max:100',
+            'document_date' => 'nullable|date',
+            'file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120',
+        ]);
+
+        $filePath = null;
+        if ($request->hasFile('file')) {
+            $folder = $validated['type'] === 'po' ? 'client-documents/po' : 'client-documents/agreements';
+            $filePath = $request->file('file')->store($folder, 'public');
+        }
+
+        ClientDocument::create([
+            'accountid' => $accountId,
+            'clientid' => $client->clientid,
+            'type' => $validated['type'],
+            'status' => 'active',
+            'title' => $validated['title'] ?? null,
+            'document_number' => $validated['document_number'] ?? null,
+            'document_date' => $validated['document_date'] ?? null,
+            'file_path' => $filePath,
+        ]);
+
+        return redirect()
+            ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $validated['type']])
+            ->with('success', ucfirst($validated['type']) . ' saved successfully.');
+    }
+
+    public function clientsDocumentsUpdate(Request $request, Client $client, ClientDocument $document)
+    {
+        $accountId = $this->resolveAccountId();
+        if (
+            (string) $client->accountid !== $accountId ||
+            (string) $document->accountid !== $accountId ||
+            (string) $document->clientid !== (string) $client->clientid
+        ) {
+            abort(404);
+        }
+
+        if (($document->status ?? 'active') === 'cancelled') {
+            return redirect()
+                ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $document->type])
+                ->with('error', ucfirst($document->type) . ' is cancelled. Restore it before editing.');
+        }
+
+        $validated = $request->validate([
+            'type' => 'required|in:po,agreement',
+            'title' => 'nullable|string|max:150',
+            'document_number' => 'nullable|string|max:100',
+            'document_date' => 'nullable|date',
+            'file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120',
+        ]);
+
+        $filePath = $document->file_path;
+        if ($request->hasFile('file')) {
+            if ($filePath) {
+                Storage::disk('public')->delete($filePath);
+            }
+
+            $folder = $validated['type'] === 'po' ? 'client-documents/po' : 'client-documents/agreements';
+            $filePath = $request->file('file')->store($folder, 'public');
+        }
+
+        $document->update([
+            'type' => $validated['type'],
+            'title' => $validated['title'] ?? null,
+            'document_number' => $validated['document_number'] ?? null,
+            'document_date' => $validated['document_date'] ?? null,
+            'file_path' => $filePath,
+            'status' => 'active',
+        ]);
+
+        return redirect()
+            ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $validated['type']])
+            ->with('success', ucfirst($validated['type']) . ' updated successfully.');
+    }
+
+    public function clientsDocumentsCancel(Client $client, ClientDocument $document)
+    {
+        $accountId = $this->resolveAccountId();
+        if (
+            (string) $client->accountid !== $accountId ||
+            (string) $document->accountid !== $accountId ||
+            (string) $document->clientid !== (string) $client->clientid
+        ) {
+            abort(404);
+        }
+
+        $document->update(['status' => 'cancelled']);
+
+        return redirect()
+            ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $document->type])
+            ->with('success', ucfirst($document->type) . ' cancelled successfully.');
+    }
+
+    public function clientsDocumentsRestore(Client $client, ClientDocument $document)
+    {
+        $accountId = $this->resolveAccountId();
+        if (
+            (string) $client->accountid !== $accountId ||
+            (string) $document->accountid !== $accountId ||
+            (string) $document->clientid !== (string) $client->clientid
+        ) {
+            abort(404);
+        }
+
+        $document->update(['status' => 'active']);
+
+        return redirect()
+            ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $document->type])
+            ->with('success', ucfirst($document->type) . ' restored successfully.');
+    }
+
+    public function clientsDocumentsFile(Client $client, ClientDocument $document)
+    {
+        $accountId = $this->resolveAccountId();
+        if (
+            (string) $client->accountid !== $accountId ||
+            (string) $document->accountid !== $accountId ||
+            (string) $document->clientid !== (string) $client->clientid
+        ) {
+            abort(404);
+        }
+
+        if (!$document->file_path || !Storage::disk('public')->exists($document->file_path)) {
+            abort(404);
+        }
+
+        return Storage::disk('public')->response($document->file_path);
     }
 
     public function clientsEdit(Client $client): View

@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class PaymentsController extends Controller
 {
@@ -46,8 +47,6 @@ class PaymentsController extends Controller
         }
 
         $searchTerm = request('search', '');
-        $fromDate = request('from');
-        $toDate = request('to');
 
         if ($searchTerm) {
             $query->where(function($q) use ($searchTerm) {
@@ -59,13 +58,6 @@ class PaymentsController extends Controller
             });
         }
 
-        if ($fromDate) {
-            $query->whereDate('payment_date', '>=', $fromDate);
-        }
-
-        if ($toDate) {
-            $query->whereDate('payment_date', '<=', $toDate);
-        }
         $resultCount = $query->count();
 
         $paymentRecords = $query->latest('payment_date')->latest('created_at')->take(50)->get();
@@ -77,9 +69,12 @@ class PaymentsController extends Controller
             $invoiceNumber = $payment->invoice?->ti_number
                 ?? $payment->invoice?->pi_number
                 ?? null;
-            $displayTitle = $payment->invoice->invoice_title
-                ?? $invoiceNumber
-                ?? $payment->paymentid;
+            $invoiceTitle = trim((string) ($payment->invoice?->invoice_title ?? ''));
+            $paymentDescription = trim((string) ($payment->description ?? ''));
+            $displayTitle = $invoiceTitle !== ''
+                ? $invoiceTitle
+                : ($paymentDescription !== '' ? $paymentDescription : 'Payment');
+            $paymentStatus = strtolower(trim((string) ($payment->status ?? 'active')));
             return [
                 'record_id' => $payment->paymentid,
                 'number' => $displayTitle,
@@ -92,6 +87,7 @@ class PaymentsController extends Controller
                 'type' => (string) ($payment->type ?? 'payment'),
                 'description' => (string) ($payment->description ?? ''),
                 'reference_number' => (string) ($payment->reference_number ?? ''),
+                'status' => $paymentStatus,
             ];
         });
 
@@ -117,13 +113,12 @@ class PaymentsController extends Controller
             ->orderByDesc('default')
             ->orderByDesc('financial_year')
             ->get(['fy_id', 'financial_year', 'default']);
-        $defaultFyId = (string) ($financialYears->firstWhere('default', true)?->fy_id ?? '');
-        $selectedFyId = trim((string) request('fy', $defaultFyId !== '' ? $defaultFyId : 'all'));
+        $selectedFyId = trim((string) request('fy', 'all'));
         if ($selectedFyId === '') {
-            $selectedFyId = $defaultFyId !== '' ? $defaultFyId : 'all';
+            $selectedFyId = 'all';
         }
         if ($selectedFyId !== 'all' && !$financialYears->contains('fy_id', $selectedFyId)) {
-            $selectedFyId = $defaultFyId !== '' ? $defaultFyId : 'all';
+            $selectedFyId = 'all';
         }
         $searchTerm = trim((string) request('search', ''));
         $clients = Client::query()
@@ -162,14 +157,30 @@ class PaymentsController extends Controller
         $invoiceMap = Invoice::query()
             ->whereIn('invoiceid', $invoiceIds)
             ->with('items')
-            ->get(['invoiceid', 'invoice_title', 'pi_number', 'ti_number', 'clientid', 'fy_id'])
+            ->get(['invoiceid', 'invoice_title', 'pi_number', 'ti_number', 'clientid', 'fy_id', 'status'])
             ->keyBy('invoiceid');
 
         $paymentMap = Payment::query()
             ->whereIn('paymentid', $paymentIds)
             ->with('invoice')
-            ->get(['paymentid', 'invoiceid', 'reference_number', 'mode', 'clientid', 'received_amount', 'type', 'fy_id'])
+            ->get(['paymentid', 'invoiceid', 'reference_number', 'mode', 'clientid', 'received_amount', 'type', 'fy_id', 'status'])
             ->keyBy('paymentid');
+
+        // Hide entries tied to cancelled invoices/payments from ledger listing.
+        $entries = $entries->filter(function (Ledger $entry) use ($invoiceMap, $paymentMap) {
+            if ($entry->type === 'dr') {
+                $invoiceStatus = strtolower(trim((string) ($invoiceMap->get($entry->invoiceid_paymentid)?->status ?? '')));
+                return $invoiceStatus !== 'cancelled';
+            }
+
+            $payment = $paymentMap->get($entry->invoiceid_paymentid);
+            $paymentStatus = strtolower(trim((string) ($payment?->status ?? 'active')));
+            if ($paymentStatus === 'cancelled') {
+                return false;
+            }
+            $invoiceStatus = strtolower(trim((string) ($payment?->invoice?->status ?? '')));
+            return $invoiceStatus !== 'cancelled';
+        })->values();
 
         if ($selectedFyId !== 'all') {
             $entries = $entries->filter(function (Ledger $entry) use ($selectedFyId, $invoiceMap, $paymentMap) {
@@ -215,7 +226,8 @@ class PaymentsController extends Controller
                 $invoice = $invoiceMap->get($entry->invoiceid_paymentid);
                 if ($invoice) {
                     $referenceLabel = $invoice->ti_number ?: $invoice->pi_number ?: $invoice->invoiceid;
-                    $referenceUrl = route('invoices.show', ['invoice' => $invoice->invoiceid, 'c' => $invoice->clientid]);
+                    $pdfType = trim((string) ($invoice->ti_number ?? '')) !== '' ? 'tax_invoice' : 'pi';
+                    $referenceUrl = route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => $pdfType]);
                 }
                 $entryKind = 'invoice';
             } else {
@@ -235,6 +247,7 @@ class PaymentsController extends Controller
                 'date' => $entry->date?->format('d M Y') ?? '-',
                 'raw_date' => $entry->date?->format('Y-m-d') ?? '',
                 'client_name' => $entry->client?->business_name ?? $entry->client?->contact_name ?? 'Client',
+                'status' => strtolower(trim((string) ($entry->status ?? 'active'))),
                 'type' => $entry->type,
                 'type_label' => strtoupper($entry->type),
                 'entry_kind' => $entryKind,
@@ -260,6 +273,7 @@ class PaymentsController extends Controller
             'title' => 'Ledger',
             'subtitle' => 'Statement-style view of invoices, payments, and TDS entries.',
             'ledgerEntries' => $ledgerEntries,
+            'clients' => $clients,
             'selectedClientId' => $clientId,
             'selectedClientName' => $selectedClient?->business_name ?? $selectedClient?->contact_name ?? 'All Clients',
             'financialYears' => $financialYears,
@@ -307,11 +321,8 @@ class PaymentsController extends Controller
 
             $taxTotal = (float) $invoice->items->sum(function ($item) {
                 $lineTotal = (float) ($item->line_total ?? 0);
-                $discountPercent = (float) ($item->discount_percent ?? 0);
-                $discountAmount = isset($item->discount_amount)
-                    ? (float) ($item->discount_amount ?? 0)
-                    : floor(max(0, $lineTotal * ($discountPercent / 100)));
-                $taxableAmount = max(0, $lineTotal - max(0, $discountAmount));
+                $discountedAmount = (float) ($item->discount_amount ?? 0);
+                $taxableAmount = max(0, $discountedAmount > 0 ? $discountedAmount : $lineTotal);
                 return ceil($taxableAmount * ((float) ($item->tax_rate ?? 0) / 100));
             });
 
@@ -433,6 +444,9 @@ class PaymentsController extends Controller
             'reference_number' => $validated['reference_number'] ?? null,
             'description' => $validated['description'] ?? null,
         ];
+        if ($this->hasPaymentsStatusColumn()) {
+            $paymentData['status'] = 'active';
+        }
 
         $payment = null;
 
@@ -450,13 +464,23 @@ class PaymentsController extends Controller
             ->with('success', 'Payment recorded successfully.');
     }
 
-    public function paymentsShow(Payment $payment): View
+    public function paymentsShow(Request $request, Payment $payment): View
     {
         $this->ensurePaymentBelongsToAccount($payment);
         $payment->load(['client', 'invoice']);
         $displayTitle = $payment->invoice->invoice_title
             ?? $payment->invoice->invoice_number
             ?? $payment->paymentid;
+        $previewOnly = $request->boolean('preview');
+
+        if ($previewOnly) {
+            return view('payments.show-preview', [
+                'title' => $displayTitle,
+                'payment' => $payment,
+                'displayTitle' => $displayTitle,
+            ]);
+        }
+
         return view('payments.show', [
             'title' => $displayTitle,
             'subtitle' => 'Payment Details',
@@ -468,6 +492,9 @@ class PaymentsController extends Controller
     public function paymentsEdit(Payment $payment): View
     {
         $this->ensurePaymentBelongsToAccount($payment);
+        if (strtolower(trim((string) ($payment->status ?? 'active'))) === 'cancelled') {
+            abort(404);
+        }
         $displayTitle = $payment->invoice->invoice_title
             ?? $payment->invoice->invoice_number
             ?? $payment->paymentid;
@@ -486,6 +513,11 @@ class PaymentsController extends Controller
     public function paymentsUpdate(Request $request, Payment $payment)
     {
         $this->ensurePaymentBelongsToAccount($payment);
+        if (strtolower(trim((string) ($payment->status ?? 'active'))) === 'cancelled') {
+            return redirect()
+                ->route('payments.index', ['c' => $payment->clientid])
+                ->with('error', 'Cancelled payment cannot be edited.');
+        }
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
             'invoiceid' => 'nullable|exists:invoices,invoiceid',
@@ -510,7 +542,7 @@ class PaymentsController extends Controller
         $previousInvoiceId = $payment->invoiceid;
 
         DB::transaction(function () use ($payment, $validated, $request, $previousInvoiceId) {
-            $payment->update([
+            $updatePayload = [
                 'fy_id' => $payment->fy_id ?: $this->resolveDefaultFyId($payment->accountid),
                 'clientid' => $validated['clientid'],
                 'invoiceid' => $validated['invoiceid'] ?? null,
@@ -520,7 +552,11 @@ class PaymentsController extends Controller
                 'mode' => $validated['mode'],
                 'reference_number' => $validated['reference_number'] ?? null,
                 'description' => $validated['description'] ?? null,
-            ]);
+            ];
+            if ($this->hasPaymentsStatusColumn()) {
+                $updatePayload['status'] = (string) ($payment->status ?: 'active');
+            }
+            $payment->update($updatePayload);
 
             $this->syncPaymentLedgerEntry($payment);
 
@@ -544,8 +580,10 @@ class PaymentsController extends Controller
         $invoiceId = $payment->invoiceid;
 
         DB::transaction(function () use ($payment, $invoiceId) {
-            $this->deletePaymentLedgerEntry($payment);
-            $payment->delete();
+            if ($this->hasPaymentsStatusColumn()) {
+                $payment->update(['status' => 'cancelled']);
+            }
+            $this->syncPaymentLedgerEntry($payment);
 
             if ($invoiceId) {
                 $invoice = Invoice::query()->find($invoiceId);
@@ -557,14 +595,42 @@ class PaymentsController extends Controller
 
         return redirect()
             ->route('payments.index', ['c' => $payment->clientid])
-            ->with('success', 'Payment deleted successfully.');
+            ->with('success', 'Payment cancelled successfully.');
+    }
+
+    public function paymentsRestore(Payment $payment)
+    {
+        $this->ensurePaymentBelongsToAccount($payment);
+        $invoiceId = $payment->invoiceid;
+
+        DB::transaction(function () use ($payment, $invoiceId) {
+            if ($this->hasPaymentsStatusColumn()) {
+                $payment->update(['status' => 'active']);
+            }
+            $this->syncPaymentLedgerEntry($payment);
+
+            if ($invoiceId) {
+                $invoice = Invoice::query()->find($invoiceId);
+                if ($invoice) {
+                    $this->refreshInvoicePaymentStatus($invoice);
+                }
+            }
+        });
+
+        return redirect()
+            ->route('payments.index', ['c' => $payment->clientid])
+            ->with('success', 'Payment restored successfully.');
     }
 
     private function refreshInvoicePaymentStatus(Invoice $invoice): void
     {
         $invoice->loadMissing('payments');
+        $hasPaymentStatusColumn = $this->hasPaymentsStatusColumn();
 
-        $amountPaid = (float) $invoice->payments->sum(function ($payment) {
+        $amountPaid = (float) $invoice->payments->sum(function ($payment) use ($hasPaymentStatusColumn) {
+            if ($hasPaymentStatusColumn && strtolower(trim((string) ($payment->status ?? 'active'))) === 'cancelled') {
+                return 0;
+            }
             return (float) ($payment->received_amount ?? 0);
         });
         $amountPaid = max(0, $amountPaid);
@@ -597,7 +663,36 @@ class PaymentsController extends Controller
         $ledgerEntry->mode = $payment->mode;
         $ledgerEntry->reference_number = $payment->reference_number;
         $ledgerEntry->description = $payment->description;
+        if ($this->hasLedgerStatusColumn()) {
+            $ledgerEntry->status = strtolower(trim((string) ($payment->status ?? 'active')));
+        }
         $ledgerEntry->save();
+    }
+
+    private function syncInvoiceLedgerStatus(Invoice $invoice, string $status): void
+    {
+        Ledger::query()
+            ->where('invoiceid_paymentid', $invoice->invoiceid)
+            ->where('type', 'dr')
+            ->update(['status' => $status]);
+    }
+
+    private function hasPaymentsStatusColumn(): bool
+    {
+        static $hasColumn;
+        if ($hasColumn === null) {
+            $hasColumn = Schema::hasColumn('payments', 'status');
+        }
+        return $hasColumn;
+    }
+
+    private function hasLedgerStatusColumn(): bool
+    {
+        static $hasColumn;
+        if ($hasColumn === null) {
+            $hasColumn = Schema::hasColumn('ledger', 'status');
+        }
+        return $hasColumn;
     }
 
     private function deletePaymentLedgerEntry(Payment $payment): void

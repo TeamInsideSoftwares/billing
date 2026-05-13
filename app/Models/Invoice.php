@@ -63,6 +63,16 @@ class Invoice extends Model
         return $this->belongsTo(Order::class, 'orderid');
     }
 
+    public function getPurchaseOrderAttribute(): ?ClientDocument
+    {
+        return $this->client?->latestPurchaseOrder();
+    }
+
+    public function getAgreementAttribute(): ?ClientDocument
+    {
+        return $this->client?->latestAgreement();
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -140,16 +150,21 @@ class Invoice extends Model
 
     public function getDiscountTotalAttribute(): float
     {
-        return (float) floor((float) $this->items->sum('discount_amount'));
+        return (float) floor((float) $this->items->sum(function ($item) {
+            $lineTotal = (float) ($item->line_total ?? 0);
+            $discountedAmount = (float) ($item->discount_amount ?? 0);
+            return max(0, $lineTotal - ($discountedAmount > 0 ? $discountedAmount : $lineTotal));
+        }));
     }
 
     public function getTaxTotalAttribute(): float
     {
         return (float) $this->items->sum(function ($item) {
             $lineTotal = (float) ($item->line_total ?? 0);
-            $discount = (float) ($item->discount_amount ?? 0);
+            $discountedAmount = (float) ($item->discount_amount ?? 0);
+            $taxableAmount = max(0, $discountedAmount > 0 ? $discountedAmount : $lineTotal);
             $rate = (float) ($item->tax_rate ?? 0);
-            return ceil(max(0, $lineTotal - $discount) * ($rate / 100));
+            return ceil($taxableAmount * ($rate / 100));
         });
     }
 

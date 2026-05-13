@@ -551,6 +551,7 @@ function showToast(type, message) {
     function resetAfterQuickSave() {
         document.getElementById('type').value = 'service';
         document.getElementById('sync').checked = false;
+        document.getElementById('user_wise').checked = false;
         document.getElementById('name').value = '';
         document.getElementById('ps_catid').value = '';
         document.getElementById('description').value = '';
@@ -587,6 +588,7 @@ function showToast(type, message) {
             const payload = {
                 type: document.getElementById('type').value,
                 sync: document.getElementById('sync').checked ? 'yes' : 'no',
+                user_wise: document.getElementById('user_wise').checked ? 1 : 0,
                 name: document.getElementById('name').value.trim(),
                 ps_catid: document.getElementById('ps_catid').value || null,
                 description: document.getElementById('description').value.trim(),

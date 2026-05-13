@@ -1054,9 +1054,30 @@ class SettingsController extends Controller
         $validated['number_type'] = $validated['number_type'] ?? 'auto increment';
         $validated['suffix_type'] = $validated['suffix_type'] ?? 'manual text';
 
-        if (($validated['number_type'] ?? null) === 'auto increment') {
-            $start = $validated['number_value'] ?? 1;
-            $validated['number_value'] = (string) max(1, (int) $start);
+        foreach (['prefix', 'number', 'suffix'] as $part) {
+            $typeKey = $part . '_type';
+            $valueKey = $part . '_value';
+            $lengthKey = $part . '_length';
+            $type = $validated[$typeKey] ?? ($part === 'number' ? 'auto increment' : 'manual text');
+
+            if ($type === 'auto increment') {
+                $start = $validated[$valueKey] ?? 1;
+                $validated[$valueKey] = (string) max(1, (int) $start);
+                $validated[$lengthKey] = null;
+                continue;
+            }
+
+            if ($type === 'auto generate') {
+                $validated[$lengthKey] = max(1, (int) ($validated[$lengthKey] ?? 4));
+                continue;
+            }
+
+            // Date/year/manual text modes should not carry stale length metadata.
+            $validated[$lengthKey] = null;
+
+            if (in_array($type, ['date', 'year', 'month-year', 'date-month'], true)) {
+                $validated[$valueKey] = null;
+            }
         }
 
         return $validated;

@@ -39,7 +39,6 @@
     </div>
 
     <input type="hidden" name="clientid" value="{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}">
-    <input type="hidden" name="invoice_for" value="{{ request('invoice_for', $invoice?->invoice_for ?? '') }}">
     <input type="hidden" name="orderid" value="{{ request('o', request('orderid', '')) === '0' ? '' : request('o', request('orderid', '')) }}">
     <input type="hidden" name="invoiceid" id="step4_invoiceid" value="{{ request('d', '') }}">
     <input type="hidden" name="renewed_item_ids" id="step4_renewed_item_ids" value="">
@@ -161,7 +160,6 @@
 <script>
 (function() {
     const clientId = "{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}";
-    const invoiceFor = "{{ request('invoice_for', $invoice?->invoice_for ?? '') }}";
     const orderId = "{{ request('o', request('orderid', '')) }}";
     const draftId = "{{ request('d', '') }}";
     const isTaxInvoice = @json($isTaxInvoiceStep4);
@@ -194,7 +192,6 @@
     const pdfVersionsMeta = document.getElementById('pdfVersionsMeta');
     const sameStateGstForInvoice = @json($sameStateGstForInvoice);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const renewalFinalIdsStorageKey = `invoice-renewal-final-ids:${clientId}`;
 
     @php
         $signatureUploadPath = optional($accountBillingDetail)->signature_upload;
@@ -378,21 +375,7 @@
 
     function syncRenewedItemIdsInput() {
         if (!renewedItemIdsInput) return;
-        if (invoiceFor !== 'renewal') {
-            renewedItemIdsInput.value = '';
-            return;
-        }
-
-        try {
-            const stored = window.sessionStorage.getItem(renewalFinalIdsStorageKey);
-            const renewedIds = JSON.parse(stored || '[]');
-            renewedItemIdsInput.value = Array.isArray(renewedIds)
-                ? JSON.stringify(renewedIds.filter(Boolean))
-                : '[]';
-        } catch (error) {
-            console.warn('Unable to read renewal final ids:', error);
-            renewedItemIdsInput.value = '[]';
-        }
+        renewedItemIdsInput.value = '';
     }
 
     function openTermModal() {
@@ -414,9 +397,6 @@
     // Load items
     function loadItems() {
         const draftUrl = new URL("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace('__CLIENTID__', clientId), window.location.origin);
-        if (invoiceFor) {
-            draftUrl.searchParams.set('invoice_for', invoiceFor);
-        }
         if (hasOrderId) {
             draftUrl.searchParams.set('o', orderId);
         }
@@ -610,10 +590,11 @@
         let subtotal = 0, taxTotal = 0, discountTotal = 0;
         invoiceItems.forEach(item => {
             const lineTotal = parseFloat(item.line_total || 0);
-            const lineDiscount = roundDiscountDown(parseFloat(item.discount_amount || 0));
+            const discountedAmount = Math.max(0, parseFloat(item.discount_amount || 0) || lineTotal);
+            const lineDiscount = roundDiscountDown(Math.max(0, lineTotal - discountedAmount));
             subtotal += lineTotal;
             discountTotal += lineDiscount;
-            taxTotal += roundTaxUp(Math.max(0, lineTotal - lineDiscount) * (parseFloat(item.tax_rate || 0) / 100));
+            taxTotal += roundTaxUp(discountedAmount * (parseFloat(item.tax_rate || 0) / 100));
         });
 
         discountTotal = roundDiscountDown(discountTotal);
@@ -785,9 +766,9 @@
     // Back button
     btnBackToPrev.addEventListener('click', function() {
         const currentDraftId = invoiceidInput.value || draftId;
-        const prevStep = invoiceFor === 'without_orders' ? 2 : 3;
+        const prevStep = 2;
         const clientToken = encodeURIComponent(clientId);
-        let prevUrl = "{{ route('invoices.create') }}?step=" + prevStep + "&invoice_for=" + encodeURIComponent(invoiceFor) + "&c=" + clientToken;
+        let prevUrl = "{{ route('invoices.create') }}?step=" + prevStep + "&c=" + clientToken;
         if (hasOrderId) {
             const orderToken = encodeURIComponent(orderId);
             prevUrl += "&o=" + orderToken;
@@ -805,8 +786,8 @@
     document.getElementById('btnEditPreview')?.addEventListener('click', function() {
         const currentInvoiceId = invoiceidInput.value || draftId;
         const clientToken = encodeURIComponent(clientId);
-        const editStep = invoiceFor === 'without_orders' ? 2 : 3;
-        let editUrl = "{{ route('invoices.create') }}?step=" + editStep + "&invoice_for=" + encodeURIComponent(invoiceFor) + "&c=" + clientToken;
+        const editStep = 2;
+        let editUrl = "{{ route('invoices.create') }}?step=" + editStep + "&c=" + clientToken;
         if (hasOrderId) {
             const orderToken = encodeURIComponent(orderId);
             editUrl += "&o=" + orderToken;
@@ -844,13 +825,19 @@
     });
 
     // Create Tax Invoice function
-	    function createTaxInvoice() {
+	    async function createTaxInvoice() {
 	        if (!invoiceidInput.value) {
 	            alert('Please create invoice first.');
 	            return;
 	        }
 
-        if (!confirm('This will generate a Tax Invoice number and mark this invoice as a Tax Invoice. Continue?')) {
+        const confirmed = await window.appConfirm('This will generate a Tax Invoice number and mark this invoice as a Tax Invoice. Continue?', {
+            title: 'Create Tax Invoice?',
+            icon: 'warning',
+            confirmButtonText: 'Continue',
+            cancelButtonText: 'Cancel',
+        });
+        if (!confirmed) {
             return;
         }
 

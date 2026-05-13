@@ -75,4 +75,28 @@ class Client extends Model
         return $this->hasMany(User::class, 'clientid');
     }
 
+    public function documents(): HasMany
+    {
+        return $this->hasMany(ClientDocument::class, 'clientid');
+    }
+
+    public function latestPurchaseOrder(): ?ClientDocument
+    {
+        return $this->documents()
+            ->where('type', 'po')
+            ->where('status', 'running')
+            ->latest('document_date')
+            ->latest('created_at')
+            ->first();
+    }
+
+    public function latestAgreement(): ?ClientDocument
+    {
+        return $this->documents()
+            ->where('type', 'agreement')
+            ->where('status', 'running')
+            ->latest('document_date')
+            ->latest('created_at')
+            ->first();
+    }
 }

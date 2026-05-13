@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script src="//tiny.skoolready.com/tinymce/js/tinymce/tinymce.min.js" referrerpolicy="origin"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -48,6 +49,7 @@
             ['label' => 'Quotations', 'route' => 'quotations.index'],
             ['label' => 'Invoices', 'route' => 'invoices.index'],
             ['label' => 'Payments', 'route' => 'payments.index'],
+            ['label' => 'GST Report', 'route' => 'gst-report.index'],
             ['label' => 'Settings', 'route' => 'settings.index'],
         ];
     @endphp
@@ -72,6 +74,7 @@
                         'quotations' => 'fa-file-alt',
                         'invoices' => 'fa-file-invoice-dollar',
                         'payments' => 'fa-money-bill-wave',
+                        'gst-report' => 'fa-receipt',
                         'settings' => 'fa-cog',
                     ];
                 @endphp
@@ -204,6 +207,101 @@
             </main>
         </div>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        window.appAlert = function(message, options = {}) {
+            if (!window.Swal || typeof window.Swal.fire !== 'function') {
+                window.alert(message);
+                return Promise.resolve();
+            }
+
+            return window.Swal.fire({
+                title: options.title || 'Notice',
+                text: String(message || ''),
+                icon: options.icon || 'info',
+                confirmButtonText: options.confirmButtonText || 'OK',
+                width: options.width || 340,
+                buttonsStyling: false,
+                customClass: {
+                    popup: 'app-swal-popup',
+                    title: 'app-swal-title',
+                    htmlContainer: 'app-swal-text',
+                    confirmButton: 'app-swal-btn app-swal-btn-confirm',
+                    cancelButton: 'app-swal-btn app-swal-btn-cancel',
+                    icon: 'app-swal-icon',
+                },
+                ...options,
+            });
+        };
+
+        window.appConfirm = function(message, options = {}) {
+            if (!window.Swal || typeof window.Swal.fire !== 'function') {
+                return Promise.resolve(window.confirm(message));
+            }
+
+            return window.Swal.fire({
+                title: options.title || 'Please Confirm',
+                text: String(message || ''),
+                icon: options.icon || 'warning',
+                showCancelButton: true,
+                confirmButtonText: options.confirmButtonText || 'Yes',
+                cancelButtonText: options.cancelButtonText || 'Cancel',
+                width: options.width || 360,
+                buttonsStyling: false,
+                customClass: {
+                    popup: 'app-swal-popup',
+                    title: 'app-swal-title',
+                    htmlContainer: 'app-swal-text',
+                    confirmButton: 'app-swal-btn app-swal-btn-confirm',
+                    cancelButton: 'app-swal-btn app-swal-btn-cancel',
+                    icon: 'app-swal-icon',
+                },
+                ...options,
+            }).then((result) => !!result.isConfirmed);
+        };
+
+        const nativeAlert = window.alert.bind(window);
+        window.alert = function(message) {
+            if (!window.Swal || typeof window.Swal.fire !== 'function') {
+                nativeAlert(message);
+                return;
+            }
+            window.appAlert(message);
+        };
+
+        document.querySelectorAll('form[onsubmit*="confirm("]').forEach((form) => {
+            const inlineSubmit = form.getAttribute('onsubmit') || '';
+            const match = inlineSubmit.match(/confirm\((['"`])([\s\S]*?)\1\)/);
+            if (!match) return;
+            form.dataset.swalConfirmMessage = match[2];
+            form.removeAttribute('onsubmit');
+        });
+
+        document.addEventListener('submit', async function(event) {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement)) return;
+            if (!form.dataset.swalConfirmMessage) return;
+            if (form.dataset.swalConfirmBypass === '1') {
+                form.dataset.swalConfirmBypass = '0';
+                return;
+            }
+
+            event.preventDefault();
+            const isConfirmed = await window.appConfirm(form.dataset.swalConfirmMessage, {
+                title: 'Please Confirm',
+                icon: 'question',
+                confirmButtonText: 'OK',
+                cancelButtonText: 'Cancel',
+            });
+
+            if (isConfirmed) {
+                form.dataset.swalConfirmBypass = '1';
+                form.requestSubmit();
+            }
+        }, true);
+    });
+    </script>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
