@@ -40,6 +40,76 @@ const LocationPicker = (function() {
         } catch (e) { console.error('Error fetching cities:', e); return []; }
     }
 
+    function normalizeLocationLabel(value) {
+        return String(value || '')
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+    }
+
+    function cityDedupeKey(value) {
+        return normalizeLocationLabel(value).replace(/[\s-]+/g, '');
+    }
+
+    function toDisplayCityLabel(value) {
+        const cleaned = String(value || '')
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        if (!cleaned) return '';
+
+        return cleaned
+            .split(' ')
+            .filter(Boolean)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+    }
+
+    function scoreCityLabel(value) {
+        const raw = String(value || '').trim();
+        if (!raw) return -Infinity;
+
+        let score = 0;
+
+        // Prefer plain ASCII labels (e.g. "Dehradun") over accented variants.
+        if (/^[\x20-\x7E]+$/.test(raw)) score += 5;
+
+        // Prefer compact names when equivalent (e.g. "Dehradun" over "Dehra Dun").
+        if (!/\s/.test(raw)) score += 2;
+
+        // Mild penalty for punctuation-heavy labels.
+        if (/[-,./]/.test(raw)) score -= 1;
+
+        return score;
+    }
+
+    function uniqueCities(cities) {
+        const chosenByKey = new Map();
+
+        (cities || []).forEach(city => {
+            const raw = String(city || '').trim();
+            if (!raw) return;
+            const key = cityDedupeKey(raw);
+            if (!key) return;
+
+            const existing = chosenByKey.get(key);
+            if (!existing || scoreCityLabel(raw) > scoreCityLabel(existing)) {
+                chosenByKey.set(key, raw);
+            }
+        });
+
+        return Array.from(chosenByKey.values())
+            .map(city => toDisplayCityLabel(city))
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b));
+    }
+
     async function init(container = document) {
         const countries = await fetchCountries();
         const forms = container.querySelectorAll('form');
@@ -86,14 +156,15 @@ const LocationPicker = (function() {
                 const handleStateChange = async (isInitial = false) => {
                     const country = countrySelect.value;
                     const state = stateSelect.value;
+                    const savedCity = citySelect.dataset.selected;
                     citySelect.innerHTML = '<option value="">Select City</option>';
 
                     if (!country || !state) return;
 
-                    const cities = await fetchCities(country, state);
+                    const cities = uniqueCities(await fetchCities(country, state));
                     cities.forEach(c => {
                         const opt = new Option(c, c);
-                        if (isInitial && c === citySelect.dataset.selected) opt.selected = true;
+                        if (isInitial && normalizeLocationLabel(c) === normalizeLocationLabel(savedCity)) opt.selected = true;
                         citySelect.add(opt);
                     });
                 };

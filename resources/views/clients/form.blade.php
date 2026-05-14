@@ -347,22 +347,63 @@
             billingCountry.value = 'India';
         }
 
-        function copyClientDetailsToBilling() {
+        function setSelectValueAndNotify(selectEl, value) {
+            if (!selectEl) return;
+            selectEl.value = value || '';
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        async function waitForOption(selectEl, value, attempts = 20, delayMs = 100) {
+            if (!selectEl || !value) return false;
+            for (let i = 0; i < attempts; i++) {
+                const hasOption = Array.from(selectEl.options || []).some(function (opt) {
+                    return opt.value === value;
+                });
+                if (hasOption) return true;
+                await new Promise(function (resolve) { setTimeout(resolve, delayMs); });
+            }
+            return false;
+        }
+
+        async function syncBillingLocationFromClient() {
+            const country = clientCountry.value || 'India';
+            const state = clientState.value || '';
+            const city = clientCity.value || '';
+
+            setSelectValueAndNotify(billingCountry, country);
+
+            if (state) {
+                await waitForOption(billingState, state);
+                setSelectValueAndNotify(billingState, state);
+            } else {
+                setSelectValueAndNotify(billingState, '');
+            }
+
+            if (city) {
+                await waitForOption(billingCity, city);
+                billingCity.value = city;
+            } else {
+                billingCity.value = '';
+            }
+        }
+
+        async function copyClientDetailsToBilling() {
             billingName.value = clientBusinessName.value || '';
             billingEmail.value = clientEmail.value || '';
             billingPhone.value = clientPhone.value || '';
             billingAddress.value = clientAddress.value || '';
-            billingCity.value = clientCity.value || '';
-            billingState.value = clientState.value || '';
             billingPostal.value = clientPostal.value || '';
-            billingCountry.value = clientCountry.value || 'India';
+            await syncBillingLocationFromClient();
         }
 
         existingSelect.addEventListener('change', loadSelectedBillingProfile);
         newBillingBtn.addEventListener('click', function () { existingSelect.value = ''; clearBillingFields(); });
         sameAsClientCheckbox.addEventListener('change', function () { if (this.checked) copyClientDetailsToBilling(); });
-        [clientBusinessName, clientEmail, clientPhone, clientAddress, clientCity, clientState, clientPostal, clientCountry].forEach(function(el) {
+        [clientBusinessName, clientEmail, clientPhone, clientAddress, clientPostal].forEach(function(el) {
             el.addEventListener('input', function () { if (sameAsClientCheckbox.checked) copyClientDetailsToBilling(); });
+        });
+        [clientCity, clientState, clientCountry].forEach(function(el) {
+            el.addEventListener('change', function () { if (sameAsClientCheckbox.checked) copyClientDetailsToBilling(); });
         });
         billingName.required = true;
         loadSelectedBillingProfile();
