@@ -127,9 +127,6 @@
                                             @if(!empty($order['items'][0]['no_of_users']))
                                                 | Users: {{ $order['items'][0]['no_of_users'] }}
                                             @endif
-                                            @if(!empty($order['items'][0]['start_date']))
-                                                | Start: {{ $order['items'][0]['start_date'] }}
-                                            @endif
                                         </div>
                                     </td>
                                     <td>{{ $order['items'][0]['start_date'] ?? '-' }}</td>

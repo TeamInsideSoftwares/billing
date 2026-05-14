@@ -48,7 +48,7 @@
         <div class="add-item-row form-grid form-input-row order-create-item-box">
             <div class="order-field order-field-item">
                 <label>Item</label>
-                <select id="item_itemid" class="form-control">
+                <select id="item_itemid" class="form-control" {{ ($isEditMode && !empty($isItemLockedByInvoice)) ? 'disabled' : '' }}>
                     <option value="">Select Item</option>
                     @php
                         $groupedServices = $services->groupBy(fn($service) => $service->category->name ?? 'No Category');
@@ -119,11 +119,19 @@
                 <label for="client_docid">PO</label>
                 <select id="client_docid" name="client_docid" class="form-control">
                     <option value="">Select Document</option>
-                    @foreach($clientDocuments as $document)
+                    @php
+                        $poDocuments = collect($clientDocuments ?? [])
+                            ->filter(fn ($document) => (string) ($document->clientid ?? '') === (string) ($selectedClientId ?? ''))
+                            ->filter(fn ($document) => trim((string) ($document->title ?? '')) !== '')
+                            ->values();
+                    @endphp
+                    @forelse($poDocuments as $document)
                         <option value="{{ $document->client_docid }}" {{ old('client_docid', $order->client_docid ?? '') == $document->client_docid ? 'selected' : '' }}>
-                            {{ $document->title ?: 'Untitled' }}
+                            {{ $document->title }}
                         </option>
-                    @endforeach
+                    @empty
+                        <option value="" disabled>No PO documents found</option>
+                    @endforelse
                 </select>
             </div>
             <div class="order-field order-field-description">
@@ -357,7 +365,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? (document.getElementById('item_users').value || 1)
                 : null,
             frequency: frequencyInput.value || 'One-Time',
-            
+
             duration: isOneTimeFrequency() ? null : (durationInput.value || 1),
             start_date: startDateInput.value || todayDate,
             end_date: endDateInput.value || maxEndDate,
@@ -430,10 +438,18 @@ document.addEventListener('DOMContentLoaded', function () {
             return await window.appConfirm(
                 'This Product/Service already exists in the list. Do you want to add it again?',
                 {
-                    title: 'Duplicate Item',
+                    title: 'Duplicate Product/Service',
                     icon: 'warning',
                     confirmButtonText: 'Add Again',
                     cancelButtonText: 'Cancel',
+                    customClass: {
+                        popup: 'app-swal-popup',
+                        title: 'app-swal-title',
+                        htmlContainer: 'app-swal-text',
+                        confirmButton: 'app-swal-btn app-swal-btn-cancel',
+                        cancelButton: 'app-swal-btn app-swal-btn-confirm',
+                        icon: 'app-swal-icon',
+                    },
                     width: 430,
                 }
             );
@@ -449,8 +465,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 {
                     title: 'Duplicate Product/Service',
                     icon: 'warning',
-                    confirmButtonText: 'Add Again',
                     cancelButtonText: 'Cancel',
+                    confirmButtonText: 'Add Again',
+                    customClass: {
+                        popup: 'app-swal-popup',
+                        title: 'app-swal-title',
+                        htmlContainer: 'app-swal-text',
+                        confirmButton: 'app-swal-btn app-swal-btn-cancel',
+                        cancelButton: 'app-swal-btn app-swal-btn-confirm',
+                        icon: 'app-swal-icon',
+                    },
                     width: 430,
                 }
             );

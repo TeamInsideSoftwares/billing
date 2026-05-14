@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\Client;
 use App\Models\ClientDocument;
+use App\Models\InvoiceItem;
 use App\Models\Order;
 use App\Models\Service;
 use Illuminate\Contracts\View\View;
@@ -341,6 +342,11 @@ class OrdersController extends Controller
             ->orderByDesc('document_date')
             ->orderByDesc('created_at')
             ->get();
+        $isItemLockedByInvoice = InvoiceItem::query()
+            ->where('accountid', $accountId)
+            ->where('clientid', $order->clientid)
+            ->where('orderid', $order->orderid)
+            ->exists();
 
         return view('orders.create', [
             'title' => 'Edit Order',
@@ -352,6 +358,7 @@ class OrdersController extends Controller
             'clientDocuments' => $documents->values(),
             'isEditMode' => true,
             'account' => $account,
+            'isItemLockedByInvoice' => $isItemLockedByInvoice,
         ]);
     }
 

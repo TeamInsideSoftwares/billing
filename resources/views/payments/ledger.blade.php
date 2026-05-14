@@ -145,7 +145,7 @@
             if (window.jQuery && jQuery.fn.DataTable && document.getElementById('ledgerDataTable')) {
                 jQuery('#ledgerDataTable').DataTable({
                     pageLength: 25,
-                    order: [[0, 'desc']],
+                    order: [[0, 'asc']],
                     dom: "<'row align-items-center g-2 mb-2'<'col-md-7'B><'col-md-5'f>>" +
                          "<'row'<'col-12'tr>>" +
                          "<'row mt-2'<'col-md-5'i><'col-md-7'p>>",
