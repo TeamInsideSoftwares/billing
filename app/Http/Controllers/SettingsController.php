@@ -520,7 +520,7 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'key' => 'required|string|max:255',
             'value' => 'required',
-            'accountid' => 'nullable|size:10',
+            'accountid' => 'nullable|string|max:10',
         ]);
 
         $userAccountId = $this->resolveAccountId();

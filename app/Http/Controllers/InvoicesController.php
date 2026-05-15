@@ -1658,7 +1658,7 @@ class InvoicesController extends Controller
                 'terms' => 'nullable|string',
                 'status' => 'nullable|in:active,cancelled',
                 'items_data' => 'required|json',
-                'accountid' => 'nullable|size:10',
+                'accountid' => 'nullable|string|max:10',
             ]);
         } catch (ValidationException $e) {
             throw $e;

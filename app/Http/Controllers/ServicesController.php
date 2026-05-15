@@ -170,7 +170,7 @@ class ServicesController extends Controller
             'ps_catid' => 'nullable|exists:ps_categories,ps_catid',
             'description' => 'nullable|string',
             'sequence' => 'nullable|integer|min:0',
-            'accountid' => 'nullable|size:10',
+            'accountid' => 'nullable|string|max:10',
             'costings' => 'required|array|min:1',
             'costings.*.currency_code' => 'required|string|size:3|exists:currency,iso|distinct',
             'costings.*.cost_price' => 'required|numeric|min:0',

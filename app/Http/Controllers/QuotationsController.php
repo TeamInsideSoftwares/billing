@@ -68,7 +68,7 @@ class QuotationsController extends Controller
             'quotation_number' => 'required|string|unique:quotations,quotation_number',
             'issue_date' => 'required|date',
             'expiry_date' => 'nullable|date|after_or_equal:issue_date',
-            'accountid' => 'nullable|size:10',
+            'accountid' => 'nullable|string|max:10',
             'status' => 'required|in:draft,sent,accepted,declined,expired',
         ]);
 

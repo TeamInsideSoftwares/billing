@@ -123,7 +123,7 @@ class ClientsController extends Controller
         $userAccountId = $this->resolveAccountId();
 
         $validated = $request->validate([
-            'accountid' => 'required|exists:accounts,accountid|size:10',
+            'accountid' => 'required|string|exists:accounts,accountid|max:10',
             'business_name' => 'required|string|max:255',
             'groupid' => 'nullable|exists:groups,groupid',
             'contact_name' => 'nullable|string|max:255',

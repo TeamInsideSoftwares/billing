@@ -70,7 +70,7 @@ class SubscriptionsController extends Controller
             'start_date' => 'required|date',
             'next_billing_date' => 'required|date|after:start_date',
             'price' => 'required|numeric|min:0',
-            'accountid' => 'nullable|size:10',
+            'accountid' => 'nullable|string|max:10',
             'status' => 'required|in:active,cancelled,expired',
         ]);
 
