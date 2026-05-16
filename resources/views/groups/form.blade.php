@@ -16,42 +16,42 @@
         <div class="form-grid">
             <div class="col-span-2">
                 <label for="group_name">Group Name *</label>
-                <input type="text" id="group_name" name="group_name" value="{{ old('group_name', isset($group) ? $group->group_name : '') }}" required maxlength="150">
+                <input type="text" id="group_name" name="group_name" value="{{ old('group_name', isset($group) ? $group->group_name : '') }}" required>
                 @error('group_name') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email" value="{{ old('email', isset($group) ? $group->email : '') }}" maxlength="150">
+                <input type="email" id="email" name="email" value="{{ old('email', isset($group) ? $group->email : '') }}">
                 @error('email') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div class="col-span-2">
                 <label for="address_line_1">Address Line 1</label>
-                <input type="text" id="address_line_1" name="address_line_1" value="{{ old('address_line_1', isset($group) ? $group->address_line_1 : '') }}" maxlength="150">
+                <input type="text" id="address_line_1" name="address_line_1" value="{{ old('address_line_1', isset($group) ? $group->address_line_1 : '') }}">
                 @error('address_line_1') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div class="col-span-2">
                 <label for="address_line_2">Address Line 2</label>
-                <input type="text" id="address_line_2" name="address_line_2" value="{{ old('address_line_2', isset($group) ? $group->address_line_2 : '') }}" maxlength="150">
+                <input type="text" id="address_line_2" name="address_line_2" value="{{ old('address_line_2', isset($group) ? $group->address_line_2 : '') }}">
                 @error('address_line_2') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="city">City</label>
-                <input type="text" id="city" name="city" value="{{ old('city', isset($group) ? $group->city : '') }}" maxlength="100">
+                <input type="text" id="city" name="city" value="{{ old('city', isset($group) ? $group->city : '') }}">
                 @error('city') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="state">State</label>
-                <input type="text" id="state" name="state" value="{{ old('state', isset($group) ? $group->state : '') }}" maxlength="100">
+                <input type="text" id="state" name="state" value="{{ old('state', isset($group) ? $group->state : '') }}">
                 @error('state') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="postal_code">Postal Code</label>
-                <input type="text" id="postal_code" name="postal_code" value="{{ old('postal_code', isset($group) ? $group->postal_code : '') }}" maxlength="20">
+                <input type="text" id="postal_code" name="postal_code" value="{{ old('postal_code', isset($group) ? $group->postal_code : '') }}">
                 @error('postal_code') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="country">Country</label>
-                <input type="text" id="country" name="country" value="{{ old('country', isset($group) ? $group->country : 'India') }}" maxlength="100">
+                <input type="text" id="country" name="country" value="{{ old('country', isset($group) ? $group->country : 'India') }}">
                 @error('country') <span class="error">{{ $message }}</span> @enderror
             </div>
         </div>

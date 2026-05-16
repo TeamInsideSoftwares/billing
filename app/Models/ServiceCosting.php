@@ -25,7 +25,6 @@ class ServiceCosting extends Model
         'cost_price',
         'selling_price',
         'sac_code',
-        'taxid',
         'tax_rate',
     ];
 

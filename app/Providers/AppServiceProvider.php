@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -26,6 +27,13 @@ class AppServiceProvider extends ServiceProvider
                 URL::forceScheme('https');
             }
         }
+
+        // Share account business_name globally
+        view()->composer('*', function ($view) {
+            if (Auth::check()) {
+                $view->with('account', Auth::user());
+            }
+        });
 
         // Route model binding for TermsCondition
         \Illuminate\Support\Facades\Route::bind('term', function ($value) {

@@ -361,17 +361,17 @@ class SettingsController extends Controller
 
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'account_bdid' => 'nullable|string|size:6|exists:account_billing_details,account_bdid',
-            'billing_name' => 'nullable|string|max:150',
+            'billing_name' => 'nullable|string',
             'address' => 'nullable|string',
-            'city' => 'nullable|string|max:100',
-            'state' => 'required|string|max:100',
-            'country' => 'nullable|string|max:100',
-            'postal_code' => 'nullable|string|max:20',
+            'city' => 'nullable|string',
+            'state' => 'required|string',
+            'country' => 'nullable|string',
+            'postal_code' => 'nullable|string',
             'gstin' => 'nullable|string|size:15',
-            'tin' => 'nullable|string|max:50',
-            'authorize_signatory' => 'nullable|string|max:255',
+            'tin' => 'nullable|string',
+            'authorize_signatory' => 'nullable|string',
             'signature_upload' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
-            'billing_from_email' => 'nullable|email|max:255',
+            'billing_from_email' => 'nullable|email',
         ]);
 
         if ($validator->fails()) {

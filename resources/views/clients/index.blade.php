@@ -139,19 +139,19 @@
                     <div class="form-grid grid-cols-2">
                         <div>
                             <label class="label-compact">Group Name *</label>
-                            <input type="text" name="group_name" id="groupName" value="{{ old('group_name') }}" required maxlength="150">
+                            <input type="text" name="group_name" id="groupName" value="{{ old('group_name') }}" required>
                         </div>
                         <div>
                             <label class="label-compact">Email</label>
-                            <input type="email" name="email" id="groupEmail" value="{{ old('email') }}" maxlength="150">
+                            <input type="email" name="email" id="groupEmail" value="{{ old('email') }}">
                         </div>
                         <div>
                             <label class="label-compact">Address Line 1</label>
-                            <input type="text" name="address_line_1" id="groupAddress1" value="{{ old('address_line_1') }}" maxlength="150">
+                            <input type="text" name="address_line_1" id="groupAddress1" value="{{ old('address_line_1') }}">
                         </div>
                         <div>
                             <label class="label-compact">Address Line 2</label>
-                            <input type="text" name="address_line_2" id="groupAddress2" value="{{ old('address_line_2') }}" maxlength="150">
+                            <input type="text" name="address_line_2" id="groupAddress2" value="{{ old('address_line_2') }}">
                         </div>
                         <div>
                             <label class="label-compact">Country</label>
@@ -173,7 +173,7 @@
                         </div>
                         <div>
                             <label class="label-compact">Postal Code</label>
-                            <input type="text" name="postal_code" id="groupPostalCode" value="{{ old('postal_code') }}" maxlength="20">
+                            <input type="text" name="postal_code" id="groupPostalCode" value="{{ old('postal_code') }}">
                         </div>
                     </div>
                     <div class="flex-between">

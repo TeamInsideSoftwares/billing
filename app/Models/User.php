@@ -42,7 +42,7 @@ protected $primaryKey = 'id';
 
     public function account(): BelongsTo
     {
-        return $this->belongsTo(Account::class);
+        return $this->belongsTo(Account::class, 'accountid', 'accountid');
     }
 
     public function client(): BelongsTo

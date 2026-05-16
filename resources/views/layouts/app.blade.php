@@ -56,13 +56,17 @@
 
     <div class="layout-grid">
         <aside class="sidebar" id="app-sidebar" data-sidebar>
-            <div class="brand-block">
-                <div class="brand-mark">SR</div>
-                <div class="brand-text">
-                    <p class="eyebrow">Billing</p>
-                    <h5>Control Center</h5>
+        <div class="brand-block">
+            <div class="brand-mark-wrap">
+                <div class="brand-mark">
+                    <i class="fas fa-file-invoice-dollar"></i>
                 </div>
             </div>
+            <div class="brand-text">
+                <h5>Skoolready</h5>
+                {{-- <h5>BILLING APP</h5> --}}
+            </div>
+        </div>
 
             <nav class="nav-list">
                 @php
@@ -104,74 +108,92 @@
             </div> -->
 
             <div class="user-section">
-                <div class="user-actions">
-                    <div class="dropdown">
-                        <button type="button" class="icon-btn notification-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                            </svg>
-                            <span class="notification-badge"></span>
-                        </button>
-                        <ul class="dropdown-menu notification-dropdown">
-                            <li class="dropdown-header">
-                                <h6>Notifications</h6>
-                            </li>
-                            <li>
-                                <a class="dropdown-item notification-item" href="#">
-                                    <div class="notification-content">
-                                        <div class="notification-indicator"></div>
-                                        <div class="notification-text">
-                                            <p class="notification-title">New invoice payment received</p>
-                                            <p class="notification-desc">Payment of Rs 15,000 received for Invoice #INV-001</p>
-                                            <p class="notification-time">2 hours ago</p>
+                <!-- Notifications -->
+                <div class="sidebar-user-item">
+                    <div class="sidebar-icon-area">
+                        <div class="dropdown">
+                            <button type="button" class="icon-btn notification-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+                                <i class="fas fa-bell"></i>
+                                <span class="notification-badge"></span>
+                            </button>
+                            <ul class="dropdown-menu notification-dropdown">
+                                <li class="dropdown-header">
+                                    <h6>Notifications</h6>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item notification-item" href="#">
+                                        <div class="notification-content">
+                                            <div class="notification-indicator"></div>
+                                            <div class="notification-text">
+                                                <p class="notification-title">New invoice payment received</p>
+                                                <p class="notification-desc">Payment of Rs 15,000 received for Invoice #INV-001</p>
+                                                <p class="notification-time">2 hours ago</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item notification-item" href="#">
-                                    <div class="notification-content">
-                                        <div class="notification-indicator"></div>
-                                        <div class="notification-text">
-                                            <p class="notification-title">Invoice overdue reminder</p>
-                                            <p class="notification-desc">Invoice #INV-045 is 5 days overdue</p>
-                                            <p class="notification-time">1 day ago</p>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item notification-item" href="#">
+                                        <div class="notification-content">
+                                            <div class="notification-indicator"></div>
+                                            <div class="notification-text">
+                                                <p class="notification-title">Invoice overdue reminder</p>
+                                                <p class="notification-desc">Invoice #INV-045 is 5 days overdue</p>
+                                                <p class="notification-time">1 day ago</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li class="dropdown-footer">
-                                <a href="#">View all notifications</a>
-                            </li>
-                        </ul>
+                                    </a>
+                                </li>
+                                <li class="dropdown-footer">
+                                    <a href="#">View all notifications</a>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
+                    <span class="nav-text">Notifications</span>
+                </div>
 
-                    <div class="dropdown">
-                        <button type="button" class="icon-btn profile-btn" data-bs-toggle="dropdown" aria-expanded="false">
-                            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-                        </button>
-                        <ul class="dropdown-menu profile-dropdown">
-                            <li class="profile-header">
-                                <h6 class="profile-name">{{ auth()->user()->name }}</h6>
-                                <p class="profile-email">{{ auth()->user()->email }}</p>
-                            </li>
-                            <li><a class="dropdown-item profile-settings-link" href="{{ route('settings.index') }}#personal">Profile Settings</a></li>
-                            <li><hr class="dropdown-divider profile-divider"></li>
-                            <li>
-                                <form action="{{ route('logout') }}" method="POST" class="logout-form">
-                                    @csrf
-                                    <button type="submit" class="dropdown-item text-danger logout-btn">Sign Out</button>
-                                </form>
-                            </li>
-                        </ul>
+                <!-- User Profile -->
+                <div class="sidebar-user-item">
+                    <div class="sidebar-icon-area">
+                        <div class="dropdown">
+                            <button type="button" class="icon-btn profile-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Account">
+                                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                            </button>
+                            <ul class="dropdown-menu profile-dropdown">
+                                <li class="profile-header">
+                                    <h6 class="profile-name">{{ auth()->user()->name }}</h6>
+                                    <p class="profile-email">{{ auth()->user()->email }}</p>
+                                </li>
+                                <li><a class="dropdown-item profile-settings-link" href="{{ route('settings.index') }}#personal">Profile Settings</a></li>
+                                <li><hr class="dropdown-divider profile-divider"></li>
+                                <li>
+                                    <form action="{{ route('logout') }}" method="POST" class="logout-form">
+                                        @csrf
+                                        <button type="submit" class="dropdown-item text-danger logout-btn">Sign Out</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="user-info">
+                        <strong class="user-name">{{ auth()->user()->slug }}</strong>
+                        <span class="user-email">{{ auth()->user()->email }}</span>
                     </div>
                 </div>
 
-                <div class="user-info">
-                    <strong class="user-name">{{ auth()->user()->name }}</strong>
-                    <span class="user-email">{{ auth()->user()->email }}</span>
-                </div>
+                <!-- Sign Out at bottom -->
+                <form action="{{ route('logout') }}" method="POST" class="logout-form-inline">
+                    @csrf
+                    <div class="sidebar-user-item">
+                        <div class="sidebar-icon-area">
+                            <button type="submit" class="icon-btn signout-btn" title="Sign Out">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </button>
+                        </div>
+                        <span class="nav-text">Sign Out</span>
+                    </div>
+                </form>
             </div>
         </aside>
         <div class="sidebar-backdrop" data-sidebar-backdrop aria-hidden="true"></div>
@@ -457,7 +479,7 @@
         enforceHeaderDates();
         // Secondary run to catch any late initializations (like flatpickr)
         setTimeout(enforceHeaderDates, 500);
-        
+
         // Expose to global window if needed manually
         window.reapplyDateFilters = enforceHeaderDates;
     });

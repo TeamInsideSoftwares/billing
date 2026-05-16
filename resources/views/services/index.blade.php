@@ -57,7 +57,6 @@
                                 </div>
                             </div>
                             <div class="group-list-item-actions">
-                                <span class="small-tag">Seq: {{ $pc['sequence'] }}</span>
                                 <button type="button" class="text-action-btn edit" onclick="editCategory('{{ $pc['record_id'] }}', '{{ addslashes($pc['name']) }}', '{{ addslashes($pc['description'] ?? '') }}', '{{ strtolower($pc['status']) }}')">Edit</button>
                                 <form method="POST" action="{{ route('product-categories.destroy', $pc['record_id']) }}" class="inline" onsubmit="return confirm('Delete this category?')">
                                     @csrf @method('DELETE')

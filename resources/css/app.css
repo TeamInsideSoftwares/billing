@@ -859,41 +859,136 @@
 /* Sidebar User Section */
 .user-section {
     margin-top: auto;
-    padding: 1.5rem 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.25rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
-.user-actions {
+
+.sidebar-user-item {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
+    transition: background 0.2s ease;
+    width: 100%;
+    min-height: 44px;
+    cursor: pointer;
 }
+
+.sidebar-user-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.sidebar-icon-area {
+    width: 64px; /* Matches collapsed sidebar width */
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
 .icon-btn {
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    border: none;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.08);
     color: #e2e8f0;
-    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+    border: none;
+    padding: 0;
+    cursor: pointer;
 }
+
 .icon-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
     color: white;
 }
-.icon-btn:focus-visible,
-.icon-btn:active,
-.icon-btn.show {
-    background: rgba(255, 255, 255, 0.24);
+
+.profile-btn {
+    background: var(--brand);
     color: white;
+    font-weight: 700;
+    font-size: 0.85rem;
 }
+
+.profile-btn:hover {
+    background: var(--brand-deep);
+}
+
 .notification-btn {
     position: relative;
 }
+
+.sidebar:hover .user-info {
+    opacity: 1;
+    max-width: calc(100% - 72px);
+}
+
+.user-info {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, max-width 0.3s ease;
+    white-space: normal;
+    margin-left: 0.4rem; /* Reduced space */
+}
+
+.user-name {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+    line-height: 1.2;
+}
+
+.user-email {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.logout-form-inline {
+    width: 100%;
+}
+
+.signout-btn {
+    background: transparent;
+    color: #94a3b8;
+}
+
+.sidebar-user-item:hover .signout-btn {
+    color: #fb7185;
+}
+
+.signout-btn i {
+    font-size: 1rem;
+}
+
+.signout-btn:hover {
+    background: rgba(244, 63, 94, 0.15);
+}
+
+.user-section .nav-text {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, max-width 0.3s ease;
+    color: #cbd5e1;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-left: 0.75rem; /* Reduced space */
+}
+
+.sidebar:hover .user-section .nav-text {
+    opacity: 1;
+    max-width: 150px;
+}
+
 .notification-badge {
     position: absolute;
     top: 8px;
@@ -903,46 +998,6 @@
     background: var(--rose);
     border-radius: 50%;
     border: 2px solid #0f172a;
-}
-.profile-btn {
-    background: var(--brand);
-    color: white;
-    font-weight: 700;
-}
-.profile-btn:hover,
-.profile-btn:focus-visible,
-.profile-btn:active,
-.profile-btn.show {
-    background: var(--brand-deep);
-    color: white;
-}
-
-.user-info {
-    opacity: 0;
-    transition: opacity 0.2s;
-    white-space: nowrap;
-    overflow: hidden;
-}
-.sidebar:hover .user-info {
-    opacity: 1;
-}
-.user-name {
-    display: block;
-    font-size: 0.9rem;
-    color: white;
-}
-.user-email {
-    display: block;
-    font-size: 0.75rem;
-    color: var(--muted);
-}
-
-/* Dropdowns */
-.dropdown-menu {
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-lg);
-    padding: 0.5rem;
 }
 .notification-dropdown {
     width: 320px;
@@ -1227,10 +1282,6 @@ a {
     transition: grid-template-columns 0.3s ease;
 }
 
-.sidebar:hover ~ .main-panel {
-    /* This will be handled by the grid changing */
-}
-
 .layout-grid:has(.sidebar:hover) {
     grid-template-columns: 260px minmax(0, 1fr);
 }
@@ -1257,31 +1308,23 @@ a {
     width: 240px;
 }
 
-.sidebar .brand-block {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    padding: 0 1rem;
-    transition: opacity 0.2s ease;
-}
-
-.sidebar:hover .brand-block {
-    padding: 0 1rem;
-}
-
-.sidebar .brand-mark {
-    flex-shrink: 0;
-    width: 2rem;
-    height: 2rem;
-    font-size: 0.85rem;
-}
+/* Brand section consolidated below */
 
 .sidebar .brand-block .brand-text {
     opacity: 0;
-    transition: opacity 0.2s ease;
+    max-width: 0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    white-space: normal;
+    margin-left: 0; /* Reduced space */
 }
 
-.sidebar .brand-block .brand-text h5 {
+.sidebar:hover .brand-text {
+    opacity: 1;
+    max-width: calc(100% - 72px);
+}
+
+.brand-text h5 {
     font-size: 0.95rem;
     margin: 0;
 }
@@ -1298,50 +1341,75 @@ a {
 .sidebar .nav-list {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
-    padding: 0 0.5rem;
-}
-
-.sidebar:hover .nav-list {
-    padding: 0;
+    gap: 0.25rem;
+    padding: 0; /* Remove horizontal padding */
 }
 
 .sidebar .nav-link {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    padding: 0.5rem 0.625rem;
-    border-radius: 0.375rem;
+    height: 44px;
+    padding: 0; /* Ensure no padding shifts the icon */
     color: #cbd5e1;
     font-size: 0.85rem;
     font-weight: 500;
     transition: all 0.2s ease;
-    position: relative;
-    min-width: 48px;
+    text-decoration: none;
+    width: 100%;
 }
 
 .sidebar .nav-link:hover {
     color: white;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.04);
 }
 
 .sidebar .nav-link.is-active {
     color: white;
+    background: rgba(255, 255, 255, 0.03); /* Extremely subtle row background */
+    position: relative;
+}
+
+.sidebar .nav-link.is-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 4px;
     background: var(--brand);
-    box-shadow: none;
+    box-shadow: 2px 0 10px rgba(170, 198, 253, 0.4);
 }
 
 .sidebar .nav-link .nav-icon {
-    width: 18px;
-    text-align: center;
-    margin-right: 0;
+    width: 64px; /* Perfectly match sidebar width */
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
-    font-size: 1rem;
-    transition: margin 0.3s ease;
+    margin: 0 !important;
+    font-size: 1.1rem; /* Slightly larger for better visibility */
 }
 
-.sidebar:hover .nav-link .nav-icon {
-    margin-right: 0.625rem;
+/* Highlight for active nav icon */
+.sidebar .nav-link.is-active .nav-icon {
+    color: #ffffff;
+    position: relative;
+}
+
+.sidebar .nav-link.is-active .nav-icon::after {
+    content: '';
+    position: absolute;
+    width: 42px;
+    height: 42px;
+    background: rgba(236, 241, 255, 0.25); /* Restored subtle blue */
+    border: 1px solid rgba(37, 99, 235, 0.4);
+    border-radius: 12px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: -1;
 }
 
 .sidebar .nav-link .nav-text {
@@ -1353,7 +1421,7 @@ a {
 
 .sidebar:hover .nav-link .nav-text {
     opacity: 1;
-    max-width: 200px;
+    max-width: 160px;
 }
 
 /* Tooltip for collapsed state */
@@ -1386,40 +1454,8 @@ a {
     visibility: visible;
 }
 
-.sidebar .user-section {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    padding: 1rem !important;
-    margin-top: auto;
-    transition: all 0.3s ease;
-}
-
-.sidebar .user-section .user-avatar {
-    flex-shrink: 0;
-    width: 28px;
-    height: 28px;
-    font-size: 0.75rem;
-}
-
-.sidebar .user-section .user-text {
-    opacity: 0;
-    max-width: 0;
-    overflow: hidden;
-    transition: opacity 0.2s ease, max-width 0.3s ease;
-}
-
-.sidebar .user-section .user-text strong {
-    font-size: 0.8rem;
-}
-
-.sidebar:hover .user-section .user-text {
-    opacity: 1;
-    max-width: 200px;
-}
-
-/* General nav-icon styling */
-.nav-icon {
+/* General nav-icon fallback - restricted to prevent conflicts */
+.sidebar-content .nav-icon:not(.sidebar *) {
     width: 20px;
     text-align: center;
     flex-shrink: 0;
@@ -1428,23 +1464,36 @@ a {
 .brand-block {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding-left: 0.5rem;
+    justify-content: flex-start;
+    padding: 1.25rem 0;
+    height: auto;
     transition: all 0.3s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 0.5rem;
+}
+
+.brand-mark-wrap {
+    width: 64px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
 }
 
 .brand-mark {
-    display: grid;
-    place-items: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 0.75rem;
-    color: white;
-    font-weight: 800;
+    width: 36px;
+    height: 36px;
     background: var(--brand);
-    box-shadow: none;
+    color: white;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
     flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
+
 
 .eyebrow {
     margin: 0 0 0.25rem;

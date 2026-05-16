@@ -130,11 +130,11 @@
             </div>
             <div>
                 <label for="postal_code" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Postal Code</label>
-                <input type="text" id="postal_code" name="postal_code" value="{{ old('postal_code', $client->postal_code ?? '') }}" maxlength="20" {{ isset($client) ? 'class="input-full"' : '' }}>
+                <input type="text" id="postal_code" name="postal_code" value="{{ old('postal_code', $client->postal_code ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
             </div>
             <div class="col-span-2">
                 <label for="address_line_1" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Address</label>
-                <textarea id="address_line_1" name="address_line_1" rows="2" maxlength="300" class="textarea-auto">{{ old('address_line_1', $client->address_line_1 ?? '') }}</textarea>
+                <textarea id="address_line_1" name="address_line_1" rows="2" class="textarea-auto">{{ old('address_line_1', $client->address_line_1 ?? '') }}</textarea>
             </div>
         </div>
 
@@ -171,7 +171,7 @@
             <div class="form-grid grid-cols-4">
                 <div class="col-span-2">
                     <label for="billing_business_name" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Billing Business Name *</label>
-                    <input type="text" id="billing_business_name" name="billing_business_name" value="{{ old('billing_business_name', isset($client) ? ($client->billingDetail->business_name ?? $client->business_name) : '') }}" maxlength="150" {{ isset($client) ? 'class="input-full"' : '' }}>
+                    <input type="text" id="billing_business_name" name="billing_business_name" value="{{ old('billing_business_name', isset($client) ? ($client->billingDetail->business_name ?? $client->business_name) : '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
                     @error('billing_business_name') <span class="error">{{ $message }}</span> @enderror
                 </div>
                 <div>
@@ -216,11 +216,11 @@
                 </div>
                 <div>
                     <label for="billing_postal_code" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Postal Code</label>
-                    <input type="text" id="billing_postal_code" name="billing_postal_code" value="{{ old('billing_postal_code', $client->billingDetail->postal_code ?? '') }}" maxlength="20" {{ isset($client) ? 'class="input-full"' : '' }}>
+                    <input type="text" id="billing_postal_code" name="billing_postal_code" value="{{ old('billing_postal_code', $client->billingDetail->postal_code ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
                 </div>
                 <div class="col-span-2">
                     <label for="billing_address_line_1" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Billing Address</label>
-                    <textarea id="billing_address_line_1" name="billing_address_line_1" rows="2" maxlength="300" class="textarea-auto">{{ old('billing_address_line_1', $client->billingDetail->address_line_1 ?? '') }}</textarea>
+                    <textarea id="billing_address_line_1" name="billing_address_line_1" rows="2" class="textarea-auto">{{ old('billing_address_line_1', $client->billingDetail->address_line_1 ?? '') }}</textarea>
                     @error('billing_address_line_1') <span class="error">{{ $message }}</span> @enderror
                 </div>
             </div>
@@ -249,19 +249,19 @@
                     <div class="form-grid grid-cols-2">
                         <div>
                             <label class="label-compact">Group Name *</label>
-                            <input type="text" name="group_name" id="groupName" required maxlength="150" class="{{ isset($client) ? 'input-full' : '' }}">
+                            <input type="text" name="group_name" id="groupName" required class="{{ isset($client) ? 'input-full' : '' }}">
                         </div>
                         <div>
                             <label class="label-compact">Email</label>
-                            <input type="email" name="email" id="groupEmail" maxlength="150" class="{{ isset($client) ? 'input-full' : '' }}">
+                            <input type="email" name="email" id="groupEmail" class="{{ isset($client) ? 'input-full' : '' }}">
                         </div>
                         <div>
                             <label class="label-compact">Address Line 1</label>
-                            <input type="text" name="address_line_1" id="groupAddress1" maxlength="150" class="{{ isset($client) ? 'input-full' : '' }}">
+                            <input type="text" name="address_line_1" id="groupAddress1" class="{{ isset($client) ? 'input-full' : '' }}">
                         </div>
                         <div>
                             <label class="label-compact">Address Line 2</label>
-                            <input type="text" name="address_line_2" id="groupAddress2" maxlength="150" class="{{ isset($client) ? 'input-full' : '' }}">
+                            <input type="text" name="address_line_2" id="groupAddress2" class="{{ isset($client) ? 'input-full' : '' }}">
                         </div>
                         <div>
                             <label class="label-compact">Country</label>
@@ -283,7 +283,7 @@
                         </div>
                         <div>
                             <label class="label-compact">Postal Code</label>
-                            <input type="text" name="postal_code" id="groupPostalCode" maxlength="20" class="{{ isset($client) ? 'input-full' : '' }}">
+                            <input type="text" name="postal_code" id="groupPostalCode" class="{{ isset($client) ? 'input-full' : '' }}">
                         </div>
                     </div>
                     <div class="flex-between">

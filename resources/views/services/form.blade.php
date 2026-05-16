@@ -77,7 +77,6 @@
                         'cost_price' => $c->cost_price,
                         'selling_price' => $c->selling_price,
                         'sac_code' => $c->sac_code,
-                        'taxid' => $c->taxid,
                         'tax_rate' => $c->tax_rate,
                     ];
                 })->toArray());
@@ -88,7 +87,6 @@
                         'cost_price' => '',
                         'selling_price' => '',
                         'sac_code' => '',
-                        'taxid' => '',
                         'tax_rate' => '',
                     ]];
                 }
@@ -179,20 +177,20 @@
                                 <td><input type="text" maxlength="20" name="costings[{{ $index }}][sac_code]" value="{{ $costing['sac_code'] ?? '' }}" class="cell-input cell-input-80"></td>
                                 <td>
                                     @if($account->allow_multi_taxation)
-                                    <select name="costings[{{ $index }}][taxid]" class="tax-select tax-select cell-input-tax">
-                                        <option value="">-- None --</option>
+                                    <select name="costings[{{ $index }}][tax_rate]" class="tax-select tax-select cell-input-tax">
+                                        <option value="0">-- None --</option>
                                         @foreach($taxes->groupBy(fn($tax) => $tax->type ?: 'Other') as $taxType => $typeTaxes)
                                             @if($typeTaxes->isNotEmpty())
                                                 <optgroup label="{{ $taxType }}">
                                                     @foreach($typeTaxes as $tax)
-                                                        <option value="{{ $tax->taxid }}" data-rate="{{ $tax->rate }}" data-name="{{ $tax->tax_name ?? $tax->type }}" {{ ($costing['taxid'] ?? '') === $tax->taxid ? 'selected' : '' }}>{{ $tax->tax_name ?? $tax->type }} ({{ $tax->rate }}%)</option>
+                                                        <option value="{{ $tax->rate }}" {{ (string) ($costing['tax_rate'] ?? '') === (string) $tax->rate ? 'selected' : '' }}>{{ $tax->tax_name ?? $tax->type }} ({{ $tax->rate }}%)</option>
                                                     @endforeach
                                                 </optgroup>
                                             @endif
                                         @endforeach
                                     </select>
                                     @else
-                                    <input type="hidden" name="costings[{{ $index }}][taxid]" value="">
+                                    <input type="hidden" name="costings[{{ $index }}][tax_rate]" value="{{ number_format($account->fixed_tax_rate ?? 0, 2, '.', '') }}">
                                     <span class="fixed-tax-chip">
                                         {{ number_format($account->fixed_tax_rate ?? 0, 2) }}%
                                     </span>
@@ -336,7 +334,6 @@ function showToast(type, message) {
 
         $taxGroupsData = $isMultiTax ? $taxes->groupBy('type')->map(function($group, $type) {
             return $group->map(fn($t) => [
-                'id' => $t->taxid,
                 'name' => $t->tax_name ?? $t->type,
                 'rate' => $t->rate,
             ])->values()->all();
@@ -354,26 +351,26 @@ function showToast(type, message) {
         return d.innerHTML;
     }
 
-    let taxOptionsHtml = '<option value="">-- None --</option>';
+    let taxOptionsHtml = '<option value="0">-- None --</option>';
     for (const type in taxGroups) {
         if (taxGroups[type].length > 1) {
             taxOptionsHtml += '<optgroup label="' + _esc(type) + '">';
             taxGroups[type].forEach(t => {
-                taxOptionsHtml += '<option value="' + t.id + '" data-rate="' + t.rate + '">' + _esc(t.name) + ' (' + t.rate + '%)</option>';
+                taxOptionsHtml += '<option value="' + t.rate + '">' + _esc(t.name) + ' (' + t.rate + '%)</option>';
             });
             taxOptionsHtml += '</optgroup>';
         } else {
             taxGroups[type].forEach(t => {
-                taxOptionsHtml += '<option value="' + t.id + '" data-rate="' + t.rate + '">' + _esc(t.name) + ' (' + t.rate + '%)</option>';
+                taxOptionsHtml += '<option value="' + t.rate + '">' + _esc(t.name) + ' (' + t.rate + '%)</option>';
             });
         }
     }
 
     function taxSelectHtml(i) {
         if (isMultiTax) {
-            return `<select name="costings[${i}][taxid]" class="tax-select cell-input-tax">${taxOptionsHtml}</select>`;
+            return `<select name="costings[${i}][tax_rate]" class="tax-select cell-input-tax">${taxOptionsHtml}</select>`;
         } else {
-            return `<input type="hidden" name="costings[${i}][taxid]" value=""><span class="fixed-tax-chip">${fixedTaxRate.toFixed(2)}%</span>`;
+            return `<input type="hidden" name="costings[${i}][tax_rate]" value="${fixedTaxRate.toFixed(2)}"><span class="fixed-tax-chip">${fixedTaxRate.toFixed(2)}%</span>`;
         }
     }
     function syncCostingTableVisibility() {
@@ -474,19 +471,15 @@ function showToast(type, message) {
             const costPrice = row.querySelector('input[name*="[cost_price]"]')?.value || '';
             const sellingPrice = row.querySelector('input[name*="[selling_price]"]')?.value || '';
             const sacCode = row.querySelector('input[name*="[sac_code]"]')?.value || '';
-            const taxSelect = row.querySelector('select[name*="[taxid]"]');
-            const taxId = taxSelect?.value || '';
-            const selectedTaxOption = taxSelect?.selectedOptions?.[0] || null;
-            const selectedTaxRate = selectedTaxOption ? parseFloat(selectedTaxOption.dataset.rate || '0') : 0;
-            const taxRate = isMultiTax ? selectedTaxRate : fixedTaxRate;
+            const taxInput = row.querySelector('[name*="[tax_rate]"]');
+            const taxRate = taxInput ? parseFloat(taxInput.value || '0') : (isMultiTax ? 0 : fixedTaxRate);
 
-            if (currency || costPrice || sellingPrice || sacCode || taxId) {
+            if (currency || costPrice || sellingPrice || sacCode || taxRate) {
                 costings.push({
                     currency_code: currency,
                     cost_price: costPrice,
                     selling_price: sellingPrice,
                     sac_code: sacCode,
-                    taxid: taxId || null,
                     tax_rate: Number.isFinite(taxRate) ? taxRate : 0
                 });
             }
@@ -509,7 +502,7 @@ function showToast(type, message) {
         } else {
             costingsHtml = validCostings.map((c) => {
                 const price = c.selling_price ? Number(c.selling_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—';
-                const tax = c.tax_rate ? c.tax_rate + '%' : (c.taxid ? 'Taxed' : '');
+                const tax = c.tax_rate ? c.tax_rate + '%' : '';
                 return `<span class="saved-costing-pill">${c.currency_code} ${price} <small class="saved-costing-note">(${tax || 'No Tax'})</small></span>`;
             }).join(' ');
         }

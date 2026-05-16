@@ -49,15 +49,14 @@ class GroupsController extends Controller
     public function groupsStore(Request $request)
     {
         $validated = $request->validate([
-            'group_name' => 'required|string|max:150',
+            'group_name' => 'required|string',
             'email' => 'nullable|email',
-            'address_line_1' => 'nullable|string|max:150',
-            'address_line_2' => 'nullable|string|max:150',
-            'city' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
-            'postal_code' => 'nullable|string|max:20',
-            'country' => 'nullable|string|max:100',
-            'gstin' => 'nullable|string|max:20',
+            'address_line_1' => 'nullable|string',
+            'address_line_2' => 'nullable|string',
+            'city' => 'nullable|string',
+            'state' => 'nullable|string',
+            'postal_code' => 'nullable|string',
+            'country' => 'nullable|string',
         ]);
 
         $userAccountId = $this->resolveAccountId();
@@ -94,15 +93,14 @@ class GroupsController extends Controller
         $group = Group::where('groupid', $id)->where('accountid', $userAccountId)->firstOrFail();
 
         $validated = $request->validate([
-            'group_name' => 'required|string|max:150',
+            'group_name' => 'required|string',
             'email' => 'nullable|email',
-            'address_line_1' => 'nullable|string|max:150',
-            'address_line_2' => 'nullable|string|max:150',
-            'city' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
-            'postal_code' => 'nullable|string|max:20',
-            'country' => 'nullable|string|max:100',
-            'gstin' => 'nullable|string|max:20',
+            'address_line_1' => 'nullable|string',
+            'address_line_2' => 'nullable|string',
+            'city' => 'nullable|string',
+            'state' => 'nullable|string',
+            'postal_code' => 'nullable|string',
+            'country' => 'nullable|string',
         ]);
 
         $group->update($validated);

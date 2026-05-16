@@ -251,6 +251,162 @@
     word-break: break-word;
 }
 
+/* Taxes tab */
+.tax-form-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    padding: 0.85rem;
+    margin-bottom: 0.9rem;
+}
+
+.tax-list-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+    align-items: start;
+}
+
+.tax-form-card.is-editing {
+    border-color: #93c5fd;
+    background: #eff6ff;
+}
+
+.tax-form-title {
+    margin: 0 0 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.tax-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.7rem;
+    align-items: end;
+}
+
+.tax-form-label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.tax-form-input {
+    width: 100%;
+    min-height: 38px;
+}
+
+.tax-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tax-form-btn {
+    white-space: nowrap;
+}
+
+.tax-form-cancel {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #475569;
+    border-radius: 8px;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.82rem;
+}
+
+.tax-form-cancel:hover {
+    background: #f8fafc;
+}
+
+.tax-group-head {
+    margin-bottom: 0.35rem;
+}
+
+.tax-group-title {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.tax-group-pill {
+    display: inline-block;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-radius: 999px;
+    padding: 0.12rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.tax-group-count {
+    font-weight: 600;
+    color: #64748b;
+}
+
+.tax-col-idx,
+.tax-cell-idx {
+    width: 60px;
+    text-align: center;
+}
+
+.tax-col-rate,
+.tax-cell-rate {
+    width: 120px;
+}
+
+.tax-col-status,
+.tax-cell-status {
+    width: 130px;
+    text-align: center;
+}
+
+.tax-col-action,
+.tax-cell-action {
+    width: 140px;
+    text-align: right;
+}
+
+.tax-status-pill {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.tax-status-pill.is-active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.tax-status-pill.is-inactive {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+@media (max-width: 920px) {
+    .tax-list-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .tax-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .tax-form-actions {
+        justify-content: flex-start;
+    }
+}
+
 </style>
 
 <div class="settings-page">
@@ -1362,60 +1518,62 @@
             $taxTypes = ['GST', 'VAT', 'Sales Tax', 'Service Tax', 'Other'];
             $groupedTaxes = $taxes->groupBy('type');
         @endphp
-        @foreach($taxTypes as $taxType)
-            @php
-                $group = $groupedTaxes->get($taxType, collect());
-            @endphp
-            @if($group->count() > 0)
-            <div class="field-gap">
-                <div class="tax-group-head">
-                    <h6 class="tax-group-title">
-                        <span class="tax-group-pill">{{ $taxType }}</span>
-                        — <span class="tax-group-count">{{ $group->count() }} tax{{ $group->count() > 1 ? 'es' : '' }}</span>
-                    </h6>
-                </div>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th class="tax-col-idx">#</th>
-                            <th class="tax-col-rate">Rate</th>
-                            <th class="tax-col-status">Status</th>
-                            <th class="tax-col-action">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($group as $index => $tax)
+        <div class="tax-list-grid">
+            @foreach($taxTypes as $taxType)
+                @php
+                    $group = $groupedTaxes->get($taxType, collect());
+                @endphp
+                @if($group->count() > 0)
+                <div class="field-gap">
+                    <div class="tax-group-head">
+                        <h6 class="tax-group-title">
+                            <span class="tax-group-pill">{{ $taxType }}</span>
+                            — <span class="tax-group-count">{{ $group->count() }} tax{{ $group->count() > 1 ? 'es' : '' }}</span>
+                        </h6>
+                    </div>
+                    <table class="data-table">
+                        <thead>
                             <tr>
-                                <td class="tax-cell-idx">{{ $index + 1 }}</td>
-                                <td class="tax-cell-rate">{{ $tax->rate }}%</td>
-                                <td class="tax-cell-status">
-                                    @if($tax->is_active)
-                                        <span class="tax-status-pill is-active">Active</span>
-                                    @else
-                                        <span class="tax-status-pill is-inactive">Inactive</span>
-                                    @endif
-                                </td>
-                                <td class="tax-cell-action">
-                                    <div class="table-actions">
-                                        <a href="javascript:void(0)" class="text-action-btn edit" title="Edit"
-                                           data-id="{{ $tax->taxid }}"
-                                           data-rate="{{ $tax->rate }}"
-                                           data-type="{{ $tax->type }}"
-                                           data-name="{{ $tax->tax_name }}"
-                                           onclick="startEditTax(this)">Edit</a>
-                                        <form method="POST" action="{{ route('taxes.destroy', $tax) }}" class="inline-delete" onsubmit="return confirm('Delete this tax?')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="text-action-btn delete" title="Delete">Delete</button>
-                                        </form>
-                                    </div>
-                                </td>
+                                <th class="tax-col-idx">#</th>
+                                <th class="tax-col-rate">Rate</th>
+                                <th class="tax-col-status">Status</th>
+                                <th class="tax-col-action">Action</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @endif
-        @endforeach
+                        </thead>
+                        <tbody>
+                            @foreach($group as $index => $tax)
+                                <tr>
+                                    <td class="tax-cell-idx">{{ $index + 1 }}</td>
+                                    <td class="tax-cell-rate">{{ $tax->rate }}%</td>
+                                    <td class="tax-cell-status">
+                                        @if($tax->is_active)
+                                            <span class="tax-status-pill is-active">Active</span>
+                                        @else
+                                            <span class="tax-status-pill is-inactive">Inactive</span>
+                                        @endif
+                                    </td>
+                                    <td class="tax-cell-action">
+                                        <div class="table-actions">
+                                            <a href="javascript:void(0)" class="text-action-btn edit" title="Edit"
+                                               data-id="{{ $tax->taxid }}"
+                                               data-rate="{{ $tax->rate }}"
+                                               data-type="{{ $tax->type }}"
+                                               data-name="{{ $tax->tax_name }}"
+                                               onclick="startEditTax(this)">Edit</a>
+                                            <form method="POST" action="{{ route('taxes.destroy', $tax) }}" class="inline-delete" onsubmit="return confirm('Delete this tax?')">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="text-action-btn delete" title="Delete">Delete</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @endif
+            @endforeach
+        </div>
         @if($taxes->isEmpty())
             <p class="no-records-cell">No taxes configured yet.</p>
         @endif

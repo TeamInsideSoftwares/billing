@@ -176,7 +176,7 @@ class ServicesController extends Controller
             'costings.*.cost_price' => 'required|numeric|min:0',
             'costings.*.selling_price' => 'required|numeric|min:0',
             'costings.*.sac_code' => 'nullable|string|max:20',
-            'costings.*.taxid' => 'nullable|string|exists:account_taxes,taxid',
+            'costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
             'addons' => 'nullable|array',
             'addons.*' => 'required|string|distinct|exists:items,itemid',
         ]);
@@ -191,26 +191,13 @@ class ServicesController extends Controller
             $fixedTaxRate = $account ? ($account->fixed_tax_rate ?? 0) : 0;
 
             $costings = collect($validated['costings'])->map(function (array $costing) use ($isMultiTax, $fixedTaxRate) {
-                $taxid = $costing['taxid'] ?? null;
-                $taxRate = 0;
-
-                if ($isMultiTax) {
-                    // Multi-taxation mode: look up tax rate from taxid
-                    if ($taxid) {
-                        $tax = \App\Models\Tax::find($taxid);
-                        $taxRate = $tax ? $tax->rate : 0;
-                    }
-                } else {
-                    // Fixed tax mode: use fixed_tax_rate from accounts table
-                    $taxRate = $fixedTaxRate;
-                }
+                $taxRate = $isMultiTax ? (float) ($costing['tax_rate'] ?? 0) : (float) $fixedTaxRate;
 
                 return [
                     'currency_code' => strtoupper($costing['currency_code']),
                     'cost_price' => $costing['cost_price'],
                     'selling_price' => $costing['selling_price'],
                     'sac_code' => $costing['sac_code'] ?? null,
-                    'taxid' => $taxid,
                     'tax_rate' => $taxRate,
                 ];
             });
@@ -235,7 +222,6 @@ class ServicesController extends Controller
                     'cost_price' => $costing['cost_price'],
                     'selling_price' => $costing['selling_price'],
                     'sac_code' => $costing['sac_code'],
-                    'taxid' => $costing['taxid'],
                     'tax_rate' => $costing['tax_rate'],
                 ]);
             });
@@ -308,7 +294,7 @@ class ServicesController extends Controller
             'costings.*.cost_price' => 'required|numeric|min:0',
             'costings.*.selling_price' => 'required|numeric|min:0',
             'costings.*.sac_code' => 'nullable|string|max:20',
-            'costings.*.taxid' => 'nullable|string|exists:account_taxes,taxid',
+            'costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
             'addons' => 'nullable|array',
             'addons.*' => 'required|string|distinct|exists:items,itemid',
         ]);
@@ -321,26 +307,13 @@ class ServicesController extends Controller
             $fixedTaxRate = $account ? ($account->fixed_tax_rate ?? 0) : 0;
 
             $costings = collect($validated['costings'])->map(function (array $costing) use ($isMultiTax, $fixedTaxRate) {
-                $taxid = $costing['taxid'] ?? null;
-                $taxRate = 0;
-
-                if ($isMultiTax) {
-                    // Multi-taxation mode: look up tax rate from taxid
-                    if ($taxid) {
-                        $tax = Tax::find($taxid);
-                        $taxRate = $tax ? $tax->rate : 0;
-                    }
-                } else {
-                    // Fixed tax mode: use fixed_tax_rate from accounts table
-                    $taxRate = $fixedTaxRate;
-                }
+                $taxRate = $isMultiTax ? (float) ($costing['tax_rate'] ?? 0) : (float) $fixedTaxRate;
 
                 return [
                     'currency_code' => strtoupper($costing['currency_code']),
                     'cost_price' => $costing['cost_price'],
                     'selling_price' => $costing['selling_price'],
                     'sac_code' => $costing['sac_code'] ?? null,
-                    'taxid' => $taxid,
                     'tax_rate' => $taxRate,
                 ];
             });
@@ -374,7 +347,6 @@ class ServicesController extends Controller
                     'cost_price' => $costing['cost_price'],
                     'selling_price' => $costing['selling_price'],
                     'sac_code' => $costing['sac_code'],
-                    'taxid' => $costing['taxid'],
                     'tax_rate' => $costing['tax_rate'],
                 ]);
             });
@@ -424,7 +396,7 @@ class ServicesController extends Controller
                 'costings.*.cost_price' => 'required|numeric|min:0',
                 'costings.*.selling_price' => 'required|numeric|min:0',
                 'costings.*.sac_code' => 'nullable|string|max:20',
-                'costings.*.taxid' => 'nullable|string|exists:account_taxes,taxid',
+                'costings.*.tax_rate' => 'nullable|numeric|min:0|max:100',
                 'addons' => 'nullable|array',
                 'addons.*' => 'required|string|distinct|exists:items,itemid',
             ]);
@@ -466,19 +438,7 @@ class ServicesController extends Controller
                 $fixedTaxRate = $account ? ($account->fixed_tax_rate ?? 0) : 0;
 
                 foreach ($validated['costings'] as $costing) {
-                    $taxid = $costing['taxid'] ?? null;
-                    $taxRate = 0;
-
-                    if ($isMultiTax) {
-                        // Multi-taxation mode: look up tax rate from taxid
-                        if ($taxid) {
-                            $tax = Tax::find($taxid);
-                            $taxRate = $tax ? $tax->rate : 0;
-                        }
-                    } else {
-                        // Fixed tax mode: use fixed_tax_rate from accounts table
-                        $taxRate = $fixedTaxRate;
-                    }
+                    $taxRate = $isMultiTax ? (float) ($costing['tax_rate'] ?? 0) : (float) $fixedTaxRate;
 
                     $item->costings()->create([
                         'accountid' => $userAccountId,
@@ -486,7 +446,6 @@ class ServicesController extends Controller
                         'cost_price' => $costing['cost_price'],
                         'selling_price' => $costing['selling_price'],
                         'sac_code' => $costing['sac_code'] ?? null,
-                        'taxid' => $taxid,
                         'tax_rate' => $taxRate,
                     ]);
                 }
