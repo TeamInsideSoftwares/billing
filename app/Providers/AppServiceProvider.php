@@ -30,8 +30,26 @@ class AppServiceProvider extends ServiceProvider
 
         // Share account business_name globally
         view()->composer('*', function ($view) {
-            if (Auth::check()) {
-                $view->with('account', Auth::user());
+            if (!Auth::check()) {
+                return;
+            }
+
+            // If controller already provided an 'account' key, don't override it.
+            if (array_key_exists('account', $view->getData())) {
+                return;
+            }
+
+            $user = Auth::user();
+            $account = null;
+
+            if ($user instanceof \App\Models\Account) {
+                $account = $user;
+            } elseif (method_exists($user, 'account')) {
+                $account = $user->account;
+            }
+
+            if ($account) {
+                $view->with('account', $account);
             }
         });
 

@@ -1,19 +1,47 @@
 @php
-    $normalizeTaxState = static fn ($value) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $value)));
     $selectedInvoiceClient = $clients->firstWhere('clientid', request('c', request('clientid')));
     $selectedClientCurrency = optional($selectedInvoiceClient)->currency ?? 'INR';
     $selectedClientName = $selectedInvoiceClient ? ($selectedInvoiceClient->business_name ?? $selectedInvoiceClient->contact_name ?? 'Unknown Client') : 'No Client Selected';
     $selectedClientEmail = optional($selectedInvoiceClient)->email ?? '';
-    $invoiceClientState = $normalizeTaxState(optional($selectedInvoiceClient)->state ?? '');
-    $invoiceAccountState = $normalizeTaxState(optional($account)->state ?? '');
-    $sameStateGstForInvoice = $invoiceClientState !== '' && $invoiceAccountState !== '' && $invoiceClientState === $invoiceAccountState;
-    $isTaxInvoiceStep4 = (request('tax_invoice', 0) == 1) || !empty($invoice?->ti_number);
-    $initialHeaderNumber = $isTaxInvoiceStep4
+    $isTaxInvoiceStep3 = (request('tax_invoice', 0) == 1) || !empty($invoice?->ti_number);
+    $initialHeaderNumber = $isTaxInvoiceStep3
         ? ($invoice?->ti_number ?: ($nextTaxInvoiceNumber ?? $nextInvoiceNumber))
         : ($invoice?->pi_number ?: $nextInvoiceNumber);
 @endphp
-<!-- Step 4: Preview & Terms (For Orders & Renewal, and Without Orders Step 3) -->
-<div id="step4" class="invoice-step">
+<style>
+    .invoice-compact-steps {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-top: 0.4rem;
+    }
+
+    .invoice-compact-steps--right {
+        justify-content: flex-end;
+    }
+
+    .invoice-compact-step {
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 999px;
+        border: 1px solid #d1d5db;
+        color: #6b7280;
+        font-size: 0.74rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+    }
+
+    .invoice-compact-step.is-active {
+        border-color: #2563eb;
+        background: #2563eb;
+        color: #fff;
+    }
+</style>
+<!-- Step 3: Preview & Terms (For Orders & Renewal, and Without Orders Step 3) -->
+<div id="step3" class="invoice-step">
     {{-- Client Info Header with Back Button --}}
     <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -34,30 +62,33 @@
                 <div id="piNumberBadge" style="display: inline-block; padding: 0.35rem 0.75rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #c7d2fe;">
                     {{ $initialHeaderNumber }}
                 </div>
+                <div class="invoice-compact-steps invoice-compact-steps--right" aria-label="Step progress">
+                    <span class="invoice-compact-step">1</span>
+                    <span class="invoice-compact-step">2</span>
+                    <span class="invoice-compact-step is-active">3</span>
+                    <span class="invoice-compact-step">4</span>
+                </div>
             </div>
         </div>
     </div>
 
     <input type="hidden" name="clientid" value="{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}">
     <input type="hidden" name="orderid" value="{{ request('o', request('orderid', '')) === '0' ? '' : request('o', request('orderid', '')) }}">
-    <input type="hidden" name="invoiceid" id="step4_invoiceid" value="{{ request('d', '') }}">
-    <input type="hidden" name="renewed_item_ids" id="step4_renewed_item_ids" value="">
-    <input type="hidden" name="invoice_number" id="step4_invoice_number" value="{{ $isTaxInvoiceStep4 ? ($invoice?->ti_number ?: ($nextTaxInvoiceNumber ?? $nextInvoiceNumber)) : ($invoice?->pi_number ?? $nextInvoiceNumber) }}">
-    <input type="hidden" name="issue_date" id="step4_issue_date" value="{{ date('Y-m-d') }}">
-    <input type="hidden" name="due_date" id="step4_due_date" value="{{ date('Y-m-d', strtotime('+7 days')) }}">
-    <input type="hidden" name="items_data" id="step4_items_data" value="">
-    <input type="hidden" name="currency_code" id="step4_currency_code" value="{{ $selectedClientCurrency }}">
-    <input type="hidden" name="notes" id="step4_notes" value="">
+    <input type="hidden" name="invoiceid" id="step3_invoiceid" value="{{ request('d', '') }}">
+    <input type="hidden" name="renewed_item_ids" id="step3_renewed_item_ids" value="">
+    <input type="hidden" name="invoice_number" id="step3_invoice_number" value="{{ $isTaxInvoiceStep3 ? ($invoice?->ti_number ?: ($nextTaxInvoiceNumber ?? $nextInvoiceNumber)) : ($invoice?->pi_number ?? $nextInvoiceNumber) }}">
+    <input type="hidden" name="issue_date" id="step3_issue_date" value="{{ date('Y-m-d') }}">
+    <input type="hidden" name="due_date" id="step3_due_date" value="{{ date('Y-m-d', strtotime('+7 days')) }}">
+    <input type="hidden" name="items_data" id="step3_items_data" value="">
+    <input type="hidden" name="currency_code" id="step3_currency_code" value="{{ $selectedClientCurrency }}">
+    <input type="hidden" name="notes" id="step3_notes" value="">
 
     <div class="row g-3 align-items-start">
         <div class="col-12 col-md-3" style="min-width: 0;">
             <div class="panel-card" style="padding: 0.85rem; border: 1px solid #e5e7eb; background: #fff; position: relative; height: 100%; overflow: hidden;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e5e7eb;">
                     <div style="display: flex; align-items: center; gap: 0.45rem;">
-                        <h5 style="margin: 0; font-size: 0.9rem; color: #111827;">{{ $isTaxInvoiceStep4 ? 'Tax T&C' : 'Proforma T&C' }}</h5>
-                        {{-- <span id="tcTypeBadge" style="font-size: 0.68rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">
-                            {{ $isTaxInvoiceStep4 ? 'Tax T&C' : 'Proforma T&C' }}
-                        </span> --}}
+                        <h5 style="margin: 0; font-size: 0.9rem; color: #111827;">{{ $isTaxInvoiceStep3 ? 'Tax T&C' : 'Proforma T&C' }}</h5>
                     </div>
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <button type="button" id="btnApplyTC" class="primary-button" style="padding: 0.28rem 0.65rem; font-size: 0.72rem; display: none;">Apply</button>
@@ -90,9 +121,9 @@
                 </div>
                 <div id="termsList" style="padding-right: 0.2rem;">
                     @php
-                        $initialTermsForStep4 = $isTaxInvoiceStep4 ? ($billingTerms ?? collect()) : ($proformaTerms ?? collect());
+                        $initialTermsForStep3 = $isTaxInvoiceStep3 ? ($billingTerms ?? collect()) : ($proformaTerms ?? collect());
                     @endphp
-                    @foreach($initialTermsForStep4 as $term)
+                    @foreach($initialTermsForStep3 as $term)
                     <div style="margin-bottom: 0.55rem; padding: 0; width: 100%; max-width: 100%; box-sizing: border-box;" class="term-item-row">
                         <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.45rem; cursor: pointer; margin-bottom: 0.2rem; width: 100%; max-width: 100%; box-sizing: border-box;">
                             <input type="checkbox" class="term-checkbox" data-tc-id="{{ $term->tc_id }}" data-is-default="{{ (int) ($term->is_default ?? 0) }}" data-content="{{ $term->content }}" value="{{ $term->content }}" {{ !empty($term->is_default) ? 'checked' : '' }} style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
@@ -112,7 +143,7 @@
                 <div style="background: #fafafa; padding: 0.7rem 0.9rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
                     <h5 style="margin: 0; font-size: 0.95rem; color: #111827;">
                         <i class="fas fa-file-pdf" style="color: #374151; margin-right: 0.5rem;"></i>
-                        {{ $isTaxInvoiceStep4 ? 'Tax Invoice Preview' : 'Invoice Preview' }}
+                        {{ $isTaxInvoiceStep3 ? 'Tax Invoice Preview' : 'Invoice Preview' }}
                     </h5>
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <span style="font-size: 0.75rem; color: #6b7280; font-weight: 500;">
@@ -152,7 +183,7 @@
 
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mt-3">
         <button type="button" class="primary-button" id="btnSendEmail">
-            <i class="fas fa-envelope me-2"></i>Send Email
+            <i class="fas fa-envelope me-2"></i>Compose Email
         </button>
     </div>
 </div>
@@ -162,35 +193,28 @@
     const clientId = "{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}";
     const orderId = "{{ request('o', request('orderid', '')) }}";
     const draftId = "{{ request('d', '') }}";
-    const isTaxInvoice = @json($isTaxInvoiceStep4);
+    const isTaxInvoice = @json($isTaxInvoiceStep3);
     const hasOrderId = orderId && orderId !== '0';
     const btnBackToPrev = document.getElementById('btnBackToPrev');
-    const finalSubmitBtn = document.getElementById('finalSubmitBtn');
     const createTaxInvoiceBtn = document.getElementById('createTaxInvoiceBtn');
     const digitalSignBtn = document.getElementById('digitalSignBtn');
     const btnDownloadPI = document.getElementById('btnDownloadPI');
     const btnDownloadTaxInvoice = document.getElementById('btnDownloadTaxInvoice');
-    const previewContent = document.getElementById('previewContent');
     const termsList = document.getElementById('termsList');
     const btnAddTC = document.getElementById('btnAddTC');
     const btnApplyTC = document.getElementById('btnApplyTC');
     const addTermModal = document.getElementById('addTermModal');
-    const btnCloseTermModal = document.getElementById('btnCloseTermModal');
     const btnCancelTermModal = document.getElementById('btnCancelTermModal');
     const saveTermBtn = document.getElementById('saveTermBtn');
     const newTermContent = document.getElementById('newTermContent');
     const addTermError = document.getElementById('addTermError');
     const addTermBootstrapModal = addTermModal ? new bootstrap.Modal(addTermModal) : null;
     const piNumberBadge = document.getElementById('piNumberBadge');
-    const itemsDataInput = document.getElementById('step4_items_data');
-    const invoiceNumberInput = document.getElementById('step4_invoice_number');
-    const invoiceidInput = document.getElementById('step4_invoiceid');
-    const renewedItemIdsInput = document.getElementById('step4_renewed_item_ids');
-    const tcTypeBadge = document.getElementById('tcTypeBadge');
-    const currencyCodeInput = document.getElementById('step4_currency_code');
-    const pdfVersionsList = document.getElementById('pdfVersionsList');
-    const pdfVersionsMeta = document.getElementById('pdfVersionsMeta');
-    const sameStateGstForInvoice = @json($sameStateGstForInvoice);
+    const itemsDataInput = document.getElementById('step3_items_data');
+    const invoiceNumberInput = document.getElementById('step3_invoice_number');
+    const invoiceidInput = document.getElementById('step3_invoiceid');
+    const renewedItemIdsInput = document.getElementById('step3_renewed_item_ids');
+    const currencyCodeInput = document.getElementById('step3_currency_code');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     @php
@@ -252,8 +276,6 @@
     let draftIssueDate = '';
     let draftDueDate = '';
     let draftNotes = '';
-    let draftPoNumber = '';
-    let draftPoDate = '';
     let appliedTerms = [];
     let currentTermType = isTaxInvoice ? 'billing' : 'proforma';
     const termsByType = {
@@ -323,29 +345,16 @@
             `;
             termsList.appendChild(row);
         });
-        const anyChecked = Array.from(document.querySelectorAll('.term-checkbox')).some(cb => cb.checked);
-        if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
     }
 
     function syncTermsTypeWithInvoiceStage() {
         const nextType = (draftTiNumber || isTaxInvoice) ? 'billing' : 'proforma';
         if (nextType === currentTermType) {
-            updateTcTypeBadge();
             return;
         }
         currentTermType = nextType;
         renderTermsList(currentTermType, getDefaultTermsForType(currentTermType));
-        updateTcTypeBadge();
         updateInvoicePreview();
-    }
-
-    function updateTcTypeBadge() {
-        if (!tcTypeBadge) return;
-        const isBillingType = currentTermType === 'billing';
-        tcTypeBadge.textContent = isBillingType ? 'Tax T&C' : 'Proforma T&C';
-        tcTypeBadge.style.background = isBillingType ? '#ecfeff' : '#eff6ff';
-        tcTypeBadge.style.color = isBillingType ? '#155e75' : '#1d4ed8';
-        tcTypeBadge.style.borderColor = isBillingType ? '#a5f3fc' : '#bfdbfe';
     }
 
     function getHeaderDocumentNumber() {
@@ -422,15 +431,13 @@
                 draftDueDate = data.draft.due_date || '';
                 draftNotes = data.draft.notes || '';
 
-                if (data.draft.issue_date) document.getElementById('step4_issue_date').value = data.draft.issue_date;
-                if (data.draft.due_date) document.getElementById('step4_due_date').value = data.draft.due_date;
-                if (data.draft.notes) document.getElementById('step4_notes').value = data.draft.notes;
+                if (data.draft.issue_date) document.getElementById('step3_issue_date').value = data.draft.issue_date;
+                if (data.draft.due_date) document.getElementById('step3_due_date').value = data.draft.due_date;
+                if (data.draft.notes) document.getElementById('step3_notes').value = data.draft.notes;
                 if (data.draft.currency_code) {
                     currencyCodeInput.value = data.draft.currency_code;
                 }
 
-                draftPoNumber = data.draft.po_number || '';
-                draftPoDate = data.draft.po_date || '';
                 syncTermsTypeWithInvoiceStage();
 
                 const draftTermsByType = normalizeDraftTermsByType(data.draft.terms_by_type ?? data.draft.terms ?? []);
@@ -441,10 +448,6 @@
                 appliedTerms = typedDraftTerms.length > 0 ? typedDraftTerms : currentDefaults;
                 renderTermsList(currentTermType, appliedTerms);
 
-                const checkboxes = document.querySelectorAll('.term-checkbox');
-                const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
-                if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
-
                 invoiceNumberInput.value = draftInvoiceNumber;
                 invoiceidInput.value = data.draft.invoiceid || '';
                 if (btnApplyTC && data.draft.invoiceid) btnApplyTC.style.display = 'inline-block';
@@ -452,8 +455,7 @@
                 updateHeaderNumberBadge();
                 syncRenewedItemIdsInput();
 
-                updateDownloadButtons(data.draft.invoiceid, data.draft.invoice_number);
-                loadPdfVersions(data.draft.invoiceid);
+                updateDownloadButtons(data.draft.invoiceid);
 
                 updateTotals();
                 updateInvoicePreview();
@@ -465,11 +467,8 @@
                 checkboxes.forEach(cb => {
                     cb.checked = currentDefaults.some(t => t === cb.value.trim());
                 });
-                const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
-                if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
                 updateHeaderNumberBadge();
                 syncRenewedItemIdsInput();
-                loadPdfVersions(invoiceidInput.value || draftId);
                 updateInvoicePreview();
             }
         })
@@ -481,11 +480,8 @@
             checkboxes.forEach(cb => {
                 cb.checked = currentDefaults.some(t => t === cb.value.trim());
             });
-            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
-            if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
             updateHeaderNumberBadge();
             syncRenewedItemIdsInput();
-            loadPdfVersions(invoiceidInput.value || draftId);
             updateInvoicePreview();
         });
     }
@@ -498,7 +494,7 @@
         return Math.floor(Math.max(0, Number(value) || 0));
     }
 
-    function updateDownloadButtons(invoiceid, invoiceNumber) {
+    function updateDownloadButtons(invoiceid) {
         if (!invoiceid) return;
         const base = "{{ url('invoices') }}/" + invoiceid + "/pdf";
         if (btnDownloadPI) {
@@ -511,57 +507,6 @@
             digitalSignBtn.style.opacity = '1';
             digitalSignBtn.onclick = () => window.open(base + '?type=pi&signed=1', '_blank');
         }
-    }
-
-    function renderPdfVersions(versions) {
-        if (!pdfVersionsList) return;
-        const list = Array.isArray(versions) ? versions : [];
-        pdfVersionsList.innerHTML = '';
-
-        if (!list.length) {
-            const empty = document.createElement('span');
-            empty.style.fontSize = '0.74rem';
-            empty.style.color = '#9ca3af';
-            empty.textContent = 'No saved versions yet';
-            pdfVersionsList.appendChild(empty);
-            if (pdfVersionsMeta) pdfVersionsMeta.textContent = '';
-            return;
-        }
-
-        list.forEach((item) => {
-            const chip = document.createElement('a');
-            chip.href = item.url;
-            chip.target = '_blank';
-            chip.rel = 'noopener';
-            chip.style.textDecoration = 'none';
-            chip.style.padding = '0.2rem 0.55rem';
-            chip.style.border = '1px solid #d1d5db';
-            chip.style.borderRadius = '999px';
-            chip.style.fontSize = '0.73rem';
-            chip.style.fontWeight = '600';
-            chip.style.color = '#374151';
-            chip.style.background = '#f9fafb';
-            chip.textContent = `${String(item.type || '').toUpperCase()} v${item.version}`;
-            pdfVersionsList.appendChild(chip);
-        });
-
-        if (pdfVersionsMeta) {
-            pdfVersionsMeta.textContent = `${list.length} version${list.length === 1 ? '' : 's'}`;
-        }
-    }
-
-    function loadPdfVersions(invoiceid) {
-        if (!invoiceid) {
-            renderPdfVersions([]);
-            return;
-        }
-
-        fetch(`{{ url('invoices') }}/${invoiceid}/pdf-versions`, {
-            headers: { 'Accept': 'application/json' },
-        })
-            .then(r => r.json())
-            .then(data => renderPdfVersions(data && data.ok ? data.versions : []))
-            .catch(() => renderPdfVersions([]));
     }
 
     function syncTaxInvoiceButtons(invoiceid) {
@@ -628,8 +573,6 @@
     document.getElementById('termsList').addEventListener('change', (e) => {
         if (e.target.classList.contains('term-checkbox')) {
             const allCheckboxes = document.querySelectorAll('.term-checkbox');
-            const anyChecked = Array.from(allCheckboxes).some(cb => cb.checked);
-            if (finalSubmitBtn) finalSubmitBtn.disabled = !anyChecked;
             if (createTaxInvoiceBtn) createTaxInvoiceBtn.disabled = !invoiceidInput.value;
             if (btnApplyTC) btnApplyTC.style.display = invoiceidInput.value ? 'inline-block' : 'none';
         }
@@ -667,7 +610,6 @@
                 if (data.ok) {
                     appliedTerms = selectedTerms;
                     updateInvoicePreview();
-                    loadPdfVersions(invoiceid);
                     btnApplyTC.textContent = 'Applied ✓';
                     btnApplyTC.style.background = '#d1fae5';
                     btnApplyTC.style.color = '#065f46';
@@ -695,10 +637,6 @@
 
     if (btnCancelTermModal) {
         btnCancelTermModal.addEventListener('click', closeTermModal);
-    }
-
-    if (btnCloseTermModal) {
-        btnCloseTermModal.addEventListener('click', closeTermModal);
     }
 
     if (saveTermBtn) {
@@ -753,7 +691,6 @@
                     `;
 
                     termsList.prepend(row);
-                    if (finalSubmitBtn) finalSubmitBtn.disabled = false;
                     closeTermModal();
                 })
                 .catch(error => {
@@ -871,7 +808,6 @@
 		                updateHeaderNumberBadge();
 		                syncTaxInvoiceButtons(invoiceidInput.value);
 		                updateInvoicePreview();
-                        loadPdfVersions(invoiceidInput.value);
 		                const base = "{{ url('invoices') }}/" + invoiceidInput.value + "/pdf";
 		                window.open(base + '?type=tax_invoice', '_blank');
 		                return;
@@ -880,7 +816,6 @@
 		            // If server returned non-JSON but status is OK, treat as success and reload draft state.
 		            if (ok && !data) {
 		                loadItems();
-                        loadPdfVersions(invoiceidInput.value);
 		                const base = "{{ url('invoices') }}/" + invoiceidInput.value + "/pdf";
 		                window.open(base + '?type=tax_invoice', '_blank');
 		                return;
@@ -898,9 +833,8 @@
     createTaxInvoiceBtn?.addEventListener('click', createTaxInvoice);
 
     if (draftId) {
-        updateDownloadButtons(draftId, null);
+        updateDownloadButtons(draftId);
         if (btnApplyTC) btnApplyTC.style.display = 'inline-block';
-        loadPdfVersions(draftId);
     }
     syncTaxInvoiceButtons(invoiceidInput.value || draftId);
     syncRenewedItemIdsInput();

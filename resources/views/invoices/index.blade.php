@@ -28,7 +28,6 @@
             <form action="{{ route('invoices.index') }}" method="GET" class="module-filter-grid">
                 <input type="hidden" name="tab" value="{{ $selectedTab ?? 'invoices' }}">
                 <input type="hidden" name="type" value="{{ $selectedType ?? '' }}">
-                <input type="hidden" name="status" value="{{ $selectedStatus ?? 'active' }}">
 
                 <div class="module-filter-field">
                     <label class="module-filter-label" for="invoice_client_filter">Client</label>
@@ -48,7 +47,6 @@
                     <a href="{{ route('invoices.index', array_filter([
                         'tab' => $selectedTab ?? 'invoices',
                         'type' => $selectedType ?? '',
-                        'status' => $selectedStatus ?? 'active',
                     ])) }}"
                         class="secondary-button">Reset</a>
                 </div>
@@ -57,15 +55,15 @@
 
         <div class="invoice-tabs-container">
             <div class="invoice-tabs">
-                <a href="{{ route('invoices.index', array_filter(['tab' => 'invoices', 'c' => $selectedClientId, 'type' => $selectedType ?? '', 'status' => 'active'])) }}"
+                <a href="{{ route('invoices.index', array_filter(['tab' => 'invoices', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}"
                     class="invoice-tab {{ $currentTab === 'invoices' ? 'is-active' : '' }}">
                     All <span>{{ ($allInvoiceRows ?? $allInvoices)->count() }}</span>
                 </a>
-                <a href="{{ route('invoices.index', array_filter(['tab' => 'upcoming', 'c' => $selectedClientId, 'type' => $selectedType ?? '', 'status' => 'active'])) }}"
+                <a href="{{ route('invoices.index', array_filter(['tab' => 'upcoming', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}"
                     class="invoice-tab {{ $currentTab === 'upcoming' ? 'is-active' : '' }}">
                     Upcoming <span>{{ $upcomingInvoicesCount ?? 0 }}</span>
                 </a>
-                <a href="{{ route('invoices.index', array_filter(['tab' => 'cancelled', 'c' => $selectedClientId, 'type' => $selectedType ?? '', 'status' => 'cancelled'])) }}"
+                <a href="{{ route('invoices.index', array_filter(['tab' => 'cancelled', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}"
                     class="invoice-tab {{ $currentTab === 'cancelled' ? 'is-active' : '' }}">
                     Cancelled <span>{{ $cancelledInvoicesCount ?? 0 }}</span>
                 </a>

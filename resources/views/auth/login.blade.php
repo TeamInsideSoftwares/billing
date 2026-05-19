@@ -14,7 +14,7 @@
         <div class="login-brand">
             <!-- <div class="login-mark">SR</div> -->
         </div>
-        <p class="login-eyebrow">SkoolReady Billing</p>
+        <p class="login-eyebrow">SkoolReady</p>
         <h1 class="login-title">Sign In</h1>
         <p class="login-subtitle">Enter your credentials to access your account</p>
 
@@ -23,6 +23,18 @@
                 @foreach ($errors->all() as $error)
                     {{ $error }}
                 @endforeach
+            </div>
+        @endif
+
+        @if (session('success'))
+            <div class="alert success">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="alert error">
+                {{ session('error') }}
             </div>
         @endif
 
@@ -43,7 +55,7 @@
             </div>
 
             <div class="login-footer-row">
-                <a href="#" class="forgot-link">Forgot Password?</a>
+                <a href="{{ route('password.request') }}" class="forgot-link">Forgot Password?</a>
                 <button type="submit" class="primary-button login-button" id="loginBtn">
                     Sign In
                 </button>

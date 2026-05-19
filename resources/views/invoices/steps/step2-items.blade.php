@@ -11,6 +11,38 @@
         return $item['order_number'] ?? 'Order';
     });
 @endphp
+<style>
+    .invoice-compact-steps {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .invoice-compact-steps--right {
+        margin-top: 0.35rem;
+        justify-content: flex-end;
+    }
+
+    .invoice-compact-step {
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 999px;
+        border: 1px solid #d1d5db;
+        color: #6b7280;
+        font-size: 0.74rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+    }
+
+    .invoice-compact-step.is-active {
+        border-color: #2563eb;
+        background: #2563eb;
+        color: #fff;
+    }
+</style>
 <!-- Step 2: Select Items -->
 <div id="step2" class="invoice-step">
     {{-- Client Info Header with Back Button --}}
@@ -32,6 +64,12 @@
             <div class="invoice-client-header__right">
                 <div id="piNumberBadge" class="invoice-number-badge">
                     {{ $initialHeaderNumberStep2 }}
+                </div>
+                <div class="invoice-compact-steps invoice-compact-steps--right" aria-label="Step progress">
+                    <span class="invoice-compact-step">1</span>
+                    <span class="invoice-compact-step is-active">2</span>
+                    <span class="invoice-compact-step">3</span>
+                    <span class="invoice-compact-step">4</span>
                 </div>
             </div>
         </div>
@@ -65,10 +103,6 @@
     <input type="hidden" name="orderid" id="orderid" value="">
     <input type="hidden" name="invoice_number" value="{{ $initialHeaderNumberStep2 }}">
     <input type="hidden" name="items_data" id="items_data" value="">
-    <input type="hidden" name="currency_code" id="currency_code" value="{{ $selectedClientCurrency }}">
-    <input type="hidden" name="issue_date" id="step2_issue_date" value="{{ date('Y-m-d') }}">
-    <input type="hidden" name="due_date" id="step2_due_date" value="{{ date('Y-m-d', strtotime('+7 days')) }}">
-    <input type="hidden" name="notes" id="step2_notes" value="">
 
     <div id="manualItemsSection" class="workflow-panel">
         <div class="panel-heading-row">
@@ -174,19 +208,19 @@
                 <thead>
                     <tr>
                         <th>Item</th>
-                        <th>Qty</th>
-                        <th>Price ({{ $selectedClientCurrency }})</th>
-                        <th>Disc %</th>
+                        <th class="text-center">Qty</th>
+                        <th class="text-right">Price ({{ $selectedClientCurrency }})</th>
+                        <th class="text-center">Disc %</th>
                         @if($account->allow_multi_taxation)
-                            <th>Tax %</th>
+                            <th class="text-center">Tax %</th>
                         @endif
-                        <th id="manualUsersHeader" class="is-hidden">Users</th>
+                        <th id="manualUsersHeader" class="is-hidden text-center">Users</th>
                         <th>Freq</th>
-                        <th id="manualDurationHeader" class="is-hidden">Dur</th>
+                        <th id="manualDurationHeader" class="is-hidden text-center">Dur</th>
                         <th id="manualStartHeader" class="is-hidden">Start</th>
                         <th id="manualEndHeader" class="is-hidden">End</th>
-                        <th>Total ({{ $selectedClientCurrency }})</th>
-                        <th></th>
+                        <th class="text-right">Total ({{ $selectedClientCurrency }})</th>
+                        <th class="text-center"></th>
                     </tr>
                 </thead>
                 <tbody id="manualItemsBody"></tbody>
@@ -220,7 +254,6 @@
         const addItemFormCard = document.getElementById('addItemFormCard');
         const btnBackToStep1 = document.getElementById('btnBackToStep1');
         const itemsDataInput = document.getElementById('items_data');
-        const currencyCodeInput = document.getElementById('currency_code');
         const invoiceTitleInput = document.getElementById('invoice_title');
         const invoiceTitleError = document.getElementById('invoiceTitleError');
         const manualFrequencyInput = document.getElementById('manual_item_frequency');
@@ -236,6 +269,7 @@
         const clientId = "{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}";
         const fallbackPiNumber = "{{ $nextInvoiceNumber }}";
         const fallbackTiNumber = "{{ $nextTaxInvoiceNumber ?? $nextInvoiceNumber }}";
+        const ONE_TIME_MAX_END_DATE = '2099-12-31';
         const orderItemsRouteTemplate = @json(route('invoices.order-items', ['orderid' => '__ORDERID__']));
         let draftPiNumber = '';
         let draftTiNumber = '';
@@ -427,11 +461,20 @@
 
         function syncManualEndDateFromInputs() {
             if (!manualEndInput) return;
+            const selectedFrequency = normalizeFrequencyValue(manualFrequencyInput?.value || '');
+            if (selectedFrequency === 'One-Time') {
+                setDateInputValue(manualEndInput, ONE_TIME_MAX_END_DATE);
+                return;
+            }
             const nextValue = calculateEndDate(
                 manualStartInput?.value || '',
                 manualFrequencyInput?.value || '',
                 manualDurationInput?.value || ''
             );
+            // For non-recurring frequencies (e.g. None), keep existing end date as-is.
+            if (selectedFrequency === '' && !nextValue) {
+                return;
+            }
             setDateInputValue(manualEndInput, nextValue);
         }
 
@@ -575,14 +618,6 @@
                 line_total: lineTotal
             };
 
-            if (manualItems.length > 0) {
-                const existingOrderId = String(manualItems[0].orderid || '');
-                if (selectedOrderId && existingOrderId && selectedOrderId !== existingOrderId) {
-                    alert('Please select items from the same order.');
-                    return;
-                }
-            }
-
             if (editingManualItemIndex !== null && manualItems[editingManualItemIndex]) {
                 manualItems[editingManualItemIndex] = newItem;
             } else {
@@ -615,8 +650,6 @@
             let subtotal = 0;
             let discountTotal = 0;
             let taxTotal = 0;
-            const showTaxColumn = @json((bool) ($account->allow_multi_taxation ?? false));
-
             manualItems.forEach((item, index) => {
                 const quantity = Math.max(1, Math.round(Number(item.quantity || 1)));
                 const unitPrice = Number(item.unit_price || 0);
@@ -635,9 +668,6 @@
 
                 const rowRecurring = itemIsRecurring(item);
                 const rowUsers = itemHasUsers(item);
-                const safeName = escapeHtml(item.item_name || 'Item');
-                const safeDescription = escapeHtml(item.item_description || '').trim();
-
                 const row = document.createElement('tr');
                 row.innerHTML = `
                 <td>${renderItemCell(item)}</td>
@@ -868,18 +898,12 @@
 
                         if (data.draft.issue_date) {
                             setDateInputValue(document.getElementById('issue_date'), data.draft.issue_date);
-                            document.getElementById('step2_issue_date').value = data.draft.issue_date;
                         }
                         if (data.draft.due_date) {
                             setDateInputValue(document.getElementById('due_date'), data.draft.due_date);
-                            document.getElementById('step2_due_date').value = data.draft.due_date;
                         }
                         if (data.draft.notes) {
                             document.getElementById('notes').value = data.draft.notes;
-                            document.getElementById('step2_notes').value = data.draft.notes;
-                        }
-                        if (data.draft.currency_code) {
-                            currencyCodeInput.value = data.draft.currency_code;
                         }
 
                         draftPiNumber = data.draft.pi_number || '';
@@ -890,30 +914,6 @@
                 .catch(error => {
                     console.error('Failed to load draft items:', error);
                 });
-        }
-
-        // Sync visible inputs to hidden inputs
-        const issueDateInput = document.getElementById('issue_date');
-        const dueDateInput = document.getElementById('due_date');
-        const notesInput = document.getElementById('notes');
-        const step2IssueDateInput = document.getElementById('step2_issue_date');
-        const step2DueDateInput = document.getElementById('step2_due_date');
-        const step2NotesInput = document.getElementById('step2_notes');
-
-        if (issueDateInput && step2IssueDateInput) {
-            issueDateInput.addEventListener('change', function () {
-                step2IssueDateInput.value = this.value;
-            });
-        }
-        if (dueDateInput && step2DueDateInput) {
-            dueDateInput.addEventListener('change', function () {
-                step2DueDateInput.value = this.value;
-            });
-        }
-        if (notesInput && step2NotesInput) {
-            notesInput.addEventListener('input', function () {
-                step2NotesInput.value = this.value;
-            });
         }
 
         // Toggle form visibility

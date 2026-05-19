@@ -18,7 +18,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login')->middleware('guest');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post')->middleware('guest');
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
+Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
+Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request')->middleware('guest');
+Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email')->middleware('guest');
+Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset')->middleware('guest');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.store')->middleware('guest');
 
 // AJAX routes without auth
 Route::get('/invoices/ajax-list', [InvoicesController::class, 'ajaxList'])->name('invoices.ajax-list');
@@ -198,6 +202,9 @@ Route::controller(SettingsController::class)->group(function () {
         Route::patch('/settings/message-templates/{template}/toggle', 'messageTemplateToggle')->name('message-templates.toggle');
         Route::delete('/settings/message-templates/{template}', 'messageTemplateDestroy')->name('message-templates.destroy');
     });
+
+    Route::get('/change-password', [AuthController::class, 'showChangePassword'])->name('password.change');
+    Route::put('/change-password', [AuthController::class, 'changePassword'])->name('password.change.update');
 
     // // Keep terms conditions on legacy controller until moved fully.
     // Route::controller(BillingUiController::class)->group(function () {

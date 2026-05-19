@@ -44,12 +44,12 @@
         $navItems = [
             ['label' => 'Dashboard', 'route' => 'dashboard'],
             ['label' => 'Clients', 'route' => 'clients.index'],
-            ['label' => 'Items', 'route' => 'services.index'],
             ['label' => 'Orders', 'route' => 'orders.index'],
             ['label' => 'Quotations', 'route' => 'quotations.index'],
             ['label' => 'Invoices', 'route' => 'invoices.index'],
             ['label' => 'Payments', 'route' => 'payments.index'],
             ['label' => 'GST Report', 'route' => 'gst-report.index'],
+            ['label' => 'Items', 'route' => 'services.index'],
             ['label' => 'Settings', 'route' => 'settings.index'],
         ];
     @endphp
@@ -182,17 +182,26 @@
                     </div>
                 </div>
 
+                <a href="{{ route('password.change') }}" class="sidebar-user-item" style="text-decoration: none; color: inherit;">
+                    <div class="sidebar-icon-area">
+                        <span class="icon-btn" title="Change Password">
+                            <i class="fas fa-key"></i>
+                        </span>
+                    </div>
+                    <span class="nav-text">Change Password</span>
+                </a>
+
                 <!-- Sign Out at bottom -->
                 <form action="{{ route('logout') }}" method="POST" class="logout-form-inline">
                     @csrf
-                    <div class="sidebar-user-item">
+                    <button type="submit" class="sidebar-user-item signout-row-btn" title="Sign Out">
                         <div class="sidebar-icon-area">
-                            <button type="submit" class="icon-btn signout-btn" title="Sign Out">
+                            <span class="icon-btn signout-btn">
                                 <i class="fas fa-sign-out-alt"></i>
-                            </button>
+                            </span>
                         </div>
                         <span class="nav-text">Sign Out</span>
-                    </div>
+                    </button>
                 </form>
             </div>
         </aside>

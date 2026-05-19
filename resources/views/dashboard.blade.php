@@ -2,7 +2,6 @@
 
 @section('content')
 <div class="dashboard-grid">
-    {{-- Top Row: KPI Cards --}}
     <div class="kpi-row">
         @foreach ($stats as $stat)
             <div class="soft-card p-4">
@@ -22,41 +21,107 @@
                 </div>
             </div>
         @endforeach
+        <div class="soft-card p-4">
+            <div class="stat-icon success">
+                <i class="fas fa-wallet"></i>
+            </div>
+            <div class="stat-content">
+                <p class="eyebrow mb-1">Total Revenue</p>
+                <h3 class="mb-0 fw-800">Rs {{ number_format($totalRevenue, 0) }}</h3>
+            </div>
+        </div>
+        <div class="soft-card p-4">
+            <div class="stat-icon brand">
+                <i class="fas fa-file-invoice-dollar"></i>
+            </div>
+            <div class="stat-content">
+                <p class="eyebrow mb-1">Total Invoices</p>
+                <h3 class="mb-0 fw-800">{{ $totalInvoices }}</h3>
+            </div>
+        </div>
     </div>
 
-    {{-- Middle Row: Monthly Payments Charts --}}
     <div class="charts-row">
         <div class="soft-card p-4">
             <div class="panel-head mb-4">
                 <div>
-                    <p class="eyebrow">Financial Trends</p>
-                    <h5 class="fw-700 mb-0">Monthly Revenue</h5>
+                    <p class="eyebrow">Renewal Operations</p>
+                    <h5 class="fw-700 mb-0">Items Needing Attention</h5>
                 </div>
-                <div class="dropdown">
-                    <button class="icon-btn text-dark bg-light" data-bs-toggle="dropdown">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#">Last 6 Months</a></li>
-                        <li><a class="dropdown-item" href="#">Last Year</a></li>
-                    </ul>
-                </div>
+                <a href="{{ route('invoices.expiry-list', ['tab' => 'upcoming']) }}" class="text-link">View All</a>
             </div>
-            <canvas id="revenueChart" class="chart-canvas"></canvas>
+            <div class="list-group list-group-flush">
+                @forelse ($renewalsNeedAttention as $item)
+                    @php($daysLeft = $item['days_left'])
+                    <div class="list-item">
+                        <div class="list-item-info">
+                            <div class="list-item-icon">
+                                <i class="fas fa-sync-alt text-warning"></i>
+                            </div>
+                            <div>
+                                <p class="mb-0 fw-600 list-item-title">{{ $item['item_name'] }}</p>
+                                <small class="text-muted">{{ $item['client_name'] }} · Expires {{ $item['end_date_display'] }}</small>
+                            </div>
+                        </div>
+                        <div class="renewal-meta">
+                            @if($daysLeft === 0)
+                                <span class="renewal-pill warning">Due Today</span>
+                            @else
+                                <span class="renewal-pill brand">{{ $daysLeft }}d left</span>
+                            @endif
+                            <a href="{{ route('invoices.expiry-list', ['c' => $item['clientid'], 'tab' => 'upcoming']) }}" class="text-link">Open</a>
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-muted mb-0">No renewal items need attention right now.</p>
+                @endforelse
+            </div>
         </div>
 
         <div class="soft-card p-4">
             <div class="panel-head mb-4">
                 <div>
-                    <p class="eyebrow">Payment Volume</p>
-                    <h5 class="fw-700 mb-0">Transaction Count</h5>
+                    <p class="eyebrow">Client Health</p>
+                    <h5 class="fw-700 mb-0">Renewal Priority by Client</h5>
                 </div>
+                <a href="{{ route('clients.index') }}" class="text-link">Clients</a>
             </div>
-            <canvas id="transactionChart" class="chart-canvas"></canvas>
+            <div class="list-group list-group-flush">
+                @forelse ($renewalClientPriorities as $client)
+                    <div class="list-item">
+                        <div>
+                            <p class="mb-0 fw-600 list-item-title">{{ $client['client_name'] }}</p>
+                            <small class="text-muted">
+                                @if (($client['nearest_days_left'] ?? null) === null)
+                                    No timeline
+                                @elseif($client['nearest_days_left'] < 0)
+                                    Nearest expiry was {{ abs($client['nearest_days_left']) }} day(s) ago
+                                @elseif($client['nearest_days_left'] === 0)
+                                    Nearest expiry is today
+                                @else
+                                    Nearest expiry in {{ $client['nearest_days_left'] }} day(s)
+                                @endif
+                            </small>
+                        </div>
+                        <div class="renewal-client-metrics">
+                            @if (($client['expired_count'] ?? 0) > 0)
+                                <span class="renewal-pill danger">{{ $client['expired_count'] }} expired</span>
+                            @endif
+                            @if (($client['due_this_week_count'] ?? 0) > 0)
+                                <span class="renewal-pill warning">{{ $client['due_this_week_count'] }} this week</span>
+                            @endif
+                            @if (($client['due_this_month_count'] ?? 0) > 0)
+                                <span class="renewal-pill brand">{{ $client['due_this_month_count'] }} this month</span>
+                            @endif
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-muted mb-0">No client renewal priorities for the next 30 days.</p>
+                @endforelse
+            </div>
         </div>
     </div>
 
-    {{-- Bottom Row: Recent Revenue & Expenses --}}
     <div class="lists-row">
         <div class="soft-card p-4">
             <div class="panel-head mb-3">
@@ -64,7 +129,7 @@
                 <a href="{{ route('payments.index') }}" class="text-link">View All</a>
             </div>
             <div class="list-group list-group-flush">
-                @foreach ($recentRevenue as $item)
+                @forelse ($recentRevenue as $item)
                     <div class="list-item">
                         <div class="list-item-info">
                             <div class="list-item-icon">
@@ -79,117 +144,42 @@
                             {{ $item['amount'] }}
                         </div>
                     </div>
-                @endforeach
+                @empty
+                    <p class="text-muted mb-0">No recent payments yet.</p>
+                @endforelse
             </div>
         </div>
 
         <div class="soft-card p-4">
             <div class="panel-head mb-3">
-                <h5 class="fw-700 mb-0">Recent Expenses</h5>
-                <a href="#" class="text-link">Manage</a>
+                <h5 class="fw-700 mb-0">Recently Expired Items</h5>
+                <a href="{{ route('invoices.expiry-list', ['tab' => 'expired']) }}" class="text-link">Open Expiry List</a>
             </div>
             <div class="list-group list-group-flush">
-                @foreach ($recentExpenses as $item)
+                @forelse ($expiredRenewals as $item)
                     <div class="list-item">
                         <div class="list-item-info">
                             <div class="list-item-icon">
-                                <i class="fas fa-arrow-up text-danger"></i>
+                                <i class="fas fa-exclamation-triangle text-danger"></i>
                             </div>
                             <div>
-                                <p class="mb-0 fw-600 list-item-title">{{ $item['title'] }}</p>
-                                <small class="text-muted">{{ $item['date'] }}</small>
+                                <p class="mb-0 fw-600 list-item-title">{{ $item['item_name'] }}</p>
+                                <small class="text-muted">{{ $item['client_name'] }} · {{ $item['end_date_display'] }}</small>
                             </div>
                         </div>
                         <div class="amount-text danger">
-                            {{ $item['amount'] }}
+                            @if(($item['days_left'] ?? 0) === 0)
+                                Today
+                            @else
+                                {{ abs($item['days_left']) }}d ago
+                            @endif
                         </div>
                     </div>
-                @endforeach
+                @empty
+                    <p class="text-muted mb-0">No expired items.</p>
+                @endforelse
             </div>
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const ctxRevenue = document.getElementById('revenueChart').getContext('2d');
-    const ctxTransaction = document.getElementById('transactionChart').getContext('2d');
-
-    const labels = @json($monthlyPayments['labels']);
-    const dataValues = @json($monthlyPayments['data']);
-    const transactionValues = @json($monthlyPayments['transactions'] ?? []);
-
-    // Common options for line charts
-    const commonOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                grid: { display: false },
-                ticks: { color: '#94a3b8', font: { size: 10 } }
-            },
-            x: {
-                grid: { display: false },
-                ticks: { color: '#94a3b8', font: { size: 10 } }
-            }
-        },
-        elements: {
-            line: { tension: 0.4 },
-            point: { radius: 0 }
-        }
-    };
-
-    new Chart(ctxRevenue, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Revenue',
-                data: dataValues,
-                borderColor: '#4f46e5',
-                borderWidth: 3,
-                fill: true,
-                backgroundColor: (context) => {
-                    const chart = context.chart;
-                    const {ctx, chartArea} = chart;
-                    if (!chartArea) return null;
-                    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                    gradient.addColorStop(0, 'rgba(79, 70, 229, 0.1)');
-                    gradient.addColorStop(1, 'rgba(79, 70, 229, 0)');
-                    return gradient;
-                }
-            }]
-        },
-        options: commonOptions
-    });
-
-    new Chart(ctxTransaction, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Transactions',
-                data: transactionValues,
-                borderColor: '#10b981',
-                borderWidth: 3,
-                fill: true,
-                backgroundColor: (context) => {
-                    const chart = context.chart;
-                    const {ctx, chartArea} = chart;
-                    if (!chartArea) return null;
-                    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.1)');
-                    gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
-                    return gradient;
-                }
-            }]
-        },
-        options: commonOptions
-    });
-});
-</script>
 @endsection

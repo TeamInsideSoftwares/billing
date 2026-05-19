@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\Invoice;
+use App\Models\Order;
 use App\Models\Payment;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Carbon;
 
 class DashboardController extends Controller
 {
@@ -22,29 +22,88 @@ class DashboardController extends Controller
             return max(0, (float) ($payment->received_amount ?? 0));
         });
 
-        $now = now();
-        $labels = [];
-        $monthlyRevenueData = [];
-        $monthlyTxnData = [];
-        for ($i = 11; $i >= 0; $i--) {
-            $monthDate = $now->copy()->startOfMonth()->subMonths($i);
-            $labels[] = $monthDate->format('M');
+        $today = now()->startOfDay();
 
-            $monthPayments = $payments->filter(function ($payment) use ($monthDate) {
-                $date = $payment->payment_date ?? $payment->created_at;
-                if (!$date) {
-                    return false;
-                }
-                $d = $date instanceof Carbon ? $date : Carbon::parse($date);
-                return $d->year === $monthDate->year && $d->month === $monthDate->month;
-            });
+        $renewalItems = Order::query()
+            ->where('accountid', $accountid)
+            ->whereNotNull('end_date')
+            ->where(function ($query) {
+                $query->whereIn('status', ['active', 'running'])
+                    ->orWhereNull('status');
+            })
+            ->with([
+                'client:clientid,business_name,contact_name',
+                'item:itemid,name',
+            ])
+            ->orderBy('end_date')
+            ->get([
+                'orderid',
+                'order_number',
+                'clientid',
+                'itemid',
+                'item_name',
+                'status',
+                'end_date',
+            ])
+            ->map(function (Order $order) use ($today) {
+                $endDate = $order->end_date?->copy()->startOfDay();
+                $daysLeft = $endDate ? $today->diffInDays($endDate, false) : null;
 
-            $monthRevenue = (float) $monthPayments->sum(function ($payment) {
-                return max(0, (float) ($payment->received_amount ?? 0));
-            });
-            $monthlyRevenueData[] = round($monthRevenue, 2);
-            $monthlyTxnData[] = $monthPayments->count();
-        }
+                return [
+                    'orderid' => (string) $order->orderid,
+                    'order_number' => (string) ($order->order_number ?? '-'),
+                    'clientid' => (string) $order->clientid,
+                    'client_name' => (string) (
+                        $order->client?->business_name
+                        ?: $order->client?->contact_name
+                        ?: 'Client'
+                    ),
+                    'item_name' => (string) ($order->item_name ?: $order->item?->name ?: 'Item'),
+                    'end_date' => $endDate,
+                    'end_date_display' => $endDate?->format('d M Y') ?? '-',
+                    'days_left' => $daysLeft,
+                ];
+            })
+            ->filter(fn (array $item): bool => $item['end_date'] !== null)
+            ->values();
+
+        $renewalsDue30Days = $renewalItems
+            ->filter(fn (array $item): bool => ($item['days_left'] ?? 0) > 0 && ($item['days_left'] ?? 0) <= 30)
+            ->values();
+        $renewalsDueThisWeek = $renewalItems
+            ->filter(fn (array $item): bool => ($item['days_left'] ?? 0) > 0 && ($item['days_left'] ?? 0) <= 7)
+            ->values();
+        $expiredRenewals = $renewalItems
+            ->filter(fn (array $item): bool => ($item['days_left'] ?? 1) <= 0)
+            ->values();
+        $renewalsNeedAttention = $renewalItems
+            ->filter(fn (array $item): bool => ($item['days_left'] ?? 0) > 0 && ($item['days_left'] ?? 0) <= 30)
+            ->sortBy('days_left')
+            ->take(8)
+            ->values();
+
+        $renewalClientPriorities = $renewalItems
+            ->filter(fn (array $item): bool => ($item['days_left'] ?? PHP_INT_MAX) <= 30)
+            ->groupBy('clientid')
+            ->map(function ($items) {
+                $rows = collect($items)->sortBy('days_left')->values();
+                $expiredCount = $rows->filter(fn (array $row): bool => ($row['days_left'] ?? 1) <= 0)->count();
+                $dueThisWeekCount = $rows->filter(fn (array $row): bool => ($row['days_left'] ?? 0) > 0 && ($row['days_left'] ?? 0) <= 7)->count();
+                $dueThisMonthCount = $rows->filter(fn (array $row): bool => ($row['days_left'] ?? 0) > 0 && ($row['days_left'] ?? 0) <= 30)->count();
+
+                return [
+                    'clientid' => (string) ($rows->first()['clientid'] ?? ''),
+                    'client_name' => (string) ($rows->first()['client_name'] ?? 'Client'),
+                    'expired_count' => $expiredCount,
+                    'due_this_week_count' => $dueThisWeekCount,
+                    'due_this_month_count' => $dueThisMonthCount,
+                    'nearest_days_left' => $rows->first()['days_left'] ?? null,
+                    'attention_score' => ($expiredCount * 3) + ($dueThisWeekCount * 2) + $dueThisMonthCount,
+                ];
+            })
+            ->sortByDesc('attention_score')
+            ->take(6)
+            ->values();
 
         $stats = [
             [
@@ -55,32 +114,26 @@ class DashboardController extends Controller
                 'tone' => 'brand'
             ],
             [
-                'label' => 'Total Revenue',
-                'value' => 'Rs ' . number_format($totalRevenue, 0),
+                'label' => 'Renewals Due (30 days)',
+                'value' => $renewalsDue30Days->count(),
                 'change' => '',
-                'icon' => 'fa-wallet',
-                'tone' => 'success'
+                'icon' => 'fa-clock',
+                'tone' => 'accent'
             ],
             [
-                'label' => 'Total Invoices',
-                'value' => Invoice::where('accountid', $accountid)->count(),
+                'label' => 'Expired Renewal Items',
+                'value' => $expiredRenewals->count(),
                 'change' => '',
-                'icon' => 'fa-file-invoice-dollar',
-                'tone' => 'brand'
-            ],
-            [
-                'label' => 'Overdue Invoices',
-                'value' => Invoice::where('accountid', $accountid)->where('status', 'overdue')->count(),
-                'change' => '',
-                'icon' => 'fa-exclamation-triangle',
+                'icon' => 'fa-exclamation-circle',
                 'tone' => 'danger'
             ],
-        ];
-
-        $monthlyPayments = [
-            'labels' => $labels,
-            'data' => $monthlyRevenueData,
-            'transactions' => $monthlyTxnData,
+            [
+                'label' => 'Renewals Due This Week',
+                'value' => $renewalsDueThisWeek->count(),
+                'change' => '',
+                'icon' => 'fa-bolt',
+                'tone' => 'brand'
+            ],
         ];
 
         $recentRevenue = Payment::where('accountid', $accountid)
@@ -99,22 +152,20 @@ class DashboardController extends Controller
                 ];
             });
 
-        // Mocking recent expenses since no model exists yet
-        $recentExpenses = collect([
-            ['title' => 'Server Hosting', 'amount' => 'Rs 2,500', 'date' => '28 Apr, 2024', 'status' => 'danger'],
-            ['title' => 'Office Supplies', 'amount' => 'Rs 1,200', 'date' => '25 Apr, 2024', 'status' => 'danger'],
-            ['title' => 'Marketing Ads', 'amount' => 'Rs 5,000', 'date' => '22 Apr, 2024', 'status' => 'danger'],
-            ['title' => 'Software Subscription', 'amount' => 'Rs 800', 'date' => '20 Apr, 2024', 'status' => 'danger'],
-            ['title' => 'Internet Bill', 'amount' => 'Rs 1,500', 'date' => '15 Apr, 2024', 'status' => 'danger'],
-        ]);
+        $attentionCount = $renewalsDue30Days->count();
 
         return view('dashboard', [
             'title' => 'Dashboard',
-            'subtitle' => 'Welcome back to your billing control center.',
+            'subtitle' => $attentionCount > 0
+                ? sprintf('%d renewal item(s) need attention in the next 30 days.', $attentionCount)
+                : 'No renewal items due in the next 30 days.',
             'stats' => $stats,
-            'monthlyPayments' => $monthlyPayments,
+            'totalRevenue' => $totalRevenue,
+            'totalInvoices' => Invoice::where('accountid', $accountid)->count(),
+            'renewalsNeedAttention' => $renewalsNeedAttention,
+            'renewalClientPriorities' => $renewalClientPriorities,
+            'expiredRenewals' => $expiredRenewals->take(5)->values(),
             'recentRevenue' => $recentRevenue,
-            'recentExpenses' => $recentExpenses,
         ]);
     }
 

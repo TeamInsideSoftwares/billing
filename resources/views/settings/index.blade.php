@@ -34,381 +34,6 @@
     <div></div>
 </section>
 
-<style>
-/* Message Template Modern Tabs & Pills */
-.mt-main-tabs-wrap {
-    margin: -1.25rem -1.25rem 1.5rem -1.25rem;
-    padding: 0 1.25rem;
-}
-
-.mt-type-tab-btn {
-    border: none;
-    background: transparent;
-    padding: 1rem 0;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    position: relative;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.mt-type-tab-btn:hover {
-    color: var(--text);
-}
-
-.mt-type-tab-btn.is-active {
-    color: var(--brand);
-}
-
-.mt-type-tab-btn.is-active::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: var(--brand);
-    border-radius: 2px 2px 0 0;
-}
-
-.mt-channel-pill-btn {
-    border: 1px solid var(--line);
-    background: #fff;
-    padding: 0.4rem 1rem;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-}
-
-.mt-channel-pill-btn:hover {
-    background: #f8fafc;
-    color: var(--text);
-    border-color: #cbd5e1;
-}
-
-.mt-channel-pill-btn.is-active {
-    background: #eff6ff;
-    color: var(--brand);
-    border-color: var(--brand);
-    box-shadow: 0 0 0 1px var(--brand);
-}
-
-.template-form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
-}
-
-.col-span-2 {
-    grid-column: span 2;
-}
-
-.mt-template-list {
-    margin-top: 0;
-    padding-top: 0;
-    border-top: 0;
-}
-
-.mt-template-item {
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    background: #fff;
-    padding: 1rem;
-    display: block;
-    width: 100%;
-    text-align: left;
-    cursor: default;
-    font: inherit;
-    color: inherit;
-    appearance: none;
-}
-
-.mt-template-item-actions form {
-    margin: 0;
-}
-
-.mt-template-item + .mt-template-item {
-    margin-top: 0.9rem;
-}
-
-.mt-template-item-head {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: flex-start;
-}
-
-.mt-template-item-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.template-form-grid-sm {
-    grid-template-columns: 1fr 1fr;
-}
-
-.template-body-cell {
-    grid-column: span 2;
-}
-
-.settings-card-soft {
-    border: 1px solid var(--line);
-    background: #fafbfd;
-    border-radius: 12px;
-}
-
-.tc-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.9rem;
-}
-
-.tc-card {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    background: #fff;
-    overflow: hidden;
-}
-
-.tc-card-head {
-    padding: 0.55rem 0.7rem;
-    background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.tc-card-title {
-    margin: 0;
-    font-size: 0.82rem;
-    color: #0f172a;
-    font-weight: 700;
-}
-
-.tc-type-tabs {
-    display: flex;
-    gap: 0.4rem;
-    margin-bottom: 0.7rem;
-}
-
-.tc-type-tab {
-    border: 1px solid #cbd5e1;
-    background: #fff;
-    color: #475569;
-    border-radius: 999px;
-    padding: 0.25rem 0.65rem;
-    font-size: 0.78rem;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.tc-type-tab.is-active {
-    background: #eff6ff;
-    color: #1d4ed8;
-    border-color: #93c5fd;
-}
-
-.tc-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-}
-
-.tc-table th {
-    padding: 0.45rem 0.4rem;
-    font-size: 0.72rem;
-    color: #64748b;
-    font-weight: 700;
-    border-bottom: 1px solid #e2e8f0;
-    text-transform: uppercase;
-    letter-spacing: .01em;
-}
-
-.tc-table td {
-    padding: 0.45rem 0.4rem;
-    font-size: 0.77rem;
-    color: #334155;
-    border-bottom: 1px solid #f1f5f9;
-    vertical-align: top;
-}
-
-.tc-table tr:last-child td {
-    border-bottom: none;
-}
-
-.tc-col-seq { width: 70px; text-align: center; }
-.tc-col-default { width: 90px; text-align: center; }
-.tc-col-status { width: 90px; text-align: center; }
-.tc-col-action { width: 88px; text-align: right; }
-
-.tc-term-text {
-    line-height: 1.35;
-    word-break: break-word;
-}
-
-/* Taxes tab */
-.tax-form-card {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    background: #f8fafc;
-    padding: 0.85rem;
-    margin-bottom: 0.9rem;
-}
-
-.tax-list-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.9rem;
-    align-items: start;
-}
-
-.tax-form-card.is-editing {
-    border-color: #93c5fd;
-    background: #eff6ff;
-}
-
-.tax-form-title {
-    margin: 0 0 0.6rem;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #0f172a;
-}
-
-.tax-form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr auto;
-    gap: 0.7rem;
-    align-items: end;
-}
-
-.tax-form-label {
-    display: block;
-    margin-bottom: 0.25rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #64748b;
-}
-
-.tax-form-input {
-    width: 100%;
-    min-height: 38px;
-}
-
-.tax-form-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.tax-form-btn {
-    white-space: nowrap;
-}
-
-.tax-form-cancel {
-    border: 1px solid #cbd5e1;
-    background: #fff;
-    color: #475569;
-    border-radius: 8px;
-    padding: 0.45rem 0.8rem;
-    font-size: 0.82rem;
-}
-
-.tax-form-cancel:hover {
-    background: #f8fafc;
-}
-
-.tax-group-head {
-    margin-bottom: 0.35rem;
-}
-
-.tax-group-title {
-    margin: 0;
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: #0f172a;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-.tax-group-pill {
-    display: inline-block;
-    border: 1px solid #bfdbfe;
-    background: #eff6ff;
-    color: #1d4ed8;
-    border-radius: 999px;
-    padding: 0.12rem 0.5rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-}
-
-.tax-group-count {
-    font-weight: 600;
-    color: #64748b;
-}
-
-.tax-col-idx,
-.tax-cell-idx {
-    width: 60px;
-    text-align: center;
-}
-
-.tax-col-rate,
-.tax-cell-rate {
-    width: 120px;
-}
-
-.tax-col-status,
-.tax-cell-status {
-    width: 130px;
-    text-align: center;
-}
-
-.tax-col-action,
-.tax-cell-action {
-    width: 140px;
-    text-align: right;
-}
-
-.tax-status-pill {
-    display: inline-block;
-    border-radius: 999px;
-    padding: 0.18rem 0.55rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-}
-
-.tax-status-pill.is-active {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.tax-status-pill.is-inactive {
-    background: #f1f5f9;
-    color: #64748b;
-}
-
-@media (max-width: 920px) {
-    .tax-list-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .tax-form-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .tax-form-actions {
-        justify-content: flex-start;
-    }
-}
-
-</style>
-
 <div class="settings-page">
 <!-- Tabs Wrapper -->
 <div class="settings-tabs-wrap">
@@ -490,12 +115,14 @@
 
             <div>
                 <label class="text-sm required">Email *</label>
-                <input type="email" name="email" value="{{ old('email', $account->email ?? '') }}" required class="settings-input-sm">
+                <input type="text" name="email" value="{{ old('email', $account->email ?? '') }}" required class="settings-input-sm" placeholder="name@company.com, accounts@company.com">
+                <span class="form-hint">Use comma to add multiple emails</span>
             </div>
 
             <div>
                 <label class="text-sm">Phone</label>
-                <input type="text" name="phone" value="{{ old('phone', $account->phone ?? '') }}" class="settings-input-sm">
+                <input type="text" name="phone" value="{{ old('phone', $account->phone ?? '') }}" class="settings-input-sm" placeholder="+91..., +1...">
+                <span class="form-hint">Use comma to add multiple phone numbers</span>
             </div>
 
             <div>
@@ -521,14 +148,14 @@
 
             <div>
                 <label class="text-sm">Country</label>
-                <select name="country" class="country-select" data-selected="{{ old('country', $account->country ?? '') }}" class="settings-input-sm full">
+                <select name="country" class="country-select settings-input-sm full" data-selected="{{ old('country', $account->country ?? '') }}">
                     <option value="">Select Country</option>
                 </select>
             </div>
 
             <div>
                 <label class="text-sm">State *</label>
-                <select name="state" required class="state-select" data-selected="{{ old('state', $account->state ?? '') }}" class="settings-input-sm full">
+                <select name="state" required class="state-select settings-input-sm full" data-selected="{{ old('state', $account->state ?? '') }}">
                     <option value="">Select State</option>
                 </select>
                 @error('state') <span class="error">{{ $message }}</span> @enderror
@@ -536,7 +163,7 @@
 
             <div>
                 <label class="text-sm">City</label>
-                <select name="city" class="city-select" data-selected="{{ old('city', $account->city ?? '') }}" class="settings-input-sm full">
+                <select name="city" class="city-select settings-input-sm full" data-selected="{{ old('city', $account->city ?? '') }}">
                     <option value="">Select City</option>
                 </select>
             </div>
@@ -1151,7 +778,8 @@
 
             <div>
                 <label>Billing From Email</label>
-                <input type="email" name="billing_from_email" value="{{ old('billing_from_email', $editingBillingDetail->billing_from_email ?? '') }}">
+                <input type="text" name="billing_from_email" value="{{ old('billing_from_email', $editingBillingDetail->billing_from_email ?? '') }}" placeholder="billing@company.com, finance@company.com">
+                <span class="form-hint">Use comma to add multiple emails</span>
             </div>
             <div>
                 <label>Authorize Signatory</label>
@@ -1163,26 +791,26 @@
             </div>
             <div>
                 <label>Country</label>
-                <select name="country" class="country-select settings-input-sm full" data-selected="{{ old('country', $editingBillingDetail->country ?? 'India') }}">
+                <select name="billing_country" class="country-select settings-input-sm full" data-selected="{{ old('billing_country', $editingBillingDetail->country ?? 'India') }}">
                     <option value="">Select Country</option>
                 </select>
             </div>
             <div>
                 <label>State *</label>
-                <select name="state" required class="state-select settings-input-sm full" data-selected="{{ old('state', $editingBillingDetail->state ?? '') }}">
+                <select name="billing_state" required class="state-select settings-input-sm full" data-selected="{{ old('billing_state', $editingBillingDetail->state ?? '') }}">
                     <option value="">Select State</option>
                 </select>
-                @error('state') <span class="error">{{ $message }}</span> @enderror
+                @error('billing_state') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label>City</label>
-                <select name="city" class="city-select settings-input-sm full" data-selected="{{ old('city', $editingBillingDetail->city ?? '') }}">
+                <select name="billing_city" class="city-select settings-input-sm full" data-selected="{{ old('billing_city', $editingBillingDetail->city ?? '') }}">
                     <option value="">Select City</option>
                 </select>
             </div>
             <div>
                 <label>Postal Code</label>
-                <input type="text" name="postal_code" value="{{ old('postal_code', $editingBillingDetail->postal_code ?? '') }}">
+                <input type="text" name="billing_postal_code" value="{{ old('billing_postal_code', $editingBillingDetail->postal_code ?? '') }}">
             </div>
             <div>
                 <label>GSTIN</label>

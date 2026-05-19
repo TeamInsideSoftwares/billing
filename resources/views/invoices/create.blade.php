@@ -43,11 +43,11 @@
         <input type="hidden" name="current_step" value="{{ $currentStep }}">
 
         @if($currentStep == 1)
-            @include('invoices.steps.step1-client-source')
+            @include('invoices.steps.step1-client')
         @elseif($currentStep == 2)
-            @include('invoices.steps.step2-add-items')
+            @include('invoices.steps.step2-items')
         @elseif($currentStep == 3)
-            @include('invoices.steps.step4-preview-terms')
+            @include('invoices.steps.step3-preview-terms')
         @endif
     </form>
 </section>

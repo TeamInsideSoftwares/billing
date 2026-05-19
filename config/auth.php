@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Account;
+use App\Models\AccountCredential;
 
 return [
 
@@ -64,7 +64,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', Account::class),
+            'model' => env('AUTH_MODEL', AccountCredential::class),
         ],
 
         // 'users' => [

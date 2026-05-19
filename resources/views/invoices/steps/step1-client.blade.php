@@ -11,6 +11,13 @@
             margin-bottom: 0.85rem;
         }
 
+        .invoice-step1-head-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
         .invoice-step1-title {
             margin: 0;
             font-size: 1.05rem;
@@ -24,6 +31,32 @@
             color: #6b7280;
         }
 
+        .invoice-compact-steps {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .invoice-compact-step {
+            width: 1.6rem;
+            height: 1.6rem;
+            border-radius: 999px;
+            border: 1px solid #d1d5db;
+            color: #6b7280;
+            font-size: 0.78rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+        }
+
+        .invoice-compact-step.is-active {
+            border-color: #2563eb;
+            background: #2563eb;
+            color: #fff;
+        }
+
         .invoice-step1-actions {
             margin-top: 1rem;
             display: flex;
@@ -33,6 +66,11 @@
         @media (max-width: 767px) {
             .invoice-step1-card {
                 padding: 0.85rem 0.75rem;
+            }
+
+            .invoice-step1-head-row {
+                flex-direction: column;
+                align-items: flex-start;
             }
 
             .invoice-step1-actions {
@@ -47,7 +85,15 @@
 
     <div class="invoice-meta-card invoice-step1-card">
         <div class="invoice-step1-head">
-            <h4 class="invoice-step1-title">Select Client</h4>
+            <div class="invoice-step1-head-row">
+                <h4 class="invoice-step1-title">Select Client</h4>
+                <div class="invoice-compact-steps" aria-label="Step progress">
+                    <span class="invoice-compact-step is-active">1</span>
+                    <span class="invoice-compact-step">2</span>
+                    <span class="invoice-compact-step">3</span>
+                    <span class="invoice-compact-step">4</span>
+                </div>
+            </div>
             <p class="invoice-step1-subtitle">Choose the client to continue and add invoice items.</p>
         </div>
 

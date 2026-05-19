@@ -4,13 +4,13 @@ namespace App\Models;
 
 use App\Models\Concerns\HasAlphaNumericId;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Model;
 
-class Account extends Authenticatable
+class Account extends Model
 {
-    use HasAlphaNumericId, HasFactory, Notifiable;
+    use HasAlphaNumericId, HasFactory;
     // 1. Tell Laravel the actual name of your primary key
     protected $primaryKey = 'accountid';
 
@@ -27,7 +27,6 @@ class Account extends Authenticatable
         'status',
         'legal_name',
         'email',
-        'password',
         'phone',
         'tax_number',
         'website',
@@ -49,15 +48,9 @@ class Account extends Authenticatable
         'reminder_days_before',
     ];
 
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
     protected function casts(): array
     {
         return [
-            'password' => 'hashed',
             'allow_multi_taxation' => 'boolean',
             'have_users' => 'boolean',
             'fixed_tax_rate' => 'decimal:2',
@@ -79,6 +72,11 @@ class Account extends Authenticatable
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function credential(): HasOne
+    {
+        return $this->hasOne(AccountCredential::class, 'accountid', 'accountid');
     }
 
     public function financialYears(): HasMany

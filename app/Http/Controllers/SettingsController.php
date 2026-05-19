@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Validation\ValidationException;
 
 class SettingsController extends Controller
 {
@@ -58,17 +59,9 @@ class SettingsController extends Controller
             ->find($accountid);
 
         if (!$account) {
-            // Create a default account record if it doesn't exist for the authenticated ID
-            $account = Account::create([
-                'accountid' => $accountid,
-                'name' => auth()->user()->name ?? 'My Account',
-                'email' => auth()->user()->email ?? '',
-                'currency_code' => 'INR',
-                'timezone' => 'Asia/Kolkata',
-                'status' => 'active'
+            return redirect()->route('login')->withErrors([
+                'email' => 'Account mapping not found for this login. Please contact support.',
             ]);
-            // Re-load with relations
-            $account->load(['financialYears', 'billingDetails', 'taxes']);
         }
         $hasPersistedAccount = (bool) ($account && $account->exists);
 
@@ -204,8 +197,8 @@ class SettingsController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:150',
-            'email' => 'required|email|max:150',
-            'phone' => 'nullable|string|max:20',
+            'email' => 'required|string|max:500',
+            'phone' => 'nullable|string|max:500',
             'legal_name' => 'nullable|string|max:150',
             'tax_number' => 'nullable|string|max:50',
             'website' => 'nullable|url|max:150',
@@ -224,6 +217,16 @@ class SettingsController extends Controller
             'fixed_tax_rate' => 'nullable|numeric|min:0|max:100',
             'fixed_tax_type' => 'nullable|in:GST,VAT',
         ]);
+
+        $validated['email'] = $this->normalizeCommaSeparatedEmails(
+            (string) ($validated['email'] ?? ''),
+            true,
+            'email'
+        );
+        $validated['phone'] = $this->normalizeCommaSeparatedValues(
+            (string) ($validated['phone'] ?? ''),
+            false
+        );
 
         // Handle checkbox values (unchecked = not sent, so default to false)
         $validated['allow_multi_taxation'] = $request->has('allow_multi_taxation');
@@ -363,15 +366,15 @@ class SettingsController extends Controller
             'account_bdid' => 'nullable|string|size:6|exists:account_billing_details,account_bdid',
             'billing_name' => 'nullable|string',
             'address' => 'nullable|string',
-            'city' => 'nullable|string',
-            'state' => 'required|string',
-            'country' => 'nullable|string',
-            'postal_code' => 'nullable|string',
+            'billing_city' => 'nullable|string',
+            'billing_state' => 'required|string',
+            'billing_country' => 'nullable|string',
+            'billing_postal_code' => 'nullable|string',
             'gstin' => 'nullable|string|size:15',
             'tin' => 'nullable|string',
             'authorize_signatory' => 'nullable|string',
             'signature_upload' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
-            'billing_from_email' => 'nullable|email',
+            'billing_from_email' => 'nullable|string|max:500',
         ]);
 
         if ($validator->fails()) {
@@ -381,6 +384,16 @@ class SettingsController extends Controller
         }
 
         $validated = $validator->validated();
+        $validated['city'] = $validated['billing_city'] ?? null;
+        $validated['state'] = $validated['billing_state'] ?? null;
+        $validated['country'] = $validated['billing_country'] ?? null;
+        $validated['postal_code'] = $validated['billing_postal_code'] ?? null;
+        unset($validated['billing_city'], $validated['billing_state'], $validated['billing_country'], $validated['billing_postal_code']);
+        $validated['billing_from_email'] = $this->normalizeCommaSeparatedEmails(
+            (string) ($validated['billing_from_email'] ?? ''),
+            false,
+            'billing_from_email'
+        );
 
         // Handle file upload
         if ($request->hasFile('signature_upload') && $request->file('signature_upload')->isValid()) {
@@ -411,6 +424,49 @@ class SettingsController extends Controller
 
         $redirectTo = $request->input('from_tab') === 'financial-year' ? '#financial-year' : '#billing-details';
         return redirect()->to(route('settings.index') . $redirectTo)->with('success', 'Billing details updated successfully.');
+    }
+
+    private function normalizeCommaSeparatedEmails(string $raw, bool $required = false, string $field = 'email'): ?string
+    {
+        $emails = collect(explode(',', $raw))
+            ->map(fn ($email) => trim($email))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($emails->isEmpty()) {
+            if ($required) {
+                throw ValidationException::withMessages([
+                    $field => 'At least one email is required.',
+                ]);
+            }
+            return null;
+        }
+
+        foreach ($emails as $email) {
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                throw ValidationException::withMessages([
+                    $field => 'Invalid email address: ' . $email,
+                ]);
+            }
+        }
+
+        return $emails->implode(', ');
+    }
+
+    private function normalizeCommaSeparatedValues(string $raw, bool $required = false): ?string
+    {
+        $values = collect(explode(',', $raw))
+            ->map(fn ($value) => trim($value))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($values->isEmpty()) {
+            return $required ? '' : null;
+        }
+
+        return $values->implode(', ');
     }
 
 
@@ -950,7 +1006,7 @@ class SettingsController extends Controller
             $validated['sequence'] = ($maxSequence ?? 0) + 1;
 
             TermsCondition::create($validated);
-            $message = 'Term created successfully.';
+            $message = 'T&C created successfully.';
         }
 
         // Redirect without edit_tc parameter to clear the form
@@ -994,14 +1050,23 @@ class SettingsController extends Controller
         return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'Sequence updated successfully.');
     }
 
-    public function termsConditionsToggle(TermsCondition $term)
+    public function termsConditionsToggle(Request $request, TermsCondition $term)
     {
         $accountid = $this->resolveAccountId();
         if ($term->accountid !== $accountid) {
             abort(403, 'Unauthorized');
         }
         $term->update(['is_active' => !$term->is_active]);
-        return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'Term status toggled.');
+
+        if ($request->wantsJson() || $request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'is_active' => $term->is_active,
+                'message' => 'T&C status updated successfully.',
+            ]);
+        }
+
+        return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'T&C status toggled.');
     }
 
     public function termsConditionsDestroy(TermsCondition $term)
@@ -1011,7 +1076,7 @@ class SettingsController extends Controller
             abort(403, 'Unauthorized');
         }
         $term->delete();
-        return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'Term deleted successfully.');
+        return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'T&C deleted successfully.');
     }
 
     public function fyPrefixUpdate(Request $request)

@@ -59,7 +59,8 @@
             </div>
             <div>
                 <label for="email" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Email *</label>
-                <input type="email" id="email" name="email" value="{{ old('email', $client->email ?? '') }}" required {{ isset($client) ? 'class="input-full"' : '' }}>
+                <input type="email" id="email" name="email" multiple value="{{ old('email', $client->email ?? '') }}" required placeholder="name@company.com, accounts@company.com" {{ isset($client) ? 'class="input-full"' : '' }}>
+                <span class="{{ isset($client) ? 'form-hint' : 'text-xs' }}">Use comma to add multiple emails</span>
                 @error('email') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
@@ -187,7 +188,7 @@
                 </div>
                 <div>
                     <label for="billing_email" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Billing Email</label>
-                    <input type="email" id="billing_email" name="billing_email" value="{{ old('billing_email', $client->billingDetail->billing_email ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
+                    <input type="email" id="billing_email" multiple name="billing_email" value="{{ old('billing_email', $client->billingDetail->billing_email ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
                     @error('billing_email') <span class="error">{{ $message }}</span> @enderror
                 </div>
                 <div>

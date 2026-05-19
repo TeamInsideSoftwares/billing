@@ -30,7 +30,15 @@
                         <div class="text-muted small">{{ $clientEmail }}</div>
                     @endif
                 </div>
-                <span class="invoice-number-badge">{{ $displayDocNumber }}</span>
+                <div class="text-end">
+                    <span class="invoice-number-badge">{{ $displayDocNumber }}</span>
+                    <div class="invoice-compact-steps invoice-compact-steps--right mt-1" aria-label="Step progress">
+                        <span class="invoice-compact-step">1</span>
+                        <span class="invoice-compact-step">2</span>
+                        <span class="invoice-compact-step">3</span>
+                        <span class="invoice-compact-step is-active">4</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -216,6 +224,36 @@
     </section>
 
     <style>
+        .invoice-compact-steps {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .invoice-compact-steps--right {
+            justify-content: flex-end;
+        }
+
+        .invoice-compact-step {
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 999px;
+            border: 1px solid #d1d5db;
+            color: #6b7280;
+            font-size: 0.74rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+        }
+
+        .invoice-compact-step.is-active {
+            border-color: #2563eb;
+            background: #2563eb;
+            color: #fff;
+        }
+
         /* Modern Tabs & Pills */
         .type-tabs-wrap {
             margin-bottom: 1.25rem;

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Account;
+use App\Models\AccountCredential;
 
 class AccountSeeder extends Seeder
 {
@@ -13,16 +14,23 @@ class AccountSeeder extends Seeder
      */
     public function run(): void
     {
-        Account::create([
+        $account = Account::create([
             'accountid'      => 'T499MU1L1l',
             'name'           => 'Test',
             'slug'           => 'test',
             'email'          => 'team@insidesoftwares.com',
-            'password'       => Hash::make('123456'),
             'status'         => 'active',
             'currency_code'  => 'INR',
             'timezone'       => 'Asia/Kolkata',
             // Add any other fields if necessary
         ]);
+
+        AccountCredential::updateOrCreate(
+            ['accountid' => $account->accountid],
+            [
+                'email' => 'team@insidesoftwares.com',
+                'password' => Hash::make('123456'),
+            ]
+        );
     }
 }

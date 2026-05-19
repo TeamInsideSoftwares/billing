@@ -9,6 +9,7 @@ use App\Models\ClientDocument;
 use App\Models\Group;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -127,7 +128,7 @@ class ClientsController extends Controller
             'business_name' => 'required|string',
             'groupid' => 'nullable|exists:groups,groupid',
             'contact_name' => 'nullable|string',
-            'email' => 'required|email|unique:clients,email',
+            'email' => 'required|string|max:150',
             'phone' => 'nullable|string|max:50',
             'whatsapp_number' => 'nullable|string|max:50',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
@@ -141,7 +142,7 @@ class ClientsController extends Controller
             'existing_bd_id' => 'nullable|string|size:6|exists:client_billing_details,bd_id',
             'billing_business_name' => 'required|string',
             'billing_gstin' => 'nullable|string|size:15',
-            'billing_email' => 'nullable|email',
+            'billing_email' => 'nullable|string|max:150',
             'billing_city' => 'nullable|string',
             'billing_state' => 'required|string',
             'billing_country' => 'nullable|string',
@@ -149,6 +150,18 @@ class ClientsController extends Controller
             'billing_address_line_1' => 'nullable|string',
             'billing_phone' => 'nullable|string',
         ]);
+
+        $validated['email'] = $this->normalizeClientEmails((string) ($validated['email'] ?? ''));
+
+        // Normalize billing_email if multiple addresses provided
+        if (!empty($validated['billing_email'])) {
+            $validated['billing_email'] = $this->normalizeClientEmails((string) $validated['billing_email']);
+            if (strlen($validated['billing_email']) > 150) {
+                throw ValidationException::withMessages(['billing_email' => 'Combined billing emails exceed 150 characters.']);
+            }
+        } else {
+            $validated['billing_email'] = null;
+        }
 
         $validated['billing_phone'] = isset($validated['billing_phone'])
             ? trim((string) $validated['billing_phone'])
@@ -450,7 +463,7 @@ class ClientsController extends Controller
             'business_name' => 'required|string',
             'groupid' => 'nullable|exists:groups,groupid',
             'contact_name' => 'nullable|string',
-            'email' => 'required|email|unique:clients,email,' . $client->getKey() . ',clientid',
+            'email' => 'required|string|max:150',
             'phone' => 'nullable|string|max:50',
             'whatsapp_number' => 'nullable|string|max:50',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
@@ -464,7 +477,7 @@ class ClientsController extends Controller
             'existing_bd_id' => 'nullable|string|size:6|exists:client_billing_details,bd_id',
             'billing_business_name' => 'required|string',
             'billing_gstin' => 'nullable|string|size:15',
-            'billing_email' => 'nullable|email',
+            'billing_email' => 'nullable|string|max:150',
             'billing_city' => 'nullable|string',
             'billing_state' => 'required|string',
             'billing_country' => 'nullable|string',
@@ -472,6 +485,18 @@ class ClientsController extends Controller
             'billing_address_line_1' => 'nullable|string',
             'billing_phone' => 'nullable|string',
         ]);
+
+        $validated['email'] = $this->normalizeClientEmails((string) ($validated['email'] ?? ''));
+
+        // Normalize billing_email if multiple addresses provided
+        if (!empty($validated['billing_email'])) {
+            $validated['billing_email'] = $this->normalizeClientEmails((string) $validated['billing_email']);
+            if (strlen($validated['billing_email']) > 150) {
+                throw ValidationException::withMessages(['billing_email' => 'Combined billing emails exceed 150 characters.']);
+            }
+        } else {
+            $validated['billing_email'] = null;
+        }
 
         $validated['billing_phone'] = isset($validated['billing_phone'])
             ? trim((string) $validated['billing_phone'])
@@ -566,5 +591,30 @@ class ClientsController extends Controller
         $client->delete();
 
         return redirect()->route('clients.index')->with('success', 'Client deleted successfully.');
+    }
+
+    private function normalizeClientEmails(string $rawEmails): string
+    {
+        $emails = collect(explode(',', $rawEmails))
+            ->map(fn ($email) => trim($email))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($emails->isEmpty()) {
+            throw ValidationException::withMessages([
+                'email' => 'At least one email is required.',
+            ]);
+        }
+
+        foreach ($emails as $email) {
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                throw ValidationException::withMessages([
+                    'email' => 'Invalid email address: ' . $email,
+                ]);
+            }
+        }
+
+        return $emails->implode(', ');
     }
 }
