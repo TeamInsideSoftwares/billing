@@ -56,7 +56,10 @@ class OrdersController extends Controller
     public function orders(): View
     {
         $accountId = $this->resolveAccountId();
-        $clientId = trim((string) request('c', ''));
+        $clientFilter = trim((string) request('c', ''));
+        $isAllClientsFilter = strtolower($clientFilter) === 'all';
+        $hasClientFilter = request()->has('c') && $clientFilter !== '';
+        $clientId = $isAllClientsFilter ? '' : $clientFilter;
         $selectedItemId = trim((string) request('itemid', ''));
         $selectedClient = null;
 
@@ -124,6 +127,8 @@ class OrdersController extends Controller
             'groupedOrders' => $groupedOrders,
             'selectedClient' => $selectedClient,
             'clientId' => $clientId,
+            'hasClientFilter' => $hasClientFilter,
+            'showClientPicker' => !$hasClientFilter && $selectedItemId === '',
             'selectedItemId' => $selectedItemId,
             'services' => $services,
             'allClients' => Client::where('accountid', $accountId)->with('billingDetail')->orderBy('business_name')->orderBy('contact_name')->get(),
@@ -255,6 +260,14 @@ class OrdersController extends Controller
             ->all();
 
         session(['orders_create_recent_ids' => $recentOrderIds]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => count($createdOrders) . ' order item(s) created successfully.',
+                'orders' => $createdOrders
+            ]);
+        }
 
         return redirect()
             ->route('orders.create', ['c' => $redirectClientId, 'carry' => 1])
@@ -403,7 +416,11 @@ class OrdersController extends Controller
         ]);
 
         if ($request->query('return_to') === 'create') {
-            return redirect()->route('orders.create', ['c' => $order->clientid, 'carry' => 1])->with('success', 'Order updated successfully.');
+            return redirect()->route('orders.create', [
+                'c' => $order->clientid,
+                'carry' => 1,
+                'iframe' => $request->query('iframe')
+            ])->with('success', 'Order updated successfully.');
         }
 
         return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order updated successfully.');
@@ -427,7 +444,11 @@ class OrdersController extends Controller
                 ->all();
             session(['orders_create_recent_ids' => $recentOrderIds]);
 
-            return redirect()->route('orders.create', ['c' => $order->clientid, 'carry' => 1])->with('success', 'Order cancelled successfully.');
+            return redirect()->route('orders.create', [
+                'c' => $order->clientid,
+                'carry' => 1,
+                'iframe' => request()->query('iframe')
+            ])->with('success', 'Order cancelled successfully.');
         }
 
         return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order cancelled successfully.');

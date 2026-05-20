@@ -1,15 +1,18 @@
 @php
-    $selectedClientCurrency = optional($clients->firstWhere('clientid', request('c', request('clientid'))))->currency ?? 'INR';
+    $selectedClientCurrency =
+        optional($clients->firstWhere('clientid', request('c', request('clientid'))))->currency ?? 'INR';
     $selectedClient = $clients->firstWhere('clientid', request('c', request('clientid')));
-    $selectedClientName = $selectedClient ? ($selectedClient->business_name ?? $selectedClient->contact_name ?? 'Unknown Client') : 'No Client Selected';
+    $selectedClientName = $selectedClient
+        ? $selectedClient->business_name ?? ($selectedClient->contact_name ?? 'Unknown Client')
+        : 'No Client Selected';
     $selectedClientEmail = $selectedClient->email ?? '';
-    $isTaxInvoiceStep2 = (request('tax_invoice', 0) == 1) || !empty($invoice?->ti_number);
+    $isTaxInvoiceStep2 = request('tax_invoice', 0) == 1 || !empty($invoice?->ti_number);
     $initialHeaderNumberStep2 = $isTaxInvoiceStep2
-        ? ($invoice?->ti_number ?: ($nextTaxInvoiceNumber ?? $nextInvoiceNumber))
-        : ($invoice?->pi_number ?: $nextInvoiceNumber);
-    $orderItemGroups = collect($orderItemsForClient ?? [])->groupBy(function ($item) {
-        return $item['order_number'] ?? 'Order';
-    });
+        ? ($invoice?->ti_number ?:
+        $nextTaxInvoiceNumber ?? $nextInvoiceNumber)
+        : ($invoice?->pi_number ?:
+        $nextInvoiceNumber);
+    $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 @endphp
 <style>
     .invoice-compact-steps {
@@ -57,7 +60,7 @@
             </div>
             <div class="invoice-client-header__body">
                 <div class="invoice-client-header__name">{{ $selectedClientName }}</div>
-                @if($selectedClientEmail)
+                @if ($selectedClientEmail)
                     <div class="invoice-client-header__email">{{ $selectedClientEmail }}</div>
                 @endif
             </div>
@@ -122,10 +125,11 @@
             <div class="manual-grid manual-grid-add-items">
                 <div class="invoice-span-2">
                     <label for="manual_item_itemid" class="field-label small">Item</label>
-                    <select id="manual_item_itemid" class="form-input">
-                        <option value="">Select item</option>
-                        @foreach($orderItemGroups as $orderNumber => $orderItems)
-                            @foreach($orderItems as $orderItem)
+                    <div style="display: flex; gap: 0.35rem; align-items: center;">
+                        <select id="manual_item_itemid" class="form-input" style="flex: 1;">
+                            <option value="">Select item</option>
+
+                            @foreach ($orderItemsFlat as $orderItem)
                                 <option value="{{ $orderItem['itemid'] }}"
                                     data-orderid="{{ $orderItem['orderid'] }}"
                                     data-selling-price="{{ $orderItem['unit_price'] ?? 0 }}"
@@ -133,32 +137,41 @@
                                     data-user-wise="{{ (int) ($orderItem['requires_user_fields'] ?? 0) }}"
                                     data-description="{{ $orderItem['item_description'] ?? '' }}"
                                     data-item-name="{{ $orderItem['item_name'] ?? '' }}">
-                                    {{ $orderItem['order_number'] ?? '' }} - {{ $orderItem['item_name'] ?? 'Item' }}
+                                    {{ $orderItem['display_order_number'] ?? $orderItem['order_number'] ?? $orderItem['orderid'] ?? 'Order' }} -
+                                    {{ $orderItem['item_name'] ?? 'Item' }}
                                 </option>
                             @endforeach
-                        @endforeach
-                    </select>
+                        </select>
+                        <button type="button" id="openAddOrderModalBtn" class="secondary-button"
+                            style="padding: 0 0.75rem; height: 38px; display: inline-flex; align-items: center; justify-content: center;"
+                            title="Create new order">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
                 </div>
                 <div>
                     <label for="manual_item_quantity" class="field-label small">Qty</label>
-                    <input type="number" id="manual_item_quantity" class="form-input" value="1" min="1" step="1">
+                    <input type="number" id="manual_item_quantity" class="form-input" value="1"
+                        min="1" step="1">
                 </div>
                 <div>
                     <label for="manual_item_unit_price" class="field-label small">Unit Price</label>
-                    <input type="number" id="manual_item_unit_price" class="form-input" min="0" step="0.01">
+                    <input type="number" id="manual_item_unit_price" class="form-input" min="0"
+                        step="0.01">
                 </div>
                 <div>
                     <label for="manual_item_discount" class="field-label small">Disc %</label>
-                    <input type="number" id="manual_item_discount" class="form-input" min="0" max="100" step="0.01"
-                        value="0">
+                    <input type="number" id="manual_item_discount" class="form-input" min="0"
+                        max="100" step="0.01" value="0">
                 </div>
-                @if($account->allow_multi_taxation)
+                @if ($account->allow_multi_taxation)
                     <div>
                         <label for="manual_item_tax_rate" class="field-label small">Tax</label>
                         <select id="manual_item_tax_rate" class="form-input">
                             <option value="0">No Tax</option>
-                            @foreach($taxes as $tax)
-                                <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)
+                            @foreach ($taxes as $tax)
+                                <option value="{{ $tax->rate }}">{{ $tax->tax_name }}
+                                    ({{ number_format($tax->rate, 0) }}%)
                                 </option>
                             @endforeach
                         </select>
@@ -168,7 +181,8 @@
                 @endif
                 <div id="manual_item_users_wrap" class="is-hidden">
                     <label for="manual_item_users" class="field-label small">Users</label>
-                    <input type="number" id="manual_item_users" class="form-input" value="1" min="1" step="1">
+                    <input type="number" id="manual_item_users" class="form-input" value="1" min="1"
+                        step="1">
                 </div>
                 <div>
                     <label for="manual_item_frequency" class="field-label small">Freq</label>
@@ -184,8 +198,8 @@
                 </div>
                 <div id="manual_item_duration_wrap" class="is-hidden">
                     <label for="manual_item_duration" class="field-label small">Dur</label>
-                    <input type="number" id="manual_item_duration" class="form-input" min="0" step="1"
-                        placeholder="e.g. 12">
+                    <input type="number" id="manual_item_duration" class="form-input" min="0"
+                        step="1" placeholder="e.g. 12">
                 </div>
                 <div id="manual_item_start_date_wrap">
                     <label for="manual_item_start_date" class="field-label small">Start</label>
@@ -209,9 +223,9 @@
                     <tr>
                         <th>Item</th>
                         <th class="text-center">Qty</th>
-                        <th class="text-right">Price ({{ $selectedClientCurrency }})</th>
+                        <th class="text-center">Price ({{ $selectedClientCurrency }})</th>
                         <th class="text-center">Disc %</th>
-                        @if($account->allow_multi_taxation)
+                        @if ($account->allow_multi_taxation)
                             <th class="text-center">Tax %</th>
                         @endif
                         <th id="manualUsersHeader" class="is-hidden text-center">Users</th>
@@ -237,13 +251,14 @@
     </div>
 
     <div class="mt-4">
-        <button type="button" class="primary-button w-100 invoice-next-btn" id="btnNextToStep3" disabled>Review & Terms
+        <button type="button" class="primary-button w-100 invoice-next-btn" id="btnNextToStep3" disabled>Review &
+            Terms
             &rarr;</button>
     </div>
 </div>
 
 <script>
-    (function () {
+    (function() {
         const addManualItemBtn = document.getElementById('addManualItemBtn');
         const manualItemsBody = document.getElementById('manualItemsBody');
         const manualItemsTable = document.getElementById('manualItemsTable');
@@ -288,7 +303,14 @@
             }
         }
 
-        const frequencyLabels = { 'One-Time': 'One-Time', 'Day(s)': 'Day(s)', 'Week(s)': 'Week(s)', 'Month(s)': 'Month(s)', 'Quarter(s)': 'Quarter(s)', 'Year(s)': 'Year(s)' };
+        const frequencyLabels = {
+            'One-Time': 'One-Time',
+            'Day(s)': 'Day(s)',
+            'Week(s)': 'Week(s)',
+            'Month(s)': 'Month(s)',
+            'Quarter(s)': 'Quarter(s)',
+            'Year(s)': 'Year(s)'
+        };
 
         let manualItems = [];
         let editingManualItemIndex = null;
@@ -332,7 +354,11 @@
 
             const url = orderItemsRouteTemplate.replace('__ORDERID__', encodeURIComponent(orderId));
             try {
-                const response = await fetch(url, { headers: { Accept: 'application/json' } });
+                const response = await fetch(url, {
+                    headers: {
+                        Accept: 'application/json'
+                    }
+                });
                 if (!response.ok) return null;
                 const data = await response.json();
                 const prefill = data?.date_prefill || null;
@@ -375,17 +401,25 @@
         }
 
         // Auto-fill price when item selected
-        document.getElementById('manual_item_itemid').addEventListener('change', async function () {
+        document.getElementById('manual_item_itemid').addEventListener('change', async function() {
             const selected = this.options[this.selectedIndex];
             const price = selected.dataset.sellingPrice || 0;
             const taxRate = selected.dataset.taxRate || 0;
             const orderId = selected?.dataset?.orderid || '';
             document.getElementById('manual_item_unit_price').value = price;
-            document.getElementById('manual_item_description').value = selected.dataset.description || '';
+            document.getElementById('manual_item_description').value = selected.dataset.description ||
+                '';
             if (document.getElementById('manual_item_tax_rate')) {
                 document.getElementById('manual_item_tax_rate').value = taxRate;
             }
             toggleManualUsersField();
+
+            // Switching to another order/item should refresh date prefill from that order.
+            // Clear previous selection's dates so stale values do not block new prefill.
+            if (editingManualItemIndex === null) {
+                setDateInputValue(manualStartInput, '');
+                setDateInputValue(manualEndInput, '');
+            }
 
             const prefill = await fetchOrderDatePrefill(orderId);
             currentOrderDatePrefill = prefill;
@@ -429,12 +463,23 @@
             }
             const end = new Date(start);
             switch (frequency) {
-                case 'Day(s)': end.setDate(end.getDate() + steps); break;
-                case 'Week(s)': end.setDate(end.getDate() + (steps * 7)); break;
-                case 'Month(s)': end.setMonth(end.getMonth() + steps); break;
-                case 'Quarter(s)': end.setMonth(end.getMonth() + (steps * 3)); break;
-                case 'Year(s)': end.setFullYear(end.getFullYear() + steps); break;
-                default: return '';
+                case 'Day(s)':
+                    end.setDate(end.getDate() + steps);
+                    break;
+                case 'Week(s)':
+                    end.setDate(end.getDate() + (steps * 7));
+                    break;
+                case 'Month(s)':
+                    end.setMonth(end.getMonth() + steps);
+                    break;
+                case 'Quarter(s)':
+                    end.setMonth(end.getMonth() + (steps * 3));
+                    break;
+                case 'Year(s)':
+                    end.setFullYear(end.getFullYear() + steps);
+                    break;
+                default:
+                    return '';
             }
             // End date is inclusive across billing cycles.
             end.setDate(end.getDate() - 1);
@@ -483,7 +528,8 @@
         }
 
         function toggleManualRecurringFields() {
-            if (!manualDurationWrap || !manualDurationInput || !manualStartWrap || !manualEndWrap || !manualStartInput || !manualEndInput) return;
+            if (!manualDurationWrap || !manualDurationInput || !manualStartWrap || !manualEndWrap || !
+                manualStartInput || !manualEndInput) return;
             const showRecurring = isRecurringFrequency(manualFrequencyInput?.value || '');
             manualDurationWrap.classList.toggle('is-hidden', !showRecurring);
             manualStartWrap.classList.remove('is-hidden');
@@ -498,7 +544,7 @@
             }
         }
 
-        manualFrequencyInput?.addEventListener('change', function () {
+        manualFrequencyInput?.addEventListener('change', function() {
             toggleManualRecurringFields();
             applyOrderDatePrefill(currentOrderDatePrefill);
             scheduleManualEndDateSync();
@@ -529,7 +575,10 @@
             if (startHeader) startHeader.classList.toggle('is-hidden', !showRecurringColumns);
             if (endHeader) endHeader.classList.toggle('is-hidden', !showRecurringColumns);
 
-            return { showRecurringColumns, showUserColumns };
+            return {
+                showRecurringColumns,
+                showUserColumns
+            };
         }
 
         function resetManualItemForm() {
@@ -546,41 +595,44 @@
             setDateInputValue(manualStartInput, '');
             setDateInputValue(manualEndInput, '');
             toggleManualRecurringFields();
-            @if($account->have_users)
+            @if ($account->have_users)
                 toggleManualUsersField();
             @endif
-    }
+        }
 
         function openAddItemForm() {
             if (addItemFormCard) {
                 addItemFormCard.classList.remove('is-hidden');
             }
             if (toggleAddItemFormBtn) {
-                toggleAddItemFormBtn.innerHTML = '<i class="fas fa-times invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Cancel</span>';
+                toggleAddItemFormBtn.innerHTML =
+                    '<i class="fas fa-times invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Cancel</span>';
             }
         }
 
-        addManualItemBtn.addEventListener('click', function () {
+        addManualItemBtn.addEventListener('click', function() {
             const itemId = document.getElementById('manual_item_itemid').value;
-            const selectedOption = document.getElementById('manual_item_itemid').options[document.getElementById('manual_item_itemid').selectedIndex];
+            const selectedOption = document.getElementById('manual_item_itemid').options[document
+                .getElementById('manual_item_itemid').selectedIndex];
             const selectedOrderId = selectedOption?.dataset?.orderid || '';
             const itemName = selectedOption?.dataset?.itemName || selectedOption?.text || '';
             const itemDescription = (document.getElementById('manual_item_description').value || '').trim();
-            const quantity = Math.max(1, Math.round(Number(document.getElementById('manual_item_quantity').value) || 1));
+            const quantity = Math.max(1, Math.round(Number(document.getElementById('manual_item_quantity')
+                .value) || 1));
             const unitPrice = parseFloat(document.getElementById('manual_item_unit_price').value) || 0;
-            const discountPercent = Math.min(100, Math.max(0, parseFloat(document.getElementById('manual_item_discount').value) || 0));
+            const discountPercent = Math.min(100, Math.max(0, parseFloat(document.getElementById(
+                'manual_item_discount').value) || 0));
             const taxRate = parseFloat(document.getElementById('manual_item_tax_rate').value) || 0;
             const isUserWiseItem = isManualItemUserWise();
-            const users = isUserWiseItem ? (parseInt(document.getElementById('manual_item_users').value) || 1) : 1;
+            const users = isUserWiseItem ? (parseInt(document.getElementById('manual_item_users').value) ||
+                1) : 1;
             const usersForStorage = isUserWiseItem ? users : null;
             const frequency = document.getElementById('manual_item_frequency').value;
-            const duration = isRecurringFrequency(frequency)
-                ? Math.max(1, parseInt(document.getElementById('manual_item_duration').value) || 1)
-                : null;
-            const startDate = isRecurringFrequency(frequency) ? (manualStartInput?.value || null) : null;
-            const endDate = isRecurringFrequency(frequency)
-                ? ((manualEndInput?.value || calculateEndDate(startDate, frequency, duration)) || null)
-                : null;
+            const duration = isRecurringFrequency(frequency) ?
+                Math.max(1, parseInt(document.getElementById('manual_item_duration').value) || 1) :
+                null;
+            const startDate = manualStartInput?.value || null;
+            const endDate = manualEndInput?.value || null;
 
             if (!itemId) {
                 alert('Please select an item.');
@@ -592,7 +644,8 @@
                 return;
             }
 
-            const durationMultiplier = (isRecurringFrequency(frequency) && Number(duration || 0) > 0) ? Number(duration) : 1;
+            const durationMultiplier = (isRecurringFrequency(frequency) && Number(duration || 0) > 0) ?
+                Number(duration) : 1;
             const lineTotal = quantity * unitPrice * Math.max(1, users) * durationMultiplier;
             const discountValue = roundDiscountDown(lineTotal * (discountPercent / 100));
             const discountAmount = Math.max(0, lineTotal - discountValue);
@@ -654,7 +707,8 @@
                 const quantity = Math.max(1, Math.round(Number(item.quantity || 1)));
                 const unitPrice = Number(item.unit_price || 0);
                 const users = Math.max(1, Number(item.no_of_users || 1));
-                const durationMultiplier = (itemIsRecurring(item) && Number(item.duration || 0) > 0) ? Number(item.duration) : 1;
+                const durationMultiplier = (itemIsRecurring(item) && Number(item.duration || 0) > 0) ?
+                    Number(item.duration) : 1;
                 item.quantity = quantity;
                 item.line_total = quantity * unitPrice * users * durationMultiplier;
                 item.discount_percent = Math.min(100, Math.max(0, Number(item.discount_percent || 0)));
@@ -672,17 +726,17 @@
                 row.innerHTML = `
                 <td>${renderItemCell(item)}</td>
                 <td class="text-center">${Math.round(Number(item.quantity) || 0)}</td>
-                <td class="text-right">${formatCurrency(item.unit_price)}</td>
+                <td class="text-center">${formatCurrency(item.unit_price)}</td>
                 <td class="text-center">${Number(item.discount_percent || 0).toFixed(0)}%</td>
-                @if($account->allow_multi_taxation)
+                @if ($account->allow_multi_taxation)
                     <td class="text-center">${item.tax_rate}%</td>
                 @endif
                 <td class="text-center ${showUserColumns ? '' : 'is-hidden'}">${rowUsers ? Math.max(1, Number(item.no_of_users || 1)) : '-'}</td>
                 <td>${item.frequency ? (frequencyLabels[item.frequency] || item.frequency) : '-'}</td>
-                <td class="${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.duration || '-') : '-'}</td>
-                <td class="${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.start_date || '-') : '-'}</td>
-                <td class="${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.end_date || '-') : '-'}</td>
-                <td class="text-right">${formatCurrency(Math.max(0, Number(item.discount_amount || 0) || Number(item.line_total || 0)))}</td>
+                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.duration || '-') : '-'}</td>
+                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.start_date || '-') : '-'}</td>
+                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.end_date || '-') : '-'}</td>
+                <td class="text-center">${formatCurrency(Math.max(0, Number(item.discount_amount || 0) || Number(item.line_total || 0)))}</td>
                 <td class="text-center text-nowrap">
                     <button type="button" class="text-action-btn edit edit-item-btn" data-index="${index}">Edit</button>
                     <button type="button" class="text-action-btn delete remove-item-btn" data-index="${index}">Delete</button>
@@ -692,7 +746,7 @@
             });
 
             document.querySelectorAll('.edit-item-btn').forEach(btn => {
-                btn.addEventListener('click', function () {
+                btn.addEventListener('click', function() {
                     const index = Number(this.dataset.index);
                     const item = manualItems[index];
                     if (!item) return;
@@ -707,11 +761,16 @@
                         itemSelect.dispatchEvent(new Event('change'));
                     }
 
-                    document.getElementById('manual_item_quantity').value = Math.max(1, Math.round(Number(item.quantity || 1)));
-                    document.getElementById('manual_item_unit_price').value = Number(item.unit_price || 0);
-                    document.getElementById('manual_item_description').value = item.item_description || '';
-                    document.getElementById('manual_item_discount').value = Number(item.discount_percent || 0);
-                    document.getElementById('manual_item_tax_rate').value = Number(item.tax_rate || 0);
+                    document.getElementById('manual_item_quantity').value = Math.max(1, Math.round(
+                        Number(item.quantity || 1)));
+                    document.getElementById('manual_item_unit_price').value = Number(item
+                        .unit_price || 0);
+                    document.getElementById('manual_item_description').value = item
+                        .item_description || '';
+                    document.getElementById('manual_item_discount').value = Number(item
+                        .discount_percent || 0);
+                    document.getElementById('manual_item_tax_rate').value = Number(item.tax_rate ||
+                        0);
                     document.getElementById('manual_item_frequency').value = item.frequency || '';
                     document.getElementById('manual_item_duration').value = item.duration || '';
                     setDateInputValue(manualStartInput, item.start_date || '');
@@ -719,23 +778,29 @@
 
                     toggleManualUsersField();
                     if (item.no_of_users) {
-                        document.getElementById('manual_item_users').value = Math.max(1, Number(item.no_of_users || 1));
+                        document.getElementById('manual_item_users').value = Math.max(1, Number(item
+                            .no_of_users || 1));
                     }
 
                     toggleManualRecurringFields();
-                    if (isRecurringFrequency(item.frequency || '') && manualEndInput && !manualEndInput.value) {
+                    if (isRecurringFrequency(item.frequency || '') && manualEndInput && !
+                        manualEndInput.value) {
                         setDateInputValue(
                             manualEndInput,
-                            calculateEndDate(manualStartInput?.value || '', item.frequency || '', item.duration || '')
+                            calculateEndDate(manualStartInput?.value || '', item.frequency ||
+                                '', item.duration || '')
                         );
                     }
 
-                    addManualItemBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    addManualItemBtn.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
                 });
             });
 
             document.querySelectorAll('.remove-item-btn').forEach(btn => {
-                btn.addEventListener('click', function () {
+                btn.addEventListener('click', function() {
                     const index = Number(this.dataset.index);
                     manualItems.splice(index, 1);
 
@@ -757,7 +822,8 @@
             document.getElementById('manualSubtotal').textContent = formatCurrency(subtotal);
             document.getElementById('manualDiscountTotal').textContent = formatCurrency(roundedDiscountTotal);
             document.getElementById('manualTaxTotal').textContent = formatCurrency(roundedTaxTotal);
-            document.getElementById('manualGrandTotal').textContent = formatCurrency(subtotal - roundedDiscountTotal + roundedTaxTotal);
+            document.getElementById('manualGrandTotal').textContent = formatCurrency(subtotal -
+                roundedDiscountTotal + roundedTaxTotal);
 
             itemsDataInput.value = JSON.stringify(manualItems);
             const hiddenOrderIdInput = document.getElementById('orderid');
@@ -766,7 +832,7 @@
             }
         }
 
-        btnNextToStep3.addEventListener('click', function () {
+        btnNextToStep3.addEventListener('click', function() {
             if (manualItems.length === 0) {
                 alert('Please add at least one item.');
                 return;
@@ -795,22 +861,23 @@
             const notesValue = document.getElementById('notes')?.value || '';
 
             fetch("{{ route('invoices.save-draft') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-                },
-                body: JSON.stringify({
-                    invoiceid: "{{ request('d', '') }}" || undefined,
-                    clientid: clientId,
-                    orderid: document.getElementById('orderid')?.value || null,
-                    invoice_title: invoiceTitle.trim(),
-                    issue_date: issueDateValue,
-                    due_date: dueDateValue,
-                    notes: notesValue,
-                    items_data: itemsDataInput.value
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute(
+                            'content') || ''
+                    },
+                    body: JSON.stringify({
+                        invoiceid: "{{ request('d', '') }}" || undefined,
+                        clientid: clientId,
+                        orderid: document.getElementById('orderid')?.value || null,
+                        invoice_title: invoiceTitle.trim(),
+                        issue_date: issueDateValue,
+                        due_date: dueDateValue,
+                        notes: notesValue,
+                        items_data: itemsDataInput.value
+                    })
                 })
-            })
                 .then(async (response) => {
                     if (!response.ok) {
                         const text = await response.text();
@@ -836,7 +903,7 @@
                 });
         });
 
-        btnBackToStep1.addEventListener('click', function () {
+        btnBackToStep1.addEventListener('click', function() {
             const clientId = "{{ request('c', request('clientid')) }}";
             const clientToken = encodeURIComponent(clientId);
             let backUrl = "{{ route('invoices.create') }}?step=1&c=" + clientToken;
@@ -846,7 +913,7 @@
             window.location.href = backUrl;
         });
 
-        invoiceTitleInput.addEventListener('input', function () {
+        invoiceTitleInput.addEventListener('input', function() {
             if (this.value.trim()) {
                 invoiceTitleError.style.display = 'none';
             }
@@ -856,7 +923,8 @@
         function loadItems() {
             if (!draftId) return;
 
-            const draftUrl = new URL("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace('__CLIENTID__', clientId), window.location.origin);
+            const draftUrl = new URL("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace(
+                '__CLIENTID__', clientId), window.location.origin);
             draftUrl.searchParams.set('d', draftId);
 
             fetch(draftUrl.toString())
@@ -866,6 +934,7 @@
                     if (data.draft) {
                         if (data.draft.items && data.draft.items.length > 0) {
                             manualItems = data.draft.items.map(item => ({
+                                orderid: item.orderid || null,
                                 itemid: item.itemid,
                                 item_name: item.item_name,
                                 item_description: item.item_description || '',
@@ -880,6 +949,7 @@
                                 duration: item.duration,
                                 start_date: item.start_date,
                                 end_date: item.end_date,
+                                sequence: item.sequence || null,
                                 tax_amount: item.tax_amount,
                                 line_total: item.line_total
                             }));
@@ -923,9 +993,9 @@
             }
             if (toggleAddItemFormBtn) {
                 const isHidden = addItemFormCard ? addItemFormCard.classList.contains('is-hidden') : true;
-                toggleAddItemFormBtn.innerHTML = isHidden
-                    ? '<i class="fas fa-plus invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Add More Items</span>'
-                    : '<i class="fas fa-times invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Cancel</span>';
+                toggleAddItemFormBtn.innerHTML = isHidden ?
+                    '<i class="fas fa-plus invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Add More Items</span>' :
+                    '<i class="fas fa-times invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Cancel</span>';
             }
         }
 
@@ -942,5 +1012,99 @@
         }
         loadItems();
         updateStep2HeaderNumber();
+
+        // Modal & AJAX Order Creation integration
+        const openAddOrderModalBtn = document.getElementById('openAddOrderModalBtn');
+        if (openAddOrderModalBtn) {
+            openAddOrderModalBtn.addEventListener('click', function() {
+                if (!clientId) {
+                    alert('Please select a client before continuing.');
+                    return;
+                }
+                const iframe = document.getElementById('addOrderIframe');
+                if (iframe) {
+                    iframe.src = "{{ route('orders.create') }}?c=" + encodeURIComponent(clientId) +
+                        "&iframe=1";
+                }
+                const modalEl = document.getElementById('addOrderModal');
+                if (modalEl) {
+                    let modal = bootstrap.Modal.getInstance(modalEl);
+                    if (!modal) {
+                        modal = new bootstrap.Modal(modalEl);
+                    }
+                    modal.show();
+                }
+            });
+        }
+
+        window.onOrderCreated = function(data) {
+            const modalEl = document.getElementById('addOrderModal');
+            if (modalEl) {
+                const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            }
+            fetchUpdatedOrderItems();
+        };
+
+        function fetchUpdatedOrderItems() {
+            if (!clientId) return;
+
+            const url = `{{ route('invoices.client-order-items') }}?clientid=${encodeURIComponent(clientId)}`;
+
+            fetch(url, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(items => {
+                    const selectEl = document.getElementById('manual_item_itemid');
+                    if (!selectEl) return;
+
+                    const currentValue = selectEl.value;
+
+                    selectEl.innerHTML = '<option value="">Select item</option>';
+
+                    items.forEach(orderItem => {
+                        const option = document.createElement('option');
+                        option.value = orderItem.itemid;
+                        option.dataset.orderid = orderItem.orderid;
+                        option.dataset.sellingPrice = orderItem.unit_price || 0;
+                        option.dataset.taxRate = orderItem.tax_rate || 0;
+                        option.dataset.userWise = orderItem.requires_user_fields ? '1' : '0';
+                        option.dataset.description = orderItem.item_description || '';
+                        option.dataset.itemName = orderItem.item_name || '';
+                        const orderLabel = orderItem.display_order_number || orderItem.order_number || orderItem.orderid || 'Order';
+                        option.textContent = `${orderLabel} - ${orderItem.item_name || 'Item'}`;
+                        selectEl.appendChild(option);
+                    });
+
+                    selectEl.value = currentValue;
+                })
+                .catch(err => {
+                    console.error('Error fetching updated order items:', err);
+                });
+        }
     })();
 </script>
+
+<!-- Modal for creating a new order -->
+<div class="modal fade" id="addOrderModal" tabindex="-1" aria-labelledby="addOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 90%; width: 1000px;">
+        <div class="modal-content rounded-panel"
+            style="border: none; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);">
+            <div class="modal-header modal-header-custom"
+                style="padding: 1rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+                <h5 class="modal-title" id="addOrderModalLabel"
+                    style="font-weight: 600; color: #1e293b; margin: 0; font-size: 1.1rem;">Create New Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="padding: 0; height: 70vh; background: #fff;">
+                <iframe id="addOrderIframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>

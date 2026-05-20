@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @php
-    $clientName = $client->business_name ?? $client->contact_name ?? 'Client';
+    $clientName = $client->business_name ?? ($client->contact_name ?? 'Client');
     $focusType = $focusType ?? 'po';
     $editDocument = $editDocument ?? null;
     $editingPo = $editDocument && $editDocument->type === 'po';
@@ -32,9 +32,11 @@
                     <h4 class="section-title">Purchase Order</h4>
                 </div>
 
-                <form method="POST" action="{{ $editingPo ? route('clients.documents.update', ['client' => $client->clientid, 'document' => $editDocument->client_docid]) : route('clients.documents.store', $client->clientid) }}" enctype="multipart/form-data" class="client-form">
+                <form method="POST"
+                    action="{{ $editingPo ? route('clients.documents.update', ['client' => $client->clientid, 'document' => $editDocument->client_docid]) : route('clients.documents.store', $client->clientid) }}"
+                    enctype="multipart/form-data" class="client-form">
                     @csrf
-                    @if($editingPo)
+                    @if ($editingPo)
                         @method('PUT')
                     @endif
                     <input type="hidden" name="type" value="po">
@@ -42,41 +44,55 @@
                     <div class="form-grid grid-cols-3">
                         <div>
                             <label for="po_title">PO Title</label>
-                            <input type="text" id="po_title" name="title" value="{{ old('type', 'po') === 'po' ? old('title', $editingPo ? $editDocument->title : '') : '' }}" maxlength="150">
-                            @if(old('type', 'po') === 'po')
-                                @error('title') <span class="error">{{ $message }}</span> @enderror
+                            <input type="text" id="po_title" name="title"
+                                value="{{ old('type', 'po') === 'po' ? old('title', $editingPo ? $editDocument->title : '') : '' }}"
+                                maxlength="150">
+                            @if (old('type', 'po') === 'po')
+                                @error('title')
+                                    <span class="error">{{ $message }}</span>
+                                @enderror
                             @endif
                         </div>
 
                         <div>
                             <label for="po_document_number">PO Number</label>
-                            <input type="text" id="po_document_number" name="document_number" value="{{ old('type', 'po') === 'po' ? old('document_number', $editingPo ? $editDocument->document_number : '') : '' }}" maxlength="100">
-                            @if(old('type', 'po') === 'po')
-                                @error('document_number') <span class="error">{{ $message }}</span> @enderror
+                            <input type="text" id="po_document_number" name="document_number"
+                                value="{{ old('type', 'po') === 'po' ? old('document_number', $editingPo ? $editDocument->document_number : '') : '' }}"
+                                maxlength="100">
+                            @if (old('type', 'po') === 'po')
+                                @error('document_number')
+                                    <span class="error">{{ $message }}</span>
+                                @enderror
                             @endif
                         </div>
 
                         <div>
                             <label for="po_document_date">PO Date</label>
-                            <input type="date" id="po_document_date" name="document_date" value="{{ old('type', 'po') === 'po' ? old('document_date', $editingPo && $editDocument->document_date ? $editDocument->document_date->format('Y-m-d') : '') : '' }}">
-                            @if(old('type', 'po') === 'po')
-                                @error('document_date') <span class="error">{{ $message }}</span> @enderror
+                            <input type="date" id="po_document_date" name="document_date"
+                                value="{{ old('type', 'po') === 'po' ? old('document_date', $editingPo && $editDocument->document_date ? $editDocument->document_date->format('Y-m-d') : '') : '' }}">
+                            @if (old('type', 'po') === 'po')
+                                @error('document_date')
+                                    <span class="error">{{ $message }}</span>
+                                @enderror
                             @endif
                         </div>
 
                         <div>
                             <label for="po_file">{{ $editingPo ? 'Replace PO File (optional)' : 'PO File' }}</label>
                             <input type="file" id="po_file" name="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                            @if(old('type', 'po') === 'po')
-                                @error('file') <span class="error">{{ $message }}</span> @enderror
+                            @if (old('type', 'po') === 'po')
+                                @error('file')
+                                    <span class="error">{{ $message }}</span>
+                                @enderror
                             @endif
                         </div>
                     </div>
 
                     <div class="mt-3">
                         <button type="submit" class="primary-button">{{ $editingPo ? 'Update PO' : 'Save PO' }}</button>
-                        @if($editingPo)
-                            <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'po']) }}" class="secondary-button">Cancel Edit</a>
+                        @if ($editingPo)
+                            <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'po']) }}"
+                                class="secondary-button">Cancel Edit</a>
                         @endif
                     </div>
                 </form>
@@ -89,54 +105,47 @@
                                 <th>Title</th>
                                 <th>PO Number</th>
                                 <th>Date</th>
-                                <th>Status</th>
                                 <th>File</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                        @forelse($poDocuments as $document)
-                            <tr>
-                                <td>{{ $loop->iteration }}</td>
-                                <td class="document-title-cell">
-                                    <span class="document-title-text" title="{{ $document->title ?: '—' }}">{{ $document->title ?: '—' }}</span>
-                                </td>
-                                <td>{{ $document->document_number ?: '—' }}</td>
-                                <td>{{ $document->document_date?->format('d M Y') ?? '—' }}</td>
-                                <td>
-                                    <span class="status-pill {{ strtolower($document->status ?? 'active') }}">{{ ucfirst($document->status ?? 'active') }}</span>
-                                </td>
-                                <td>
-                                    @if($document->file_path)
-                                        <a href="{{ route('clients.documents.file', ['client' => $client->clientid, 'document' => $document->client_docid]) }}" target="_blank" class="text-action-btn view">View File</a>
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-                                <td class="actions-cell">
-                                    <div class="table-actions">
-                                        @if(($document->status ?? 'active') !== 'cancelled')
-                                            <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'po', 'edit' => $document->client_docid]) }}" class="text-action-btn edit">Edit</a>
-                                            <form method="POST" action="{{ route('clients.documents.cancel', ['client' => $client->clientid, 'document' => $document->client_docid]) }}" class="inline-delete" onsubmit="return confirm('Cancel this PO?')">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="text-action-btn delete">Cancel</button>
-                                            </form>
+                            @forelse($poDocuments as $document)
+                                <tr>
+                                    <td>{{ $loop->iteration }}</td>
+                                    <td class="document-title-cell">
+                                        <span class="document-title-text"
+                                            title="{{ $document->title ?: '—' }}">{{ $document->title ?: '—' }}</span>
+                                    </td>
+                                    <td>{{ $document->document_number ?: '—' }}</td>
+                                    <td>{{ $document->document_date?->format('d M Y') ?? '—' }}</td>
+                                    <td>
+                                        @if ($document->file_path)
+                                            <a href="{{ route('clients.documents.file', ['client' => $client->clientid, 'document' => $document->client_docid]) }}"
+                                                target="_blank" class="text-action-btn view">View</a>
                                         @else
-                                            <form method="POST" action="{{ route('clients.documents.restore', ['client' => $client->clientid, 'document' => $document->client_docid]) }}" class="inline-delete" onsubmit="return confirm('Restore this PO?')">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="text-action-btn secondary">Restore</button>
-                                            </form>
+                                            —
                                         @endif
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="no-records-cell">No PO records yet.</td>
-                            </tr>
-                        @endforelse
+                                    </td>
+                                    <td class="actions-cell">
+                                        <div class="table-actions">
+                                            <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'po', 'edit' => $document->client_docid]) }}"
+                                                class="text-action-btn edit">Edit</a>
+                                            <form method="POST"
+                                                action="{{ route('clients.documents.delete', ['client' => $client->clientid, 'document' => $document->client_docid]) }}"
+                                                class="inline-delete" onsubmit="return confirm('Delete this PO?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-action-btn delete">Delete</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="no-records-cell">No PO records yet.</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -150,9 +159,11 @@
                     <h4 class="section-title">Agreement</h4>
                 </div>
 
-                <form method="POST" action="{{ $editingAgreement ? route('clients.documents.update', ['client' => $client->clientid, 'document' => $editDocument->client_docid]) : route('clients.documents.store', $client->clientid) }}" enctype="multipart/form-data" class="client-form">
+                <form method="POST"
+                    action="{{ $editingAgreement ? route('clients.documents.update', ['client' => $client->clientid, 'document' => $editDocument->client_docid]) : route('clients.documents.store', $client->clientid) }}"
+                    enctype="multipart/form-data" class="client-form">
                     @csrf
-                    @if($editingAgreement)
+                    @if ($editingAgreement)
                         @method('PUT')
                     @endif
                     <input type="hidden" name="type" value="agreement">
@@ -160,41 +171,58 @@
                     <div class="form-grid grid-cols-3">
                         <div>
                             <label for="agreement_title">Agreement Title</label>
-                            <input type="text" id="agreement_title" name="title" value="{{ $showAgreementFormState ? old('title', $editingAgreement ? $editDocument->title : '') : '' }}" maxlength="150">
-                            @if($showAgreementFormState)
-                                @error('title') <span class="error">{{ $message }}</span> @enderror
+                            <input type="text" id="agreement_title" name="title"
+                                value="{{ $showAgreementFormState ? old('title', $editingAgreement ? $editDocument->title : '') : '' }}"
+                                maxlength="150">
+                            @if ($showAgreementFormState)
+                                @error('title')
+                                    <span class="error">{{ $message }}</span>
+                                @enderror
                             @endif
                         </div>
 
                         <div>
                             <label for="agreement_document_number">Agreement Number</label>
-                            <input type="text" id="agreement_document_number" name="document_number" value="{{ $showAgreementFormState ? old('document_number', $editingAgreement ? $editDocument->document_number : '') : '' }}" maxlength="100">
-                            @if($showAgreementFormState)
-                                @error('document_number') <span class="error">{{ $message }}</span> @enderror
+                            <input type="text" id="agreement_document_number" name="document_number"
+                                value="{{ $showAgreementFormState ? old('document_number', $editingAgreement ? $editDocument->document_number : '') : '' }}"
+                                maxlength="100">
+                            @if ($showAgreementFormState)
+                                @error('document_number')
+                                    <span class="error">{{ $message }}</span>
+                                @enderror
                             @endif
                         </div>
 
                         <div>
                             <label for="agreement_document_date">Agreement Date</label>
-                            <input type="date" id="agreement_document_date" name="document_date" value="{{ $showAgreementFormState ? old('document_date', $editingAgreement && $editDocument->document_date ? $editDocument->document_date->format('Y-m-d') : '') : '' }}">
-                            @if($showAgreementFormState)
-                                @error('document_date') <span class="error">{{ $message }}</span> @enderror
+                            <input type="date" id="agreement_document_date" name="document_date"
+                                value="{{ $showAgreementFormState ? old('document_date', $editingAgreement && $editDocument->document_date ? $editDocument->document_date->format('Y-m-d') : '') : '' }}">
+                            @if ($showAgreementFormState)
+                                @error('document_date')
+                                    <span class="error">{{ $message }}</span>
+                                @enderror
                             @endif
                         </div>
 
                         <div>
-                            <label for="agreement_file">{{ $editingAgreement ? 'Replace Agreement File (optional)' : 'Agreement File' }}</label>
-                            <input type="file" id="agreement_file" name="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                            @if($showAgreementFormState)
-                                @error('file') <span class="error">{{ $message }}</span> @enderror
+                            <label
+                                for="agreement_file">{{ $editingAgreement ? 'Replace Agreement File (optional)' : 'Agreement File' }}</label>
+                            <input type="file" id="agreement_file" name="file"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                            @if ($showAgreementFormState)
+                                @error('file')
+                                    <span class="error">{{ $message }}</span>
+                                @enderror
                             @endif
                         </div>
                     </div>
 
                     <div class="mt-3">
-                        <button type="submit" class="primary-button">{{ $editingAgreement ? 'Update Agreement' : 'Save Agreement' }}</button>
-                        @if($editingAgreement)
-                            <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'agreement']) }}" class="secondary-button">Cancel Edit</a>
+                        <button type="submit"
+                            class="primary-button">{{ $editingAgreement ? 'Update Agreement' : 'Save Agreement' }}</button>
+                        @if ($editingAgreement)
+                            <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'agreement']) }}"
+                                class="secondary-button">Cancel Edit</a>
                         @endif
                     </div>
                 </form>
@@ -207,54 +235,47 @@
                                 <th>Title</th>
                                 <th>Agreement Number</th>
                                 <th>Date</th>
-                                <th>Status</th>
                                 <th>File</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                        @forelse($agreementDocuments as $document)
-                            <tr>
-                                <td>{{ $loop->iteration }}</td>
-                                <td class="document-title-cell">
-                                    <span class="document-title-text" title="{{ $document->title ?: '—' }}">{{ $document->title ?: '—' }}</span>
-                                </td>
-                                <td>{{ $document->document_number ?: '—' }}</td>
-                                <td>{{ $document->document_date?->format('d M Y') ?? '—' }}</td>
-                                <td>
-                                    <span class="status-pill {{ strtolower($document->status ?? 'active') }}">{{ ucfirst($document->status ?? 'active') }}</span>
-                                </td>
-                                <td>
-                                    @if($document->file_path)
-                                        <a href="{{ route('clients.documents.file', ['client' => $client->clientid, 'document' => $document->client_docid]) }}" target="_blank" class="text-action-btn view">View File</a>
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-                                <td class="actions-cell">
-                                    <div class="table-actions">
-                                        @if(($document->status ?? 'active') !== 'cancelled')
-                                            <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'agreement', 'edit' => $document->client_docid]) }}" class="text-action-btn edit">Edit</a>
-                                            <form method="POST" action="{{ route('clients.documents.cancel', ['client' => $client->clientid, 'document' => $document->client_docid]) }}" class="inline-delete" onsubmit="return confirm('Cancel this agreement?')">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="text-action-btn delete">Cancel</button>
-                                            </form>
+                            @forelse($agreementDocuments as $document)
+                                <tr>
+                                    <td>{{ $loop->iteration }}</td>
+                                    <td class="document-title-cell">
+                                        <span class="document-title-text"
+                                            title="{{ $document->title ?: '—' }}">{{ $document->title ?: '—' }}</span>
+                                    </td>
+                                    <td>{{ $document->document_number ?: '—' }}</td>
+                                    <td>{{ $document->document_date?->format('d M Y') ?? '—' }}</td>
+                                    <td>
+                                        @if ($document->file_path)
+                                            <a href="{{ route('clients.documents.file', ['client' => $client->clientid, 'document' => $document->client_docid]) }}"
+                                                target="_blank" class="text-action-btn view">View</a>
                                         @else
-                                            <form method="POST" action="{{ route('clients.documents.restore', ['client' => $client->clientid, 'document' => $document->client_docid]) }}" class="inline-delete" onsubmit="return confirm('Restore this agreement?')">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="text-action-btn secondary">Restore</button>
-                                            </form>
+                                            —
                                         @endif
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="no-records-cell">No agreement records yet.</td>
-                            </tr>
-                        @endforelse
+                                    </td>
+                                    <td class="actions-cell">
+                                        <div class="table-actions">
+                                            <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'agreement', 'edit' => $document->client_docid]) }}"
+                                                class="text-action-btn edit">Edit</a>
+                                            <form method="POST"
+                                                action="{{ route('clients.documents.delete', ['client' => $client->clientid, 'document' => $document->client_docid]) }}"
+                                                class="inline-delete" onsubmit="return confirm('Delete this agreement?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-action-btn delete">Delete</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="no-records-cell">No agreement records yet.</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -266,6 +287,7 @@
         .documents-table .document-title-cell {
             max-width: 180px;
         }
+
         .documents-table .document-title-text {
             display: inline-block;
             max-width: 100%;
@@ -274,10 +296,12 @@
             white-space: nowrap;
             vertical-align: bottom;
         }
+
         .documents-table .actions-cell {
             width: 1%;
             white-space: nowrap;
         }
+
         .documents-table .table-actions {
             display: flex;
             align-items: center;
@@ -285,6 +309,7 @@
             flex-wrap: nowrap;
             white-space: nowrap;
         }
+
         .documents-table .table-actions .inline-delete {
             display: inline-flex;
             margin: 0;

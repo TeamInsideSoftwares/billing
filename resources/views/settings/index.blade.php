@@ -872,33 +872,34 @@
             <h6 style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #1e293b; font-weight: 600;">
                 {{ $editingTerm ? 'Edit Term' : 'Add New Term' }}
             </h6>
-            <form method="POST" action="{{ route('terms-conditions.store') }}" style="display: flex; gap: 0.5rem; align-items: end;">
+            <form method="POST" action="{{ route('terms-conditions.store') }}" style="display: flex; flex-direction: column; gap: 0.75rem;">
                 @csrf
                 @if($editingTerm)
                     <input type="hidden" name="tc_id" value="{{ $editingTerm->tc_id }}">
                 @endif
 
-                <div style="flex: 0 0 120px;">
-                    <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b;">Type *</label>
-                    <select name="type" required style="width: 100%; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">
-                        <option value="billing" {{ old('type', $editingTerm->type ?? '') == 'billing' ? 'selected' : '' }}>Billing</option>
-                        <option value="quotation" {{ old('type', $editingTerm->type ?? '') == 'quotation' ? 'selected' : '' }}>Quotation</option>
-                        <option value="proforma" {{ old('type', $editingTerm->type ?? '') == 'proforma' ? 'selected' : '' }}>Proforma</option>
-                    </select>
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                    <div style="flex: 1 1 200px;">
+                        <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b;">Type *</label>
+                        <select name="type" required style="width: 100%; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">
+                            <option value="billing" {{ old('type', $editingTerm->type ?? '') == 'billing' ? 'selected' : '' }}>Billing</option>
+                            <option value="quotation" {{ old('type', $editingTerm->type ?? '') == 'quotation' ? 'selected' : '' }}>Quotation</option>
+                            <option value="proforma" {{ old('type', $editingTerm->type ?? '') == 'proforma' ? 'selected' : '' }}>Proforma</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1 1 200px; display: flex; align-items: flex-end; padding-bottom: 0.1rem;">
+                        <label class="custom-checkbox">
+                            <input type="hidden" name="is_default" value="0">
+                            <input type="checkbox" name="is_default" value="1" {{ old('is_default', (int) ($editingTerm->is_default ?? 0)) ? 'checked' : '' }}>
+                            <span class="checkbox-label" style="font-size: 0.85rem; color: #64748b;">Set as default</span>
+                        </label>
+                    </div>
                 </div>
-                <div class="flex-fill">
+                <div>
                     <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b; font-weight: 600;">Terms and Condition *</label>
-                    <input type="text" name="content" value="{{ old('content', $editingTerm->content ?? '') }}" placeholder="Enter terms and condition" required style="width: 100%; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">
+                    <textarea id="settings_tc_content" name="content" placeholder="Enter terms and condition" style="width: 100%; min-height: 120px; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">{{ old('content', $editingTerm->content ?? '') }}</textarea>
                 </div>
-                <div style="flex: 0 0 130px;">
-                    <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b;">Default</label>
-                    <label class="custom-checkbox">
-                        <input type="hidden" name="is_default" value="0">
-                        <input type="checkbox" name="is_default" value="1" {{ old('is_default', (int) ($editingTerm->is_default ?? 0)) ? 'checked' : '' }}>
-                        <span class="checkbox-label">Set as default</span>
-                    </label>
-                </div>
-                <div style="display: flex; gap: 0.4rem;">
+                <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">
                     <button type="submit" class="primary-button" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">{{ $editingTerm ? 'Update' : 'Add' }}</button>
                     @if($editingTerm)
                         <a href="{{ route('settings.index', ['t' => request('t', $editingTerm->type ?? 'billing')]) }}#terms-conditions" style="padding: 0.4rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #64748b; font-size: 0.85rem; display: inline-block;">Cancel</a>
@@ -941,7 +942,7 @@
                                         </select>
                                     </form>
                                 </td>
-                                <td class="tc-term-text ps-3">{{ $term->content }}</td>
+                                <td class="tc-term-text ps-3">{!! $term->content !!}</td>
                                 <td class="tc-col-default">
                                     @if($term->is_default)
                                         <span style="background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Default</span>
@@ -1004,7 +1005,7 @@
                                         </select>
                                     </form>
                                 </td>
-                                <td class="tc-term-text ps-3">{{ $term->content }}</td>
+                                <td class="tc-term-text ps-3">{!! $term->content !!}</td>
                                 <td class="tc-col-default">
                                     @if($term->is_default)
                                         <span style="background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Default</span>
@@ -1067,7 +1068,7 @@
                                         </select>
                                     </form>
                                 </td>
-                                <td class="tc-term-text ps-3">{{ $term->content }}</td>
+                                <td class="tc-term-text ps-3">{!! $term->content !!}</td>
                                 <td class="tc-col-default">
                                     @if($term->is_default)
                                         <span style="background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Default</span>
@@ -1562,6 +1563,31 @@ document.addEventListener('DOMContentLoaded', function () {
             handleSerialModeChange(billingRadio);
         }
     }, 100);
+
+    // TinyMCE for Terms and Conditions Tab
+    if (window.tinymce) {
+        tinymce.init({
+            license_key: 'gpl',
+            selector: '#settings_tc_content',
+            menubar: false,
+            height: 200,
+            plugins: 'lists link table code autoresize',
+            toolbar: 'undo redo | blocks | bold italic underline | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist | removeformat code',
+            setup: function (editor) {
+                editor.on('change', function () {
+                    editor.save(); // keep textarea synchronized
+                });
+            }
+        });
+
+        // Trigger save before terms-conditions form submission
+        const tcForm = document.querySelector('form[action*="terms-conditions"]');
+        if (tcForm) {
+            tcForm.addEventListener('submit', function () {
+                tinymce.triggerSave();
+            });
+        }
+    }
 });
 
 // Signature preview function

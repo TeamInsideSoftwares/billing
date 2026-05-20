@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'clientid',
     'from_email',
     'to_email',
+    'cc_email',
     'subject',
     'body',
     'attachment_type',

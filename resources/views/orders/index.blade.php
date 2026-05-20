@@ -2,7 +2,7 @@
 
 @section('header_actions')
     <div class="header-actions-wrapper">
-        @if($clientId || !empty($selectedItemId))
+        @if($clientId || !empty($selectedItemId) || !empty($hasClientFilter))
             <a href="{{ route('orders.create', array_filter(['c' => $clientId])) }}" class="primary-button">
                 <i class="fas fa-plus icon-spaced"></i>Create Orders
             </a>
@@ -12,7 +12,7 @@
 
 @section('content')
 <div class="order-index-shell">
-    @if(!$clientId && empty($selectedItemId))
+    @if(!empty($showClientPicker))
         <div class="payment-client-picker-wrap">
             <div class="payment-client-picker">
                 <div class="payment-client-picker-head">
@@ -54,7 +54,7 @@
                 <div class="module-filter-field">
                     <label class="module-filter-label" for="orders_client_filter">Client</label>
                     <select name="c" id="orders_client_filter" class="form-control">
-                        <option value="">All Clients</option>
+                        <option value="all" {{ empty($clientId) ? 'selected' : '' }}>All Clients</option>
                         @foreach($allClients as $client)
                             <option value="{{ $client->clientid }}" {{ (string) $clientId === (string) $client->clientid ? 'selected' : '' }}>
                                 {{ $client->business_name ?? $client->contact_name }}
@@ -86,7 +86,7 @@
 
                 <div class="module-filter-actions">
                     <button type="submit" class="primary-button">Apply</button>
-                    <a href="{{ route('orders.index', array_filter(['c' => $clientId])) }}" class="secondary-button">Reset</a>
+                    <a href="{{ route('orders.index', ['c' => empty($clientId) ? 'all' : $clientId]) }}" class="secondary-button">Reset</a>
                 </div>
             </form>
         </section>

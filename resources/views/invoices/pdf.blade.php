@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -314,13 +315,17 @@
 <body>
     <div class="header">
         <div class="from-block">
-            @if($account->logo_path)
+            @if ($account->logo_path)
                 @php
-                    $logoSrc = (str_starts_with($account->logo_path, 'http://') || str_starts_with($account->logo_path, 'https://'))
-                        ? $account->logo_path
-                        : public_path(str_starts_with($account->logo_path, 'storage/')
+                    $logoSrc =
+                        str_starts_with($account->logo_path, 'http://') ||
+                        str_starts_with($account->logo_path, 'https://')
                             ? $account->logo_path
-                            : 'storage/' . ltrim($account->logo_path, '/'));
+                            : public_path(
+                                str_starts_with($account->logo_path, 'storage/')
+                                    ? $account->logo_path
+                                    : 'storage/' . ltrim($account->logo_path, '/'),
+                            );
                 @endphp
                 <img src="{{ $logoSrc }}" class="logo" alt="Logo">
             @endif
@@ -332,22 +337,22 @@
             @php
                 $addrParts = array_filter([
                     $accountBillingDetail->address ?? '',
-                    implode(', ', array_filter([
-                        $accountBillingDetail->city ?? '',
-                        $accountBillingDetail->state ?? '',
-                    ])),
+                    implode(
+                        ', ',
+                        array_filter([$accountBillingDetail->city ?? '', $accountBillingDetail->state ?? '']),
+                    ),
                     $accountBillingDetail->postal_code ?? '',
                     $accountBillingDetail->country ?? '',
                 ]);
             @endphp
 
-            @if(count($addrParts))
+            @if (count($addrParts))
                 <div class="address">
                     {!! implode('<br>', $addrParts) !!}
                 </div>
             @endif
 
-            @if(!empty($accountBillingDetail->gstin))
+            @if (!empty($accountBillingDetail->gstin))
                 <div class="gstin">
                     <strong>GSTIN:</strong> {{ $accountBillingDetail->gstin }}
                 </div>
@@ -375,14 +380,14 @@
                     {{ optional($invoice->due_date)->format('d M Y') ?? '-' }}
                 </div>
 
-                @if(!empty($invoice->purchase_order?->document_number))
+                @if (!empty($invoice->purchase_order?->document_number))
                     <div class="meta-row">
                         <strong>PO Number:</strong>
                         {{ $invoice->purchase_order->document_number }}
                     </div>
                 @endif
 
-                @if(!empty($invoice->purchase_order?->document_date))
+                @if (!empty($invoice->purchase_order?->document_date))
                     <div class="meta-row">
                         <strong>PO Date:</strong>
                         {{ optional($invoice->purchase_order->document_date)->format('d M Y') ?? '-' }}
@@ -399,7 +404,7 @@
             </div>
 
             <div class="client-name">
-                {{ $invoice->client->business_name ?? $invoice->client->contact_name ?? 'Client' }}
+                {{ $invoice->client->business_name ?? ($invoice->client->contact_name ?? 'Client') }}
             </div>
 
             @php
@@ -407,22 +412,19 @@
 
                 $clientAddrParts = array_filter([
                     optional($cb)->address_line_1 ?? '',
-                    implode(', ', array_filter([
-                        optional($cb)->city ?? '',
-                        optional($cb)->state ?? '',
-                    ])),
+                    implode(', ', array_filter([optional($cb)->city ?? '', optional($cb)->state ?? ''])),
                     optional($cb)->postal_code ?? '',
                     optional($cb)->country ?? '',
                 ]);
             @endphp
 
-            @if(count($clientAddrParts))
+            @if (count($clientAddrParts))
                 <div class="address">
                     {!! implode('<br>', $clientAddrParts) !!}
                 </div>
             @endif
 
-            @if(!empty(optional($cb)->gstin))
+            @if (!empty(optional($cb)->gstin))
                 <div class="client-gstin">
                     <strong>GSTIN:</strong> {{ $cb->gstin }}
                 </div>
@@ -431,27 +433,31 @@
 
         @php
             $qrGrandTotal = (float) ($invoice->grand_total ?? 0);
-            $qrPayload = implode('|', array_filter([
-                'INV:' . ($invoice->invoice_number ?? $invoice->invoiceid ?? ''),
-                'AMT:' . number_format($qrGrandTotal, 0, '.', ''),
-                'CUR:' . ($invoice->client->currency ?? 'INR'),
-            ]));
-            $qrCodeUrl = $qrPayload !== ''
-                ? 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' . urlencode($qrPayload)
-                : null;
+            $qrPayload = implode(
+                '|',
+                array_filter([
+                    'INV:' . ($invoice->invoice_number ?? ($invoice->invoiceid ?? '')),
+                    'AMT:' . number_format($qrGrandTotal, 0, '.', ''),
+                    'CUR:' . ($invoice->client->currency ?? 'INR'),
+                ]),
+            );
+            $qrCodeUrl =
+                $qrPayload !== ''
+                    ? 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' . urlencode($qrPayload)
+                    : null;
         @endphp
 
-        @if(!empty($invoice->invoice_title) || !empty($qrCodeUrl))
+        @if (!empty($invoice->invoice_title) || !empty($qrCodeUrl))
             <div class="invoice-title-note">
-                @if(!empty($invoice->invoice_title))
+                @if (!empty($invoice->invoice_title))
                     <div class="invoice-title-text">{{ $invoice->invoice_title }}</div>
                 @endif
 
-                @if(!empty($qrCodeUrl))
-                    <div class="invoice-qr-wrap">
+                @if (!empty($qrCodeUrl))
+                    {{-- <div class="invoice-qr-wrap">
                         <img src="{{ $qrCodeUrl }}" class="invoice-qr-img" alt="Invoice QR">
                         <div class="invoice-qr-caption">Scan • {{ number_format($qrGrandTotal, 0) }}</div>
-                    </div>
+                    </div> --}}
                 @endif
             </div>
         @endif
@@ -467,10 +473,10 @@
         $taxTotal = 0;
 
         foreach ($invoice->items as $item) {
-            $lt = (float)($item->line_total ?? 0);
-            $da = (float)($item->discount_amount ?? 0);
+            $lt = (float) ($item->line_total ?? 0);
+            $da = (float) ($item->discount_amount ?? 0);
             $discountedAmount = max(0, $da > 0 ? $da : $lt);
-            $ta = ceil($discountedAmount * ((float)($item->tax_rate ?? 0) / 100));
+            $ta = ceil($discountedAmount * ((float) ($item->tax_rate ?? 0) / 100));
 
             $subtotal += $lt;
             $discountTotal += max(0, $lt - $discountedAmount);
@@ -493,7 +499,7 @@
                 <th>Description</th>
                 <th class="center" style="width:130px">Duration</th>
 
-                @if($hasUsersColumn)
+                @if ($hasUsersColumn)
                     <th class="center" style="width:50px">Users</th>
                 @endif
 
@@ -504,13 +510,11 @@
         </thead>
 
         <tbody>
-            @foreach($invoice->items as $idx => $item)
+            @foreach ($invoice->items as $idx => $item)
                 @php
                     $freq = $item->frequency ?? '';
                     $dur = $item->duration ?? null;
-                    $durationLabel = ($freq && $freq !== 'One-Time' && $dur)
-                        ? "$dur $freq"
-                        : ($freq ?: 'One-Time');
+                    $durationLabel = $freq && $freq !== 'One-Time' && $dur ? "$dur $freq" : ($freq ?: 'One-Time');
                 @endphp
 
                 <tr>
@@ -521,36 +525,36 @@
                             {{ $item->item_name }}
                         </div>
 
-                       @if(!empty($item->item_description))
+                        @if (!empty($item->item_description))
                             <div class="item-desc">{{ trim($item->item_description) }}</div>
                         @endif
                     </td>
 
                     <td class="center">
                         <div>{{ $durationLabel }}</div>
-                        @if(!empty($item->start_date) && !empty($item->end_date))
+                        @if (!empty($item->start_date) && !empty($item->end_date))
                             <div style="font-size: 8pt; color: #000; margin-top: 2pt;">
                                 {{ $item->start_date->format('d M Y') }} - {{ $item->end_date->format('d M Y') }}
                             </div>
                         @endif
                     </td>
 
-                    @if($hasUsersColumn)
+                    @if ($hasUsersColumn)
                         <td class="center">
                             {{ !empty($item->no_of_users) ? (int) $item->no_of_users : '-' }}
                         </td>
                     @endif
 
                     <td class="center">
-                        {{ (int)($item->quantity ?? 1) }}
+                        {{ (int) ($item->quantity ?? 1) }}
                     </td>
 
                     <td class="right">
-                        {{ number_format(max(0, (float)($item->discount_amount ?? 0) ?: (float)($item->line_total ?? 0)), 0) }}
+                        {{ number_format(max(0, (float) ($item->discount_amount ?? 0) ?: (float) ($item->line_total ?? 0)), 0) }}
                     </td>
 
                     <td class="right">
-                        {{ number_format(max(0, (float)($item->discount_amount ?? 0) ?: (float)($item->line_total ?? 0)), 0) }}
+                        {{ number_format(max(0, (float) ($item->discount_amount ?? 0) ?: (float) ($item->line_total ?? 0)), 0) }}
                     </td>
                 </tr>
             @endforeach
@@ -559,14 +563,34 @@
 
     <table style="margin-top: -9pt; border-top: none;">
         <tr style="font-size: 8.5pt; background: #fff;">
-            <td class="right" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;"><strong>CGST</strong></td>
-            <td class="center" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">{{ $cgst > 0 ? number_format($cgst, 0) : '-' }}</td>
-            <td class="right" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;"><strong>SGST</strong></td>
-            <td class="center" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">{{ $sgst > 0 ? number_format($sgst, 0) : '-' }}</td>
-            <td class="right" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;"><strong>IGST</strong></td>
-            <td class="center" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">{{ $igst > 0 ? number_format($igst, 0) : '-' }}</td>
-            <td class="right" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;"><strong>Total GST</strong></td>
-            <td class="right" style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">{{ number_format($taxTotal, 0) }}</td>
+            <td class="right"
+                style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
+                <strong>CGST</strong>
+            </td>
+            <td class="center"
+                style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
+                {{ $cgst > 0 ? number_format($cgst, 0) : '-' }}</td>
+            <td class="right"
+                style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
+                <strong>SGST</strong>
+            </td>
+            <td class="center"
+                style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
+                {{ $sgst > 0 ? number_format($sgst, 0) : '-' }}</td>
+            <td class="right"
+                style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
+                <strong>IGST</strong>
+            </td>
+            <td class="center"
+                style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
+                {{ $igst > 0 ? number_format($igst, 0) : '-' }}</td>
+            <td class="right"
+                style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
+                <strong>Total GST</strong>
+            </td>
+            <td class="right"
+                style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
+                {{ number_format($taxTotal, 0) }}</td>
         </tr>
     </table>
 
@@ -579,19 +603,19 @@
         </div>
     </div>
 
-    @if(!empty($invoice->notes))
+    @if (!empty($invoice->notes))
         <div class="notes-section">{{ trim($invoice->notes) }}</div>
     @endif
 
-    @if(!empty($invoiceTerms) && is_array($invoiceTerms))
+    @if (!empty($invoiceTerms) && is_array($invoiceTerms))
         <div class="terms-section">
             <div class="terms-title">
                 Terms &amp; Conditions
             </div>
 
             <ul class="terms-list">
-                @foreach(array_filter($invoiceTerms) as $term)
-                    <li>{{ trim($term) }}</li>
+                @foreach (array_filter($invoiceTerms) as $term)
+                    <li>{!! trim($term) !!}</li>
                 @endforeach
             </ul>
         </div>
@@ -599,14 +623,15 @@
 
     <div class="signatory">
         <div class="signatory-box">
-            @if(!empty($signatureUrl))
+            @if (!empty($signatureUrl))
                 <img src="{{ $signatureUrl }}" class="sig-img" alt="Signature">
             @endif
 
             <div class="sig-line">
-                {{ $accountBillingDetail->authorize_signatory ?? $accountBillingDetail->billing_name ?? $account->name }}
+                {{ $accountBillingDetail->authorize_signatory ?? ($accountBillingDetail->billing_name ?? $account->name) }}
             </div>
         </div>
     </div>
 </body>
+
 </html>

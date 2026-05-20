@@ -96,7 +96,7 @@
                     </div>
                 </div>
                 <div class="modal fade" id="addTermModal" tabindex="-1">
-                    <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
+                    <div class="modal-dialog modal-dialog-centered" style="max-width: 600px;">
                         <div class="modal-content" class="rounded-panel">
                             <div class="modal-header" class="modal-header-custom">
                                 <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;">
@@ -126,9 +126,9 @@
                     @foreach($initialTermsForStep3 as $term)
                     <div style="margin-bottom: 0.55rem; padding: 0; width: 100%; max-width: 100%; box-sizing: border-box;" class="term-item-row">
                         <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.45rem; cursor: pointer; margin-bottom: 0.2rem; width: 100%; max-width: 100%; box-sizing: border-box;">
-                            <input type="checkbox" class="term-checkbox" data-tc-id="{{ $term->tc_id }}" data-is-default="{{ (int) ($term->is_default ?? 0) }}" data-content="{{ $term->content }}" value="{{ $term->content }}" {{ !empty($term->is_default) ? 'checked' : '' }} style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
+                            <input type="checkbox" class="term-checkbox" data-tc-id="{{ $term->tc_id }}" data-is-default="{{ (int) ($term->is_default ?? 0) }}" data-content="{{ e($term->content) }}" value="{{ e($term->content) }}" {{ !empty($term->is_default) ? 'checked' : '' }} style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
                             <div style="min-width: 0; width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">
-                                <p style="margin: 0; font-size: 0.78rem; color: #4b5563; line-height: 1.45; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">{{ $term->content }}</p>
+                                <div style="margin: 0; font-size: 0.78rem; color: #4b5563; line-height: 1.45; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">{!! $term->content !!}</div>
                             </div>
                         </label>
                     </div>
@@ -318,6 +318,15 @@
         };
     }
 
+    function escapeHtmlAttr(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     function renderTermsList(type, selectedTerms = null) {
         if (!termsList) return;
         const terms = termsByType[type] || [];
@@ -328,6 +337,7 @@
             const safeContent = String(term.content || '').trim();
             if (!safeContent) return;
             const checked = chosen.some(t => String(t).trim() === safeContent);
+            const escapedContent = escapeHtmlAttr(safeContent);
             const row = document.createElement('div');
             row.className = 'term-item-row';
             row.style.marginBottom = '0.55rem';
@@ -337,9 +347,9 @@
             row.style.boxSizing = 'border-box';
             row.innerHTML = `
                 <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.45rem; cursor: pointer; margin-bottom: 0.2rem; width: 100%; max-width: 100%; box-sizing: border-box;">
-                    <input type="checkbox" class="term-checkbox" data-tc-id="${term.id}" data-is-default="${Number(term.is_default || 0)}" data-content="${safeContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')}" value="${safeContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')}" ${checked ? 'checked' : ''} style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
+                    <input type="checkbox" class="term-checkbox" data-tc-id="${term.id}" data-is-default="${Number(term.is_default || 0)}" data-content="${escapedContent}" value="${escapedContent}" ${checked ? 'checked' : ''} style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
                     <div style="min-width: 0; width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">
-                        <p style="margin: 0; font-size: 0.78rem; color: #4b5563; line-height: 1.45; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">${safeContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+                        <div style="margin: 0; font-size: 0.78rem; color: #4b5563; line-height: 1.45; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">${safeContent}</div>
                     </div>
                 </label>
             `;
@@ -394,12 +404,43 @@
         if (addTermBootstrapModal) {
             addTermBootstrapModal.show();
         }
-        setTimeout(() => newTermContent.focus(), 0);
+        if (window.tinymce) {
+            const editor = tinymce.get('newTermContent');
+            if (editor) {
+                editor.setContent('');
+                setTimeout(() => editor.focus(), 100);
+            } else {
+                tinymce.init({
+                    license_key: 'gpl',
+                    selector: '#newTermContent',
+                    menubar: false,
+                    height: 200,
+                    plugins: 'lists link table code autoresize',
+                    toolbar: 'undo redo | blocks | bold italic underline | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist | removeformat code',
+                    setup: function (editor) {
+                        editor.on('change', function () {
+                            editor.save();
+                        });
+                    },
+                    init_instance_callback: function (editor) {
+                        setTimeout(() => editor.focus(), 100);
+                    }
+                });
+            }
+        } else {
+            setTimeout(() => newTermContent.focus(), 100);
+        }
     }
 
     function closeTermModal() {
         if (addTermBootstrapModal) {
             addTermBootstrapModal.hide();
+        }
+        if (window.tinymce) {
+            const editor = tinymce.get('newTermContent');
+            if (editor) {
+                editor.save();
+            }
         }
     }
 
@@ -641,6 +682,9 @@
 
     if (saveTermBtn) {
         saveTermBtn.addEventListener('click', function () {
+            if (window.tinymce) {
+                tinymce.triggerSave();
+            }
             const content = newTermContent.value.trim();
 
             if (!content) {
@@ -678,14 +722,15 @@
                         is_default: 0,
                     });
                     currentTermType = savedType;
+                    const escapedContent = escapeHtmlAttr(term.content);
                     const row = document.createElement('div');
                     row.style.marginBottom = '0.55rem';
                     row.className = 'term-item-row';
                     row.innerHTML = `
                         <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.45rem; cursor: pointer; margin-bottom: 0.2rem; width: 100%; max-width: 100%; box-sizing: border-box;">
-                            <input type="checkbox" class="term-checkbox" checked data-tc-id="${term.id}" data-content="${term.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')}" value="${term.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')}" style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
+                            <input type="checkbox" class="term-checkbox" checked data-tc-id="${term.id}" data-content="${escapedContent}" value="${escapedContent}" style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
                             <div style="min-width: 0; width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">
-                                <p style="margin: 0; font-size: 0.78rem; color: #4b5563; line-height: 1.45; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">${term.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+                                <div style="margin: 0; font-size: 0.78rem; color: #4b5563; line-height: 1.45; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">${term.content}</div>
                             </div>
                         </label>
                     `;

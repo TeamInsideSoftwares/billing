@@ -413,9 +413,29 @@ class ClientsController extends Controller
 
         $document->update(['status' => 'active']);
 
+
         return redirect()
-            ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $document->type])
-            ->with('success', ucfirst($document->type) . ' restored successfully.');
+             ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $document->type])
+             ->with('success', ucfirst($document->type) . ' restored successfully.');
+     }
+
+    public function clientsDocumentsDestroy(Client $client, ClientDocument $document)
+    {
+        $accountId = $this->resolveAccountId();
+        if (
+            (string) $client->accountid !== $accountId ||
+            (string) $document->accountid !== $accountId ||
+            (string) $document->clientid !== (string) $client->clientid
+        ) {
+            abort(404);
+        }
+
+        $type = $document->type;
+        $document->delete();
+
+        return redirect()
+            ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $type])
+            ->with('success', ucfirst($type) . ' deleted successfully.');
     }
 
     public function clientsDocumentsFile(Client $client, ClientDocument $document)

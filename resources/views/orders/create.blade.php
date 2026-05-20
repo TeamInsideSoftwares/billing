@@ -23,7 +23,7 @@
         <div class="form-grid order-create-meta-grid">
             <div>
                 <label for="clientid">Client</label>
-                <select id="clientid" name="clientid" class="form-control" required {{ $isEditMode ? 'disabled' : '' }}>
+                <select id="clientid" name="clientid" class="form-control" required {{ ($isEditMode || request()->query('iframe') == 1) ? 'disabled' : '' }}>
                     <option value="">Select Client</option>
                     @foreach($clients as $client)
                         <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
@@ -31,7 +31,7 @@
                         </option>
                     @endforeach
                 </select>
-                @if($isEditMode)
+                @if($isEditMode || request()->query('iframe') == 1)
                     <input type="hidden" name="clientid" value="{{ $selectedClientId }}">
                 @endif
             </div>
@@ -148,55 +148,6 @@
             @endif
         </div>
 
-        @if(!$isEditMode)
-            @if(!empty($selectedClientId) && ($recentOrders ?? collect())->isNotEmpty())
-                <div class="order-create-table-wrap">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Order #</th>
-                                <th>Item</th>
-                                <th>Qty</th>
-                                <th>Start</th>
-                                <th>End</th>
-                                <th>Status</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($recentOrders as $recentOrder)
-                                <tr>
-                                <td>{{ $recentOrder->order_number ?? 'N/A' }}</td>
-                                <td>{{ $recentOrder->item_name ?? 'Item' }}</td>
-                                <td>{{ (int) ($recentOrder->quantity ?? 1) }}</td>
-                                <td>{{ $recentOrder->start_date?->format('d M Y') ?? '-' }}</td>
-                                <td>{{ $recentOrder->end_date?->format('d M Y') ?? '-' }}</td>
-                                <td>{{ ($recentOrder->status ?? '') === 'running' ? 'Active' : ucfirst((string) ($recentOrder->status ?? 'active')) }}</td>
-                                <td class="text-end">
-                                    <a
-                                        href="{{ route('orders.edit', ['order' => $recentOrder->orderid, 'return_to' => 'create', 'c' => $selectedClientId]) }}"
-                                            class="text-action-btn edit"
-                                        >
-                                            Edit
-                                        </a>
-                                        <form
-                                            method="POST"
-                                            action="{{ route('orders.destroy', ['order' => $recentOrder->orderid, 'return_to' => 'create', 'c' => $selectedClientId]) }}"
-                                            style="display:inline;"
-                                        >
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-action-btn delete">Cancel</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-        @endif
-
         <input type="hidden" name="items_data" id="items_data">
 
         <div class="mt-4 flex items-center gap-2 order-create-submit-bar">
@@ -210,6 +161,56 @@
             </span>
         </div>
     </form>
+
+    @if(!$isEditMode)
+        @if(!empty($selectedClientId) && ($recentOrders ?? collect())->isNotEmpty())
+            <div class="order-create-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($recentOrders as $recentOrder)
+                            <tr>
+                                <td>{{ $recentOrder->order_number ?? 'N/A' }}</td>
+                                <td>{{ $recentOrder->item_name ?? 'Item' }}</td>
+                                <td>{{ (int) ($recentOrder->quantity ?? 1) }}</td>
+                                <td>{{ $recentOrder->start_date?->format('d M Y') ?? '-' }}</td>
+                                <td>{{ $recentOrder->end_date?->format('d M Y') ?? '-' }}</td>
+                                <td>{{ ($recentOrder->status ?? '') === 'running' ? 'Active' : ucfirst((string) ($recentOrder->status ?? 'active')) }}</td>
+                                <td class="text-end">
+                                    <a
+                                        href="{{ route('orders.edit', ['order' => $recentOrder->orderid, 'return_to' => 'create', 'c' => $selectedClientId, 'iframe' => request()->query('iframe')]) }}"
+                                        class="text-action-btn edit"
+                                    >
+                                        Edit
+                                    </a>
+                                    <form
+                                        method="POST"
+                                        action="{{ route('orders.destroy', ['order' => $recentOrder->orderid, 'return_to' => 'create', 'c' => $selectedClientId, 'iframe' => request()->query('iframe')]) }}"
+                                        style="display:inline;"
+                                        onsubmit="return confirm('Cancel this order?')"
+                                    >
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-action-btn delete">Cancel</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    @endif
 </section>
 
 <script>
@@ -514,37 +515,40 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     if (addItemBtn) {
-    addItemBtn.addEventListener('click', async function () {
-        if (!itemSelect.value) {
-            alert('Select an item first.');
-            return;
-        }
+        addItemBtn.addEventListener('click', async function () {
+            if (!itemSelect.value) {
+                alert('Select an item first.');
+                return;
+            }
 
-        if (!isEditMode) {
-            refreshEndDate();
-        }
-        const payload = currentItemPayload();
-        if (!payload.end_date) {
-            alert('End date is required.');
-            return;
-        }
+            if (!isEditMode) {
+                refreshEndDate();
+            }
+            const payload = currentItemPayload();
+            if (!payload.end_date) {
+                alert('End date is required.');
+                return;
+            }
 
-        const orderForm = document.getElementById('orderForm');
-        if (isEditMode) {
-            items.splice(0, items.length, payload);
-            syncItemsInput();
-            orderForm.submit();
-            return;
-        } else {
-            items.splice(0, items.length, payload);
-            syncItemsInput();
-            orderForm.submit();
-            return;
-        }
-    });
+            const orderForm = document.getElementById('orderForm');
+            if (isEditMode) {
+                items.splice(0, items.length, payload);
+                syncItemsInput();
+                orderForm.requestSubmit();
+                return;
+            } else {
+                items.splice(0, items.length, payload);
+                syncItemsInput();
+                orderForm.requestSubmit();
+                return;
+            }
+        });
     }
 
-    document.getElementById('orderForm').addEventListener('submit', function (event) {
+    const orderForm = document.getElementById('orderForm');
+    const isIframe = window.self !== window.top;
+
+    orderForm.addEventListener('submit', async function (event) {
         if (isEditMode) {
             if (!itemSelect.value) {
                 event.preventDefault();
@@ -559,12 +563,44 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             items.splice(0, items.length, payload);
             syncItemsInput();
-            return;
+        } else {
+            if (!items.length) {
+                event.preventDefault();
+                alert('Add at least one item before saving.');
+                return;
+            }
         }
 
-        if (!items.length) {
+        if (isIframe) {
             event.preventDefault();
-            alert('Add at least one item before saving.');
+            try {
+                const formData = new FormData(orderForm);
+                const response = await fetch(orderForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (window.parent && typeof window.parent.onOrderCreated === 'function') {
+                        window.parent.onOrderCreated(data);
+                    }
+                } else {
+                    const errData = await response.json().catch(() => ({}));
+                    let errMsg = errData.message || 'Failed to create order.';
+                    if (errData.errors) {
+                        errMsg += '\n' + Object.values(errData.errors).flat().join('\n');
+                    }
+                    alert(errMsg);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('An error occurred while creating the order.');
+            }
         }
     });
 

@@ -43,6 +43,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/clients/{client}/documents/create', 'clientsDocumentsCreate')->name('clients.documents.create');
         Route::post('/clients/{client}/documents', 'clientsDocumentsStore')->name('clients.documents.store');
         Route::put('/clients/{client}/documents/{document}', 'clientsDocumentsUpdate')->name('clients.documents.update');
+        Route::delete('/clients/{client}/documents/{document}', 'clientsDocumentsDestroy')->name('clients.documents.delete');
         Route::patch('/clients/{client}/documents/{document}/cancel', 'clientsDocumentsCancel')->name('clients.documents.cancel');
         Route::patch('/clients/{client}/documents/{document}/restore', 'clientsDocumentsRestore')->name('clients.documents.restore');
         Route::get('/clients/{client}/documents/{document}/file', 'clientsDocumentsFile')->name('clients.documents.file');
@@ -69,6 +70,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/invoices/create', 'invoicesCreate')->name('invoices.create');
         Route::get('/invoices/ajax-list', 'ajaxList')->name('invoices.ajax-list');
         Route::post('/invoices/client-orders', 'getClientOrders')->name('invoices.client-orders');
+        Route::get('/invoices/client-order-items', 'getClientOrderItems')->name('invoices.client-order-items');
         Route::post('/invoices/renewal-invoices', 'getRenewalInvoices')->name('invoices.renewal-invoices');
         Route::post('/invoices/terms/billing', 'storeBillingTerm')->name('invoices.terms.billing.store');
         Route::patch('/invoices/{invoice}/terms', 'applyTerms')->name('invoices.apply-terms');

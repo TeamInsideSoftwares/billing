@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'status',
     'line_total',
     'amount',
+    'sequence',
 ])]
 class InvoiceItem extends Model
 {
@@ -51,6 +52,7 @@ class InvoiceItem extends Model
             'discount_percent' => 'decimal:2',
             'discount_amount' => 'decimal:2',
             'amount' => 'decimal:2',
+            'sequence' => 'integer',
             'no_of_users' => 'integer',
             'start_date' => 'date',
             'end_date' => 'date',

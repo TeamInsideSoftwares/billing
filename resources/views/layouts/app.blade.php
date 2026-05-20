@@ -19,6 +19,37 @@
     <script src="{{ asset('js/location-picker.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
+    @if(request()->query('iframe') == 1 || request()->query('layout') === 'modal')
+        <style>
+            .app-shell {
+                background: #fff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                height: auto !important;
+                min-height: unset !important;
+            }
+            .layout-grid {
+                display: block !important;
+                grid-template-columns: none !important;
+            }
+            .sidebar, .topbar, .sidebar-backdrop {
+                display: none !important;
+            }
+            .main-panel {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .content-panel {
+                padding: 1rem !important;
+            }
+            .panel-card {
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+        </style>
+    @endif
 </head>
 <body class="app-shell">
     {{-- Toast Container (outside layout-grid to avoid clipping) --}}
