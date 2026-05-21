@@ -105,7 +105,6 @@ class OrdersController extends Controller
                 ]],
                 'has_pi' => $order->invoices->isNotEmpty(),
                 'linked_invoice_id' => $linkedInvoice?->invoiceid,
-                'linked_invoice_for' => $linkedInvoice?->invoice_for,
                 'linked_invoice_has_ti' => !empty($linkedInvoice?->ti_number),
             ];
         });

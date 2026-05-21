@@ -247,6 +247,28 @@ document.addEventListener('DOMContentLoaded', function () {
     const durationWrapper = document.getElementById('renew_order_duration_wrapper');
     const renewRouteTemplate = @json(route('invoices.orders.renew', ['order' => '__ORDER__']));
     const selectedClientId = @json($clientId ?? request('c'));
+    const normalizeIsoDate = (rawValue) => {
+        const value = String(rawValue || '').trim();
+        const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        return match ? `${match[1]}-${match[2]}-${match[3]}` : '';
+    };
+    const applyRenewEndDate = (rawValue) => {
+        const iso = normalizeIsoDate(rawValue);
+        endDateInput.value = '';
+        endDateInput.removeAttribute('value');
+        endDateInput.dataset.prefillDate = '';
+        if (endDateInput._flatpickr) {
+            endDateInput._flatpickr.clear();
+        }
+        if (!iso) return;
+
+        endDateInput.value = iso;
+        endDateInput.setAttribute('value', iso);
+        endDateInput.dataset.prefillDate = iso;
+        if (endDateInput._flatpickr) {
+            endDateInput._flatpickr.setDate(iso, true, 'Y-m-d');
+        }
+    };
     const setText = (el, value) => {
         if (!el) return;
         el.textContent = value;
@@ -275,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function () {
             setText(statusDisplay, this.dataset.status || '-');
             setText(daysLeftDisplay, daysLeft);
             setText(todayDisplay, new Date().toLocaleDateString());
-            endDateInput.value = this.dataset.endDate || '';
+            applyRenewEndDate(this.dataset.endDate || '');
             clientInput.value = selectedClientId || this.dataset.clientId || '';
             tabInput.value = '';
             fromInput.value = '';
@@ -370,8 +392,7 @@ document.addEventListener('DOMContentLoaded', function () {
         );
 
         if (newEndDate) {
-            endDateInput.value = newEndDate;
-            endDateInput.setAttribute('value', newEndDate);
+            applyRenewEndDate(newEndDate);
         }
     }
 

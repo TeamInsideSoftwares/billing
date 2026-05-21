@@ -127,9 +127,7 @@ class InvoicesController extends Controller
         $itemEndDate = $primaryItem?->end_date?->format('d M Y') ?? '';
         $daysLeft = $primaryItem?->end_date ? now()->startOfDay()->diffInDays($primaryItem->end_date->startOfDay(), false) : null;
         $templateType = !empty(trim((string) $invoice->ti_number)) ? 'ti' : 'pi';
-        $renewalDate = ($invoice->invoice_for ?? '') === 'renewal'
-            ? ($invoice->created_at?->format('d M Y') ?? '')
-            : '';
+        $renewalDate = '';
         $latestPayment = Payment::query()
             ->where('invoiceid', $invoice->invoiceid)
             ->orderByDesc('payment_date')
@@ -996,9 +994,7 @@ class InvoicesController extends Controller
 
         return redirect()->route('invoices.create', [
             'step' => 2,
-            'invoice_for' => 'renewal',
             'c' => $clientId,
-            'source_item' => $sourceItem->invoice_itemid,
         ]);
     }
 

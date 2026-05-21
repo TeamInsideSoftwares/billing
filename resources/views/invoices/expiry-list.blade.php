@@ -280,11 +280,22 @@
 
                 endDateInput.value = '';
                 endDateInput.removeAttribute('value');
+                endDateInput.dataset.prefillDate = '';
+
+                if (endDateInput._flatpickr) {
+                    endDateInput._flatpickr.clear();
+                }
 
                 if (!iso) return;
 
                 endDateInput.value = iso;
                 endDateInput.setAttribute('value', iso);
+                endDateInput.dataset.prefillDate = iso;
+
+                if (endDateInput._flatpickr) {
+                    // Keep Flatpickr UI in sync so month/year are visible without extra clicks.
+                    endDateInput._flatpickr.setDate(iso, true, 'Y-m-d');
+                }
             }
 
             function syncRenewEndDateStateFromInput() {
@@ -434,8 +445,7 @@
                 );
 
                 if (newEndDate) {
-                    endDateInput.value = newEndDate;
-                    endDateInput.setAttribute('value', newEndDate);
+                    applyRenewEndDate(newEndDate);
                 }
             }
 

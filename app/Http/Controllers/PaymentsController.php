@@ -38,7 +38,7 @@ class PaymentsController extends Controller
         $selectedClient = null;
 
         $query = Payment::query()->where('accountid', $userAccountId)->with(['client', 'invoice']);
-        
+
         if ($clientId) {
             $query->where('clientid', $clientId);
             $selectedClient = Client::query()
@@ -193,7 +193,7 @@ class PaymentsController extends Controller
         }
 
         $runningBalance = 0;
-        
+
         $ledgerEntries = $entries->map(function (Ledger $entry) use (&$runningBalance, $invoiceMap, $paymentMap) {
             $amount = (float) ($entry->amount ?? 0);
             $isInvoice = $entry->type === 'dr';
@@ -234,9 +234,9 @@ class PaymentsController extends Controller
                 $payment = $paymentMap->get($entry->invoiceid_paymentid);
                 if ($payment) {
                     $modeLabel = trim((string) ($payment->mode ?? '')) ?: '-';
-                    $referenceNumber = trim((string) ($payment->reference_number ?? '')) ?: (string) $payment->paymentid;
+                    $referenceNumber = trim((string) ($payment->reference_number ?? ''));
                     $referenceLabel = $modeLabel;
-                    $referenceMeta = $referenceNumber;
+                    $referenceMeta = $referenceNumber !== '' ? ('Ref: ' . $referenceNumber) : '';
                     $referenceUrl = route('payments.show', $payment->paymentid);
                     $entryKind = ($payment->type ?? 'payment') === 'tds' ? 'tds' : 'payment';
                 }

@@ -135,11 +135,6 @@ class Invoice extends Model
         $this->attributes['pi_number'] = $value;
     }
 
-    public function getInvoiceForAttribute(): string
-    {
-        return $this->orderid ? 'orders' : 'without_orders';
-    }
-
     public function getCurrencyCodeAttribute(): string
     {
         return $this->client?->currency ?? 'INR';
