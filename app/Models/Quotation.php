@@ -10,25 +10,29 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'accountid',
+    'fy_id',
     'clientid',
+    'quo_number',
     'quotation_number',
+    'quo_title',
     'status',
+    'payment_status',
     'issue_date',
-    'expiry_date',
-    'subtotal',
-    'tax_total',
-    'discount_total',
-    'grand_total',
+    'due_date',
     'notes',
     'terms',
-    'invoiceid',
     'created_by',
 ])]
 class Quotation extends Model
 {
+    use HasAlphaNumericId;
+
     protected $table = 'quotations';
     protected $primaryKey = 'quotationid';
-    
+    public $incrementing = false;
+    protected $keyType = 'string';
+    public $timestamps = true;
+
     public function getRouteKeyName(): string
     {
         return 'quotationid';
@@ -39,17 +43,11 @@ class Quotation extends Model
         return 6;
     }
 
-    use HasAlphaNumericId;
-
     protected function casts(): array
     {
         return [
             'issue_date' => 'date',
-            'expiry_date' => 'date',
-            'subtotal' => 'decimal:2',
-            'tax_total' => 'decimal:2',
-            'discount_total' => 'decimal:2',
-            'grand_total' => 'decimal:2',
+            'due_date' => 'date',
         ];
     }
 
@@ -63,11 +61,6 @@ class Quotation extends Model
         return $this->belongsTo(Client::class, 'clientid');
     }
 
-    public function convertedInvoice(): BelongsTo
-    {
-        return $this->belongsTo(Invoice::class, 'invoiceid');
-    }
-
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -75,7 +68,94 @@ class Quotation extends Model
 
     public function items(): HasMany
     {
-        return $this->hasMany(QuotationItem::class, 'quotationid');
+        return $this->hasMany(QuotationItem::class, 'quotationid', 'quotationid')
+            ->orderBy('sequence')
+            ->orderBy('created_at')
+            ->orderBy('quo_itemid');
+    }
+
+    public function getTermsAttribute($value): array
+    {
+        if (empty($value)) {
+            return [];
+        }
+
+        // If it's already an array (thanks to casting), return it
+        if (is_array($value)) {
+            return $value;
+        }
+
+        // If it's a string, try to decode it
+        $decoded = json_decode($value, true);
+        
+        // Handle double encoding: if decoded value is still a string, decode again
+        if (is_string($decoded)) {
+            $secondDecoded = json_decode($decoded, true);
+            if (is_array($secondDecoded)) {
+                return $secondDecoded;
+            }
+        }
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    public function setTermsAttribute($value): void
+    {
+        $this->attributes['terms'] = is_array($value) ? json_encode($value) : $value;
+    }
+
+    public function getQuotationNumberAttribute(): string
+    {
+        return (string) ($this->quo_number ?? '');
+    }
+
+    public function setQuotationNumberAttribute(mixed $value): void
+    {
+        $this->attributes['quo_number'] = $value;
+    }
+
+    public function getInvoiceNumberAttribute(): string
+    {
+        return (string) ($this->quo_number ?? '');
+    }
+
+    public function setInvoiceNumberAttribute(mixed $value): void
+    {
+        $this->attributes['quo_number'] = $value;
+    }
+
+    public function getCurrencyCodeAttribute(): string
+    {
+        return $this->client?->currency ?? 'INR';
+    }
+
+    public function getSubtotalAttribute(): float
+    {
+        return (float) $this->items->sum('line_total');
+    }
+
+    public function getDiscountTotalAttribute(): float
+    {
+        return (float) floor((float) $this->items->sum(function ($item) {
+            $lineTotal = (float) ($item->line_total ?? 0);
+            $discountedAmount = (float) ($item->discount_amount ?? 0);
+            return max(0, $lineTotal - ($discountedAmount > 0 ? $discountedAmount : $lineTotal));
+        }));
+    }
+
+    public function getTaxTotalAttribute(): float
+    {
+        return (float) $this->items->sum(function ($item) {
+            $lineTotal = (float) ($item->line_total ?? 0);
+            $discountedAmount = (float) ($item->discount_amount ?? 0);
+            $taxableAmount = max(0, $discountedAmount > 0 ? $discountedAmount : $lineTotal);
+            $rate = (float) ($item->tax_rate ?? 0);
+            return ceil($taxableAmount * ($rate / 100));
+        });
+    }
+
+    public function getGrandTotalAttribute(): float
+    {
+        return max(0, $this->subtotal - $this->discount_total + $this->tax_total);
     }
 }
-

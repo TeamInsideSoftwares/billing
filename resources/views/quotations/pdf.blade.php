@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $documentType }} - {{ $invoice->invoice_number }}</title>
+    <title>Quotation - {{ $quotation->quo_number }}</title>
 
     <style>
         * {
@@ -148,26 +148,6 @@
             margin-bottom: 6pt;
         }
 
-        .invoice-qr-wrap {
-            display: inline-block;
-            text-align: center;
-        }
-
-        .invoice-qr-img {
-            width: 90px;
-            height: 90px;
-            border: 1px solid #000;
-            padding: 2px;
-            background: #fff;
-        }
-
-        .invoice-qr-caption {
-            margin-top: 3pt;
-            font-size: 7pt;
-            font-weight: 600;
-            color: #000;
-        }
-
         table {
             width: 100%;
             margin-bottom: 8pt;
@@ -258,6 +238,7 @@
             margin-top: 9pt;
             padding: 7pt 0;
             border-top: 1px solid #000;
+            border-top: 1px solid #000;
         }
 
         .terms-title {
@@ -308,7 +289,6 @@
             padding-top: 0.45rem;
             font-size: 9pt;
             color: #000;
-            /* text-align: center; */
         }
 
         .sig-line::before {
@@ -316,8 +296,8 @@
             position: absolute;
             top: 0;
             left: 66%;
-            width: 150px;          /* line width */
-            height: 0.6px;         /* line thickness */
+            width: 150px;
+            height: 0.6px;
             background: #000;
             transform: translateX(-50%);
         }
@@ -373,38 +353,24 @@
 
         <div class="right-block">
             <div class="doc-title">
-                {{ $documentType }}
+                QUOTATION
             </div>
 
             <div class="meta-box">
                 <div class="meta-row">
-                    <strong>{{ $isTaxInvoice ? 'Tax No:' : 'Proforma No:' }}</strong>
-                    {{ $isTaxInvoice ? $invoice->ti_number : $invoice->pi_number }}
+                    <strong>Quotation No:</strong>
+                    {{ $quotation->quo_number ?: $quotation->quotationid }}
                 </div>
 
                 <div class="meta-row">
                     <strong>Issue Date:</strong>
-                    {{ optional($invoice->issue_date)->format('d M Y') ?? '-' }}
+                    {{ optional($quotation->issue_date)->format('d M Y') ?? '-' }}
                 </div>
 
                 <div class="meta-row">
                     <strong>Due Date:</strong>
-                    {{ optional($invoice->due_date)->format('d M Y') ?? '-' }}
+                    {{ optional($quotation->due_date)->format('d M Y') ?? '-' }}
                 </div>
-
-                @if (!empty($invoice->purchase_order?->document_number))
-                    <div class="meta-row">
-                        <strong>PO Number:</strong>
-                        {{ $invoice->purchase_order->document_number }}
-                    </div>
-                @endif
-
-                @if (!empty($invoice->purchase_order?->document_date))
-                    <div class="meta-row">
-                        <strong>PO Date:</strong>
-                        {{ optional($invoice->purchase_order->document_date)->format('d M Y') ?? '-' }}
-                    </div>
-                @endif
             </div>
         </div>
     </div>
@@ -416,11 +382,11 @@
             </div>
 
             <div class="client-name">
-                {{ $invoice->client->business_name ?? ($invoice->client->contact_name ?? 'Client') }}
+                {{ $quotation->client->business_name ?? ($quotation->client->contact_name ?? 'Client') }}
             </div>
 
             @php
-                $cb = optional($invoice->client)->billingDetail;
+                $cb = optional($quotation->client)->billingDetail;
 
                 $clientAddrParts = array_filter([
                     optional($cb)->address_line_1 ?? '',
@@ -443,50 +409,25 @@
             @endif
         </div>
 
-        @php
-            $qrGrandTotal = (float) ($invoice->grand_total ?? 0);
-            $qrPayload = implode(
-                '|',
-                array_filter([
-                    'INV:' . ($invoice->invoice_number ?? ($invoice->invoiceid ?? '')),
-                    'AMT:' . number_format($qrGrandTotal, 0, '.', ''),
-                    'CUR:' . ($invoice->client->currency ?? 'INR'),
-                ]),
-            );
-            $qrCodeUrl =
-                $qrPayload !== ''
-                    ? 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' . urlencode($qrPayload)
-                    : null;
-        @endphp
-
-        @if (!empty($invoice->invoice_title) || !empty($qrCodeUrl))
+        @if (!empty($quotation->quo_title))
             <div class="invoice-title-note">
-                @if (!empty($invoice->invoice_title))
-                    <div class="invoice-title-text">{{ $invoice->invoice_title }}</div>
-                @endif
-
-                @if (!empty($qrCodeUrl))
-                    {{-- <div class="invoice-qr-wrap">
-                        <img src="{{ $qrCodeUrl }}" class="invoice-qr-img" alt="Invoice QR">
-                        <div class="invoice-qr-caption">Scan • {{ number_format($qrGrandTotal, 0) }}</div>
-                    </div> --}}
-                @endif
+                <div class="invoice-title-text">{{ $quotation->quo_title }}</div>
             </div>
         @endif
     </div>
 
 @php
-    $hasRecurring = $invoice->items->some(fn($i) => !empty($i->frequency) && $i->frequency !== 'One-Time');
-    $currency = $invoice->client->currency ?? 'INR';
+    $hasRecurring = $quotation->items->some(fn($i) => !empty($i->frequency) && $i->frequency !== 'One-Time');
+    $currency = $quotation->client->currency ?? 'INR';
     $accountHasUsers = (bool) ($account->have_users ?? false);
-    $hasUsersColumn = $accountHasUsers && $invoice->items->contains(fn($i) => !empty($i->no_of_users) && (int) $i->no_of_users > 0);
+    $hasUsersColumn = $accountHasUsers && $quotation->items->contains(fn($i) => !empty($i->no_of_users) && (int) $i->no_of_users > 0);
 
     $subtotal = 0;
     $discountTotal = 0;
     $discountedSubtotal = 0;
     $taxTotal = 0;
 
-    foreach ($invoice->items as $item) {
+    foreach ($quotation->items as $item) {
         $lt = (float) ($item->line_total ?? 0);
         $discountPercent = max(0, min(100, (float) ($item->discount_percent ?? 0)));
         $discountedAmount = max(0, $lt - (($lt * $discountPercent) / 100));
@@ -528,7 +469,7 @@
         </thead>
 
         <tbody>
-            @foreach ($invoice->items as $idx => $item)
+            @foreach ($quotation->items as $idx => $item)
                 @php
                     $freq = $item->frequency ?? '';
                     $dur = $item->duration ?? null;
@@ -539,6 +480,7 @@
                     $discountedAmount = max(0, $baseLineTotal - (($baseLineTotal * $discountPercent) / 100));
                     $discountedRate = $quantity > 0 ? ($discountedAmount / $quantity) : 0;
                     $discountedRateLabel = preg_replace('/\.00$/', '', number_format($discountedRate, 2, '.', ''));
+                    $discountedAmountLabel = preg_replace('/\.00$/', '', number_format($discountedAmount, 2, '.', ''));
                 @endphp
 
                 <tr>
@@ -578,7 +520,7 @@
                     </td>
 
                     <td class="right" style="vertical-align: middle;">
-                       <b> {{ number_format($discountedAmount, 0) }}</b>
+                       <b> {{ $discountedAmountLabel }}</b>
                     </td>
                 </tr>
 
@@ -624,18 +566,18 @@
         </div>
     </div>
 
-    @if (!empty($invoice->notes))
-        <div class="notes-section">{{ trim($invoice->notes) }}</div>
+    @if (!empty($quotation->notes))
+        <div class="notes-section">{{ trim($quotation->notes) }}</div>
     @endif
 
-    @if (!empty($invoiceTerms) && is_array($invoiceTerms))
+    @if (!empty($quotationTerms) && is_array($quotationTerms))
         <div class="terms-section">
             <div class="terms-title">
                 Terms
             </div>
 
             <ul class="terms-list">
-                @foreach (array_filter($invoiceTerms) as $term)
+                @foreach (array_filter($quotationTerms) as $term)
                     <li>{!! trim($term) !!}</li>
                 @endforeach
             </ul>

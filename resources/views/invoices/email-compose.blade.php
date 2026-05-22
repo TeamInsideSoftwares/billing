@@ -466,6 +466,42 @@
             let dscPreviewUrl = savedCustomAttachmentUrl || null;
             let currentRawTemplateBody = '';
             const hasExistingDraft = !!(document.querySelector('input[name="invoice_emailid"]')?.value || '').trim();
+            const INVOICE_COMPOSE_READY_TOAST_KEY = 'invoice_compose_ready_toast';
+
+            function showSuccessToast(message) {
+                const text = String(message || '').trim();
+                if (!text) return;
+                let container = document.getElementById('app-toast-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'app-toast-container';
+                    container.className = 'app-toast-container';
+                    document.body.appendChild(container);
+                }
+                const toast = document.createElement('div');
+                toast.className = 'app-toast app-toast-success';
+                toast.innerHTML = '<i class="fas fa-check-circle toast-icon"></i><span></span>';
+                const label = toast.querySelector('span');
+                if (label) label.textContent = text;
+                toast.addEventListener('click', () => toast.remove());
+                container.appendChild(toast);
+                window.setTimeout(() => {
+                    toast.classList.add('app-toast-leaving');
+                    window.setTimeout(() => toast.remove(), 220);
+                }, 4200);
+            }
+
+            function consumeComposeReadyToast() {
+                try {
+                    const message = window.localStorage.getItem(INVOICE_COMPOSE_READY_TOAST_KEY);
+                    if (!message) return;
+                    window.localStorage.removeItem(INVOICE_COMPOSE_READY_TOAST_KEY);
+                    showSuccessToast(message);
+                } catch (e) {
+                    console.warn('Unable to read compose-ready toast state', e);
+                }
+            }
+            consumeComposeReadyToast();
 
             function buildPreviewAttachments() {
                 const files = [];
@@ -543,6 +579,14 @@
                     .join('\n');
 
                 return (headStyles ? (headStyles + '\n') : '') + bodyHtml;
+            }
+
+            function toEditorHtml(value) {
+                const normalizedBody = normalizeHtmlForEditor(value || '');
+                if (normalizedBody && !/<[a-z][\s\S]*>/i.test(normalizedBody)) {
+                    return normalizedBody.replace(/\r\n|\r|\n/g, '<br>');
+                }
+                return normalizedBody;
             }
 
             function getPlainTextFromHtml(html) {
@@ -760,12 +804,7 @@
                     emailBodyInput.value = getPlainTextFromHtml(nextBody || '');
                 } else if (window.tinymce && tinymce.get('emailBodyInput')) {
                     const editor = tinymce.get('emailBodyInput');
-                    const normalizedBody = normalizeHtmlForEditor(nextBody);
-                    if (normalizedBody && !/<[a-z][\s\S]*>/i.test(normalizedBody)) {
-                        editor.setContent(normalizedBody.replace(/\r\n|\r|\n/g, '<br>'));
-                    } else {
-                        editor.setContent(normalizedBody);
-                    }
+                    editor.setContent(toEditorHtml(nextBody));
                 } else if (emailBodyInput) {
                     emailBodyInput.value = normalizeHtmlForEditor(nextBody);
                 }
@@ -908,6 +947,9 @@
                             e.content = normalizeHtmlForEditor(e.content || '');
                         });
                         editor.on('init', function() {
+                            // Preserve plain-text line breaks on initial TinyMCE render.
+                            const initialBody = emailBodyInput?.value || '';
+                            editor.setContent(toEditorHtml(initialBody));
                             if (isAlreadySent) {
                                 editor.mode.set('readonly');
                             }

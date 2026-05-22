@@ -11,13 +11,14 @@
         });
         $itemsDiscountTotal = (float) $invoice->items->sum(function ($item) {
             $lineTotal = (float) ($item->line_total ?? 0);
-            $discountedAmount = (float) ($item->discount_amount ?? 0);
-            return max(0, $lineTotal - ($discountedAmount > 0 ? $discountedAmount : $lineTotal));
+            $discountPercent = max(0, min(100, (float) ($item->discount_percent ?? 0)));
+            $discountedAmount = max(0, $lineTotal - (($lineTotal * $discountPercent) / 100));
+            return max(0, $lineTotal - $discountedAmount);
         });
         $invoiceTaxTotal = (float) $invoice->items->sum(function ($item) {
             $lineTotal = (float) ($item->line_total ?? 0);
-            $discountedAmount = (float) ($item->discount_amount ?? 0);
-            $taxableAmount = max(0, $discountedAmount > 0 ? $discountedAmount : $lineTotal);
+            $discountPercent = max(0, min(100, (float) ($item->discount_percent ?? 0)));
+            $taxableAmount = max(0, $lineTotal - (($lineTotal * $discountPercent) / 100));
             return ceil($taxableAmount * ((float) ($item->tax_rate ?? 0) / 100));
         });
         $invoiceGrandTotal = max(0, $itemsSubtotal - $itemsDiscountTotal + $invoiceTaxTotal);
@@ -61,9 +62,14 @@
             </button>
         </form>
     @else
-        <a href="{{ route('invoices.pdf', $invoice) }}" class="secondary-button small" target="_blank">
-            View PDF
-        </a>
+        @if (!empty(trim($invoice->ti_number ?? '')))
+            <a href="{{ route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice']) }}" class="secondary-button small" target="_blank">View Tax PDF</a>
+            <a href="{{ route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']) }}" class="secondary-button small ms-2" target="_blank">View PI Tax</a>
+        @else
+            <a href="{{ route('invoices.pdf', $invoice) }}" class="secondary-button small" target="_blank">
+                View PDF
+            </a>
+        @endif
         @if (empty(trim($invoice->ti_number ?? '')))
             <form method="POST" action="{{ route('invoices.create-tax-invoice') }}" class="inline-delete"
                 onsubmit="return confirm('Convert this Proforma to Tax Invoice? This will generate a Tax Invoice number.')">

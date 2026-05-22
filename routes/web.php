@@ -131,7 +131,12 @@ Route::middleware(['auth'])->group(function () {
     Route::controller(QuotationsController::class)->group(function () {
         Route::get('/quotations', 'quotations')->name('quotations.index');
         Route::get('/quotations/create', 'quotationsCreate')->name('quotations.create');
+        Route::post('/quotations/step2-draft', 'saveStep2Draft')->name('quotations.step2-draft');
+        Route::patch('/quotations/{quotation}/terms', 'applyTerms')->name('quotations.apply-terms');
         Route::post('/quotations', 'quotationsStore')->name('quotations.store');
+        Route::get('/quotations/{quotation}/pdf', 'quotationPdf')->name('quotations.pdf');
+        Route::get('/quotations/{quotation}/email-compose', 'quotationEmailCompose')->name('quotations.email-compose');
+        Route::post('/quotations/{quotation}/email-compose', 'quotationEmailComposeStore')->name('quotations.email-compose.store');
         Route::get('/quotations/{quotation}', 'quotationsShow')->name('quotations.show');
         Route::get('/quotations/{quotation}/edit', 'quotationsEdit')->name('quotations.edit');
         Route::put('/quotations/{quotation}', 'quotationsUpdate')->name('quotations.update');

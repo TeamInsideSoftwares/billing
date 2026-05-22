@@ -183,7 +183,7 @@
 
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mt-3">
         <button type="button" class="primary-button" id="btnSendEmail">
-            <i class="fas fa-envelope me-2"></i>Compose Email
+            <i class="fas fa-envelope me-2"></i>Save & Go To Email Compose
         </button>
     </div>
 </div>
@@ -193,6 +193,7 @@
     const clientId = "{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}";
     const orderId = "{{ request('o', request('orderid', '')) }}";
     const draftId = "{{ request('d', '') }}";
+    const justCreated = "{{ request('just_created', '') }}" === '1';
     const isTaxInvoice = @json($isTaxInvoiceStep3);
     const hasOrderId = orderId && orderId !== '0';
     const btnBackToPrev = document.getElementById('btnBackToPrev');
@@ -288,6 +289,8 @@
         .filter(Boolean);
     const fallbackPiNumber = "{{ $nextInvoiceNumber }}";
     const fallbackTiNumber = "{{ $nextTaxInvoiceNumber ?? $nextInvoiceNumber }}";
+    const TAX_READY_TOAST_KEY = 'invoice_tax_ready_toast';
+    const INVOICE_COMPOSE_READY_TOAST_KEY = 'invoice_compose_ready_toast';
 
     function getDefaultTermsForType(type) {
         return (termsByType[type] || [])
@@ -576,7 +579,8 @@
         let subtotal = 0, taxTotal = 0, discountTotal = 0;
         invoiceItems.forEach(item => {
             const lineTotal = parseFloat(item.line_total || 0);
-            const discountedAmount = Math.max(0, parseFloat(item.discount_amount || 0) || lineTotal);
+            const discountPercent = Math.max(0, Math.min(100, parseFloat(item.discount_percent || 0)));
+            const discountedAmount = Math.max(0, lineTotal - ((lineTotal * discountPercent) / 100));
             const lineDiscount = roundDiscountDown(Math.max(0, lineTotal - discountedAmount));
             subtotal += lineTotal;
             discountTotal += lineDiscount;
@@ -792,6 +796,13 @@
         }
 
         const composeUrl = new URL("{{ url('/invoices') }}/" + invoiceid + "/email-compose", window.location.origin);
+        if (justCreated) {
+            try {
+                window.localStorage.setItem(INVOICE_COMPOSE_READY_TOAST_KEY, 'Invoice created. Compose message and send it now.');
+            } catch (e) {
+                console.warn('Unable to persist compose-ready toast state', e);
+            }
+        }
         if ((renewedItemIdsInput?.value || '').trim() !== '') {
             composeUrl.searchParams.set('renewed_item_ids', renewedItemIdsInput.value);
         }
@@ -849,20 +860,39 @@
 		        .then(({ ok, data }) => {
 		            if (ok && data && data.success) {
 		                draftTiNumber = data.ti_number;
+                        try {
+                            const toastMessage = data.ti_number
+                                ? ('Tax Invoice ready: ' + data.ti_number)
+                                : 'Tax Invoice ready.';
+                            window.localStorage.setItem(TAX_READY_TOAST_KEY, toastMessage);
+                        } catch (e) {
+                            console.warn('Unable to persist tax-ready toast state', e);
+                        }
                         syncTermsTypeWithInvoiceStage();
 		                updateHeaderNumberBadge();
 		                syncTaxInvoiceButtons(invoiceidInput.value);
 		                updateInvoicePreview();
-		                const base = "{{ url('invoices') }}/" + invoiceidInput.value + "/pdf";
-		                window.open(base + '?type=tax_invoice', '_blank');
+                        if (data.redirect_url) {
+                            window.location.href = data.redirect_url;
+                            return;
+                        }
+                        const fallbackClient = encodeURIComponent(clientId || '');
+                        const fallbackDraft = encodeURIComponent(invoiceidInput.value || '');
+                        window.location.href = "{{ route('invoices.create') }}?step=2&tax_invoice=1&c=" + fallbackClient + "&d=" + fallbackDraft;
 		                return;
 		            }
 
-		            // If server returned non-JSON but status is OK, treat as success and reload draft state.
+		            // If server returned non-JSON but status is OK, route to Step 2 tax edit flow.
 		            if (ok && !data) {
 		                loadItems();
-		                const base = "{{ url('invoices') }}/" + invoiceidInput.value + "/pdf";
-		                window.open(base + '?type=tax_invoice', '_blank');
+                        try {
+                            window.localStorage.setItem(TAX_READY_TOAST_KEY, 'Tax Invoice ready.');
+                        } catch (e) {
+                            console.warn('Unable to persist tax-ready toast state', e);
+                        }
+                        const fallbackClient = encodeURIComponent(clientId || '');
+                        const fallbackDraft = encodeURIComponent(invoiceidInput.value || '');
+                        window.location.href = "{{ route('invoices.create') }}?step=2&tax_invoice=1&c=" + fallbackClient + "&d=" + fallbackDraft;
 		                return;
 		            }
 

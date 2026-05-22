@@ -134,14 +134,14 @@
                     @endforelse
                 </select>
             </div>
-            <div class="order-field order-field-description">
+            <div class="order-field order-field-description" style="width: 50%;">
                 <label>Description</label>
-                <textarea id="item_description" class="form-control" rows=""></textarea>
+                <textarea id="item_description" class="form-control"></textarea>
             </div>
 
             @if(!$isEditMode)
-                <div class="order-field order-field-action text-end">
-                    <button type="button" id="addItemBtn" class="secondary-button">
+                <div class="order-field order-field-action text-end" style="grid-column: 1 / -1;">
+                    <button type="button" id="addItemBtn" class="primary-button">
                         Add Order
                     </button>
                 </div>

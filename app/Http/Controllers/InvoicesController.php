@@ -1461,18 +1461,34 @@ class InvoicesController extends Controller
 
     private function calculateInvoiceItemAmounts(array $itemData, float $taxRate): array
     {
-        $lineTotal = $this->wholeAmount($itemData['line_total'] ?? 0);
+        $quantity = $this->wholeQuantity($itemData['quantity'] ?? 1);
+        $users = !empty($itemData['no_of_users']) ? max(1, (int) $itemData['no_of_users']) : 1;
+        $duration = !empty($itemData['duration']) ? max(1, (int) $itemData['duration']) : 1;
+        $durationMultiplier = $this->hasRecurringFrequency($itemData['frequency'] ?? null) ? $duration : 1;
+
+        $unitPrice = $this->moneyAmount($itemData['unit_price'] ?? 0);
+        $lineTotal = $this->moneyAmount($itemData['line_total'] ?? 0);
+        if ($lineTotal <= 0) {
+            $lineTotal = $this->moneyAmount($quantity * $unitPrice * $users * $durationMultiplier);
+        }
+        if ($unitPrice <= 0 && $lineTotal > 0) {
+            $divisor = max(1, $quantity * $users * $durationMultiplier);
+            $unitPrice = $this->moneyAmount($lineTotal / $divisor);
+        }
         $discountPercent = $this->wholePercent($itemData['discount_percent'] ?? 0);
 
         $discountValue = ($lineTotal * $discountPercent) / 100;
-        $taxableAmount = max(0, $lineTotal - $discountValue);
-        $taxAmount = ($taxableAmount * $taxRate) / 100;
+        $discountedLineTotal = max(0, $lineTotal - $discountValue);
+        $taxAmount = ($discountedLineTotal * $taxRate) / 100;
+        $discountedUnitPrice = $this->moneyAmount($unitPrice * ((100 - $discountPercent) / 100));
 
         return [
-            'line_total' => round($lineTotal, 0),
+            'line_total' => $this->moneyAmount($lineTotal),
             'discount_percent' => $discountPercent,
-            // discount_amount stores final discounted line amount.
-            'discount_amount' => $this->roundDiscountDown($taxableAmount),
+            // discount_amount stores discounted unit price.
+            'discount_amount' => $discountedUnitPrice,
+            'discounted_line_total' => $this->moneyAmount($discountedLineTotal),
+            'discount_value_total' => $this->moneyAmount(max(0, $discountValue)),
             'tax_amount' => $this->roundTaxUp($taxAmount),
         ];
     }
@@ -1490,6 +1506,11 @@ class InvoicesController extends Controller
     private function wholeAmount(mixed $value): float
     {
         return (float) round(max(0, (float) $value), 0);
+    }
+
+    private function moneyAmount(mixed $value): float
+    {
+        return (float) round(max(0, (float) $value), 2);
     }
 
     private function wholePercent(mixed $value): float
@@ -1803,7 +1824,7 @@ class InvoicesController extends Controller
                 ? Service::where('accountid', $accountid)->find($itemId)
                 : null;
             $quantity = $this->wholeQuantity($itemData['quantity'] ?? 1);
-            $unitPrice = $this->wholeAmount($itemData['unit_price'] ?? 0);
+            $unitPrice = $this->moneyAmount($itemData['unit_price'] ?? 0);
             $taxRate = (float) ($itemData['tax_rate'] ?? 0);
             $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
             $isUserWiseItem = $accountHasUsers && $this->isUserWiseEnabled($service?->user_wise);
@@ -1823,7 +1844,7 @@ class InvoicesController extends Controller
             }
 
             $subtotal += $lineTotal;
-            $discountTotal += max(0, $lineTotal - $amounts['discount_amount']);
+            $discountTotal += (float) ($amounts['discount_value_total'] ?? 0);
             $taxTotal += $amounts['tax_amount'];
 
             $preparedItems[] = [
@@ -2042,6 +2063,7 @@ class InvoicesController extends Controller
             ], 404);
         }
 
+        $wasCreated = false;
         if ($draft) {
             // Update existing draft
             $draft->update([
@@ -2055,6 +2077,7 @@ class InvoicesController extends Controller
             ]);
         } else {
             // Create new draft
+            $wasCreated = true;
             $draft = Invoice::create([
                 'accountid' => $accountid,
                 'fy_id' => $this->resolveDefaultFyId($accountid),
@@ -2095,7 +2118,7 @@ class InvoicesController extends Controller
                 $taxRate = (float) ($itemData['tax_rate'] ?? 0);
                 $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
                 $calculatedSubtotal += (float) $amounts['line_total'];
-                $calculatedDiscountTotal += max(0, (float) $amounts['line_total'] - (float) $amounts['discount_amount']);
+                $calculatedDiscountTotal += (float) ($amounts['discount_value_total'] ?? 0);
                 $calculatedTaxTotal += (float) $amounts['tax_amount'];
 
                 $draftItems[] = [
@@ -2104,7 +2127,7 @@ class InvoicesController extends Controller
                     'item_name' => $itemName,
                     'item_description' => $itemData['item_description'] ?? null,
                     'quantity' => max(0, (int) round((float) ($itemData['quantity'] ?? 0), 0)),
-                    'unit_price' => $this->wholeAmount($itemData['unit_price'] ?? 0),
+                    'unit_price' => $this->moneyAmount($itemData['unit_price'] ?? 0),
                     'tax_rate' => $taxRate,
                     'discount_percent' => $this->wholePercent($itemData['discount_percent'] ?? 0),
                     'discount_amount' => max(0, (float) $amounts['discount_amount']),
@@ -2114,7 +2137,7 @@ class InvoicesController extends Controller
                     'start_date' => !empty($itemData['start_date']) ? $itemData['start_date'] : null,
                     'end_date' => !empty($itemData['end_date']) ? $itemData['end_date'] : null,
                     'status' => 'active',
-                    'amount' => $this->wholeAmount($amounts['line_total'] ?? 0),
+                    'amount' => $this->moneyAmount($amounts['line_total'] ?? 0),
                     'sequence' => $index + 1,
                 ];
             }
@@ -2138,6 +2161,7 @@ class InvoicesController extends Controller
 
         return response()->json([
             'ok' => true,
+            'was_created' => $wasCreated,
             'invoiceid' => $draft->invoiceid,
             'invoice_number' => $draft->invoice_number,
             'pi_number' => $draft->pi_number,
@@ -2296,7 +2320,7 @@ class InvoicesController extends Controller
             'item_name' => $itemData['item_name'],
             'item_description' => $itemData['item_description'] ?? null,
             'quantity' => $this->wholeQuantity($itemData['quantity']),
-            'unit_price' => $this->wholeAmount($itemData['unit_price']),
+            'unit_price' => $this->moneyAmount($itemData['unit_price']),
             'tax_rate' => $taxRate,
             'discount_percent' => $amounts['discount_percent'],
             'discount_amount' => $amounts['discount_amount'],
@@ -2315,9 +2339,17 @@ class InvoicesController extends Controller
         $discountTotal = 0;
         $taxTotal = 0;
         foreach ($invoice->items as $it) {
-            $a = $this->calculateInvoiceItemAmounts(['line_total' => $it->amount, 'discount_percent' => $it->discount_percent], (float) $it->tax_rate);
+            $a = $this->calculateInvoiceItemAmounts([
+                'line_total' => $it->amount,
+                'discount_percent' => $it->discount_percent,
+                'unit_price' => $it->unit_price,
+                'quantity' => $it->quantity,
+                'no_of_users' => $it->no_of_users,
+                'frequency' => $it->frequency,
+                'duration' => $it->duration,
+            ], (float) $it->tax_rate);
             $subtotal += $a['line_total'];
-            $discountTotal += max(0, (float) $a['line_total'] - (float) $a['discount_amount']);
+            $discountTotal += (float) ($a['discount_value_total'] ?? 0);
             $taxTotal += $a['tax_amount'];
         }
         // Totals are derived from invoice_items and not stored on invoices table.
@@ -2371,7 +2403,7 @@ class InvoicesController extends Controller
             $taxRate = (float) ($itemData['tax_rate'] ?? 0);
             $amounts = $this->calculateInvoiceItemAmounts($itemData, $taxRate);
             $subtotal += $amounts['line_total'];
-            $discountTotal += max(0, (float) $amounts['line_total'] - (float) $amounts['discount_amount']);
+            $discountTotal += (float) ($amounts['discount_value_total'] ?? 0);
             $taxTotal += $amounts['tax_amount'];
         }
 
@@ -2401,7 +2433,7 @@ class InvoicesController extends Controller
                 'item_name' => $itemData['item_name'] ?? ($service?->name ?? 'Custom Item'),
                 'item_description' => $itemData['item_description'] ?? null,
                 'quantity' => $this->wholeQuantity($itemData['quantity'] ?? 1),
-                'unit_price' => $this->wholeAmount($itemData['unit_price'] ?? 0),
+                'unit_price' => $this->moneyAmount($itemData['unit_price'] ?? 0),
                 'tax_rate' => $taxRate,
                 'discount_percent' => $amounts['discount_percent'],
                 'discount_amount' => $amounts['discount_amount'],
@@ -2684,9 +2716,11 @@ class InvoicesController extends Controller
             $this->persistInvoicePdfVersion($invoice, true);
         }
 
-        $editUrl = route('invoices.edit', array_filter([
-            'invoice' => $invoice->invoiceid,
+        $editUrl = route('invoices.create', array_filter([
+            'step' => 2,
+            'd' => $invoice->invoiceid,
             'c' => $clientContext,
+            'tax_invoice' => 1,
         ]));
 
         if ($request->wantsJson() || $request->ajax()) {
@@ -2980,7 +3014,6 @@ class InvoicesController extends Controller
 
         return view('invoices.email-compose', [
             'title' => 'Compose Invoice Email',
-            'subtitle' => 'Preview and store email details before sending.',
             'invoice' => $invoice,
             'fromEmail' => $fromEmail,
             'toEmail' => $toEmail,

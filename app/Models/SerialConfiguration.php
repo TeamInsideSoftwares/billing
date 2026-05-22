@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Order;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 class SerialConfiguration extends Model
 {
@@ -182,15 +183,17 @@ class SerialConfiguration extends Model
 
     protected function getQuotationNumbers(?string $fyId): Collection
     {
+        $numberColumn = Schema::hasColumn('quotations', 'quo_number') ? 'quo_number' : 'quotation_number';
         $query = Quotation::query()
             ->where('accountid', $this->accountid)
-            ->whereNotNull('quotation_number');
+            ->whereNotNull($numberColumn)
+            ->where($numberColumn, '!=', '');
 
         if ($this->reset_on_fy && $fyId) {
             $query->where('fy_id', $fyId);
         }
 
-        return $query->pluck('quotation_number');
+        return $query->pluck($numberColumn);
     }
 
     protected function extractMaxConfiguredNumber(Collection $numbers, string $part): ?int

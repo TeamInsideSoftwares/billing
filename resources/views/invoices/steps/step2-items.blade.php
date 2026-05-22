@@ -284,12 +284,49 @@
         const clientId = "{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}";
         const fallbackPiNumber = "{{ $nextInvoiceNumber }}";
         const fallbackTiNumber = "{{ $nextTaxInvoiceNumber ?? $nextInvoiceNumber }}";
+        const accountHasUsers = @json((bool) ($account->have_users ?? false));
         const ONE_TIME_MAX_END_DATE = '2099-12-31';
         const orderItemsRouteTemplate = @json(route('invoices.order-items', ['orderid' => '__ORDERID__']));
+        const TAX_READY_TOAST_KEY = 'invoice_tax_ready_toast';
         let draftPiNumber = '';
         let draftTiNumber = '';
         const orderDatePrefillCache = {};
         let currentOrderDatePrefill = null;
+
+        function showSuccessToast(message) {
+            const text = String(message || '').trim();
+            if (!text) return;
+            let container = document.getElementById('app-toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'app-toast-container';
+                container.className = 'app-toast-container';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = 'app-toast app-toast-success';
+            toast.innerHTML = '<i class="fas fa-check-circle toast-icon"></i><span></span>';
+            const label = toast.querySelector('span');
+            if (label) label.textContent = text;
+            toast.addEventListener('click', () => toast.remove());
+            container.appendChild(toast);
+            window.setTimeout(() => {
+                toast.classList.add('app-toast-leaving');
+                window.setTimeout(() => toast.remove(), 220);
+            }, 4200);
+        }
+
+        function consumeTaxReadyToast() {
+            try {
+                const message = window.localStorage.getItem(TAX_READY_TOAST_KEY);
+                if (!message) return;
+                window.localStorage.removeItem(TAX_READY_TOAST_KEY);
+                showSuccessToast(message);
+            } catch (e) {
+                console.warn('Unable to read tax-ready toast state', e);
+            }
+        }
+        consumeTaxReadyToast();
 
         function getStep2HeaderNumber() {
             if (draftTiNumber) return draftTiNumber;
@@ -316,7 +353,12 @@
         let editingManualItemIndex = null;
 
         function formatCurrency(amount) {
-            return `${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+            const value = Number(amount || 0);
+            const hasDecimals = Math.abs(value % 1) > 0;
+            return `${value.toLocaleString('en-US', {
+                minimumFractionDigits: hasDecimals ? 2 : 0,
+                maximumFractionDigits: 2
+            })}`;
         }
 
         function roundTaxUp(value) {
@@ -339,13 +381,10 @@
         function renderItemCell(item) {
             const name = escapeHtml(item.item_name || 'Item');
             const description = escapeHtml(item.item_description || '').trim();
-            if (!description) {
-                return name;
-            }
-            return `
+            return description ? `
             <div class="invoice-item-cell-title">${name}</div>
             <div class="invoice-item-cell-desc">${description}</div>
-        `;
+        ` : `<div class="invoice-item-cell-title">${name}</div>`;
         }
 
         async function fetchOrderDatePrefill(orderId) {
@@ -436,6 +475,11 @@
             const wrap = document.getElementById('manual_item_users_wrap');
             const usersInput = document.getElementById('manual_item_users');
             if (!wrap || !usersInput) return;
+            if (!accountHasUsers) {
+                wrap.classList.add('is-hidden');
+                usersInput.value = 1;
+                return;
+            }
             const show = isManualItemUserWise();
             wrap.classList.toggle('is-hidden', !show);
             if (!show) usersInput.value = 1;
@@ -556,6 +600,7 @@
         toggleManualRecurringFields();
 
         function itemHasUsers(item) {
+            if (!accountHasUsers) return false;
             return Boolean(item?.requires_user_fields) || Number(item?.no_of_users || 0) > 0;
         }
 
@@ -563,8 +608,12 @@
             return isRecurringFrequency(item?.frequency);
         }
 
+        function itemHasDates(item) {
+            return Boolean((item?.start_date || '').trim()) || Boolean((item?.end_date || '').trim());
+        }
+
         function syncManualHeaders() {
-            const showRecurringColumns = manualItems.some(itemIsRecurring);
+            const showRecurringColumns = manualItems.some(item => itemIsRecurring(item) || itemHasDates(item));
             const showUserColumns = manualItems.some(itemHasUsers);
             const usersHeader = document.getElementById('manualUsersHeader');
             const durationHeader = document.getElementById('manualDurationHeader');
@@ -721,6 +770,7 @@
                 taxTotal += item.tax_amount;
 
                 const rowRecurring = itemIsRecurring(item);
+                const rowHasDates = itemHasDates(item);
                 const rowUsers = itemHasUsers(item);
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -734,8 +784,8 @@
                 <td class="text-center ${showUserColumns ? '' : 'is-hidden'}">${rowUsers ? Math.max(1, Number(item.no_of_users || 1)) : '-'}</td>
                 <td>${item.frequency ? (frequencyLabels[item.frequency] || item.frequency) : '-'}</td>
                 <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.duration || '-') : '-'}</td>
-                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.start_date || '-') : '-'}</td>
-                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.end_date || '-') : '-'}</td>
+                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${(rowRecurring || rowHasDates) ? (item.start_date || '-') : '-'}</td>
+                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${(rowRecurring || rowHasDates) ? (item.end_date || '-') : '-'}</td>
                 <td class="text-center">${formatCurrency(Math.max(0, Number(item.discount_amount || 0) || Number(item.line_total || 0)))}</td>
                 <td class="text-center text-nowrap">
                     <button type="button" class="text-action-btn edit edit-item-btn" data-index="${index}">Edit</button>
@@ -894,6 +944,9 @@
                     }
                     if (data && data.invoiceid) {
                         nextUrl += "&d=" + encodeURIComponent(data.invoiceid);
+                    }
+                    if (data && data.was_created) {
+                        nextUrl += "&just_created=1";
                     }
                     window.location.href = nextUrl;
                 })
