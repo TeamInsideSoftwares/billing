@@ -290,7 +290,9 @@
             const savedCustomAttachmentUrl = @json($customAttachmentUrl ?? null);
             const savedCustomAttachmentName = @json($customAttachmentName ?? null);
             const extraAttachmentPreview = document.getElementById('extraAttachmentPreview');
+            const initialChannel = selectedChannelInput?.value || 'email';
             let customAttachmentPreviewUrl = savedCustomAttachmentUrl || null;
+            const channelDraftState = {};
 
             function getPlainTextFromHtml(html) {
                 if (!html) return '';
@@ -300,6 +302,10 @@
                 text = text.replace(/<br\s*\/?>/gi, '\n');
                 text = text.replace(/<\/(div|li|h[1-6]|p)>/gi, '\n');
                 text = text.replace(/<(ul|ol)[^>]*>/gi, '\n');
+                // Decode encoded tags like &lt;p&gt; so they can be stripped reliably.
+                const decoder = document.createElement('textarea');
+                decoder.innerHTML = text;
+                text = decoder.value || text;
                 const tmp = document.createElement('div');
                 tmp.innerHTML = text;
                 return (tmp.textContent || tmp.innerText || '').replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n');
@@ -327,6 +333,10 @@
                     return tinymce.get('emailBodyInput').getContent();
                 }
                 return emailBodyInput ? emailBodyInput.value : '';
+            }
+
+            function getActiveMessageBodyAsPlainText() {
+                return getPlainTextFromHtml(getActiveMessageBody());
             }
 
             function refreshAttachmentPreview() {
@@ -417,12 +427,41 @@
             }
 
             function setChannel(channel) {
+                const previousChannel = selectedChannelInput.value || initialChannel;
+                if (previousChannel) {
+                    channelDraftState[previousChannel] = {
+                        subject: emailSubjectInput ? emailSubjectInput.value : '',
+                        body: getActiveMessageBody(),
+                        templateid: selectedTemplateIdInput ? selectedTemplateIdInput.value : '',
+                    };
+                }
                 const normalized = availableChannels.includes(channel) ? channel : (availableChannels[0] || 'email');
                 channel = normalized;
                 selectedChannelInput.value = channel;
                 channelBtns.forEach((btn) => btn.classList.toggle('is-active', btn.dataset.channel === channel));
                 const isEmail = channel === 'email';
                 syncBodyEditorByChannel(channel);
+                const cachedState = channelDraftState[channel] || null;
+                if (cachedState) {
+                    if (emailSubjectInput && !isAlreadySent && typeof cachedState.subject === 'string') {
+                        emailSubjectInput.value = cachedState.subject;
+                    }
+                    if (!isAlreadySent && typeof cachedState.body === 'string') {
+                        if (window.tinymce && tinymce.get('emailBodyInput')) {
+                            tinymce.get('emailBodyInput').setContent(toEditorHtml(cachedState.body || ''));
+                            tinymce.get('emailBodyInput').save();
+                        } else if (emailBodyInput) {
+                            emailBodyInput.value = channel === 'email'
+                                ? normalizeHtmlForEditor(cachedState.body || '')
+                                : getPlainTextFromHtml(cachedState.body || '');
+                        }
+                    }
+                    if (selectedTemplateIdInput && typeof cachedState.templateid === 'string') {
+                        selectedTemplateIdInput.value = cachedState.templateid;
+                    }
+                } else {
+                    applyTemplateForChannel(channel);
+                }
                 document.querySelectorAll('.email-fields, .email-actions').forEach((el) => {
                     el.style.display = isEmail ? '' : 'none';
                 });
@@ -436,8 +475,14 @@
             channelBtns.forEach((btn) => {
                 btn.addEventListener('click', () => {
                     const channel = btn.dataset.channel || 'email';
-                    setChannel(channel);
-                    applyTemplateForChannel(channel);
+                    if (channel === (selectedChannelInput.value || 'email')) {
+                        setChannel(channel);
+                        return;
+                    }
+
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('channel', channel);
+                    window.location.href = url.toString();
                 });
             });
 
@@ -452,11 +497,16 @@
                     emailSubjectInput.value = selectedTemplate.subject || emailSubjectInput.value || '';
                 }
                 if (!isAlreadySent) {
+                    const templateBody = selectedTemplate.body || '';
                     if (window.tinymce && tinymce.get('emailBodyInput')) {
-                        tinymce.get('emailBodyInput').setContent(toEditorHtml(selectedTemplate.body || ''));
+                        tinymce.get('emailBodyInput').setContent(
+                            channel === 'email' ? toEditorHtml(templateBody) : getPlainTextFromHtml(templateBody)
+                        );
                         tinymce.get('emailBodyInput').save();
                     } else if (emailBodyInput) {
-                        emailBodyInput.value = selectedTemplate.body || '';
+                        emailBodyInput.value = channel === 'email'
+                            ? normalizeHtmlForEditor(templateBody)
+                            : getPlainTextFromHtml(templateBody);
                     }
                     refreshPreview();
                 }
@@ -464,7 +514,7 @@
 
             function refillFromTemplateWhenBodyEmpty() {
                 if (isAlreadySent) return;
-                const plain = (getPlainTextFromHtml(getActiveMessageBody()) || '').trim();
+                const plain = (getActiveMessageBodyAsPlainText() || '').trim();
                 if (plain !== '') return;
                 const channel = selectedChannelInput.value || 'email';
                 const templates = templateCatalog[channel] || [];
@@ -528,6 +578,9 @@
                     enableTinyMceForEmail();
                 } else {
                     disableTinyMceForTextarea();
+                    if (emailBodyInput) {
+                        emailBodyInput.value = getPlainTextFromHtml(emailBodyInput.value || '');
+                    }
                 }
             }
 

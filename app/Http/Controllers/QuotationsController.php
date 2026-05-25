@@ -8,7 +8,7 @@ use App\Models\Client;
 use App\Models\FinancialYear;
 use App\Models\Payment;
 use App\Models\Quotation;
-use App\Models\QuotationEmail;
+use App\Models\CommunicationLog;
 use App\Models\QuotationItem;
 use App\Models\MessageTemplate;
 use App\Models\SerialConfiguration;
@@ -524,7 +524,7 @@ class QuotationsController extends Controller
         $accountid = $this->resolveAccountId();
         $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
 
-        $draft = QuotationEmail::query()
+        $latestDraft = CommunicationLog::query()
             ->where('quotationid', $quotation->quotationid)
             ->where('accountid', $accountid)
             ->latest('created_at')
@@ -577,8 +577,8 @@ class QuotationsController extends Controller
         $requestedChannel = trim((string) request('channel', ''));
         if ($requestedChannel !== '' && in_array($requestedChannel, ['email', 'whatsapp', 'sms'], true)) {
             $prefillChannel = $requestedChannel;
-        } elseif (!empty($draft?->channel) && in_array((string) $draft->channel, ['email', 'whatsapp', 'sms'], true)) {
-            $prefillChannel = (string) $draft->channel;
+        } elseif (!empty($latestDraft?->channel) && in_array((string) $latestDraft->channel, ['email', 'whatsapp', 'sms'], true)) {
+            $prefillChannel = (string) $latestDraft->channel;
         } elseif (!empty($availableChannels)) {
             $prefillChannel = (string) ($availableChannels[0] ?? 'email');
         } else {
@@ -586,21 +586,38 @@ class QuotationsController extends Controller
             $availableChannels = ['email'];
         }
 
-        $draftForChannel = QuotationEmail::query()
+        $draftForChannel = CommunicationLog::query()
             ->where('quotationid', $quotation->quotationid)
             ->where('accountid', $accountid)
             ->where('channel', $prefillChannel)
             ->latest('created_at')
             ->first();
-        if ($draftForChannel) {
-            $draft = $draftForChannel;
-        }
+        $draft = $draftForChannel;
 
         $channelTemplates = $templateCatalog[$prefillChannel] ?? [];
         $defaultTemplate = $channelTemplates[0] ?? null;
-        $prefillSubject = old('subject', $draft?->subject ?? ($defaultTemplate['subject'] ?? ('Quotation ' . ($quotation->quo_number ?? $quotation->quotationid))));
-        $prefillBody = old('body', $draft?->body ?? ($defaultTemplate['body'] ?? $defaultBody));
-        $prefillTemplateId = old('selected_templateid', $defaultTemplate['templateid'] ?? '');
+        $preferTemplateForMessagingChannel = in_array($prefillChannel, ['whatsapp', 'sms'], true)
+            && ((string) ($draft?->status ?? '')) !== 'sent';
+        $basePrefillSubject = $preferTemplateForMessagingChannel
+            ? ($defaultTemplate['subject'] ?? ($draft?->subject ?? ('Quotation ' . ($quotation->quo_number ?? $quotation->quotationid))))
+            : ($draft?->subject ?? ($defaultTemplate['subject'] ?? ('Quotation ' . ($quotation->quo_number ?? $quotation->quotationid))));
+        $basePrefillBody = $preferTemplateForMessagingChannel
+            ? ($defaultTemplate['body'] ?? ($draft?->body ?? $defaultBody))
+            : ($draft?->body ?? ($defaultTemplate['body'] ?? $defaultBody));
+
+        $oldChannel = trim((string) old('channel', ''));
+        $reuseOldForSameChannel = $oldChannel !== '' && $oldChannel === $prefillChannel;
+        $prefillSubject = $reuseOldForSameChannel ? old('subject', $basePrefillSubject) : $basePrefillSubject;
+        $prefillBody = $reuseOldForSameChannel ? old('body', $basePrefillBody) : $basePrefillBody;
+        if (in_array($prefillChannel, ['whatsapp', 'sms'], true)) {
+            $prefillBody = $this->normalizeChannelBodyForStorage((string) $prefillBody, $prefillChannel);
+        }
+        $prefillTemplateId = old(
+            'selected_templateid',
+            trim((string) ($draft?->selected_templateid ?? '')) !== ''
+                ? (string) $draft->selected_templateid
+                : ($defaultTemplate['templateid'] ?? '')
+        );
 
         return view('quotations.email-compose', [
             'title' => 'Create New Quotation',
@@ -660,9 +677,11 @@ class QuotationsController extends Controller
         if ($finalCustomAttachmentPath === '') {
             $finalCustomAttachmentPath = null;
         }
-        $isEmailChannel = (($validated['channel'] ?? 'email') === 'email');
+        $channel = (string) ($validated['channel'] ?? 'email');
+        $isEmailChannel = ($channel === 'email');
+        $normalizedBody = $this->normalizeChannelBodyForStorage((string) ($validated['body'] ?? ''), $channel);
 
-        $email = QuotationEmail::create([
+        $email = CommunicationLog::create([
             'accountid' => $accountid,
             'quotationid' => $quotation->quotationid,
             'clientid' => $quotation->clientid,
@@ -671,18 +690,17 @@ class QuotationsController extends Controller
             'cc_email' => $validated['cc_email'] ?? null,
             'phone_number' => $validated['phone_number'] ?? null,
             'subject' => $validated['subject'] ?? null,
-            'body' => $validated['body'],
+            'body' => $normalizedBody,
             'attachment_type' => 'quotation',
             'attachment_path' => $isEmailChannel ? $this->resolveCampioQuotationPdfUrl($quotation) : null,
             'custom_attachment_path' => $isEmailChannel ? $finalCustomAttachmentPath : null,
             'status' => $validated['action'] === 'send' ? 'sent' : 'draft',
-            'channel' => $validated['channel'],
+            'channel' => $channel,
             'created_by' => (string) ($user?->userid ?? $user?->id ?? ''),
-            'sent_at' => $validated['action'] === 'send' ? now() : null,
         ]);
 
         if ($validated['action'] === 'send') {
-            if (($validated['channel'] ?? 'email') === 'email') {
+            if ($channel === 'email') {
                 $toEmailValue = trim((string) ($validated['to_email'] ?? ''));
                 if ($toEmailValue === '') {
                     return back()->withErrors(['to_email' => 'To Email is required for email channel.'])->withInput();
@@ -747,7 +765,6 @@ class QuotationsController extends Controller
                     return back()->withErrors(['general' => $campioResult['message']])->withInput();
                 }
             } else {
-                $channel = (string) ($validated['channel'] ?? 'whatsapp');
                 $phone = trim((string) (
                     $validated['phone_number']
                     ?? $quotation->client?->billingDetail?->billing_phone
@@ -775,7 +792,7 @@ class QuotationsController extends Controller
                     ])->withInput();
                 }
 
-                $renderedBody = $this->renderQuotationMessageTemplate((string) ($validated['body'] ?? ''), $quotation, $user?->name);
+                $renderedBody = $this->renderQuotationMessageTemplate($normalizedBody, $quotation, $user?->name);
                 $plainBodyHtml = str_replace(['<br>', '<br/>', '<br />'], "\n", $renderedBody);
                 $plainBodyHtml = preg_replace('/<\/(p|div|li|h[1-6])>/i', "\n", (string) $plainBodyHtml) ?? (string) $plainBodyHtml;
                 $plainBodyHtml = preg_replace('/<(ul|ol)[^>]*>/i', "\n", (string) $plainBodyHtml) ?? (string) $plainBodyHtml;
@@ -1181,6 +1198,20 @@ class QuotationsController extends Controller
         $text = str_replace(["\\r\\n", "\\n"], "\n", $text);
         $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
         return trim($text);
+    }
+
+    private function normalizeChannelBodyForStorage(string $body, string $channel): string
+    {
+        if ($channel === 'email') {
+            return $body;
+        }
+
+        $decodedBody = html_entity_decode($body, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $plainBody = str_replace(['<br>', '<br/>', '<br />'], "\n", $decodedBody);
+        $plainBody = preg_replace('/<\/(p|div|li|h[1-6])>/i', "\n", (string) $plainBody) ?? (string) $plainBody;
+        $plainBody = preg_replace('/<(ul|ol)[^>]*>/i', "\n", (string) $plainBody) ?? (string) $plainBody;
+        $plainBody = trim(strip_tags((string) $plainBody));
+        return $this->sanitizeForCampioText($plainBody);
     }
 
     private function buildPublicAttachmentUrl(string $pathOrUrl): string

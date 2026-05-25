@@ -8,7 +8,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Ledger;
 use App\Models\FinancialYear;
-use App\Models\InvoiceEmail;
+use App\Models\CommunicationLog;
 use App\Models\MessageTemplate;
 use App\Models\Order;
 use App\Models\Payment;
@@ -2944,8 +2944,8 @@ class InvoicesController extends Controller
 
         // 1. If specific email ID requested, load that first
         if ($requestedEmailId !== '') {
-            $candidateEmail = InvoiceEmail::query()
-                ->where('invoice_emailid', $requestedEmailId)
+            $candidateEmail = CommunicationLog::query()
+                ->where('communication_logid', $requestedEmailId)
                 ->where('invoiceid', $invoice->invoiceid)
                 ->where('accountid', $currentAccountId)
                 ->first();
@@ -2960,7 +2960,7 @@ class InvoicesController extends Controller
 
         // 2. If no specific email, load by document type + channel
         if (!$latestEmail) {
-            $latestEmail = InvoiceEmail::query()
+            $latestEmail = CommunicationLog::query()
                 ->where('invoiceid', $invoice->invoiceid)
                 ->where('accountid', $currentAccountId)
                 ->where('attachment_type', $defaultType)
@@ -3061,7 +3061,7 @@ class InvoicesController extends Controller
         );
 
         $validated = $request->validate([
-            'invoice_emailid' => 'nullable|exists:invoice_emails,invoice_emailid',
+            'communication_logid' => 'nullable|exists:communication_logs,communication_logid',
             'action' => 'nullable|in:save,send',
             'channel' => 'required|in:email,whatsapp,sms',
             'selected_templateid' => 'nullable|string|max:20',
@@ -3123,11 +3123,11 @@ class InvoicesController extends Controller
         }
         $user = Auth::user();
         $currentAccountId = $invoice->accountid ?? $this->resolveAccountId();
-        $requestedDraftId = trim((string) ($validated['invoice_emailid'] ?? ''));
+        $requestedDraftId = trim((string) ($validated['communication_logid'] ?? ''));
         $seedDraft = null;
         if ($requestedDraftId !== '') {
-            $seedDraft = InvoiceEmail::query()
-                ->where('invoice_emailid', $requestedDraftId)
+            $seedDraft = CommunicationLog::query()
+                ->where('communication_logid', $requestedDraftId)
                 ->where('invoiceid', $invoice->invoiceid)
                 ->where('accountid', $currentAccountId)
                 ->first();
@@ -3135,7 +3135,7 @@ class InvoicesController extends Controller
 
         // Keep a dedicated draft for each invoice + document type + channel.
         // This prevents cross-channel overwrites and supports up to 6 rows (pi/ti x 3 channels).
-        $emailDraft = InvoiceEmail::query()
+        $emailDraft = CommunicationLog::query()
             ->where('invoiceid', $invoice->invoiceid)
             ->where('accountid', $currentAccountId)
             ->where('attachment_type', $selectedType)
@@ -3143,7 +3143,7 @@ class InvoicesController extends Controller
             ->first();
 
         if (!$emailDraft) {
-            $emailDraft = InvoiceEmail::create([
+            $emailDraft = CommunicationLog::create([
                 'accountid' => $currentAccountId,
                 'invoiceid' => $invoice->invoiceid,
                 'clientid' => $invoice->clientid,
@@ -3220,7 +3220,7 @@ class InvoicesController extends Controller
             return redirect()
                 ->route('invoices.email-compose', [
                     'invoice' => $invoice->invoiceid,
-                    'e' => $emailDraft->invoice_emailid,
+                    'e' => $emailDraft->communication_logid,
                     'channel' => $channel,
                     'attachment_type' => $selectedType,
                 ])
@@ -3358,7 +3358,7 @@ class InvoicesController extends Controller
 
             // Keep rich/original body in DB so compose view formatting is preserved.
             $updatePayload['body'] = $finalBody;
-            $emailDraft->update($updatePayload + ['status' => 'sent', 'sent_at' => $sentAt]);
+            $emailDraft->update($updatePayload + ['status' => 'sent']);
             if (($invoice->status ?? '') === 'draft') {
                 $invoice->update(['status' => 'active']);
                 $this->finalizeRenewedSourceItems($invoice);
@@ -3367,7 +3367,7 @@ class InvoicesController extends Controller
             return redirect()
                 ->route('invoices.email-compose', [
                     'invoice' => $invoice->invoiceid,
-                    'e' => $emailDraft->invoice_emailid,
+                    'e' => $emailDraft->communication_logid,
                     'channel' => $channel,
                     'attachment_type' => $selectedType,
                 ])
@@ -3459,7 +3459,7 @@ class InvoicesController extends Controller
         }
 
         $updatePayload['body'] = $finalBody;
-        $emailDraft->update($updatePayload + ['status' => 'sent', 'sent_at' => $sentAt]);
+        $emailDraft->update($updatePayload + ['status' => 'sent']);
         if (($invoice->status ?? '') === 'draft') {
             $invoice->update(['status' => 'active']);
             $this->finalizeRenewedSourceItems($invoice);
@@ -3468,7 +3468,7 @@ class InvoicesController extends Controller
         return redirect()
             ->route('invoices.email-compose', [
                 'invoice' => $invoice->invoiceid,
-                'e' => $emailDraft->invoice_emailid,
+                'e' => $emailDraft->communication_logid,
                 'channel' => 'email',
                 'attachment_type' => $selectedType,
             ])

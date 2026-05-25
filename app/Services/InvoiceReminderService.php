@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\Account;
 use App\Models\AccountBillingDetail;
 use App\Models\Invoice;
-use App\Models\InvoiceEmail;
+use App\Models\CommunicationLog;
 use App\Models\InvoiceItem;
 use App\Models\MessageTemplate;
 use App\Models\Payment;
@@ -178,7 +178,7 @@ class InvoiceReminderService
             $channel = (string) $template->channel;
 
             if ($source === 'automated') {
-                $alreadySentQuery = InvoiceEmail::query()
+                $alreadySentQuery = CommunicationLog::query()
                     ->where('accountid', $accountid)
                     ->where('invoiceid', $invoice->invoiceid)
                     ->where('attachment_type', $templateType)
@@ -199,7 +199,7 @@ class InvoiceReminderService
             $send = $this->sendForTemplate($invoice, $templateType, $template, $context);
             $status = $send['ok'] ? 'sent' : 'failed';
 
-            $emailLog = new InvoiceEmail();
+            $emailLog = new CommunicationLog();
             $emailLog->accountid = $accountid;
             $emailLog->invoiceid = (string) $invoice->invoiceid;
             $emailLog->clientid = (string) ($invoice->clientid ?? '');

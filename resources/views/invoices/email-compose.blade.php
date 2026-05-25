@@ -100,7 +100,7 @@
         <form method="POST" id="composeForm" action="{{ route('invoices.email-compose.store', $invoice->invoiceid) }}"
             enctype="multipart/form-data">
             @csrf
-            <input type="hidden" name="invoice_emailid" value="{{ $composeEmail->invoice_emailid ?? '' }}">
+            <input type="hidden" name="communication_logid" value="{{ $composeEmail->communication_logid ?? '' }}">
             <input type="hidden" name="channel" id="selectedChannel"
                 value="{{ old('channel', $prefillChannel ?? 'email') }}">
             <input type="hidden" name="attachment_type" id="selectedType"
@@ -145,7 +145,7 @@
                                     <div class="col-12 col-md-6">
                                         <label class="field-label">Phone Number</label>
                                         <input type="text" name="phone"
-                                            value="{{ old('phone', $prefillPhone ?? '') }}" class="input-full" {{ $isAlreadySent ? 'readonly' : '' }}>
+                                            value="{{ old('phone', $prefillPhone ?? '') }}" class="input-full">
                                     </div>
                                     <div class="col-12 col-md-6"></div>
                                 </div>
@@ -221,7 +221,7 @@
                                     $resolvedAttachmentType === 'ti' ? 'Tax Invoice (TI)' : 'Proforma Invoice (PI)';
                                 $resolvedSentAt = !empty($sendSuccessMeta['sent_at'])
                                     ? (string) $sendSuccessMeta['sent_at']
-                                    : $composeEmail?->sent_at?->format('d M Y, h:i A') ?? null;
+                                    : $composeEmail?->updated_at?->format('d M Y, h:i A') ?? $composeEmail?->created_at?->format('d M Y, h:i A') ?? null;
                             @endphp
                             @if ($shouldShowPostSendActions)
                                 <div class="mt-4 pt-3 border-top">
@@ -465,7 +465,7 @@
             let currentType = document.getElementById('selectedType').value || 'pi';
             let dscPreviewUrl = savedCustomAttachmentUrl || null;
             let currentRawTemplateBody = '';
-            const hasExistingDraft = !!(document.querySelector('input[name="invoice_emailid"]')?.value || '').trim();
+            const hasExistingDraft = !!(document.querySelector('input[name="communication_logid"]')?.value || '').trim();
             const INVOICE_COMPOSE_READY_TOAST_KEY = 'invoice_compose_ready_toast';
 
             function showSuccessToast(message) {
