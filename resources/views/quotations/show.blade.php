@@ -1,17 +1,17 @@
 @extends('layouts.app')
 
 @section('header_actions')
-    <a href="{{ route('quotations.index', request('c') ? ['c' => request('c')] : []) }}" class="secondary-button">
+    <a href="{{ route('quotations.index', request('c') ? ['c' => request('c')] : []) }}" class="secondary-button small">
         Back to Quotations
     </a>
     <a href="{{ route('quotations.pdf', $quotation) }}" target="_blank" class="secondary-button small">View PDF</a>
     <a href="{{ route('quotations.email-compose', $quotation) }}" class="primary-button small">Compose Email</a>
     <a href="{{ route('quotations.create', ['step' => 2, 'c' => request('c', $quotation->clientid), 'd' => $quotation->quotationid]) }}" class="primary-button small">Edit</a>
     <form method="POST" action="{{ route('quotations.destroy', ['quotation' => $quotation, 'c' => request('c')]) }}" class="inline-delete"
-        onsubmit="return confirm('Delete this quotation?')">
+        onsubmit="return confirm('Cancel this quotation?')">
         @csrf
         @method('DELETE')
-        <button type="submit" class="secondary-button">Delete</button>
+        <button type="submit" class="secondary-button small">Cancel</button>
     </form>
 @endsection
 
@@ -136,6 +136,35 @@
                             <div class="small">{{ $quotation->notes }}</div>
                         </div>
                     @endif
+                </section>
+
+                <section class="panel-card mb-4 border-0">
+                    <div class="section-header pb-3 mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="section-icon bg-light text-primary"><i class="fas fa-code-branch"></i></div>
+                            <h4 class="section-title mb-0 fw-bold">PDF Revisions</h4>
+                        </div>
+                    </div>
+
+                    <details class="border rounded p-2">
+                        <summary class="d-flex justify-content-between align-items-center cursor-pointer">
+                            <span class="fw-semibold small">Show All Revisions</span>
+                            <span class="badge bg-light text-dark border">{{ count($pdfVersions ?? []) }}</span>
+                        </summary>
+                        <div class="d-flex flex-column gap-2 mt-2">
+                            @forelse (($pdfVersions ?? []) as $revision)
+                                <div class="d-flex justify-content-between align-items-center border rounded px-2 py-2">
+                                    <div class="small">
+                                        <div class="fw-semibold">Quotation - {{ $quotation->quo_title ?: ($quotation->quo_number ?: $quotation->quotationid) }} (v{{ (int) ($revision['version'] ?? 0) }})</div>
+                                        <div class="text-muted">{{ !empty($revision['saved_at']) ? \Carbon\Carbon::parse($revision['saved_at'])->format('d M Y, h:i A') : '-' }}</div>
+                                    </div>
+                                    <a href="{{ $revision['url'] ?? '#' }}" target="_blank" class="secondary-button small">View</a>
+                                </div>
+                            @empty
+                                <div class="small text-muted">No saved PDF revisions yet.</div>
+                            @endforelse
+                        </div>
+                    </details>
                 </section>
             </div>
         </div>

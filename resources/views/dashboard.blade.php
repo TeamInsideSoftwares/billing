@@ -4,7 +4,7 @@
 <div class="dashboard-grid">
     <div class="kpi-row">
         @foreach ($stats as $stat)
-            <div class="soft-card p-4">
+            <div class="soft-card p-4 position-relative">
                 <div class="stat-icon {{ $stat['tone'] }}">
                     <i class="fas {{ $stat['icon'] }}"></i>
                 </div>
@@ -18,26 +18,36 @@
                             </span>
                         @endif
                     </div>
+                    @if (!empty($stat['url']))
+                        <a href="{{ $stat['url'] }}" class="text-link position-relative z-3">View</a>
+                    @endif
                 </div>
+                @if (!empty($stat['url']))
+                    <a href="{{ $stat['url'] }}" class="dashboard-card-hit" aria-label="Open {{ $stat['label'] }}"></a>
+                @endif
             </div>
         @endforeach
-        <div class="soft-card p-4">
+        <div class="soft-card p-4 position-relative">
             <div class="stat-icon success">
                 <i class="fas fa-wallet"></i>
             </div>
             <div class="stat-content">
                 <p class="eyebrow mb-1">Total Revenue</p>
                 <h3 class="mb-0 fw-800">Rs {{ number_format($totalRevenue, 0) }}</h3>
+                <a href="{{ route('payments.index') }}" class="text-link position-relative z-3">View Payments</a>
             </div>
+            <a href="{{ route('payments.index') }}" class="dashboard-card-hit" aria-label="Open Payments"></a>
         </div>
-        <div class="soft-card p-4">
+        <div class="soft-card p-4 position-relative">
             <div class="stat-icon brand">
                 <i class="fas fa-file-invoice-dollar"></i>
             </div>
             <div class="stat-content">
                 <p class="eyebrow mb-1">Total Invoices</p>
                 <h3 class="mb-0 fw-800">{{ $totalInvoices }}</h3>
+                <a href="{{ route('invoices.index') }}" class="text-link position-relative z-3">View Invoices</a>
             </div>
+            <a href="{{ route('invoices.index') }}" class="dashboard-card-hit" aria-label="Open Invoices"></a>
         </div>
     </div>
 
@@ -182,4 +192,13 @@
         </div>
     </div>
 </div>
+
+<style>
+    .dashboard-card-hit {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        border-radius: inherit;
+    }
+</style>
 @endsection

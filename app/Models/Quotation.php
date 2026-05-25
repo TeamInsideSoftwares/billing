@@ -16,7 +16,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'quotation_number',
     'quo_title',
     'status',
-    'payment_status',
     'issue_date',
     'due_date',
     'notes',

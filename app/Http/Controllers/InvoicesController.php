@@ -2257,6 +2257,7 @@ class InvoicesController extends Controller
             'invoice' => $invoice,
             'account' => $account,
             'accountBillingDetail' => $accountBillingDetail,
+            'pdfVersions' => $this->listStoredInvoicePdfVersions($invoice),
         ]);
     }
 
@@ -2905,6 +2906,11 @@ class InvoicesController extends Controller
                 $firstTemplateByContext[$type][$channel] = end($templateCatalog[$type][$channel]);
             }
         }
+        foreach (['pi', 'ti'] as $typeKey) {
+            if (empty($availableChannelsByType[$typeKey])) {
+                $availableChannelsByType[$typeKey] = ['email'];
+            }
+        }
 
         $fallbackTemplatesByType = [
             'pi' => [
@@ -3181,6 +3187,8 @@ class InvoicesController extends Controller
         $action = $validated['action'] ?? 'save';
         $isSendAction = $action === 'send';
         $finalCustomAttachmentPath = $customAttachmentPath ?? $emailDraft->custom_attachment_path;
+        $storeAttachmentPath = ($channel === 'email' && !empty($attachmentPaths)) ? implode(',', $attachmentPaths) : null;
+        $storeCustomAttachmentPath = $channel === 'email' ? $finalCustomAttachmentPath : null;
         $sentAt = now();
         $documentLabel = $selectedType === 'ti' ? 'Tax Invoice (TI)' : 'Proforma Invoice (PI)';
         $successTitle = $selectedType === 'ti'
@@ -3201,8 +3209,8 @@ class InvoicesController extends Controller
             'subject' => ($channel === 'email') ? ($validated['subject'] ?? null) : null,
             'body' => $finalBody,
             'attachment_type' => implode(',', $selectedTypes),
-            'attachment_path' => !empty($attachmentPaths) ? implode(',', $attachmentPaths) : null,
-            'custom_attachment_path' => $finalCustomAttachmentPath,
+            'attachment_path' => $storeAttachmentPath,
+            'custom_attachment_path' => $storeCustomAttachmentPath,
             'phone_number' => $phone,
             'channel' => $channel,
         ];
@@ -3244,27 +3252,6 @@ class InvoicesController extends Controller
                 ])->withInput();
             }
 
-            // Build document links so WhatsApp message includes invoice PDFs like email attachments.
-            $documentLinks = [];
-            if (in_array('pi', $selectedTypes, true)) {
-                $documentLinks[] = [
-                    'label' => 'Proforma Invoice (PDF)',
-                    'url' => $this->resolveCampioInvoicePdfUrl($invoice, false),
-                ];
-            }
-            if (in_array('ti', $selectedTypes, true)) {
-                $documentLinks[] = [
-                    'label' => 'Tax Invoice (PDF)',
-                    'url' => $this->resolveCampioInvoicePdfUrl($invoice, true),
-                ];
-            }
-            if (!empty($finalCustomAttachmentPath)) {
-                $documentLinks[] = [
-                    'label' => 'Attachment',
-                    'url' => $finalCustomAttachmentPath,
-                ];
-            }
-
             $canUseWhatsappDocumentHeader = true;
             if ($channel === 'whatsapp' && $channelTemplateConfig) {
                 $headerTypeMap = $this->fetchCampioTemplateHeaderTypes($currentAccountId, 'whatsapp');
@@ -3274,6 +3261,30 @@ class InvoicesController extends Controller
                     ?? ($channelTemplateConfig->header_type ?? '')
                 )));
                 $canUseWhatsappDocumentHeader = $resolvedHeaderType === 'document';
+            }
+            $templateBodySource = (string) ($channelTemplateConfig?->body ?? ($validated['body'] ?? ''));
+            $templateWantsDocLinks = preg_match('/\{\{\s*(pi_link|ti_link)\s*\}\}/i', $templateBodySource) === 1;
+            $allowDocumentPayloadForChannel = ($channel === 'whatsapp' && $canUseWhatsappDocumentHeader) || $templateWantsDocLinks;
+            $documentLinks = [];
+            if ($allowDocumentPayloadForChannel) {
+                if (in_array('pi', $selectedTypes, true)) {
+                    $documentLinks[] = [
+                        'label' => 'Proforma Invoice (PDF)',
+                        'url' => $this->resolveCampioInvoicePdfUrl($invoice, false),
+                    ];
+                }
+                if (in_array('ti', $selectedTypes, true)) {
+                    $documentLinks[] = [
+                        'label' => 'Tax Invoice (PDF)',
+                        'url' => $this->resolveCampioInvoicePdfUrl($invoice, true),
+                    ];
+                }
+                if (!empty($finalCustomAttachmentPath)) {
+                    $documentLinks[] = [
+                        'label' => 'Attachment',
+                        'url' => $finalCustomAttachmentPath,
+                    ];
+                }
             }
 
             // Clean HTML for messaging while preserving readable line breaks.

@@ -135,6 +135,7 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/quotations/{quotation}/terms', 'applyTerms')->name('quotations.apply-terms');
         Route::post('/quotations', 'quotationsStore')->name('quotations.store');
         Route::get('/quotations/{quotation}/pdf', 'quotationPdf')->name('quotations.pdf');
+        Route::get('/quotations/{quotation}/pdf-versions', 'quotationPdfVersions')->name('quotations.pdf-versions');
         Route::get('/quotations/{quotation}/email-compose', 'quotationEmailCompose')->name('quotations.email-compose');
         Route::post('/quotations/{quotation}/email-compose', 'quotationEmailComposeStore')->name('quotations.email-compose.store');
         Route::get('/quotations/{quotation}', 'quotationsShow')->name('quotations.show');

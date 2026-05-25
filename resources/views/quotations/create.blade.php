@@ -671,12 +671,29 @@
 
         btnAddTC?.addEventListener('click', function () {
             addTermError?.classList.add('d-none');
-            if (newTermContent) newTermContent.value = '';
+            if (window.tinymce && tinymce.get('newTermContent')) {
+                tinymce.get('newTermContent').setContent('');
+            } else if (newTermContent) {
+                newTermContent.value = '';
+            }
             addTermModal?.show();
         });
 
+        if (window.tinymce && newTermContent && !tinymce.get('newTermContent')) {
+            tinymce.init({
+                license_key: 'gpl',
+                selector: '#newTermContent',
+                menubar: false,
+                height: 220,
+                plugins: 'lists link table code autoresize',
+                toolbar: 'undo redo | blocks | bold italic underline | bullist numlist | link | removeformat code',
+            });
+        }
+
         saveTermBtn?.addEventListener('click', function () {
-            const content = (newTermContent?.value || '').trim();
+            const content = window.tinymce && tinymce.get('newTermContent')
+                ? String(tinymce.get('newTermContent').getContent() || '').trim()
+                : String(newTermContent?.value || '').trim();
             if (!content) {
                 addTermError.textContent = 'Please enter term content.';
                 addTermError.classList.remove('d-none');
@@ -716,7 +733,7 @@
                 text.style.wordBreak = 'break-word';
                 text.style.overflowWrap = 'anywhere';
                 text.style.whiteSpace = 'normal';
-                text.textContent = String(data.term.content || '');
+                text.innerHTML = String(data.term.content || '');
                 label.appendChild(checkbox);
                 label.appendChild(text);
                 termsList.prepend(label);

@@ -49,7 +49,7 @@
         $isOverdue = $balanceDueAmount > 0 && $invoice->due_date?->isPast();
     @endphp
 @section('header_actions')
-    <a href="{{ route('invoices.index', request('c') ? ['c' => request('c')] : []) }}" class="secondary-button">
+    <a href="{{ route('invoices.index', request('c') ? ['c' => request('c')] : []) }}" class="secondary-button small">
         Back to Invoices
     </a>
     @if (($invoice->status ?? '') === 'cancelled')
@@ -57,11 +57,12 @@
             onsubmit="return confirm('Restore this invoice?')">
             @csrf
             @method('PATCH')
-            <button type="submit" class="secondary-button">
+            <button type="submit" class="secondary-button small">
                 Restore Invoice
             </button>
         </form>
     @else
+        <a href="{{ route('invoices.email-compose', $invoice->invoiceid) }}" class="primary-button small">Compose Email</a>
         @if (!empty(trim($invoice->ti_number ?? '')))
             <a href="{{ route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice']) }}" class="secondary-button small" target="_blank">View Tax PDF</a>
             <a href="{{ route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']) }}" class="secondary-button small ms-2" target="_blank">View PI Tax</a>
@@ -94,7 +95,7 @@
             onsubmit="return confirm('Cancel this invoice?')">
             @csrf
             @method('DELETE')
-            <button type="submit" class="secondary-button">
+            <button type="submit" class="secondary-button small">
                 Cancel Invoice
             </button>
         </form>
@@ -351,6 +352,9 @@
                         <div class="info-label text-muted font-medium">Invoice No.</div>
                         <div class="info-value text-dark fw-bold">{{ $displayNumber }}</div>
 
+                        <div class="info-label text-muted font-medium">Invoice Title</div>
+                        <div class="info-value text-dark fw-semibold">{{ $invoice->invoice_title ?: '-' }}</div>
+
                         <div class="info-label text-muted font-medium">Doc Type</div>
                         <div class="info-value text-secondary"><span
                                 class="badge bg-blue-subtle text-primary border border-primary-subtle px-2 py-1 doc-type-badge">{{ $documentType }}</span>
@@ -414,6 +418,38 @@
                             {{ number_format($totalPaidAmount, 0) }}</div>
                     </div>
                 </div>
+            </section>
+
+            <section class="panel-card mb-4 border-0">
+                <div class="section-header pb-3 mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="section-icon bg-light text-primary"><i class="fas fa-code-branch"></i></div>
+                        <h4 class="section-title mb-0 fw-bold">PDF Revisions</h4>
+                    </div>
+                </div>
+
+                <details class="border rounded p-2">
+                    <summary class="d-flex justify-content-between align-items-center cursor-pointer">
+                        <span class="fw-semibold small">Show All Revisions</span>
+                        <span class="badge bg-light text-dark border">{{ count($pdfVersions ?? []) }}</span>
+                    </summary>
+                    <div class="d-flex flex-column gap-2 mt-2">
+                        @forelse (($pdfVersions ?? []) as $revision)
+                            <div class="d-flex justify-content-between align-items-center border rounded px-2 py-2">
+                                <div class="small">
+                                    <div class="fw-semibold">
+                                        {{ strtoupper((string) ($revision['type'] ?? 'pi')) === 'TI' ? ('Tax Invoice - ' . ($invoice->ti_number ?: $invoice->invoice_number)) : ('Proforma Invoice - ' . ($invoice->pi_number ?: $invoice->invoice_number)) }}
+                                        (v{{ (int) ($revision['version'] ?? 0) }})
+                                    </div>
+                                    <div class="text-muted">{{ !empty($revision['saved_at']) ? \Carbon\Carbon::parse($revision['saved_at'])->format('d M Y, h:i A') : '-' }}</div>
+                                </div>
+                                <a href="{{ $revision['url'] ?? '#' }}" target="_blank" class="secondary-button small">View</a>
+                            </div>
+                        @empty
+                            <div class="small text-muted">No saved PDF revisions yet.</div>
+                        @endforelse
+                    </div>
+                </details>
             </section>
 
             <!-- Client Card -->

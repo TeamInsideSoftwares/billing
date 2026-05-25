@@ -640,6 +640,9 @@
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{ti_number}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{pi_link}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{ti_link}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{quotation_title}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{quotation_number}}</span>
+                                        <span class="badge bg-light text-muted border px-2 py-1">@{{quotation_link}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{total_amount}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{due_date}}</span>
                                         <span class="badge bg-light text-muted border px-2 py-1">@{{item_name}}</span>

@@ -111,28 +111,32 @@ class DashboardController extends Controller
                 'value' => Client::where('accountid', $accountid)->count(),
                 'change' => '',
                 'icon' => 'fa-users',
-                'tone' => 'brand'
+                'tone' => 'brand',
+                'url' => route('clients.index'),
             ],
             [
                 'label' => 'Renewals Due (30 days)',
                 'value' => $renewalsDue30Days->count(),
                 'change' => '',
                 'icon' => 'fa-clock',
-                'tone' => 'accent'
+                'tone' => 'accent',
+                'url' => route('invoices.expiry-list', ['tab' => 'upcoming']),
             ],
             [
                 'label' => 'Expired Renewal Items',
                 'value' => $expiredRenewals->count(),
                 'change' => '',
                 'icon' => 'fa-exclamation-circle',
-                'tone' => 'danger'
+                'tone' => 'danger',
+                'url' => route('invoices.expiry-list', ['tab' => 'expired']),
             ],
             [
                 'label' => 'Renewals Due This Week',
                 'value' => $renewalsDueThisWeek->count(),
                 'change' => '',
                 'icon' => 'fa-bolt',
-                'tone' => 'brand'
+                'tone' => 'brand',
+                'url' => route('invoices.expiry-list', ['tab' => 'upcoming']),
             ],
         ];
 

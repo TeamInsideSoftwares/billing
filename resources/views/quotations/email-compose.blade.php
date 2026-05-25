@@ -40,8 +40,8 @@
 
         <div class="d-flex justify-content-between align-items-center mb-2">
             <h4 class="mb-0">Message Compose</h4>
-            <span class="text-muted small">Select channel before sending</span>
         </div>
+        <div class="text-muted small mb-3">Select channel before sending</div>
 
         <div class="border rounded overflow-hidden mb-4" style="background:#fff;">
             <div class="bg-light border-bottom px-3 py-2 small fw-semibold">Channel</div>
@@ -72,9 +72,11 @@
             </div>
         @endif
 
-        <form method="POST" id="composeForm" action="{{ route('quotations.email-compose.store', $quotation->quotationid) }}">
+        <form method="POST" id="composeForm" action="{{ route('quotations.email-compose.store', $quotation->quotationid) }}" enctype="multipart/form-data">
             @csrf
-            <input type="hidden" name="channel" id="selectedChannel" value="{{ old('channel', $composeEmail->channel ?? 'email') }}">
+            <input type="hidden" name="channel" id="selectedChannel" value="{{ old('channel', $prefillChannel ?? $composeEmail->channel ?? 'email') }}">
+            <input type="hidden" name="selected_templateid" id="selectedTemplateId" value="{{ old('selected_templateid', $prefillTemplateId ?? '') }}">
+            <input type="hidden" name="existing_custom_attachment_path" id="existingCustomAttachmentPath" value="{{ old('existing_custom_attachment_path', $customAttachmentUrl ?? '') }}">
 
             <div class="row g-3 align-items-start">
                 <div class="col-12 col-xl-7">
@@ -123,6 +125,13 @@
                                     {{ $isAlreadySent ? 'readonly' : '' }}>{{ old('body', $body) }}</textarea>
                                 <div id="attachmentBodyHint" class="text-secondary small mt-1"></div>
                             </div>
+                            <div class="mb-3 email-fields">
+                                <label class="field-label">Extra Attachment (optional)</label>
+                                <input type="file" name="custom_attachment" id="customAttachmentInput"
+                                    class="input-full" {{ $isAlreadySent ? 'disabled' : '' }}>
+                                <div id="currentCustomAttachment" class="mt-2"></div>
+                                <div id="extraAttachmentPreview" class="mt-2"></div>
+                            </div>
 
                             <div class="d-flex justify-content-end flex-wrap gap-2 mt-4 pt-3 border-top">
                                 <div class="email-actions" style="{{ $isAlreadySent ? 'display:none;' : '' }}">
@@ -155,6 +164,10 @@
                                 <div id="previewAttachments" class="small text-break"></div>
                             </div>
                         </div>
+                    </div>
+                    <div class="d-flex justify-content-end align-items-center gap-2 mt-3">
+                        <a href="{{ route('quotations.index') }}" class="secondary-button">View More Quotations</a>
+                        <a href="{{ route('quotations.create') }}" class="primary-button">Create Quotation</a>
                     </div>
                 </div>
             </div>
@@ -268,6 +281,16 @@
             const attachmentBodyHint = document.getElementById('attachmentBodyHint');
             const quotationPdfUrl = @json(route('quotations.pdf', $quotation->quotationid));
             const isAlreadySent = @json($isAlreadySent);
+            const templateCatalog = @json($templateCatalog ?? []);
+            const availableChannels = @json($availableChannels ?? ['email']);
+            const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
+            const emailSubjectInput = document.getElementById('emailSubjectInput');
+            const customAttachmentInput = document.getElementById('customAttachmentInput');
+            const currentCustomAttachment = document.getElementById('currentCustomAttachment');
+            const savedCustomAttachmentUrl = @json($customAttachmentUrl ?? null);
+            const savedCustomAttachmentName = @json($customAttachmentName ?? null);
+            const extraAttachmentPreview = document.getElementById('extraAttachmentPreview');
+            let customAttachmentPreviewUrl = savedCustomAttachmentUrl || null;
 
             function getPlainTextFromHtml(html) {
                 if (!html) return '';
@@ -308,23 +331,94 @@
 
             function refreshAttachmentPreview() {
                 if (!previewAttachments) return;
-                if ((selectedChannelInput.value || 'email') === 'sms') {
-                    previewAttachments.innerHTML = '<span class="text-muted">No attachments for SMS.</span>';
+                const channel = selectedChannelInput.value || 'email';
+                if (channel !== 'email') {
+                    previewAttachments.innerHTML = '<span class="text-muted">No attachments selected.</span>';
                     return;
                 }
-                previewAttachments.innerHTML = `<div><a href="${quotationPdfUrl}" target="_blank" rel="noopener noreferrer">Quotation PDF</a></div>`;
+                const rows = [
+                    `<div><a href="${quotationPdfUrl}" target="_blank" rel="noopener noreferrer">Quotation PDF</a></div>`
+                ];
+                const selectedCustomFile = customAttachmentInput?.files?.[0] || null;
+                const customFileName = selectedCustomFile?.name || savedCustomAttachmentName;
+                const customFileUrl = selectedCustomFile ? customAttachmentPreviewUrl : savedCustomAttachmentUrl;
+                if (customFileName && customFileUrl) {
+                    rows.push(`<div><a href="${customFileUrl}" target="_blank" rel="noopener noreferrer">${String(customFileName).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</a></div>`);
+                }
+                previewAttachments.innerHTML = rows.join('');
             }
 
             function refreshHints() {
                 if (!attachmentBodyHint) return;
-                if ((selectedChannelInput.value || 'email') === 'sms') {
-                    attachmentBodyHint.textContent = 'No attachment for SMS.';
+                const channel = selectedChannelInput.value || 'email';
+                if (channel !== 'email') {
+                    attachmentBodyHint.textContent = 'No attachments selected.';
                     return;
                 }
-                attachmentBodyHint.textContent = 'Attached: Quotation PDF';
+                const selectedCustomFile = customAttachmentInput?.files?.[0] || null;
+                const hasCustom = !!(selectedCustomFile || savedCustomAttachmentUrl);
+                attachmentBodyHint.textContent = hasCustom ? 'Attached: Quotation PDF, Extra attachment' : 'Attached: Quotation PDF';
+            }
+
+            function renderCurrentCustomAttachment() {
+                if (!currentCustomAttachment) return;
+                const selectedCustomFile = customAttachmentInput?.files?.[0] || null;
+                const fileName = selectedCustomFile?.name || savedCustomAttachmentName;
+                const fileUrl = selectedCustomFile ? customAttachmentPreviewUrl : savedCustomAttachmentUrl;
+                if (!fileName || !fileUrl) {
+                    currentCustomAttachment.innerHTML = '<span class="small text-muted">No extra attachment selected.</span>';
+                    return;
+                }
+                currentCustomAttachment.innerHTML =
+                    '<div class="small text-muted mb-1">Current attachment:</div>' +
+                    '<a href="' + fileUrl + '" target="_blank" class="small">' + String(fileName).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</a>';
+            }
+
+            function renderExtraAttachmentPreview() {
+                if (!extraAttachmentPreview) return;
+                const selectedCustomFile = customAttachmentInput?.files?.[0] || null;
+                const fileName = selectedCustomFile?.name || savedCustomAttachmentName || '';
+                const fileUrl = selectedCustomFile ? customAttachmentPreviewUrl : savedCustomAttachmentUrl;
+                if (!fileName || !fileUrl) {
+                    extraAttachmentPreview.innerHTML = '';
+                    return;
+                }
+                const safeName = String(fileName).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const mimeType = (selectedCustomFile?.type || '').toLowerCase();
+                const ext = (fileName.split('.').pop() || '').toLowerCase();
+                const isImage = mimeType.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext);
+                const isPdf = mimeType === 'application/pdf' || ext === 'pdf';
+                const isText = mimeType.startsWith('text/') || ['txt', 'csv', 'log', 'md'].includes(ext);
+
+                if (isImage) {
+                    extraAttachmentPreview.innerHTML =
+                        '<div class="small text-muted mb-1">Preview:</div>' +
+                        '<img src="' + fileUrl + '" alt="' + safeName + '" class="img-fluid border rounded" style="max-height:120px;">';
+                    return;
+                }
+
+                if (isPdf) {
+                    extraAttachmentPreview.innerHTML =
+                        '<div class="small text-muted mb-1">Preview:</div>' +
+                        '<iframe src="' + fileUrl + '" title="' + safeName + '" class="w-100 border rounded" style="height:180px;"></iframe>';
+                    return;
+                }
+
+                if (isText) {
+                    extraAttachmentPreview.innerHTML =
+                        '<div class="small text-muted mb-1">Preview:</div>' +
+                        '<iframe src="' + fileUrl + '" title="' + safeName + '" class="w-100 border rounded bg-light" style="height:140px;"></iframe>';
+                    return;
+                }
+
+                extraAttachmentPreview.innerHTML =
+                    '<div class="small text-muted">Preview unavailable for this file type. ' +
+                    '<a href="' + fileUrl + '" target="_blank" rel="noopener noreferrer">Open attachment</a></div>';
             }
 
             function setChannel(channel) {
+                const normalized = availableChannels.includes(channel) ? channel : (availableChannels[0] || 'email');
+                channel = normalized;
                 selectedChannelInput.value = channel;
                 channelBtns.forEach((btn) => btn.classList.toggle('is-active', btn.dataset.channel === channel));
                 const isEmail = channel === 'email';
@@ -340,8 +434,54 @@
             }
 
             channelBtns.forEach((btn) => {
-                btn.addEventListener('click', () => setChannel(btn.dataset.channel || 'email'));
+                btn.addEventListener('click', () => {
+                    const channel = btn.dataset.channel || 'email';
+                    setChannel(channel);
+                    applyTemplateForChannel(channel);
+                });
             });
+
+            function applyTemplateForChannel(channel) {
+                const templates = templateCatalog[channel] || [];
+                const selectedTemplate = templates[0] || null;
+                if (!selectedTemplate) return;
+                if (selectedTemplateIdInput) {
+                    selectedTemplateIdInput.value = selectedTemplate.templateid || '';
+                }
+                if (channel === 'email' && emailSubjectInput && !isAlreadySent) {
+                    emailSubjectInput.value = selectedTemplate.subject || emailSubjectInput.value || '';
+                }
+                if (!isAlreadySent) {
+                    if (window.tinymce && tinymce.get('emailBodyInput')) {
+                        tinymce.get('emailBodyInput').setContent(toEditorHtml(selectedTemplate.body || ''));
+                        tinymce.get('emailBodyInput').save();
+                    } else if (emailBodyInput) {
+                        emailBodyInput.value = selectedTemplate.body || '';
+                    }
+                    refreshPreview();
+                }
+            }
+
+            function refillFromTemplateWhenBodyEmpty() {
+                if (isAlreadySent) return;
+                const plain = (getPlainTextFromHtml(getActiveMessageBody()) || '').trim();
+                if (plain !== '') return;
+                const channel = selectedChannelInput.value || 'email';
+                const templates = templateCatalog[channel] || [];
+                if (!Array.isArray(templates) || templates.length === 0) return;
+                applyTemplateForChannel(channel);
+            }
+
+            function syncVisibleChannelTabs() {
+                const allowed = Array.isArray(availableChannels) && availableChannels.length ? availableChannels : ['email'];
+                channelBtns.forEach((btn) => {
+                    const show = allowed.includes(btn.dataset.channel || '');
+                    btn.style.display = show ? '' : 'none';
+                });
+                if (!allowed.includes(selectedChannelInput.value || '')) {
+                    selectedChannelInput.value = allowed[0] || 'email';
+                }
+            }
 
             function refreshPreview() {
                 if (previewRawBody) {
@@ -369,6 +509,7 @@
                         editor.on('input change keyup setcontent undo redo', function() {
                             editor.save();
                             refreshPreview();
+                            refillFromTemplateWhenBodyEmpty();
                         });
                     }
                 });
@@ -390,7 +531,26 @@
                 }
             }
 
-            emailBodyInput?.addEventListener('input', refreshPreview);
+            emailBodyInput?.addEventListener('input', function() {
+                refreshPreview();
+                refillFromTemplateWhenBodyEmpty();
+            });
+            customAttachmentInput?.addEventListener('change', function() {
+                if (customAttachmentPreviewUrl && customAttachmentPreviewUrl !== savedCustomAttachmentUrl) {
+                    URL.revokeObjectURL(customAttachmentPreviewUrl);
+                    customAttachmentPreviewUrl = null;
+                }
+                const selected = customAttachmentInput.files?.[0] || null;
+                if (selected) {
+                    customAttachmentPreviewUrl = URL.createObjectURL(selected);
+                } else {
+                    customAttachmentPreviewUrl = savedCustomAttachmentUrl;
+                }
+                refreshHints();
+                renderCurrentCustomAttachment();
+                renderExtraAttachmentPreview();
+                refreshAttachmentPreview();
+            });
 
             document.getElementById('composeForm')?.addEventListener('submit', function() {
                 if (window.tinymce) {
@@ -399,8 +559,11 @@
                 }
             }, true);
 
+            syncVisibleChannelTabs();
             setChannel(selectedChannelInput.value || 'email');
             syncBodyEditorByChannel(selectedChannelInput.value || 'email');
+            renderCurrentCustomAttachment();
+            renderExtraAttachmentPreview();
             refreshPreview();
         })();
     </script>

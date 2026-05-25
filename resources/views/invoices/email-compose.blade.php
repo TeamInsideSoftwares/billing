@@ -145,7 +145,7 @@
                                     <div class="col-12 col-md-6">
                                         <label class="field-label">Phone Number</label>
                                         <input type="text" name="phone"
-                                            value="{{ old('phone', $prefillPhone ?? '') }}" class="input-full" readonly>
+                                            value="{{ old('phone', $prefillPhone ?? '') }}" class="input-full" {{ $isAlreadySent ? 'readonly' : '' }}>
                                     </div>
                                     <div class="col-12 col-md-6"></div>
                                 </div>
@@ -670,7 +670,10 @@
 
             function getAvailableChannelsForType(type) {
                 const channels = availableChannelsByType[type] || [];
-                return Array.isArray(channels) ? channels : [];
+                if (!Array.isArray(channels) || channels.length === 0) {
+                    return ['email'];
+                }
+                return channels;
             }
 
             function getTemplatesForSelection(type, channel) {
@@ -918,8 +921,20 @@
                 refreshEmailPreview();
             });
 
+            function refillFromTemplateWhenBodyEmpty() {
+                if (isAlreadySent) return;
+                const plain = (getPlainTextFromHtml(getActiveMessageBody()) || '').trim();
+                if (plain !== '') return;
+                const options = getTemplatesForSelection(currentType, currentChannel);
+                if (!Array.isArray(options) || options.length === 0) return;
+                applyTemplate(false);
+            }
+
             emailSubjectInput?.addEventListener('input', refreshEmailPreview);
-            emailBodyInput?.addEventListener('input', refreshEmailPreview);
+            emailBodyInput?.addEventListener('input', function() {
+                refreshEmailPreview();
+                refillFromTemplateWhenBodyEmpty();
+            });
 
             function getActiveMessageBody() {
                 if (window.tinymce && tinymce.get('emailBodyInput')) {
@@ -960,6 +975,7 @@
                             function() {
                                 editor.save();
                                 refreshEmailPreview();
+                                refillFromTemplateWhenBodyEmpty();
                             });
                     }
                 });

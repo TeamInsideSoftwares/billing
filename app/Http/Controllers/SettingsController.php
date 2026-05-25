@@ -27,6 +27,7 @@ class SettingsController extends Controller
         return [
             'pi' => 'Proforma Invoice (PI)',
             'ti' => 'Tax Invoice (TI/DSI)',
+            'quotation' => 'Quotation',
             'renewal' => 'Renewal',
             'expiry' => 'Expiry',
             'reminder' => 'Reminder',

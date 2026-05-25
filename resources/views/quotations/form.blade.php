@@ -38,7 +38,7 @@
             <div>
                 <label for="status">Status</label>
                 <select id="status" name="status">
-                    @foreach(['draft', 'sent', 'accepted', 'declined', 'expired'] as $status)
+                    @foreach(['draft', 'active', 'cancelled'] as $status)
                         <option value="{{ $status }}" {{ old('status', $quotation->status) == $status ? 'selected' : '' }}>{{ ucfirst($status) }}</option>
                     @endforeach
                 </select>

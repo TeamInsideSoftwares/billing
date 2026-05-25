@@ -71,10 +71,10 @@
                                     <a href="{{ route('quotations.show', ['quotation' => $quotation['record_id'], 'c' => $selectedClientId]) }}" class="text-action-btn view">View</a>
                                     <a href="{{ route('quotations.create', ['step' => 2, 'c' => $quotation['client_id'] ?? $selectedClientId, 'd' => $quotation['record_id']]) }}" class="text-action-btn edit">Edit</a>
                                     <a href="{{ route('quotations.pdf', $quotation['record_id']) }}" class="text-action-btn pdf" target="_blank">PDF</a>
-                                    <form method="POST" class="inline-delete" action="{{ route('quotations.destroy', ['quotation' => $quotation['record_id'], 'c' => $selectedClientId]) }}" onsubmit="return confirm('Delete {{ $quotation['number'] }}?')">
+                                    <form method="POST" class="inline-delete" action="{{ route('quotations.destroy', ['quotation' => $quotation['record_id'], 'c' => $selectedClientId]) }}" onsubmit="return confirm('Cancel {{ $quotation['number'] }}?')">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="text-action-btn delete">Delete</button>
+                                        <button type="submit" class="text-action-btn delete">Cancel</button>
                                     </form>
                                 </td>
                             </tr>
