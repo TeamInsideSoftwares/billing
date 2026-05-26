@@ -24,7 +24,7 @@ return new class extends Migration
                 $table->string('proformaid', 6)->primary();
                 $table->string('accountid', 10);
                 $table->string('fy_id', 20)->nullable();
-                $table->string('clientid', 6);
+                $table->string('clientid', 10);
                 $table->string('orderid', 6)->nullable();
                 $table->string('invoice_number', 30)->unique();
                 $table->string('invoice_title', 255)->nullable();
@@ -56,7 +56,7 @@ return new class extends Migration
                 $table->string('invoiceid', 6)->primary(); // Alphanumeric primary key
                 $table->string('accountid', 10);
                 $table->string('fy_id', 20)->nullable();
-                $table->string('clientid', 6);
+                $table->string('clientid', 10);
                 $table->string('orderid', 6)->nullable();
                 $table->string('proformaid', 6)->nullable();
                 $table->string('invoice_number', 30)->unique();

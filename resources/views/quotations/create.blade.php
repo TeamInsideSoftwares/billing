@@ -12,7 +12,7 @@
     $step = max(1, min(4, $step));
     $clientId = old('clientid', $selectedClientId ?? request('c', ''));
     $selectedClientName = $selectedClient ? ($selectedClient->business_name ?? $selectedClient->contact_name ?? 'Client') : 'No Client Selected';
-    $selectedClientEmail = $selectedClient->email ?? '';
+    $selectedClientEmail = $selectedClient->primary_email ?? $selectedClient->email ?? '';
 @endphp
 
 <section class="panel-card">

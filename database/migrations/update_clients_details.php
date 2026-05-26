@@ -80,7 +80,7 @@ return new class extends Migration
 
             if (! Schema::hasColumn('client_billing_details', 'clientid')) {
                 Schema::table('client_billing_details', function (Blueprint $table) {
-                    $table->string('clientid', 6)->after('bd_id');
+                    $table->string('clientid', 10)->after('bd_id');
                 });
             }
 

@@ -5,7 +5,7 @@
     $selectedClientName = $selectedClient
         ? $selectedClient->business_name ?? ($selectedClient->contact_name ?? 'Unknown Client')
         : 'No Client Selected';
-    $selectedClientEmail = $selectedClient->email ?? '';
+    $selectedClientEmail = $selectedClient->primary_email ?? $selectedClient->email ?? '';
     $isTaxInvoiceStep2 = request('tax_invoice', 0) == 1 || !empty($invoice?->ti_number);
     $initialHeaderNumberStep2 = $isTaxInvoiceStep2
         ? ($invoice?->ti_number ?:

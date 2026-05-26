@@ -12,7 +12,7 @@ return new class extends Migration {
             $table->string('accountid', 12);
             $table->string('invoiceid', 12)->nullable()->index();
             $table->string('quotationid', 12)->nullable()->index();
-            $table->string('clientid', 12)->nullable()->index();
+            $table->string('clientid', 10)->nullable()->index();
             $table->string('from_email', 255)->nullable();
             $table->string('to_email', 500)->nullable();
             $table->string('cc_email', 500)->nullable();

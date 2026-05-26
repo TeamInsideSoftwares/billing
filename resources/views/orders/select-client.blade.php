@@ -27,9 +27,9 @@
                         <strong class="client-card__title">
                             {{ $client->business_name ?? $client->contact_name }}
                         </strong>
-                        @if($client->email)
+                        @if($client->primary_email ?? $client->email)
                             <span class="client-card__meta is-ellipsis">
-                                {{ $client->email }}
+                                {{ $client->primary_email ?? $client->email }}
                             </span>
                         @endif
                         @if($client->phone)

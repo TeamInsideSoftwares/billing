@@ -482,11 +482,11 @@
                     </div>
 
                     <div class="info-grid-2col pt-2 border-top gap-md">
-                        @if ($invoice->client->email)
+                        @if ($invoice->client->primary_email ?? $invoice->client->email)
                             <div class="info-label text-muted font-medium">Email</div>
-                            <div class="info-value text-truncate" title="{{ $invoice->client->email }}">
-                                <a href="mailto:{{ $invoice->client->email }}"
-                                    class="text-decoration-none text-primary">{{ $invoice->client->email }}</a>
+                            <div class="info-value text-truncate" title="{{ $invoice->client->primary_email ?? $invoice->client->email }}">
+                                <a href="mailto:{{ $invoice->client->primary_email ?? $invoice->client->email }}"
+                                    class="text-decoration-none text-primary">{{ $invoice->client->primary_email ?? $invoice->client->email }}</a>
                             </div>
                         @endif
 

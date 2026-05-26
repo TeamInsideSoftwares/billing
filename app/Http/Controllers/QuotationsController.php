@@ -625,7 +625,7 @@ class QuotationsController extends Controller
             'quotation' => $quotation,
             'composeEmail' => $draft,
             'fromEmail' => $user?->email ?? '',
-            'toEmail' => old('to_email', $draft?->to_email ?? $quotation->client?->billing_email ?? $quotation->client?->email ?? ''),
+            'toEmail' => old('to_email', $draft?->to_email ?? $quotation->client?->billing_email ?? $quotation->client?->primary_email ?? $quotation->client?->email ?? ''),
             'ccEmail' => old('cc_email', $draft?->cc_email ?? ''),
             'phone' => old('phone_number', trim((string) (
                 $draft?->phone_number

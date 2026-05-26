@@ -12,7 +12,7 @@ return new class extends Migration
             $table->string('quotation_emailid', 6)->primary();
             $table->string('accountid', 10);
             $table->string('quotationid', 6);
-            $table->string('clientid', 6)->nullable();
+            $table->string('clientid', 10)->nullable();
             $table->string('from_email', 255)->nullable();
             $table->string('to_email', 255);
             $table->string('cc_email', 255)->nullable();

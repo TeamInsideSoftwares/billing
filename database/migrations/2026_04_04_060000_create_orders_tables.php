@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table) {
             $table->string('orderid', 6)->primary();
             $table->string('accountid', 10);
-            $table->string('clientid', 6);
+            $table->string('clientid', 10);
             $table->string('order_number', 30)->unique();
             $table->string('status', 20)->default('draft');
             $table->date('order_date');

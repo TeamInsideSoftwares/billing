@@ -3,7 +3,7 @@
 @section('content')
     @php
         $clientName = $quotation->client->business_name ?? ($quotation->client->contact_name ?? 'Client');
-        $clientEmail = $quotation->client->email ?? '';
+        $clientEmail = $quotation->client->primary_email ?? $quotation->client->email ?? '';
         $isAlreadySent = (string) ($composeEmail->status ?? '') === 'sent';
         $displayDocNumber = trim((string) ($quotation->quo_number ?? $quotation->quotationid));
     @endphp

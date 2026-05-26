@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'logo_path',
     'business_name',
     'contact_name',
+    'primary_email',
     'email',
     'phone',
     'whatsapp_number',

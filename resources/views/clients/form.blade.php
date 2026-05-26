@@ -58,9 +58,14 @@
                 @error('groupid') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="email" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Email *</label>
-                <input type="email" id="email" name="email" multiple value="{{ old('email', $client->email ?? '') }}" required placeholder="name@company.com, accounts@company.com" {{ isset($client) ? 'class="input-full"' : '' }}>
-                <span class="{{ isset($client) ? 'form-hint' : 'text-xs' }}">Use comma to add multiple emails</span>
+                <label for="primary_email" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Primary Email *</label>
+                <input type="email" id="primary_email" name="primary_email" value="{{ old('primary_email', $client->primary_email ?? '') }}" required placeholder="name@company.com" {{ isset($client) ? 'class="input-full"' : '' }}>
+                @error('primary_email') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div>
+                <label for="email" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Secondary Emails</label>
+                <input type="text" id="email" name="email" value="{{ old('email', $client->email ?? '') }}" placeholder="accounts@company.com, finance@company.com" {{ isset($client) ? 'class="input-full"' : '' }}>
+                <span class="{{ isset($client) ? 'form-hint' : 'text-xs' }}">Optional. Use comma to add multiple emails</span>
                 @error('email') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>

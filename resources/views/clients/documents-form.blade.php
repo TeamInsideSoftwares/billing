@@ -20,7 +20,7 @@
             <h4 class="section-title">PO & Agreement Documents</h4>
         </div>
         <div class="text-sm text-muted">
-            {{ $clientName }} | {{ $client->email ?? 'No email' }}
+            {{ $clientName }} | {{ $client->primary_email ?? $client->email ?? 'No email' }}
         </div>
     </section>
 

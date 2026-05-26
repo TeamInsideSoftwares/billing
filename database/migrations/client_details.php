@@ -18,7 +18,7 @@ return new class extends Migration
 
         Schema::create('client_billing_details', function (Blueprint $table) {
             $table->id();
-            $table->string('clientid', 6);
+            $table->string('clientid', 10);
             $table->string('gstin', 20)->nullable();
             $table->string('billing_email', 150)->nullable();
             $table->string('address_line_1', 150)->nullable();

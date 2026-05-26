@@ -9,6 +9,7 @@ use App\Models\ClientDocument;
 use App\Models\Group;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -54,7 +55,7 @@ class ClientsController extends Controller
                 'record_id' => $client->clientid,
                 'name' => $client->business_name ?? $client->contact_name,
                 'contact' => $client->contact_name,
-                'email' => $client->email,
+                'email' => $client->primary_email ?? $client->email,
                 'phone' => $client->phone,
                 'state' => $client->state,
                 'city' => $client->city,
@@ -128,7 +129,8 @@ class ClientsController extends Controller
             'business_name' => 'required|string',
             'groupid' => 'nullable|exists:groups,groupid',
             'contact_name' => 'nullable|string',
-            'email' => 'required|string|max:150',
+            'primary_email' => 'required|email|max:150|unique:clients,primary_email',
+            'email' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
             'whatsapp_number' => 'nullable|string|max:50',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
@@ -151,7 +153,12 @@ class ClientsController extends Controller
             'billing_phone' => 'nullable|string',
         ]);
 
-        $validated['email'] = $this->normalizeClientEmails((string) ($validated['email'] ?? ''));
+        $validated['primary_email'] = strtolower(trim((string) ($validated['primary_email'] ?? '')));
+        $validated['email'] = $this->normalizeClientEmails((string) ($validated['email'] ?? ''), false, 'email');
+        $validated['email'] = $this->removeEmailFromList($validated['email'], $validated['primary_email']);
+        if ($validated['email'] !== null && strlen($validated['email']) > 500) {
+            throw ValidationException::withMessages(['email' => 'Secondary emails exceed 500 characters.']);
+        }
 
         // Normalize billing_email if multiple addresses provided
         if (!empty($validated['billing_email'])) {
@@ -483,7 +490,8 @@ class ClientsController extends Controller
             'business_name' => 'required|string',
             'groupid' => 'nullable|exists:groups,groupid',
             'contact_name' => 'nullable|string',
-            'email' => 'required|string|max:150',
+            'primary_email' => ['required', 'email', 'max:150', Rule::unique('clients', 'primary_email')->ignore($client->clientid, 'clientid')],
+            'email' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
             'whatsapp_number' => 'nullable|string|max:50',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
@@ -506,7 +514,12 @@ class ClientsController extends Controller
             'billing_phone' => 'nullable|string',
         ]);
 
-        $validated['email'] = $this->normalizeClientEmails((string) ($validated['email'] ?? ''));
+        $validated['primary_email'] = strtolower(trim((string) ($validated['primary_email'] ?? '')));
+        $validated['email'] = $this->normalizeClientEmails((string) ($validated['email'] ?? ''), false, 'email');
+        $validated['email'] = $this->removeEmailFromList($validated['email'], $validated['primary_email']);
+        if ($validated['email'] !== null && strlen($validated['email']) > 500) {
+            throw ValidationException::withMessages(['email' => 'Secondary emails exceed 500 characters.']);
+        }
 
         // Normalize billing_email if multiple addresses provided
         if (!empty($validated['billing_email'])) {
@@ -613,7 +626,7 @@ class ClientsController extends Controller
         return redirect()->route('clients.index')->with('success', 'Client deleted successfully.');
     }
 
-    private function normalizeClientEmails(string $rawEmails): string
+    private function normalizeClientEmails(string $rawEmails, bool $required = true, string $field = 'email'): ?string
     {
         $emails = collect(explode(',', $rawEmails))
             ->map(fn ($email) => trim($email))
@@ -622,19 +635,41 @@ class ClientsController extends Controller
             ->values();
 
         if ($emails->isEmpty()) {
+            if (!$required) {
+                return null;
+            }
+
             throw ValidationException::withMessages([
-                'email' => 'At least one email is required.',
+                $field => 'At least one email is required.',
             ]);
         }
 
         foreach ($emails as $email) {
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 throw ValidationException::withMessages([
-                    'email' => 'Invalid email address: ' . $email,
+                    $field => 'Invalid email address: ' . $email,
                 ]);
             }
         }
 
         return $emails->implode(', ');
+    }
+
+    private function removeEmailFromList(?string $emails, string $emailToRemove): ?string
+    {
+        if ($emails === null) {
+            return null;
+        }
+
+        $normalizedPrimary = strtolower(trim($emailToRemove));
+
+        $filtered = collect(explode(',', $emails))
+            ->map(fn ($email) => trim($email))
+            ->filter()
+            ->reject(fn ($email) => strtolower($email) === $normalizedPrimary)
+            ->unique()
+            ->values();
+
+        return $filtered->isEmpty() ? null : $filtered->implode(', ');
     }
 }

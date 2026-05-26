@@ -12,7 +12,7 @@ return new class extends Migration
         Schema::create('client_documents', function (Blueprint $table) {
             $table->id();
             $table->string('accountid', 10);
-            $table->string('clientid', 6);
+            $table->string('clientid', 10);
             $table->string('type', 20);
             $table->string('document_number', 100)->nullable();
             $table->date('document_date')->nullable();

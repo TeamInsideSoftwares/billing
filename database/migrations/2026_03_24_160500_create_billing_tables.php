@@ -37,11 +37,12 @@ return new class extends Migration
         });
 
         Schema::create('clients', function (Blueprint $table) {
-            $table->string('clientid', 6)->primary();
+            $table->string('clientid', 10)->primary();
             $table->string('accountid', 10);
             $table->string('business_name', 150);
             $table->string('contact_name', 150)->nullable();
-            $table->string('email', 150)->nullable();
+            $table->string('primary_email', 150)->nullable()->unique();
+            $table->string('email', 500)->nullable();
             $table->string('phone', 30)->nullable();
             $table->string('billing_email', 150)->nullable();
             $table->string('tax_number', 50)->nullable();
@@ -76,7 +77,7 @@ return new class extends Migration
         Schema::create('invoices', function (Blueprint $table) {
             $table->string('invoiceid', 6)->primary();
             $table->string('accountid', 10);
-            $table->string('clientid', 6);
+            $table->string('clientid', 10);
             $table->string('invoice_number', 30)->unique();
             $table->string('status', 20)->default('draft');
             $table->date('issue_date');
@@ -116,7 +117,7 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->string('paymentid', 6)->primary();
             $table->string('accountid', 10);
-            $table->string('clientid', 6);
+            $table->string('clientid', 10);
             $table->string('invoiceid', 6)->nullable();
             $table->string('payment_number', 30)->unique();
             $table->date('payment_date');
@@ -136,7 +137,7 @@ return new class extends Migration
         Schema::create('subscriptions', function (Blueprint $table) {
             $table->string('subscriptionid', 6)->primary();
             $table->string('accountid', 10);
-            $table->string('clientid', 6);
+            $table->string('clientid', 10);
             $table->string('serviceid', 6);
             $table->date('start_date');
             $table->date('next_billing_date');
@@ -155,7 +156,7 @@ return new class extends Migration
         Schema::create('estimates', function (Blueprint $table) {
             $table->string('estimateid', 6)->primary();
             $table->string('accountid', 10);
-            $table->string('clientid', 6);
+            $table->string('clientid', 10);
             $table->string('estimate_number', 30)->unique();
             $table->string('status', 20)->default('draft');
             $table->date('issue_date');

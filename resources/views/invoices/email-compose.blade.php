@@ -3,7 +3,7 @@
 @section('content')
     @php
         $clientName = $invoice->client->business_name ?? ($invoice->client->contact_name ?? 'Client');
-        $clientEmail = $invoice->client->email ?? '';
+        $clientEmail = $invoice->client->primary_email ?? $invoice->client->email ?? '';
         $isAlreadySent = (string) ($composeEmail->status ?? '') === 'sent';
         $hasTiNumber = !empty(trim((string) $invoice->ti_number));
         $displayDocNumber = $hasTiNumber

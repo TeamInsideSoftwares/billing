@@ -40,7 +40,7 @@
                 <p class="text-muted-uppercase">{{ $client->group_name }}</p>
             @endif
             <h1 class="heading-lg">{{ $client->business_name }}</h1>
-            <p class="text-muted">{{ $client->email }}</p>
+            <p class="text-muted">{{ $client->primary_email ?? $client->email }}</p>
             <span class="status-pill {{ strtolower($client->status ?? 'active') }}" class="status-pill-inline">{{ ucfirst($client->status ?? 'Active') }}</span>
         </div>
         <div class="text-right">
@@ -89,7 +89,10 @@
             <div class="info-label">Contact</div>
             <div class="info-value">{{ $client->contact_name ?? '-' }}</div>
 
-            <div class="info-label">Email</div>
+            <div class="info-label">Primary Email</div>
+            <div>{{ $client->primary_email ?? '-' }}</div>
+
+            <div class="info-label">Secondary Emails</div>
             <div>{{ $client->email ?? '-' }}</div>
 
             <div class="info-label">Phone</div>

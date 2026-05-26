@@ -33,7 +33,7 @@ return new class extends Migration
         Schema::create('client_documents_rebuild', function (Blueprint $table) {
             $table->string('client_docid', 6)->primary();
             $table->string('accountid', 10);
-            $table->string('clientid', 6);
+            $table->string('clientid', 10);
             $table->string('type', 20);
             $table->string('document_number', 100)->nullable();
             $table->date('document_date')->nullable();
@@ -84,7 +84,7 @@ return new class extends Migration
         Schema::create('client_documents_legacy', function (Blueprint $table) {
             $table->id();
             $table->string('accountid', 10);
-            $table->string('clientid', 6);
+            $table->string('clientid', 10);
             $table->string('type', 20);
             $table->string('document_number', 100)->nullable();
             $table->date('document_date')->nullable();

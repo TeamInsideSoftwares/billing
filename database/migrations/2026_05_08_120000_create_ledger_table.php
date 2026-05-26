@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('ledger', function (Blueprint $table) {
             $table->string('ledgerid', 6)->primary();
             $table->string('accountid', 10);
-            $table->string('clientid', 6);
+            $table->string('clientid', 10);
             $table->date('date');
             $table->string('invoiceid_paymentid', 20);
             $table->decimal('amount', 12, 2)->default(0);
