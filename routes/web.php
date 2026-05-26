@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AccountsController;
 use App\Http\Controllers\BillingUiController;
 use App\Http\Controllers\ClientsController;
 use App\Http\Controllers\DashboardController;
@@ -180,7 +181,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/orders/{order}', 'ordersDestroy')->name('orders.destroy');
     });
 
-Route::controller(SettingsController::class)->group(function () {
+    Route::controller(SettingsController::class)->group(function () {
         Route::post('/settings/fy-prefix', 'fyPrefixUpdate')->name('settings.fy-prefix.update');
         Route::get('/settings', 'settings')->name('settings.index');
         Route::put('/settings/account', 'accountUpdate')->name('account.update');
@@ -209,6 +210,16 @@ Route::controller(SettingsController::class)->group(function () {
         Route::patch('/settings/message-templates/{template}', 'messageTemplateUpdate')->name('message-templates.update');
         Route::patch('/settings/message-templates/{template}/toggle', 'messageTemplateToggle')->name('message-templates.toggle');
         Route::delete('/settings/message-templates/{template}', 'messageTemplateDestroy')->name('message-templates.destroy');
+    });
+
+    Route::prefix('superadmin')->name('superadmin.')->controller(AccountsController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/create', 'create')->name('create');
+        Route::post('/create/step-1', 'storeStepOne')->name('store-step1');
+        Route::get('/create/credentials', 'createCredentials')->name('create.credentials');
+        Route::post('/', 'store')->name('store');
+        Route::get('/{account}/edit', 'edit')->name('edit');
+        Route::put('/{account}', 'update')->name('update');
     });
 
     Route::get('/change-password', [AuthController::class, 'showChangePassword'])->name('password.change');

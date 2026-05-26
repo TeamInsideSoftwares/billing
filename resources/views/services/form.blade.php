@@ -41,14 +41,16 @@
                 </select>
                 @error('ps_catid') <span class="error">{{ $message }}</span> @enderror
             </div>
-            <div class="service-toggle">
-                <label for="sync">Sync with Superadmin</label>
-                <label class="custom-checkbox service-check">
-                    <input type="hidden" name="sync" value="no">
-                    <input type="checkbox" name="sync" value="yes" id="sync" {{ old('sync', isset($service) ? $service->sync : 'no') == 'yes' ? 'checked' : '' }}>
-                </label>
-                @error('sync') <span class="error">{{ $message }}</span> @enderror
-            </div>
+            @if($account && $account->allow_sync)
+                <div class="service-toggle">
+                    <label for="sync">Sync with Superadmin</label>
+                    <label class="custom-checkbox service-check">
+                        <input type="hidden" name="sync" value="no">
+                        <input type="checkbox" name="sync" value="yes" id="sync" {{ old('sync', isset($service) ? $service->sync : 'no') == 'yes' ? 'checked' : '' }}>
+                    </label>
+                    @error('sync') <span class="error">{{ $message }}</span> @enderror
+                </div>
+            @endif
             <div class="service-toggle">
                 <label for="user_wise">Is this Product/Service sold by per User?</label>
                 <label class="custom-checkbox service-check">
@@ -543,7 +545,10 @@ function showToast(type, message) {
 
     function resetAfterQuickSave() {
         document.getElementById('type').value = 'service';
-        document.getElementById('sync').checked = false;
+        const syncInput = document.getElementById('sync');
+        if (syncInput) {
+            syncInput.checked = false;
+        }
         document.getElementById('user_wise').checked = false;
         document.getElementById('name').value = '';
         document.getElementById('ps_catid').value = '';
@@ -580,7 +585,7 @@ function showToast(type, message) {
 
             const payload = {
                 type: document.getElementById('type').value,
-                sync: document.getElementById('sync').checked ? 'yes' : 'no',
+                sync: document.getElementById('sync')?.checked ? 'yes' : 'no',
                 user_wise: document.getElementById('user_wise').checked ? 1 : 0,
                 name: document.getElementById('name').value.trim(),
                 ps_catid: document.getElementById('ps_catid').value || null,

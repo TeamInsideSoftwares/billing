@@ -25,6 +25,8 @@ class Account extends Model
         'name',
         'slug',
         'status',
+        'allow_sync',
+        'expires_at',
         'legal_name',
         'email',
         'phone',
@@ -53,6 +55,8 @@ class Account extends Model
         return [
             'allow_multi_taxation' => 'boolean',
             'have_users' => 'boolean',
+            'allow_sync' => 'boolean',
+            'expires_at' => 'date',
             'fixed_tax_rate' => 'decimal:2',
             'reminder_automation_enabled' => 'boolean',
             'reminder_days_before' => 'integer',

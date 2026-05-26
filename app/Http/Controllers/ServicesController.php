@@ -162,9 +162,12 @@ class ServicesController extends Controller
 
     public function servicesStore(Request $request)
     {
+        $account = \App\Models\Account::find($this->resolveAccountId());
+        $allowSync = (bool) ($account?->allow_sync ?? false);
+
         $validated = $request->validate([
             'type' => 'required|in:product,service',
-            'sync' => 'required|in:yes,no',
+            'sync' => 'nullable|in:yes,no',
             'user_wise' => 'nullable|boolean',
             'name' => 'required|string|max:255',
             'ps_catid' => 'nullable|exists:ps_categories,ps_catid',
@@ -184,6 +187,7 @@ class ServicesController extends Controller
         $userAccountId = $this->resolveAccountId();
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
         $validated['user_wise'] = $request->boolean('user_wise');
+        $validated['sync'] = $allowSync && ($validated['sync'] ?? 'no') === 'yes' ? 'yes' : 'no';
 
         DB::transaction(function () use ($validated) {
             $account = \App\Models\Account::find($validated['accountid']);
@@ -281,9 +285,12 @@ class ServicesController extends Controller
 
     public function servicesUpdate(Request $request, Service $service)
     {
+        $account = \App\Models\Account::find($service->accountid);
+        $allowSync = (bool) ($account?->allow_sync ?? false);
+
         $validated = $request->validate([
             'type' => 'required|in:product,service',
-            'sync' => 'required|in:yes,no',
+            'sync' => 'nullable|in:yes,no',
             'user_wise' => 'nullable|boolean',
             'name' => 'required|string|max:255',
             'ps_catid' => 'nullable|exists:ps_categories,ps_catid',
@@ -300,6 +307,7 @@ class ServicesController extends Controller
         ]);
 
         $validated['user_wise'] = $request->boolean('user_wise');
+        $validated['sync'] = $allowSync && ($validated['sync'] ?? 'no') === 'yes' ? 'yes' : 'no';
 
         DB::transaction(function () use ($validated, $service) {
             $account = \App\Models\Account::find($service->accountid);
@@ -382,11 +390,14 @@ class ServicesController extends Controller
 
     public function servicesSaveAjax(Request $request)
     {
+        $account = \App\Models\Account::find($this->resolveAccountId());
+        $allowSync = (bool) ($account?->allow_sync ?? false);
+
         try {
             $validated = $request->validate([
                 'itemid' => 'nullable|string|exists:items,itemid',
                 'type' => 'required|in:product,service',
-                'sync' => 'required|in:yes,no',
+                'sync' => 'nullable|in:yes,no',
                 'user_wise' => 'nullable|boolean',
                 'name' => 'required|string|max:255',
                 'ps_catid' => 'nullable|exists:ps_categories,ps_catid',
@@ -411,6 +422,7 @@ class ServicesController extends Controller
 
         try {
             $validated['user_wise'] = $request->boolean('user_wise');
+            $validated['sync'] = $allowSync && ($validated['sync'] ?? 'no') === 'yes' ? 'yes' : 'no';
             $item = DB::transaction(function () use ($validated, $userAccountId) {
                 $itemData = [
                     'type' => $validated['type'],

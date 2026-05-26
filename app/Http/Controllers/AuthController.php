@@ -31,6 +31,19 @@ class AuthController extends Controller
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 
+            $credential = $request->user();
+            $account = $credential?->account;
+
+            if ($account && $account->expires_at && now()->startOfDay()->gt($account->expires_at->startOfDay())) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return back()->withErrors([
+                    'email' => 'This account expired on ' . $account->expires_at->format('d M Y') . '. Please contact superadmin.',
+                ])->onlyInput('email');
+            }
+
             // Always redirect to dashboard after login
             return redirect()->route('dashboard')->with('success', 'Logged in successfully.');
         }

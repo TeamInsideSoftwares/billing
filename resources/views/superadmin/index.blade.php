@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.superadmin')
 
 @section('content')
     <section class="section-bar">
@@ -6,7 +6,7 @@
             <p class="eyebrow">Agencies Master</p>
             <h3>All Registered Agencies</h3>
         </div>
-        <a href="{{ route('accounts.create') }}" class="primary-button">+ Register New Company</a>
+        <a href="{{ route('superadmin.create') }}" class="primary-button">+ Register New Company</a>
     </section>
 
     <section class="panel-card">
@@ -15,6 +15,8 @@
                 <tr>
                     <th>Company</th>
                     <th>Contact</th>
+                    <th>Allow Sync</th>
+                    <th>Expires On</th>
                     <th>Status</th>
                     <th></th>
                 </tr>
@@ -25,17 +27,19 @@
                     <tr>
                         <td>
                             <strong>{{ $acc->name }}</strong>
-                            <span class="superadmin-id">ID: {{ $acc->id }}</span>
+                            <span class="superadmin-id">ID: {{ $acc->accountid }}</span>
                         </td>
                         <td>
-                            <strong>{{ $acc->email }}</strong>
+                            <strong>{{ $acc->credential->email ?? $acc->email }}</strong>
                             <span>{{ $acc->legal_name ?? 'No legal name' }}</span>
                         </td>
+                        <td>{{ $acc->allow_sync ? 'Yes' : 'No' }}</td>
+                        <td>{{ $acc->expires_at ? $acc->expires_at->format('d M Y') : 'No Expiry' }}</td>
                         <td>
                             <span class="status-pill {{ $acc->status }}">{{ ucfirst($acc->status) }}</span>
                         </td>
                         <td class="table-actions">
-                            <a href="#" class="text-action-btn view" title="Manage">
+                            <a href="{{ route('superadmin.edit', $acc) }}" class="text-action-btn view" title="Manage">
                                 Manage
                             </a>
                         </td>
@@ -43,7 +47,7 @@
                 @endforeach
             @else
                 <tr>
-                    <td colspan="4" class="no-records-cell">
+                    <td colspan="6" class="no-records-cell">
                         No agencies registered yet.
                     </td>
                 </tr>
