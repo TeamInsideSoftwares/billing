@@ -46,12 +46,22 @@
 
             <div>
                 <label for="password">New Password</label>
-                <input type="password" name="password" id="password" required>
+                <div class="password-field">
+                    <input type="password" name="password" id="password" required minlength="6">
+                    <span class="password-eye" data-toggle-password="password" tabindex="-1" aria-hidden="true">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </div>
             </div>
 
             <div>
                 <label for="password_confirmation">Confirm Password</label>
-                <input type="password" name="password_confirmation" id="password_confirmation" required>
+                <div class="password-field">
+                    <input type="password" name="password_confirmation" id="password_confirmation" required minlength="6">
+                    <span class="password-eye" data-toggle-password="password_confirmation" tabindex="-1" aria-hidden="true">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </div>
             </div>
 
             <div class="login-footer-row">
@@ -62,5 +72,41 @@
             </div>
         </form>
     </main>
+    <style>
+        .password-field {
+            position: relative;
+        }
+
+        .password-field input {
+            padding-right: 2.5rem;
+        }
+
+        .password-eye {
+            position: absolute;
+            right: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            cursor: pointer;
+            line-height: 1;
+            user-select: none;
+        }
+    </style>
+    <script>
+        document.querySelectorAll('.password-eye[data-toggle-password]').forEach(function(icon) {
+            icon.addEventListener('click', function() {
+                var inputId = icon.getAttribute('data-toggle-password');
+                var input = document.getElementById(inputId);
+                if (!input) return;
+                var isHidden = input.type === 'password';
+                input.type = isHidden ? 'text' : 'password';
+                var i = icon.querySelector('i');
+                if (i) {
+                    i.classList.toggle('fa-eye', !isHidden);
+                    i.classList.toggle('fa-eye-slash', isHidden);
+                }
+            });
+        });
+    </script>
 </body>
 </html>

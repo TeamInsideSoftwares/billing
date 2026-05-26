@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login')->middleware('guest');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post')->middleware('guest');
+Route::get('/login/choice', [AuthController::class, 'showLoginChoice'])->name('login.choice')->middleware('guest');
+Route::post('/login/choice', [AuthController::class, 'loginChoice'])->name('login.choice.post')->middleware('guest');
 Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request')->middleware('guest');
 Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email')->middleware('guest');
@@ -222,20 +224,20 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/settings/message-templates/{template}', 'messageTemplateDestroy')->name('message-templates.destroy');
     });
 
-    Route::prefix('superadmin')->name('superadmin.')->controller(AccountsController::class)->group(function () {
-        Route::get('/', 'index')->name('index');
-        Route::get('/create', 'create')->name('create');
-        Route::post('/create/step-1', 'storeStepOne')->name('store-step1');
-        Route::get('/create/credentials', 'createCredentials')->name('create.credentials');
-        Route::post('/', 'store')->name('store');
-        Route::get('/{account}/edit', 'edit')->name('edit');
-        Route::put('/{account}', 'update')->name('update');
-    });
-
     Route::get('/change-password', [AuthController::class, 'showChangePassword'])->name('password.change');
     Route::put('/change-password', [AuthController::class, 'changePassword'])->name('password.change.update');
 
     // // Keep terms conditions on legacy controller until moved fully.
     // Route::controller(BillingUiController::class)->group(function () {
     // });
+});
+
+Route::middleware(['superadmin.auth'])->prefix('superadmin')->name('superadmin.')->controller(AccountsController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::get('/create', 'create')->name('create');
+    Route::post('/create/step-1', 'storeStepOne')->name('store-step1');
+    Route::get('/create/credentials', 'createCredentials')->name('create.credentials');
+    Route::post('/', 'store')->name('store');
+    Route::get('/{account}/edit', 'edit')->name('edit');
+    Route::put('/{account}', 'update')->name('update');
 });
