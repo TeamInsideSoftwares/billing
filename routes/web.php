@@ -15,6 +15,7 @@ use App\Http\Controllers\SerialConfigurationsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SubscriptionsController;
+use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login')->middleware('guest');
@@ -163,6 +164,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/groups/{group}/edit', 'groupsEdit')->name('groups.edit');
         Route::put('/groups/{group}', 'groupsUpdate')->name('groups.update');
         Route::delete('/groups/{group}', 'groupsDestroy')->name('groups.destroy');
+    });
+
+    Route::controller(UsersController::class)->group(function () {
+        Route::get('/users', 'users')->name('users.index');
+        Route::get('/users/create', 'usersCreate')->name('users.create');
+        Route::post('/users', 'usersStore')->name('users.store');
+        Route::get('/users/{user}/edit', 'usersEdit')->name('users.edit');
+        Route::put('/users/{user}', 'usersUpdate')->name('users.update');
+        Route::delete('/users/{user}', 'usersDestroy')->name('users.destroy');
     });
 
     Route::controller(OrdersController::class)->group(function () {

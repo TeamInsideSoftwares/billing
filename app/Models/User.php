@@ -8,22 +8,36 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['accountid', 'clientid', 'name', 'email', 'password', 'role', 'is_active'])]
+#[Fillable([
+    'userid',
+    'accountid',
+    'name',
+    'email',
+    'profile_image',
+    'department',
+    'phone',
+    'designation',
+    'notes',
+    'password',
+    'role',
+    'permissions',
+    'is_active',
+])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
 use HasAlphaNumericId, HasFactory, Notifiable;
 
-protected $primaryKey = 'id';
+    protected $table = 'account_users';
+    protected $primaryKey = 'userid';
 
     protected function idLength(): int
     {
-        return 10;
+        return 6;
     }
 
     /**
@@ -36,17 +50,13 @@ protected $primaryKey = 'id';
         return [
             'email_verified_at' => 'datetime',
             'is_active' => 'boolean',
+            'permissions' => 'array',
             'password' => 'hashed',
         ];
     }
 
-    public function account(): BelongsTo
+    public function account(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Account::class, 'accountid', 'accountid');
-    }
-
-    public function client(): BelongsTo
-    {
-        return $this->belongsTo(Client::class);
     }
 }

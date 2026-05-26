@@ -81,6 +81,7 @@
             ['label' => 'Payments', 'route' => 'payments.index'],
             ['label' => 'GST Report', 'route' => 'gst-report.index'],
             ['label' => 'Items', 'route' => 'services.index'],
+            // ['label' => 'Users', 'route' => 'users.index'],
             ['label' => 'Settings', 'route' => 'settings.index'],
         ];
     @endphp
@@ -110,6 +111,7 @@
                         'invoices' => 'fa-file-invoice-dollar',
                         'payments' => 'fa-money-bill-wave',
                         'gst-report' => 'fa-receipt',
+                        // 'users' => 'fa-user-tie',
                         'settings' => 'fa-cog',
                     ];
                 @endphp
