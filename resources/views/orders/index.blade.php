@@ -33,7 +33,7 @@
                         <select name="c" id="client-select" class="form-control" autofocus>
                             <option value="" selected disabled>Select a client</option>
                             @foreach($allClients as $client)
-                                <option value="{{ $client->clientid }}">{{ $client->business_name ?? $client->contact_name }}</option>
+                                <option value="{{ $client->clientid }}">{{ $client->business_name ?? $client->contact_name }}{{ strtolower((string) ($client->type ?? 'regular')) === 'trial' ? ' (Trial)' : '' }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -57,7 +57,7 @@
                         <option value="all" {{ empty($clientId) ? 'selected' : '' }}>All Clients</option>
                         @foreach($allClients as $client)
                             <option value="{{ $client->clientid }}" {{ (string) $clientId === (string) $client->clientid ? 'selected' : '' }}>
-                                {{ $client->business_name ?? $client->contact_name }}
+                                {{ $client->business_name ?? $client->contact_name }}{{ strtolower((string) ($client->type ?? 'regular')) === 'trial' ? ' (Trial)' : '' }}
                             </option>
                         @endforeach
                     </select>
@@ -96,6 +96,9 @@
                 <div class="order-group-head">
                     <span class="order-client-meta">
                         <span class="category-title">{{ $clientName }}</span>
+                        @if(strtolower((string) ($clientOrders[0]['client_type'] ?? 'regular')) === 'trial')
+                            <span class="status-pill status-pill-pending ms-2">Trial</span>
+                        @endif
                     </span>
                     <span class="order-client-summary">
                         <span class="service-count">{{ count($clientOrders) }} order(s)</span>

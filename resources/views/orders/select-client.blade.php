@@ -25,7 +25,7 @@
                     </div>
                     <div class="client-card__body">
                         <strong class="client-card__title">
-                            {{ $client->business_name ?? $client->contact_name }}
+                            {{ $client->business_name ?? $client->contact_name }}{{ strtolower((string) ($client->type ?? 'regular')) === 'trial' ? ' (Trial)' : '' }}
                         </strong>
                         @if($client->primary_email ?? $client->email)
                             <span class="client-card__meta is-ellipsis">

@@ -5,6 +5,9 @@
         <a href="{{ route('clients.create') }}" class="primary-button">Add Client</a>
         <button type="button" class="secondary-button" data-bs-toggle="modal" data-bs-target="#manageGroupsModal"><i class="fas fa-layer-group icon-spaced-sm"></i>Manage Groups</button>
     </div>
+    <div class="header-actions-wrapper">
+        <a href="{{ route('clients.trials') }}" class="secondary-button"><i class="fas fa-user-clock nav-icon"></i>View Trial Clients</a>
+    </div>
 @endsection
 
 @section('content')
@@ -83,7 +86,7 @@
                     </td>
                     <td>
                         <div class="small-text">{{ $client['state'] ?? '—' }}</div>
-                        <div class="text-xs text-muted">{{ $client['currency'] }}</div>
+                        {{-- <div class="text-xs text-muted">{{ $client['currency'] }}</div> --}}
                     </td>
                     <td>
                         <strong class="balance-text">

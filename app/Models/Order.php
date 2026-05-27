@@ -95,4 +95,39 @@ class Order extends Model
     {
         return 0.0;
     }
+
+    public static function generateNextOrderNumberForAccount(string $accountId): string
+    {
+        $serialConfig = SerialConfiguration::where('accountid', $accountId)
+            ->where('document_type', 'order')
+            ->first();
+
+        if ($serialConfig) {
+            $candidate = $serialConfig->generateNextSerialNumber();
+
+            return self::ensureUniqueOrderNumberForAccount($candidate !== '' ? $candidate : 'ORD-0001', $accountId);
+        }
+
+        $count = self::where('accountid', $accountId)->count();
+
+        return self::ensureUniqueOrderNumberForAccount('ORD-' . str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT), $accountId);
+    }
+
+    private static function ensureUniqueOrderNumberForAccount(string $candidate, string $accountId): string
+    {
+        $candidate = trim($candidate) ?: 'ORD-0001';
+        $number = $candidate;
+        $sequence = 2;
+
+        while (self::where('accountid', $accountId)->where('order_number', $number)->exists()) {
+            if (preg_match('/^(.*?)(\d+)$/', $candidate, $matches)) {
+                $number = $matches[1] . str_pad((string) ((int) $matches[2] + $sequence - 1), strlen($matches[2]), '0', STR_PAD_LEFT);
+            } else {
+                $number = $candidate . '-' . $sequence;
+            }
+            $sequence++;
+        }
+
+        return $number;
+    }
 }

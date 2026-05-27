@@ -100,7 +100,7 @@ class PaymentsController extends Controller
             'selectedCurrency' => $paymentCurrencies->count() === 1 ? $paymentCurrencies->first() : null,
             'clientId' => $clientId,
             'selectedClient' => $selectedClient,
-            'clients' => Client::where('accountid', $userAccountId)->orderBy('business_name')->get(),
+            'clients' => Client::where('accountid', $userAccountId)->regular()->orderBy('business_name')->get(),
         ]);
     }
 
@@ -123,6 +123,7 @@ class PaymentsController extends Controller
         $searchTerm = trim((string) request('search', ''));
         $clients = Client::query()
             ->where('accountid', $accountid)
+            ->regular()
             ->orderBy('business_name')
             ->get(['clientid', 'business_name', 'contact_name']);
         $selectedClient = $clientId !== ''
@@ -394,7 +395,7 @@ class PaymentsController extends Controller
 
         return view('payments.form', [
             'title' => 'Record New Payment',
-            'clients' => Client::query()->where('accountid', $this->resolveAccountId())->get(),
+            'clients' => Client::query()->where('accountid', $this->resolveAccountId())->regular()->get(),
             'invoices' => Invoice::query()->where('accountid', $this->resolveAccountId())->with('client')
                 ->where('status', '!=', 'cancelled')
                 ->where('payment_status', '!=', 'paid')
@@ -501,7 +502,7 @@ class PaymentsController extends Controller
         return view('payments.form', [
             'title' => 'Edit ' . $displayTitle,
             'payment' => $payment,
-            'clients' => Client::query()->where('accountid', $payment->accountid)->get(),
+            'clients' => Client::query()->where('accountid', $payment->accountid)->regular()->get(),
             'invoices' => Invoice::query()->where('accountid', $payment->accountid)->with('client')
                 ->get(),
             'selectedClientId' => $payment->clientid,

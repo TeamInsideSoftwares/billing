@@ -699,7 +699,7 @@ class InvoicesController extends Controller
     public function invoices()
     {
         $accountid = $this->resolveAccountId();
-        $clients = Client::where('accountid', $accountid)->orderBy('business_name')->get();
+        $clients = Client::where('accountid', $accountid)->regular()->orderBy('business_name')->get();
         $selectedClientId = request('c', request('clientid'));
         $selectedTab = request('tab', 'invoices');
         $selectedType = trim((string) request('type', ''));
@@ -853,7 +853,7 @@ class InvoicesController extends Controller
     public function invoicesExpiryList(Request $request): View
     {
         $accountid = $this->resolveAccountId();
-        $clients = Client::where('accountid', $accountid)->orderBy('business_name')->get();
+        $clients = Client::where('accountid', $accountid)->regular()->orderBy('business_name')->get();
         $selectedClientId = $request->query('c', $request->query('clientid'));
         $selectedTab = $request->query('tab', 'expired');
         $selectedTab = in_array($selectedTab, ['upcoming', 'expired', 'suspended'], true)
@@ -1106,7 +1106,7 @@ class InvoicesController extends Controller
 
         return view('invoices.create', [
             'title' => 'Create Invoice',
-            'clients' => Client::where('accountid', $accountid)->orderBy('business_name')->get(),
+            'clients' => Client::where('accountid', $accountid)->regular()->orderBy('business_name')->get(),
             'services' => Service::where('accountid', $accountid)->with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'nextInvoiceNumber' => $nextInvoiceNumber,
@@ -2824,6 +2824,8 @@ class InvoicesController extends Controller
         $toEmail = (string) (
             $invoice->client?->billingDetail?->billing_email
             ?? $invoice->client?->billing_email
+            ?? $invoice->client?->primary_email
+            ?? $invoice->client?->email
             ?? ''
         );
 
@@ -3057,6 +3059,8 @@ class InvoicesController extends Controller
         $forcedToEmail = (string) (
             $invoice->client?->billingDetail?->billing_email
             ?? $invoice->client?->billing_email
+            ?? $invoice->client?->primary_email
+            ?? $invoice->client?->email
             ?? ''
         );
 

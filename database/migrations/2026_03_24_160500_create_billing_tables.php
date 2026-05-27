@@ -43,6 +43,7 @@ return new class extends Migration
             $table->string('contact_name', 150)->nullable();
             $table->string('primary_email', 150)->nullable()->unique();
             $table->string('email', 500)->nullable();
+            $table->string('type', 20)->default('regular');
             $table->string('phone', 30)->nullable();
             $table->string('billing_email', 150)->nullable();
             $table->string('tax_number', 50)->nullable();

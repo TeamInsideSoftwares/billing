@@ -2,7 +2,7 @@
 
 @section('header_actions')
     <a href="{{ route('payments.index', ['c' => $payment->clientid]) }}" class="secondary-button">
-        Back
+        Back to Payments
     </a>
 
     <a href="{{ route('payments.edit', $payment) }}" class="secondary-button">

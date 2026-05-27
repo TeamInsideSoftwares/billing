@@ -7,19 +7,178 @@ use App\Models\Client;
 use App\Models\ClientBillingDetail;
 use App\Models\ClientDocument;
 use App\Models\Group;
+use App\Models\Order;
+use App\Models\Service;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class ClientsController extends Controller
 {
+    public function clientsStoreApi(Request $request): JsonResponse
+    {
+        $this->assertInternalApiKey($request);
+
+        $validated = $request->validate([
+            'accountid' => 'required|string|max:10',
+            'type' => 'required',
+            'itemid' => 'required|string|max:10',
+            'business_name' => 'nullable|string|max:150',
+            'contact_name' => 'nullable|string|max:150',
+            'primary_email' => 'required|email|max:150',
+            'phone' => 'nullable|string|max:50',
+            'whatsapp_number' => 'nullable|string|max:50',
+            'logo_path' => 'nullable|string|max:255',
+            'country' => 'nullable|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'city' => 'nullable|string|max:100',
+            'postal_code' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:150',
+            'address_line_1' => 'nullable|string|max:150',
+            'address_line_2' => 'nullable|string|max:150',
+            'groupid' => 'nullable|exists:groups,groupid',
+        ]);
+
+        $validated['primary_email'] = strtolower(trim((string) ($validated['primary_email'] ?? '')));
+
+        $exists = Client::query()
+            ->whereRaw('LOWER(primary_email) = ?', [$validated['primary_email']])
+            ->exists();
+        if ($exists) {
+            Log::warning('Client API skipped: primary email already exists.', [
+                'accountid' => $validated['accountid'] ?? null,
+                'type' => $validated['type'] ?? null,
+                'primary_email' => $validated['primary_email'] ?? null,
+                'itemid' => $validated['itemid'] ?? null,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'warning' => true,
+                'message' => 'Primary email already exists.',
+            ], 409);
+        }
+
+        $service = Service::query()
+            ->where('accountid', $validated['accountid'])
+            ->where('itemid', $validated['itemid'])
+            ->first();
+        if (!$service) {
+            Log::warning('Client API blocked: invalid itemid for account.', [
+                'accountid' => $validated['accountid'] ?? null,
+                'primary_email' => $validated['primary_email'] ?? null,
+                'itemid' => $validated['itemid'] ?? null,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid itemid for this account.',
+            ], 422);
+        }
+
+        $businessName = trim((string) ($validated['business_name'] ?? ''));
+        if ($businessName === '') {
+            $businessName = $this->deriveBusinessNameFromEmail($validated['primary_email']);
+        }
+        $addressLine1 = $validated['address_line_1'] ?? $validated['address'] ?? null;
+
+        $startDate = Carbon::today();
+        $frequency = trim((string) env('TRIAL_API_ORDER_FREQUENCY', 'month'));
+        $duration = (int) env('TRIAL_API_ORDER_DURATION', 1);
+        $endDate = $this->calculateOrderEndDate($startDate, $frequency, $duration);
+
+        $client = null;
+        $order = null;
+        try {
+            DB::transaction(function () use (&$client, &$order, $validated, $service, $businessName, $startDate, $endDate, $addressLine1) {
+                $client = $this->createClientRecord([
+                    'accountid' => $validated['accountid'],
+                    'type' => $validated['type'],
+                    'business_name' => $businessName,
+                    'contact_name' => $validated['contact_name'] ?? null,
+                    'primary_email' => $validated['primary_email'],
+                    'email' => null,
+                    'phone' => $validated['phone'] ?? null,
+                    'whatsapp_number' => $validated['whatsapp_number'] ?? null,
+                    'logo_path' => $validated['logo_path'] ?? null,
+                    'currency' => 'INR',
+                    'status' => 'active',
+                    'country' => $validated['country'] ?? 'India',
+                    'state' => $validated['state'] ?? null,
+                    'city' => $validated['city'] ?? null,
+                    'postal_code' => $validated['postal_code'] ?? null,
+                    'address_line_1' => $addressLine1,
+                    'address_line_2' => $validated['address_line_2'] ?? null,
+                    'groupid' => $validated['groupid'] ?? null,
+                ]);
+
+                $order = Order::create([
+                    'accountid' => $validated['accountid'],
+                    'clientid' => $client->clientid,
+                    'order_number' => Order::generateNextOrderNumberForAccount($validated['accountid']),
+                    'status' => 'active',
+                    'client_docid' => null,
+                    'itemid' => $service->itemid,
+                    'item_name' => $service->name ?? 'Item',
+                    'item_description' => $service->description ?? null,
+                    'quantity' => 1,
+                    'no_of_users' => null,
+                    'start_date' => $startDate->toDateString(),
+                    'end_date' => $endDate->toDateString(),
+                    'delivery_date' => null,
+                ]);
+            });
+        } catch (Throwable $e) {
+            Log::error('Client API failed: client/order not inserted (transaction rolled back).', [
+                'accountid' => $validated['accountid'] ?? null,
+                'type' => $validated['type'] ?? null,
+                'primary_email' => $validated['primary_email'] ?? null,
+                'itemid' => $validated['itemid'] ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Insert failed. Please check logs.',
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Client and order created successfully.',
+            'data' => [
+                'client' => [
+                    'clientid' => $client->clientid,
+                    'accountid' => $client->accountid,
+                    'type' => $client->type,
+                    'business_name' => $client->business_name,
+                    'contact_name' => $client->contact_name,
+                    'primary_email' => $client->primary_email,
+                ],
+                'order' => [
+                    'orderid' => $order->orderid,
+                    'accountid' => $order->accountid,
+                    'clientid' => $order->clientid,
+                    'order_number' => $order->order_number,
+                    'itemid' => $order->itemid,
+                    'item_name' => $order->item_name,
+                    'start_date' => optional($order->start_date)->format('Y-m-d'),
+                    'end_date' => optional($order->end_date)->format('Y-m-d'),
+                ],
+            ],
+        ], 201);
+    }
+
     public function clients(): View
     {
         $accountId = $this->resolveAccountId();
-        $query = Client::query()->where('accountid', $accountId)->with(['invoices.items', 'payments']);
+        $query = Client::query()->where('accountid', $accountId)->regular()->with(['invoices.items', 'payments']);
         $searchTerm = trim((string) request('search', ''));
         $selectedState = trim((string) request('state', ''));
         $selectedCity = trim((string) request('city', ''));
@@ -59,9 +218,9 @@ class ClientsController extends Controller
                 'phone' => $client->phone,
                 'state' => $client->state,
                 'city' => $client->city,
-                'currency' => $cur,
+                'currency' => $client->currency,
                 'status' => $client->status ?? 'Active',
-                'balance' => $cur . ' ' . number_format($outstanding, 0),
+                'balance' => $client->currency . ' ' . number_format($outstanding, 0),
                 'created_at' => $client->created_at,
                 'invoice_count' => $client->invoices->count(),
             ];
@@ -70,6 +229,7 @@ class ClientsController extends Controller
         $groups = Group::where('accountid', $accountId)->orderBy('group_name')->get();
         $stateOptions = Client::query()
             ->where('accountid', $accountId)
+            ->regular()
             ->whereNotNull('state')
             ->where('state', '!=', '')
             ->select('state')
@@ -78,6 +238,7 @@ class ClientsController extends Controller
             ->pluck('state');
         $cityOptions = Client::query()
             ->where('accountid', $accountId)
+            ->regular()
             ->whereNotNull('city')
             ->where('city', '!=', '')
             ->when($selectedState !== '', fn ($cityQuery) => $cityQuery->where('state', $selectedState))
@@ -97,6 +258,59 @@ class ClientsController extends Controller
             'selectedCity' => $selectedCity,
             'stateOptions' => $stateOptions,
             'cityOptions' => $cityOptions,
+        ]);
+    }
+
+    public function trialClients(): View
+    {
+        $accountId = $this->resolveAccountId();
+        $searchTerm = trim((string) request('search', ''));
+
+        $query = Client::query()
+            ->where('accountid', $accountId)
+            ->trial()
+            ->with(['invoices.items', 'payments']);
+
+        if ($searchTerm) {
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('business_name', 'like', '%' . $searchTerm . '%')
+                    ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+            });
+        }
+
+        $resultCount = $query->count();
+
+        $clients = $query->latest()->take(50)->get()->map(function ($client) {
+            $invoiceTotal = $client->invoices
+                ->where('status', '!=', 'cancelled')
+                ->where('payment_status', '!=', 'paid')
+                ->sum(fn ($invoice) => (float) ($invoice->grand_total ?? 0));
+            $paidTotal = (float) $client->payments->sum(function ($payment) {
+                return (float) ($payment->received_amount ?? 0);
+            });
+            $outstanding = $invoiceTotal - $paidTotal;
+            $account = Account::find($client->accountid);
+            // $cur = $account?->currency_code ?? 'INR';
+
+            return [
+                'record_id' => $client->clientid,
+                'name' => $client->business_name ?? $client->contact_name,
+                'contact' => $client->contact_name,
+                'email' => $client->primary_email ?? $client->email,
+                'phone' => $client->phone,
+                'currency' => $client->currency,
+                'balance' => $client->currency . ' ' . number_format($outstanding, 0),
+                'invoice_count' => $client->invoices->count(),
+                'status' => $client->status ?? 'active',
+            ];
+        });
+
+        return view('clients.trials', [
+            'title' => 'Trial Clients',
+            'subtitle' => $searchTerm ? 'Found ' . $resultCount . ' result(s) for "' . $searchTerm . '"' : null,
+            'clients' => $clients,
+            'searchTerm' => $searchTerm,
+            'resultCount' => $resultCount,
         ]);
     }
 
@@ -129,7 +343,7 @@ class ClientsController extends Controller
             'business_name' => 'required|string',
             'groupid' => 'nullable|exists:groups,groupid',
             'contact_name' => 'nullable|string',
-            'primary_email' => 'required|email|max:150|unique:clients,primary_email',
+            'primary_email' => 'required|email|max:150',
             'email' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
             'whatsapp_number' => 'nullable|string|max:50',
@@ -185,6 +399,7 @@ class ClientsController extends Controller
 
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
 
+        $validated['type'] = 'regular';
         $selectedBillingDetail = null;
 
         if (!empty($validated['existing_bd_id'])) {
@@ -239,7 +454,7 @@ class ClientsController extends Controller
             'billing_address_line_1',
             'billing_phone',
         ])->all();
-        Client::create($clientData);
+        $this->createClientRecord($clientData);
 
         return redirect()->route('clients.index')->with('success', 'Client created successfully.');
     }
@@ -490,7 +705,7 @@ class ClientsController extends Controller
             'business_name' => 'required|string',
             'groupid' => 'nullable|exists:groups,groupid',
             'contact_name' => 'nullable|string',
-            'primary_email' => ['required', 'email', 'max:150', Rule::unique('clients', 'primary_email')->ignore($client->clientid, 'clientid')],
+            'primary_email' => 'required|email|max:150',
             'email' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
             'whatsapp_number' => 'nullable|string|max:50',
@@ -626,6 +841,17 @@ class ClientsController extends Controller
         return redirect()->route('clients.index')->with('success', 'Client deleted successfully.');
     }
 
+    public function convertTrialToRegular(Client $client)
+    {
+        if ((string) $client->accountid !== $this->resolveAccountId()) {
+            abort(404);
+        }
+
+        $client->update(['type' => 'regular']);
+
+        return redirect()->route('clients.trials')->with('success', 'Client converted to regular successfully.');
+    }
+
     private function normalizeClientEmails(string $rawEmails, bool $required = true, string $field = 'email'): ?string
     {
         $emails = collect(explode(',', $rawEmails))
@@ -671,5 +897,47 @@ class ClientsController extends Controller
             ->values();
 
         return $filtered->isEmpty() ? null : $filtered->implode(', ');
+    }
+
+    private function deriveBusinessNameFromEmail(string $email): string
+    {
+        $local = trim((string) strtok($email, '@'));
+        if ($local === '') {
+            return 'Client';
+        }
+
+        return ucfirst(str_replace(['.', '_', '-'], ' ', $local));
+    }
+
+    private function calculateOrderEndDate(Carbon $startDate, string $frequency, int $duration): Carbon
+    {
+        $normalizedFrequency = strtolower(trim($frequency));
+        $safeDuration = max(1, $duration);
+        $endDate = $startDate->copy();
+
+        return match ($normalizedFrequency) {
+            'day', 'daily', 'days' => $endDate->addDays($safeDuration),
+            'week', 'weekly', 'weeks' => $endDate->addWeeks($safeDuration),
+            'year', 'yearly', 'years', 'annual' => $endDate->addYears($safeDuration),
+            default => $endDate->addMonths($safeDuration),
+        };
+    }
+
+    private function assertInternalApiKey(Request $request): void
+    {
+        $expectedApiKey = trim((string) env('INTERNAL_CLIENT_API_KEY', ''));
+        if ($expectedApiKey === '') {
+            return;
+        }
+
+        $provided = (string) $request->header('X-API-KEY', '');
+        if (!hash_equals($expectedApiKey, $provided)) {
+            abort(401, 'Invalid API key.');
+        }
+    }
+
+    private function createClientRecord(array $attributes): Client
+    {
+        return Client::create($attributes);
     }
 }

@@ -42,8 +42,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::controller(ClientsController::class)->group(function () {
         Route::get('/clients', 'clients')->name('clients.index');
+        Route::get('/clients/trials', 'trialClients')->name('clients.trials');
         Route::get('/clients/create', 'clientsCreate')->name('clients.create');
         Route::post('/clients', 'clientsStore')->name('clients.store');
+        Route::patch('/clients/{client}/convert-to-regular', 'convertTrialToRegular')->name('clients.convert-to-regular');
         Route::get('/clients/{client}/documents/create', 'clientsDocumentsCreate')->name('clients.documents.create');
         Route::post('/clients/{client}/documents', 'clientsDocumentsStore')->name('clients.documents.store');
         Route::put('/clients/{client}/documents/{document}', 'clientsDocumentsUpdate')->name('clients.documents.update');

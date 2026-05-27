@@ -8,7 +8,7 @@
         $displayDocNumber = trim((string) ($quotation->quo_number ?? $quotation->quotationid));
     @endphp
 
-    <section class="panel-card w-100 p-3">
+    <section class="panel-card w-100 p-3 compose-mail-page">
         <div class="bg-light border rounded p-3 mb-3">
             <div class="d-flex align-items-center gap-2">
                 <a href="{{ route('quotations.create', ['step' => 3, 'c' => $quotation->clientid, 'd' => $quotation->quotationid]) }}"
@@ -173,103 +173,6 @@
             </div>
         </form>
     </section>
-
-    <style>
-        .invoice-compact-steps {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-        }
-
-        .invoice-compact-steps--right {
-            justify-content: flex-end;
-        }
-
-        .invoice-compact-step {
-            width: 1.5rem;
-            height: 1.5rem;
-            border-radius: 999px;
-            border: 1px solid #d1d5db;
-            color: #6b7280;
-            font-size: 0.74rem;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: #fff;
-        }
-
-        .invoice-compact-step.is-active {
-            border-color: #2563eb;
-            background: #2563eb;
-            color: #fff;
-        }
-
-        .channel-pills-wrap {
-            margin-bottom: 2rem;
-        }
-
-        .channel-pill-btn {
-            border: 1px solid #d1d5db;
-            background: #fff;
-            padding: 0.45rem 1.25rem;
-            border-radius: 999px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #64748b;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-        }
-
-        .channel-pill-btn:hover {
-            background: #f8fafc;
-            border-color: #cbd5e1;
-        }
-
-        .channel-pill-btn.is-active {
-            background: #eff6ff;
-            color: var(--brand);
-            border-color: var(--brand);
-            box-shadow: 0 0 0 1px var(--brand);
-        }
-
-        .field-label {
-            display: block;
-            margin-bottom: 0.4rem;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #475569;
-        }
-
-        .input-full {
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            padding: 0.6rem 0.8rem;
-            font-size: 0.9rem;
-            width: 100%;
-        }
-
-        .input-full:focus {
-            outline: none;
-            border-color: var(--brand);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        #emailBodyInput {
-            min-height: 400px !important;
-        }
-
-        .invoice-number-badge {
-            background: #f1f5f9;
-            color: #475569;
-            padding: 0.25rem 0.75rem;
-            border-radius: 999px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-    </style>
 
     <script>
         (function() {
@@ -547,7 +450,7 @@
                     selector: '#emailBodyInput',
                     menubar: false,
                     height: 340,
-                    readonly: isAlreadySent ? 1 : 0,
+                    readonly: !!isAlreadySent,
                     plugins: 'lists link table code autoresize',
                     toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
                     setup: function(editor) {

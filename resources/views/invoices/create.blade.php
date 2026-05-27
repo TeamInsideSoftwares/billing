@@ -1,10 +1,14 @@
 @extends('layouts.app')
-
+@section('header_actions')
+    <a href="{{ route('invoices.index') }}" class="secondary-button">
+        <i class="fas fa-arrow-left"></i> Back to Invoices
+    </a>
+@endsection
 @section('content')
 @php
     $selectedClientId = request('c', request('clientid'));
     $currentStep = (int) request('step', 1);
-    
+
     if($currentStep < 1 || $currentStep > 3) $currentStep = 1;
 
     $stepLabels = [
@@ -15,13 +19,13 @@
     $totalSteps = 3;
 @endphp
 
-@section('header_actions')
+{{-- @section('header_actions')
     @if($currentStep === 1)
         <a href="{{ $selectedClientId ? route('invoices.index', ['c' => $selectedClientId]) : route('invoices.index') }}" class="secondary-button">
             <i class="fas fa-arrow-left" class="icon-spaced"></i>Back
         </a>
     @endif
-@endsection
+@endsection --}}
 
 <section class="panel-card invoice-create-shell" >
     @if ($errors->any())

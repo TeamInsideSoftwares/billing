@@ -27,7 +27,7 @@
                     <option value="">Select Client</option>
                     @foreach($clients as $client)
                         <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
-                            {{ $client->business_name ?? $client->contact_name }}
+                            {{ $client->business_name ?? $client->contact_name }}{{ strtolower((string) ($client->type ?? 'regular')) === 'trial' ? ' (Trial)' : '' }}
                         </option>
                     @endforeach
                 </select>

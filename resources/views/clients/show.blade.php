@@ -10,7 +10,10 @@
     <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'agreement']) }}" class="secondary-button">
         Add Agreement
     </a>
-    <a href="{{ route('clients.edit', $client) }}" class="primary-button small">
+    <a href="{{ route('orders.create', ['c' => $client->clientid]) }}" class="primary-button">
+        Add Order
+    </a>
+    <a href="{{ route('clients.edit', $client) }}" class="primary-button">
         Edit
     </a>
     <form method="POST" action="{{ route('clients.destroy', $client) }}" class="inline-delete" onsubmit="return confirm('Delete this client?')" class="inline-delete">
@@ -57,11 +60,11 @@
             <h4 class="section-title">Client Profile</h4>
         </div>
         <div class="info-grid-2col">
-            <div class="info-label">Client ID</div>
+            {{-- <div class="info-label">Client ID</div>
             <div class="info-value">{{ $client->clientid ?? '-' }}</div>
 
             <div class="info-label">Account ID</div>
-            <div>{{ $client->accountid ?? '-' }}</div>
+            <div>{{ $client->accountid ?? '-' }}</div> --}}
 
             <div class="info-label">Business</div>
             <div>{{ $client->business_name ?? '-' }}</div>

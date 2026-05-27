@@ -2,7 +2,7 @@
 
 @section('header_actions')
     <a href="{{ route('quotations.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left"></i> Back
+        <i class="fas fa-arrow-left"></i> Back to Quotations
     </a>
 @endsection
 

@@ -1,6 +1,6 @@
 <div class="invoice-meta-card quotation-centered-card">
     <div class="d-flex justify-content-between align-items-center mb-2">
-        <h4 class="mb-0">Select Client</h4>
+        <h4 class="quotation-step1-title">Select Client</h4>
         <div class="invoice-compact-steps">
             <span class="invoice-compact-step is-active">1</span>
             <span class="invoice-compact-step">2</span>

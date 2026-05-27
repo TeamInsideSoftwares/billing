@@ -87,6 +87,7 @@ class OrdersController extends Controller
                 'number' => $order->order_number,
                 'client' => $order->client?->business_name ?? $order->client?->contact_name ?? 'Client',
                 'clientid' => $order->clientid,
+                'client_type' => strtolower((string) ($order->client?->type ?? 'regular')),
                 'currency' => $order->client?->currency ?? 'INR',
                 'order_date' => $order->created_at?->format('d M Y') ?? 'N/A',
                 'delivery_date' => $order->delivery_date?->format('d M Y') ?? 'N/A',
@@ -468,36 +469,7 @@ class OrdersController extends Controller
 
     protected function generateOrderNumber(string $accountId): string
     {
-        $serialConfig = \App\Models\SerialConfiguration::where('accountid', $accountId)
-            ->where('document_type', 'order')
-            ->first();
-
-        if ($serialConfig) {
-            $candidate = $serialConfig->generateNextSerialNumber();
-            return $this->ensureUniqueOrderNumber($candidate !== '' ? $candidate : 'ORD-0001', $accountId);
-        }
-
-        $count = Order::where('accountid', $accountId)->count();
-
-        return $this->ensureUniqueOrderNumber('ORD-' . str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT), $accountId);
-    }
-
-    protected function ensureUniqueOrderNumber(string $candidate, string $accountId): string
-    {
-        $candidate = trim($candidate) ?: 'ORD-0001';
-        $number = $candidate;
-        $sequence = 2;
-
-        while (Order::where('accountid', $accountId)->where('order_number', $number)->exists()) {
-            if (preg_match('/^(.*?)(\d+)$/', $candidate, $matches)) {
-                $number = $matches[1] . str_pad((string) ((int) $matches[2] + $sequence - 1), strlen($matches[2]), '0', STR_PAD_LEFT);
-            } else {
-                $number = $candidate . '-' . $sequence;
-            }
-            $sequence++;
-        }
-
-        return $number;
+        return Order::generateNextOrderNumberForAccount($accountId);
     }
 
     private function wholeQuantity(mixed $value): int

@@ -14,38 +14,6 @@
         $nextInvoiceNumber);
     $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 @endphp
-<style>
-    .invoice-compact-steps {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-    }
-
-    .invoice-compact-steps--right {
-        margin-top: 0.35rem;
-        justify-content: flex-end;
-    }
-
-    .invoice-compact-step {
-        width: 1.5rem;
-        height: 1.5rem;
-        border-radius: 999px;
-        border: 1px solid #d1d5db;
-        color: #6b7280;
-        font-size: 0.74rem;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: #fff;
-    }
-
-    .invoice-compact-step.is-active {
-        border-color: #2563eb;
-        background: #2563eb;
-        color: #fff;
-    }
-</style>
 <!-- Step 2: Select Items -->
 <div id="step2" class="invoice-step">
     {{-- Client Info Header with Back Button --}}

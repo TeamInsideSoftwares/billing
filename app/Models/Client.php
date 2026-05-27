@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\HasAlphaNumericId;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'contact_name',
     'primary_email',
     'email',
+    'type',
     'phone',
     'whatsapp_number',
     'billing_email',
@@ -41,7 +43,7 @@ class Client extends Model
 
     protected function idLength(): int
     {
-        return 6;
+        return 10;
     }
 
     use HasAlphaNumericId;
@@ -99,5 +101,15 @@ class Client extends Model
             ->latest('document_date')
             ->latest('created_at')
             ->first();
+    }
+
+    public function scopeRegular(Builder $query): Builder
+    {
+        return $query->where('type', 'regular');
+    }
+
+    public function scopeTrial(Builder $query): Builder
+    {
+        return $query->where('type', 'trial');
     }
 }

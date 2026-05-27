@@ -16,7 +16,7 @@
         $defaultSubjectNumber = $hasTiNumber ? $invoice->ti_number : $invoice->pi_number;
     @endphp
 
-    <section class="panel-card w-100 p-3">
+    <section class="panel-card w-100 p-3 compose-mail-page">
         <div class="bg-light border rounded p-3 mb-3">
             <div class="d-flex align-items-center gap-2">
                 <a href="{{ route('invoices.create', ['step' => 3, 'c' => $invoice->clientid, 'd' => $invoice->invoiceid, 'o' => $invoice->orderid]) }}"
@@ -255,185 +255,6 @@
             </div>
         </form>
     </section>
-
-    <style>
-        .invoice-compact-steps {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-        }
-
-        .invoice-compact-steps--right {
-            justify-content: flex-end;
-        }
-
-        .invoice-compact-step {
-            width: 1.5rem;
-            height: 1.5rem;
-            border-radius: 999px;
-            border: 1px solid #d1d5db;
-            color: #6b7280;
-            font-size: 0.74rem;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: #fff;
-        }
-
-        .invoice-compact-step.is-active {
-            border-color: #2563eb;
-            background: #2563eb;
-            color: #fff;
-        }
-
-        /* Modern Tabs & Pills */
-        .type-tabs-wrap {
-            margin-bottom: 1.25rem;
-        }
-
-        .type-tab-btn {
-            border: none;
-            background: transparent;
-            padding: 0.75rem 0;
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: #64748b;
-            position: relative;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .type-tab-btn:hover:not(:disabled) {
-            color: #1e293b;
-        }
-
-        .type-tab-btn.is-active {
-            color: var(--brand);
-        }
-
-        .type-tab-btn.is-active::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: var(--brand);
-            border-radius: 2px 2px 0 0;
-        }
-
-        .type-tab-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .channel-pills-wrap {
-            margin-bottom: 2rem;
-        }
-
-        .channel-pill-btn {
-            border: 1px solid #d1d5db;
-            background: #fff;
-            padding: 0.45rem 1.25rem;
-            border-radius: 999px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #64748b;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-        }
-
-        .channel-pill-btn:hover {
-            background: #f8fafc;
-            border-color: #cbd5e1;
-        }
-
-        .channel-pill-btn.is-active {
-            background: #eff6ff;
-            color: var(--brand);
-            border-color: var(--brand);
-            box-shadow: 0 0 0 1px var(--brand);
-        }
-
-        .attachment-toggle {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-        }
-
-        .attachment-toggle input {
-            position: absolute;
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .attachment-toggle span {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 60px;
-            padding: 0.4rem 1rem;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #475569;
-            background: #ffffff;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.15s ease;
-        }
-
-        .attachment-toggle input:checked+span {
-            background: #eff6ff;
-            border-color: var(--brand);
-            color: var(--brand);
-            box-shadow: 0 0 0 1px var(--brand);
-        }
-
-        .attachment-toggle input:disabled+span {
-            opacity: 0.55;
-            cursor: not-allowed;
-            background: #f1f5f9;
-        }
-
-        .field-label {
-            display: block;
-            margin-bottom: 0.4rem;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #475569;
-        }
-
-        .input-full {
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            padding: 0.6rem 0.8rem;
-            font-size: 0.9rem;
-            width: 100%;
-        }
-
-        .input-full:focus {
-            outline: none;
-            border-color: var(--brand);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        #emailBodyInput {
-            min-height: 400px !important;
-        }
-
-        .invoice-number-badge {
-            background: #f1f5f9;
-            color: #475569;
-            padding: 0.25rem 0.75rem;
-            border-radius: 999px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-    </style>
 
     <script>
         (function() {
@@ -952,7 +773,7 @@
                     selector: '#emailBodyInput',
                     menubar: false,
                     height: 340,
-                    readonly: isAlreadySent ? 1 : 0,
+                    readonly: !!isAlreadySent,
                     plugins: 'lists link table code autoresize',
                     toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
                     valid_elements: '*[*]',

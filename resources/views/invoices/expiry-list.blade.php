@@ -2,7 +2,7 @@
 
 @section('header_actions')
     <div class="header-actions-wrapper">
-        <a href="{{ route('invoices.index', $selectedClientId ? ['c' => $selectedClientId] : []) }}"
+        <a href="{{ route('invoices.index') }}"
             class="secondary-button">
             <i class="fas fa-file-invoice icon-spaced"></i>Invoice List
         </a>

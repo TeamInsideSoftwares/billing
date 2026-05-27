@@ -317,7 +317,8 @@
         const newBillingBtn = document.getElementById('new-billing-btn');
         const sameAsClientCheckbox = document.getElementById('billing_same_as_client');
         const clientBusinessName = document.getElementById('business_name');
-        const clientEmail = document.getElementById('email');
+        const clientPrimaryEmail = document.getElementById('primary_email');
+        const clientSecondaryEmails = document.getElementById('email');
         const clientPhone = document.getElementById('phone');
         const clientAddress = document.getElementById('address_line_1');
         const clientCity = document.getElementById('city');
@@ -395,7 +396,11 @@
 
         async function copyClientDetailsToBilling() {
             billingName.value = clientBusinessName.value || '';
-            billingEmail.value = clientEmail.value || '';
+            const emailParts = [
+                (clientPrimaryEmail.value || '').trim(),
+                (clientSecondaryEmails.value || '').trim(),
+            ].filter(Boolean);
+            billingEmail.value = Array.from(new Set(emailParts)).join(', ');
             billingPhone.value = clientPhone.value || '';
             billingAddress.value = clientAddress.value || '';
             billingPostal.value = clientPostal.value || '';
@@ -405,7 +410,7 @@
         existingSelect.addEventListener('change', loadSelectedBillingProfile);
         newBillingBtn.addEventListener('click', function () { existingSelect.value = ''; clearBillingFields(); });
         sameAsClientCheckbox.addEventListener('change', function () { if (this.checked) copyClientDetailsToBilling(); });
-        [clientBusinessName, clientEmail, clientPhone, clientAddress, clientPostal].forEach(function(el) {
+        [clientBusinessName, clientPrimaryEmail, clientSecondaryEmails, clientPhone, clientAddress, clientPostal].forEach(function(el) {
             el.addEventListener('input', function () { if (sameAsClientCheckbox.checked) copyClientDetailsToBilling(); });
         });
         [clientCity, clientState, clientCountry].forEach(function(el) {

@@ -163,6 +163,7 @@ class QuotationsController extends Controller
             'resultCount' => $resultCount,
             'clients' => Client::query()
                 ->where('accountid', $userAccountId)
+                ->regular()
                 ->orderBy('business_name')
                 ->orderBy('contact_name')
                 ->get(),
@@ -178,7 +179,7 @@ class QuotationsController extends Controller
 
         $clientId = (string) request('c', request('clientid', ''));
         $selectedClient = $clientId !== ''
-            ? Client::query()->where('accountid', $accountid)->where('clientid', $clientId)->first()
+            ? Client::query()->where('accountid', $accountid)->regular()->where('clientid', $clientId)->first()
             : null;
         $draftId = (string) request('d', '');
         $draftQuotation = $draftId !== ''
@@ -192,7 +193,7 @@ class QuotationsController extends Controller
         return view('quotations.create', [
             'title' => 'Create New Quotation',
             'currentStep' => $currentStep,
-            'clients' => Client::where('accountid', $accountid)->orderBy('business_name')->get(),
+            'clients' => Client::where('accountid', $accountid)->regular()->orderBy('business_name')->get(),
             'services' => Service::where('accountid', $accountid)->with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),
             'taxes' => ($account && $account->allow_multi_taxation)
                 ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get()
@@ -490,7 +491,7 @@ class QuotationsController extends Controller
         return view('quotations.form', [
             'title' => 'Edit ' . ($quotation->quo_number ?? 'Quotation'),
             'quotation' => $quotation,
-            'clients' => Client::where('accountid', $accountid)->get(),
+            'clients' => Client::where('accountid', $accountid)->regular()->get(),
         ]);
     }
 

@@ -119,8 +119,9 @@
                     @php
                         // Extract the base route name (e.g., 'services' from 'services.index')
                         $baseRoute = explode('.', $item['route'])[0];
-                        // Check if current route starts with the base route name
+                        // Highlight the whole module for nested routes like create/show/edit/pdf.
                         $isActive = request()->routeIs($baseRoute . '.*') || request()->routeIs($item['route']);
+
                         $icon = $navIcons[$baseRoute] ?? 'fa-circle';
                     @endphp
                     <a
@@ -503,7 +504,7 @@
                         toInput._flatpickr.setDate(toInput.value, false);
                     }
                 }
-            };
+            });
 
             // Delegate events for dynamically added content or just general robustness
             document.querySelectorAll('.header-date-input, .module-date-input').forEach(input => {
@@ -514,7 +515,6 @@
                 }
             });
 
-            enforceHeaderDates();
         };
 
         // Initial run
