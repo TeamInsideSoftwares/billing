@@ -25,10 +25,21 @@
                 <label for="clientid">Client</label>
                 <select id="clientid" name="clientid" class="form-control" required {{ ($isEditMode || request()->query('iframe') == 1) ? 'disabled' : '' }}>
                     <option value="">Select Client</option>
-                    @foreach($clients as $client)
-                        <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
-                            {{ $client->business_name ?? $client->contact_name }}{{ strtolower((string) ($client->type ?? 'regular')) === 'trial' ? ' (Trial)' : '' }}
-                        </option>
+                    @php
+                        $clientsByType = collect($clients ?? [])->groupBy(function ($client) {
+                            return strtolower((string) ($client->type ?? 'regular')) === 'trial' ? 'trial' : 'regular';
+                        });
+                    @endphp
+                    @foreach(['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
+                        @if(($clientsByType[$typeKey] ?? collect())->isNotEmpty())
+                            <optgroup label="{{ $typeLabel }}">
+                                @foreach($clientsByType[$typeKey] as $client)
+                                    <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
+                                        {{ $client->business_name ?? $client->contact_name }}
+                                    </option>
+                                @endforeach
+                            </optgroup>
+                        @endif
                     @endforeach
                 </select>
                 @if($isEditMode || request()->query('iframe') == 1)

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\TrialWelcomeMail;
 use App\Models\Account;
 use App\Models\Client;
 use App\Models\ClientBillingDetail;
@@ -14,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -47,15 +49,40 @@ class ClientsController extends Controller
 
         $validated['primary_email'] = strtolower(trim((string) ($validated['primary_email'] ?? '')));
 
-        $exists = Client::query()
+        $existingClient = Client::query()
             ->whereRaw('LOWER(primary_email) = ?', [$validated['primary_email']])
-            ->exists();
-        if ($exists) {
+            ->first();
+        if ($existingClient && (string) $existingClient->accountid === (string) $validated['accountid']) {
+            Log::warning('Client API skipped: primary email already exists for account.', [
+                'accountid' => $validated['accountid'] ?? null,
+                'type' => $validated['type'] ?? null,
+                'primary_email' => $validated['primary_email'] ?? null,
+                'itemid' => $validated['itemid'] ?? null,
+                'clientid' => $existingClient->clientid,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'warning' => true,
+                'message' => 'Primary email already exists.',
+                'data' => [
+                    'clientid' => $existingClient->clientid,
+                    'accountid' => $existingClient->accountid,
+                    'type' => $existingClient->type,
+                    'business_name' => $existingClient->business_name,
+                    'contact_name' => $existingClient->contact_name,
+                    'primary_email' => $existingClient->primary_email,
+                ],
+            ]);
+        }
+
+        if ($existingClient) {
             Log::warning('Client API skipped: primary email already exists.', [
                 'accountid' => $validated['accountid'] ?? null,
                 'type' => $validated['type'] ?? null,
                 'primary_email' => $validated['primary_email'] ?? null,
                 'itemid' => $validated['itemid'] ?? null,
+                'existing_accountid' => $existingClient->accountid,
             ]);
 
             return response()->json([
@@ -95,6 +122,8 @@ class ClientsController extends Controller
 
         $client = null;
         $order = null;
+        $temporaryPassword = trim((string) env('TRIAL_DEFAULT_PASSWORD', '123456'));
+        $welcomeEmailSent = false;
         try {
             DB::transaction(function () use (&$client, &$order, $validated, $service, $businessName, $startDate, $endDate, $addressLine1) {
                 $client = $this->createClientRecord([
@@ -134,6 +163,14 @@ class ClientsController extends Controller
                     'delivery_date' => null,
                 ]);
             });
+
+            if (strtolower((string) $client->type) === 'trial') {
+                $welcomeEmailSent = $this->sendTrialWelcomeEmail(
+                    $client,
+                    $order,
+                    $temporaryPassword
+                );
+            }
         } catch (Throwable $e) {
             Log::error('Client API failed: client/order not inserted (transaction rolled back).', [
                 'accountid' => $validated['accountid'] ?? null,
@@ -153,24 +190,19 @@ class ClientsController extends Controller
             'success' => true,
             'message' => 'Client and order created successfully.',
             'data' => [
-                'client' => [
-                    'clientid' => $client->clientid,
-                    'accountid' => $client->accountid,
-                    'type' => $client->type,
-                    'business_name' => $client->business_name,
-                    'contact_name' => $client->contact_name,
-                    'primary_email' => $client->primary_email,
-                ],
-                'order' => [
-                    'orderid' => $order->orderid,
-                    'accountid' => $order->accountid,
-                    'clientid' => $order->clientid,
-                    'order_number' => $order->order_number,
-                    'itemid' => $order->itemid,
-                    'item_name' => $order->item_name,
-                    'start_date' => optional($order->start_date)->format('Y-m-d'),
-                    'end_date' => optional($order->end_date)->format('Y-m-d'),
-                ],
+                'clientid' => $client->clientid,
+                'accountid' => $client->accountid,
+                'type' => $client->type,
+                'business_name' => $client->business_name,
+                'contact_name' => $client->contact_name,
+                'primary_email' => $client->primary_email,
+                'orderid' => $order->orderid,
+                'order_number' => $order->order_number,
+                'itemid' => $order->itemid,
+                'item_name' => $order->item_name,
+                'start_date' => optional($order->start_date)->format('Y-m-d'),
+                'end_date' => optional($order->end_date)->format('Y-m-d'),
+                'welcome_email_sent' => $welcomeEmailSent,
             ],
         ], 201);
     }
@@ -199,7 +231,9 @@ class ClientsController extends Controller
         }
         $resultCount = $query->count();
 
-        $clients = $query->latest()->take(20)->get()->map(function ($client) {
+        $clients = $query->latest()->paginate(20);
+
+        $clients->getCollection()->transform(function ($client) {
             $invoiceTotal = $client->invoices
                 ->where('status', '!=', 'cancelled')
                 ->where('payment_status', '!=', 'paid')
@@ -907,6 +941,60 @@ class ClientsController extends Controller
         }
 
         return ucfirst(str_replace(['.', '_', '-'], ' ', $local));
+    }
+
+    private function sendTrialWelcomeEmail(Client $client, Order $order, string $temporaryPassword): bool
+    {
+        $email = trim((string) ($client->primary_email ?? $client->email ?? ''));
+        if ($email === '') {
+            return false;
+        }
+
+        if ($temporaryPassword === '') {
+            Log::warning('Trial welcome email skipped: temporary password missing.', [
+                'accountid' => $client->accountid,
+                'clientid' => $client->clientid,
+                'orderid' => $order->orderid,
+                'email' => $email,
+            ]);
+
+            return false;
+        }
+
+        try {
+            Mail::to($email)->send(new TrialWelcomeMail(
+                name: (string) ($client->contact_name ?: $client->business_name ?: 'there'),
+                email: $email,
+                temporaryPassword: $temporaryPassword,
+                trialDays: $this->trialEmailDays(),
+                loginUrl: (string) env('TRIAL_LOGIN_URL', 'http://alpha.skoolready.com/login'),
+            ));
+
+            return true;
+        } catch (Throwable $e) {
+            Log::warning('Trial welcome email failed.', [
+                'accountid' => $client->accountid,
+                'clientid' => $client->clientid,
+                'orderid' => $order->orderid,
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    private function trialEmailDays(): int
+    {
+        $frequency = strtolower(trim((string) env('TRIAL_API_ORDER_FREQUENCY', 'month')));
+        $duration = max(1, (int) env('TRIAL_API_ORDER_DURATION', 1));
+
+        return match ($frequency) {
+            'day', 'daily', 'days' => $duration,
+            'week', 'weekly', 'weeks' => $duration * 7,
+            'year', 'yearly', 'years', 'annual' => $duration * 365,
+            default => $duration * 30,
+        };
     }
 
     private function calculateOrderEndDate(Carbon $startDate, string $frequency, int $duration): Carbon

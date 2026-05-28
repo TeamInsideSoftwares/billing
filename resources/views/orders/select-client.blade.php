@@ -16,39 +16,53 @@
         </div>
 
         <div id="clients-grid" class="clients-grid">
-            @forelse($clients as $client)
-                <a href="{{ route('orders.index', ['client_id' => $client->clientid]) }}" 
-                   class="client-card"
-                   data-client-name="{{ strtolower($client->business_name ?? $client->contact_name) }}">
-                    <div class="client-card__avatar">
-                        {{ strtoupper(substr($client->business_name ?? $client->contact_name, 0, 2)) }}
-                    </div>
-                    <div class="client-card__body">
-                        <strong class="client-card__title">
-                            {{ $client->business_name ?? $client->contact_name }}{{ strtolower((string) ($client->type ?? 'regular')) === 'trial' ? ' (Trial)' : '' }}
-                        </strong>
-                        @if($client->primary_email ?? $client->email)
-                            <span class="client-card__meta is-ellipsis">
-                                {{ $client->primary_email ?? $client->email }}
-                            </span>
-                        @endif
-                        @if($client->phone)
-                            <span class="client-card__meta">
-                                {{ $client->phone }}
-                            </span>
-                        @endif
-                    </div>
-                    <div class="client-card__chevron">
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                </a>
-            @empty
+            @php
+                $clientsByType = collect($clients ?? [])->groupBy(function ($client) {
+                    return strtolower((string) ($client->type ?? 'regular')) === 'trial' ? 'trial' : 'regular';
+                });
+            @endphp
+            @if(collect($clients ?? [])->isNotEmpty())
+                @foreach(['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
+                    @if(($clientsByType[$typeKey] ?? collect())->isNotEmpty())
+                        <div class="clients-group-title" style="grid-column: 1 / -1; font-weight: 600; color: #475467; margin: 0.25rem 0;">
+                            {{ $typeLabel }}
+                        </div>
+                        @foreach($clientsByType[$typeKey] as $client)
+                            <a href="{{ route('orders.index', ['c' => $client->clientid]) }}" 
+                               class="client-card"
+                               data-client-name="{{ strtolower($client->business_name ?? $client->contact_name) }}">
+                                <div class="client-card__avatar">
+                                    {{ strtoupper(substr($client->business_name ?? $client->contact_name, 0, 2)) }}
+                                </div>
+                                <div class="client-card__body">
+                                    <strong class="client-card__title">
+                                        {{ $client->business_name ?? $client->contact_name }}
+                                    </strong>
+                                    @if($client->primary_email ?? $client->email)
+                                        <span class="client-card__meta is-ellipsis">
+                                            {{ $client->primary_email ?? $client->email }}
+                                        </span>
+                                    @endif
+                                    @if($client->phone)
+                                        <span class="client-card__meta">
+                                            {{ $client->phone }}
+                                        </span>
+                                    @endif
+                                </div>
+                                <div class="client-card__chevron">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            </a>
+                        @endforeach
+                    @endif
+                @endforeach
+            @else
                 <div class="clients-empty">
                     <i class="fas fa-users clients-empty__icon"></i>
                     <p class="clients-empty__title">No clients found</p>
                     <p class="small-text">Add clients first to create orders.</p>
                 </div>
-            @endforelse
+            @endif
         </div>
     </div>
 @endsection

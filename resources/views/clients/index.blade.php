@@ -125,6 +125,28 @@
         </table>
     </section>
 
+    @if($clients->hasPages())
+        <div class="d-flex justify-content-end mt-2">
+            <nav aria-label="Clients pagination">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item {{ $clients->onFirstPage() ? 'disabled' : '' }}">
+                        <a class="page-link" href="{{ $clients->previousPageUrl() ?? '#' }}" tabindex="{{ $clients->onFirstPage() ? '-1' : '0' }}">&lsaquo;</a>
+                    </li>
+
+                    @foreach($clients->getUrlRange(1, $clients->lastPage()) as $page => $url)
+                        <li class="page-item {{ $page == $clients->currentPage() ? 'active' : '' }}">
+                            <a class="page-link" href="{{ $url }}">{{ $page }}</a>
+                        </li>
+                    @endforeach
+
+                    <li class="page-item {{ $clients->hasMorePages() ? '' : 'disabled' }}">
+                        <a class="page-link" href="{{ $clients->nextPageUrl() ?? '#' }}" tabindex="{{ $clients->hasMorePages() ? '0' : '-1' }}">&rsaquo;</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    @endif
+
     <!-- Manage Groups Modal -->
     <div class="modal fade" id="manageGroupsModal" tabindex="-1">
     <div class="modal-dialog modal-md modal-dialog-centered modal-650">

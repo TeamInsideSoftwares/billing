@@ -11,6 +11,11 @@
 @endsection
 
 @section('content')
+@php
+    $clientsByType = collect($allClients ?? [])->groupBy(function ($client) {
+        return strtolower((string) ($client->type ?? 'regular')) === 'trial' ? 'trial' : 'regular';
+    });
+@endphp
 <div class="order-index-shell">
     @if(!empty($showClientPicker))
         <div class="payment-client-picker-wrap">
@@ -32,8 +37,14 @@
                         <label for="client-select">Client</label>
                         <select name="c" id="client-select" class="form-control" autofocus>
                             <option value="" selected disabled>Select a client</option>
-                            @foreach($allClients as $client)
-                                <option value="{{ $client->clientid }}">{{ $client->business_name ?? $client->contact_name }}{{ strtolower((string) ($client->type ?? 'regular')) === 'trial' ? ' (Trial)' : '' }}</option>
+                            @foreach(['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
+                                @if(($clientsByType[$typeKey] ?? collect())->isNotEmpty())
+                                    <optgroup label="{{ $typeLabel }}">
+                                        @foreach($clientsByType[$typeKey] as $client)
+                                            <option value="{{ $client->clientid }}">{{ $client->business_name ?? $client->contact_name }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
                             @endforeach
                         </select>
                     </div>
@@ -55,10 +66,16 @@
                     <label class="module-filter-label" for="orders_client_filter">Client</label>
                     <select name="c" id="orders_client_filter" class="form-control">
                         <option value="all" {{ empty($clientId) ? 'selected' : '' }}>All Clients</option>
-                        @foreach($allClients as $client)
-                            <option value="{{ $client->clientid }}" {{ (string) $clientId === (string) $client->clientid ? 'selected' : '' }}>
-                                {{ $client->business_name ?? $client->contact_name }}{{ strtolower((string) ($client->type ?? 'regular')) === 'trial' ? ' (Trial)' : '' }}
-                            </option>
+                        @foreach(['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
+                            @if(($clientsByType[$typeKey] ?? collect())->isNotEmpty())
+                                <optgroup label="{{ $typeLabel }}">
+                                    @foreach($clientsByType[$typeKey] as $client)
+                                        <option value="{{ $client->clientid }}" {{ (string) $clientId === (string) $client->clientid ? 'selected' : '' }}>
+                                            {{ $client->business_name ?? $client->contact_name }}
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                            @endif
                         @endforeach
                     </select>
                 </div>
