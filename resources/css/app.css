@@ -1106,6 +1106,13 @@
     padding: 1rem;
     border-bottom: 1px solid #f1f5f9;
 }
+.notification-row {
+    cursor: pointer;
+}
+.notification-row:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
 .notification-content {
     display: flex;
     gap: 0.75rem;
@@ -4630,6 +4637,70 @@ a {
     background: #f8fafc;
     border-radius: 8px;
     border: 1px solid #e2e8f0;
+}
+
+.settings-wide-card-compact {
+    margin-top: 0.65rem;
+    padding: 0.7rem 0.85rem;
+}
+
+.settings-wide-card-compact .settings-toggle-title {
+    font-size: 0.86rem;
+    line-height: 1.25;
+}
+
+.settings-wide-card-compact .settings-toggle-note {
+    margin-top: 0.1rem;
+    font-size: 0.72rem;
+    line-height: 1.25;
+}
+
+.settings-toggle-row {
+    grid-column: span 4;
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 0.6rem;
+    margin-top: 0.65rem;
+}
+
+.settings-wide-card-in-row {
+    grid-column: auto;
+    margin-top: 0;
+}
+
+.settings-card-kicker {
+    margin: 0 0 0.35rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+}
+
+.settings-toggle-row .flex-between {
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.settings-toggle-row .flex-center-gap {
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.settings-toggle-row .settings-toggle-note {
+    display: none;
+}
+
+.settings-tax-subrow {
+    border-top: 1px solid #e2e8f0;
+    margin-top: 0.55rem;
+    padding-top: 0.55rem;
+}
+
+@media (max-width: 1100px) {
+    .settings-toggle-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 .settings-toggle-title {

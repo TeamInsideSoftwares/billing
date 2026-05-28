@@ -197,21 +197,21 @@ class SettingsController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:150',
-            'email' => 'required|string|max:500',
-            'phone' => 'nullable|string|max:500',
-            'legal_name' => 'nullable|string|max:150',
-            'tax_number' => 'nullable|string|max:50',
-            'website' => 'nullable|url|max:150',
+            'name' => 'required|string',
+            'email' => 'required|string',
+            'phone' => 'nullable|string',
+            'legal_name' => 'nullable|string',
+            'tax_number' => 'nullable|string',
+            'website' => 'nullable|url',
             'currency_code' => 'required|string|size:3|exists:currency,iso',
-            'timezone' => 'required|string|max:100',
+            'timezone' => 'required|string',
             'fy_month' => 'nullable|string|size:2',
             'fy_day' => 'nullable|string|size:2',
-            'address_line_1' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:100',
-            'state' => 'required|string|max:100',
-            'country' => 'nullable|string|max:100',
-            'postal_code' => 'nullable|string|max:20',
+            'address_line_1' => 'nullable|string',
+            'city' => 'nullable|string',
+            'state' => 'required|string',
+            'country' => 'nullable|string',
+            'postal_code' => 'nullable|string',
             'logo' => 'nullable|image|max:5120',
             'allow_multi_taxation' => 'nullable|boolean',
             'have_users' => 'nullable|boolean',
@@ -316,16 +316,16 @@ class SettingsController extends Controller
             'prefix_show' => 'boolean',
             'number_show' => 'boolean',
             'suffix_show' => 'boolean',
-            'prefix_type' => 'nullable|string|max:50',
-            'prefix_value' => 'nullable|string|max:50',
+            'prefix_type' => 'nullable|string',
+            'prefix_value' => 'nullable|string',
             'prefix_length' => 'nullable|integer|min:0|max:20',
-            'prefix_separator' => 'nullable|string|max:10',
-            'number_type' => 'nullable|string|max:50',
-            'number_value' => 'nullable|string|max:50',
+            'prefix_separator' => 'nullable|string',
+            'number_type' => 'nullable|string',
+            'number_value' => 'nullable|string',
             'number_length' => 'nullable|integer|min:0|max:20',
-            'number_separator' => 'nullable|string|max:10',
-            'suffix_type' => 'nullable|string|max:50',
-            'suffix_value' => 'nullable|string|max:50',
+            'number_separator' => 'nullable|string',
+            'suffix_type' => 'nullable|string',
+            'suffix_value' => 'nullable|string',
             'suffix_length' => 'nullable|integer|min:0|max:20',
             'reset_on_fy' => 'boolean',
         ]);
@@ -375,7 +375,7 @@ class SettingsController extends Controller
             'tin' => 'nullable|string',
             'authorize_signatory' => 'nullable|string',
             'signature_upload' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
-            'billing_from_email' => 'nullable|string|max:500',
+            'billing_from_email' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -575,9 +575,9 @@ class SettingsController extends Controller
     public function settingsStore(Request $request)
     {
         $validated = $request->validate([
-            'key' => 'required|string|max:255',
+            'key' => 'required|string',
             'value' => 'required',
-            'accountid' => 'nullable|string|max:10',
+            'accountid' => 'nullable|string',
         ]);
 
         $userAccountId = $this->resolveAccountId();
@@ -623,7 +623,7 @@ class SettingsController extends Controller
         }
 
         $validated = $request->validate([
-            'key' => 'required|string|max:255',
+            'key' => 'required|string',
             'value' => 'required',
         ]);
 
@@ -655,10 +655,10 @@ class SettingsController extends Controller
         $validator = Validator::make($request->all(), [
             'template_type' => 'required|in:' . $templateTypes,
             'channel' => 'required|in:email,whatsapp,sms',
-            'name' => 'nullable|required_if:channel,email|string|max:120',
-            'template_id' => 'nullable|required_if:channel,sms,whatsapp|string|max:120',
-            'meta_template_id' => 'nullable|string|max:160',
-            'sender_id' => 'nullable|string|max:120',
+            'name' => 'nullable|required_if:channel,email|string',
+            'template_id' => 'nullable|required_if:channel,sms,whatsapp|string',
+            'meta_template_id' => 'nullable|string',
+            'sender_id' => 'nullable|string',
             'subject' => 'nullable|string',
             'body' => 'nullable|required_if:channel,email|string',
             'is_active' => 'nullable|boolean',
@@ -766,10 +766,10 @@ class SettingsController extends Controller
 
         $validator = Validator::make($request->all(), [
             'channel' => 'required|in:email,whatsapp,sms',
-            'name' => 'nullable|required_if:channel,email|string|max:120',
-            'template_id' => 'nullable|required_if:channel,sms,whatsapp|string|max:120',
-            'meta_template_id' => 'nullable|string|max:160',
-            'sender_id' => 'nullable|string|max:120',
+            'name' => 'nullable|required_if:channel,email|string',
+            'template_id' => 'nullable|required_if:channel,sms,whatsapp|string',
+            'meta_template_id' => 'nullable|string',
+            'sender_id' => 'nullable|string',
             'subject' => 'nullable|string',
             'body' => 'nullable|required_if:channel,email|string',
             'is_active' => 'nullable|boolean',
@@ -1091,7 +1091,7 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'fy_prefix_type' => 'required|in:fixed_value,value/number',
             'fy_prefix_sep' => 'required|in:-,/,none',
-            'fy_prefix_value' => 'nullable|string|max:50',
+            'fy_prefix_value' => 'nullable|string',
             'fy_number_sep' => 'required|in:-,/,none',
         ]);
 
@@ -1154,7 +1154,7 @@ class SettingsController extends Controller
         $accountid = $this->resolveAccountId();
 
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'tax_name' => 'nullable|string|max:100',
+            'tax_name' => 'nullable|string',
             'rate' => 'required|numeric|min:0|max:100',
             'type' => 'required|in:GST,VAT,Sales Tax,Service Tax,Other',
         ]);
@@ -1198,11 +1198,10 @@ class SettingsController extends Controller
         }
 
         $validated = $request->validate([
-            'tax_name' => 'nullable|string|max:100',
+            'tax_name' => 'nullable|string',
             'rate' => 'required|numeric|min:0|max:100',
             'type' => 'required|in:GST,VAT,Sales Tax,Service Tax,Other',
         ]);
-
         $tax->update($validated);
 
         return redirect()->to(route('settings.index') . '#taxes')->with('success', 'Tax updated successfully.');

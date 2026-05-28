@@ -141,48 +141,38 @@
                 <span>Prioritize 6 accounts due this week.</span>
             </div> -->
 
+            @php
+                $notificationData = collect();
+                if (auth()->check()) {
+                    try {
+                        $notificationData = auth()->user()->unreadNotifications()
+                            ->latest('created_at')
+                            ->take(5)
+                            ->get()
+                            ->map(function ($notification) {
+                                $data = is_array($notification->data) ? $notification->data : [];
+                                return [
+                                    'id' => $notification->id,
+                                    'title' => $data['title'] ?? $data['message'] ?? 'New notification',
+                                    'description' => $data['description'] ?? $data['message'] ?? '',
+                                    'time' => optional($notification->created_at)->diffForHumans() ?? '',
+                                    'url' => $data['url'] ?? '#',
+                                    'read' => !empty($notification->read_at),
+                                ];
+                            });
+                    } catch (\Throwable $e) {
+                        $notificationData = collect();
+                    }
+                }
+            @endphp
             <div class="user-section">
                 <!-- Notifications -->
-                <div class="sidebar-user-item">
+                <div class="sidebar-user-item notification-row" id="openNotificationsModalRow" role="button" tabindex="0">
                     <div class="sidebar-icon-area">
-                        <div class="dropdown">
-                            <button type="button" class="icon-btn notification-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
-                                <i class="fas fa-bell"></i>
-                                <span class="notification-badge"></span>
-                            </button>
-                            <ul class="dropdown-menu notification-dropdown">
-                                <li class="dropdown-header">
-                                    <h6>Notifications</h6>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item notification-item" href="#">
-                                        <div class="notification-content">
-                                            <div class="notification-indicator"></div>
-                                            <div class="notification-text">
-                                                <p class="notification-title">New invoice payment received</p>
-                                                <p class="notification-desc">Payment of Rs 15,000 received for Invoice #INV-001</p>
-                                                <p class="notification-time">2 hours ago</p>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item notification-item" href="#">
-                                        <div class="notification-content">
-                                            <div class="notification-indicator"></div>
-                                            <div class="notification-text">
-                                                <p class="notification-title">Invoice overdue reminder</p>
-                                                <p class="notification-desc">Invoice #INV-045 is 5 days overdue</p>
-                                                <p class="notification-time">1 day ago</p>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </li>
-                                <li class="dropdown-footer">
-                                    <a href="#">View all notifications</a>
-                                </li>
-                            </ul>
-                        </div>
+                        <button type="button" class="icon-btn notification-btn" id="openNotificationsModal" title="Notifications">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-badge"></span>
+                        </button>
                     </div>
                     <span class="nav-text">Notifications</span>
                 </div>
@@ -273,7 +263,93 @@
         </div>
     </div>
 
+    <script type="application/json" id="notifications-data">{!! json_encode($notificationData->values()->all()) !!}</script>
+
+    <div class="modal fade" id="notificationsModal" tabindex="-1" aria-labelledby="notificationsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-md">
+            <div class="modal-content rounded-panel">
+                <div class="modal-header modal-header-custom">
+                    <h5 class="modal-title" id="notificationsModalLabel">Notifications</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="notificationsList" class="notification-list"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="text-link small" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const notificationsDataEl = document.getElementById('notifications-data');
+        const notificationsList = document.getElementById('notificationsList');
+        const notificationBadge = document.querySelector('.notification-badge');
+        const notificationsButton = document.getElementById('openNotificationsModal');
+        const notificationsRow = document.getElementById('openNotificationsModalRow');
+        const notificationsModalEl = document.getElementById('notificationsModal');
+
+        const notifications = notificationsDataEl ? JSON.parse(notificationsDataEl.textContent || '[]') : [];
+        const unreadCount = notifications.filter((item) => !item.read).length;
+
+        if (notificationBadge) {
+            if (unreadCount > 0) {
+                notificationBadge.textContent = unreadCount;
+                notificationBadge.classList.add('has-count');
+                notificationBadge.style.display = 'inline-flex';
+            } else {
+                notificationBadge.style.display = 'none';
+            }
+        }
+
+        const renderNotificationItem = (item) => {
+            const link = document.createElement('a');
+            link.className = 'notification-item d-block mb-3';
+            link.href = item.url || '#';
+            link.innerHTML = `
+                <div class="notification-content">
+                    <div class="notification-indicator${item.read ? ' notification-read' : ''}"></div>
+                    <div class="notification-text">
+                        <p class="notification-title">${item.title || 'Notification'}</p>
+                        ${item.description ? `<p class="notification-desc">${item.description}</p>` : ''}
+                        ${item.time ? `<p class="notification-time">${item.time}</p>` : ''}
+                    </div>
+                </div>
+            `;
+            return link;
+        };
+
+        if (notificationsList) {
+            notificationsList.innerHTML = '';
+            if (notifications.length === 0) {
+                notificationsList.innerHTML = '<div class="text-muted">No notifications yet.</div>';
+            } else {
+                notifications.forEach((item) => {
+                    notificationsList.appendChild(renderNotificationItem(item));
+                });
+            }
+        }
+
+        if (notificationsButton && notificationsModalEl && typeof bootstrap !== 'undefined') {
+            const notificationModal = new bootstrap.Modal(notificationsModalEl);
+            const showNotificationsModal = function () {
+                notificationModal.show();
+            };
+            notificationsButton.addEventListener('click', showNotificationsModal);
+            if (notificationsRow) {
+                notificationsRow.addEventListener('click', showNotificationsModal);
+                notificationsRow.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        showNotificationsModal();
+                    }
+                });
+            }
+        }
+    });
+
     document.addEventListener('DOMContentLoaded', function() {
         window.appAlert = function(message, options = {}) {
             if (!window.Swal || typeof window.Swal.fire !== 'function') {

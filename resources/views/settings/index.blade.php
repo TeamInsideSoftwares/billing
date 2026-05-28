@@ -194,60 +194,56 @@
                 </div>
             </div>
 
-            <!-- Multi-Taxation Toggle -->
-            <div class="settings-wide-card">
-                <div class="flex-between">
-                    <div>
-                        <label class="settings-toggle-title">Allow Multi-Taxation</label>
-                        <p class="settings-toggle-note">Enable multiple tax rates (GST, VAT, etc.) across invoices, orders, and quotations</p>
+            <div class="settings-toggle-row">
+                <div class="settings-wide-card settings-wide-card-compact settings-wide-card-in-row">
+                    <p class="settings-card-kicker">Tax Settings</p>
+                    <div class="flex-between">
+                        <div>
+                            <label class="settings-toggle-title">Allow Multi-Taxation</label>
+                            <p class="settings-toggle-note">Use different tax rates</p>
+                        </div>
+                        <div class="flex-center-gap">
+                            <span class="settings-toggle-state {{ $account->allow_multi_taxation ? 'is-on' : 'is-off' }}">{{ $account->allow_multi_taxation ? 'Yes' : 'No' }}</span>
+                            <label class="toggle-wrap">
+                                <input type="checkbox" name="allow_multi_taxation" value="1" {{ old('allow_multi_taxation', $account->allow_multi_taxation ?? false) ? 'checked' : '' }} class="toggle-input">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
-                    <div class="flex-center-gap">
-                        <span class="settings-toggle-state {{ $account->allow_multi_taxation ? 'is-on' : 'is-off' }}">{{ $account->allow_multi_taxation ? 'Yes' : 'No' }}</span>
-                        <label class="toggle-wrap">
-                            <input type="checkbox" name="allow_multi_taxation" value="1" {{ old('allow_multi_taxation', $account->allow_multi_taxation ?? false) ? 'checked' : '' }} class="toggle-input">
-                            <span class="toggle-slider"></span>
-                        </label>
+
+                    <div id="fixed-tax-section" class="settings-tax-subrow {{ $account->allow_multi_taxation ? 'hidden' : '' }}">
+                        <div class="flex-between">
+                            <div>
+                                <label class="settings-toggle-title">Fixed Tax Rate</label>
+                            </div>
+                            <div class="flex-center-gap">
+                                @if(!$account->allow_multi_taxation)
+                                <span class="fixed-tax-pill">
+                                    {{ $account->fixed_tax_type ?? 'GST' }} {{ number_format($account->fixed_tax_rate ?? 0, 2) }}%
+                                </span>
+                                <button type="button" id="open-fixed-tax-modal" class="primary-button btn-md">
+                                    {{ ($account->fixed_tax_rate ?? 0) > 0 ? 'Edit Tax' : 'Add Tax' }}
+                                </button>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Fixed Tax Rate (shown when multi-taxation is NO) -->
-            <div id="fixed-tax-section" class="settings-wide-card settings-wide-card-sm {{ $account->allow_multi_taxation ? 'hidden' : '' }}">
-                <div class="flex-between">
-                    <div>
-                        <label class="settings-toggle-title">Fixed Tax Rate</label>
-                        <p class="settings-toggle-note">
-                            {{ $account->allow_multi_taxation ? 'Enable multi-taxation to configure multiple tax rates' : 'Single tax rate applied to all orders and invoices' }}
-                        </p>
-                    </div>
-                    <div class="flex-center-gap">
-                        @if(!$account->allow_multi_taxation)
-                        <span class="fixed-tax-pill">
-                            {{ $account->fixed_tax_type ?? 'GST' }} {{ number_format($account->fixed_tax_rate ?? 0, 2) }}%
-                        </span>
-                        <button type="button" id="open-fixed-tax-modal" class="primary-button btn-md">
-                            {{ ($account->fixed_tax_rate ?? 0) > 0 ? 'Edit Tax' : 'Add Tax' }}
-                        </button>
-                        @else
-                        <span class="settings-toggle-state is-disabled">Disabled</span>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            <!-- Have Users Toggle -->
-            <div class="settings-wide-card settings-wide-card-sm">
-                <div class="flex-between">
-                    <div>
-                        <label class="settings-toggle-title">Does your Products/Services are with the No. of Users?</label>
-                        <p class="settings-toggle-note">Enable user-based features (accounts, services, and products can be assigned to specific users)</p>
-                    </div>
-                    <div class="flex-center-gap">
-                        <span class="settings-toggle-state {{ $account->have_users ? 'is-on' : 'is-off' }}">{{ $account->have_users ? 'Yes' : 'No' }}</span>
-                        <label class="toggle-wrap">
-                            <input type="checkbox" name="have_users" value="1" {{ old('have_users', $account->have_users ?? false) ? 'checked' : '' }} class="toggle-input">
-                            <span class="toggle-slider"></span>
-                        </label>
+                <!-- Have Users Toggle -->
+                <div class="settings-wide-card settings-wide-card-sm settings-wide-card-compact settings-wide-card-in-row">
+                    <p class="settings-card-kicker">User Settings</p>
+                    <div class="flex-between">
+                        <div>
+                            <label class="settings-toggle-title">Does your Products/Services are with the No. of Users?</label>
+                        </div>
+                        <div class="flex-center-gap">
+                            <span class="settings-toggle-state {{ $account->have_users ? 'is-on' : 'is-off' }}">{{ $account->have_users ? 'Yes' : 'No' }}</span>
+                            <label class="toggle-wrap">
+                                <input type="checkbox" name="have_users" value="1" {{ old('have_users', $account->have_users ?? false) ? 'checked' : '' }} class="toggle-input">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>

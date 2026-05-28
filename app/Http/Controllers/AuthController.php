@@ -216,7 +216,15 @@ class AuthController extends Controller
         }
 
         $storedPassword = (string) data_get($record, $passwordColumn, '');
-        if ($storedPassword === '' || !password_verify($plainPassword, $storedPassword)) {
+        if ($storedPassword === '') {
+            return false;
+        }
+
+        // Support both password_hash() and legacy SHA-512 hex storage.
+        $phpPasswordHashValid = password_verify($plainPassword, $storedPassword);
+        $legacySha512Valid = hash_equals(strtolower($storedPassword), strtolower(hash('sha512', $plainPassword)));
+
+        if (!$phpPasswordHashValid && !$legacySha512Valid) {
             return false;
         }
 
