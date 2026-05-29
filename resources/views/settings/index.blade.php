@@ -1655,9 +1655,12 @@ document.addEventListener('DOMContentLoaded', function() {
         ],
         payment_received: [
             { key: 'payment_amount', label: '' },
+            { key: 'currency', label: 'Client currency' },
             { key: 'payment_date', label: '' },
-            { key: 'payment_reference', label: '' },
-            { key: 'total_amount', label: '' },
+            { key: 'payment_mode', label: 'How paid (Bank/Online/Cash)' },
+            { key: 'reference_number', label: '' },
+            { key: 'invoice_number', label: '' },
+            { key: 'invoice_title', label: '' },
         ],
     };
 

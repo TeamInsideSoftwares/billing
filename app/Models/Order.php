@@ -6,6 +6,7 @@ use App\Models\Concerns\HasAlphaNumericId;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
@@ -71,9 +72,16 @@ class Order extends Model
         return $this->belongsTo(Service::class, 'itemid', 'itemid');
     }
 
-    public function invoices(): HasMany
+    public function invoices(): BelongsToMany
     {
-        return $this->hasMany(Invoice::class, 'orderid');
+        return $this->belongsToMany(
+            Invoice::class,
+            'invoice_items',
+            'orderid',
+            'invoiceid',
+            'orderid',
+            'invoiceid'
+        )->distinct();
     }
 
     public function getSubtotalAttribute(): float

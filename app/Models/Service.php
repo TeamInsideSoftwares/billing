@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'name',
     'sequence',
     'description',
+    'grace_period',
     'addons',
     'is_active',
 ])]
@@ -41,6 +42,7 @@ class Service extends Model
     {
         return [
             'sequence' => 'integer',
+            'grace_period' => 'integer',
             'user_wise' => 'boolean',
             'addons' => 'array',
             'is_active' => 'boolean',

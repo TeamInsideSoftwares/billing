@@ -27,18 +27,20 @@
                 @error('type') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div class="service-field">
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem;">
-                    <label for="ps_catid" style="margin-bottom:0;">Category</label>
-                    <button type="button" id="btn-add-category-inline" class="text-link" style="font-size:0.78rem; font-weight:600;">+ Add</button>
+                <label for="ps_catid">Category</label>
+                <div class="input-row">
+                    <select id="ps_catid" name="ps_catid" class="service-input-compact">
+                        <option value="">-- No Category --</option>
+                        @foreach($categories as $category)
+                        <option value="{{ $category->ps_catid }}" {{ old('ps_catid', isset($service) ? $service->ps_catid : '') == $category->ps_catid ? 'selected' : '' }}>
+                            {{ $category->name }}
+                        </option>
+                        @endforeach
+                    </select>
+                    <button type="button" id="btn-add-category-inline" class="text-link text-link-button" title="Add Category">
+                        <i class="fas fa-plus"></i>
+                    </button>
                 </div>
-                <select id="ps_catid" name="ps_catid" class="service-input-compact">
-                    <option value="">-- No Category --</option>
-                    @foreach($categories as $category)
-                    <option value="{{ $category->ps_catid }}" {{ old('ps_catid', isset($service) ? $service->ps_catid : '') == $category->ps_catid ? 'selected' : '' }}>
-                        {{ $category->name }}
-                    </option>
-                    @endforeach
-                </select>
                 @error('ps_catid') <span class="error">{{ $message }}</span> @enderror
             </div>
             @if($account && $account->allow_sync)
@@ -59,10 +61,15 @@
                 </label>
                 @error('user_wise') <span class="error">{{ $message }}</span> @enderror
             </div>
-            <div class="service-field service-span-2">
+            <div class="service-field">
                 <label for="name">Item Name *</label>
                 <input type="text" id="name" name="name" value="{{ old('name', isset($service) ? $service->name : '') }}" required class="service-input-compact">
                 @error('name') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div class="service-field">
+                <label for="grace_period">Grace Period (days)</label>
+                <input type="number" id="grace_period" name="grace_period" min="0" step="1" value="{{ old('grace_period', isset($service) ? (int) ($service->grace_period ?? 0) : 0) }}" class="service-input-compact">
+                @error('grace_period') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div class="service-field service-span-2">
                 <label for="description">Description</label>

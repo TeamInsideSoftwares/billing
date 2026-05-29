@@ -3,14 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Models\CommunicationLog;
 use App\Models\FinancialYear;
 use App\Models\Invoice;
 use App\Models\Ledger;
+use App\Models\Account;
+use App\Models\AccountBillingDetail;
+use App\Models\MessageTemplate;
 use App\Models\Payment;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
@@ -460,6 +466,10 @@ class PaymentsController extends Controller
             }
         });
 
+        if ($payment) {
+            $this->dispatchPaymentReceivedCommunications($payment);
+        }
+
         return redirect()
             ->route('payments.index', ['c' => $payment->clientid])
             ->with('success', 'Payment recorded successfully.');
@@ -702,5 +712,258 @@ class PaymentsController extends Controller
             ->where('invoiceid_paymentid', $payment->paymentid)
             ->where('type', 'cr')
             ->delete();
+    }
+
+    private function dispatchPaymentReceivedCommunications(Payment $payment): void
+    {
+        $payment->loadMissing(['client.billingDetail', 'invoice']);
+        $accountId = (string) $payment->accountid;
+
+        $templates = MessageTemplate::query()
+            ->where('accountid', $accountId)
+            ->where('template_type', 'payment_received')
+            ->where('is_active', true)
+            ->whereIn('channel', ['email', 'whatsapp', 'sms'])
+            ->orderBy('channel')
+            ->get();
+
+        if ($templates->isEmpty()) {
+            return;
+        }
+
+        foreach ($templates as $template) {
+            $send = $this->sendPaymentCommunication($payment, $template);
+            $status = $send['ok'] ? 'sent' : 'failed';
+
+            CommunicationLog::query()->create([
+                'accountid' => $accountId,
+                'invoiceid' => (string) ($payment->invoiceid ?? ''),
+                'clientid' => (string) ($payment->clientid ?? ''),
+                'from_email' => (string) ($send['from_email'] ?? ''),
+                'to_email' => (string) ($send['to_email'] ?? ''),
+                'phone_number' => (string) ($send['phone'] ?? ''),
+                'subject' => $send['subject'] ?? null,
+                'body' => $send['body'] ?? null,
+                'attachment_type' => 'payment_received',
+                'channel' => (string) $template->channel,
+                'status' => $status,
+                'created_by' => (string) (auth()->user()?->userid ?? auth()->id() ?? 'SYSTEM'),
+            ]);
+        }
+    }
+
+    private function sendPaymentCommunication(Payment $payment, MessageTemplate $template): array
+    {
+        $channel = (string) $template->channel;
+        $account = Account::query()->find((string) $payment->accountid);
+        $accountBilling = AccountBillingDetail::query()->where('accountid', (string) $payment->accountid)->first();
+        $toEmail = $this->resolvePaymentRecipientEmail($payment);
+        $phone = trim((string) (
+            $payment->client?->billingDetail?->billing_phone
+            ?? $payment->client?->whatsapp_number
+            ?? $payment->client?->phone
+            ?? ''
+        ));
+
+        if ($channel === 'email' && $toEmail === '') {
+            return ['ok' => false, 'message' => 'Client email not found.', 'to_email' => '', 'phone' => $phone];
+        }
+        if ($channel !== 'email' && $phone === '') {
+            return ['ok' => false, 'message' => 'Client phone/whatsapp not found.', 'to_email' => $toEmail, 'phone' => ''];
+        }
+
+        $replace = $this->buildPaymentTemplateReplacements(
+            $payment,
+            (string) ($accountBilling?->billing_name ?? $account?->name ?? '')
+        );
+        $subject = strtr((string) ($template->subject ?? ''), $replace);
+        $body = strtr((string) ($template->body ?? ''), $replace);
+        $payload = [
+            'account_id' => (string) $payment->accountid,
+            'campaign_name' => '',
+            'schedule_at' => now()->toIso8601String(),
+            'source_url' => config('app.url'),
+            'notes' => 'Payment received notification',
+            'records' => [$this->buildPaymentRecipientRecord($payment, $channel, $toEmail, $phone)],
+        ];
+
+        if ($channel === 'email') {
+            $payload['subject'] = $this->sanitizeForCampioText($subject);
+            // Keep editor formatting for email; do not strip HTML decorations.
+            $payload['message'] = $body;
+            $payload['sender_id'] = (string) ($accountBilling?->billing_name ?: $accountBilling?->billing_from_email ?: '');
+        } else {
+            $payload['message'] = $this->sanitizeForCampioText($this->htmlToPlainText($body));
+            if (!empty($template->template_id)) {
+                $payload['template_id'] = (string) $template->template_id;
+            }
+            if (!empty($template->meta_template_id)) {
+                $payload['meta_template_id'] = (string) $template->meta_template_id;
+            }
+            if (!empty($template->sender_id)) {
+                $payload['sender_id'] = (string) $template->sender_id;
+            }
+        }
+
+        $sendResult = $this->sendViaCampioForPayments($channel, $payload);
+
+        return $sendResult + [
+            'to_email' => $toEmail,
+            'phone' => $phone,
+            'subject' => $channel === 'email' ? $subject : null,
+            'body' => $body,
+            'from_email' => (string) ($accountBilling?->billing_from_email ?? ''),
+        ];
+    }
+
+    private function resolvePaymentRecipientEmail(Payment $payment): string
+    {
+        $candidates = [
+            (string) ($payment->client?->billingDetail?->billing_email ?? ''),
+            (string) ($payment->client?->billing_email ?? ''),
+            (string) ($payment->client?->primary_email ?? ''),
+            (string) ($payment->client?->email ?? ''),
+        ];
+
+        foreach ($candidates as $candidate) {
+            $parts = preg_split('/[,;]+/', $candidate) ?: [];
+            foreach ($parts as $part) {
+                $email = trim($part);
+                if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    return $email;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    private function buildPaymentTemplateReplacements(Payment $payment, string $businessName = ''): array
+    {
+        $clientName = (string) ($payment->client?->business_name ?: $payment->client?->contact_name ?: 'Client');
+        $invoiceNumber = (string) ($payment->invoice?->ti_number ?: $payment->invoice?->pi_number ?: '');
+        $invoiceTitle = (string) ($payment->invoice?->invoice_title ?? '');
+        $rawAmount = (float) ($payment->received_amount ?? 0);
+        $amount = fmod($rawAmount, 1.0) == 0.0
+            ? number_format($rawAmount, 0, '.', '')
+            : number_format($rawAmount, 2, '.', '');
+        $currency = (string) ($payment->client?->currency ?? 'INR');
+        $paymentDate = $payment->payment_date?->format('d M Y') ?? Carbon::today()->format('d M Y');
+
+        return [
+            '{{client_name}}' => $clientName,
+            '{{client_business_name}}' => (string) ($payment->client?->business_name ?? ''),
+            '{{client_contact_person}}' => (string) ($payment->client?->contact_name ?? ''),
+            '{{business_name}}' => $businessName,
+            '{{company_name}}' => $businessName,
+            '{{account_name}}' => $businessName,
+            '{{payment_amount}}' => $amount,
+            '{{amount}}' => $amount,
+            '{{currency}}' => $currency,
+            '{{payment_date}}' => $paymentDate,
+            '{{payment_mode}}' => (string) ($payment->mode ?? ''),
+            '{{reference_number}}' => (string) ($payment->reference_number ?? ''),
+            '{{invoice_number}}' => $invoiceNumber,
+            '{{invoice_title}}' => $invoiceTitle,
+            '{{payment_type}}' => (string) ($payment->type ?? 'payment'),
+        ];
+    }
+
+    private function buildPaymentRecipientRecord(Payment $payment, string $channel, string $toEmail, string $phone): array
+    {
+        $clientName = trim((string) (
+            $payment->client?->business_name
+            ?: $payment->client?->contact_name
+            ?: 'Customer'
+        ));
+        $record = [
+            'id' => (string) ($payment->clientid ?: $payment->paymentid),
+            'name' => $clientName,
+            'student_customer_name' => $clientName,
+            'paymentid' => (string) ($payment->paymentid ?? ''),
+            'payment_amount' => (string) ($payment->received_amount ?? '0'),
+        ];
+
+        if ($channel === 'email') {
+            $record['email'] = $toEmail;
+            return $record;
+        }
+
+        $phoneDigits = preg_replace('/[^0-9]/', '', (string) $phone);
+        if (strlen($phoneDigits) === 12 && str_starts_with($phoneDigits, '91')) {
+            $phoneDigits = substr($phoneDigits, 2);
+        }
+        $record['mobile'] = $phoneDigits !== '' ? $phoneDigits : $phone;
+        return $record;
+    }
+
+    private function sendViaCampioForPayments(string $channel, array $payload): array
+    {
+        $baseUrl = rtrim((string) env('CAMPIO_BASE_URL', 'http://alpha.skoolready.com/campio'), '/');
+        if ($baseUrl === '') {
+            return ['ok' => false, 'message' => 'CAMPIO_BASE_URL is not configured.'];
+        }
+
+        $endpoint = $baseUrl . '/api/campaigns/schedule/' . $channel;
+        $token = trim((string) env('CAMPIO_AUTH_TOKEN', ''));
+        $apiKey = trim((string) env('CAMPIO_API_KEY', ''));
+
+        $request = Http::acceptJson()->asJson()->timeout(30);
+        if ($token !== '') {
+            $request = $request->withToken($token);
+        }
+        if ($apiKey !== '') {
+            $request = $request->withHeaders(['X-API-KEY' => $apiKey]);
+        }
+
+        try {
+            $response = $request->post($endpoint, $payload);
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'message' => 'Campio request failed: ' . $e->getMessage()];
+        }
+
+        $json = $response->json();
+        if (!$response->successful()) {
+            Log::error('Campio payment_received dispatch failed', [
+                'channel' => $channel,
+                'status' => $response->status(),
+                'response' => $json,
+            ]);
+            return [
+                'ok' => false,
+                'message' => is_array($json)
+                    ? ((string) ($json['message'] ?? 'Campio API returned an error.'))
+                    : ('Campio API returned HTTP ' . $response->status() . '.'),
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'campaign_id' => (string) (is_array($json) ? ($json['campaign_id'] ?? '') : ''),
+        ];
+    }
+
+    private function sanitizeForCampioText(string $text): string
+    {
+        $value = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $value = str_replace(["\r\n", "\r"], "\n", $value);
+        $value = str_replace(["\\r\\n", "\\n"], "\n", $value);
+        $value = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $value) ?? $value;
+        $value = preg_replace('/[^\P{C}\n\t]+/u', '', $value) ?? $value;
+        $value = preg_replace("/\n{3,}/", "\n\n", $value) ?? $value;
+        return trim($value);
+    }
+
+    private function htmlToPlainText(string $value): string
+    {
+        $withBreaks = str_replace(["\r\n", "\r"], "\n", $value);
+        $withBreaks = preg_replace('/<br\s*\/?>/i', "\n", $withBreaks) ?? $withBreaks;
+        $withBreaks = preg_replace('/<\/p>/i', "\n", $withBreaks) ?? $withBreaks;
+        $withBreaks = preg_replace('/<p[^>]*>/i', '', $withBreaks) ?? $withBreaks;
+        $withBreaks = preg_replace('/<\/div>/i', "\n", $withBreaks) ?? $withBreaks;
+        $withBreaks = preg_replace('/<div[^>]*>/i', '', $withBreaks) ?? $withBreaks;
+        $plain = strip_tags($withBreaks);
+
+        return trim(preg_replace("/\n{3,}/", "\n\n", $plain) ?? $plain);
     }
 }

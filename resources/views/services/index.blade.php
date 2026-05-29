@@ -95,6 +95,7 @@
                             <th class="w-35">Item</th>
                             <th class="w-8">Type</th>
                             <th class="w-18">Costings</th>
+                            <th class="w-8">Grace</th>
                             <th class="w-14">Add-ons</th>
                             <th class="w-8">Status</th>
                             <th class="w-8">Actions</th>
@@ -131,6 +132,9 @@
                                 @else
                                     <span class="service-muted">No costings</span>
                                 @endif
+                            </td>
+                            <td>
+                                <span class="service-muted">{{ (int) ($service['grace_period'] ?? 0) }} day(s)</span>
                             </td>
                             <td>
                                 @if(!empty($service['addons']) && count($service['addons']) > 0)
