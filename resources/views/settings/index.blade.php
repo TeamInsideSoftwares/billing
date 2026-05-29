@@ -255,59 +255,6 @@
         </form>
     </section>
 
-    <section class="panel-card panel-card-compact mt-3">
-        <div class="settings-section-head">
-            <div class="settings-section-icon"><i class="fas fa-bell"></i></div>
-            <div>
-                <h5 class="settings-section-title">Reminder Automation</h5>
-                <p class="settings-section-subtitle">Control auto reminder frequency for expiring invoices and services</p>
-            </div>
-        </div>
-
-        <form method="POST" action="{{ route('settings.reminder-automation.update') }}" class="form-grid form-grid grid-cols-4">
-            @csrf
-
-            <div class="settings-wide-card settings-wide-card-sm col-span-2">
-                <div class="flex-between">
-                    <div>
-                        <label class="settings-toggle-title">Enable Automated Reminders</label>
-                        <p class="settings-toggle-note">When enabled, reminders start before expiry, switch to daily in the final 3 days, send expiry on the day, and send renewal after renewal invoices are created.</p>
-                    </div>
-                    <div class="flex-center-gap">
-                        <span class="settings-toggle-state {{ $reminderAutomationEnabled ? 'is-on' : 'is-off' }}">{{ $reminderAutomationEnabled ? 'Yes' : 'No' }}</span>
-                        <label class="toggle-wrap">
-                            <input
-                                type="checkbox"
-                                name="reminder_automation_enabled"
-                                value="1"
-                                {{ old('reminder_automation_enabled', $reminderAutomationEnabled) ? 'checked' : '' }}
-                                class="toggle-input"
-                            >
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-span-1">
-                <label class="text-sm required">Number of days from expiry date *</label>
-                <input
-                    type="number"
-                    name="reminder_start_days"
-                    min="1"
-                    max="365"
-                    required
-                    value="{{ old('reminder_start_days', $reminderStartDays ?? 30) }}"
-                    class="settings-input-sm"
-                >
-                <small class="text-xs text-muted-light">Example: 30 means start weekly reminders 30 days before expiry.</small>
-            </div>
-
-            <div class="form-actions settings-actions col-span-2">
-                <button type="submit" class="primary-button btn-md">Save Reminder Settings</button>
-            </div>
-        </form>
-    </section>
 </div>
 
 <!-- FINANCIAL YEAR -->
@@ -626,30 +573,9 @@
                                     <p class="text-sm text-muted mt-2 mb-1 template-variable-only-note" style="display:none;">
                                         For WhatsApp/SMS, message text is fixed by the provider template. Only keep/update dynamic variables here.
                                     </p>
-                                    <div class="mt-2 d-flex flex-wrap gap-2">
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{client_business_name}} (Client's Company)</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{client_contact_person}} (Client's Contact)</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{client_name}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{invoice_title}}</span>
-                                        {{-- <span class="badge bg-light text-muted border px-2 py-1">@{{invoice_number}}</span> --}}
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{pi_number}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{ti_number}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{pi_link}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{ti_link}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{quotation_title}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{quotation_number}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{quotation_link}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{total_amount}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{due_date}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{item_name}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{item_start_date}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{item_end_date}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{days_left}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{renewal_date}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{payment_amount}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{payment_date}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{payment_reference}}</span>
-                                        <span class="badge bg-light text-muted border px-2 py-1">@{{business_name}} (Your Business Name)</span>
+                                    <div class="mt-2 d-flex flex-wrap gap-2 template-variable-badges"></div>
+                                    <div class="text-xs text-muted mt-2 template-variable-help">
+                                        Showing common tags and tags relevant to the selected template type.
                                     </div>
                                 </div>
 
@@ -1666,6 +1592,94 @@ document.addEventListener('DOMContentLoaded', function() {
     const mtErrorToast = @json(session('mt_error_toast'));
     const mtStateKey = 'settings_message_template_state_v1';
     const templateContextMap = @json($templateContextMap ?? []);
+    const templateVariableMap = {
+        common: [
+            { key: 'client_business_name', label: "Client's Company" },
+            { key: 'client_contact_person', label: "Client's Contact" },
+            { key: 'business_name', label: 'Your Business Name' },
+        ],
+        pi: [
+            { key: 'invoice_title', label: '' },
+            { key: 'pi_number', label: '' },
+            { key: 'ti_number', label: '' },
+            { key: 'pi_link', label: '' },
+            { key: 'ti_link', label: '' },
+            { key: 'total_amount', label: '' },
+            { key: 'due_date', label: '' },
+            { key: 'item_name', label: '' },
+            { key: 'item_start_date', label: '' },
+            { key: 'item_end_date', label: '' },
+        ],
+        ti: [
+            { key: 'invoice_title', label: '' },
+            { key: 'pi_number', label: '' },
+            { key: 'ti_number', label: '' },
+            { key: 'pi_link', label: '' },
+            { key: 'ti_link', label: '' },
+            { key: 'total_amount', label: '' },
+            { key: 'due_date', label: '' },
+            { key: 'item_name', label: '' },
+            { key: 'item_start_date', label: '' },
+            { key: 'item_end_date', label: '' },
+        ],
+        quotation: [
+            { key: 'quotation_title', label: '' },
+            { key: 'quotation_number', label: '' },
+            { key: 'quotation_link', label: '' },
+            { key: 'total_amount', label: '' },
+        ],
+        reminder: [
+            { key: 'item_name', label: '' },
+            { key: 'item_description', label: '' },
+            { key: 'days_left', label: '' },
+            { key: 'order_number', label: '' },
+            { key: 'order_start_date', label: '' },
+            { key: 'order_end_date', label: '' },
+        ],
+        expiry: [
+            { key: 'item_name', label: '' },
+            { key: 'item_description', label: '' },
+            { key: 'expiry_date', label: '' },
+            { key: 'days_left', label: '' },
+            { key: 'days_ago', label: '' },
+            { key: 'order_number', label: '' },
+            { key: 'order_start_date', label: '' },
+            { key: 'order_end_date', label: '' },
+        ],
+        renewal: [
+            { key: 'item_name', label: '' },
+            { key: 'item_description', label: '' },
+            { key: 'order_number', label: '' },
+            { key: 'order_start_date', label: '' },
+            { key: 'order_end_date', label: '' },
+        ],
+        payment_received: [
+            { key: 'payment_amount', label: '' },
+            { key: 'payment_date', label: '' },
+            { key: 'payment_reference', label: '' },
+            { key: 'total_amount', label: '' },
+        ],
+    };
+
+    function renderTemplateVariableBadges(type) {
+        const badgeContainer = form?.querySelector('.template-variable-badges');
+        if (!badgeContainer) return;
+
+        const common = templateVariableMap.common || [];
+        const specific = templateVariableMap[type] || [];
+        const tags = [...common, ...specific];
+        const seen = new Set();
+
+        badgeContainer.innerHTML = '';
+        tags.forEach((tag) => {
+            if (!tag?.key || seen.has(tag.key)) return;
+            seen.add(tag.key);
+            const span = document.createElement('span');
+            span.className = 'badge bg-light text-muted border px-2 py-1';
+            span.textContent = `@{{${tag.key}}}` + (tag.label ? ` (${tag.label})` : '');
+            badgeContainer.appendChild(span);
+        });
+    }
 
     function saveMtState(type, channel) {
         try {
@@ -1823,6 +1837,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentChannel = channel || channelInput?.value || 'email';
         const typeLabel = templateTypeLabels[currentType] || currentType.replace(/_/g, ' ').toUpperCase();
         const channelLabel = currentChannel.charAt(0).toUpperCase() + currentChannel.slice(1);
+        renderTemplateVariableBadges(currentType);
 
         if (typeInput) typeInput.value = currentType;
         if (channelInput) channelInput.value = currentChannel;
@@ -1895,6 +1910,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const typeKey = type || template.template_type || typeInput?.value || defaultTemplateType;
         const channel = template.channel || channelInput?.value || 'email';
+        renderTemplateVariableBadges(typeKey);
 
         form.action = updateBase + '/' + encodeURIComponent(template.templateid);
         if (!methodInput.name) {

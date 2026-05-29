@@ -81,11 +81,14 @@
                 </button>
             </form>
         @endif
+        @php
+            $primaryOrderId = optional($invoice->invoiceItems)->pluck('orderid')->filter()->first();
+        @endphp
         <a href="{{ route('invoices.create', [
             'step' => 2,
             'c' => request('c', $invoice->clientid),
             'd' => $invoice->invoiceid,
-            'o' => $invoice->orderid ?? null,
+            'o' => $primaryOrderId ?: null,
             'tax_invoice' => !empty($invoice->ti_number) ? 1 : null,
         ]) }}"
             class="primary-button small">

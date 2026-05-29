@@ -96,6 +96,7 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/invoices/orders/{order}/suspend', 'suspendExpiryOrder')->name('invoices.orders.suspend');
         Route::patch('/invoices/orders/{order}/unsuspend', 'unsuspendExpiryOrder')->name('invoices.orders.unsuspend');
         Route::patch('/invoices/orders/{order}/renew', 'renewExpiryOrder')->name('invoices.orders.renew');
+        Route::post('/invoices/orders/{order}/send-reminder', 'sendExpiryOrderReminder')->name('invoices.orders.send-reminder');
         Route::get('/invoices/expiry-list', 'invoicesExpiryList')->name('invoices.expiry-list');
         Route::get('/invoices/{invoice}/pdf-versions', 'pdfVersions')->name('invoices.pdf-versions');
         Route::get('/invoices/{invoice}/pdf', 'downloadPdf')->name('invoices.pdf');
@@ -199,7 +200,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/settings/fy-prefix', 'fyPrefixUpdate')->name('settings.fy-prefix.update');
         Route::get('/settings', 'settings')->name('settings.index');
         Route::put('/settings/account', 'accountUpdate')->name('account.update');
-        Route::post('/settings/reminder-automation', 'reminderAutomationUpdate')->name('settings.reminder-automation.update');
         Route::post('/settings/fixed-tax', 'fixedTaxUpdate')->name('account.fixed-tax.update');
         Route::post('/settings/serial-config', 'serialConfigUpdate')->name('serial.config.update');
         Route::post('/settings/billing-details', 'accountBillingUpdate')->name('account.billing.update');

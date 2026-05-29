@@ -46,8 +46,6 @@ class Account extends Model
         'have_users',
         'fixed_tax_rate',
         'fixed_tax_type',
-        'reminder_automation_enabled',
-        'reminder_days_before',
     ];
 
     protected function casts(): array
@@ -58,8 +56,6 @@ class Account extends Model
             'allow_sync' => 'boolean',
             'expires_at' => 'date',
             'fixed_tax_rate' => 'decimal:2',
-            'reminder_automation_enabled' => 'boolean',
-            'reminder_days_before' => 'integer',
         ];
     }
 

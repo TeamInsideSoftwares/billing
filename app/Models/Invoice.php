@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'accountid',
     'fy_id',
     'clientid',
-    'orderid',
     'pi_number',
     'ti_number',
     'invoice_title',
@@ -57,11 +56,6 @@ class Invoice extends Model
         return $this->belongsTo(Client::class, 'clientid');
     }
 
-    public function order(): BelongsTo
-    {
-        return $this->belongsTo(Order::class, 'orderid');
-    }
-
     public function getPurchaseOrderAttribute(): ?ClientDocument
     {
         return $this->client?->latestPurchaseOrder();
@@ -77,12 +71,17 @@ class Invoice extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function items(): HasMany
+    public function invoiceItems(): HasMany
     {
         return $this->hasMany(InvoiceItem::class, 'invoiceid', 'invoiceid')
             ->orderBy('sequence')
             ->orderBy('created_at')
             ->orderBy('invoice_itemid');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->invoiceItems();
     }
 
     public function payments(): HasMany

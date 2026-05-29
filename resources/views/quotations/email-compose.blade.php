@@ -1,10 +1,17 @@
 @extends('layouts.app')
 
+@section('header_actions')
+    <a href="{{ route('quotations.index') }}" class="secondary-button">
+        <i class="fas fa-arrow-left"></i> Back to Quotations
+    </a>
+@endsection
+
 @section('content')
     @php
         $clientName = $quotation->client->business_name ?? ($quotation->client->contact_name ?? 'Client');
         $clientEmail = $quotation->client->primary_email ?? $quotation->client->email ?? '';
         $isAlreadySent = (string) ($composeEmail->status ?? '') === 'sent';
+        $isComposeLocked = $isAlreadySent && (string) ($prefillChannel ?? 'email') !== 'email';
         $displayDocNumber = trim((string) ($quotation->quo_number ?? $quotation->quotationid));
     @endphp
 
@@ -76,7 +83,7 @@
             @csrf
             <input type="hidden" name="channel" id="selectedChannel" value="{{ old('channel', $prefillChannel ?? $composeEmail->channel ?? 'email') }}">
             <input type="hidden" name="selected_templateid" id="selectedTemplateId" value="{{ old('selected_templateid', $prefillTemplateId ?? '') }}">
-            <input type="hidden" name="existing_custom_attachment_path" id="existingCustomAttachmentPath" value="{{ old('existing_custom_attachment_path', $customAttachmentUrl ?? '') }}">
+            <input type="hidden" name="existing_custom_attachment_paths" id="existingCustomAttachmentPaths" value="{{ old('existing_custom_attachment_paths', implode(',', $customAttachmentUrls ?? [])) }}">
 
             <div class="row g-3 align-items-start">
                 <div class="col-12 col-xl-7">
@@ -100,7 +107,7 @@
                                         <label class="field-label">Subject</label>
                                         <input type="text" name="subject" id="emailSubjectInput"
                                             value="{{ old('subject', $subject) }}"
-                                            class="input-full" {{ $isAlreadySent ? 'readonly' : '' }}>
+                                            class="input-full" {{ $isComposeLocked ? 'readonly' : '' }}>
                                     </div>
                                     <div class="col-12 col-md-6">
                                         <label class="field-label">CC</label>
@@ -122,29 +129,29 @@
                             <div class="mb-3">
                                 <label class="field-label">Body</label>
                                 <textarea name="body" id="emailBodyInput" rows="8" class="input-full"
-                                    {{ $isAlreadySent ? 'readonly' : '' }}>{{ old('body', $body) }}</textarea>
+                                    {{ $isComposeLocked ? 'readonly' : '' }}>{{ old('body', $body) }}</textarea>
                                 <div id="attachmentBodyHint" class="text-secondary small mt-1"></div>
                             </div>
                             <div class="mb-3 email-fields">
-                                <label class="field-label">Extra Attachment (optional)</label>
-                                <input type="file" name="custom_attachment" id="customAttachmentInput"
-                                    class="input-full" {{ $isAlreadySent ? 'disabled' : '' }}>
+                                <label class="field-label">Extra Attachments (optional)</label>
+                                <input type="file" name="custom_attachments[]" id="customAttachmentInput" multiple
+                                    class="input-full" {{ $isComposeLocked ? 'disabled' : '' }}>
                                 <div id="currentCustomAttachment" class="mt-2"></div>
                                 <div id="extraAttachmentPreview" class="mt-2"></div>
                             </div>
 
                             <div class="d-flex justify-content-end flex-wrap gap-2 mt-4 pt-3 border-top">
-                                <div class="email-actions" style="{{ $isAlreadySent ? 'display:none;' : '' }}">
+                                <div class="email-actions" style="{{ $isComposeLocked ? 'display:none;' : '' }}">
                                     <button type="submit" name="action" value="save" class="secondary-button">Save Email</button>
                                     <button type="submit" name="action" value="send" class="primary-button">Send to Client</button>
                                 </div>
-                                <div class="whatsapp-actions" style="{{ $isAlreadySent ? 'display:none;' : 'display: none;' }}">
+                                <div class="whatsapp-actions" style="{{ $isComposeLocked ? 'display:none;' : 'display: none;' }}">
                                     <button type="submit" name="action" value="save" class="secondary-button">Save WhatsApp Message</button>
                                     <button type="submit" name="action" value="send" class="primary-button" style="background: #25d366; border-color: #25d366;">
                                         <i class="fab fa-whatsapp mr-1"></i> Send via WhatsApp
                                     </button>
                                 </div>
-                                <div class="sms-actions" style="{{ $isAlreadySent ? 'display:none;' : 'display: none;' }}">
+                                <div class="sms-actions" style="{{ $isComposeLocked ? 'display:none;' : 'display: none;' }}">
                                     <button type="submit" name="action" value="save" class="secondary-button">Save SMS</button>
                                     <button type="submit" name="action" value="send" class="primary-button">Send SMS</button>
                                 </div>
@@ -183,18 +190,18 @@
             const previewAttachments = document.getElementById('previewAttachments');
             const attachmentBodyHint = document.getElementById('attachmentBodyHint');
             const quotationPdfUrl = @json(route('quotations.pdf', $quotation->quotationid));
-            const isAlreadySent = @json($isAlreadySent);
+            const isAlreadySent = @json($isComposeLocked);
             const templateCatalog = @json($templateCatalog ?? []);
             const availableChannels = @json($availableChannels ?? ['email']);
             const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
             const emailSubjectInput = document.getElementById('emailSubjectInput');
             const customAttachmentInput = document.getElementById('customAttachmentInput');
             const currentCustomAttachment = document.getElementById('currentCustomAttachment');
-            const savedCustomAttachmentUrl = @json($customAttachmentUrl ?? null);
-            const savedCustomAttachmentName = @json($customAttachmentName ?? null);
+            const savedCustomAttachmentUrls = @json($customAttachmentUrls ?? []);
+            const savedCustomAttachmentNames = @json($customAttachmentNames ?? []);
             const extraAttachmentPreview = document.getElementById('extraAttachmentPreview');
             const initialChannel = selectedChannelInput?.value || 'email';
-            let customAttachmentPreviewUrl = savedCustomAttachmentUrl || null;
+            let customAttachmentPreviewUrls = Array.isArray(savedCustomAttachmentUrls) ? [...savedCustomAttachmentUrls] : [];
             const channelDraftState = {};
 
             function getPlainTextFromHtml(html) {
@@ -252,12 +259,21 @@
                 const rows = [
                     `<div><a href="${quotationPdfUrl}" target="_blank" rel="noopener noreferrer">Quotation PDF</a></div>`
                 ];
-                const selectedCustomFile = customAttachmentInput?.files?.[0] || null;
-                const customFileName = selectedCustomFile?.name || savedCustomAttachmentName;
-                const customFileUrl = selectedCustomFile ? customAttachmentPreviewUrl : savedCustomAttachmentUrl;
-                if (customFileName && customFileUrl) {
-                    rows.push(`<div><a href="${customFileUrl}" target="_blank" rel="noopener noreferrer">${String(customFileName).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</a></div>`);
-                }
+                const selectedFiles = Array.from(customAttachmentInput?.files || []);
+                const dynamicRows = selectedFiles.map((file, index) => ({
+                    name: `Attachment ${index + 1}`,
+                    url: customAttachmentPreviewUrls[index] || null,
+                })).filter((row) => !!row.url);
+                const staticRows = selectedFiles.length === 0
+                    ? savedCustomAttachmentUrls.map((url, index) => ({
+                        name: `Attachment ${index + 1}`,
+                        url: url,
+                    }))
+                    : [];
+                const attachmentLinks = [...staticRows, ...dynamicRows]
+                    .map((row) => `<a href="${row.url}" target="_blank" rel="noopener noreferrer">${row.name}</a>`)
+                    .join(', ');
+                if (attachmentLinks) rows.push(`<div>${attachmentLinks}</div>`);
                 previewAttachments.innerHTML = rows.join('');
             }
 
@@ -268,65 +284,77 @@
                     attachmentBodyHint.textContent = 'No attachments selected.';
                     return;
                 }
-                const selectedCustomFile = customAttachmentInput?.files?.[0] || null;
-                const hasCustom = !!(selectedCustomFile || savedCustomAttachmentUrl);
+                const selectedCustomFiles = Array.from(customAttachmentInput?.files || []);
+                const hasCustom = selectedCustomFiles.length > 0 || (savedCustomAttachmentUrls || []).length > 0;
                 attachmentBodyHint.textContent = hasCustom ? 'Attached: Quotation PDF, Extra attachment' : 'Attached: Quotation PDF';
             }
 
             function renderCurrentCustomAttachment() {
                 if (!currentCustomAttachment) return;
-                const selectedCustomFile = customAttachmentInput?.files?.[0] || null;
-                const fileName = selectedCustomFile?.name || savedCustomAttachmentName;
-                const fileUrl = selectedCustomFile ? customAttachmentPreviewUrl : savedCustomAttachmentUrl;
-                if (!fileName || !fileUrl) {
+                const selectedCustomFiles = Array.from(customAttachmentInput?.files || []);
+                const attachments = selectedCustomFiles.length > 0
+                    ? selectedCustomFiles.map((file, index) => ({
+                        name: `Attachment ${index + 1}`,
+                        url: customAttachmentPreviewUrls[index] || null,
+                    })).filter((row) => !!row.url)
+                    : (savedCustomAttachmentUrls || []).map((url, index) => ({
+                        name: `Attachment ${index + 1}`,
+                        url,
+                    }));
+                if (attachments.length === 0) {
                     currentCustomAttachment.innerHTML = '<span class="small text-muted">No extra attachment selected.</span>';
                     return;
                 }
-                currentCustomAttachment.innerHTML =
-                    '<div class="small text-muted mb-1">Current attachment:</div>' +
-                    '<a href="' + fileUrl + '" target="_blank" class="small">' + String(fileName).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</a>';
+                currentCustomAttachment.innerHTML = '<div class="small text-muted mb-1">Current attachments:</div>' +
+                    '<div class="small">' + attachments.map((row) => (
+                        '<a href="' + row.url + '" target="_blank">' + row.name + '</a>'
+                    )).join(', ') + '</div>';
             }
 
             function renderExtraAttachmentPreview() {
                 if (!extraAttachmentPreview) return;
-                const selectedCustomFile = customAttachmentInput?.files?.[0] || null;
-                const fileName = selectedCustomFile?.name || savedCustomAttachmentName || '';
-                const fileUrl = selectedCustomFile ? customAttachmentPreviewUrl : savedCustomAttachmentUrl;
-                if (!fileName || !fileUrl) {
+                const selectedCustomFiles = Array.from(customAttachmentInput?.files || []);
+                const attachments = selectedCustomFiles.length > 0
+                    ? selectedCustomFiles.map((file, index) => ({
+                        name: file?.name || `Attachment ${index + 1}`,
+                        url: customAttachmentPreviewUrls[index] || null,
+                        mime: (file?.type || '').toLowerCase(),
+                    })).filter((row) => !!row.url)
+                    : (savedCustomAttachmentUrls || []).map((url, index) => ({
+                        name: savedCustomAttachmentNames[index] || `Attachment ${index + 1}`,
+                        url,
+                        mime: '',
+                    }));
+                if (attachments.length === 0) {
                     extraAttachmentPreview.innerHTML = '';
                     return;
                 }
-                const safeName = String(fileName).replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                const mimeType = (selectedCustomFile?.type || '').toLowerCase();
-                const ext = (fileName.split('.').pop() || '').toLowerCase();
-                const isImage = mimeType.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext);
-                const isPdf = mimeType === 'application/pdf' || ext === 'pdf';
-                const isText = mimeType.startsWith('text/') || ['txt', 'csv', 'log', 'md'].includes(ext);
+                const isImage = (item) => {
+                    const ext = (item.name.split('.').pop() || '').toLowerCase();
+                    return String(item.mime || '').startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext);
+                };
+                const imageAttachments = attachments.filter(isImage);
+                const nonImageAttachments = attachments.filter((item) => !isImage(item));
 
-                if (isImage) {
-                    extraAttachmentPreview.innerHTML =
-                        '<div class="small text-muted mb-1">Preview:</div>' +
-                        '<img src="' + fileUrl + '" alt="' + safeName + '" class="img-fluid border rounded" style="max-height:120px;">';
-                    return;
+                let html = '';
+                if (imageAttachments.length > 0) {
+                    html += '<div class="small text-muted mb-1">Preview:</div><div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                        imageAttachments.map((item) => (
+                            '<a href="' + item.url + '" target="_blank" rel="noopener noreferrer">' +
+                            '<img src="' + item.url + '" alt="' + String(item.name).replace(/"/g, '&quot;') + '" class="img-fluid border rounded" style="max-height:120px;max-width:140px;">' +
+                            '</a>'
+                        )).join('') +
+                        '</div>';
                 }
-
-                if (isPdf) {
-                    extraAttachmentPreview.innerHTML =
-                        '<div class="small text-muted mb-1">Preview:</div>' +
-                        '<iframe src="' + fileUrl + '" title="' + safeName + '" class="w-100 border rounded" style="height:180px;"></iframe>';
-                    return;
+                if (nonImageAttachments.length > 0) {
+                    html += '<div class="small text-muted mt-2">Other files:</div>' +
+                        nonImageAttachments.map((item) => (
+                            '<div><a href="' + item.url + '" target="_blank" rel="noopener noreferrer">' +
+                            String(item.name).replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+                            '</a></div>'
+                        )).join('');
                 }
-
-                if (isText) {
-                    extraAttachmentPreview.innerHTML =
-                        '<div class="small text-muted mb-1">Preview:</div>' +
-                        '<iframe src="' + fileUrl + '" title="' + safeName + '" class="w-100 border rounded bg-light" style="height:140px;"></iframe>';
-                    return;
-                }
-
-                extraAttachmentPreview.innerHTML =
-                    '<div class="small text-muted">Preview unavailable for this file type. ' +
-                    '<a href="' + fileUrl + '" target="_blank" rel="noopener noreferrer">Open attachment</a></div>';
+                extraAttachmentPreview.innerHTML = html;
             }
 
             function setChannel(channel) {
@@ -492,16 +520,13 @@
                 refillFromTemplateWhenBodyEmpty();
             });
             customAttachmentInput?.addEventListener('change', function() {
-                if (customAttachmentPreviewUrl && customAttachmentPreviewUrl !== savedCustomAttachmentUrl) {
-                    URL.revokeObjectURL(customAttachmentPreviewUrl);
-                    customAttachmentPreviewUrl = null;
-                }
-                const selected = customAttachmentInput.files?.[0] || null;
-                if (selected) {
-                    customAttachmentPreviewUrl = URL.createObjectURL(selected);
-                } else {
-                    customAttachmentPreviewUrl = savedCustomAttachmentUrl;
-                }
+                (customAttachmentPreviewUrls || []).forEach((url) => {
+                    if (url && !(savedCustomAttachmentUrls || []).includes(url)) {
+                        URL.revokeObjectURL(url);
+                    }
+                });
+                const selectedFiles = Array.from(customAttachmentInput.files || []);
+                customAttachmentPreviewUrls = selectedFiles.map((file) => URL.createObjectURL(file));
                 refreshHints();
                 renderCurrentCustomAttachment();
                 renderExtraAttachmentPreview();

@@ -505,6 +505,13 @@ class QuotationsController extends Controller
             'status' => 'required|in:draft,active,cancelled',
         ]);
 
+        if (
+            strtolower(trim((string) ($quotation->status ?? ''))) === 'active'
+            && strtolower(trim((string) ($validated['status'] ?? ''))) === 'draft'
+        ) {
+            $validated['status'] = 'active';
+        }
+
         $quotation->update($validated);
         $this->persistQuotationPdfVersion($quotation);
 
@@ -641,12 +648,21 @@ class QuotationsController extends Controller
             'templateCatalog' => $templateCatalog,
             'availableChannels' => $availableChannels,
             'prefillTemplateId' => $prefillTemplateId,
-            'customAttachmentUrl' => !empty($draft?->custom_attachment_path)
-                ? $this->buildPublicAttachmentUrl((string) $draft->custom_attachment_path)
-                : null,
-            'customAttachmentName' => !empty($draft?->custom_attachment_path)
-                ? basename((string) parse_url($this->buildPublicAttachmentUrl((string) $draft->custom_attachment_path), PHP_URL_PATH) ?: 'Attachment')
-                : null,
+            'customAttachmentUrls' => collect(explode(',', (string) ($draft?->custom_attachment_path ?? '')))
+                ->map(fn($path) => trim((string) $path))
+                ->filter()
+                ->map(fn($path) => $this->buildPublicAttachmentUrl($path))
+                ->values()
+                ->all(),
+            'customAttachmentNames' => collect(explode(',', (string) ($draft?->custom_attachment_path ?? '')))
+                ->map(fn($path) => trim((string) $path))
+                ->filter()
+                ->map(function ($path) {
+                    $url = $this->buildPublicAttachmentUrl($path);
+                    return basename((string) parse_url($url, PHP_URL_PATH) ?: 'Attachment');
+                })
+                ->values()
+                ->all(),
         ]);
     }
 
@@ -661,23 +677,33 @@ class QuotationsController extends Controller
             'subject' => 'nullable|string|max:255',
             'body' => 'required|string',
             'action' => 'required|in:save,send',
-            'custom_attachment' => 'nullable|file|max:10240',
-            'existing_custom_attachment_path' => 'nullable|string|max:2048',
+            'custom_attachments' => 'nullable|array',
+            'custom_attachments.*' => 'file|max:10240',
+            'existing_custom_attachment_paths' => 'nullable|string|max:10000',
         ]);
 
         $accountid = $this->resolveAccountId();
         $user = Auth::user();
 
-        $hasNewCustomFile = $request->hasFile('custom_attachment') && $request->file('custom_attachment')->isValid();
-        $customAttachmentPath = null;
-        if ($hasNewCustomFile) {
-            $storedPath = $request->file('custom_attachment')->store('quotation-email-attachments', 'public');
-            $customAttachmentPath = $this->buildPublicAttachmentUrl($storedPath);
+        $existingCustomAttachmentPaths = collect(explode(',', (string) ($validated['existing_custom_attachment_paths'] ?? '')))
+            ->map(fn($path) => trim((string) $path))
+            ->filter()
+            ->values()
+            ->all();
+        $uploadedCustomAttachmentPaths = [];
+        foreach ((array) $request->file('custom_attachments', []) as $file) {
+            if ($file && $file->isValid()) {
+                $storedPath = $file->store('quotation-email-attachments', 'public');
+                $uploadedCustomAttachmentPaths[] = $this->buildPublicAttachmentUrl($storedPath);
+            }
         }
-        $finalCustomAttachmentPath = $customAttachmentPath ?: trim((string) ($validated['existing_custom_attachment_path'] ?? ''));
-        if ($finalCustomAttachmentPath === '') {
-            $finalCustomAttachmentPath = null;
-        }
+        $finalCustomAttachmentPaths = array_values(array_unique(array_filter(array_merge(
+            $existingCustomAttachmentPaths,
+            $uploadedCustomAttachmentPaths
+        ))));
+        $finalCustomAttachmentPath = !empty($finalCustomAttachmentPaths)
+            ? implode(',', $finalCustomAttachmentPaths)
+            : null;
         $channel = (string) ($validated['channel'] ?? 'email');
         $isEmailChannel = ($channel === 'email');
         $normalizedBody = $this->normalizeChannelBodyForStorage((string) ($validated['body'] ?? ''), $channel);
@@ -713,10 +739,10 @@ class QuotationsController extends Controller
                     'url' => $quotationPdfUrl,
                     'name' => 'Quotation - ' . ($quotationName !== '' ? $quotationName : $quotation->quotationid) . '.pdf',
                 ]];
-                if (!empty($finalCustomAttachmentPath)) {
+                foreach ($finalCustomAttachmentPaths as $customPath) {
                     $emailAttachmentItems[] = [
-                        'url' => $finalCustomAttachmentPath,
-                        'name' => basename((string) parse_url($finalCustomAttachmentPath, PHP_URL_PATH) ?: 'Attachment'),
+                        'url' => $customPath,
+                        'name' => basename((string) parse_url($customPath, PHP_URL_PATH) ?: 'Attachment'),
                     ];
                 }
 

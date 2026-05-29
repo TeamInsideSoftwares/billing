@@ -210,7 +210,7 @@ class ClientsController extends Controller
     public function clients(): View
     {
         $accountId = $this->resolveAccountId();
-        $query = Client::query()->where('accountid', $accountId)->regular()->with(['invoices.items', 'payments']);
+        $query = Client::query()->where('accountid', $accountId)->regular()->with(['invoices.invoiceItems', 'payments']);
         $searchTerm = trim((string) request('search', ''));
         $selectedState = trim((string) request('state', ''));
         $selectedCity = trim((string) request('city', ''));
@@ -303,7 +303,7 @@ class ClientsController extends Controller
         $query = Client::query()
             ->where('accountid', $accountId)
             ->trial()
-            ->with(['invoices.items', 'payments']);
+            ->with(['invoices.invoiceItems', 'payments']);
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {

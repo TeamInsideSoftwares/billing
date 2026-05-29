@@ -8,40 +8,32 @@ use App\Models\Invoice;
 use App\Models\CommunicationLog;
 use App\Models\InvoiceItem;
 use App\Models\MessageTemplate;
-use App\Models\Payment;
+use App\Models\Order;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class InvoiceReminderService
 {
-    private const DEFAULT_START_DAYS = 30;
+    public const START_DAYS_BEFORE_EXPIRY = 30;
+    public const DAILY_REMINDER_LAST_DAYS = 3;
+    public const EXPIRED_REMINDER_DAYS_AFTER = 10;
 
-    public function getAutomationSettings(string $accountid): array
+    private function resolvePrimaryOrderIdFromItems(Invoice $invoice): ?string
     {
-        $account = Account::query()
-            ->select(['accountid', 'reminder_automation_enabled', 'reminder_days_before'])
-            ->find($accountid);
+        $invoice->loadMissing('invoiceItems');
+        $orderId = $invoice->invoiceItems
+            ->sortBy('sequence')
+            ->pluck('orderid')
+            ->map(fn($value) => trim((string) $value))
+            ->first(fn($value) => $value !== '');
 
-        return [
-            'enabled' => (bool) ($account?->reminder_automation_enabled ?? false),
-            'start_days' => max(1, (int) ($account?->reminder_days_before ?? self::DEFAULT_START_DAYS)),
-        ];
-    }
-
-    public function updateAutomationSettings(string $accountid, bool $enabled, int $startDays): void
-    {
-        Account::query()
-            ->where('accountid', $accountid)
-            ->update([
-                'reminder_automation_enabled' => $enabled,
-                'reminder_days_before' => max(1, $startDays),
-            ]);
+        return $orderId !== null ? (string) $orderId : null;
     }
 
     public function sendManualReminder(Invoice $invoice, ?InvoiceItem $invoiceItem = null): array
     {
-        $invoice->loadMissing(['client.billingDetail', 'items']);
+        $invoice->loadMissing(['client.billingDetail', 'invoiceItems']);
         return $this->dispatchForInvoice(
             $invoice,
             'reminder',
@@ -51,79 +43,93 @@ class InvoiceReminderService
         );
     }
 
+    public function sendManualByTemplateType(Invoice $invoice, string $templateType, ?InvoiceItem $invoiceItem = null): array
+    {
+        $invoice->loadMissing(['client.billingDetail', 'invoiceItems']);
+
+        return $this->dispatchForInvoice(
+            $invoice,
+            $templateType,
+            'manual',
+            Carbon::today(),
+            ['selected_item' => $invoiceItem]
+        );
+    }
+
     public function dispatchAutomatedDueReminders(): array
     {
         $today = Carbon::today();
-        $enabledAccountIds = Account::query()
-            ->where('reminder_automation_enabled', true)
-            ->pluck('accountid');
+        $invoiceQuery = Invoice::query()
+            ->where('status', '!=', 'cancelled')
+            ->whereHas('invoiceItems', fn($q) => $q->whereNotNull('end_date'))
+            ->with([
+                'client.billingDetail',
+                'invoiceItems' => fn($q) => $q->whereNotNull('end_date'),
+            ]);
+
+        $accountCount = (clone $invoiceQuery)
+            ->distinct('accountid')
+            ->count('accountid');
+        $invoices = $invoiceQuery->get();
 
         $summary = [
-            'accounts' => $enabledAccountIds->count(),
+            'accounts' => $accountCount,
             'sent' => 0,
             'failed' => 0,
             'skipped' => 0,
         ];
 
-        foreach ($enabledAccountIds as $accountid) {
-            $settings = $this->getAutomationSettings((string) $accountid);
-            $startDays = max(1, (int) $settings['start_days']);
-
-            $invoices = Invoice::query()
-                ->where('accountid', $accountid)
-                ->where('status', '!=', 'cancelled')
-                ->with([
-                    'client.billingDetail',
-                    'items' => fn($q) => $q->whereNotNull('end_date'),
-                ])
-                ->get();
-
-            foreach ($invoices as $invoice) {
-                foreach ($invoice->items as $item) {
-                    if (!$item->end_date) {
-                        continue;
-                    }
-
-                    $expiryDate = $item->end_date instanceof Carbon
-                        ? $item->end_date->copy()->startOfDay()
-                        : Carbon::parse((string) $item->end_date)->startOfDay();
-                    $daysUntilExpiry = $today->diffInDays($expiryDate, false);
-
-                    $templateType = null;
-                    if ($this->hasRenewalEntryForItem($invoice, $item)) {
-                        $templateType = 'renewal';
-                    } elseif ($daysUntilExpiry <= 0) {
-                        $templateType = 'expiry';
-                    } elseif ($daysUntilExpiry >= 1 && $daysUntilExpiry <= 3) {
-                        $templateType = 'reminder';
-                    } elseif (
-                        $daysUntilExpiry > 3
-                        && $daysUntilExpiry <= $startDays
-                        && (($startDays - $daysUntilExpiry) % 7) === 0
-                    ) {
-                        $templateType = 'reminder';
-                    }
-
-                    if (!$templateType) {
-                        continue;
-                    }
-
-                    $result = $this->dispatchForInvoice(
-                        $invoice,
-                        $templateType,
-                        'automated',
-                        $today,
-                        [
-                            'expiry_date' => $expiryDate->copy(),
-                            'days_left' => $daysUntilExpiry,
-                            'selected_item' => $item,
-                        ]
-                    );
-
-                    $summary['sent'] += (int) ($result['sent'] ?? 0);
-                    $summary['failed'] += (int) ($result['failed'] ?? 0);
-                    $summary['skipped'] += (int) ($result['skipped'] ?? 0);
+        foreach ($invoices as $invoice) {
+            foreach ($invoice->invoiceItems as $item) {
+                if (!$item->end_date) {
+                    continue;
                 }
+
+                $expiryDate = $item->end_date instanceof Carbon
+                    ? $item->end_date->copy()->startOfDay()
+                    : Carbon::parse((string) $item->end_date)->startOfDay();
+                $daysUntilExpiry = $today->diffInDays($expiryDate, false);
+
+                $templateType = null;
+                if ($this->hasRenewalEntryForItem($invoice, $item)) {
+                    $templateType = 'renewal';
+                } elseif (
+                    $daysUntilExpiry <= 0
+                    && $daysUntilExpiry >= (-1 * self::EXPIRED_REMINDER_DAYS_AFTER)
+                ) {
+                    $templateType = 'expiry';
+                } elseif (
+                    $daysUntilExpiry >= 1
+                    && $daysUntilExpiry <= self::DAILY_REMINDER_LAST_DAYS
+                ) {
+                    $templateType = 'reminder';
+                } elseif (
+                    $daysUntilExpiry > self::DAILY_REMINDER_LAST_DAYS
+                    && $daysUntilExpiry <= self::START_DAYS_BEFORE_EXPIRY
+                    && ((self::START_DAYS_BEFORE_EXPIRY - $daysUntilExpiry) % 7) === 0
+                ) {
+                    $templateType = 'reminder';
+                }
+
+                if (!$templateType) {
+                    continue;
+                }
+
+                $result = $this->dispatchForInvoice(
+                    $invoice,
+                    $templateType,
+                    'automated',
+                    $today,
+                    [
+                        'expiry_date' => $expiryDate->copy(),
+                        'days_left' => $daysUntilExpiry,
+                        'selected_item' => $item,
+                    ]
+                );
+
+                $summary['sent'] += (int) ($result['sent'] ?? 0);
+                $summary['failed'] += (int) ($result['failed'] ?? 0);
+                $summary['skipped'] += (int) ($result['skipped'] ?? 0);
             }
         }
 
@@ -170,10 +176,15 @@ class InvoiceReminderService
             ->get();
 
         if ($templates->isEmpty()) {
-            return ['sent' => 0, 'failed' => 0, 'skipped' => 1];
+            return [
+                'sent' => 0,
+                'failed' => 0,
+                'skipped' => 1,
+                'reasons' => ['No active template configured for type: ' . $templateType],
+            ];
         }
 
-        $result = ['sent' => 0, 'failed' => 0, 'skipped' => 0];
+        $result = ['sent' => 0, 'failed' => 0, 'skipped' => 0, 'reasons' => []];
         foreach ($templates as $template) {
             $channel = (string) $template->channel;
 
@@ -192,6 +203,7 @@ class InvoiceReminderService
 
                 if ($alreadySent) {
                     $result['skipped']++;
+                    $result['reasons'][] = strtoupper($channel) . ': already sent for this rule window.';
                     continue;
                 }
             }
@@ -220,6 +232,8 @@ class InvoiceReminderService
                 $result['sent']++;
             } else {
                 $result['failed']++;
+                $reason = trim((string) ($send['message'] ?? 'Delivery failed.'));
+                $result['reasons'][] = strtoupper($channel) . ': ' . $reason;
             }
         }
 
@@ -233,11 +247,7 @@ class InvoiceReminderService
         $account = Account::query()->find($accountid);
         $accountBilling = AccountBillingDetail::query()->where('accountid', $accountid)->first();
 
-        $toEmail = trim((string) (
-            $invoice->client?->billingDetail?->billing_email
-            ?? $invoice->client?->billing_email
-            ?? ''
-        ));
+        $toEmail = $this->resolveRecipientEmail($invoice);
         $phone = trim((string) (
             $invoice->client?->billingDetail?->billing_phone
             ?? $invoice->client?->whatsapp_number
@@ -270,7 +280,7 @@ class InvoiceReminderService
 
         $expiryDate = data_get($context, 'expiry_date');
         if (!$expiryDate) {
-            $expiryValue = $invoice->items->max('end_date');
+            $expiryValue = $invoice->invoiceItems->max('end_date');
             if ($expiryValue instanceof Carbon) {
                 $expiryDate = $expiryValue->copy();
             } elseif (!empty($expiryValue)) {
@@ -308,10 +318,12 @@ class InvoiceReminderService
 
         if ($channel === 'email') {
             $payload['subject'] = $this->sanitizeForCampioText($subject);
-            $payload['message'] = $this->sanitizeForCampioText(strip_tags($body));
+            $payload['message'] = $this->plainTextToEmailHtml(
+                $this->sanitizeForCampioText($this->htmlToPlainText($body))
+            );
             $payload['sender_id'] = (string) ($accountBilling?->billing_name ?: $accountBilling?->billing_from_email ?: '');
         } else {
-            $payload['message'] = $this->sanitizeForCampioText(strip_tags($body));
+            $payload['message'] = $this->sanitizeForCampioText($this->htmlToPlainText($body));
             if (!empty($template->template_id)) {
                 $payload['template_id'] = (string) $template->template_id;
             }
@@ -343,11 +355,13 @@ class InvoiceReminderService
             ?: $invoice->client?->contact_name
             ?: 'Customer'
         ));
+        $rawClientId = (string) ($invoice->clientid ?? '');
+        $campioLeadId = $this->toCampioLeadId($rawClientId);
 
         $record = [
-            'id' => (string) ($invoice->clientid ?? $invoice->invoiceid),
+            'id' => $rawClientId !== '' ? $rawClientId : (string) ($invoice->invoiceid ?? ''),
             'name' => $clientName,
-            'leadid' => (string) ($invoice->clientid ?? ''),
+            'leadid' => $campioLeadId,
             'student_customer_name' => $clientName,
             'invoice_number' => (string) ($invoice->invoice_number ?? ''),
             'pi_number' => (string) ($invoice->pi_number ?? ''),
@@ -372,6 +386,17 @@ class InvoiceReminderService
         return $record;
     }
 
+    private function toCampioLeadId(string $clientId): string
+    {
+        $value = trim($clientId);
+        if ($value === '') {
+            return 'UNKNOWN';
+        }
+
+        // Campio DB often stores a shorter leadid; cap to 6 to avoid SQL truncation errors.
+        return strtoupper(substr($value, 0, 6));
+    }
+
     private function buildTemplateReplacements(
         Invoice $invoice,
         string $businessName,
@@ -384,33 +409,49 @@ class InvoiceReminderService
         $clientBusinessName = trim((string) ($invoice->client?->business_name ?? ''));
         $clientContactPerson = trim((string) ($invoice->client?->contact_name ?? ''));
         $clientName = trim((string) ($clientBusinessName !== '' ? $clientBusinessName : $clientContactPerson));
-        $currency = (string) ($invoice->client?->currency ?? 'INR');
-        $totalAmount = (float) ($invoice->grand_total ?? $invoice->items->sum('line_total') ?? 0);
         $primaryItem = $selectedItem instanceof InvoiceItem
             ? $selectedItem
-            : $invoice->items
+            : $invoice->invoiceItems
             ->sortBy(function ($item) {
                 return $item->end_date?->timestamp ?? PHP_INT_MAX;
             })
             ->first();
         $itemName = trim((string) ($primaryItem?->item_name ?? ''));
+        $itemDescription = trim((string) ($primaryItem?->item_description ?? ''));
         $itemStartDate = $primaryItem?->start_date?->format('d M Y') ?? '';
         $itemEndDate = $primaryItem?->end_date?->format('d M Y') ?? '';
         $calculatedDaysLeft = $primaryItem?->end_date
             ? now()->startOfDay()->diffInDays($primaryItem->end_date->startOfDay(), false)
             : $daysLeft;
+        $daysAgo = $calculatedDaysLeft < 0 ? abs((int) $calculatedDaysLeft) : 0;
+        $daysLeftDisplay = $templateType === 'expiry'
+            ? (string) $daysAgo
+            : (string) max(0, (int) $calculatedDaysLeft);
         $renewalDate = $templateType === 'renewal'
             ? ($invoice->created_at?->format('d M Y') ?? now()->format('d M Y'))
             : '';
-        $latestPayment = Payment::query()
-            ->where('accountid', $invoice->accountid)
-            ->where('invoiceid', $invoice->invoiceid)
-            ->orderByDesc('payment_date')
-            ->orderByDesc('created_at')
-            ->first();
-        $paymentAmount = (float) ($latestPayment?->received_amount ?? 0);
-        $paymentDate = $latestPayment?->payment_date?->format('d M Y') ?? '';
-        $paymentReference = trim((string) ($latestPayment?->reference_number ?? ''));
+        $sourceOrder = null;
+        if ($primaryItem?->itemid) {
+            $sourceOrder = Order::query()
+                ->where('accountid', $invoice->accountid)
+                ->where('clientid', $invoice->clientid)
+                ->where('itemid', $primaryItem->itemid)
+                ->when(
+                    $primaryItem?->end_date,
+                    fn($q) => $q->whereDate('end_date', $primaryItem->end_date->toDateString())
+                )
+                ->orderByDesc('created_at')
+                ->first();
+        }
+        $primaryOrderId = $this->resolvePrimaryOrderIdFromItems($invoice);
+        if (!$sourceOrder && !empty($primaryOrderId)) {
+            $sourceOrder = Order::query()
+                ->where('accountid', $invoice->accountid)
+                ->find($primaryOrderId);
+        }
+        if ($itemDescription === '') {
+            $itemDescription = trim((string) ($sourceOrder?->item_description ?? ''));
+        }
 
         return [
             '{{client_business_name}}' => $clientBusinessName,
@@ -419,25 +460,19 @@ class InvoiceReminderService
             '{{business_name}}' => $businessName,
             '{{company_name}}' => $businessName,
             '{{account_name}}' => $businessName,
-            '{{invoice_number}}' => (string) ($invoice->invoice_number ?? ''),
-            '{{invoice_title}}' => (string) ($invoice->invoice_title ?? ''),
-            '{{pi_number}}' => (string) ($invoice->pi_number ?? ''),
-            '{{ti_number}}' => (string) ($invoice->ti_number ?? ''),
-            '{{total_amount}}' => $currency . ' ' . number_format($totalAmount, 2),
-            '{{due_date}}' => $invoice->due_date?->format('d M Y') ?? '',
             '{{template_type}}' => $templateType,
             '{{reminder_type}}' => $templateType,
             '{{item_name}}' => $itemName,
+            '{{item_description}}' => $itemDescription,
             '{{item_start_date}}' => $itemStartDate,
             '{{item_end_date}}' => $itemEndDate,
             '{{expiry_date}}' => $itemEndDate !== '' ? $itemEndDate : ($expiryDate?->format('d M Y') ?? ''), // Alias of item_end_date
-            '{{days_left}}' => (string) max(0, (int) $calculatedDaysLeft),
+            '{{days_left}}' => $daysLeftDisplay,
+            '{{days_ago}}' => (string) $daysAgo,
             '{{renewal_date}}' => $renewalDate,
-            '{{payment_amount}}' => $paymentAmount > 0 ? ($currency . ' ' . number_format($paymentAmount, 2)) : '',
-            '{{payment_date}}' => $paymentDate,
-            '{{payment_reference}}' => $paymentReference,
-            '{{pi_link}}' => route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']),
-            '{{ti_link}}' => route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice']),
+            '{{order_number}}' => (string) ($sourceOrder?->order_number ?? ''),
+            '{{order_start_date}}' => $sourceOrder?->start_date?->format('d M Y') ?? '',
+            '{{order_end_date}}' => $sourceOrder?->end_date?->format('d M Y') ?? '',
         ];
     }
 
@@ -495,6 +530,47 @@ class InvoiceReminderService
         $value = preg_replace('/[^\P{C}\n\t]+/u', '', $value) ?? $value;
         $value = preg_replace("/\n{3,}/", "\n\n", $value) ?? $value;
         return trim($value);
+    }
+
+    private function htmlToPlainText(string $value): string
+    {
+        $withBreaks = str_replace(["\r\n", "\r"], "\n", $value);
+        $withBreaks = preg_replace('/<br\s*\/?>/i', "\n", $withBreaks) ?? $withBreaks;
+        $withBreaks = preg_replace('/<\/p>/i', "\n", $withBreaks) ?? $withBreaks;
+        $withBreaks = preg_replace('/<p[^>]*>/i', '', $withBreaks) ?? $withBreaks;
+        $withBreaks = preg_replace('/<\/div>/i', "\n", $withBreaks) ?? $withBreaks;
+        $withBreaks = preg_replace('/<div[^>]*>/i', '', $withBreaks) ?? $withBreaks;
+        $plain = strip_tags($withBreaks);
+
+        return trim(preg_replace("/\n{3,}/", "\n\n", $plain) ?? $plain);
+    }
+
+    private function plainTextToEmailHtml(string $text): string
+    {
+        $escaped = htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        return nl2br($escaped, false);
+    }
+
+    private function resolveRecipientEmail(Invoice $invoice): string
+    {
+        $candidates = [
+            (string) ($invoice->client?->billingDetail?->billing_email ?? ''),
+            (string) ($invoice->client?->billing_email ?? ''),
+            (string) ($invoice->client?->primary_email ?? ''),
+            (string) ($invoice->client?->email ?? ''),
+        ];
+
+        foreach ($candidates as $candidate) {
+            $parts = preg_split('/[,;]+/', (string) $candidate) ?: [];
+            foreach ($parts as $part) {
+                $email = trim($part);
+                if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    return $email;
+                }
+            }
+        }
+
+        return '';
     }
 
 }

@@ -11,13 +11,17 @@
 
     @section('content')
     @php
-        $currentTab = in_array($selectedTab ?? 'expired', ['upcoming', 'expired', 'suspended'], true)
+        $allowedTabs = !empty($hasTrialClients)
+            ? ['upcoming', 'expired', 'suspended', 'trial']
+            : ['upcoming', 'expired', 'suspended'];
+        $currentTab = in_array($selectedTab ?? 'expired', $allowedTabs, true)
             ? $selectedTab
             : 'expired';
         $tabRows = match ($currentTab) {
             'upcoming' => $upcomingItems,
             'expired' => $expiredItems,
             'suspended' => $suspendedItems,
+            'trial' => $trialItems ?? collect(),
             default => collect(),
         };
     @endphp
@@ -76,6 +80,12 @@
                     class="invoice-tab {{ $currentTab === 'suspended' ? 'is-active' : '' }}">
                     Suspended <span>{{ $suspendedItems->count() }}</span>
                 </a>
+                @if(!empty($hasTrialClients))
+                    <a href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'trial', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}"
+                        class="invoice-tab {{ $currentTab === 'trial' ? 'is-active' : '' }}">
+                        Trial <span>{{ ($trialItems ?? collect())->count() }}</span>
+                    </a>
+                @endif
             </div>
         </div>
 
@@ -106,6 +116,11 @@
                     <div class="meta-info">
                         <strong>Expired items</strong>
                         <span class="small-text">Only items whose end date is already over.</span>
+                    </div>
+                @elseif($currentTab === 'trial')
+                    <div class="meta-info">
+                        <strong>Trial items</strong>
+                        <span class="small-text">Orders belonging to trial-type clients.</span>
                     </div>
                 @else
                     <div class="meta-info">
@@ -158,6 +173,23 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="" style="justify-content: center;">
+                                            @if(strtolower((string) ($row['status'] ?? '')) !== 'cancelled')
+                                                <form method="POST"
+                                                    action="{{ route('invoices.orders.send-reminder', ['order' => $row['orderid']]) }}"
+                                                    class="inline-delete m-0"
+                                                    onsubmit="return confirm('Send manual reminder for this order?')">
+                                                    @csrf
+                                                    <input type="hidden" name="c" value="{{ $selectedClientId }}">
+                                                    <input type="hidden" name="tab" value="{{ $currentTab }}">
+                                                    <input type="hidden" name="from" value="{{ $fromDate ?? '' }}">
+                                                    <input type="hidden" name="to" value="{{ $toDate ?? '' }}">
+                                                    <input type="hidden" name="next_days" value="{{ $nextDays ?? '' }}">
+                                                    <button type="submit" class="text-action-btn secondary" title="Send Reminder">
+                                                        Send Reminder
+                                                    </button>
+                                                </form>
+                                            @endif
+
                                             <button
                                                 type="button"
                                                 class="text-action-btn view js-renew-order-btn"

@@ -1,10 +1,18 @@
 @extends('layouts.app')
 
+@section('header_actions')
+    <a href="{{ route('invoices.index') }}" class="secondary-button">
+        <i class="fas fa-arrow-left"></i> Back to Invoices
+    </a>
+@endsection
+
 @section('content')
     @php
         $clientName = $invoice->client->business_name ?? ($invoice->client->contact_name ?? 'Client');
         $clientEmail = $invoice->client->primary_email ?? $invoice->client->email ?? '';
+        $invoicePrimaryOrderId = optional($invoice->invoiceItems)->pluck('orderid')->filter()->first();
         $isAlreadySent = (string) ($composeEmail->status ?? '') === 'sent';
+        $isComposeLocked = $isAlreadySent && (string) ($prefillChannel ?? 'email') !== 'email';
         $hasTiNumber = !empty(trim((string) $invoice->ti_number));
         $displayDocNumber = $hasTiNumber
             ? (trim((string) $invoice->ti_number) !== ''
@@ -19,7 +27,7 @@
     <section class="panel-card w-100 p-3 compose-mail-page">
         <div class="bg-light border rounded p-3 mb-3">
             <div class="d-flex align-items-center gap-2">
-                <a href="{{ route('invoices.create', ['step' => 3, 'c' => $invoice->clientid, 'd' => $invoice->invoiceid, 'o' => $invoice->orderid]) }}"
+                <a href="{{ route('invoices.create', ['step' => 3, 'c' => $invoice->clientid, 'd' => $invoice->invoiceid, 'o' => $invoicePrimaryOrderId]) }}"
                     class="secondary-button">
                     <i class="fas fa-arrow-left"></i>
                 </a>
@@ -130,7 +138,7 @@
                                         <label class="field-label">Subject</label>
                                         <input type="text" name="subject" id="emailSubjectInput"
                                             value="{{ old('subject', $prefillSubject ?? 'Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number)) }}"
-                                            class="input-full" {{ $isAlreadySent ? 'readonly' : '' }}>
+                                            class="input-full" {{ $isComposeLocked ? 'readonly' : '' }}>
                                     </div>
                                     <div class="col-12 col-md-6">
                                         <label class="field-label">CC</label>
@@ -154,25 +162,25 @@
                             <div class="mb-3">
                                 <label class="field-label">Body</label>
                                 <textarea name="body" id="emailBodyInput" rows="8" class="input-full"
-                                    {{ $isAlreadySent ? 'readonly' : '' }}>{{ old('body', $prefillBody ?? $defaultBody) }}</textarea>
+                                    {{ $isComposeLocked ? 'readonly' : '' }}>{{ old('body', $prefillBody ?? $defaultBody) }}</textarea>
                                 <div id="attachmentBodyHint" class="text-secondary small mt-1"></div>
                             </div>
                             <div class="mb-3 email-fields">
-                                <label class="field-label">Extra Attachment (optional)</label>
-                                <input type="file" name="custom_attachment" id="customAttachmentInput"
-                                    class="input-full" {{ $isAlreadySent ? 'disabled' : '' }}>
+                                <label class="field-label">Extra Attachments (optional)</label>
+                                <input type="file" name="custom_attachments[]" id="customAttachmentInput" multiple
+                                    class="input-full" {{ $isComposeLocked ? 'disabled' : '' }}>
                                 <div id="currentCustomAttachment" class="mt-2"></div>
                             </div>
 
                             <div class="d-flex justify-content-end flex-wrap gap-2 mt-4 pt-3 border-top">
-                                <div class="email-actions" style="{{ $isAlreadySent ? 'display:none;' : '' }}">
+                                <div class="email-actions" style="{{ $isComposeLocked ? 'display:none;' : '' }}">
                                     <button type="submit" name="action" value="save" class="secondary-button">Save
                                         Email</button>
                                     <button type="submit" name="action" value="send" class="primary-button">Send to
                                         Client</button>
                                 </div>
                                 <div class="whatsapp-actions"
-                                    style="{{ $isAlreadySent ? 'display:none;' : 'display: none;' }}">
+                                    style="{{ $isComposeLocked ? 'display:none;' : 'display: none;' }}">
                                     <button type="submit" name="action" value="save" class="secondary-button">Save
                                         WhatsApp Message</button>
                                     <button type="submit" name="action" value="send" id="sendWhatsApp"
@@ -181,7 +189,7 @@
                                     </button>
                                 </div>
                                 <div class="sms-actions"
-                                    style="{{ $isAlreadySent ? 'display:none;' : 'display: none;' }}">
+                                    style="{{ $isComposeLocked ? 'display:none;' : 'display: none;' }}">
                                     <button type="submit" name="action" value="save" class="secondary-button">Save
                                         SMS</button>
                                     <button type="submit" name="action" value="send" id="sendSms"
@@ -267,8 +275,7 @@
 
             const attachmentBodyHint = document.getElementById('attachmentBodyHint');
             const customAttachmentInput = document.getElementById('customAttachmentInput');
-            const savedCustomAttachmentUrl = @json($customAttachmentUrl ?? null);
-            const savedCustomAttachmentName = @json($customAttachmentName ?? null);
+            const savedCustomAttachmentUrls = @json($customAttachmentUrls ?? []);
             const emailSubjectInput = document.getElementById('emailSubjectInput');
             const emailBodyInput = document.getElementById('emailBodyInput');
             const previewRawBody = document.getElementById('previewRawBody');
@@ -280,11 +287,11 @@
             const templateCatalog = @json($templateCatalog ?? []);
             const availableChannelsByType = @json($availableChannelsByType ?? []);
             const fallbackTemplatesByType = @json($fallbackTemplatesByType ?? []);
-            const isAlreadySent = @json($isAlreadySent);
+            const isAlreadySent = @json($isComposeLocked);
 
             let currentChannel = document.getElementById('selectedChannel').value || 'email';
             let currentType = document.getElementById('selectedType').value || 'pi';
-            let dscPreviewUrl = savedCustomAttachmentUrl || null;
+            let dscPreviewUrls = Array.isArray(savedCustomAttachmentUrls) ? [...savedCustomAttachmentUrls] : [];
             let currentRawTemplateBody = '';
             const hasExistingDraft = !!(document.querySelector('input[name="communication_logid"]')?.value || '').trim();
             const INVOICE_COMPOSE_READY_TOAST_KEY = 'invoice_compose_ready_toast';
@@ -344,15 +351,18 @@
                     });
                 }
 
-                const selectedCustomFile = customAttachmentInput?.files?.[0] || null;
-                const customFileName = selectedCustomFile?.name || savedCustomAttachmentName;
-                const customFileUrl = selectedCustomFile ? dscPreviewUrl : savedCustomAttachmentUrl;
-                if (customFileName && customFileUrl) {
-                    files.push({
-                        label: customFileName,
-                        url: customFileUrl
-                    });
-                }
+                const selectedFiles = Array.from(customAttachmentInput?.files || []);
+                const selectedAttachments = selectedFiles.map((file, index) => ({
+                    label: 'Attachment ' + (index + 1),
+                    url: dscPreviewUrls[index] || null
+                })).filter((item) => !!item.url);
+                const savedAttachments = selectedFiles.length === 0
+                    ? (savedCustomAttachmentUrls || []).map((url, index) => ({
+                        label: 'Attachment ' + (index + 1),
+                        url
+                    }))
+                    : [];
+                [...savedAttachments, ...selectedAttachments].forEach((item) => files.push(item));
 
                 return files;
             }
@@ -370,13 +380,22 @@
                     return;
                 }
 
-                previewAttachments.innerHTML = files
-                    .map((file) => (
-                        '<div><a href="' + file.url + '" target="_blank" rel="noopener noreferrer">' +
+                const primaryPdf = files[0] || null;
+                const extraAttachments = files.slice(1);
+                let html = '';
+                if (primaryPdf) {
+                    html += '<div><a href="' + primaryPdf.url + '" target="_blank" rel="noopener noreferrer">' +
+                        String(primaryPdf.label || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+                        '</a></div>';
+                }
+                if (extraAttachments.length > 0) {
+                    html += '<div class="mt-1">' + extraAttachments.map((file) => (
+                        '<a href="' + file.url + '" target="_blank" rel="noopener noreferrer">' +
                         String(file.label || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
-                        '</a></div>'
-                    ))
-                    .join('');
+                        '</a>'
+                    )).join(', ') + '</div>';
+                }
+                previewAttachments.innerHTML = html;
             }
 
             function refreshEmailPreview() {
@@ -437,49 +456,67 @@
                 return out.replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n');
             }
 
-            function isImageFileName(name) {
-                return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name || '');
+            function isImageAttachment(item) {
+                const fileType = String(item?.fileType || '').toLowerCase();
+                const url = String(item?.url || '');
+                return fileType.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(url);
             }
 
             function renderCurrentCustomAttachment() {
                 if (!currentCustomAttachment) return;
 
-                const selectedFile = customAttachmentInput?.files?.[0] || null;
-                const fileName = selectedFile?.name || savedCustomAttachmentName;
-                const fileUrl = selectedFile ? dscPreviewUrl : savedCustomAttachmentUrl;
+                const selectedFiles = Array.from(customAttachmentInput?.files || []);
+                const attachments = selectedFiles.length > 0
+                    ? selectedFiles.map((file, index) => ({
+                        name: 'Attachment ' + (index + 1),
+                        url: dscPreviewUrls[index] || null,
+                        fileType: file?.type || ''
+                    })).filter((item) => !!item.url)
+                    : (savedCustomAttachmentUrls || []).map((url, index) => ({
+                        name: 'Attachment ' + (index + 1),
+                        url,
+                        fileType: ''
+                    }));
 
-                if (!fileName || !fileUrl) {
+                if (attachments.length === 0) {
                     currentCustomAttachment.innerHTML =
                         '<span class="small text-muted">No extra attachment selected.</span>';
                     return;
                 }
-
-                if (isImageFileName(fileName)) {
-                    currentCustomAttachment.innerHTML =
-                        '<div class="small text-muted mb-1">Current attachment:</div>' +
-                        '<a href="' + fileUrl + '" target="_blank" class="text-decoration-none">' +
-                        '<img src="' + fileUrl + '" alt="' + fileName.replace(/"/g, '&quot;') +
-                        '" style="max-height:120px;max-width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:2px;background:#fff;">' +
-                        '</a>';
-                    return;
-                }
-
+                const imageRows = attachments.filter((item) => isImageAttachment(item));
+                const fileRows = attachments.filter((item) => !isImageAttachment(item));
+                const imageHtml = imageRows.length
+                    ? ('<div class="small text-muted mb-1 mt-2">Image preview:</div>' +
+                        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                        imageRows.map((item) => (
+                            '<a href="' + item.url + '" target="_blank" class="text-decoration-none">' +
+                            '<img src="' + item.url + '" alt="' + String(item.name).replace(/"/g, '&quot;') + '"' +
+                            ' style="max-height:90px;max-width:120px;border:1px solid #e2e8f0;border-radius:8px;padding:2px;background:#fff;">' +
+                            '</a>'
+                        )).join('') +
+                        '</div>')
+                    : '';
                 currentCustomAttachment.innerHTML =
-                    '<div class="small text-muted mb-1">Current attachment:</div>' +
-                    '<a href="' + fileUrl + '" target="_blank" class="small">' + fileName + '</a>';
+                    '<div class="small text-muted mb-1">Current attachments:</div>' +
+                    '<div class="small">' + fileRows.concat(imageRows).map((item) => (
+                        '<a href="' + item.url + '" target="_blank">' + item.name + '</a>'
+                    )).join(', ') + '</div>' + imageHtml;
             }
 
             function updateContextHints() {
                 const labels = [];
-                if (currentType === 'pi') labels.push('PI PDF');
-                if (currentType === 'ti') labels.push('TI PDF');
-                if (dscPreviewUrl) labels.push('Custom attachment');
+                const selectedTemplate = getSelectedTemplateForCurrentSelection(currentType, currentChannel);
+                const selectedHeaderType = String(selectedTemplate?.header_type || '').toLowerCase();
+                const canAttachDocumentForWhatsapp = currentChannel !== 'whatsapp' || selectedHeaderType === 'document';
+                if (currentType === 'pi' && canAttachDocumentForWhatsapp) labels.push('PI PDF');
+                if (currentType === 'ti' && canAttachDocumentForWhatsapp) labels.push('TI PDF');
+                if ((dscPreviewUrls || []).length > 0) labels.push('Custom attachment');
 
                 if (!attachmentBodyHint) return;
                 const attachmentText = labels.length ? ('Attached: ' + labels.join(', ')) : 'No attachment selected.';
                 if (isAlreadySent) {
                     attachmentBodyHint.textContent = attachmentText +
-                        ' | This message is already sent and locked for editing.';
+                        ' ';
                     return;
                 }
                 attachmentBodyHint.textContent = attachmentText;
@@ -729,14 +766,14 @@
             });
 
             customAttachmentInput?.addEventListener('change', function() {
-                if (@json($isAlreadySent)) return;
-                if (dscPreviewUrl) {
-                    URL.revokeObjectURL(dscPreviewUrl);
-                    dscPreviewUrl = null;
-                }
-                const selectedFile = customAttachmentInput.files && customAttachmentInput.files.length ?
-                    customAttachmentInput.files[0] : null;
-                if (selectedFile) dscPreviewUrl = URL.createObjectURL(selectedFile);
+                if (@json($isComposeLocked)) return;
+                (dscPreviewUrls || []).forEach((url) => {
+                    if (url && !(savedCustomAttachmentUrls || []).includes(url)) {
+                        URL.revokeObjectURL(url);
+                    }
+                });
+                const selectedFiles = Array.from(customAttachmentInput.files || []);
+                dscPreviewUrls = selectedFiles.map((file) => URL.createObjectURL(file));
                 updateContextHints();
                 renderCurrentCustomAttachment();
                 refreshEmailPreview();

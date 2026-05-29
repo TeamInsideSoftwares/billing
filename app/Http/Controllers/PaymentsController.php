@@ -157,7 +157,7 @@ class PaymentsController extends Controller
 
         $invoiceMap = Invoice::query()
             ->whereIn('invoiceid', $invoiceIds)
-            ->with('items')
+            ->with('invoiceItems')
             ->get(['invoiceid', 'invoice_title', 'pi_number', 'ti_number', 'clientid', 'fy_id', 'status'])
             ->keyBy('invoiceid');
 
@@ -311,7 +311,7 @@ class PaymentsController extends Controller
             ->when($selectedClientId !== '', function ($query) use ($selectedClientId) {
                 $query->where('clientid', $selectedClientId);
             })
-            ->with(['client.billingDetail', 'items'])
+            ->with(['client.billingDetail', 'invoiceItems'])
             ->orderBy('issue_date')
             ->orderBy('created_at')
             ->get();
