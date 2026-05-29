@@ -9,6 +9,7 @@ use App\Models\CommunicationLog;
 use App\Models\InvoiceItem;
 use App\Models\MessageTemplate;
 use App\Models\Order;
+use App\Models\Service;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -52,6 +53,25 @@ class InvoiceReminderService
             'manual',
             Carbon::today(),
             ['selected_item' => $invoiceItem]
+        );
+    }
+
+    public function sendManualForOrderByTemplateType(Order $order, string $templateType): array
+    {
+        $order->loadMissing(['client.billingDetail', 'item']);
+
+        $expiryDate = $order->end_date ? $order->end_date->copy()->startOfDay() : null;
+        $daysLeft = $expiryDate ? Carbon::today()->diffInDays($expiryDate, false) : 0;
+
+        return $this->dispatchForOrder(
+            $order,
+            $templateType,
+            'manual',
+            Carbon::today(),
+            [
+                'expiry_date' => $expiryDate,
+                'days_left' => $daysLeft,
+            ]
         );
     }
 
@@ -633,6 +653,9 @@ class InvoiceReminderService
         $clientBusinessName = trim((string) ($invoice->client?->business_name ?? ''));
         $clientContactPerson = trim((string) ($invoice->client?->contact_name ?? ''));
         $clientName = trim((string) ($clientBusinessName !== '' ? $clientBusinessName : $clientContactPerson));
+        if ($clientName === '') {
+            $clientName = 'Customer';
+        }
         $primaryItem = $selectedItem instanceof InvoiceItem
             ? $selectedItem
             : $invoice->invoiceItems
@@ -676,6 +699,22 @@ class InvoiceReminderService
         if ($itemDescription === '') {
             $itemDescription = trim((string) ($sourceOrder?->item_description ?? ''));
         }
+        if ($itemName === '' && !empty($primaryItem?->itemid)) {
+            $itemName = trim((string) (Service::query()->where('accountid', $invoice->accountid)->find($primaryItem->itemid)?->name ?? ''));
+        }
+        if ($itemDescription === '' && !empty($primaryItem?->itemid)) {
+            $itemDescription = trim((string) (Service::query()->where('accountid', $invoice->accountid)->find($primaryItem->itemid)?->description ?? ''));
+        }
+        if ($itemName === '') {
+            $itemName = 'Service';
+        }
+        if ($itemDescription === '') {
+            $itemDescription = '-';
+        }
+        $orderNumber = trim((string) ($sourceOrder?->order_number ?? ''));
+        if ($orderNumber === '') {
+            $orderNumber = trim((string) ($sourceOrder?->orderid ?? $primaryOrderId ?? ''));
+        }
 
         return [
             '{{client_business_name}}' => $clientBusinessName,
@@ -694,7 +733,7 @@ class InvoiceReminderService
             '{{days_left}}' => $daysLeftDisplay,
             '{{days_ago}}' => (string) $daysAgo,
             '{{renewal_date}}' => $renewalDate,
-            '{{order_number}}' => (string) ($sourceOrder?->order_number ?? ''),
+            '{{order_number}}' => $orderNumber,
             '{{order_start_date}}' => $sourceOrder?->start_date?->format('d M Y') ?? '',
             '{{order_end_date}}' => $sourceOrder?->end_date?->format('d M Y') ?? '',
         ];
@@ -710,8 +749,27 @@ class InvoiceReminderService
         $clientBusinessName = trim((string) ($order->client?->business_name ?? ''));
         $clientContactPerson = trim((string) ($order->client?->contact_name ?? ''));
         $clientName = trim((string) ($clientBusinessName !== '' ? $clientBusinessName : $clientContactPerson));
+        if ($clientName === '') {
+            $clientName = 'Customer';
+        }
         $itemName = trim((string) ($order->item_name ?: $order->item?->name ?: ''));
         $itemDescription = trim((string) ($order->item_description ?? ''));
+        if ($itemName === '' && !empty($order->itemid)) {
+            $itemName = trim((string) (Service::query()->where('accountid', $order->accountid)->find($order->itemid)?->name ?? ''));
+        }
+        if ($itemDescription === '' && !empty($order->itemid)) {
+            $itemDescription = trim((string) (Service::query()->where('accountid', $order->accountid)->find($order->itemid)?->description ?? ''));
+        }
+        if ($itemName === '') {
+            $itemName = 'Service';
+        }
+        if ($itemDescription === '') {
+            $itemDescription = '-';
+        }
+        $orderNumber = trim((string) ($order->order_number ?? ''));
+        if ($orderNumber === '') {
+            $orderNumber = trim((string) ($order->orderid ?? ''));
+        }
         $itemStartDate = $order->start_date?->format('d M Y') ?? '';
         $itemEndDate = $order->end_date?->format('d M Y') ?? '';
         $calculatedDaysLeft = $order->end_date
@@ -742,7 +800,7 @@ class InvoiceReminderService
             '{{days_left}}' => $daysLeftDisplay,
             '{{days_ago}}' => (string) $daysAgo,
             '{{renewal_date}}' => $renewalDate,
-            '{{order_number}}' => (string) ($order->order_number ?? ''),
+            '{{order_number}}' => $orderNumber,
             '{{order_start_date}}' => $order->start_date?->format('d M Y') ?? '',
             '{{order_end_date}}' => $order->end_date?->format('d M Y') ?? '',
         ];

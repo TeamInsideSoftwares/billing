@@ -2730,8 +2730,7 @@ class InvoicesController extends Controller
         $templateType = ($orderModel->end_date && $orderModel->end_date->startOfDay()->lte(now()->startOfDay()))
             ? 'expiry'
             : 'reminder';
-        $invoiceContext = $this->buildReminderInvoiceContextFromOrder($orderModel);
-        $result = $invoiceReminderService->sendManualByTemplateType($invoiceContext, $templateType);
+        $result = $invoiceReminderService->sendManualForOrderByTemplateType($orderModel, $templateType);
         $sentCount = (int) ($result['sent'] ?? 0);
 
         if ($sentCount > 0) {
@@ -2813,12 +2812,15 @@ class InvoicesController extends Controller
         $item->clientid = (string) $order->clientid;
         $item->invoiceid = '';
         $item->itemid = (string) ($order->itemid ?? '');
+        $item->orderid = (string) ($order->orderid ?? '');
         $item->item_name = (string) ($order->item_name ?? 'Item');
         $item->item_description = (string) ($order->item_description ?? '');
         $item->start_date = $order->start_date;
         $item->end_date = $order->end_date;
         $item->line_total = 0;
 
+        // Reminder service reads invoiceItems; keep both relations for compatibility.
+        $invoice->setRelation('invoiceItems', collect([$item]));
         $invoice->setRelation('items', collect([$item]));
 
         return $invoice;
@@ -3112,7 +3114,7 @@ class InvoicesController extends Controller
         // 1. If specific email ID requested, load that first
         if ($requestedEmailId !== '') {
             $candidateEmail = CommunicationLog::query()
-                ->where('communication_logid', $requestedEmailId)
+                ->where('logid', $requestedEmailId)
                 ->where('invoiceid', $invoice->invoiceid)
                 ->where('accountid', $currentAccountId)
                 ->first();
@@ -3239,7 +3241,7 @@ class InvoicesController extends Controller
         );
 
         $validated = $request->validate([
-            'communication_logid' => 'nullable|exists:communication_logs,communication_logid',
+            'logid' => 'nullable|exists:communication_logs,logid',
             'action' => 'nullable|in:save,send',
             'channel' => 'required|in:email,whatsapp,sms',
             'selected_templateid' => 'nullable|string|max:20',
@@ -3302,11 +3304,11 @@ class InvoicesController extends Controller
         }
         $user = Auth::user();
         $currentAccountId = $invoice->accountid ?? $this->resolveAccountId();
-        $requestedDraftId = trim((string) ($validated['communication_logid'] ?? ''));
+        $requestedDraftId = trim((string) ($validated['logid'] ?? ''));
         $seedDraft = null;
         if ($requestedDraftId !== '') {
             $seedDraft = CommunicationLog::query()
-                ->where('communication_logid', $requestedDraftId)
+                ->where('logid', $requestedDraftId)
                 ->where('invoiceid', $invoice->invoiceid)
                 ->where('accountid', $currentAccountId)
                 ->first();
@@ -3409,7 +3411,7 @@ class InvoicesController extends Controller
             return redirect()
                 ->route('invoices.email-compose', [
                     'invoice' => $invoice->invoiceid,
-                    'e' => $emailDraft->communication_logid,
+                    'e' => $emailDraft->logid,
                     'channel' => $channel,
                     'attachment_type' => $selectedType,
                 ])
@@ -3556,7 +3558,7 @@ class InvoicesController extends Controller
             return redirect()
                 ->route('invoices.email-compose', [
                     'invoice' => $invoice->invoiceid,
-                    'e' => $emailDraft->communication_logid,
+                    'e' => $emailDraft->logid,
                     'channel' => $channel,
                     'attachment_type' => $selectedType,
                 ])
@@ -3657,7 +3659,7 @@ class InvoicesController extends Controller
         return redirect()
             ->route('invoices.email-compose', [
                 'invoice' => $invoice->invoiceid,
-                'e' => $emailDraft->communication_logid,
+                'e' => $emailDraft->logid,
                 'channel' => 'email',
                 'attachment_type' => $selectedType,
             ])

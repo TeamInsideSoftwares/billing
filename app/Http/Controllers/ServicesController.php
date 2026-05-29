@@ -370,7 +370,10 @@ class ServicesController extends Controller
 
     public function servicesDestroy(Service $service)
     {
-        $service->delete();
+        DB::transaction(function () use ($service) {
+            $service->costings()->delete();
+            $service->delete();
+        });
 
         return redirect()->route('services.index')->with('success', 'Item deleted successfully.');
     }

@@ -12,12 +12,14 @@ return new class extends Migration {
             return;
         }
 
+        $idColumn = Schema::hasColumn('communication_logs', 'logid') ? 'logid' : 'communication_logid';
+
         if (Schema::hasTable('invoice_emails')) {
-            DB::table('invoice_emails')->orderBy('created_at')->chunk(200, function ($rows) {
+            DB::table('invoice_emails')->orderBy('created_at')->chunk(200, function ($rows) use ($idColumn) {
                 foreach ($rows as $row) {
-                    $id = $this->nextId();
+                    $id = $this->nextId($idColumn);
                     DB::table('communication_logs')->insert([
-                        'communication_logid' => $id,
+                        $idColumn => $id,
                         'accountid' => $row->accountid,
                         'invoiceid' => $row->invoiceid,
                         'quotationid' => null,
@@ -43,11 +45,11 @@ return new class extends Migration {
         }
 
         if (Schema::hasTable('quotation_emails')) {
-            DB::table('quotation_emails')->orderBy('created_at')->chunk(200, function ($rows) {
+            DB::table('quotation_emails')->orderBy('created_at')->chunk(200, function ($rows) use ($idColumn) {
                 foreach ($rows as $row) {
-                    $id = $this->nextId();
+                    $id = $this->nextId($idColumn);
                     DB::table('communication_logs')->insert([
-                        'communication_logid' => $id,
+                        $idColumn => $id,
                         'accountid' => $row->accountid,
                         'invoiceid' => null,
                         'quotationid' => $row->quotationid,
@@ -82,11 +84,11 @@ return new class extends Migration {
         DB::table('communication_logs')->truncate();
     }
 
-    private function nextId(): string
+    private function nextId(string $idColumn): string
     {
         do {
             $id = strtoupper(Str::random(6));
-            $exists = DB::table('communication_logs')->where('communication_logid', $id)->exists();
+            $exists = DB::table('communication_logs')->where($idColumn, $id)->exists();
         } while ($exists);
 
         return $id;

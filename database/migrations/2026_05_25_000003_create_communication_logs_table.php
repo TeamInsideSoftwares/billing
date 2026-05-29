@@ -8,7 +8,7 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('communication_logs', function (Blueprint $table) {
-            $table->string('communication_logid', 6)->primary();
+            $table->string('logid', 6)->primary();
             $table->string('accountid', 12);
             $table->string('invoiceid', 12)->nullable()->index();
             $table->string('quotationid', 12)->nullable()->index();

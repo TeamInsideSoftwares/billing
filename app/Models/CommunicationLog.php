@@ -29,7 +29,7 @@ class CommunicationLog extends Model
     use HasAlphaNumericId;
 
     protected $table = 'communication_logs';
-    protected $primaryKey = 'communication_logid';
+    protected $primaryKey = 'logid';
     public $incrementing = false;
     protected $keyType = 'string';
     public $timestamps = true;

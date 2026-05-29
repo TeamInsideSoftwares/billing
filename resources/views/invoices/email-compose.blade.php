@@ -108,7 +108,7 @@
         <form method="POST" id="composeForm" action="{{ route('invoices.email-compose.store', $invoice->invoiceid) }}"
             enctype="multipart/form-data">
             @csrf
-            <input type="hidden" name="communication_logid" value="{{ $composeEmail->communication_logid ?? '' }}">
+            <input type="hidden" name="logid" value="{{ $composeEmail->logid ?? '' }}">
             <input type="hidden" name="channel" id="selectedChannel"
                 value="{{ old('channel', $prefillChannel ?? 'email') }}">
             <input type="hidden" name="attachment_type" id="selectedType"
@@ -293,7 +293,7 @@
             let currentType = document.getElementById('selectedType').value || 'pi';
             let dscPreviewUrls = Array.isArray(savedCustomAttachmentUrls) ? [...savedCustomAttachmentUrls] : [];
             let currentRawTemplateBody = '';
-            const hasExistingDraft = !!(document.querySelector('input[name="communication_logid"]')?.value || '').trim();
+            const hasExistingDraft = !!(document.querySelector('input[name="logid"]')?.value || '').trim();
             const INVOICE_COMPOSE_READY_TOAST_KEY = 'invoice_compose_ready_toast';
 
             function showSuccessToast(message) {
