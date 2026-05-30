@@ -11,6 +11,23 @@
     $selectedClientId = old('clientid', $preSelectedClientId ?? ($order->clientid ?? request('c')));
     $todayDate = now()->format('Y-m-d');
     $maxEndDate = '2099-12-31';
+    $isEditingOrder = (bool) $isEditMode;
+    $isIframeMode = (string) request()->query('iframe') === '1';
+    $isClientLocked = $isEditingOrder || $isIframeMode;
+    $selectedClient = $isEditingOrder
+        ? ($order->client ?? collect($clients ?? [])->firstWhere('clientid', $selectedClientId))
+        : collect($clients ?? [])->firstWhere('clientid', $selectedClientId);
+    $selectedClientName = (string) (
+        $selectedClient?->business_name
+        ?? $selectedClient?->contact_name
+        ?? 'Select Client'
+    );
+    $selectedClientEmail = (string) (
+        $selectedClient?->primary_email
+        ?? $selectedClient?->billingDetail?->billing_email
+        ?? $selectedClient?->email
+        ?? ''
+    );
 @endphp
 
 <section class="panel-card panel-card-lg">
@@ -20,33 +37,43 @@
             @method('PUT')
         @endif
 
-        <div class="form-grid order-create-meta-grid">
-            <div>
-                <label for="clientid">Client</label>
-                <select id="clientid" name="clientid" class="form-control" required {{ ($isEditMode || request()->query('iframe') == 1) ? 'disabled' : '' }}>
-                    <option value="">Select Client</option>
-                    @php
-                        $clientsByType = collect($clients ?? [])->groupBy(function ($client) {
-                            return strtolower((string) ($client->type ?? 'regular')) === 'trial' ? 'trial' : 'regular';
-                        });
-                    @endphp
-                    @foreach(['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
-                        @if(($clientsByType[$typeKey] ?? collect())->isNotEmpty())
-                            <optgroup label="{{ $typeLabel }}">
-                                @foreach($clientsByType[$typeKey] as $client)
-                                    <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
-                                        {{ $client->business_name ?? $client->contact_name }}
-                                    </option>
-                                @endforeach
-                            </optgroup>
-                        @endif
-                    @endforeach
-                </select>
-                @if($isEditMode || request()->query('iframe') == 1)
-                    <input type="hidden" name="clientid" value="{{ $selectedClientId }}">
-                @endif
+        <div class="invoice-client-header mb-3">
+            <div class="invoice-client-header__row">
+                <div class="invoice-client-header__icon">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="invoice-client-header__body" style="min-width: 0; flex: 1;">
+                    @if(!$isClientLocked)
+                        <label for="clientid" class="field-label" style="margin-bottom: 0.25rem;">Select Client *</label>
+                        <select id="clientid" name="clientid" class="form-control" required>
+                            <option value="">Select Client</option>
+                            @php
+                                $clientsByType = collect($clients ?? [])->groupBy(function ($client) {
+                                    return strtolower((string) ($client->type ?? 'regular')) === 'trial' ? 'trial' : 'regular';
+                                });
+                            @endphp
+                            @foreach(['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
+                                @if(($clientsByType[$typeKey] ?? collect())->isNotEmpty())
+                                    <optgroup label="{{ $typeLabel }}">
+                                        @foreach($clientsByType[$typeKey] as $client)
+                                            <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
+                                                {{ $client->business_name ?? $client->contact_name }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
+                            @endforeach
+                        </select>
+                    @else
+                        <input type="hidden" name="clientid" value="{{ $selectedClientId }}">
+                        <div class="invoice-client-header__name">{{ $selectedClientName }}</div>
+                        <div class="invoice-client-header__email" style="{{ $selectedClientEmail ? '' : 'display:none;' }}">{{ $selectedClientEmail }}</div>
+                    @endif
+                </div>
             </div>
+        </div>
 
+        <div class="form-grid order-create-meta-grid">
         </div>
 
         <hr class="my-4">

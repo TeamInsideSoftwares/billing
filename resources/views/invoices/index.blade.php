@@ -18,7 +18,7 @@
     @php
         $selectedClient = $clients->firstWhere('clientid', $selectedClientId);
         $selectedClientCurrency = $selectedClient->currency ?? null;
-        $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'upcoming', 'cancelled'], true)
+        $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', 'upcoming', 'cancelled'], true)
             ? $selectedTab
             : 'invoices';
     @endphp
@@ -57,7 +57,11 @@
             <div class="invoice-tabs">
                 <a href="{{ route('invoices.index', array_filter(['tab' => 'invoices', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}"
                     class="invoice-tab {{ $currentTab === 'invoices' ? 'is-active' : '' }}">
-                    All <span>{{ ($allInvoiceRows ?? $allInvoices)->count() }}</span>
+                    All <span>{{ $paidInvoicesCount ?? 0 }}</span>
+                </a>
+                <a href="{{ route('invoices.index', array_filter(['tab' => 'outstanding', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}"
+                    class="invoice-tab {{ $currentTab === 'outstanding' ? 'is-active' : '' }}">
+                    Outstanding <span>{{ $outstandingInvoicesCount ?? 0 }}</span>
                 </a>
                 <a href="{{ route('invoices.index', array_filter(['tab' => 'upcoming', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}"
                     class="invoice-tab {{ $currentTab === 'upcoming' ? 'is-active' : '' }}">
@@ -76,6 +80,13 @@
                     <div class="meta-info">
                         <strong>Upcoming invoices</strong>
                         <span class="small-text">Draft invoices that are not finalized yet.</span>
+                    </div>
+                </div>
+            @elseif ($currentTab === 'outstanding')
+                <div class="invoice-list-meta">
+                    <div class="meta-info">
+                        <strong>Outstanding invoices</strong>
+                        <span class="small-text">Invoices that are unpaid or partially paid.</span>
                     </div>
                 </div>
             @elseif ($currentTab === 'cancelled')

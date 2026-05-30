@@ -765,7 +765,25 @@ class InvoicesController extends Controller
 
         $allInvoices = $invoiceQuery->get()->values();
 
-        $selectedTab = in_array($selectedTab, ['invoices', 'upcoming', 'cancelled', 'proforma', 'tax'], true)
+        $resolvePaymentStatus = function (Invoice $invoice): string {
+            $amountPaid = (float) ($invoice->amount_paid ?? 0);
+            $grandTotal = (float) ($invoice->grand_total ?? 0);
+            $balanceDue = (float) ($invoice->balance_due ?? max(0, $grandTotal - $amountPaid));
+
+            $paymentStatus = strtolower(trim((string) ($invoice->payment_status ?? '')));
+            if (!in_array($paymentStatus, ['paid', 'partly_paid', 'unpaid'], true)) {
+                $paymentStatus = 'unpaid';
+                if ($amountPaid > 0 && $balanceDue <= 0 && $grandTotal > 0) {
+                    $paymentStatus = 'paid';
+                } elseif ($amountPaid > 0) {
+                    $paymentStatus = 'partly_paid';
+                }
+            }
+
+            return $paymentStatus;
+        };
+
+        $selectedTab = in_array($selectedTab, ['invoices', 'outstanding', 'partly_paid', 'unpaid', 'upcoming', 'cancelled', 'proforma', 'tax'], true)
             ? $selectedTab
             : 'invoices';
         $selectedType = in_array($selectedType, ['', 'pi', 'tax'], true) ? $selectedType : '';
@@ -774,6 +792,10 @@ class InvoicesController extends Controller
             $selectedStatus = 'cancelled';
         } elseif ($selectedStatus === 'cancelled') {
             $selectedStatus = 'active';
+        }
+
+        if (in_array($selectedTab, ['partly_paid', 'unpaid'], true)) {
+            $selectedTab = 'outstanding';
         }
 
         $typedInvoices = $allInvoices;
@@ -792,18 +814,25 @@ class InvoicesController extends Controller
             return strtolower(trim((string) ($invoice->status ?? ''))) === 'cancelled';
         })->values();
 
-        $filteredInvoices = $typedInvoices->filter(function (Invoice $invoice) use ($selectedStatus) {
+        $activeInvoices = $typedInvoices->filter(function (Invoice $invoice) {
             $status = strtolower(trim((string) ($invoice->status ?? 'active')));
-            if ($selectedStatus === 'cancelled') {
-                return $status === 'cancelled';
-            }
             return !in_array($status, ['cancelled', 'draft'], true);
         })->values();
 
+        $paidInvoices = $activeInvoices->filter(fn(Invoice $invoice) => $resolvePaymentStatus($invoice) === 'paid')->values();
+        $partlyPaidInvoices = $activeInvoices->filter(fn(Invoice $invoice) => $resolvePaymentStatus($invoice) === 'partly_paid')->values();
+        $unpaidInvoices = $activeInvoices->filter(fn(Invoice $invoice) => $resolvePaymentStatus($invoice) === 'unpaid')->values();
+        $outstandingInvoices = $activeInvoices
+            ->filter(fn(Invoice $invoice) => in_array($resolvePaymentStatus($invoice), ['partly_paid', 'unpaid'], true))
+            ->values();
+
+        $filteredInvoices = $paidInvoices;
         if ($selectedTab === 'upcoming') {
             $filteredInvoices = $draftInvoices;
         } elseif ($selectedTab === 'cancelled') {
             $filteredInvoices = $cancelledInvoices;
+        } elseif ($selectedTab === 'outstanding') {
+            $filteredInvoices = $outstandingInvoices;
         }
 
         if (request()->wantsJson() || request()->ajax()) {
@@ -889,6 +918,10 @@ class InvoicesController extends Controller
             'selectedStatus' => $selectedStatus,
             'upcomingInvoicesCount' => $draftInvoices->count(),
             'cancelledInvoicesCount' => $cancelledInvoices->count(),
+            'paidInvoicesCount' => $paidInvoices->count(),
+            'outstandingInvoicesCount' => $outstandingInvoices->count(),
+            'partlyPaidInvoicesCount' => $partlyPaidInvoices->count(),
+            'unpaidInvoicesCount' => $unpaidInvoices->count(),
         ]);
     }
 
