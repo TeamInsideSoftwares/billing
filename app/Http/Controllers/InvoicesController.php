@@ -2338,7 +2338,7 @@ class InvoicesController extends Controller
     public function invoicesShow(string $invoice): View
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
-        $invoice->loadMissing(['client', 'invoiceItems.service', 'payments']);
+        $invoice->loadMissing(['client', 'invoiceItems.service', 'paymentDetails.payment']);
 
         // Load account billing details for preview
         $accountid = $this->resolveAccountId();

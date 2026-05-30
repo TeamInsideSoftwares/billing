@@ -103,6 +103,7 @@ class SettingsController extends Controller
         $taxInvoiceSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'tax_invoice')->first();
         $quotationSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'quotation')->first();
         $orderSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'order')->first();
+        $paymentReceiptSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'payment_receipt')->first();
 
         $termsQuery = TermsCondition::query()
             ->where('accountid', $accountid)
@@ -166,6 +167,7 @@ class SettingsController extends Controller
             'taxInvoiceSerialConfig' => $taxInvoiceSerialConfig,
             'quotationSerialConfig' => $quotationSerialConfig,
             'orderSerialConfig' => $orderSerialConfig,
+            'paymentReceiptSerialConfig' => $paymentReceiptSerialConfig,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
             'editingSetting' => $editingSetting,
@@ -287,7 +289,7 @@ class SettingsController extends Controller
         $accountid = $this->resolveAccountId();
 
         $validated = $request->validate([
-            'document_type' => 'required|in:proforma_invoice,tax_invoice,quotation,order',
+            'document_type' => 'required|in:proforma_invoice,tax_invoice,quotation,order,payment_receipt',
             'serial_configid' => 'nullable|string|size:6|exists:serial_configurations,serial_configid',
             'prefix_show' => 'boolean',
             'number_show' => 'boolean',

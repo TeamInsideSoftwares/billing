@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 #[Fillable([
     'accountid',
@@ -84,14 +85,26 @@ class Invoice extends Model
         return $this->invoiceItems();
     }
 
-    public function payments(): HasMany
+    public function payments(): HasManyThrough
     {
-        return $this->hasMany(Payment::class, 'invoiceid', 'invoiceid');
+        return $this->hasManyThrough(
+            Payment::class,
+            PaymentDetail::class,
+            'invoiceid',
+            'paymentid',
+            'invoiceid',
+            'paymentid',
+        );
+    }
+
+    public function paymentDetails(): HasMany
+    {
+        return $this->hasMany(PaymentDetail::class, 'invoiceid', 'invoiceid');
     }
 
     public function hasPaymentsRecorded(): bool
     {
-        return (float) ($this->amount_paid ?? 0) > 0 || $this->payments()->exists();
+        return (float) ($this->amount_paid ?? 0) > 0 || $this->paymentDetails()->exists();
     }
 
     public function getTermsAttribute($value): array
@@ -171,8 +184,15 @@ class Invoice extends Model
 
     public function getAmountPaidAttribute(): float
     {
-        // The payments table uses 'received_amount' column
-        return (float) ($this->payments()->sum('received_amount') ?? 0);
+        $this->loadMissing(['paymentDetails.payment']);
+
+        return (float) $this->paymentDetails->sum(function (PaymentDetail $detail) {
+            if (strtolower(trim((string) ($detail->payment?->status ?? 'active'))) === 'cancelled') {
+                return 0;
+            }
+
+            return (float) ($detail->received_amount ?? 0) + (float) ($detail->tds_amount ?? 0);
+        });
     }
 
     public function getBalanceDueAttribute(): float

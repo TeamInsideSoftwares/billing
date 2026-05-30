@@ -6,14 +6,15 @@ use App\Models\Concerns\HasAlphaNumericId;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 #[Fillable([
     'accountid',
     'fy_id',
     'clientid',
-    'invoiceid',
     'received_amount',
-    'type',
+    'tds_amount',
     'payment_date',
     'mode',
     'reference_number',
@@ -29,9 +30,8 @@ class Payment extends Model
         'accountid',
         'fy_id',
         'clientid',
-        'invoiceid',
         'received_amount',
-        'type',
+        'tds_amount',
         'payment_date',
         'mode',
         'reference_number',
@@ -64,8 +64,34 @@ class Payment extends Model
         return $this->belongsTo(Client::class, 'clientid');
     }
 
-    public function invoice(): BelongsTo
+    public function paymentDetails(): HasMany
     {
-        return $this->belongsTo(Invoice::class, 'invoiceid');
+        return $this->hasMany(PaymentDetail::class, 'paymentid', 'paymentid');
+    }
+
+    public function invoices(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Invoice::class,
+            PaymentDetail::class,
+            'paymentid',
+            'invoiceid',
+            'paymentid',
+            'invoiceid',
+        );
+    }
+
+    public function getInvoiceAttribute(): ?Invoice
+    {
+        if ($this->relationLoaded('invoices')) {
+            return $this->invoices->first();
+        }
+
+        $invoiceFromDetail = $this->paymentDetails()->with('invoice')->first()?->invoice;
+        if ($invoiceFromDetail) {
+            return $invoiceFromDetail;
+        }
+
+        return $this->invoices()->first();
     }
 }

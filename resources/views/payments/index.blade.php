@@ -14,6 +14,9 @@
         $paymentsTotalAmount = collect($payments ?? [])->sum(function ($paymentRow) {
             return (float) ($paymentRow['amount'] ?? 0);
         });
+        $paymentsTotalTds = collect($payments ?? [])->sum(function ($paymentRow) {
+            return (float) ($paymentRow['tds_amount'] ?? 0);
+        });
     @endphp
     @if(!$clientId)
         <div class="payment-client-picker-wrap">
@@ -83,11 +86,11 @@
                     <tr>
                         <th>Payment</th>
                         <th>Client</th>
-                        <th>Invoice</th>
+                        <th>Invoices</th>
                         <th>Reference</th>
                         <th>Date</th>
                         <th>Method</th>
-                        <th class="text-center">Type</th>
+                        <th class="text-end">TDS</th>
                         <th class="text-center">Status</th>
                         <th class="text-end">Amount{{ !empty($selectedCurrency) ? ' (' . $selectedCurrency . ')' : '' }}</th>
                         <th class="text-center">Actions</th>
@@ -107,10 +110,8 @@
                         <td class="payment-cell-text">{{ $payment['reference_number'] ?: '-' }}</td>
                         <td class="payment-cell-text">{{ $payment['date'] ?: '-' }}</td>
                         <td class="payment-cell-text">{{ $payment['method'] }}</td>
-                        <td class="text-center">
-                            <span class="payment-tds-badge {{ ($payment['type'] ?? 'payment') === 'tds' ? 'is-yes' : 'is-no' }}">
-                                {{ strtoupper($payment['type'] ?? 'payment') }}
-                            </span>
+                        <td class="text-end">
+                            <strong class="payment-row-amount">{{ number_format((float) ($payment['tds_amount'] ?? 0), 0) }}</strong>
                         </td>
                         <td class="text-center">
                             @if(($payment['status'] ?? 'active') === 'cancelled')
@@ -156,6 +157,11 @@
                 </tbody>
                 @if(collect($payments)->isNotEmpty())
                     <tfoot>
+                        <tr>
+                            <th colspan="8" class="text-end">Total TDS</th>
+                            <th class="text-end">{{ number_format($paymentsTotalTds, 0) }}</th>
+                            <th></th>
+                        </tr>
                         <tr>
                             <th colspan="8" class="text-end">Total Amount</th>
                             <th class="text-end">{{ number_format($paymentsTotalAmount, 0) }}</th>

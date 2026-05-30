@@ -22,8 +22,12 @@
             return ceil($taxableAmount * ((float) ($item->tax_rate ?? 0) / 100));
         });
         $invoiceGrandTotal = max(0, $itemsSubtotal - $itemsDiscountTotal + $invoiceTaxTotal);
-        $totalPaidAmount = (float) $invoice->payments->sum(function ($payment) {
-            return (float) ($payment->received_amount ?? 0);
+        $totalPaidAmount = (float) $invoice->paymentDetails->sum(function ($detail) {
+            if (strtolower(trim((string) ($detail->payment?->status ?? 'active'))) === 'cancelled') {
+                return 0;
+            }
+
+            return (float) ($detail->received_amount ?? 0) + (float) ($detail->tds_amount ?? 0);
         });
         $balanceDueAmount = max(0, $invoiceGrandTotal - $totalPaidAmount);
         $cgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 0) : 0;
@@ -237,7 +241,7 @@
                     </div>
                 </div>
 
-                @if ($invoice->payments->count())
+                @if ($invoice->paymentDetails->count())
                     <div class="table-responsive">
                         <table class="data-table table align-middle mb-0">
                             <thead>
@@ -249,33 +253,36 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach ($invoice->payments as $payment)
+                                @foreach ($invoice->paymentDetails as $detail)
+                                    @php
+                                        $payment = $detail->payment;
+                                    @endphp
                                     <tr class="payment-row">
                                         <td class="td-pad ps-3 py-3 text-secondary">
-                                            {{ optional($payment->payment_date)->format('d M Y') }}</td>
+                                            {{ optional($payment?->payment_date)->format('d M Y') }}</td>
                                         <td class="td-pad py-3">
                                             <span
-                                                class="badge bg-light text-dark border px-2 py-1">{{ $payment->mode ?? '-' }}</span>
+                                                class="badge bg-light text-dark border px-2 py-1">{{ $payment?->mode ?? '-' }}</span>
                                         </td>
                                         <td class="td-pad py-3">
-                                            @if ($payment->reference_number)
+                                            @if ($payment?->reference_number)
                                                 <div class="text-dark fw-medium">{{ $payment->reference_number }}
                                                 </div>
                                             @else
                                                 <span class="text-muted small">N/A</span>
                                             @endif
-                                            @if (($payment->type ?? 'payment') === 'tds')
+                                            @if ((float) ($detail->tds_amount ?? 0) > 0)
                                                 <span
                                                     class="badge bg-warning-subtle text-warning-emphasis ms-1 badge-tds">TDS
                                                     Deducted</span>
                                             @endif
-                                            @if (!empty($payment->description))
+                                            @if (!empty($payment?->description))
                                                 <div class="text-muted small mt-1 payment-note">
                                                     "{{ $payment->description }}"</div>
                                             @endif
                                         </td>
                                         <td class="td-pad py-3 text-end pe-3 fw-bold text-success">
-                                            {{ number_format((float) ($payment->received_amount ?? 0), 0) }}
+                                            {{ number_format((float) ($detail->received_amount ?? 0), 0) }}
                                         </td>
                                     </tr>
                                 @endforeach

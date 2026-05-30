@@ -7397,3 +7397,135 @@ a {
 .quotation-step3-term-modal {
     max-width: 600px;
 }
+
+/* Serial configuration */
+.serial-config-grid {
+    --bs-gutter-x: 1.25rem;
+    --bs-gutter-y: 1.25rem;
+}
+
+.serial-config-card {
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    height: 100%;
+}
+
+.serial-config-title {
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+.serial-section {
+    margin-bottom: 1rem;
+}
+
+.serial-preview-label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.7rem;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.serial-preview {
+    font-family: monospace;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #1e293b;
+    padding: 0.5rem;
+    background: #fff;
+    border-radius: 6px;
+    border: 2px dashed #cbd5e1;
+    text-align: center;
+    margin-top: 0.25rem;
+}
+
+.serial-preview--empty {
+    color: #94a3b8;
+    border-color: #94a3b8;
+}
+
+.serial-preview--ready {
+    color: #1e293b;
+    border-color: #cbd5e1;
+}
+
+.serial-part-row {
+    margin-bottom: 1rem;
+}
+
+.serial-part-row--disabled {
+    opacity: 0.5;
+}
+
+.serial-part-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.serial-part-toggle {
+    width: 16px;
+    height: 16px;
+}
+
+.serial-part-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    align-items: flex-start;
+}
+
+.serial-part-grid--with-separator {
+    grid-template-columns: 1fr 1fr 0.8fr;
+}
+
+.serial-field-label {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 0.65rem;
+    color: #64748b;
+}
+
+.serial-input,
+.serial-select {
+    width: 100%;
+    padding: 0.35rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    background: #fff;
+}
+
+.serial-warning {
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #fffbeb;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #fef3c7;
+}
+
+.serial-warning-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.serial-warning-label {
+    font-size: 0.75rem;
+    color: #92400e;
+    cursor: pointer;
+    font-weight: 500;
+    margin: 0;
+}
+
+.serial-save-button {
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 0.85rem;
+}

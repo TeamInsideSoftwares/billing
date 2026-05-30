@@ -11,6 +11,7 @@ use App\Models\Account;
 use App\Models\AccountBillingDetail;
 use App\Models\MessageTemplate;
 use App\Models\Payment;
+use App\Models\PaymentDetail;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -30,6 +31,112 @@ class PaymentsController extends Controller
             ->value('fy_id');
     }
 
+    private function normalizeInvoiceIds(array $invoiceIds): array
+    {
+        return array_values(array_unique(array_filter(array_map(
+            fn($invoiceId) => trim((string) $invoiceId),
+            $invoiceIds,
+        ))));
+    }
+
+    private function requestInvoiceIds(Request $request): array
+    {
+        $invoiceIds = $request->input('invoice_ids', []);
+
+        if (!is_array($invoiceIds)) {
+            $invoiceIds = [$invoiceIds];
+        }
+
+        return $this->normalizeInvoiceIds($invoiceIds);
+    }
+
+    private function syncPaymentDetails(Payment $payment, array $invoiceIds, array $customReceived = [], array $customTds = []): void
+    {
+        $invoiceIds = $this->normalizeInvoiceIds($invoiceIds);
+
+        PaymentDetail::query()
+            ->where('paymentid', $payment->paymentid)
+            ->delete();
+
+        if (empty($invoiceIds)) {
+            return;
+        }
+
+        $invoices = Invoice::query()
+            ->where('accountid', $payment->accountid)
+            ->where('clientid', $payment->clientid)
+            ->whereIn('invoiceid', $invoiceIds)
+            ->with('client')
+            ->get()
+            ->keyBy('invoiceid');
+
+        if ($invoices->isEmpty()) {
+            return;
+        }
+
+        $receivedTotal = max(0, (float) ($payment->received_amount ?? 0));
+        $tdsTotal = max(0, (float) ($payment->tds_amount ?? 0));
+        $outstandingTotal = (float) $invoices->sum(function (Invoice $invoice) {
+            return max(0, (float) ($invoice->balance_due ?? 0));
+        });
+        $invoiceCount = $invoices->count();
+        $remainingReceived = $receivedTotal;
+        $remainingTds = $tdsTotal;
+
+        foreach ($invoiceIds as $index => $invoiceId) {
+            $invoice = $invoices->get($invoiceId);
+            if (!$invoice) {
+                continue;
+            }
+
+            $isLast = $index === count($invoiceIds) - 1;
+
+            if (!empty($customReceived) || !empty($customTds)) {
+                $allocatedReceived = (float) ($customReceived[$invoiceId] ?? 0);
+                $allocatedTds = (float) ($customTds[$invoiceId] ?? 0);
+            } else {
+                $totalSettlement = $receivedTotal + $tdsTotal;
+                $tdsPercent = $totalSettlement > 0 ? ($tdsTotal / $totalSettlement) : 0;
+
+                if ($isLast) {
+                    $allocatedReceived = round($remainingReceived, 2);
+                    $allocatedTds = round($remainingTds, 2);
+                } else {
+                    $limit = (float) ($invoice->subtotal - $invoice->discount_total);
+                    if ($invoice->balance_due < $limit && $invoice->balance_due > 0) {
+                        $limit = (float) $invoice->balance_due;
+                    }
+
+                    $remainingSettlement = $remainingReceived + $remainingTds;
+                    $allocation = min($limit, $remainingSettlement);
+
+                    $allocatedTds = round($allocation * $tdsPercent, 2);
+                    $allocatedTds = min($allocatedTds, $remainingTds);
+                    $allocatedReceived = $allocation - $allocatedTds;
+
+                    if ($allocatedReceived > $remainingReceived) {
+                        $allocatedReceived = $remainingReceived;
+                        $allocatedTds = $allocation - $allocatedReceived;
+                    }
+                }
+            }
+
+            PaymentDetail::query()->create([
+                'accountid' => (string) $payment->accountid,
+                'clientid' => (string) $payment->clientid,
+                'paymentid' => (string) $payment->paymentid,
+                'invoiceid' => (string) $invoice->invoiceid,
+                'received_amount' => $allocatedReceived,
+                'tds_amount' => $allocatedTds,
+            ]);
+
+            if (empty($customReceived) && empty($customTds)) {
+                $remainingReceived = max(0.0, $remainingReceived - $allocatedReceived);
+                $remainingTds = max(0.0, $remainingTds - $allocatedTds);
+            }
+        }
+    }
+
     private function ensurePaymentBelongsToAccount(Payment $payment): void
     {
         if ((string) $payment->accountid !== $this->resolveAccountId()) {
@@ -43,7 +150,7 @@ class PaymentsController extends Controller
         $clientId = request('c');
         $selectedClient = null;
 
-        $query = Payment::query()->where('accountid', $userAccountId)->with(['client', 'invoice']);
+        $query = Payment::query()->where('accountid', $userAccountId)->with(['client', 'invoices']);
 
         if ($clientId) {
             $query->where('clientid', $clientId);
@@ -71,11 +178,16 @@ class PaymentsController extends Controller
 
         $payments = $paymentRecords->map(function ($payment) {
             $receivedAmount = (float) ($payment->received_amount ?? 0);
+            $tdsAmount = (float) ($payment->tds_amount ?? 0);
             $currency = $payment->client->currency ?? 'INR';
-            $invoiceNumber = $payment->invoice?->ti_number
-                ?? $payment->invoice?->pi_number
-                ?? null;
-            $invoiceTitle = trim((string) ($payment->invoice?->invoice_title ?? ''));
+            $primaryInvoice = $payment->invoice;
+            $invoiceNumber = $payment->invoices->map(function ($invoice) {
+                return trim((string) ($invoice->ti_number ?: $invoice->pi_number ?: $invoice->invoice_number ?: ''));
+            })->filter()->implode(', ');
+            if ($invoiceNumber === '' && $primaryInvoice) {
+                $invoiceNumber = trim((string) ($primaryInvoice->ti_number ?: $primaryInvoice->pi_number ?: $primaryInvoice->invoice_number ?: ''));
+            }
+            $invoiceTitle = trim((string) ($payment->invoices->first()?->invoice_title ?? $primaryInvoice?->invoice_title ?? ''));
             $paymentDescription = trim((string) ($payment->description ?? ''));
             $displayTitle = $invoiceTitle !== ''
                 ? $invoiceTitle
@@ -86,11 +198,12 @@ class PaymentsController extends Controller
                 'number' => $displayTitle,
                 'client' => $payment->client->business_name ?? 'Client',
                 'invoice' => $invoiceNumber,
+                'invoice_count' => $payment->invoices->count(),
                 'currency' => $currency,
                 'date' => $payment->payment_date?->format('d M Y'),
                 'method' => $payment->mode ?? '-',
                 'amount' => $receivedAmount,
-                'type' => (string) ($payment->type ?? 'payment'),
+                'tds_amount' => $tdsAmount,
                 'description' => (string) ($payment->description ?? ''),
                 'reference_number' => (string) ($payment->reference_number ?? ''),
                 'status' => $paymentStatus,
@@ -169,8 +282,8 @@ class PaymentsController extends Controller
 
         $paymentMap = Payment::query()
             ->whereIn('paymentid', $paymentIds)
-            ->with('invoice')
-            ->get(['paymentid', 'invoiceid', 'reference_number', 'mode', 'clientid', 'received_amount', 'type', 'fy_id', 'status'])
+            ->with('invoices')
+            ->get(['paymentid', 'reference_number', 'mode', 'clientid', 'received_amount', 'tds_amount', 'fy_id', 'status'])
             ->keyBy('paymentid');
 
         // Hide entries tied to cancelled invoices/payments from ledger listing.
@@ -185,8 +298,10 @@ class PaymentsController extends Controller
             if ($paymentStatus === 'cancelled') {
                 return false;
             }
-            $invoiceStatus = strtolower(trim((string) ($payment?->invoice?->status ?? '')));
-            return $invoiceStatus !== 'cancelled';
+            $invoiceStatuses = $payment?->invoices?->map(function ($invoice) {
+                return strtolower(trim((string) ($invoice->status ?? '')));
+            }) ?? collect();
+            return $invoiceStatuses->isEmpty() || $invoiceStatuses->contains(fn($status) => $status !== 'cancelled');
         })->values();
 
         if ($selectedFyId !== 'all') {
@@ -245,7 +360,7 @@ class PaymentsController extends Controller
                     $referenceLabel = $modeLabel;
                     $referenceMeta = $referenceNumber !== '' ? ('Ref: ' . $referenceNumber) : '';
                     $referenceUrl = route('payments.show', $payment->paymentid);
-                    $entryKind = ($payment->type ?? 'payment') === 'tds' ? 'tds' : 'payment';
+                    $entryKind = (float) ($payment->tds_amount ?? 0) > 0 ? 'tds' : 'payment';
                 }
             }
 
@@ -389,7 +504,7 @@ class PaymentsController extends Controller
     public function paymentsCreate(): View
     {
         $selectedClientId = request('c', request('clientid'));
-        $selectedInvoiceId = request('i', request('invoiceid'));
+        $selectedInvoiceId = request('i');
 
         if ($selectedInvoiceId && !$selectedClientId) {
             $selectedClientId = Invoice::query()
@@ -402,12 +517,12 @@ class PaymentsController extends Controller
         return view('payments.form', [
             'title' => 'Record New Payment',
             'clients' => Client::query()->where('accountid', $this->resolveAccountId())->regular()->get(),
-            'invoices' => Invoice::query()->where('accountid', $this->resolveAccountId())->with('client')
+            'invoices' => Invoice::query()->where('accountid', $this->resolveAccountId())->with(['client', 'invoiceItems'])
                 ->where('status', '!=', 'cancelled')
                 ->where('payment_status', '!=', 'paid')
                 ->get(),
             'selectedClientId' => $selectedClientId,
-            'selectedInvoiceId' => $selectedInvoiceId,
+            'selectedInvoiceIds' => $selectedInvoiceId ? [$selectedInvoiceId] : [],
             'selectedCurrency' => $selectedClient?->currency ?? 'INR',
         ]);
     }
@@ -416,24 +531,80 @@ class PaymentsController extends Controller
     {
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'invoiceid' => 'nullable|exists:invoices,invoiceid',
+            'invoice_ids' => 'nullable|array',
+            'invoice_ids.*' => 'string|exists:invoices,invoiceid',
+            'invoice_received_amounts' => 'nullable|array',
+            'invoice_received_amounts.*' => 'numeric|min:0',
+            'invoice_tds_amounts' => 'nullable|array',
+            'invoice_tds_amounts.*' => 'numeric|min:0',
             'received_amount' => 'required|numeric|min:0.01',
+            'tds_amount' => 'nullable|numeric|min:0',
             'payment_date' => 'required|date',
             'mode' => 'required|in:Bank Transfer,Online,Cash',
             'reference_number' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:2000',
-            'type' => 'required|in:payment,tds',
         ]);
 
-        $invoice = null;
+        $invoiceIds = $this->requestInvoiceIds($request);
+        $customReceived = $request->input('invoice_received_amounts', []);
+        $customTds = $request->input('invoice_tds_amounts', []);
+        $invoiceMap = Invoice::query()
+            ->whereIn('invoiceid', $invoiceIds)
+            ->get()
+            ->keyBy('invoiceid');
 
-        if (!empty($validated['invoiceid'])) {
-            $invoice = Invoice::query()->find($validated['invoiceid']);
-
-            if ($invoice && $invoice->clientid !== $validated['clientid']) {
+        foreach ($invoiceMap as $invoice) {
+            if ($invoice->clientid !== $validated['clientid']) {
                 return redirect()->back()
                     ->withInput()
-                    ->withErrors(['invoiceid' => 'The selected invoice does not belong to the selected client.']);
+                    ->withErrors(['invoice_ids' => 'One of the selected invoices does not belong to the selected client.']);
+            }
+        }
+
+        if (!empty($invoiceIds)) {
+            $sumReceived = 0;
+            $sumTds = 0;
+            foreach ($invoiceIds as $invoiceId) {
+                $invoice = $invoiceMap->get($invoiceId);
+                if (!$invoice) {
+                    continue;
+                }
+
+                $rowReceived = (float) ($customReceived[$invoiceId] ?? 0);
+                $rowTds = (float) ($customTds[$invoiceId] ?? 0);
+                $rowAllocation = $rowReceived + $rowTds;
+
+                $previousAllocations = (float) $invoice->amount_paid;
+                $availableLimit = max(0.0, (float) ($invoice->subtotal - $invoice->discount_total) - $previousAllocations);
+
+                if ($rowAllocation > ($availableLimit + 0.1)) {
+                    $invNum = $invoice->ti_number ?: $invoice->pi_number ?: $invoice->invoice_number ?: $invoiceId;
+                    return redirect()->back()
+                        ->withInput()
+                        ->withErrors(['invoice_ids' => "Allocation for invoice #{$invNum} exceeds its available amount without tax of {$availableLimit}."]);
+                }
+
+                $sumReceived += $rowReceived;
+                $sumTds += $rowTds;
+            }
+
+            $mainReceived = (float) $validated['received_amount'];
+            $mainTds = (float) ($validated['tds_amount'] ?? 0);
+
+            if (abs($sumReceived - $mainReceived) > 0.1) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['received_amount' => 'The sum of allocated invoice received amounts must equal the main received amount.']);
+            }
+            if (abs($sumTds - $mainTds) > 0.1) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['tds_amount' => 'The sum of allocated invoice TDS amounts must equal the main TDS amount.']);
+            }
+            if (($sumReceived + $sumTds) > ($mainReceived + $mainTds + 0.1)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['received_amount' => 'Total invoice allocations must not exceed the Total Settlement Amount.']);
             }
         }
 
@@ -443,9 +614,8 @@ class PaymentsController extends Controller
             'accountid' => $userAccountId,
             'fy_id' => $this->resolveDefaultFyId($userAccountId),
             'clientid' => $validated['clientid'],
-            'invoiceid' => $validated['invoiceid'] ?? null,
             'received_amount' => (float) $validated['received_amount'],
-            'type' => $validated['type'],
+            'tds_amount' => (float) ($validated['tds_amount'] ?? 0),
             'payment_date' => $validated['payment_date'],
             'mode' => $validated['mode'],
             'reference_number' => $validated['reference_number'] ?? null,
@@ -457,13 +627,11 @@ class PaymentsController extends Controller
 
         $payment = null;
 
-        DB::transaction(function () use ($paymentData, &$payment, $invoice) {
+        DB::transaction(function () use ($paymentData, &$payment, $invoiceIds, $customReceived, $customTds) {
             $payment = Payment::query()->create($paymentData);
             $this->syncPaymentLedgerEntry($payment);
-
-            if ($payment->invoiceid && $invoice) {
-                $this->refreshInvoicePaymentStatus($invoice);
-            }
+            $this->syncPaymentDetails($payment, $invoiceIds, $customReceived, $customTds);
+            $this->refreshPaymentInvoices($invoiceIds);
         });
 
         if ($payment) {
@@ -478,9 +646,10 @@ class PaymentsController extends Controller
     public function paymentsShow(Request $request, Payment $payment): View
     {
         $this->ensurePaymentBelongsToAccount($payment);
-        $payment->load(['client', 'invoice']);
-        $displayTitle = $payment->invoice->invoice_title
-            ?? $payment->invoice->invoice_number
+        $payment->load(['client', 'invoices']);
+        $primaryInvoice = $payment->invoices->first();
+        $displayTitle = $primaryInvoice?->invoice_title
+            ?? $primaryInvoice?->invoice_number
             ?? $payment->paymentid;
         $previewOnly = $request->boolean('preview');
 
@@ -506,17 +675,19 @@ class PaymentsController extends Controller
         if (strtolower(trim((string) ($payment->status ?? 'active'))) === 'cancelled') {
             abort(404);
         }
-        $displayTitle = $payment->invoice->invoice_title
-            ?? $payment->invoice->invoice_number
+        $payment->loadMissing(['client', 'invoices']);
+        $primaryInvoice = $payment->invoices->first();
+        $displayTitle = $primaryInvoice?->invoice_title
+            ?? $primaryInvoice?->invoice_number
             ?? $payment->paymentid;
         return view('payments.form', [
             'title' => 'Edit ' . $displayTitle,
             'payment' => $payment,
             'clients' => Client::query()->where('accountid', $payment->accountid)->regular()->get(),
-            'invoices' => Invoice::query()->where('accountid', $payment->accountid)->with('client')
+            'invoices' => Invoice::query()->where('accountid', $payment->accountid)->with(['client', 'invoiceItems'])
                 ->get(),
             'selectedClientId' => $payment->clientid,
-            'selectedInvoiceId' => $payment->invoiceid,
+            'selectedInvoiceIds' => $payment->invoices->pluck('invoiceid')->filter()->values()->all(),
             'selectedCurrency' => $payment->client?->currency ?? 'INR',
         ]);
     }
@@ -531,34 +702,97 @@ class PaymentsController extends Controller
         }
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'invoiceid' => 'nullable|exists:invoices,invoiceid',
+            'invoice_ids' => 'nullable|array',
+            'invoice_ids.*' => 'string|exists:invoices,invoiceid',
+            'invoice_received_amounts' => 'nullable|array',
+            'invoice_received_amounts.*' => 'numeric|min:0',
+            'invoice_tds_amounts' => 'nullable|array',
+            'invoice_tds_amounts.*' => 'numeric|min:0',
             'received_amount' => 'required|numeric|min:0.01',
+            'tds_amount' => 'nullable|numeric|min:0',
             'payment_date' => 'required|date',
             'mode' => 'required|in:Bank Transfer,Online,Cash',
             'reference_number' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:2000',
-            'type' => 'required|in:payment,tds',
         ]);
 
-        if (!empty($validated['invoiceid'])) {
-            $invoice = Invoice::query()->find($validated['invoiceid']);
+        $invoiceIds = $this->requestInvoiceIds($request);
+        $customReceived = $request->input('invoice_received_amounts', []);
+        $customTds = $request->input('invoice_tds_amounts', []);
+        $invoiceMap = Invoice::query()
+            ->whereIn('invoiceid', $invoiceIds)
+            ->get()
+            ->keyBy('invoiceid');
 
-            if ($invoice && $invoice->clientid !== $validated['clientid']) {
+        foreach ($invoiceMap as $invoice) {
+            if ($invoice->clientid !== $validated['clientid']) {
                 return redirect()->back()
                     ->withInput()
-                    ->withErrors(['invoiceid' => 'The selected invoice does not belong to the selected client.']);
+                    ->withErrors(['invoice_ids' => 'One of the selected invoices does not belong to the selected client.']);
             }
         }
 
-        $previousInvoiceId = $payment->invoiceid;
+        if (!empty($invoiceIds)) {
+            $sumReceived = 0;
+            $sumTds = 0;
+            foreach ($invoiceIds as $invoiceId) {
+                $invoice = $invoiceMap->get($invoiceId);
+                if (!$invoice) {
+                    continue;
+                }
 
-        DB::transaction(function () use ($payment, $validated, $request, $previousInvoiceId) {
+                $rowReceived = (float) ($customReceived[$invoiceId] ?? 0);
+                $rowTds = (float) ($customTds[$invoiceId] ?? 0);
+                $rowAllocation = $rowReceived + $rowTds;
+
+                $storedAllocation = 0.0;
+                $detail = $payment->paymentDetails()->where('invoiceid', $invoiceId)->first();
+                if ($detail) {
+                    $storedAllocation = (float) ($detail->received_amount ?? 0) + (float) ($detail->tds_amount ?? 0);
+                }
+
+                $previousAllocations = (float) $invoice->amount_paid - $storedAllocation;
+                $availableLimit = max(0.0, (float) ($invoice->subtotal - $invoice->discount_total) - $previousAllocations);
+
+                if ($rowAllocation > ($availableLimit + 0.1)) {
+                    $invNum = $invoice->ti_number ?: $invoice->pi_number ?: $invoice->invoice_number ?: $invoiceId;
+                    return redirect()->back()
+                        ->withInput()
+                        ->withErrors(['invoice_ids' => "Allocation for invoice #{$invNum} exceeds its available amount without tax of {$availableLimit}."]);
+                }
+
+                $sumReceived += $rowReceived;
+                $sumTds += $rowTds;
+            }
+
+            $mainReceived = (float) $validated['received_amount'];
+            $mainTds = (float) ($validated['tds_amount'] ?? 0);
+
+            if (abs($sumReceived - $mainReceived) > 0.1) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['received_amount' => 'The sum of allocated invoice received amounts must equal the main received amount.']);
+            }
+            if (abs($sumTds - $mainTds) > 0.1) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['tds_amount' => 'The sum of allocated invoice TDS amounts must equal the main TDS amount.']);
+            }
+            if (($sumReceived + $sumTds) > ($mainReceived + $mainTds + 0.1)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['received_amount' => 'Total invoice allocations must not exceed the Total Settlement Amount.']);
+            }
+        }
+
+        $previousInvoiceIds = $payment->paymentDetails()->pluck('invoiceid')->filter()->values()->all();
+
+        DB::transaction(function () use ($payment, $validated, $request, $invoiceIds, $previousInvoiceIds, $customReceived, $customTds) {
             $updatePayload = [
                 'fy_id' => $payment->fy_id ?: $this->resolveDefaultFyId($payment->accountid),
                 'clientid' => $validated['clientid'],
-                'invoiceid' => $validated['invoiceid'] ?? null,
                 'received_amount' => (float) $validated['received_amount'],
-                'type' => $validated['type'],
+                'tds_amount' => (float) ($validated['tds_amount'] ?? 0),
                 'payment_date' => $validated['payment_date'],
                 'mode' => $validated['mode'],
                 'reference_number' => $validated['reference_number'] ?? null,
@@ -570,14 +804,8 @@ class PaymentsController extends Controller
             $payment->update($updatePayload);
 
             $this->syncPaymentLedgerEntry($payment);
-
-            $invoiceIds = array_values(array_filter(array_unique([$previousInvoiceId, $payment->invoiceid])));
-            foreach ($invoiceIds as $invoiceId) {
-                $invoice = Invoice::query()->find($invoiceId);
-                if ($invoice) {
-                    $this->refreshInvoicePaymentStatus($invoice);
-                }
-            }
+            $this->syncPaymentDetails($payment, $invoiceIds, $customReceived, $customTds);
+            $this->refreshPaymentInvoices(array_values(array_unique(array_merge($previousInvoiceIds, $invoiceIds))));
         });
 
         return redirect()
@@ -588,20 +816,14 @@ class PaymentsController extends Controller
     public function paymentsDestroy(Payment $payment)
     {
         $this->ensurePaymentBelongsToAccount($payment);
-        $invoiceId = $payment->invoiceid;
+        $invoiceIds = $payment->paymentDetails()->pluck('invoiceid')->filter()->values()->all();
 
-        DB::transaction(function () use ($payment, $invoiceId) {
+        DB::transaction(function () use ($payment, $invoiceIds) {
             if ($this->hasPaymentsStatusColumn()) {
                 $payment->update(['status' => 'cancelled']);
             }
             $this->syncPaymentLedgerEntry($payment);
-
-            if ($invoiceId) {
-                $invoice = Invoice::query()->find($invoiceId);
-                if ($invoice) {
-                    $this->refreshInvoicePaymentStatus($invoice);
-                }
-            }
+            $this->refreshPaymentInvoices($invoiceIds);
         });
 
         return redirect()
@@ -612,20 +834,14 @@ class PaymentsController extends Controller
     public function paymentsRestore(Payment $payment)
     {
         $this->ensurePaymentBelongsToAccount($payment);
-        $invoiceId = $payment->invoiceid;
+        $invoiceIds = $payment->paymentDetails()->pluck('invoiceid')->filter()->values()->all();
 
-        DB::transaction(function () use ($payment, $invoiceId) {
+        DB::transaction(function () use ($payment, $invoiceIds) {
             if ($this->hasPaymentsStatusColumn()) {
                 $payment->update(['status' => 'active']);
             }
             $this->syncPaymentLedgerEntry($payment);
-
-            if ($invoiceId) {
-                $invoice = Invoice::query()->find($invoiceId);
-                if ($invoice) {
-                    $this->refreshInvoicePaymentStatus($invoice);
-                }
-            }
+            $this->refreshPaymentInvoices($invoiceIds);
         });
 
         return redirect()
@@ -635,23 +851,33 @@ class PaymentsController extends Controller
 
     private function refreshInvoicePaymentStatus(Invoice $invoice): void
     {
-        $invoice->loadMissing('payments');
+        $invoice->loadMissing(['paymentDetails.payment']);
         $hasPaymentStatusColumn = $this->hasPaymentsStatusColumn();
 
-        $amountPaid = (float) $invoice->payments->sum(function ($payment) use ($hasPaymentStatusColumn) {
-            if ($hasPaymentStatusColumn && strtolower(trim((string) ($payment->status ?? 'active'))) === 'cancelled') {
+        $amountPaid = (float) $invoice->paymentDetails->sum(function (PaymentDetail $detail) use ($hasPaymentStatusColumn) {
+            if ($hasPaymentStatusColumn && strtolower(trim((string) ($detail->payment?->status ?? 'active'))) === 'cancelled') {
                 return 0;
             }
-            return (float) ($payment->received_amount ?? 0);
+            return (float) ($detail->received_amount ?? 0) + (float) ($detail->tds_amount ?? 0);
         });
         $amountPaid = max(0, $amountPaid);
-        $grandTotal = (float) ($invoice->grand_total ?? 0);
-        $balanceDue = max(0, $grandTotal - $amountPaid);
+        $baseTotal = (float) ($invoice->subtotal - $invoice->discount_total);
+        $baseBalanceDue = max(0.0, $baseTotal - $amountPaid);
 
-        $invoice->payment_status = $amountPaid > 0 && $balanceDue <= 0 && $grandTotal > 0
+        $invoice->payment_status = $amountPaid > 0 && $baseBalanceDue <= 0.1 && $baseTotal > 0
             ? 'paid'
             : ($amountPaid > 0 ? 'partly_paid' : 'unpaid');
         $invoice->save();
+    }
+
+    private function refreshPaymentInvoices(array $invoiceIds): void
+    {
+        foreach ($this->normalizeInvoiceIds($invoiceIds) as $invoiceId) {
+            $invoice = Invoice::query()->find($invoiceId);
+            if ($invoice) {
+                $this->refreshInvoicePaymentStatus($invoice);
+            }
+        }
     }
 
     private function syncPaymentLedgerEntry(Payment $payment): void
@@ -716,7 +942,7 @@ class PaymentsController extends Controller
 
     private function dispatchPaymentReceivedCommunications(Payment $payment): void
     {
-        $payment->loadMissing(['client.billingDetail', 'invoice']);
+        $payment->loadMissing(['client.billingDetail', 'invoices']);
         $accountId = (string) $payment->accountid;
 
         $templates = MessageTemplate::query()
@@ -737,7 +963,7 @@ class PaymentsController extends Controller
 
             CommunicationLog::query()->create([
                 'accountid' => $accountId,
-                'invoiceid' => (string) ($payment->invoiceid ?? ''),
+                'invoiceid' => (string) ($payment->invoice?->invoiceid ?? ''),
                 'clientid' => (string) ($payment->clientid ?? ''),
                 'from_email' => (string) ($send['from_email'] ?? ''),
                 'to_email' => (string) ($send['to_email'] ?? ''),
@@ -841,8 +1067,9 @@ class PaymentsController extends Controller
     private function buildPaymentTemplateReplacements(Payment $payment, string $businessName = ''): array
     {
         $clientName = (string) ($payment->client?->business_name ?: $payment->client?->contact_name ?: 'Client');
-        $invoiceNumber = (string) ($payment->invoice?->ti_number ?: $payment->invoice?->pi_number ?: '');
-        $invoiceTitle = (string) ($payment->invoice?->invoice_title ?? '');
+        $invoice = $payment->invoice;
+        $invoiceNumber = (string) ($invoice?->ti_number ?: $invoice?->pi_number ?: '');
+        $invoiceTitle = (string) ($invoice?->invoice_title ?? '');
         $rawAmount = (float) ($payment->received_amount ?? 0);
         $amount = fmod($rawAmount, 1.0) == 0.0
             ? number_format($rawAmount, 0, '.', '')
@@ -865,7 +1092,7 @@ class PaymentsController extends Controller
             '{{reference_number}}' => (string) ($payment->reference_number ?? ''),
             '{{invoice_number}}' => $invoiceNumber,
             '{{invoice_title}}' => $invoiceTitle,
-            '{{payment_type}}' => (string) ($payment->type ?? 'payment'),
+            '{{payment_type}}' => ((float) ($payment->tds_amount ?? 0) > 0) ? 'tds' : 'payment',
         ];
     }
 
