@@ -1646,13 +1646,6 @@ document.addEventListener('DOMContentLoaded', function() {
             { key: 'order_start_date', label: '' },
             { key: 'order_end_date', label: '' },
         ],
-        renewal: [
-            { key: 'item_name', label: '' },
-            { key: 'item_description', label: '' },
-            { key: 'order_number', label: '' },
-            { key: 'order_start_date', label: '' },
-            { key: 'order_end_date', label: '' },
-        ],
         payment_received: [
             { key: 'payment_amount', label: '' },
             { key: 'currency', label: 'Client currency' },

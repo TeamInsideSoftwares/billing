@@ -22,7 +22,7 @@ Artisan::command('reminders:dispatch {--account=}', function (InvoiceReminderSer
     $this->line('Sent: ' . (int) ($summary['sent'] ?? 0));
     $this->line('Failed: ' . (int) ($summary['failed'] ?? 0));
     $this->line('Skipped: ' . (int) ($summary['skipped'] ?? 0));
-})->purpose('Dispatch automated reminder, expiry, and renewal notifications');
+})->purpose('Dispatch automated reminder and expiry notifications');
 
 Artisan::command('reminders:dispatch-consolidated {--account=}', function (ClientConsolidatedReminderService $consolidatedReminderService) {
     $accountId = trim((string) ($this->option('account') ?? ''));

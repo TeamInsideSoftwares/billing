@@ -111,9 +111,9 @@ class InvoiceReminderService
             $gracePeriodDays = (int) ($order->item?->grace_period ?? 0);
 
             $templateType = null;
-            if ($this->hasRenewalEntryForOrder($order)) {
-                $templateType = 'renewal';
-            } elseif ($daysUntilExpiry === 0) {
+            // Renewal auto-detection is intentionally disabled for now.
+            // We only send reminder/expiry until a dedicated renewal flow is finalized.
+            if ($daysUntilExpiry === 0) {
                 $templateType = 'expiry';
             } elseif ($daysUntilExpiry < 0) {
                 if ($daysAfterExpiry > $gracePeriodDays) {
@@ -171,30 +171,6 @@ class InvoiceReminderService
         $order->update(['status' => 'suspended']);
     }
 
-    private function hasRenewalEntryForOrder(Order $order): bool
-    {
-        if (!$order->end_date || empty($order->itemid)) {
-            return false;
-        }
-
-        $orderEndDate = $order->end_date instanceof Carbon
-            ? $order->end_date->copy()->startOfDay()
-            : Carbon::parse((string) $order->end_date)->startOfDay();
-
-        return Order::query()
-            ->where('accountid', $order->accountid)
-            ->where('clientid', $order->clientid)
-            ->where('itemid', $order->itemid)
-            ->where('orderid', '!=', $order->orderid)
-            ->whereNotNull('start_date')
-            ->whereDate('start_date', '>', $orderEndDate->toDateString())
-            ->where(function ($query) {
-                $query->whereIn('status', ['active', 'running'])
-                    ->orWhereNull('status');
-            })
-            ->exists();
-    }
-
     private function dispatchForInvoice(
         Invoice $invoice,
         string $templateType,
@@ -239,9 +215,7 @@ class InvoiceReminderService
                     ->where('status', 'sent')
                     ->where('created_by', 'SYSTEM');
 
-                $alreadySent = $templateType === 'renewal'
-                    ? $alreadySentQuery->exists()
-                    : $alreadySentQuery->whereDate('created_at', $dispatchDate->toDateString())->exists();
+                $alreadySent = $alreadySentQuery->whereDate('created_at', $dispatchDate->toDateString())->exists();
 
                 if ($alreadySent) {
                     $result['skipped']++;
@@ -674,9 +648,7 @@ class InvoiceReminderService
         $daysLeftDisplay = $templateType === 'expiry'
             ? (string) $daysAgo
             : (string) max(0, (int) $calculatedDaysLeft);
-        $renewalDate = $templateType === 'renewal'
-            ? ($invoice->created_at?->format('d M Y') ?? now()->format('d M Y'))
-            : '';
+        $renewalDate = '';
         $sourceOrder = null;
         if ($primaryItem?->itemid) {
             $sourceOrder = Order::query()
@@ -779,9 +751,7 @@ class InvoiceReminderService
         $daysLeftDisplay = $templateType === 'expiry'
             ? (string) $daysAgo
             : (string) max(0, (int) $calculatedDaysLeft);
-        $renewalDate = $templateType === 'renewal'
-            ? now()->format('d M Y')
-            : '';
+        $renewalDate = '';
 
         return [
             '{{client_business_name}}' => $clientBusinessName,

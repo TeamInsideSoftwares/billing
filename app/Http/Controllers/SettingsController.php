@@ -27,9 +27,8 @@ class SettingsController extends Controller
             'pi' => 'Proforma Invoice (PI)',
             'ti' => 'Tax Invoice (TI/DSI)',
             'quotation' => 'Quotation',
-            'renewal' => 'Renewal',
+            'reminder' => 'Reminder Before Expiry',
             'expiry' => 'Expiry',
-            'reminder' => 'Reminder',
             'payment_received' => 'Payment Received',
         ];
     }
