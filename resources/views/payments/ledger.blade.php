@@ -19,7 +19,7 @@
                 <div class="module-filter-field">
                     <label class="module-filter-label" for="ledger_client_filter">Client</label>
                     <select name="c" id="ledger_client_filter" class="form-control">
-                        <option value="">All Clients</option>
+                        <option value="all" {{ $selectedClientId === '' || $selectedClientId === 'all' ? 'selected' : '' }}>All Clients</option>
                         @foreach($clients as $client)
                             <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
                                 {{ $client->business_name ?? $client->contact_name }}
@@ -76,6 +76,9 @@
                                 <tr>
                                     <td class="ledger-date-cell ledger-cell-text" data-order="{{ $entry['raw_date'] }}">{{ $entry['date'] }}</td>
                                     <td>
+                                        @if(($entry['entry_kind'] ?? '') === 'tds')
+                                            <span class="status-pill payments-status-partly ledger-kind-badge">TDS</span>
+                                        @endif
                                         {{ $entry['description'] !== '' ? $entry['description'] : '-' }}
                                     </td>
                                     <td class="ledger-cell-text">
@@ -99,13 +102,13 @@
                                         @endif
                                     </td>
                                     <td class="text-end ledger-amount-cell">
-                                        {{ $entry['debit'] > 0 ? number_format($entry['debit']) : '-' }}
+                                        {{ $entry['debit'] > 0 ? number_format($entry['debit'], 0, '.', ',') : '-' }}
                                     </td>
                                     <td class="text-end ledger-amount-cell">
-                                        {{ $entry['credit'] > 0 ? number_format($entry['credit']) : '-' }}
+                                        {{ $entry['credit'] > 0 ? number_format($entry['credit'], 0, '.', ',') : '-' }}
                                     </td>
                                     <td class="text-end ledger-balance-cell">
-                                        {{ number_format($entry['balance']) }}
+                                        {{ number_format($entry['balance'], 0, '.', ',') }}
                                     </td>
                                 </tr>
                             @endforeach
@@ -113,7 +116,7 @@
                         <tfoot>
                             <tr>
                                 <th colspan="5">Closing Balance</th>
-                                <th class="text-end">{{ number_format($closingBalance) }}</th>
+                                <th class="text-end">{{ number_format($closingBalance, 0, '.', ',') }}</th>
                             </tr>
                         </tfoot>
                     </table>

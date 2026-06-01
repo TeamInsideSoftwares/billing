@@ -74,6 +74,7 @@
     @php
         $navItems = [
             ['label' => 'Dashboard', 'route' => 'dashboard'],
+            ['label' => 'Client Dashboard', 'route' => 'clients.dashboard'],
             ['label' => 'Clients', 'route' => 'clients.index'],
             ['label' => 'Orders', 'route' => 'orders.index'],
             ['label' => 'Quotations', 'route' => 'quotations.index'],
@@ -88,7 +89,7 @@
 
     <div class="layout-grid">
         <aside class="sidebar" id="app-sidebar" data-sidebar>
-        <div class="brand-block">
+        <a href="{{ route('clients.dashboard') }}" class="brand-block" style="text-decoration: none; color: inherit;">
             <div class="brand-mark-wrap">
                 <div class="brand-mark">
                     <i class="fas fa-file-invoice-dollar"></i>
@@ -98,12 +99,13 @@
                 <h5>Skoolready</h5>
                 {{-- <h5>BILLING APP</h5> --}}
             </div>
-        </div>
+        </a>
 
             <nav class="nav-list">
                 @php
                     $navIcons = [
                         'dashboard' => 'fa-tachometer-alt',
+                        'clients.dashboard' => 'fa-address-card',
                         'clients' => 'fa-users',
                         'services' => 'fa-box',
                         'orders' => 'fa-shopping-cart',
@@ -120,9 +122,15 @@
                         // Extract the base route name (e.g., 'services' from 'services.index')
                         $baseRoute = explode('.', $item['route'])[0];
                         // Highlight the whole module for nested routes like create/show/edit/pdf.
-                        $isActive = request()->routeIs($baseRoute . '.*') || request()->routeIs($item['route']);
+                        if ($item['route'] === 'clients.dashboard') {
+                            $isActive = request()->routeIs('clients.dashboard');
+                        } elseif ($item['route'] === 'clients.index') {
+                            $isActive = (request()->routeIs('clients.*') || request()->routeIs($item['route'])) && !request()->routeIs('clients.dashboard');
+                        } else {
+                            $isActive = request()->routeIs($baseRoute . '.*') || request()->routeIs($item['route']);
+                        }
 
-                        $icon = $navIcons[$baseRoute] ?? 'fa-circle';
+                        $icon = $navIcons[$item['route']] ?? $navIcons[$baseRoute] ?? 'fa-circle';
                     @endphp
                     <a
                         href="{{ route($item['route']) }}"
@@ -602,5 +610,6 @@
         window.reapplyDateFilters = enforceHeaderDates;
     });
     </script>
+    @stack('scripts')
 </body>
 </html>

@@ -25,6 +25,7 @@
             $selectedClientName =
                 (string) ($selectedClient->business_name ?? ($selectedClient->contact_name ?? 'Select Client'));
             $selectedClientEmail = (string) ($selectedClient->primary_email ?? ($selectedClient->email ?? ''));
+            $displayReceiptNumber = isset($payment) ? (string) ($payment->receipt_number ?? '') : '';
             $clientCurrencies = collect($clients ?? [])
                 ->mapWithKeys(
                     fn($client) => [
@@ -34,35 +35,48 @@
                 ->all();
             $invoiceTotals = collect($invoices ?? [])
                 ->mapWithKeys(function ($invoice) {
+                    $amountPaid = (float) ($invoice->amount_paid ?? 0);
+                    $grandTotal = (float) ($invoice->grand_total ?? 0);
+                    $balanceDue = (float) ($invoice->balance_due ?? max(0, $grandTotal - $amountPaid));
+                    $paymentStatus = strtolower(trim((string) ($invoice->payment_status ?? '')));
+                    if (!in_array($paymentStatus, ['paid', 'partly_paid', 'unpaid'], true)) {
+                        $paymentStatus = 'unpaid';
+                        if ($amountPaid > 0 && $balanceDue <= 0.1 && $grandTotal > 0) {
+                            $paymentStatus = 'paid';
+                        } elseif ($amountPaid > 0) {
+                            $paymentStatus = 'partly_paid';
+                        }
+                    }
+
                     return [
                         (string) $invoice->invoiceid => [
-                            'grand_total' => (float) ($invoice->grand_total ?? 0),
-                            'amount_paid' => (float) ($invoice->amount_paid ?? 0),
-                            'balance_due' =>
-                                (float) ($invoice->balance_due ??
-                                    max(
-                                        0,
-                                        (float) ($invoice->grand_total ?? 0) - (float) ($invoice->amount_paid ?? 0),
-                                    )),
+                            'grand_total' => $grandTotal,
+                            'amount_paid' => $amountPaid,
+                            'balance_due' => $balanceDue,
                             'amount_without_tax' => (float) ($invoice->subtotal - $invoice->discount_total),
                             'currency' => (string) ($invoice->client->currency ?? 'INR'),
                             'issue_date' => optional($invoice->issue_date)->format('d M Y') ?? '',
                             'due_date' => optional($invoice->due_date)->format('d M Y') ?? '',
                             'tax_rate' => (float) ($invoice->invoiceItems->first()?->tax_rate ?? 0),
+                            'payment_status' => $paymentStatus,
                         ],
                     ];
                 })
                 ->all();
             $invoiceOptions = collect($invoices ?? [])
-                ->map(function ($invoice) {
+                ->map(function ($invoice) use ($invoiceTotals) {
+                    $invoiceId = (string) $invoice->invoiceid;
+                    $totals = $invoiceTotals[$invoiceId] ?? [];
+
                     return [
-                        'invoiceid' => (string) $invoice->invoiceid,
+                        'invoiceid' => $invoiceId,
                         'invoice_number' => (string) ($invoice->invoice_number ?? ''),
                         'invoice_title' => (string) ($invoice->invoice_title ?? ''),
                         'clientid' => (string) ($invoice->clientid ?? ''),
                         'client_name' => (string) ($invoice->client->business_name ?? 'Client'),
                         'issue_date' => optional($invoice->issue_date)->format('d M Y') ?? '',
                         'due_date' => optional($invoice->due_date)->format('d M Y') ?? '',
+                        'payment_status' => (string) ($totals['payment_status'] ?? 'unpaid'),
                     ];
                 })
                 ->values()
@@ -79,6 +93,14 @@
                     )
                     ->all()
                 : [];
+            $existingTdsTotal = collect($paymentDetailsMap)->sum(fn($row) => (float) ($row['tds_amount'] ?? 0));
+            if ($existingTdsTotal <= 0 && isset($payment)) {
+                $existingTdsTotal = (float) ($payment->tds_amount ?? 0);
+            }
+            $defaultPaymentFlow = old('payment_flow');
+            if (!$defaultPaymentFlow) {
+                $defaultPaymentFlow = isset($payment) && $existingTdsTotal > 0 ? 'tds' : 'standard';
+            }
         @endphp
         <form method="POST" action="{{ isset($payment) ? route('payments.update', $payment) : route('payments.store') }}"
             class="client-form payments-form-shell">
@@ -91,9 +113,9 @@
                     <div class="invoice-client-header__icon">
                         <i class="fas fa-user"></i>
                     </div>
-                    <div class="invoice-client-header__body" style="min-width: 0; flex: 1;">
+                    <div class="invoice-client-header__body payments-client-header-body">
                         @if (!$isEditingPayment)
-                            <label for="clientid" class="field-label" style="margin-bottom: 0.25rem;">Select Client
+                            <label for="clientid" class="field-label payments-client-label">Select Client
                                 *</label>
                             <select id="clientid" name="clientid" class="form-control" required>
                                 <option value="">Select Client</option>
@@ -120,34 +142,65 @@
                         @else
                             <input type="hidden" id="clientid" name="clientid" value="{{ $defaultClientId }}">
                             <div class="invoice-client-header__name" id="selectedClientName">{{ $selectedClientName }}</div>
-                            <div class="invoice-client-header__email" id="selectedClientEmail"
-                                style="{{ $selectedClientEmail ? '' : 'display:none;' }}">{{ $selectedClientEmail }}</div>
+                            <div class="invoice-client-header__email {{ $selectedClientEmail ? '' : 'is-hidden' }}"
+                                id="selectedClientEmail">{{ $selectedClientEmail }}</div>
                         @endif
+                    </div>
+                    <div class="invoice-client-header__right">
+                        <div class="invoice-number-badge">
+                            {{ $displayReceiptNumber !== '' ? $displayReceiptNumber : 'Auto on save' }}
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="form-grid">
                 <div>
+                    <label for="payment_flow">Payment Type *</label>
+                    <select id="payment_flow" name="payment_flow" class="form-control">
+                        <option value="standard" {{ $defaultPaymentFlow === 'standard' ? 'selected' : '' }}>Invoice Payment</option>
+                        <option value="tds" {{ $defaultPaymentFlow === 'tds' ? 'selected' : '' }}>TDS Deduction</option>
+                    </select>
+                </div>
+                <div id="received-amount-wrap">
                     <label for="received_amount">Amount * (<span id="currencyLabel">{{ $defaultCurrency }}</span>)</label>
+                    @php
+                        $receivedAmountDisplay = old('received_amount', isset($payment) ? $payment->received_amount : '');
+                        if ($receivedAmountDisplay !== '' && is_numeric($receivedAmountDisplay)) {
+                            $receivedAmountDisplay = (float) $receivedAmountDisplay;
+                            if (abs($receivedAmountDisplay - round($receivedAmountDisplay)) < 0.000001) {
+                                $receivedAmountDisplay = (string) (int) round($receivedAmountDisplay);
+                            }
+                        }
+                    @endphp
                     <input type="text" id="received_amount" name="received_amount"
-                        value="{{ old('received_amount', isset($payment) ? $payment->received_amount : '') }}" required>
+                        value="{{ $receivedAmountDisplay }}" required>
                     @error('received_amount')
                         <span class="error">{{ $message }}</span>
                     @enderror
                 </div>
-                <div>
+                <div id="tds-amount-wrap">
                     <label for="tds_amount">TDS Amount (<span id="currencyLabelTds">{{ $defaultCurrency }}</span>)</label>
-                    <input type="text" id="tds_amount" name="tds_amount"
-                        value="{{ old('tds_amount', isset($payment) ? $payment->tds_amount ?? '' : '') }}">
+                    <div class="payments-tds-group">
+                        <select id="tds_input_type" class="payments-tds-type">
+                            <option value="amount">Amount</option>
+                            <option value="percent">%</option>
+                        </select>
+                        <input type="text" id="tds_amount"
+                            value="{{ old('tds_amount', $existingTdsTotal > 0 ? $existingTdsTotal : '') }}">
+                    </div>
+                    <input type="hidden" id="tds_amount_hidden" name="tds_amount"
+                        value="{{ old('tds_amount', $existingTdsTotal > 0 ? $existingTdsTotal : '') }}">
                     @error('tds_amount')
                         <span class="error">{{ $message }}</span>
                     @enderror
                 </div>
-                <div style="grid-column: 1 / -1;">
+                <div class="payments-full-span">
                     <label>Related Invoices (Optional)</label>
-                    <div id="invoice-list-wrap"
-                        style="border: 1px solid #dbe3ea; border-radius: 10px; background: #fff; padding: 0.75rem;">
-                        <div id="invoice-list" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                    <div class="payments-invoice-tip">
+                        Tip: Check first the invoice you want to fully pay. Allocation follows checkbox order.
+                    </div>
+                    <div id="invoice-list-wrap" class="payments-invoice-list-wrap">
+                        <div id="invoice-list" class="payments-invoice-list"></div>
                     </div>
                 </div>
                 <div>
@@ -205,34 +258,27 @@
             const clientCurrencies = @json($clientCurrencies);
             const invoiceTotals = @json($invoiceTotals);
             const invoiceOptions = @json($invoiceOptions);
-            const clientSelect = document.getElementById('clientid');
+            const paymentDetailsMap = @json($paymentDetailsMap);
             const isEditingPayment = @json(isset($payment));
-            const currencyLabel = document.getElementById('currencyLabel');
-            const currencyLabelTds = document.getElementById('currencyLabelTds');
-            const invoiceList = document.getElementById('invoice-list');
             const selectedClientName = document.getElementById('selectedClientName');
             const selectedClientEmail = document.getElementById('selectedClientEmail');
-            const paymentDetailsMap = @json($paymentDetailsMap);
             const clientEmailMap = @json(collect($clients ?? [])->mapWithKeys(fn($client) => [
-                            (string) $client->clientid => (string) ($client->primary_email ?? ($client->email ?? '')),
-                        ])->all());
-            let selectedInvoiceIds = @json(array_values(array_map('strval', $defaultInvoiceIds)));
-            let manualAllocations = {};
+                    (string) $client->clientid => (string) ($client->primary_email ?? ($client->email ?? '')),
+                ])->all());
 
+            const clientSelect = document.getElementById('clientid');
+            const invoiceList = document.getElementById('invoice-list');
             const receivedAmountInput = document.getElementById('received_amount');
             const tdsAmountInput = document.getElementById('tds_amount');
-            const submitBtn = document.querySelector('button[type="submit"]');
-
-            // Add percentage badge below TDS input field
-            const tdsGroupDiv = tdsAmountInput.closest('div');
-            const tdsPercentBadge = document.createElement('div');
-            tdsPercentBadge.id = 'tds_percent_badge';
-            tdsPercentBadge.style.marginTop = '0.35rem';
-            tdsPercentBadge.style.fontSize = '0.85rem';
-            tdsPercentBadge.style.fontWeight = '600';
-            tdsPercentBadge.style.color = '#4f46e5';
-            tdsPercentBadge.textContent = 'Calculated TDS: 0%';
-            tdsGroupDiv.appendChild(tdsPercentBadge);
+            const tdsAmountHidden = document.getElementById('tds_amount_hidden');
+            const tdsInputType = document.getElementById('tds_input_type');
+            const tdsWrap = document.getElementById('tds-amount-wrap');
+            const receivedWrap = document.getElementById('received-amount-wrap');
+            const currencyLabel = document.getElementById('currencyLabel');
+            const currencyLabelTds = document.getElementById('currencyLabelTds');
+            let checkboxSelectionCounter = 0;
+            let standardCheckedInvoiceIds = [];
+            let tdsCheckedInvoiceIds = [];
 
             function formatAmount(value) {
                 return Number(value || 0).toLocaleString('en-US', {
@@ -241,474 +287,408 @@
                 });
             }
 
+            function formatInputNumber(value) {
+                const numeric = Number(value || 0);
+                if (!Number.isFinite(numeric)) return '';
+                if (Math.abs(numeric - Math.round(numeric)) < 0.000001) {
+                    return String(Math.round(numeric));
+                }
+                return numeric.toFixed(2).replace(/\.?0+$/, '');
+            }
+
+            function selectedPaymentFlow() {
+                const selected = document.getElementById('payment_flow');
+                return selected ? selected.value : 'standard';
+            }
+
             function setCurrencyFromClient() {
-                const clientId = clientSelect?.value || '';
+                const clientId = clientSelect ? clientSelect.value : '';
                 const currency = clientCurrencies[clientId] || 'INR';
                 if (currencyLabel) currencyLabel.textContent = currency;
                 if (currencyLabelTds) currencyLabelTds.textContent = currency;
             }
 
             function updateSelectedClientHeader() {
-                if (isEditingPayment) return;
-
-                const clientId = clientSelect?.value || '';
-                const clientOption = Array.from(clientSelect?.options || []).find((option) => option.value ===
-                    clientId);
-                const selectedText = (clientOption?.textContent || '').trim();
+                if (isEditingPayment || !clientSelect) return;
+                const clientId = clientSelect.value || '';
+                const option = Array.from(clientSelect.options || []).find((row) => row.value === clientId);
                 const email = clientEmailMap[clientId] || '';
-
-                if (selectedClientName) {
-                    selectedClientName.textContent = selectedText || 'Select Client';
-                }
+                if (selectedClientName) selectedClientName.textContent = (option?.textContent || '').trim() || 'Select Client';
                 if (selectedClientEmail) {
-                    if (email) {
-                        selectedClientEmail.textContent = email;
-                        selectedClientEmail.style.display = '';
-                    } else {
-                        selectedClientEmail.textContent = '';
-                        selectedClientEmail.style.display = 'none';
-                    }
+                    selectedClientEmail.textContent = email;
+                    selectedClientEmail.style.display = email ? '' : 'none';
                 }
             }
 
-            function updateTdsPercentage() {
-                const received = parseFloat(receivedAmountInput.value) || 0;
-                const tds = parseFloat(tdsAmountInput.value) || 0;
-                const totalSettlement = received + tds;
-                const percent = totalSettlement > 0 ? (tds / totalSettlement) * 100 : 0;
-
-                const displayPercent = percent % 1 === 0 ? percent.toFixed(0) : percent.toFixed(2);
-                tdsPercentBadge.textContent = `Calculated TDS: ${displayPercent}%`;
-                return percent;
+            function getAvailableToCollect(invoiceId) {
+                const totals = invoiceTotals[invoiceId] || {};
+                let available = parseFloat(totals.balance_due || 0);
+                if (isEditingPayment && paymentDetailsMap[invoiceId]) {
+                    available += parseFloat(paymentDetailsMap[invoiceId].received_amount || 0);
+                    available += parseFloat(paymentDetailsMap[invoiceId].tds_amount || 0);
+                }
+                return Math.max(0, available);
             }
 
-            function recalculateAll(isMainChange) {
-                const received = parseFloat(receivedAmountInput.value) || 0;
-                const tds = parseFloat(tdsAmountInput.value) || 0;
-                const totalSettlement = received + tds;
-
-                const tdsPercent = totalSettlement > 0 ? (tds / totalSettlement) * 100 : 0;
-                updateTdsPercentage();
-
-                const clientId = clientSelect?.value || '';
-                const currency = clientCurrencies[clientId] || 'INR';
-
-                const rows = Array.from(invoiceList.querySelectorAll('.addon-option'));
-                let checkedRows = rows.filter(row => {
-                    const checkbox = row.querySelector('.invoice-option-checkbox');
-                    return checkbox && checkbox.checked;
-                });
-
-                if (checkedRows.length === 0) {
-                    return;
+            function getAvailableWithoutTax(invoiceId) {
+                const totals = invoiceTotals[invoiceId] || {};
+                const withoutTax = parseFloat(totals.amount_without_tax || 0);
+                const grandTotal = parseFloat(totals.grand_total || 0);
+                const balanceDue = parseFloat(totals.balance_due || 0);
+                const baseDue = grandTotal > 0
+                    ? (balanceDue * withoutTax) / grandTotal
+                    : Math.max(0, balanceDue);
+                let available = Math.max(0, baseDue);
+                let saved = 0;
+                if (isEditingPayment && paymentDetailsMap[invoiceId]) {
+                    const savedReceived = parseFloat(paymentDetailsMap[invoiceId].received_amount || 0);
+                    const savedTds = parseFloat(paymentDetailsMap[invoiceId].tds_amount || 0);
+                    saved = savedReceived + savedTds;
+                    available += saved;
                 }
-
-                if (totalSettlement === 0) {
-                    checkedRows.forEach(row => {
-                        const checkbox = row.querySelector('.invoice-option-checkbox');
-                        const baseInput = row.querySelector('.invoice-base-amount');
-                        const tdsDisplay = row.querySelector('.invoice-tds-display');
-                        const receivedDisplay = row.querySelector('.invoice-received-display');
-                        const receivedHidden = row.querySelector('.invoice-received-amount-hidden');
-                        const tdsHidden = row.querySelector('.invoice-tds-amount-hidden');
-
-                        const invoiceId = checkbox.value;
-
-                        baseInput.disabled = false;
-                        row.style.background = '#eef4ff';
-
-                        const totals = invoiceTotals[invoiceId] || {
-                            amount_without_tax: 0,
-                            amount_paid: 0
-                        };
-                        let savedAlloc = 0;
-                        if (paymentDetailsMap && paymentDetailsMap[invoiceId]) {
-                            savedAlloc = paymentDetailsMap[invoiceId].received_amount + paymentDetailsMap[
-                                invoiceId].tds_amount;
-                        }
-
-                        let prefilledBaseAmount = totals.amount_without_tax;
-                        if (isEditingPayment && paymentDetailsMap && paymentDetailsMap[invoiceId]) {
-                            prefilledBaseAmount = savedAlloc;
-                        }
-
-                        baseInput.value = prefilledBaseAmount % 1 === 0 ? prefilledBaseAmount.toFixed(0) : prefilledBaseAmount.toFixed(2);
-                        if (tdsDisplay) tdsDisplay.textContent = `0`;
-                        if (receivedDisplay) receivedDisplay.textContent = `0`;
-                        if (receivedHidden) receivedHidden.value = 0;
-                        if (tdsHidden) tdsHidden.value = 0;
-                    });
-                    return;
-                }
-
-                let remainingSettlement = totalSettlement;
-                let remainingReceived = received;
-                let remainingTds = tds;
-
-                checkedRows.forEach((row, index) => {
-                    const checkbox = row.querySelector('.invoice-option-checkbox');
-                    const baseInput = row.querySelector('.invoice-base-amount');
-                    const tdsDisplay = row.querySelector('.invoice-tds-display');
-                    const receivedDisplay = row.querySelector('.invoice-received-display');
-                    const receivedHidden = row.querySelector('.invoice-received-amount-hidden');
-                    const tdsHidden = row.querySelector('.invoice-tds-amount-hidden');
-
-                    const invoiceId = checkbox.value;
-                    const isLast = (index === checkedRows.length - 1);
-
-                    baseInput.disabled = false;
-                    row.style.background = '#eef4ff';
-
-                    let allocation = 0;
-                    let rowReceived = 0;
-                    let rowTds = 0;
-
-                    // Available amount without tax for this invoice
-                    const totals = invoiceTotals[invoiceId] || {
-                        amount_without_tax: 0,
-                        amount_paid: 0
-                    };
-                    let savedAlloc = 0;
-                    if (paymentDetailsMap && paymentDetailsMap[invoiceId]) {
-                        savedAlloc = paymentDetailsMap[invoiceId].received_amount + paymentDetailsMap[invoiceId]
-                            .tds_amount;
-                    }
-                    const previousAllocations = totals.amount_paid - savedAlloc;
-                    const availableLimit = Math.max(0, totals.amount_without_tax - previousAllocations);
-
-                    if (isLast) {
-                        allocation = Math.min(availableLimit, remainingSettlement);
-                        if (allocation < remainingSettlement) {
-                            rowTds = Math.round(allocation * (tds / totalSettlement));
-                            rowTds = Math.min(rowTds, remainingTds);
-                            rowReceived = allocation - rowTds;
-
-                            if (rowReceived > remainingReceived) {
-                                rowReceived = remainingReceived;
-                                rowTds = allocation - rowReceived;
-                            }
-                        } else {
-                            rowReceived = remainingReceived;
-                            rowTds = remainingTds;
-                        }
-                    } else {
-                        if (manualAllocations[invoiceId] !== undefined) {
-                            allocation = manualAllocations[invoiceId];
-                        } else {
-                            allocation = Math.min(availableLimit, remainingSettlement);
-                        }
-
-                        allocation = Math.min(allocation, remainingSettlement);
-
-                        rowTds = Math.round(allocation * (tds / totalSettlement));
-                        rowTds = Math.min(rowTds, remainingTds);
-                        rowReceived = allocation - rowTds;
-
-                        if (rowReceived > remainingReceived) {
-                            rowReceived = remainingReceived;
-                            rowTds = allocation - rowReceived;
-                        }
-                    }
-
-                    // If it is a main change (load, client select, main input change)
-                    // and the allocation calculated is 0, we uncheck and disable it!
-                    if (isMainChange && allocation === 0) {
-                        checkbox.checked = false;
-                        baseInput.disabled = true;
-                        baseInput.value = '0';
-                        row.style.background = '#fff';
-                        if (tdsDisplay) tdsDisplay.textContent = `0`;
-                        if (receivedDisplay) receivedDisplay.textContent = `0`;
-                        if (receivedHidden) receivedHidden.value = '0';
-                        if (tdsHidden) tdsHidden.value = '0';
-
-                        allocation = 0;
-                        rowReceived = 0;
-                        rowTds = 0;
-                    } else {
-                        baseInput.value = allocation % 1 === 0 ? allocation.toFixed(0) : allocation.toFixed(2);
-
-                        if (tdsDisplay) tdsDisplay.textContent = `${formatAmount(rowTds)}`;
-                        if (receivedDisplay) receivedDisplay.textContent =
-                            `${formatAmount(rowReceived)}`;
-                        if (receivedHidden) receivedHidden.value = rowReceived;
-                        if (tdsHidden) tdsHidden.value = rowTds;
-                    }
-
-                    remainingSettlement = Math.max(0, remainingSettlement - allocation);
-                    remainingReceived = Math.max(0, remainingReceived - rowReceived);
-                    remainingTds = Math.max(0, remainingTds - rowTds);
-                });
-
-                // Reset unchecked rows
-                rows.forEach(row => {
-                    const checkbox = row.querySelector('.invoice-option-checkbox');
-                    const baseInput = row.querySelector('.invoice-base-amount');
-                    const tdsDisplay = row.querySelector('.invoice-tds-display');
-                    const receivedDisplay = row.querySelector('.invoice-received-display');
-                    const receivedHidden = row.querySelector('.invoice-received-amount-hidden');
-                    const tdsHidden = row.querySelector('.invoice-tds-amount-hidden');
-
-                    if (!checkbox || !baseInput) return;
-
-                    if (!checkbox.checked) {
-                        baseInput.disabled = true;
-                        baseInput.value = '0';
-                        row.style.background = '#fff';
-                        if (tdsDisplay) tdsDisplay.textContent = `0`;
-                        if (receivedDisplay) receivedDisplay.textContent = `0`;
-                        if (receivedHidden) receivedHidden.value = '0';
-                        if (tdsHidden) tdsHidden.value = '0';
-                    }
-                });
+                // Preserve previously saved allocation on edit even if invoice values changed.
+                return Math.max(0, available, saved);
             }
 
             function renderInvoiceList() {
-                const clientId = clientSelect?.value || '';
-
+                const clientId = clientSelect ? clientSelect.value : '';
                 if (!clientId) {
-                    selectedInvoiceIds = [];
-                    if (invoiceList) {
-                        invoiceList.innerHTML = '<p class="addons-empty">Select a client first</p>';
-                    }
+                    invoiceList.innerHTML = '<p class="addons-empty">Select a client first</p>';
                     return;
                 }
-
                 const clientInvoices = invoiceOptions.filter((invoice) => invoice.clientid === clientId);
-
                 if (!clientInvoices.length) {
-                    selectedInvoiceIds = [];
-                    if (invoiceList) {
-                        invoiceList.innerHTML = '<p class="addons-empty">No invoices for this client</p>';
-                    }
+                    invoiceList.innerHTML = '<p class="addons-empty">No invoices for this client</p>';
                     return;
                 }
 
-                if (!isEditingPayment) {
-                    selectedInvoiceIds = clientInvoices.map(invoice => invoice.invoiceid);
-                } else {
-                    selectedInvoiceIds = selectedInvoiceIds.filter((invoiceId) => (
-                        clientInvoices.some((invoice) => invoice.invoiceid === invoiceId)
-                    ));
-                }
+                invoiceList.innerHTML = clientInvoices.map((invoice) => {
+                    const totals = invoiceTotals[invoice.invoiceid] || {};
+                    const available = getAvailableToCollect(invoice.invoiceid);
+                    const availableWithoutTax = getAvailableWithoutTax(invoice.invoiceid);
+                    const amountWithoutTax = parseFloat(totals.amount_without_tax || 0);
+                    const taxRate = parseFloat(totals.tax_rate || 0);
+                    const taxAmount = amountWithoutTax * (taxRate / 100);
+                    const amountBreakup = `${Math.round(amountWithoutTax).toLocaleString('en-US')} + ${Math.round(taxAmount).toLocaleString('en-US')}`;
+                    const isChecked = isEditingPayment && !!paymentDetailsMap[invoice.invoiceid];
+                    const savedTdsAmount = isEditingPayment && paymentDetailsMap[invoice.invoiceid]
+                        ? (parseFloat(paymentDetailsMap[invoice.invoiceid].tds_amount || 0) || 0)
+                        : 0;
+                    const status = (totals.payment_status || 'unpaid').replace('_', ' ');
+                    const statusKey = (totals.payment_status || 'unpaid');
+                    const statusClass = statusKey === 'paid'
+                        ? 'payments-status-paid'
+                        : (statusKey === 'partly_paid' ? 'payments-status-partly' : 'payments-status-unpaid');
+                    const title = (invoice.invoice_title || invoice.invoice_number || 'Invoice').trim();
 
-                if (invoiceList) {
-                    const currency = clientCurrencies[clientId] || 'INR';
-
-                    // Populate manualAllocations from paymentDetailsMap initially
-                    if (isEditingPayment && Object.keys(manualAllocations).length === 0) {
-                        clientInvoices.forEach((invoice) => {
-                            if (selectedInvoiceIds.includes(invoice.invoiceid) && paymentDetailsMap &&
-                                paymentDetailsMap[invoice.invoiceid]) {
-                                const detail = paymentDetailsMap[invoice.invoiceid];
-                                manualAllocations[invoice.invoiceid] = detail.received_amount + detail
-                                    .tds_amount;
-                            }
-                        });
-                    }
-
-                    invoiceList.innerHTML = clientInvoices.map((invoice) => {
-                        const checked = selectedInvoiceIds.includes(invoice.invoiceid) ? 'checked' : '';
-                        const invoiceNumber = (invoice.invoice_number || '').trim();
-                        const invoiceTitle = (invoice.invoice_title || '').trim();
-                        const displayTitle = invoiceTitle || invoiceNumber || 'Invoice';
-
-                        const totals = invoiceTotals[invoice.invoiceid] || {
-                            grand_total: 0,
-                            amount_without_tax: 0,
-                            balance_due: 0,
-                            amount_paid: 0
-                        };
-
-                        let savedAlloc = 0;
-                        if (paymentDetailsMap && paymentDetailsMap[invoice.invoiceid]) {
-                            savedAlloc = paymentDetailsMap[invoice.invoiceid].received_amount +
-                                paymentDetailsMap[invoice.invoiceid].tds_amount;
-                        }
-
-                        let prefilledBaseAmount = totals.amount_without_tax;
-                        if (isEditingPayment && paymentDetailsMap && paymentDetailsMap[invoice.invoiceid]) {
-                            prefilledBaseAmount = savedAlloc;
-                        }
-
-                        const formattedBaseAmount = prefilledBaseAmount % 1 === 0 ? prefilledBaseAmount.toFixed(
-                            0) : prefilledBaseAmount.toFixed(2);
-
-                        return `
-                            <div class="addon-option" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: 0.75rem 1rem; border: 1px solid #e5e7eb; border-radius: 8px; background: ${checked ? '#eef4ff' : '#fff'}; margin-bottom: 0.5rem;">
-                                <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.75rem; flex: 1; min-width: 250px; cursor: pointer; margin-bottom: 0; white-space: normal;">
-                                    <input type="checkbox" name="invoice_ids[]" class="invoice-option-checkbox" value="${invoice.invoiceid}" ${checked}>
-                                    <span class="checkbox-label" style="display:block; width: 100%; white-space: normal;">
-                                        <strong style="display:block; color:#0f172a;">${displayTitle}</strong>
-                                        <small style="display:block; color:#64748b; font-weight:500; margin-top:2px;">
-                                            ${invoiceNumber ? `#${invoiceNumber}` : ''}
-                                            ${invoiceNumber && (invoice.issue_date || invoice.due_date) ? ' · ' : ''}
-                                            ${invoice.issue_date ? `Issued ${invoice.issue_date}` : ''}
-                                            ${invoice.issue_date && invoice.due_date ? ' · ' : ''}
-                                            ${invoice.due_date ? `Due ${invoice.due_date}` : ''}
-                                        </small>
-                                        <div style="font-size: 0.75rem; color: #475569; margin-top: 4px;">
-                                            Amount: <strong>${formatAmount(totals.grand_total)}</strong> ·
-                                            Tax: <strong>${totals.tax_rate}%</strong>
-                                        </div>
-                                    </span>
-                                </label>
-
-                                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                                    <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                                        <label style="font-size: 0.7rem; font-weight: 600; color: #475569; margin-bottom: 0;">Base Amount (Without Tax)</label>
-                                        <input type="text" class="invoice-base-amount" data-invoiceid="${invoice.invoiceid}" value="${formattedBaseAmount}" style="width: 140px; padding: 0.25rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;" ${checked ? '' : 'disabled'}>
+                    return `
+                        <div class="addon-option payments-invoice-row">
+                            <label class="custom-checkbox payments-invoice-check-wrap">
+                                <input type="checkbox" class="invoice-option-checkbox" name="invoice_ids[]" value="${invoice.invoiceid}" ${isChecked ? 'checked' : ''}>
+                                <span class="checkbox-label payments-invoice-check-label">
+                                    <strong class="payments-invoice-title">${title}</strong>
+                                    <small class="payments-invoice-number">${invoice.invoice_number ? '#' + invoice.invoice_number : ''}</small>
+                                    <div class="payments-invoice-meta">
+                                        <span class="status-pill ${statusClass} payments-status-pill">${status}</span>
+                                        <span>Amount: <strong>${amountBreakup}</strong></span>
+                                        <span>Due: <strong>${Math.round(available).toLocaleString('en-US')}</strong></span>
                                     </div>
-
-                                    <div style="font-size: 0.8rem; color: #475569; min-width: 140px;">
-                                        <div style="display: flex; justify-content: space-between; gap: 0.5rem;">
-                                            <span>TDS:</span>
-                                            <strong class="invoice-tds-display">0</strong>
-                                        </div>
-                                        <div style="display: flex; justify-content: space-between; gap: 0.5rem;">
-                                            <span>Net Received:</span>
-                                            <strong class="invoice-received-display">0</strong>
-                                        </div>
-                                    </div>
-
-                                    <input type="hidden" name="invoice_received_amounts[${invoice.invoiceid}]" class="invoice-received-amount-hidden" value="0">
-                                    <input type="hidden" name="invoice_tds_amounts[${invoice.invoiceid}]" class="invoice-tds-amount-hidden" value="0">
+                                </span>
+                            </label>
+                            <input type="hidden" class="invoice-collectible-input" data-due="${available}" data-without-tax="${availableWithoutTax}" value="${Math.round(available).toLocaleString('en-US')}">
+                            <div class="payments-alloc-wrap">
+                                <div class="payments-alloc-row">
+                                    <span class="invoice-allocated-label">Allocated:</span>
+                                </div>
+                                <input type="text" class="invoice-allocated-input payments-tds-row-input" value="0">
+                                <input type="text" class="invoice-tds-input payments-tds-row-input" value="${savedTdsAmount > 0 ? formatInputNumber(savedTdsAmount) : ''}">
+                                <div class="invoice-live-state payments-live-state">
+                                    Not allocated yet
                                 </div>
                             </div>
-                        `;
-                    }).join('');
+                            <input type="hidden" class="invoice-received-amount-hidden" name="invoice_received_amounts[${invoice.invoiceid}]" value="0">
+                            <input type="hidden" class="invoice-tds-amount-hidden" name="invoice_tds_amounts[${invoice.invoiceid}]" value="0">
+                        </div>
+                    `;
+                }).join('');
 
+                // Preserve predictable priority in edit mode.
+                invoiceList.querySelectorAll('.invoice-option-checkbox:checked').forEach((checkbox) => {
+                    checkboxSelectionCounter += 1;
+                    checkbox.dataset.selectionOrder = String(checkboxSelectionCounter);
+                });
+
+                // Restore mode-specific checked state after render.
+                const flow = selectedPaymentFlow();
+                const preferredChecked = flow === 'tds' ? tdsCheckedInvoiceIds : standardCheckedInvoiceIds;
+                if (preferredChecked.length > 0) {
                     invoiceList.querySelectorAll('.invoice-option-checkbox').forEach((checkbox) => {
-                        checkbox.addEventListener('change', function() {
-                            if (this.checked) {
-                                if (!selectedInvoiceIds.includes(this.value)) {
-                                    selectedInvoiceIds.push(this.value);
-                                }
-                            } else {
-                                selectedInvoiceIds = selectedInvoiceIds.filter((invoiceId) =>
-                                    invoiceId !== this.value);
-                            }
-                            manualAllocations = {};
-                            recalculateAll(false);
-                        });
+                        checkbox.checked = preferredChecked.includes(checkbox.value);
                     });
+                }
 
-                    invoiceList.querySelectorAll('.invoice-base-amount').forEach((input) => {
-                        input.addEventListener('input', function() {
-                            const invoiceId = this.dataset.invoiceid;
-                            const val = parseFloat(this.value);
-                            if (isNaN(val)) {
-                                delete manualAllocations[invoiceId];
-                            } else {
-                                manualAllocations[invoiceId] = val;
-                            }
-                            recalculateAll(false);
-                        });
+                recalculateStandardAllocations();
+                recalculateTdsAllocations();
+            }
+
+            function recalculateStandardAllocations() {
+                if (selectedPaymentFlow() !== 'standard') return;
+                let remaining = parseFloat(receivedAmountInput.value || 0);
+                if (isNaN(remaining) || remaining < 0) remaining = 0;
+
+                const rows = Array.from(invoiceList.querySelectorAll('.addon-option'));
+                const checkedRows = rows
+                    .filter((row) => row.querySelector('.invoice-option-checkbox')?.checked)
+                    .sort((a, b) => {
+                        const aOrder = parseInt(a.querySelector('.invoice-option-checkbox')?.dataset.selectionOrder || '0', 10);
+                        const bOrder = parseInt(b.querySelector('.invoice-option-checkbox')?.dataset.selectionOrder || '0', 10);
+                        return aOrder - bOrder;
                     });
+                const uncheckedRows = rows.filter((row) => !row.querySelector('.invoice-option-checkbox')?.checked);
 
-                    recalculateAll(true);
+                [...checkedRows, ...uncheckedRows].forEach((row) => {
+                    const checkbox = row.querySelector('.invoice-option-checkbox');
+                    const allocatedInput = row.querySelector('.invoice-allocated-input');
+                    const receivedHidden = row.querySelector('.invoice-received-amount-hidden');
+                    const tdsHidden = row.querySelector('.invoice-tds-amount-hidden');
+                    const liveState = row.querySelector('.invoice-live-state');
+                    const invoiceId = checkbox ? checkbox.value : '';
+                    let allocated = 0;
+                    let nowRemaining = 0;
+
+                    if (checkbox && checkbox.checked) {
+                        const available = getAvailableToCollect(invoiceId);
+                        const typed = parseFloat(allocatedInput?.value || '');
+                        if (!isNaN(typed) && typed > 0) {
+                            allocated = Math.min(available, remaining, typed);
+                        } else {
+                            allocated = Math.min(available, remaining);
+                        }
+                        nowRemaining = Math.max(0, available - allocated);
+                        remaining = Math.max(0, remaining - allocated);
+                    }
+
+                    if (allocatedInput) {
+                        allocatedInput.readOnly = !(checkbox && checkbox.checked);
+                        allocatedInput.value = formatInputNumber(allocated);
+                    }
+                    if (receivedHidden) receivedHidden.value = allocated.toFixed(2);
+                    if (tdsHidden) tdsHidden.value = '0';
+                    row.style.background = checkbox && checkbox.checked ? '#eef4ff' : '#fff';
+
+                    if (liveState) {
+                        if (!checkbox || !checkbox.checked) {
+                            liveState.textContent = 'Not allocated yet';
+                            liveState.style.color = '#64748b';
+                        } else if (allocated <= 0) {
+                            liveState.textContent = `Now Remaining: ${Math.round(getAvailableToCollect(invoiceId)).toLocaleString('en-US')}`;
+                            liveState.style.color = '#92400e';
+                        } else if (nowRemaining <= 0.1) {
+                            liveState.textContent = 'Now Fully Paid';
+                            liveState.style.color = '#047857';
+                        } else {
+                            liveState.textContent = `Now Remaining: ${Math.round(nowRemaining).toLocaleString('en-US')}`;
+                            liveState.style.color = '#92400e';
+                        }
+                    }
+                });
+
+            }
+
+            function recalculateTdsAllocations() {
+                if (selectedPaymentFlow() !== 'tds') return;
+                const rows = Array.from(invoiceList.querySelectorAll('.addon-option'));
+                const checkedRows = rows
+                    .filter((row) => row.querySelector('.invoice-option-checkbox')?.checked)
+                    .sort((a, b) => {
+                        const aOrder = parseInt(a.querySelector('.invoice-option-checkbox')?.dataset.selectionOrder || '0', 10);
+                        const bOrder = parseInt(b.querySelector('.invoice-option-checkbox')?.dataset.selectionOrder || '0', 10);
+                        return aOrder - bOrder;
+                    });
+                const uncheckedRows = rows.filter((row) => !row.querySelector('.invoice-option-checkbox')?.checked);
+
+                const mode = tdsInputType?.value || 'amount';
+                const percent = parseFloat(tdsAmountInput?.value || '0') || 0;
+                let computedMainTds = 0;
+
+                if (mode === 'percent') {
+                    computedMainTds = checkedRows.reduce((sum, row) => {
+                        const input = row.querySelector('.invoice-collectible-input');
+                        const base = parseFloat(input?.dataset.withoutTax || '0') || 0;
+                        return sum + (base * percent / 100);
+                    }, 0);
+                    if (tdsAmountHidden) tdsAmountHidden.value = computedMainTds.toFixed(2);
+                }
+
+                [...checkedRows, ...uncheckedRows].forEach((row) => {
+                    const checkbox = row.querySelector('.invoice-option-checkbox');
+                    const receivedDisplay = row.querySelector('.invoice-received-display');
+                    const receivedHidden = row.querySelector('.invoice-received-amount-hidden');
+                    const tdsHidden = row.querySelector('.invoice-tds-amount-hidden');
+                    const tdsInput = row.querySelector('.invoice-tds-input');
+                    const liveState = row.querySelector('.invoice-live-state');
+                    const input = row.querySelector('.invoice-collectible-input');
+                    const withoutTax = parseFloat(input?.dataset.withoutTax || '0') || 0;
+                    let rowTds = 0;
+
+                    if (checkbox && checkbox.checked) {
+                        if (mode === 'percent') {
+                            rowTds = withoutTax * percent / 100;
+                        } else {
+                            const typed = parseFloat(tdsInput?.value || '0') || 0;
+                            rowTds = Math.min(withoutTax, Math.max(0, typed));
+                        }
+                    }
+
+                    if (receivedDisplay) receivedDisplay.textContent = formatAmount(rowTds);
+                    if (receivedHidden) receivedHidden.value = '0';
+                    if (tdsHidden) tdsHidden.value = rowTds.toFixed(2);
+                    if (tdsInput) {
+                        if (mode === 'percent') {
+                            tdsInput.value = formatInputNumber(rowTds);
+                            tdsInput.readOnly = true;
+                        } else {
+                            tdsInput.readOnly = !(checkbox && checkbox.checked);
+                            if (!checkbox || !checkbox.checked) {
+                                tdsInput.value = '';
+                            } else if (tdsInput.value === '') {
+                                tdsInput.value = '0';
+                            }
+                        }
+                    }
+                    row.style.background = checkbox && checkbox.checked ? '#eef4ff' : '#fff';
+
+                    if (liveState) {
+                        if (!checkbox || !checkbox.checked) {
+                            liveState.textContent = 'Not selected';
+                            liveState.style.color = '#64748b';
+                        } else {
+                            liveState.textContent = `TDS: ${Math.round(rowTds).toLocaleString('en-US')}`;
+                            liveState.style.color = '#92400e';
+                        }
+                    }
+                });
+
+                if (mode === 'amount') {
+                    const sumTypedTds = checkedRows.reduce((sum, row) => {
+                        const tdsInput = row.querySelector('.invoice-tds-input');
+                        const input = row.querySelector('.invoice-collectible-input');
+                        const withoutTax = parseFloat(input?.dataset.withoutTax || '0') || 0;
+                        const typed = parseFloat(tdsInput?.value || '0') || 0;
+                        return sum + Math.min(withoutTax, Math.max(0, typed));
+                    }, 0);
+                    if (tdsAmountHidden) tdsAmountHidden.value = sumTypedTds.toFixed(2);
                 }
             }
 
-            if (!isEditingPayment) {
-                clientSelect?.addEventListener('change', function() {
+            function applyPaymentFlowUi() {
+                const flow = selectedPaymentFlow();
+                const isStandard = flow === 'standard';
+                const currentlyChecked = Array.from(invoiceList.querySelectorAll('.invoice-option-checkbox:checked'))
+                    .map((checkbox) => checkbox.value);
+                if (flow === 'standard') {
+                    standardCheckedInvoiceIds = currentlyChecked;
+                } else {
+                    tdsCheckedInvoiceIds = currentlyChecked;
+                }
+                if (tdsWrap) tdsWrap.style.display = isStandard ? 'none' : '';
+                if (receivedWrap) receivedWrap.style.display = isStandard ? '' : 'none';
+                if (tdsInputType) tdsInputType.style.display = isStandard ? 'none' : '';
+                const isPercentMode = !isStandard && (tdsInputType?.value === 'percent');
+                if (tdsAmountInput) tdsAmountInput.readOnly = false;
+                if (tdsAmountInput) tdsAmountInput.style.background = '#fff';
+                if (tdsAmountInput) tdsAmountInput.placeholder = isPercentMode ? 'TDS %' : '';
+                if (tdsAmountInput) tdsAmountInput.style.display = isStandard ? 'none' : (isPercentMode ? 'block' : 'none');
+                invoiceList.querySelectorAll('.addon-option').forEach((row) => {
+                    const allocLabel = row.querySelector('.invoice-allocated-label');
+                    const allocatedInput = row.querySelector('.invoice-allocated-input');
+                    const tdsInput = row.querySelector('.invoice-tds-input');
+                    if (isStandard) {
+                        if (allocLabel) allocLabel.textContent = 'Allocated:';
+                        if (allocatedInput) allocatedInput.style.display = 'block';
+                        if (tdsInput) tdsInput.style.display = 'none';
+                    } else {
+                        if (allocLabel) allocLabel.textContent = 'TDS Amount:';
+                        if (allocatedInput) allocatedInput.style.display = 'none';
+                        if (tdsInput) tdsInput.style.display = 'block';
+                    }
+                });
+                const checkedForFlow = isStandard ? standardCheckedInvoiceIds : tdsCheckedInvoiceIds;
+                invoiceList.querySelectorAll('.invoice-option-checkbox').forEach((checkbox) => {
+                    checkbox.checked = checkedForFlow.includes(checkbox.value);
+                });
+                if (isStandard) {
+                    if (tdsAmountInput) tdsAmountInput.value = '0';
+                    if (tdsAmountHidden) tdsAmountHidden.value = '0';
+                    recalculateStandardAllocations();
+                } else {
+                    if (receivedAmountInput) receivedAmountInput.value = '0';
+                    recalculateTdsAllocations();
+                }
+            }
+
+            if (!isEditingPayment && clientSelect) {
+                clientSelect.addEventListener('change', () => {
                     setCurrencyFromClient();
                     updateSelectedClientHeader();
-                    selectedInvoiceIds = [];
-                    manualAllocations = {};
                     renderInvoiceList();
                 });
             }
 
-            receivedAmountInput?.addEventListener('input', () => {
-                manualAllocations = {};
-                recalculateAll(false);
+            document.getElementById('payment_flow')?.addEventListener('change', applyPaymentFlowUi);
+            receivedAmountInput.addEventListener('input', recalculateStandardAllocations);
+            tdsAmountInput.addEventListener('input', recalculateTdsAllocations);
+            tdsInputType?.addEventListener('change', () => {
+                const isPercentMode = tdsInputType.value === 'percent';
+                if (tdsAmountInput) tdsAmountInput.readOnly = false;
+                if (tdsAmountInput) tdsAmountInput.style.background = '#fff';
+                if (tdsAmountInput) tdsAmountInput.placeholder = isPercentMode ? 'TDS %' : '';
+                if (tdsAmountInput) tdsAmountInput.style.display = isPercentMode ? 'block' : 'none';
+                invoiceList.querySelectorAll('.invoice-tds-input').forEach((input) => {
+                    input.value = '';
+                });
+                if (tdsAmountInput) {
+                    tdsAmountInput.value = '';
+                    if (!isPercentMode && tdsAmountHidden) tdsAmountHidden.value = '0';
+                    tdsAmountInput.focus();
+                }
+                recalculateTdsAllocations();
             });
-            receivedAmountInput?.addEventListener('change', () => {
-                recalculateAll(true);
+
+            invoiceList.addEventListener('input', (event) => {
+                if (event.target && event.target.classList.contains('invoice-tds-input')) {
+                    recalculateTdsAllocations();
+                }
+                if (event.target && event.target.classList.contains('invoice-allocated-input')) {
+                    recalculateStandardAllocations();
+                }
             });
 
-            tdsAmountInput?.addEventListener('input', () => {
-                manualAllocations = {};
-                recalculateAll(false);
-            });
-            tdsAmountInput?.addEventListener('change', () => {
-                recalculateAll(true);
-            });
-
-            const form = document.querySelector('.payments-form-shell');
-            form?.addEventListener('submit', function(e) {
-                recalculateAll(true);
-                const received = parseFloat(receivedAmountInput.value) || 0;
-                const tds = parseFloat(tdsAmountInput.value) || 0;
-                const totalSettlement = received + tds;
-
-                const checkedRows = Array.from(invoiceList.querySelectorAll(
-                '.invoice-option-checkbox:checked'));
-                if (checkedRows.length > 0) {
-                    let sumAllocations = 0;
-                    let sumReceived = 0;
-                    let sumTds = 0;
-                    let exceedsRowLimit = false;
-
-                    checkedRows.forEach(checkbox => {
-                        const row = checkbox.closest('.addon-option');
-                        const baseInput = row.querySelector('.invoice-base-amount');
-                        const receivedHidden = row.querySelector('.invoice-received-amount-hidden');
-                        const tdsHidden = row.querySelector('.invoice-tds-amount-hidden');
-                        const invoiceId = checkbox.value;
-
-                        const totals = invoiceTotals[invoiceId] || {
-                            amount_without_tax: 0,
-                            amount_paid: 0
-                        };
-                        let savedAlloc = 0;
-                        if (paymentDetailsMap && paymentDetailsMap[invoiceId]) {
-                            savedAlloc = paymentDetailsMap[invoiceId].received_amount +
-                                paymentDetailsMap[invoiceId].tds_amount;
-                        }
-                        const previousAllocations = totals.amount_paid - savedAlloc;
-                        const availableLimit = Math.max(0, totals.amount_without_tax -
-                            previousAllocations);
-
-                        const allocation = parseFloat(baseInput.value) || 0;
-                        if (allocation > (availableLimit + 0.1)) {
-                            exceedsRowLimit = true;
-                        }
-
-                        sumAllocations += allocation;
-                        sumReceived += parseFloat(receivedHidden.value) || 0;
-                        sumTds += parseFloat(tdsHidden.value) || 0;
-                    });
-
-                    const diffReceived = Math.abs(received - sumReceived);
-                    const diffTds = Math.abs(tds - sumTds);
-
-                    if (sumAllocations > (totalSettlement + 0.1)) {
-                        e.preventDefault();
-                        alert('Error: Total invoice allocations exceed the Total Settlement Amount.');
-                        return false;
+            invoiceList.addEventListener('change', (event) => {
+                if (event.target && event.target.classList.contains('invoice-option-checkbox')) {
+                    if (event.target.checked) {
+                        checkboxSelectionCounter += 1;
+                        event.target.dataset.selectionOrder = String(checkboxSelectionCounter);
+                    } else {
+                        event.target.dataset.selectionOrder = '';
                     }
-
-                    if (exceedsRowLimit) {
-                        e.preventDefault();
-                        alert(
-                            "Error: One or more invoice allocations exceed the invoice's available amount without tax.");
-                        return false;
+                    const flow = selectedPaymentFlow();
+                    const checkedNow = Array.from(invoiceList.querySelectorAll('.invoice-option-checkbox:checked'))
+                        .map((checkbox) => checkbox.value);
+                    if (flow === 'standard') {
+                        standardCheckedInvoiceIds = checkedNow;
+                    } else {
+                        tdsCheckedInvoiceIds = checkedNow;
                     }
-
-                    if (diffReceived > 0.1 || diffTds > 0.1) {
-                        e.preventDefault();
-                        alert(
-                            'Error: The sum of invoice allocations does not match the main Received Amount and TDS Amount exactly.');
-                        return false;
-                    }
+                    recalculateStandardAllocations();
+                    recalculateTdsAllocations();
                 }
             });
 
             setCurrencyFromClient();
             updateSelectedClientHeader();
             renderInvoiceList();
+            applyPaymentFlowUi();
         })();
     </script>
 @endsection

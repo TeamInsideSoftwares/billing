@@ -41,6 +41,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::controller(ClientsController::class)->group(function () {
+        Route::get('/client-dashboard/{client?}', 'clientDashboard')->name('clients.dashboard');
         Route::get('/clients', 'clients')->name('clients.index');
         Route::get('/clients/trials', 'trialClients')->name('clients.trials');
         Route::get('/clients/create', 'clientsCreate')->name('clients.create');

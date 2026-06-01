@@ -16,6 +16,24 @@
         </div>
 
         <div id="clients-grid" class="clients-grid">
+            <a href="{{ route('orders.index', ['c' => 'all']) }}" 
+               class="client-card"
+               data-client-name="all clients view all">
+                <div class="client-card__avatar" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-users" style="font-size: 1.1rem;"></i>
+                </div>
+                <div class="client-card__body">
+                    <strong class="client-card__title">
+                        All Clients
+                    </strong>
+                    <span class="client-card__meta">
+                        View orders for all clients
+                    </span>
+                </div>
+                <div class="client-card__chevron">
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </a>
             @php
                 $clientsByType = collect($clients ?? [])->groupBy(function ($client) {
                     return strtolower((string) ($client->type ?? 'regular')) === 'trial' ? 'trial' : 'regular';

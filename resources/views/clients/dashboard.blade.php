@@ -1,0 +1,887 @@
+@extends('layouts.app')
+
+@section('header_actions')
+    @if(isset($client))
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small d-none d-md-inline">Switch Client:</span>
+            <select class="form-select border-0 shadow-sm" style="min-width: 220px; font-weight: 500; height: 38px; border-radius: 8px;" onchange="if(this.value) window.location.href='{{ url('/client-dashboard') }}/' + this.value; else window.location.href='{{ url('/client-dashboard') }}';">
+                <option value="">-- Choose Client --</option>
+                @php
+                    $dropdownClientsByType = collect($clients)->groupBy(function ($c) {
+                        return strtolower((string) ($c->type ?? 'regular')) === 'trial' ? 'trial' : 'regular';
+                    });
+                @endphp
+                @if(isset($dropdownClientsByType['regular']) && $dropdownClientsByType['regular']->isNotEmpty())
+                    <optgroup label="Regular Clients">
+                        @foreach($dropdownClientsByType['regular'] as $c)
+                            <option value="{{ $c->clientid }}" {{ $client->clientid === $c->clientid ? 'selected' : '' }}>
+                                {{ $c->business_name ?? $c->contact_name }}
+                            </option>
+                        @endforeach
+                    </optgroup>
+                @endif
+                @if(isset($dropdownClientsByType['trial']) && $dropdownClientsByType['trial']->isNotEmpty())
+                    <optgroup label="Trial Clients">
+                        @foreach($dropdownClientsByType['trial'] as $c)
+                            <option value="{{ $c->clientid }}" {{ $client->clientid === $c->clientid ? 'selected' : '' }}>
+                                {{ $c->business_name ?? $c->contact_name }} (Trial)
+                            </option>
+                        @endforeach
+                    </optgroup>
+                @endif
+            </select>
+            <a href="{{ route('clients.dashboard') }}" class="secondary-button d-flex align-items-center gap-1" style="height: 38px;">
+                <i class="fas fa-search"></i> Close
+            </a>
+        </div>
+    @endif
+@endsection
+
+@section('content')
+<div class="client-dashboard-wrapper">
+    @if(!isset($client))
+        {{-- Search Landing Page State --}}
+        <div class="search-landing-container py-5 text-center">
+            <div class="mx-auto" style="max-width: 600px;">
+                <div class="dashboard-welcome-icon mb-4">
+                    <i class="fas fa-address-card text-primary" style="font-size: 3.5rem;"></i>
+                </div>
+                <h1 class="fw-800 text-dark mb-2">Client Profile Hub</h1>
+                <p class="text-muted mb-4 fs-5">Search and select a client to view their centralized financial metrics, orders, payments, documents, and operational logs.</p>
+                
+                <div class="search-input-wrapper mb-5 shadow-sm position-relative">
+                    <i class="fas fa-search position-absolute text-muted" style="left: 1.25rem; top: 1.1rem; font-size: 1.2rem; z-index: 5;"></i>
+                    <input 
+                        type="text" 
+                        id="client-search" 
+                        placeholder="Type client business name or contact name..." 
+                        class="form-control border-0 py-3 fs-5"
+                        style="border-radius: 12px; height: 56px; padding-left: 3.25rem !important; box-shadow: 0 4px 12px rgba(0,0,0,0.03);"
+                    >
+                </div>
+            </div>
+
+            <div class="mx-auto" style="max-width: 900px;">
+                <div class="d-flex align-items-center justify-content-between mb-3 px-2">
+                    <h5 class="fw-700 text-secondary mb-0">Select Client</h5>
+                    <span class="text-muted small" id="client-count">Showing {{ $clients->count() }} client(s)</span>
+                </div>
+                
+                @php
+                    $clientsByType = collect($clients ?? [])->groupBy(function ($client) {
+                        return strtolower((string) ($client->type ?? 'regular')) === 'trial' ? 'trial' : 'regular';
+                    });
+                @endphp
+
+                <div class="row g-3" id="clients-grid">
+                    @if(collect($clients ?? [])->isNotEmpty())
+                        @foreach(['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
+                            @if(($clientsByType[$typeKey] ?? collect())->isNotEmpty())
+                                <div class="col-12 text-start mt-4 mb-1 clients-group-title-col" data-type-key="{{ $typeKey }}">
+                                    <h6 class="fw-700 text-uppercase tracking-wider text-muted-dark small mb-0">{{ $typeLabel }}</h6>
+                                    <hr class="my-2" style="opacity: 0.1;">
+                                </div>
+                                @foreach($clientsByType[$typeKey] as $c)
+                                    <div class="col-md-6 col-lg-4 client-card-col" data-type="{{ $typeKey }}" data-name="{{ strtolower(($c->business_name ?? '') . ' ' . ($c->contact_name ?? '') . ' ' . ($c->primary_email ?? $c->email ?? '') . ' ' . ($c->phone ?? '')) }}">
+                                        <a href="{{ route('clients.dashboard', $c->clientid) }}" class="client-dashboard-card text-decoration-none d-block p-3">
+                                            <div class="d-flex align-items-center gap-3">
+                                                @if($c->logo_path)
+                                                    <div class="client-avatar-img">
+                                                        <img src="{{ $c->logo_path }}" alt="Logo" class="img-contain rounded-circle">
+                                                    </div>
+                                                @else
+                                                    <div class="client-avatar-initials">
+                                                        {{ strtoupper(substr($c->business_name ?? $c->contact_name, 0, 2)) }}
+                                                    </div>
+                                                @endif
+                                                <div class="flex-fill min-w-0 text-start">
+                                                    <h6 class="fw-700 text-dark mb-1 text-truncate">{{ $c->business_name ?? $c->contact_name }}</h6>
+                                                    <p class="text-muted small mb-0 text-truncate">{{ $c->primary_email ?? $c->email ?? 'No email' }}</p>
+                                                </div>
+                                                <div class="text-end">
+                                                    <i class="fas fa-chevron-right text-muted-light"></i>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+                                @endforeach
+                            @endif
+                        @endforeach
+                    @else
+                        <div class="col-12 py-5 text-center">
+                            <i class="fas fa-users-slash text-muted mb-3" style="font-size: 2.5rem;"></i>
+                            <h6 class="text-muted">No clients found. Add a client first!</h6>
+                            <a href="{{ route('clients.create') }}" class="primary-button mt-2 inline-flex">Add Client</a>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+    @else
+        {{-- Selected Client Dashboard State --}}
+        
+        {{-- Profile Header Card --}}
+        <div class="soft-card p-4 mb-4 client-header-card border-0">
+            <div class="row g-3 align-items-center">
+                <div class="col-auto">
+                    @if($client->logo_path)
+                        <div class="client-avatar-large">
+                            <img src="{{ $client->logo_path }}" alt="Logo" class="img-contain">
+                        </div>
+                    @else
+                        <div class="client-initials-large">
+                            {{ strtoupper(substr($client->business_name ?? $client->contact_name, 0, 2)) }}
+                        </div>
+                    @endif
+                </div>
+                <div class="col text-start">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <h2 class="fw-800 text-dark mb-0">{{ $client->business_name }}</h2>
+                        <span class="status-badge {{ strtolower($client->status ?? 'active') }}">{{ ucfirst($client->status ?? 'Active') }}</span>
+                        @if($client->type === 'trial')
+                            <span class="status-badge trial">Trial</span>
+                        @endif
+                    </div>
+                    <p class="text-muted mb-2"><i class="fas fa-envelope me-1"></i> {{ $client->primary_email ?? $client->email }} | <i class="fas fa-phone me-1"></i> {{ $client->phone ?? 'No Phone' }}</p>
+                    <div class="d-flex flex-wrap gap-2 text-muted small">
+                        <span><i class="fas fa-map-marker-alt me-1"></i> {{ $client->city ?? '-' }}{{ $client->state ? ', ' . $client->state : '' }}</span>
+                        <span class="mx-1">•</span>
+                        <span><i class="fas fa-calendar-alt me-1"></i> Joined: {{ $client->created_at?->format('d M Y') ?? '-' }}</span>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-auto text-lg-end mt-3 mt-lg-0">
+                    <div class="quick-actions-bar d-flex flex-wrap gap-2 justify-content-lg-end">
+                        <a href="{{ route('orders.create', ['c' => $client->clientid]) }}" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 rounded-pill px-3">
+                            <i class="fas fa-shopping-cart"></i> Add Order
+                        </a>
+                        <a href="{{ route('quotations.create', ['c' => $client->clientid]) }}" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 rounded-pill px-3">
+                            <i class="fas fa-file-alt"></i> Add Quotation
+                        </a>
+                        <a href="{{ route('invoices.create', ['clientid' => $client->clientid]) }}" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 rounded-pill px-3">
+                            <i class="fas fa-file-invoice-dollar"></i> Add Invoice
+                        </a>
+                        <a href="{{ route('payments.create', ['clientid' => $client->clientid]) }}" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 rounded-pill px-3">
+                            <i class="fas fa-wallet"></i> Add Payment
+                        </a>
+                        <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'po']) }}" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 rounded-pill px-3">
+                            <i class="fas fa-file-pdf"></i> Add PO
+                        </a>
+                        <a href="{{ route('clients.edit', $client) }}" class="btn btn-sm btn-light d-flex align-items-center gap-1 rounded-pill px-3 border">
+                            <i class="fas fa-edit"></i> Edit Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Financial Metrics Bar --}}
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="soft-card p-3 border-0 d-flex align-items-center gap-3">
+                    <div class="metric-icon bg-danger-light text-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div>
+                        <p class="text-muted small mb-0 font-weight-500 text-uppercase">Outstanding</p>
+                        <h4 class="fw-800 mb-0 text-danger">{{ $client->currency ?? 'INR' }} {{ number_format($outstanding, 0) }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="soft-card p-3 border-0 d-flex align-items-center gap-3">
+                    <div class="metric-icon bg-primary-light text-primary">
+                        <i class="fas fa-file-invoice"></i>
+                    </div>
+                    <div>
+                        <p class="text-muted small mb-0 font-weight-500 text-uppercase">Total Invoiced</p>
+                        <h4 class="fw-800 mb-0">{{ $client->currency ?? 'INR' }} {{ number_format($invoicedTotal, 0) }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="soft-card p-3 border-0 d-flex align-items-center gap-3">
+                    <div class="metric-icon bg-success-light text-success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div>
+                        <p class="text-muted small mb-0 font-weight-500 text-uppercase">Total Paid</p>
+                        <h4 class="fw-800 mb-0 text-success">{{ $client->currency ?? 'INR' }} {{ number_format($paidTotal, 0) }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="soft-card p-3 border-0 d-flex align-items-center gap-3">
+                    <div class="metric-icon bg-warning-light text-warning">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div>
+                        <p class="text-muted small mb-0 font-weight-500 text-uppercase">Active Orders</p>
+                        <h4 class="fw-800 mb-0 text-warning">{{ $activeOrdersCount }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Tabs Content Area --}}
+        <div class="soft-card p-4 border-0 mb-4">
+            <div class="row g-4">
+                {{-- Vertical Tabs Header Navigation --}}
+                <div class="col-12 col-md-2 border-end pe-md-3">
+                    <div class="nav flex-column nav-pills text-start" id="dashboardTabs" role="tablist" style="gap: 0.35rem;">
+                        <button class="nav-link active text-start py-2 px-3 border-0 d-flex align-items-center gap-2" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">
+                            <i class="fas fa-user-circle" style="width: 18px;"></i>
+                            <span>Profile & Contacts</span>
+                        </button>
+                        <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button" role="tab" aria-controls="orders" aria-selected="false">
+                            <i class="fas fa-shopping-cart" style="width: 18px;"></i>
+                            <span>Orders ({{ $orders->count() }})</span>
+                        </button>
+                        <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2" id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices" type="button" role="tab" aria-controls="invoices" aria-selected="false">
+                            <i class="fas fa-file-invoice-dollar" style="width: 18px;"></i>
+                            <span>Invoices ({{ $invoices->count() }})</span>
+                        </button>
+                        <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2" id="quotations-tab" data-bs-toggle="tab" data-bs-target="#quotations" type="button" role="tab" aria-controls="quotations" aria-selected="false">
+                            <i class="fas fa-file-alt" style="width: 18px;"></i>
+                            <span>Quotations ({{ $quotations->count() }})</span>
+                        </button>
+                        <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button" role="tab" aria-controls="payments" aria-selected="false">
+                            <i class="fas fa-wallet" style="width: 18px;"></i>
+                            <span>Payments ({{ $payments->count() }})</span>
+                        </button>
+                        <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2" id="ledger-tab" data-bs-toggle="tab" data-bs-target="#ledger" type="button" role="tab" aria-controls="ledger" aria-selected="false">
+                            <i class="fas fa-receipt" style="width: 18px;"></i>
+                            <span>Ledger ({{ $ledger->count() }})</span>
+                        </button>
+                        <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button" role="tab" aria-controls="documents" aria-selected="false">
+                            <i class="fas fa-folder" style="width: 18px;"></i>
+                            <span>Documents ({{ $documents->count() }})</span>
+                        </button>
+                        <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2" id="comms-tab" data-bs-toggle="tab" data-bs-target="#comms" type="button" role="tab" aria-controls="comms" aria-selected="false">
+                            <i class="fas fa-history" style="width: 18px;"></i>
+                            <span>Email History ({{ $communicationLogs->count() }})</span>
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Tab Content Panel --}}
+                <div class="col-12 col-md-10 ps-md-3">
+                    <div class="tab-content" id="dashboardTabsContent">
+                {{-- 1. Profile & Contacts Tab --}}
+                <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+                    <div class="row g-4">
+                        <div class="col-md-6 text-start">
+                            <div class="card border border-light rounded-card p-3 h-100">
+                                <h5 class="fw-700 text-dark mb-3"><i class="fas fa-address-book text-muted-light me-1"></i> Contact Details</h5>
+                                <div class="d-flex flex-column gap-2 text-start">
+                                    <div class="row">
+                                        <div class="col-4 font-weight-600 text-secondary">Contact Person</div>
+                                        <div class="col-8">{{ $client->contact_name ?: '-' }}</div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-4 font-weight-600 text-secondary">Primary Email</div>
+                                        <div class="col-8 text-truncate">{{ $client->primary_email ?: '-' }}</div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-4 font-weight-600 text-secondary">Secondary Email</div>
+                                        <div class="col-8">{{ $client->email ?: '-' }}</div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-4 font-weight-600 text-secondary">Phone Number</div>
+                                        <div class="col-8">{{ $client->phone ?: '-' }}</div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-4 font-weight-600 text-secondary">WhatsApp</div>
+                                        <div class="col-8">{{ $client->whatsapp_number ?: '-' }}</div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-4 font-weight-600 text-secondary">Currency</div>
+                                        <div class="col-8"><span class="badge bg-secondary-light text-secondary">{{ $client->currency }}</span></div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-4 font-weight-600 text-secondary">Tax Number / GST</div>
+                                        <div class="col-8">{{ $client->tax_number ?: 'N/A' }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-start">
+                            <div class="card border border-light rounded-card p-3 h-100">
+                                <h5 class="fw-700 text-dark mb-3"><i class="fas fa-file-invoice text-muted-light me-1"></i> Billing Details</h5>
+                                <div class="d-flex flex-column gap-2 text-start">
+                                    <div class="row">
+                                        <div class="col-4 font-weight-600 text-secondary">Business Name</div>
+                                        <div class="col-8">{{ $client->billingDetail->business_name ?? '-' }}</div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-4 font-weight-600 text-secondary">GSTIN</div>
+                                        <div class="col-8"><span class="font-monospace text-primary fw-600">{{ $client->billingDetail->gstin ?? '—' }}</span></div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-4 font-weight-600 text-secondary">Billing Email</div>
+                                        <div class="col-8">{{ $client->billingDetail->billing_email ?? $client->billing_email ?? '-' }}</div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-4 font-weight-600 text-secondary">Billing Phone</div>
+                                        <div class="col-8">{{ $client->billingDetail->billing_phone ?? '-' }}</div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-4 font-weight-600 text-secondary">Address</div>
+                                        <div class="col-8">
+                                            {{ $client->billingDetail->address_line_1 ?? '-' }}<br>
+                                            {{ $client->billingDetail->city ?? '' }}{{ $client->billingDetail?->state ? ', ' . $client->billingDetail->state : '' }} {{ $client->billingDetail->postal_code ?? '' }}<br>
+                                            {{ $client->billingDetail->country ?? '' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @if(!empty($client->notes))
+                            <div class="col-12 text-start mt-3">
+                                <div class="card border border-light rounded-card p-3 bg-light-soft">
+                                    <h5 class="fw-700 text-dark mb-2"><i class="fas fa-sticky-note text-muted-light me-1"></i> Notes & Special Instructions</h5>
+                                    <p class="mb-0 text-secondary pre-wrap">{{ $client->notes }}</p>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- 2. Orders Tab --}}
+                <div class="tab-pane fade" id="orders" role="tabpanel" aria-labelledby="orders-tab">
+                    <div class="table-responsive text-start">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Item Details</th>
+                                    <th>Qty</th>
+                                    <th>Duration</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($orders as $order)
+                                    <tr>
+                                        <td><strong>{{ $order->order_number }}</strong></td>
+                                        <td>
+                                            <div class="fw-600 text-dark">{{ $order->item_name }}</div>
+                                            @if($order->item_description)
+                                                <small class="text-muted">{{ Str::limit($order->item_description, 60) }}</small>
+                                            @endif
+                                        </td>
+                                        <td>{{ $order->quantity }}</td>
+                                        <td>
+                                            <div class="small-text">
+                                                <i class="far fa-calendar-alt text-muted-light"></i> 
+                                                {{ $order->start_date?->format('d M Y') ?? 'N/A' }} to {{ $order->end_date?->format('d M Y') ?? 'N/A' }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="status-pill {{ strtolower($order->status ?? 'active') }}">{{ ucfirst($order->status ?? 'Active') }}</span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ route('orders.edit', $order->orderid) }}" class="text-action-btn edit me-2">Edit</a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">No orders found for this client.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- 3. Invoices Tab --}}
+                <div class="tab-pane fade" id="invoices" role="tabpanel" aria-labelledby="invoices-tab">
+                    <div class="table-responsive text-start">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Issue Date</th>
+                                    <th>Due Date</th>
+                                    <th>Grand Total</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($invoices as $invoice)
+                                    <tr>
+                                        <td><strong>{{ $invoice->invoice_number }}</strong></td>
+                                        <td>{{ $invoice->issue_date?->format('d M Y') ?? $invoice->created_at?->format('d M Y') }}</td>
+                                        <td>{{ $invoice->due_date?->format('d M Y') ?? '-' }}</td>
+                                        <td><strong>{{ $client->currency }} {{ number_format($invoice->grand_total, 2) }}</strong></td>
+                                        <td>
+                                            <span class="status-pill {{ strtolower($invoice->status ?? 'draft') }}">{{ ucfirst($invoice->status ?? 'Draft') }}</span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ route('invoices.show', $invoice->invoiceid) }}" class="text-action-btn view me-2">View</a>
+                                            <a href="{{ route('invoices.edit', $invoice->invoiceid) }}" class="text-action-btn edit me-2">Edit</a>
+                                            <a href="{{ route('invoices.pdf', $invoice->invoiceid) }}" target="_blank" class="text-action-btn pdf"><i class="fas fa-file-pdf"></i> PDF</a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">No invoices found for this client.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- 4. Quotations Tab --}}
+                <div class="tab-pane fade" id="quotations" role="tabpanel" aria-labelledby="quotations-tab">
+                    <div class="table-responsive text-start">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Quotation #</th>
+                                    <th>Title</th>
+                                    <th>Issue Date</th>
+                                    <th>Due Date</th>
+                                    <th>Grand Total</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($quotations as $quotation)
+                                    <tr>
+                                        <td><strong>{{ $quotation->quotation_number }}</strong></td>
+                                        <td>{{ $quotation->quo_title ?: '—' }}</td>
+                                        <td>{{ $quotation->issue_date?->format('d M Y') ?? '—' }}</td>
+                                        <td>{{ $quotation->due_date?->format('d M Y') ?? '—' }}</td>
+                                        <td><strong>{{ $client->currency }} {{ number_format($quotation->grand_total, 2) }}</strong></td>
+                                        <td>
+                                            <span class="status-pill {{ strtolower($quotation->status ?? 'draft') }}">{{ ucfirst($quotation->status ?? 'Draft') }}</span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ route('quotations.show', $quotation->quotationid) }}" class="text-action-btn view me-2">View</a>
+                                            <a href="{{ route('quotations.edit', $quotation->quotationid) }}" class="text-action-btn edit me-2">Edit</a>
+                                            <a href="{{ route('quotations.pdf', $quotation->quotationid) }}" target="_blank" class="text-action-btn pdf"><i class="fas fa-file-pdf"></i> PDF</a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4 text-muted">No quotations found for this client.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- 5. Payments Tab --}}
+                <div class="tab-pane fade" id="payments" role="tabpanel" aria-labelledby="payments-tab">
+                    <div class="table-responsive text-start">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Payment ID</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>TDS Amount</th>
+                                    <th>Mode</th>
+                                    <th>Reference #</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($payments as $payment)
+                                    <tr>
+                                        <td><strong>{{ $payment->paymentid }}</strong></td>
+                                        <td>{{ $payment->payment_date?->format('d M Y') ?? $payment->created_at?->format('d M Y') }}</td>
+                                        <td><strong class="text-success">{{ $client->currency }} {{ number_format($payment->received_amount, 2) }}</strong></td>
+                                        <td>{{ $payment->tds_amount ? $client->currency . ' ' . number_format($payment->tds_amount, 2) : '—' }}</td>
+                                        <td><span class="badge bg-light text-dark text-capitalize border">{{ $payment->mode ?: '—' }}</span></td>
+                                        <td><span class="font-monospace text-muted">{{ $payment->reference_number ?: '—' }}</span></td>
+                                        <td>
+                                            <a href="{{ route('payments.show', $payment->paymentid) }}" class="text-action-btn view me-2">View Details</a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4 text-muted">No payments found for this client.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- 6. Ledger Tab --}}
+                <div class="tab-pane fade" id="ledger" role="tabpanel" aria-labelledby="ledger-tab">
+                    <div class="table-responsive text-start">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Reference ID</th>
+                                    <th>Type</th>
+                                    <th>Mode</th>
+                                    <th>Description</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php
+                                    $runningBalance = 0;
+                                @endphp
+                                @forelse($ledger as $ledgerItem)
+                                    <tr>
+                                        <td>{{ $ledgerItem->date?->format('d M Y') ?? $ledgerItem->created_at?->format('d M Y') }}</td>
+                                        <td>
+                                            <span class="font-monospace fw-600">{{ $ledgerItem->invoiceid_paymentid ?: '—' }}</span>
+                                        </td>
+                                        <td>
+                                            @if($ledgerItem->type === 'debit' || $ledgerItem->type === 'invoice')
+                                                <span class="badge bg-danger-light text-danger text-uppercase" style="font-size: 0.72rem;">Debit</span>
+                                            @else
+                                                <span class="badge bg-success-light text-success text-uppercase" style="font-size: 0.72rem;">Credit</span>
+                                            @endif
+                                        </td>
+                                        <td><span class="text-capitalize small-text">{{ $ledgerItem->mode ?: '—' }}</span></td>
+                                        <td class="small-text">{{ $ledgerItem->description ?: '—' }}</td>
+                                        <td class="text-end fw-700 {{ ($ledgerItem->type === 'debit' || $ledgerItem->type === 'invoice') ? 'text-danger' : 'text-success' }}">
+                                            {{ ($ledgerItem->type === 'debit' || $ledgerItem->type === 'invoice') ? '-' : '+' }} {{ number_format($ledgerItem->amount, 2) }}
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">No ledger transactions found for this client.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- 7. Documents Tab --}}
+                <div class="tab-pane fade" id="documents" role="tabpanel" aria-labelledby="documents-tab">
+                    <div class="table-responsive text-start">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Title</th>
+                                    <th>Document Number</th>
+                                    <th>Document Date</th>
+                                    <th>Status</th>
+                                    <th>File Link</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($documents as $document)
+                                    <tr>
+                                        <td><span class="badge bg-light text-dark fw-700 text-uppercase border">{{ $document->type }}</span></td>
+                                        <td>{{ $document->title ?: '—' }}</td>
+                                        <td><span class="font-monospace">{{ $document->document_number ?: '—' }}</span></td>
+                                        <td>{{ $document->document_date?->format('d M Y') ?? '—' }}</td>
+                                        <td>
+                                            <span class="status-pill {{ strtolower($document->status ?? 'active') }}">{{ ucfirst($document->status ?? 'Active') }}</span>
+                                        </td>
+                                        <td>
+                                            @if($document->file_path)
+                                                <a href="{{ route('clients.documents.file', ['client' => $client->clientid, 'document' => $document->client_docid]) }}" target="_blank" class="text-action-btn view">
+                                                    <i class="fas fa-file-download me-1"></i> View File
+                                                </a>
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">No agreements or PO documents uploaded.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- 8. Communication Log Tab --}}
+                <div class="tab-pane fade" id="comms" role="tabpanel" aria-labelledby="comms-tab">
+                    <div class="table-responsive text-start">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Sent Date</th>
+                                    <th>Channel</th>
+                                    <th>Subject</th>
+                                    <th>Recipient</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($communicationLogs as $log)
+                                    <tr>
+                                        <td>{{ $log->created_at?->format('d M Y H:i') }}</td>
+                                        <td>
+                                            <span class="badge text-capitalize text-dark bg-light border">
+                                                <i class="fas {{ $log->channel === 'email' ? 'fa-envelope text-primary' : 'fa-mobile-alt text-success' }} me-1"></i>
+                                                {{ $log->channel ?: 'Email' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="fw-600 text-dark d-block">{{ $log->subject }}</span>
+                                            @if($log->body)
+                                                <small class="text-muted d-block text-truncate-2" style="max-width: 450px;">{{ strip_tags($log->body) }}</small>
+                                            @endif
+                                        </td>
+                                        <td class="small-text">{{ $log->to_email ?: $log->phone_number ?: '—' }}</td>
+                                        <td>
+                                            <span class="badge {{ $log->status === 'sent' || $log->status === 'success' ? 'bg-success-light text-success' : 'bg-warning-light text-warning' }} text-uppercase" style="font-size: 0.7rem;">
+                                                {{ $log->status ?: 'Sent' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">No emails or alerts logged for this client.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    @endif
+</div>
+
+{{-- Inline Custom styles to provide a highly premium design --}}
+<style>
+    /* Premium Autocomplete/Search Page */
+    .search-landing-container {
+        animation: fadeIn 0.4s ease-out;
+    }
+    .dashboard-welcome-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(29, 78, 216, 0.03));
+        border-radius: 24px;
+        box-shadow: 0 8px 30px rgba(37, 99, 235, 0.05);
+    }
+    .client-dashboard-card {
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .client-dashboard-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--brand);
+        box-shadow: 0 10px 20px rgba(37, 99, 235, 0.05);
+    }
+    .client-avatar-initials {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--brand), var(--brand-deep));
+        color: white;
+        font-weight: 700;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .client-avatar-img {
+        width: 44px;
+        height: 44px;
+    }
+    .client-avatar-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    /* Selected Client State styles */
+    .client-header-card {
+        background: linear-gradient(135deg, #ffffff, #fcfdfe);
+        border: 1px solid rgba(37, 99, 235, 0.06) !important;
+        box-shadow: var(--shadow-soft) !important;
+    }
+    .client-avatar-large {
+        width: 72px;
+        height: 72px;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 2px solid #ffffff;
+        box-shadow: var(--shadow-sm);
+    }
+    .client-avatar-large img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    .client-initials-large {
+        width: 72px;
+        height: 72px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--brand), var(--brand-deep));
+        color: white;
+        font-weight: 700;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--shadow-sm);
+    }
+    .status-badge {
+        padding: 0.25rem 0.65rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        border-radius: 6px;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+    .status-badge.active { background: #d1fae5; color: #065f46; }
+    .status-badge.review { background: #fef3c7; color: #92400e; }
+    .status-badge.inactive { background: #fee2e2; color: #991b1b; }
+    .status-badge.trial { background: #e0f2fe; color: #0369a1; }
+
+    /* Metric Card Styling */
+    .metric-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+    .bg-danger-light { background-color: #fef2f2; }
+    .bg-success-light { background-color: #f0fdf4; }
+    .bg-primary-light { background-color: #eff6ff; }
+    .bg-warning-light { background-color: #fffbeb; }
+    .bg-secondary-light { background-color: #f1f5f9; }
+
+    /* Custom Premium Vertical Pills */
+    .client-dashboard-wrapper .nav-pills .nav-link {
+        color: var(--text-muted);
+        background: transparent;
+        transition: all 0.2s ease;
+        border-radius: 8px;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+        border: none;
+        font-size: 0.85rem;
+        padding: 0.5rem 0.75rem !important;
+    }
+    .client-dashboard-wrapper .nav-pills .nav-link:hover {
+        color: var(--text);
+        background: #f8fafc;
+    }
+    .client-dashboard-wrapper .nav-pills .nav-link.active {
+        color: var(--brand);
+        background: rgba(37, 99, 235, 0.07);
+        font-weight: 600;
+    }
+
+    /* Helper utility classes */
+    .fw-600 { font-weight: 600; }
+    .fw-700 { font-weight: 700; }
+    .fw-800 { font-weight: 800; }
+    .text-muted-light { color: #cbd5e1; }
+    .bg-light-soft { background-color: #f8fafc; }
+    .pre-wrap { white-space: pre-wrap; }
+    .rounded-card { border-radius: 12px; }
+    .text-truncate-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;  
+        overflow: hidden;
+    }
+    .is-hidden {
+        display: none !important;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+@endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Autocomplete search filtering
+        const searchInput = document.getElementById('client-search');
+        if (searchInput) {
+            const clientCols = document.querySelectorAll('.client-card-col');
+            const clientCountSpan = document.getElementById('client-count');
+
+            searchInput.addEventListener('input', function() {
+                const term = this.value.toLowerCase().trim();
+                let visibleCount = 0;
+
+                // Filter client cards
+                clientCols.forEach(col => {
+                    const name = col.getAttribute('data-name');
+                    if (term === '' || name.includes(term)) {
+                        col.classList.remove('is-hidden');
+                        visibleCount++;
+                    } else {
+                        col.classList.add('is-hidden');
+                    }
+                });
+
+                // Dynamically hide/show group titles
+                ['regular', 'trial'].forEach(type => {
+                    const groupTitle = document.querySelector(`.clients-group-title-col[data-type-key="${type}"]`);
+                    if (groupTitle) {
+                        const visibleInGroup = document.querySelectorAll(`.client-card-col[data-type="${type}"]:not(.is-hidden)`).length;
+                        if (visibleInGroup === 0) {
+                            groupTitle.classList.add('is-hidden');
+                        } else {
+                            groupTitle.classList.remove('is-hidden');
+                        }
+                    }
+                });
+
+                if (clientCountSpan) {
+                    clientCountSpan.textContent = `Showing ${visibleCount} client(s)`;
+                }
+            });
+
+            // Focus search input
+            searchInput.focus();
+        }
+
+        // Maintain active tab state on reload if needed
+        const hash = window.location.hash;
+        if (hash) {
+            const triggerEl = document.querySelector(`#dashboardTabs button[data-bs-target="${hash}"]`);
+            if (triggerEl && typeof bootstrap !== 'undefined') {
+                const tab = new bootstrap.Tab(triggerEl);
+                tab.show();
+            }
+        }
+
+        // Update URL hash when switching tabs
+        const tabButtons = document.querySelectorAll('#dashboardTabs button');
+        tabButtons.forEach(button => {
+            button.addEventListener('shown.bs.tab', function (event) {
+                const target = event.target.getAttribute('data-bs-target');
+                window.location.hash = target;
+            });
+        });
+    });
+</script>
+@endpush

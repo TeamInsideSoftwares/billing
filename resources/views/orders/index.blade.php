@@ -37,6 +37,7 @@
                         <label for="client-select">Client</label>
                         <select name="c" id="client-select" class="form-control" autofocus>
                             <option value="" selected disabled>Select a client</option>
+                            <option value="all">All Clients</option>
                             @foreach(['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
                                 @if(($clientsByType[$typeKey] ?? collect())->isNotEmpty())
                                     <optgroup label="{{ $typeLabel }}">
@@ -231,6 +232,14 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const clientPickerSelect = document.getElementById('client-select');
+
+    const clientForm = document.querySelector('.payment-client-picker-form');
+    clientForm?.addEventListener('submit', function () {
+        if (clientPickerSelect && !clientPickerSelect.value) {
+            clientPickerSelect.value = 'all';
+        }
+    });
+
     document.getElementById('btnCreateOrderFromPicker')?.addEventListener('click', function () {
         const clientId = clientPickerSelect?.value || '';
         if (clientId) {

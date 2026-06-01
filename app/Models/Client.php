@@ -83,6 +83,16 @@ class Client extends Model
         return $this->hasMany(ClientDocument::class, 'clientid');
     }
 
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'clientid');
+    }
+
+    public function quotations(): HasMany
+    {
+        return $this->hasMany(Quotation::class, 'clientid');
+    }
+
     public function latestPurchaseOrder(): ?ClientDocument
     {
         return $this->documents()

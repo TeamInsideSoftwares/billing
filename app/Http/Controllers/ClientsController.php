@@ -493,6 +493,55 @@ class ClientsController extends Controller
         return redirect()->route('clients.index')->with('success', 'Client created successfully.');
     }
 
+    public function clientDashboard(Request $request, ?Client $client = null): View
+    {
+        $accountId = $this->resolveAccountId();
+
+        // Fetch all clients for selection dropdown/search
+        $clients = Client::where('accountid', $accountId)->orderByRaw('COALESCE(business_name, contact_name) ASC')->get();
+
+        if ($client) {
+            if ((string) $client->accountid !== $accountId) {
+                abort(404);
+            }
+
+            $client->load(['invoices', 'payments', 'billingDetail', 'documents', 'orders', 'quotations']);
+
+            $invoicedTotal = (float) $client->invoices->where('status', '!=', 'cancelled')->sum('grand_total');
+            $paidTotal = (float) $client->payments->sum('received_amount');
+            $outstanding = $invoicedTotal - $paidTotal;
+
+            $invoices = $client->invoices->sortByDesc('created_at')->values();
+            $payments = $client->payments->sortByDesc('payment_date')->values();
+            $orders = $client->orders->sortByDesc('start_date')->values();
+            $quotations = $client->quotations->sortByDesc('issue_date')->values();
+            $documents = $client->documents->sortByDesc('created_at')->values();
+
+            $ledger = \App\Models\Ledger::where('clientid', $client->clientid)->orderBy('date', 'desc')->get();
+            $communicationLogs = \App\Models\CommunicationLog::where('clientid', $client->clientid)->orderBy('created_at', 'desc')->get();
+
+            $activeOrdersCount = $client->orders->where('status', 'active')->count();
+        }
+
+        return view('clients.dashboard', [
+            'title' => $client ? ($client->business_name ?? $client->contact_name) . ' - Dashboard' : 'Client Dashboard',
+            'subtitle' => $client ? 'Profile Landing Page' : 'Choose a client to view their profile dashboard',
+            'clients' => $clients,
+            'client' => $client,
+            'outstanding' => $outstanding ?? 0,
+            'invoicedTotal' => $invoicedTotal ?? 0,
+            'paidTotal' => $paidTotal ?? 0,
+            'activeOrdersCount' => $activeOrdersCount ?? 0,
+            'invoices' => $invoices ?? collect(),
+            'payments' => $payments ?? collect(),
+            'orders' => $orders ?? collect(),
+            'quotations' => $quotations ?? collect(),
+            'documents' => $documents ?? collect(),
+            'ledger' => $ledger ?? collect(),
+            'communicationLogs' => $communicationLogs ?? collect(),
+        ]);
+    }
+
     public function clientsShow(Client $client): View
     {
         $client->load(['invoices', 'payments', 'billingDetail', 'documents']);

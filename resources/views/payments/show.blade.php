@@ -42,7 +42,7 @@
 
     $currency = $client->currency ?? 'INR';
     $amount = (float) ($payment->received_amount ?? 0);
-    $tdsAmount = (float) ($payment->tds_amount ?? 0);
+    $tdsAmount = (float) ($payment->paymentDetails->sum('tds_amount') ?? 0);
 
     $clientName = $client->business_name ?? $client->contact_name ?? 'Client';
     $title = $displayTitle
@@ -93,6 +93,13 @@
                     <tr>
                         <th>Invoices</th>
                         <td>{{ $invoiceSummary }}</td>
+                    </tr>
+                @endif
+
+                @if(!empty($payment->receipt_number))
+                    <tr>
+                        <th>Receipt Number</th>
+                        <td>{{ $payment->receipt_number }}</td>
                     </tr>
                 @endif
 

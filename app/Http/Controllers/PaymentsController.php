@@ -12,6 +12,7 @@ use App\Models\AccountBillingDetail;
 use App\Models\MessageTemplate;
 use App\Models\Payment;
 use App\Models\PaymentDetail;
+use App\Models\SerialConfiguration;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -23,6 +24,45 @@ use Illuminate\Support\Facades\Schema;
 
 class PaymentsController extends Controller
 {
+    private function generatePaymentReceiptNumber(string $accountid): string
+    {
+        $serialConfig = SerialConfiguration::query()
+            ->where('accountid', $accountid)
+            ->where('document_type', 'payment_receipt')
+            ->first();
+
+        if ($serialConfig) {
+            $candidate = trim((string) $serialConfig->generateNextSerialNumber());
+            return $this->ensureUniquePaymentReceiptNumber($candidate !== '' ? $candidate : 'PR-0001', $accountid);
+        }
+
+        $count = Payment::query()
+            ->where('accountid', $accountid)
+            ->whereNotNull('receipt_number')
+            ->where('receipt_number', '!=', '')
+            ->count();
+
+        return $this->ensureUniquePaymentReceiptNumber('PR-' . str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT), $accountid);
+    }
+
+    private function ensureUniquePaymentReceiptNumber(string $candidate, string $accountid): string
+    {
+        $candidate = trim($candidate) ?: 'PR-0001';
+        $number = $candidate;
+        $sequence = 2;
+
+        while (Payment::query()->where('accountid', $accountid)->where('receipt_number', $number)->exists()) {
+            if (preg_match('/^(.*?)(\d+)$/', $candidate, $matches)) {
+                $number = $matches[1] . str_pad((string) ((int) $matches[2] + $sequence - 1), strlen($matches[2]), '0', STR_PAD_LEFT);
+            } else {
+                $number = $candidate . '-' . $sequence;
+            }
+            $sequence++;
+        }
+
+        return $number;
+    }
+
     private function resolveDefaultFyId(string $accountid): ?string
     {
         return FinancialYear::query()
@@ -150,9 +190,9 @@ class PaymentsController extends Controller
         $clientId = request('c');
         $selectedClient = null;
 
-        $query = Payment::query()->where('accountid', $userAccountId)->with(['client', 'invoices']);
+        $query = Payment::query()->where('accountid', $userAccountId)->with(['client', 'invoices', 'paymentDetails']);
 
-        if ($clientId) {
+        if ($clientId && $clientId !== 'all') {
             $query->where('clientid', $clientId);
             $selectedClient = Client::query()
                 ->where('accountid', $userAccountId)
@@ -196,6 +236,7 @@ class PaymentsController extends Controller
             return [
                 'record_id' => $payment->paymentid,
                 'number' => $displayTitle,
+                'receipt_number' => (string) ($payment->receipt_number ?? ''),
                 'client' => $payment->client->business_name ?? 'Client',
                 'invoice' => $invoiceNumber,
                 'invoice_count' => $payment->invoices->count(),
@@ -245,14 +286,14 @@ class PaymentsController extends Controller
             ->regular()
             ->orderBy('business_name')
             ->get(['clientid', 'business_name', 'contact_name']);
-        $selectedClient = $clientId !== ''
+        $selectedClient = $clientId !== '' && $clientId !== 'all'
             ? $clients->firstWhere('clientid', $clientId)
             : null;
 
         $query = Ledger::query()
             ->where('accountid', $accountid)
             ->with('client')
-            ->when($clientId !== '', function ($ledgerQuery) use ($clientId) {
+            ->when($clientId !== '' && $clientId !== 'all', function ($ledgerQuery) use ($clientId) {
                 $ledgerQuery->where('clientid', $clientId);
             })
             ->when($searchTerm !== '', function ($ledgerQuery) use ($searchTerm) {
@@ -283,7 +324,8 @@ class PaymentsController extends Controller
         $paymentMap = Payment::query()
             ->whereIn('paymentid', $paymentIds)
             ->with('invoices')
-            ->get(['paymentid', 'reference_number', 'mode', 'clientid', 'received_amount', 'tds_amount', 'fy_id', 'status'])
+            ->with('paymentDetails')
+            ->get(['paymentid', 'receipt_number', 'reference_number', 'mode', 'clientid', 'received_amount', 'tds_amount', 'fy_id', 'status'])
             ->keyBy('paymentid');
 
         // Hide entries tied to cancelled invoices/payments from ledger listing.
@@ -330,11 +372,12 @@ class PaymentsController extends Controller
                 $debit = $amount;
             } else {
                 $payment = $paymentMap->get($entry->invoiceid_paymentid);
-                if ($payment) {
-                    $credit = (float) ($payment->received_amount ?? 0);
-                } else {
-                    $credit = $amount;
+                $receivedAmount = (float) ($payment->received_amount ?? 0);
+                $tdsAmount = (float) ($payment->tds_amount ?? 0);
+                if ($amount <= 0 && ($receivedAmount > 0 || $tdsAmount > 0)) {
+                    $amount = $receivedAmount > 0 ? $receivedAmount : $tdsAmount;
                 }
+                $credit = $amount;
             }
 
             $runningBalance = $runningBalance + $debit - $credit;
@@ -358,7 +401,11 @@ class PaymentsController extends Controller
                     $modeLabel = trim((string) ($payment->mode ?? '')) ?: '-';
                     $referenceNumber = trim((string) ($payment->reference_number ?? ''));
                     $referenceLabel = $modeLabel;
-                    $referenceMeta = $referenceNumber !== '' ? ('Ref: ' . $referenceNumber) : '';
+                    $receiptNumber = trim((string) ($payment->receipt_number ?? ''));
+                    $referenceMeta = $receiptNumber !== '' ? ('Receipt: ' . $receiptNumber) : '';
+                    if ($referenceNumber !== '') {
+                        $referenceMeta .= ($referenceMeta !== '' ? ' | ' : '') . ('Ref: ' . $referenceNumber);
+                    }
                     $referenceUrl = route('payments.show', $payment->paymentid);
                     $entryKind = (float) ($payment->tds_amount ?? 0) > 0 ? 'tds' : 'payment';
                 }
@@ -429,7 +476,7 @@ class PaymentsController extends Controller
             ->where('ti_number', '!=', '')
             ->whereMonth('issue_date', $selectedMonth)
             ->whereYear('issue_date', $selectedYear)
-            ->when($selectedClientId !== '', function ($query) use ($selectedClientId) {
+            ->when($selectedClientId !== '' && $selectedClientId !== 'all', function ($query) use ($selectedClientId) {
                 $query->where('clientid', $selectedClientId);
             })
             ->with(['client.billingDetail', 'invoiceItems'])
@@ -443,8 +490,9 @@ class PaymentsController extends Controller
 
             $taxTotal = (float) $invoice->items->sum(function ($item) {
                 $lineTotal = (float) ($item->line_total ?? 0);
-                $discountedAmount = (float) ($item->discount_amount ?? 0);
-                $taxableAmount = max(0, $discountedAmount > 0 ? $discountedAmount : $lineTotal);
+                $discountPercent = max(0, min(100, (float) ($item->discount_percent ?? 0)));
+                $taxableAmount = max(0, $lineTotal - ($lineTotal * $discountPercent / 100));
+
                 return ceil($taxableAmount * ((float) ($item->tax_rate ?? 0) / 100));
             });
 
@@ -504,6 +552,9 @@ class PaymentsController extends Controller
     public function paymentsCreate(): View
     {
         $selectedClientId = request('c', request('clientid'));
+        if ($selectedClientId === 'all') {
+            $selectedClientId = null;
+        }
         $selectedInvoiceId = request('i');
 
         if ($selectedInvoiceId && !$selectedClientId) {
@@ -519,7 +570,6 @@ class PaymentsController extends Controller
             'clients' => Client::query()->where('accountid', $this->resolveAccountId())->regular()->get(),
             'invoices' => Invoice::query()->where('accountid', $this->resolveAccountId())->with(['client', 'invoiceItems'])
                 ->where('status', '!=', 'cancelled')
-                ->where('payment_status', '!=', 'paid')
                 ->get(),
             'selectedClientId' => $selectedClientId,
             'selectedInvoiceIds' => $selectedInvoiceId ? [$selectedInvoiceId] : [],
@@ -530,6 +580,7 @@ class PaymentsController extends Controller
     public function paymentsStore(Request $request)
     {
         $validated = $request->validate([
+            'payment_flow' => 'nullable|in:standard,tds',
             'clientid' => 'required|exists:clients,clientid',
             'invoice_ids' => 'nullable|array',
             'invoice_ids.*' => 'string|exists:invoices,invoiceid',
@@ -537,13 +588,20 @@ class PaymentsController extends Controller
             'invoice_received_amounts.*' => 'numeric|min:0',
             'invoice_tds_amounts' => 'nullable|array',
             'invoice_tds_amounts.*' => 'numeric|min:0',
-            'received_amount' => 'required|numeric|min:0.01',
+            'received_amount' => 'required|numeric|min:0',
             'tds_amount' => 'nullable|numeric|min:0',
             'payment_date' => 'required|date',
             'mode' => 'required|in:Bank Transfer,Online,Cash',
             'reference_number' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:2000',
         ]);
+        $paymentFlow = (string) ($validated['payment_flow'] ?? 'standard');
+        if ($paymentFlow === 'standard' && (float) $validated['received_amount'] <= 0) {
+            return redirect()->back()->withInput()->withErrors(['received_amount' => 'Amount must be greater than zero for standard payment.']);
+        }
+        if ($paymentFlow === 'tds' && (float) ($validated['tds_amount'] ?? 0) <= 0) {
+            return redirect()->back()->withInput()->withErrors(['tds_amount' => 'TDS amount must be greater than zero for TDS payment.']);
+        }
 
         $invoiceIds = $this->requestInvoiceIds($request);
         $customReceived = $request->input('invoice_received_amounts', []);
@@ -575,7 +633,15 @@ class PaymentsController extends Controller
                 $rowAllocation = $rowReceived + $rowTds;
 
                 $previousAllocations = (float) $invoice->amount_paid;
-                $availableLimit = max(0.0, (float) ($invoice->subtotal - $invoice->discount_total) - $previousAllocations);
+                $grandTotal = (float) ($invoice->grand_total ?? 0);
+                $withoutTaxTotal = (float) ($invoice->subtotal - $invoice->discount_total);
+                $balanceDue = (float) ($invoice->balance_due ?? max(0, $grandTotal - $previousAllocations));
+                $baseDueWithoutTax = $grandTotal > 0
+                    ? max(0.0, ($balanceDue * $withoutTaxTotal) / $grandTotal)
+                    : max(0.0, $balanceDue);
+                $availableLimit = $paymentFlow === 'standard'
+                    ? max(0.0, (float) ($invoice->balance_due ?? 0))
+                    : $baseDueWithoutTax;
 
                 if ($rowAllocation > ($availableLimit + 0.1)) {
                     $invNum = $invoice->ti_number ?: $invoice->pi_number ?: $invoice->invoice_number ?: $invoiceId;
@@ -591,12 +657,22 @@ class PaymentsController extends Controller
             $mainReceived = (float) $validated['received_amount'];
             $mainTds = (float) ($validated['tds_amount'] ?? 0);
 
-            if (abs($sumReceived - $mainReceived) > 0.1) {
+            if ($paymentFlow === 'standard' && ($sumReceived - $mainReceived) > 0.1) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['received_amount' => 'The sum of allocated invoice received amounts must not exceed the main received amount.']);
+            }
+            if ($paymentFlow !== 'standard' && abs($sumReceived - $mainReceived) > 0.1) {
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['received_amount' => 'The sum of allocated invoice received amounts must equal the main received amount.']);
             }
-            if (abs($sumTds - $mainTds) > 0.1) {
+            if ($paymentFlow === 'standard' && $sumTds > 0.1) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['tds_amount' => 'Standard payment does not allow invoice-level TDS allocation.']);
+            }
+            if ($paymentFlow !== 'standard' && abs($sumTds - $mainTds) > 0.1) {
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['tds_amount' => 'The sum of allocated invoice TDS amounts must equal the main TDS amount.']);
@@ -614,8 +690,9 @@ class PaymentsController extends Controller
             'accountid' => $userAccountId,
             'fy_id' => $this->resolveDefaultFyId($userAccountId),
             'clientid' => $validated['clientid'],
-            'received_amount' => (float) $validated['received_amount'],
-            'tds_amount' => (float) ($validated['tds_amount'] ?? 0),
+            'receipt_number' => $this->generatePaymentReceiptNumber($userAccountId),
+            'received_amount' => $paymentFlow === 'standard' ? (float) $validated['received_amount'] : 0.0,
+            'tds_amount' => $paymentFlow === 'standard' ? 0.0 : (float) ($validated['tds_amount'] ?? 0),
             'payment_date' => $validated['payment_date'],
             'mode' => $validated['mode'],
             'reference_number' => $validated['reference_number'] ?? null,
@@ -634,7 +711,7 @@ class PaymentsController extends Controller
             $this->refreshPaymentInvoices($invoiceIds);
         });
 
-        if ($payment) {
+        if ($payment && (float) ($payment->received_amount ?? 0) > 0) {
             $this->dispatchPaymentReceivedCommunications($payment);
         }
 
@@ -701,6 +778,7 @@ class PaymentsController extends Controller
                 ->with('error', 'Cancelled payment cannot be edited.');
         }
         $validated = $request->validate([
+            'payment_flow' => 'nullable|in:standard,tds',
             'clientid' => 'required|exists:clients,clientid',
             'invoice_ids' => 'nullable|array',
             'invoice_ids.*' => 'string|exists:invoices,invoiceid',
@@ -708,13 +786,20 @@ class PaymentsController extends Controller
             'invoice_received_amounts.*' => 'numeric|min:0',
             'invoice_tds_amounts' => 'nullable|array',
             'invoice_tds_amounts.*' => 'numeric|min:0',
-            'received_amount' => 'required|numeric|min:0.01',
+            'received_amount' => 'required|numeric|min:0',
             'tds_amount' => 'nullable|numeric|min:0',
             'payment_date' => 'required|date',
             'mode' => 'required|in:Bank Transfer,Online,Cash',
             'reference_number' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:2000',
         ]);
+        $paymentFlow = (string) ($validated['payment_flow'] ?? 'standard');
+        if ($paymentFlow === 'standard' && (float) $validated['received_amount'] <= 0) {
+            return redirect()->back()->withInput()->withErrors(['received_amount' => 'Amount must be greater than zero for standard payment.']);
+        }
+        if ($paymentFlow === 'tds' && (float) ($validated['tds_amount'] ?? 0) <= 0) {
+            return redirect()->back()->withInput()->withErrors(['tds_amount' => 'TDS amount must be greater than zero for TDS payment.']);
+        }
 
         $invoiceIds = $this->requestInvoiceIds($request);
         $customReceived = $request->input('invoice_received_amounts', []);
@@ -752,7 +837,15 @@ class PaymentsController extends Controller
                 }
 
                 $previousAllocations = (float) $invoice->amount_paid - $storedAllocation;
-                $availableLimit = max(0.0, (float) ($invoice->subtotal - $invoice->discount_total) - $previousAllocations);
+                $grandTotal = (float) ($invoice->grand_total ?? 0);
+                $withoutTaxTotal = (float) ($invoice->subtotal - $invoice->discount_total);
+                $balanceDue = (float) ($invoice->balance_due ?? max(0, $grandTotal - ((float) $invoice->amount_paid)));
+                $baseDueWithoutTax = $grandTotal > 0
+                    ? max(0.0, ($balanceDue * $withoutTaxTotal) / $grandTotal)
+                    : max(0.0, $balanceDue);
+                $availableLimit = $paymentFlow === 'standard'
+                    ? max(0.0, (float) ($invoice->balance_due ?? 0) + $storedAllocation)
+                    : max(0.0, $baseDueWithoutTax + $storedAllocation, $storedAllocation);
 
                 if ($rowAllocation > ($availableLimit + 0.1)) {
                     $invNum = $invoice->ti_number ?: $invoice->pi_number ?: $invoice->invoice_number ?: $invoiceId;
@@ -768,12 +861,22 @@ class PaymentsController extends Controller
             $mainReceived = (float) $validated['received_amount'];
             $mainTds = (float) ($validated['tds_amount'] ?? 0);
 
-            if (abs($sumReceived - $mainReceived) > 0.1) {
+            if ($paymentFlow === 'standard' && ($sumReceived - $mainReceived) > 0.1) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['received_amount' => 'The sum of allocated invoice received amounts must not exceed the main received amount.']);
+            }
+            if ($paymentFlow !== 'standard' && abs($sumReceived - $mainReceived) > 0.1) {
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['received_amount' => 'The sum of allocated invoice received amounts must equal the main received amount.']);
             }
-            if (abs($sumTds - $mainTds) > 0.1) {
+            if ($paymentFlow === 'standard' && $sumTds > 0.1) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['tds_amount' => 'Standard payment does not allow invoice-level TDS allocation.']);
+            }
+            if ($paymentFlow !== 'standard' && abs($sumTds - $mainTds) > 0.1) {
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['tds_amount' => 'The sum of allocated invoice TDS amounts must equal the main TDS amount.']);
@@ -787,12 +890,15 @@ class PaymentsController extends Controller
 
         $previousInvoiceIds = $payment->paymentDetails()->pluck('invoiceid')->filter()->values()->all();
 
-        DB::transaction(function () use ($payment, $validated, $request, $invoiceIds, $previousInvoiceIds, $customReceived, $customTds) {
+        DB::transaction(function () use ($payment, $validated, $request, $invoiceIds, $previousInvoiceIds, $customReceived, $customTds, $paymentFlow) {
             $updatePayload = [
                 'fy_id' => $payment->fy_id ?: $this->resolveDefaultFyId($payment->accountid),
                 'clientid' => $validated['clientid'],
-                'received_amount' => (float) $validated['received_amount'],
-                'tds_amount' => (float) ($validated['tds_amount'] ?? 0),
+                'receipt_number' => trim((string) ($payment->receipt_number ?? '')) !== ''
+                    ? (string) $payment->receipt_number
+                    : $this->generatePaymentReceiptNumber($payment->accountid),
+                'received_amount' => $paymentFlow === 'standard' ? (float) $validated['received_amount'] : 0.0,
+                'tds_amount' => $paymentFlow === 'standard' ? 0.0 : (float) ($validated['tds_amount'] ?? 0),
                 'payment_date' => $validated['payment_date'],
                 'mode' => $validated['mode'],
                 'reference_number' => $validated['reference_number'] ?? null,
@@ -895,7 +1001,9 @@ class PaymentsController extends Controller
         $ledgerEntry->accountid = $payment->accountid;
         $ledgerEntry->clientid = $payment->clientid;
         $ledgerEntry->date = $payment->payment_date;
-        $ledgerEntry->amount = (float) ($payment->received_amount ?? 0);
+        $receivedAmount = (float) ($payment->received_amount ?? 0);
+        $tdsAmount = (float) ($payment->tds_amount ?? 0);
+        $ledgerEntry->amount = $receivedAmount > 0 ? $receivedAmount : $tdsAmount;
         $ledgerEntry->type = 'cr';
         $ledgerEntry->mode = $payment->mode;
         $ledgerEntry->reference_number = $payment->reference_number;
@@ -942,7 +1050,7 @@ class PaymentsController extends Controller
 
     private function dispatchPaymentReceivedCommunications(Payment $payment): void
     {
-        $payment->loadMissing(['client.billingDetail', 'invoices']);
+        $payment->loadMissing(['client.billingDetail', 'invoices', 'paymentDetails']);
         $accountId = (string) $payment->accountid;
 
         $templates = MessageTemplate::query()
