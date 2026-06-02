@@ -11,7 +11,8 @@
 
 @section('content')
     @php
-        $paymentsTotalAmount = collect($payments ?? [])->sum(function ($paymentRow) {
+        $paymentsCount = collect($payments ?? [])->count();
+        $paymentsTotalReceived = collect($payments ?? [])->sum(function ($paymentRow) {
             return (float) ($paymentRow['amount'] ?? 0);
         });
         $paymentsTotalTds = collect($payments ?? [])->sum(function ($paymentRow) {
@@ -88,15 +89,9 @@
                 <thead>
                     <tr>
                         <th>Payment</th>
-                        <th>Client</th>
-                        <th>Invoices</th>
-                        <th>Reference</th>
-                        <th>Date</th>
-                        <th>Method</th>
-                        <th class="text-end">TDS</th>
-                        <th class="text-center">Status</th>
-                        <th class="text-end">Amount{{ !empty($selectedCurrency) ? ' (' . $selectedCurrency . ')' : '' }}
-                        </th>
+                        <th>Client / Invoice</th>
+                        <th class="text-end">Settlement</th>
+                        <th class="text-end">Status</th>
                         <th class="text-center">Actions</th>
                     </tr>
                 </thead>
@@ -104,38 +99,52 @@
                     @forelse ($payments as $payment)
                         <tr>
                             <td>
-                                <strong class="payment-row-title">{!! isset($searchTerm) && $searchTerm
-                                    ? str_ireplace($searchTerm, '<mark>' . $searchTerm . '</mark>', $payment['number'])
-                                    : $payment['number'] !!}</strong>
+                                <strong class="payment-row-title">{{ $payment['number'] }}</strong>
+                                <div class="payment-row-note">
+                                    {{ $payment['date'] ?: 'Date not set' }}
+                                </div>
+                                <div class="payment-row-note">
+                                    {{ $payment['method'] }}
+                                    @if (!empty($payment['receipt_number']))
+                                        <span class="mx-1">|</span>{{ $payment['receipt_number'] }}
+                                    @endif
+                                </div>
+                                @if (!empty($payment['reference_number']))
+                                    <div class="payment-row-note">Ref: {{ $payment['reference_number'] }}</div>
+                                @endif
+                            </td>
+                            <td class="payment-cell-text">
+                                <div class="fw-semibold text-dark">{{ $payment['client'] }}</div>
+                                <div class="payment-row-note">
+                                    {{ $payment['invoice'] ?: 'No linked invoice' }}
+                                </div>
                                 @if (!empty($payment['description']) && trim((string) $payment['description']) !== trim((string) $payment['number']))
                                     <div class="payment-row-note">{{ $payment['description'] }}</div>
                                 @endif
                             </td>
-                            <td class="payment-cell-text">{!! isset($searchTerm) && $searchTerm
-                                ? str_ireplace($searchTerm, '<mark>' . $searchTerm . '</mark>', $payment['client'])
-                                : $payment['client'] !!}</td>
-                            <td class="payment-cell-text">{{ $payment['invoice'] ?: '-' }}</td>
-                            <td class="payment-cell-text">
-                                {{ $payment['receipt_number'] ?: '-' }}
-                                @if(!empty($payment['reference_number']))
-                                    <div class="payment-row-note">Ref: {{ $payment['reference_number'] }}</div>
-                                @endif
+                            <td>
+                                <div class="payment-settlement-block">
+                                    <strong class="payment-row-amount">
+                                        {{ number_format((float) ($payment['amount'] ?? 0) + (float) ($payment['tds_amount'] ?? 0), 0) }}
+                                    </strong>
+                                    @if ((float) ($payment['amount'] ?? 0) > 0)
+                                        <div class="payment-row-note payment-row-note--right">
+                                            Received {{ number_format((float) ($payment['amount'] ?? 0), 0) }}
+                                        </div>
+                                    @endif
+                                    @if ((float) ($payment['tds_amount'] ?? 0) > 0)
+                                        <div class="payment-row-note payment-row-note--right payment-row-note--tds">
+                                            TDS {{ number_format((float) ($payment['tds_amount'] ?? 0), 0) }}
+                                        </div>
+                                    @endif
+                                </div>
                             </td>
-                            <td class="payment-cell-text">{{ $payment['date'] ?: '-' }}</td>
-                            <td class="payment-cell-text">{{ $payment['method'] }}</td>
                             <td class="text-end">
-                                <strong
-                                    class="payment-row-amount">{{ number_format((float) ($payment['tds_amount'] ?? 0), 0) }}</strong>
-                            </td>
-                            <td class="text-center">
                                 @if (($payment['status'] ?? 'active') === 'cancelled')
                                     <span class="status-pill status-pill-cancelled">Cancelled</span>
                                 @else
                                     <span class="status-pill status-pill-running">Active</span>
                                 @endif
-                            </td>
-                            <td class="text-end">
-                                <strong class="payment-row-amount">{{ number_format($payment['amount'], 0) }}</strong>
                             </td>
                             <td class="text-center">
                                 <div class="table-actions payment-table-actions">
@@ -169,7 +178,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="no-records-cell">
+                            <td colspan="5" class="no-records-cell">
                                 <i class="fas fa-money-bill-wave empty-state-icon"></i>
                                 <p class="no-empty-state-text">No payments recorded</p>
                                 <p class="small-text">Record your first payment to track your collections.</p>
@@ -180,14 +189,14 @@
                 @if (collect($payments)->isNotEmpty() && !empty($clientId) && $clientId !== 'all')
                     <tfoot>
                         <tr>
-                            <th colspan="8" class="text-end">Total TDS</th>
+                            <th colspan="2" class="text-end">Total TDS</th>
                             <th class="text-end">{{ number_format($paymentsTotalTds, 0) }}</th>
-                            <th></th>
+                            <th colspan="2"></th>
                         </tr>
                         <tr>
-                            <th colspan="8" class="text-end">Total Amount</th>
-                            <th class="text-end">{{ number_format($paymentsTotalAmount, 0) }}</th>
-                            <th></th>
+                            <th colspan="2" class="text-end">Total Received</th>
+                            <th class="text-end">{{ number_format($paymentsTotalReceived, 0) }}</th>
+                            <th colspan="2"></th>
                         </tr>
                     </tfoot>
                 @endif

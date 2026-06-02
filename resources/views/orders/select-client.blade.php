@@ -19,8 +19,8 @@
             <a href="{{ route('orders.index', ['c' => 'all']) }}" 
                class="client-card"
                data-client-name="all clients view all">
-                <div class="client-card__avatar" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-users" style="font-size: 1.1rem;"></i>
+                <div class="client-card__avatar client-card__avatar--all">
+                    <i class="fas fa-users"></i>
                 </div>
                 <div class="client-card__body">
                     <strong class="client-card__title">
@@ -34,45 +34,33 @@
                     <i class="fas fa-chevron-right"></i>
                 </div>
             </a>
-            @php
-                $clientsByType = collect($clients ?? [])->groupBy(function ($client) {
-                    return strtolower((string) ($client->type ?? 'regular')) === 'trial' ? 'trial' : 'regular';
-                });
-            @endphp
             @if(collect($clients ?? [])->isNotEmpty())
-                @foreach(['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
-                    @if(($clientsByType[$typeKey] ?? collect())->isNotEmpty())
-                        <div class="clients-group-title" style="grid-column: 1 / -1; font-weight: 600; color: #475467; margin: 0.25rem 0;">
-                            {{ $typeLabel }}
+                @foreach($clients as $client)
+                    <a href="{{ route('orders.index', ['c' => $client->clientid]) }}" 
+                       class="client-card"
+                       data-client-name="{{ strtolower($client->business_name ?? $client->contact_name) }}">
+                        <div class="client-card__avatar">
+                            {{ strtoupper(substr($client->business_name ?? $client->contact_name, 0, 2)) }}
                         </div>
-                        @foreach($clientsByType[$typeKey] as $client)
-                            <a href="{{ route('orders.index', ['c' => $client->clientid]) }}" 
-                               class="client-card"
-                               data-client-name="{{ strtolower($client->business_name ?? $client->contact_name) }}">
-                                <div class="client-card__avatar">
-                                    {{ strtoupper(substr($client->business_name ?? $client->contact_name, 0, 2)) }}
-                                </div>
-                                <div class="client-card__body">
-                                    <strong class="client-card__title">
-                                        {{ $client->business_name ?? $client->contact_name }}
-                                    </strong>
-                                    @if($client->primary_email ?? $client->email)
-                                        <span class="client-card__meta is-ellipsis">
-                                            {{ $client->primary_email ?? $client->email }}
-                                        </span>
-                                    @endif
-                                    @if($client->phone)
-                                        <span class="client-card__meta">
-                                            {{ $client->phone }}
-                                        </span>
-                                    @endif
-                                </div>
-                                <div class="client-card__chevron">
-                                    <i class="fas fa-chevron-right"></i>
-                                </div>
-                            </a>
-                        @endforeach
-                    @endif
+                        <div class="client-card__body">
+                            <strong class="client-card__title">
+                                {{ $client->business_name ?? $client->contact_name }}
+                            </strong>
+                            @if($client->primary_email ?? $client->email)
+                                <span class="client-card__meta is-ellipsis">
+                                    {{ $client->primary_email ?? $client->email }}
+                                </span>
+                            @endif
+                            @if($client->phone)
+                                <span class="client-card__meta">
+                                    {{ $client->phone }}
+                                </span>
+                            @endif
+                        </div>
+                        <div class="client-card__chevron">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </a>
                 @endforeach
             @else
                 <div class="clients-empty">

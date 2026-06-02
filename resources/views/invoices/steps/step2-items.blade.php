@@ -1,4 +1,12 @@
 @php
+    $invoiceDateBounds = $invoiceDateBounds ?? [
+        'min_date' => date('Y-m-d'),
+        'max_date' => date('Y-m-d'),
+        'issue_max_date' => date('Y-m-d'),
+        'due_max_date' => date('Y-m-d'),
+        'default_issue_date' => '',
+        'default_due_date' => '',
+    ];
     $selectedClientCurrency =
         optional($clients->firstWhere('clientid', request('c', request('clientid'))))->currency ?? 'INR';
     $selectedClient = $clients->firstWhere('clientid', request('c', request('clientid')));
@@ -56,12 +64,16 @@
         <div>
             <label for="issue_date" class="field-label">Issue Date</label>
             <input type="date" id="issue_date" name="issue_date" class="form-input" required
-                value="{{ old('issue_date', request('d') && $invoice ? $invoice->issue_date?->format('Y-m-d') : date('Y-m-d')) }}">
+                min="{{ $invoiceDateBounds['min_date'] }}"
+                max="{{ $invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date'] }}"
+                value="{{ old('issue_date', request('d') && $invoice ? $invoice->issue_date?->format('Y-m-d') : ($invoiceDateBounds['default_issue_date'] ?? date('Y-m-d'))) }}">
         </div>
         <div>
             <label for="due_date" class="field-label">Due Date</label>
             <input type="date" id="due_date" name="due_date" class="form-input" required
-                value="{{ old('due_date', request('d') && $invoice ? $invoice->due_date?->format('Y-m-d') : date('Y-m-d', strtotime('+7 days'))) }}">
+                min="{{ $invoiceDateBounds['min_date'] }}"
+                max="{{ $invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date'] }}"
+                value="{{ old('due_date', request('d') && $invoice ? $invoice->due_date?->format('Y-m-d') : ($invoiceDateBounds['default_due_date'] ?? date('Y-m-d', strtotime('+7 days')))) }}">
         </div>
         <div>
             <label for="notes" class="field-label">Notes</label>
@@ -503,7 +515,7 @@
 
         function setDateInputValue(input, value) {
             if (!input) return;
-            const normalized = value || '';
+            const normalized = String(value || '');
             if (input.value === normalized && input.getAttribute('value') === normalized) return;
             input.value = normalized;
             input.setAttribute('value', normalized);

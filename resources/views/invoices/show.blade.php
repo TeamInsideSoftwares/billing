@@ -22,13 +22,16 @@
             return ceil($taxableAmount * ((float) ($item->tax_rate ?? 0) / 100));
         });
         $invoiceGrandTotal = max(0, $itemsSubtotal - $itemsDiscountTotal + $invoiceTaxTotal);
-        $totalPaidAmount = (float) $invoice->paymentDetails->sum(function ($detail) {
+        $sumPaymentDetailAmount = static function ($detail, string $key): float {
             if (strtolower(trim((string) ($detail->payment?->status ?? 'active'))) === 'cancelled') {
                 return 0;
             }
 
-            return (float) ($detail->received_amount ?? 0) + (float) ($detail->tds_amount ?? 0);
-        });
+            return (float) ($detail->{$key} ?? 0);
+        };
+        $totalReceivedAmount = (float) $invoice->paymentDetails->sum(fn ($detail) => $sumPaymentDetailAmount($detail, 'received_amount'));
+        $totalTdsAmount = (float) $invoice->paymentDetails->sum(fn ($detail) => $sumPaymentDetailAmount($detail, 'tds_amount'));
+        $totalPaidAmount = $totalReceivedAmount + $totalTdsAmount;
         $balanceDueAmount = max(0, $invoiceGrandTotal - $totalPaidAmount);
         $cgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 0) : 0;
         $sgstAmount = $sameStateGst ? round($invoiceTaxTotal / 2, 0) : 0;
@@ -160,7 +163,9 @@
                                                             {{ $item->start_date->format('d M Y') }})</span>
                                                     @endif
                                                     @if ($item->end_date)
-                                                        @php($itemExpired = $item->end_date < now())
+                                                        @php
+                                                            $itemExpired = $item->end_date < now();
+                                                        @endphp
                                                         <span class="ms-2">(End: <span
                                                                 class="invoice-end-date {{ $itemExpired ? 'text-danger fw-bold' : 'text-success fw-bold' }}">{{ $item->end_date->format('d M Y') }}</span>)</span>
                                                         @if ($itemExpired)
@@ -273,8 +278,7 @@
                                             @endif
                                             @if ((float) ($detail->tds_amount ?? 0) > 0)
                                                 <span
-                                                    class="badge bg-warning-subtle text-warning-emphasis ms-1 badge-tds">TDS
-                                                    Deducted</span>
+                                                    class="badge bg-warning-subtle text-warning-emphasis ms-1 badge-tds">TDS</span>
                                             @endif
                                             @if (!empty($payment?->description))
                                                 <div class="text-muted small mt-1 payment-note">
@@ -282,7 +286,14 @@
                                             @endif
                                         </td>
                                         <td class="td-pad py-3 text-end pe-3 fw-bold text-success">
-                                            {{ number_format((float) ($detail->received_amount ?? 0), 0) }}
+                                            @if ((float) ($detail->received_amount ?? 0) > 0)
+                                                <div>{{ number_format((float) ($detail->received_amount ?? 0), 0) }}</div>
+                                            @endif
+                                            @if ((float) ($detail->received_amount ?? 0) <= 0 && (float) ($detail->tds_amount ?? 0) > 0)
+                                                <div class="small text-warning fw-semibold mt-1">
+                                                     {{ number_format((float) ($detail->tds_amount ?? 0), 0) }}
+                                                </div>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach
@@ -291,7 +302,7 @@
                                 <tr>
                                     <td colspan="3"
                                         class="payment-foot-label text-end py-2 text-muted fw-medium border-0">Total
-                                        Paid:</td>
+                                        Settlement:</td>
                                     <td class="payment-foot-label text-end pe-3 py-2 fw-bold text-success border-0">
                                         {{ number_format($totalPaidAmount, 0) }}</td>
                                 </tr>

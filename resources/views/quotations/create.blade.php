@@ -13,6 +13,12 @@
     $clientId = old('clientid', $selectedClientId ?? request('c', ''));
     $selectedClientName = $selectedClient ? ($selectedClient->business_name ?? $selectedClient->contact_name ?? 'Client') : 'No Client Selected';
     $selectedClientEmail = $selectedClient->primary_email ?? $selectedClient->email ?? '';
+    $quotationDateBounds = $quotationDateBounds ?? [
+        'min_date' => date('Y-m-d'),
+        'max_date' => date('Y-m-d'),
+        'default_issue_date' => '',
+        'default_due_date' => '',
+    ];
 @endphp
 
 <section class="panel-card">
@@ -74,24 +80,34 @@
 
     const step = {{ $step }};
     const clientId = @json($clientId);
-    const itemsKey = `quotation_step2_items_${clientId || 'none'}`;
-    const metaKey = `quotation_step2_meta_${clientId || 'none'}`;
-
-    function readItems() { try { return JSON.parse(localStorage.getItem(itemsKey) || '[]'); } catch (_) { return []; } }
-    function writeItems(items) { localStorage.setItem(itemsKey, JSON.stringify(items)); }
-    function readMeta() { try { return JSON.parse(localStorage.getItem(metaKey) || '{}'); } catch (_) { return {}; } }
-    function writeMeta(meta) { localStorage.setItem(metaKey, JSON.stringify(meta)); }
+    const draftIdParam = @json((string) request('d', ''));
 
     if (step === 1) {
         const btn = document.getElementById('toStep2');
         const client = document.getElementById('clientid');
         btn?.addEventListener('click', function () {
             if (!client.value) return alert('Please select a client.');
-            window.location.href = "{{ route('quotations.create') }}?step=2&c=" + encodeURIComponent(client.value);
+            let target = "{{ route('quotations.create') }}?step=2&c=" + encodeURIComponent(client.value);
+            if (draftIdParam) {
+                target += "&d=" + encodeURIComponent(draftIdParam);
+            }
+            window.location.href = target;
         });
     }
 
     if (step === 2) {
+        const draftItems = serverDraft && Array.isArray(serverDraft.items) ? serverDraft.items : [];
+        const draftMeta = serverDraft ? {
+            draft_id: serverDraft.quotationid || '',
+            quo_title: serverDraft.quo_title || '',
+            quo_number: serverDraft.quo_number || '',
+            issue_date: serverDraft.issue_date || '',
+            due_date: serverDraft.due_date || '',
+            notes: serverDraft.notes || '',
+        } : {};
+        let items = draftItems.slice();
+        let meta = { ...draftMeta };
+        let editingItemIndex = null;
         const accountHasUsers = @json((bool) ($account->have_users ?? false));
         const itemSelect = document.getElementById('itemid');
         const qty = document.getElementById('quantity');
@@ -125,37 +141,33 @@
         const notesInput = document.getElementById('notes');
         const quoNumberBadge = document.getElementById('quoNumberBadge');
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
-        let meta = readMeta();
-        const urlDraftId = new URLSearchParams(window.location.search).get('d') || '';
-        const shouldHydrateFromServerDraft = !!(serverDraft && Array.isArray(serverDraft.items) && (
-            // Always trust DB draft on explicit edit flow.
-            urlDraftId !== '' ||
-            // Or when local storage is empty/stale.
-            !meta || Object.keys(meta).length === 0 || readItems().length === 0
-        ));
-
-        if (shouldHydrateFromServerDraft) {
-            writeItems(serverDraft.items);
-            writeMeta({
-                draft_id: serverDraft.quotationid || '',
-                quo_title: serverDraft.quo_title || '',
-                quo_number: serverDraft.quo_number || '',
-                issue_date: serverDraft.issue_date || '',
-                due_date: serverDraft.due_date || '',
-                notes: serverDraft.notes || '',
-            });
-            meta = readMeta();
+        const quotationDateBounds = @json($quotationDateBounds ?? []);
+        const minQuotationDate = String(quotationDateBounds.min_date || '');
+        const issueMaxQuotationDate = String(quotationDateBounds.issue_max_date || quotationDateBounds.max_date || '');
+        const dueMaxQuotationDate = String(quotationDateBounds.due_max_date || quotationDateBounds.max_date || '');
+        if (issueDateInput) {
+            if (minQuotationDate) issueDateInput.min = minQuotationDate;
+            if (issueMaxQuotationDate) issueDateInput.max = issueMaxQuotationDate;
         }
+        if (dueDateInput) {
+            if (minQuotationDate) dueDateInput.min = minQuotationDate;
+            if (dueMaxQuotationDate) dueDateInput.max = dueMaxQuotationDate;
+        }
+
         if (meta.quo_title) quoTitleInput.value = meta.quo_title;
         if (meta.quo_number) quoNumberBadge.textContent = meta.quo_number;
-        if (meta.issue_date) issueDateInput.value = meta.issue_date;
-        if (meta.due_date) dueDateInput.value = meta.due_date;
+        if (issueDateInput && meta.issue_date) issueDateInput.value = meta.issue_date;
+        if (dueDateInput && meta.due_date) dueDateInput.value = meta.due_date;
         if (typeof meta.notes === 'string') notesInput.value = meta.notes;
         const today = new Date().toISOString().slice(0, 10);
         if (!startDate.value) startDate.value = today;
         if (!duration.value) duration.value = '1';
         if (!endDate.value) endDate.value = '';
+
+        function setAddButtonState() {
+            if (!addBtn) return;
+            addBtn.textContent = editingItemIndex === null ? 'Add' : 'Update';
+        }
 
         function formatNumber(value) {
             return Number(value || 0).toLocaleString('en-US');
@@ -195,7 +207,6 @@
         }
 
         function render() {
-            const items = readItems();
             const showUsersColumn = accountHasUsers && items.some(it => Number(it.no_of_users || 0) > 0);
             usersColHeader?.classList.toggle('d-none', !showUsersColumn);
             body.innerHTML = '';
@@ -207,6 +218,9 @@
             }
             items.forEach((it, idx) => {
                 const tr = document.createElement('tr');
+                if (editingItemIndex === idx) {
+                    tr.classList.add('is-active');
+                }
                 const itemDescription = String(it.item_description || '').trim();
                 const itemLabel = itemDescription
                     ? `${it.item_name}<div class="small text-muted">${itemDescription}</div>`
@@ -218,13 +232,11 @@
                 body.appendChild(tr);
             });
             body.querySelectorAll('button[data-i]').forEach(btn => btn.addEventListener('click', function () {
-                const items = readItems();
                 items.splice(Number(this.dataset.i), 1);
-                writeItems(items); render();
+                render();
             }));
             body.querySelectorAll('button[data-edit]').forEach(btn => btn.addEventListener('click', function () {
                 const index = Number(this.dataset.edit);
-                const items = readItems();
                 const item = items[index];
                 if (!item) return;
 
@@ -243,9 +255,8 @@
                     users.value = item.no_of_users || 1;
                 }
                 syncFrequencyFields();
-
-                items.splice(index, 1);
-                writeItems(items);
+                editingItemIndex = index;
+                setAddButtonState();
                 render();
             }));
             recalcSummary(items);
@@ -378,8 +389,7 @@
             const taxable = Math.floor(Math.max(0, sub - dAmt));
             const total = taxable;
 
-            const items = readItems();
-            items.push({
+            const payload = {
                 itemid: itemSelect.value,
                 item_name: opt.dataset.name || opt.text,
                 item_category: opt.dataset.category || '',
@@ -394,8 +404,14 @@
                 no_of_users: u,
                 start_date: startDate.value || null,
                 end_date: endDate.value || null
-            });
-            writeItems(items);
+            };
+
+            if (editingItemIndex !== null) {
+                items.splice(editingItemIndex, 1, payload);
+                editingItemIndex = null;
+            } else {
+                items.push(payload);
+            }
             render();
 
             // Reset form after add
@@ -411,10 +427,10 @@
             users.value = '1';
             itemSelect.dispatchEvent(new Event('change'));
             syncFrequencyFields();
+            setAddButtonState();
         });
 
         toStep3?.addEventListener('click', function () {
-            const items = readItems();
             if (!items.length) return alert('Add at least one item.');
             if (!quoTitleInput.value.trim()) return alert('Please enter quotation title.');
             if (!issueDateInput.value) return alert('Please enter issue date.');
@@ -444,14 +460,6 @@
                 if (!ok || !data.ok) {
                     throw new Error(data.message || 'Unable to save draft.');
                 }
-                writeMeta({
-                    draft_id: data.quotationid,
-                    quo_number: data.quo_number || payload.quo_number,
-                    quo_title: payload.quo_title,
-                    issue_date: payload.issue_date,
-                    due_date: payload.due_date,
-                    notes: payload.notes,
-                });
                 window.location.href = data.redirect_url;
             })
             .catch((err) => {
@@ -460,18 +468,27 @@
         });
 
         render();
+        setAddButtonState();
     }
 
     if (step === 3) {
         const form = document.getElementById('quotationForm');
-        let meta = readMeta();
+        const meta = serverDraft ? {
+            draft_id: serverDraft.quotationid || '',
+            quo_title: serverDraft.quo_title || '',
+            quo_number: serverDraft.quo_number || '',
+            issue_date: serverDraft.issue_date || '',
+            due_date: serverDraft.due_date || '',
+            notes: serverDraft.notes || '',
+        } : {};
+        const items = serverDraft && Array.isArray(serverDraft.items) ? serverDraft.items : [];
         const titleHidden = document.getElementById('quo_title_hidden');
         const numberHidden = document.getElementById('quo_number_hidden');
         const issueDateHidden = document.getElementById('issue_date_hidden');
         const dueDateHidden = document.getElementById('due_date_hidden');
         const notesHidden = document.getElementById('notes_hidden');
         const quotationIdHidden = document.getElementById('quotationid_hidden');
-        const reviewTitle = document.getElementById('reviewQuoTitle');
+        const reviewClientName = document.getElementById('reviewClientName');
         const reviewNumber = document.getElementById('reviewQuoNumber');
         const termsInput = document.getElementById('termsInput');
         const termsList = document.getElementById('termsList');
@@ -487,29 +504,12 @@
         const previewFrame = document.getElementById('quotationPdfPreviewFrame');
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-        // Browser back can reopen Step 3 after localStorage was cleared on submit.
-        // Rehydrate from server draft payload whenever available.
-        const step3Items = readItems();
-        if ((!step3Items || step3Items.length === 0) && serverDraft && Array.isArray(serverDraft.items) && serverDraft.items.length > 0) {
-            writeItems(serverDraft.items);
-            writeMeta({
-                draft_id: serverDraft.quotationid || '',
-                quo_title: serverDraft.quo_title || '',
-                quo_number: serverDraft.quo_number || '',
-                issue_date: serverDraft.issue_date || '',
-                due_date: serverDraft.due_date || '',
-                notes: serverDraft.notes || '',
-            });
-            meta = readMeta();
-        }
-
         if (meta.draft_id && quotationIdHidden && !quotationIdHidden.value) {
             quotationIdHidden.value = meta.draft_id;
         }
 
         if (meta.quo_title) {
             titleHidden.value = meta.quo_title;
-            reviewTitle.textContent = meta.quo_title;
         }
         if (meta.quo_number) {
             numberHidden.value = meta.quo_number;
@@ -549,7 +549,6 @@
                 previewFrame.src = `{{ url('quotations') }}/${encodeURIComponent(draftId)}/pdf?preview=1&_t=${Date.now()}`;
                 return;
             }
-            const items = readItems();
             if (!items.length) {
                 previewFrame.srcdoc = `<div class="q-prev-empty">No items available for preview.</div>`;
                 return;
@@ -750,11 +749,6 @@
         renderStep3Preview();
 
         form?.addEventListener('submit', function (e) {
-            let items = readItems();
-            if ((!items || items.length === 0) && serverDraft && Array.isArray(serverDraft.items) && serverDraft.items.length > 0) {
-                items = serverDraft.items;
-                writeItems(items);
-            }
             if (!items.length) {
                 e.preventDefault();
                 alert('No items found. Go back and add items.');
@@ -772,9 +766,6 @@
             }
             document.getElementById('items_data').value = JSON.stringify(items);
             syncTermsInput();
-            // Clear step cache only after final submit action starts.
-            localStorage.removeItem(itemsKey);
-            localStorage.removeItem(metaKey);
         });
     }
 })();

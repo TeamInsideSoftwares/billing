@@ -1,4 +1,12 @@
 @php
+    $quotationDateBounds = $quotationDateBounds ?? [
+        'min_date' => date('Y-m-d'),
+        'max_date' => date('Y-m-d'),
+        'issue_max_date' => date('Y-m-d'),
+        'due_max_date' => date('Y-m-d'),
+        'default_issue_date' => '',
+        'default_due_date' => '',
+    ];
     $accountHasUsers = (bool) ($account->have_users ?? false);
 @endphp
 <div id="step2" class="invoice-step">
@@ -36,11 +44,17 @@
         </div>
         <div>
             <label class="field-label">Issue Date</label>
-            <input type="date" id="issue_date" class="form-input" value="{{ old('issue_date', date('Y-m-d')) }}" required>
+            <input type="date" id="issue_date" class="form-input"
+                min="{{ $quotationDateBounds['min_date'] }}"
+                max="{{ $quotationDateBounds['issue_max_date'] ?? $quotationDateBounds['max_date'] }}"
+                value="{{ old('issue_date', $quotationDateBounds['default_issue_date'] ?? date('Y-m-d')) }}" required>
         </div>
         <div>
             <label class="field-label">Due Date</label>
-            <input type="date" id="due_date" class="form-input" value="{{ old('due_date', date('Y-m-d', strtotime('+7 days'))) }}">
+            <input type="date" id="due_date" class="form-input"
+                min="{{ $quotationDateBounds['min_date'] }}"
+                max="{{ $quotationDateBounds['due_max_date'] ?? $quotationDateBounds['max_date'] }}"
+                value="{{ old('due_date', $quotationDateBounds['default_due_date'] ?? date('Y-m-d', strtotime('+7 days'))) }}">
         </div>
         <div>
             <label class="field-label">Notes</label>

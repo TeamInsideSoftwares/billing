@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\FinancialYear;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
@@ -34,22 +35,49 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            // If controller already provided an 'account' key, don't override it.
-            if (array_key_exists('account', $view->getData())) {
-                return;
-            }
+            $viewData = $view->getData();
+            $account = $viewData['account'] ?? null;
 
-            $user = Auth::user();
-            $account = null;
+            if (!$account) {
+                $user = Auth::user();
 
-            if ($user instanceof \App\Models\Account) {
-                $account = $user;
-            } elseif (method_exists($user, 'account')) {
-                $account = $user->account;
+                if ($user instanceof \App\Models\Account) {
+                    $account = $user;
+                } elseif (method_exists($user, 'account')) {
+                    $account = $user->account;
+                }
             }
 
             if ($account) {
-                $view->with('account', $account);
+                if (!array_key_exists('account', $viewData)) {
+                    $view->with('account', $account);
+                }
+
+                if (!array_key_exists('sharedFinancialYears', $view->getData())) {
+                    $sharedFinancialYears = FinancialYear::query()
+                        ->where('accountid', $account->accountid)
+                        ->orderByDesc('default')
+                        ->orderByDesc('financial_year')
+                        ->get(['fy_id', 'financial_year', 'default']);
+
+                    $selectedFinancialYearId = trim((string) session('selected_financial_year_id', ''));
+                    if ($selectedFinancialYearId === '' || !$sharedFinancialYears->contains('fy_id', $selectedFinancialYearId)) {
+                        $selectedFinancialYearId = (string) (
+                            $sharedFinancialYears->firstWhere('default', true)?->fy_id
+                            ?? $sharedFinancialYears->first()?->fy_id
+                            ?? ''
+                        );
+                        if ($selectedFinancialYearId !== '') {
+                            session(['selected_financial_year_id' => $selectedFinancialYearId]);
+                        }
+                    }
+
+                    $view->with([
+                        'sharedFinancialYears' => $sharedFinancialYears,
+                        'sharedSelectedFinancialYearId' => $selectedFinancialYearId,
+                        'sharedSelectedFinancialYear' => $sharedFinancialYears->firstWhere('fy_id', $selectedFinancialYearId),
+                    ]);
+                }
             }
         });
 

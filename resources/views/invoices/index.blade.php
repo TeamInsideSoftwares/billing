@@ -159,7 +159,7 @@
                                                     @if ($documentNumber)
                                                         <div class="invoice-number-line">
                                                             {{ $documentNumber }}
-                                                            <span class="invoice-type-badge {{ !empty($invoice->ti_number) ? 'tax' : 'invoice' }}">
+                                                            <span class="app-badge app-badge--xs {{ !empty($invoice->ti_number) ? 'app-badge--gray' : 'app-badge--violet' }}">
                                                                 {{ !empty($invoice->ti_number) ? 'TI' : 'PI' }}
                                                             </span>
                                                         </div>
@@ -178,15 +178,15 @@
                                         </td>
                                         <td>
                                             @if ($paymentStatus === 'paid')
-                                                <span class="status-pill status-pill-running">Paid</span>
+                                                <span class="status-pill is-paid">Paid</span>
                                             @elseif($paymentStatus === 'partly_paid')
-                                                <span class="status-pill" style="background: rgba(245, 158, 11, 0.16); color: #b45309;">Partly Paid</span>
+                                                <span class="status-pill is-pending">Partly Paid</span>
                                             @else
-                                                <span class="status-pill status-pill-cancelled">Unpaid</span>
+                                                <span class="status-pill is-cancelled">Unpaid</span>
                                             @endif
                                         </td>
                                         <td class="text-center">
-                                            <div class="">
+                                            <div class="table-actions justify-content-center">
                                                 <a href="{{ route('invoices.show', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}" class="text-action-btn view">View</a>
 
                                                 @if (($invoice->status ?? '') === 'cancelled')
@@ -207,8 +207,7 @@
                                             </div>
                                         </td>
                                     </tr>
-                                    <tr class="order-items-row" id="invoice-items-{{ $documentId }}"
-                                        style="display: none;">
+                                    <tr class="order-items-row is-hidden" id="invoice-items-{{ $documentId }}">
                                         <td colspan="8" class="order-items-cell">
                                             <div class="order-items-inner">
                                                 <div class="order-items-head">
@@ -273,11 +272,11 @@
             const icon = document.getElementById('invoice-icon-' + invoiceId);
             if (!itemsRow || !icon) return;
 
-            if (itemsRow.style.display === 'none') {
-                itemsRow.style.display = 'table-row';
+            if (itemsRow.classList.contains('is-hidden')) {
+                itemsRow.classList.remove('is-hidden');
                 icon.style.transform = 'rotate(90deg)';
             } else {
-                itemsRow.style.display = 'none';
+                itemsRow.classList.add('is-hidden');
                 icon.style.transform = 'rotate(0deg)';
             }
         }

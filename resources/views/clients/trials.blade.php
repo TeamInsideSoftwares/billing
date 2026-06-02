@@ -27,8 +27,6 @@
                 <tr>
                     <th>Client</th>
                     <th>Contact</th>
-                    <th>Outstanding</th>
-                    <th>Invoices</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -56,26 +54,23 @@
                         @endif
                     </td>
                     <td>
-                        <strong class="balance-text">{{ $client['balance'] }}</strong>
-                    </td>
-                    <td>
-                        <span class="highlight-text-color">{{ $client['invoice_count'] }}</span>
-                    </td>
-                    <td>
                         <span class="status-pill {{ strtolower($client['status']) }}">{{ ucfirst(strtolower($client['status'])) }}</span>
                     </td>
                     <td>
-                        <form method="POST" action="{{ route('clients.convert-to-regular', $client['record_id']) }}" class="inline-delete" onsubmit="return confirm('Convert {{ $client['name'] }} to regular client?')">
-                            @csrf
-                            @method('PATCH')
-                            <button type="submit" class="text-action-btn edit">Convert to Regular</button>
-                        </form>
-                        <a href="{{ route('clients.show', $client['record_id']) }}" class="text-action-btn view">View</a>
+                        <div class="d-flex flex-wrap gap-1">
+                            <a href="{{ route('clients.dashboard', $client['record_id']) }}" class="text-action-btn view">View Orders</a>
+                            <a href="{{ route('quotations.create', ['c' => $client['record_id']]) }}" class="text-action-btn edit">Create Quotation</a>
+                            <form method="POST" action="{{ route('clients.convert-to-regular', $client['record_id']) }}" class="inline-delete" onsubmit="return confirm('Convert {{ $client['name'] }} to regular client?')">
+                                @csrf
+                                @method('PATCH')
+                                <button type="submit" class="text-action-btn secondary">Convert to Regular</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="no-records-cell">
+                    <td colspan="4" class="no-records-cell">
                         <i class="fas fa-user-clock empty-state-icon"></i>
                         <p class="no-empty-state-text">No trial clients found</p>
                     </td>

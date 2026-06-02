@@ -1,4 +1,8 @@
 @php
+    $invoiceDateBounds = $invoiceDateBounds ?? [
+        'default_issue_date' => '',
+        'default_due_date' => '',
+    ];
     $selectedInvoiceClient = $clients->firstWhere('clientid', request('c', request('clientid')));
     $selectedClientCurrency = optional($selectedInvoiceClient)->currency ?? 'INR';
     $selectedClientName = $selectedInvoiceClient ? ($selectedInvoiceClient->business_name ?? $selectedInvoiceClient->contact_name ?? 'Unknown Client') : 'No Client Selected';
@@ -11,23 +15,23 @@
 <!-- Step 3: Preview & Terms (For Orders & Renewal, and Without Orders Step 3) -->
 <div id="step3" class="invoice-step">
     {{-- Client Info Header with Back Button --}}
-    <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <button type="button" id="btnBackToPrev" class="secondary-button" style="padding: 0.4rem 0.65rem; flex-shrink: 0; font-size: 0.85rem;">
-                <i class="fas fa-arrow-left" class="text-sm"></i>
+    <div class="quotation-step3-header">
+        <div class="quotation-step3-header-row">
+            <button type="button" id="btnBackToPrev" class="secondary-button quotation-step3-back-btn">
+                <i class="fas fa-arrow-left text-sm"></i>
             </button>
-            <div style="width: 1px; height: 32px; background: #d1d5db; flex-shrink: 0;"></div>
-            <div style="width: 36px; height: 36px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <div class="quotation-step3-divider"></div>
+            <div class="quotation-step3-avatar">
                 <i class="fas fa-user"></i>
             </div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="font-size: 0.9rem; font-weight: 600; color: #111827; margin-top: 0.1rem;">{{ $selectedClientName }}</div>
+            <div class="quotation-step3-client min-w-0">
+                <div class="quotation-step3-client-name">{{ $selectedClientName }}</div>
                 @if($selectedClientEmail)
-                <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.05rem;">{{ $selectedClientEmail }}</div>
+                <div class="quotation-step3-client-email">{{ $selectedClientEmail }}</div>
                 @endif
             </div>
-            <div style="text-align: right; flex-shrink: 0;">
-                <div id="piNumberBadge" style="display: inline-block; padding: 0.35rem 0.75rem; background: #eef2ff; color: #4f46e5; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #c7d2fe;">
+            <div class="quotation-step3-tools">
+                <div id="piNumberBadge" class="invoice-number-badge">
                     {{ $initialHeaderNumber }}
                 </div>
                 <div class="invoice-compact-steps invoice-compact-steps--right" aria-label="Step progress">
@@ -45,41 +49,41 @@
     <input type="hidden" name="invoiceid" id="step3_invoiceid" value="{{ request('d', '') }}">
     <input type="hidden" name="renewed_item_ids" id="step3_renewed_item_ids" value="">
     <input type="hidden" name="invoice_number" id="step3_invoice_number" value="{{ $isTaxInvoiceStep3 ? ($invoice?->ti_number ?: ($nextTaxInvoiceNumber ?? $nextInvoiceNumber)) : ($invoice?->pi_number ?? $nextInvoiceNumber) }}">
-    <input type="hidden" name="issue_date" id="step3_issue_date" value="{{ date('Y-m-d') }}">
-    <input type="hidden" name="due_date" id="step3_due_date" value="{{ date('Y-m-d', strtotime('+7 days')) }}">
+    <input type="hidden" name="issue_date" id="step3_issue_date" value="{{ $invoiceDateBounds['default_issue_date'] ?? '' }}">
+    <input type="hidden" name="due_date" id="step3_due_date" value="{{ $invoiceDateBounds['default_due_date'] ?? '' }}">
     <input type="hidden" name="items_data" id="step3_items_data" value="">
     <input type="hidden" name="currency_code" id="step3_currency_code" value="{{ $selectedClientCurrency }}">
     <input type="hidden" name="notes" id="step3_notes" value="">
 
     <div class="row g-3 align-items-start">
-        <div class="col-12 col-md-3" style="min-width: 0;">
-            <div class="panel-card" style="padding: 0.85rem; border: 1px solid #e5e7eb; background: #fff; position: relative; height: 100%; overflow: hidden;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e5e7eb;">
-                    <div style="display: flex; align-items: center; gap: 0.45rem;">
-                        <h5 style="margin: 0; font-size: 0.9rem; color: #111827;">{{ $isTaxInvoiceStep3 ? 'Tax T&C' : 'Proforma T&C' }}</h5>
+        <div class="col-12 col-md-3 min-w-0">
+            <div class="soft-panel soft-panel--compact quotation-step3-side-panel">
+                <div class="soft-panel__header">
+                    <div class="d-flex align-items-center gap-2">
+                        <h5 class="soft-panel__title">{{ $isTaxInvoiceStep3 ? 'Tax T&C' : 'Proforma T&C' }}</h5>
                     </div>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <button type="button" id="btnApplyTC" class="primary-button" style="padding: 0.28rem 0.65rem; font-size: 0.72rem; display: none;">Apply</button>
-                        <button type="button" id="btnAddTC" class="text-link" style="font-size: 0.75rem; font-weight: 600;">+ Add</button>
+                    <div class="d-flex gap-2 align-items-center">
+                        <button type="button" id="btnApplyTC" class="primary-button quotation-step3-small-btn is-hidden">Apply</button>
+                        <button type="button" id="btnAddTC" class="text-link quotation-step3-add-btn">+ Add</button>
                     </div>
                 </div>
                 <div class="modal fade" id="addTermModal" tabindex="-1">
-                    <div class="modal-dialog modal-dialog-centered" style="max-width: 600px;">
-                        <div class="modal-content" class="rounded-panel">
-                            <div class="modal-header" class="modal-header-custom">
-                                <h5 class="modal-title" style="font-size: 1rem; font-weight: 600;">
-                                    <i class="fas fa-file-signature" style="margin-right: 0.5rem; color: #64748b;"></i>Add Terms & Conditions
+                    <div class="modal-dialog modal-dialog-centered modal-600">
+                        <div class="modal-content rounded-panel">
+                            <div class="modal-header modal-header-custom">
+                                <h5 class="modal-title quotation-step3-modal-title">
+                                    <i class="fas fa-file-signature quotation-step3-modal-icon"></i>Add Terms & Conditions
                                 </h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
-                            <div class="modal-body" style="padding: 1.25rem;">
+                            <div class="modal-body quotation-step3-modal-body">
                                 @csrf
-                                <div style="margin-bottom: 0.85rem;">
-                                    <label style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 0.25rem; color: #374151;">Terms & Conditions</label>
-                                    <textarea id="newTermContent" name="content" rows="5" placeholder="Enter the term text" required style="width: 100%; padding: 0.85rem 0.95rem; border: 1px solid #d1d5db; border-radius: 10px; font-size: 0.9rem; outline: none; resize: vertical; min-height: 140px;"></textarea>
+                                <div class="soft-panel__section">
+                                    <label class="quotation-step3-modal-label">Terms & Conditions</label>
+                                    <textarea id="newTermContent" name="content" rows="5" placeholder="Enter the term text" required class="soft-panel__textarea"></textarea>
                                 </div>
-                                <div id="addTermError" style="display: none; margin-bottom: 0.85rem; padding: 0.65rem 0.8rem; border-radius: 10px; background: #fef2f2; color: #b91c1c; font-size: 0.85rem;"></div>
-                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <div id="addTermError" class="quotation-step3-modal-error is-hidden"></div>
+                                <div class="soft-panel__footer">
                                     <button type="button" id="saveTermBtn" class="primary-button small">Save Term</button>
                                     <button type="button" class="text-link small" id="btnCancelTermModal" data-bs-dismiss="modal">Cancel</button>
                                 </div>
@@ -87,16 +91,16 @@
                         </div>
                     </div>
                 </div>
-                <div id="termsList" style="padding-right: 0.2rem;">
+                <div id="termsList" class="quotation-step3-terms-list">
                     @php
                         $initialTermsForStep3 = $isTaxInvoiceStep3 ? ($billingTerms ?? collect()) : ($proformaTerms ?? collect());
                     @endphp
                     @foreach($initialTermsForStep3 as $term)
-                    <div style="margin-bottom: 0.55rem; padding: 0; width: 100%; max-width: 100%; box-sizing: border-box;" class="term-item-row">
-                        <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.45rem; cursor: pointer; margin-bottom: 0.2rem; width: 100%; max-width: 100%; box-sizing: border-box;">
-                            <input type="checkbox" class="term-checkbox" data-tc-id="{{ $term->tc_id }}" data-is-default="{{ (int) ($term->is_default ?? 0) }}" data-content="{{ e($term->content) }}" value="{{ e($term->content) }}" {{ !empty($term->is_default) ? 'checked' : '' }} style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
-                            <div style="min-width: 0; width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">
-                                <div style="margin: 0; font-size: 0.78rem; color: #4b5563; line-height: 1.45; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">{!! $term->content !!}</div>
+                    <div class="term-item-row quotation-step3-term-row">
+                        <label class="custom-checkbox quotation-step3-term-label">
+                            <input type="checkbox" class="term-checkbox quotation-step3-term-checkbox" data-tc-id="{{ $term->tc_id }}" data-is-default="{{ (int) ($term->is_default ?? 0) }}" data-content="{{ e($term->content) }}" value="{{ e($term->content) }}" {{ !empty($term->is_default) ? 'checked' : '' }}>
+                            <div class="quotation-step3-term-content">
+                                <div class="quotation-step3-term-text">{!! $term->content !!}</div>
                             </div>
                         </label>
                     </div>
@@ -105,43 +109,43 @@
             </div>
         </div>
 
-        <div class="col-12 col-md-9" style="min-width: 0;">
+        <div class="col-12 col-md-9 min-w-0">
             <!-- Invoice Preview -->
-            <div class="panel-card" style="padding: 0; border: 1px solid #e5e7eb; overflow: hidden; background: #fff; margin-bottom: 0; min-width: 0;">
-                <div style="background: #fafafa; padding: 0.7rem 0.9rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
-                    <h5 style="margin: 0; font-size: 0.95rem; color: #111827;">
-                        <i class="fas fa-file-pdf" style="color: #374151; margin-right: 0.5rem;"></i>
+            <div class="soft-panel quotation-step3-preview-panel">
+                <div class="quotation-step3-preview-header">
+                    <h5 class="soft-panel__title soft-panel__title--lg">
+                        <i class="fas fa-file-pdf quotation-step3-preview-icon"></i>
                         {{ $isTaxInvoiceStep3 ? 'Tax Invoice Preview' : 'Invoice Preview' }}
                     </h5>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <span style="font-size: 0.75rem; color: #6b7280; font-weight: 500;">
-                            <i class="fas fa-circle" style="color: #10b981; font-size: 0.5rem; margin-right: 0.3rem;"></i>
+                    <div class="quotation-step3-preview-actions">
+                        <span class="quotation-step3-live-label">
+                            <i class="fas fa-circle quotation-step3-live-dot"></i>
                             Live Preview
                         </span>
-                        <a id="btnDownloadPI" href="#" target="_blank" class="secondary-button" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none; align-items: center; gap: 0.35rem; text-decoration: none;">
+                        <a id="btnDownloadPI" href="#" target="_blank" class="secondary-button quotation-step3-toolbar-btn is-hidden">
                             Download PI
                         </a>
-                        <button type="button" class="text-button" id="digitalSignBtn" disabled style="padding: 0.35rem 0.7rem; font-size: 0.8rem; opacity: 0.5;">
+                        <button type="button" class="text-button quotation-step3-toolbar-btn" id="digitalSignBtn" disabled>
                             Download Signed
                         </button>
-                        <button type="button" id="createTaxInvoiceBtn" class="secondary-button" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none;">
+                        <button type="button" id="createTaxInvoiceBtn" class="secondary-button quotation-step3-toolbar-btn is-hidden">
                             Convert to Tax Invoice
                         </button>
-                        <button type="button" id="btnDownloadTaxInvoice" class="secondary-button" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none;">
+                        <button type="button" id="btnDownloadTaxInvoice" class="secondary-button quotation-step3-toolbar-btn is-hidden">
                             Download Tax Invoice
                         </button>
-                        <button type="button" id="btnEditPreview" class="secondary-button" style="padding: 0.35rem 0.7rem; font-size: 0.8rem;">
+                        <button type="button" id="btnEditPreview" class="secondary-button quotation-step3-toolbar-btn">
                             Edit
                         </button>
                     </div>
                 </div>
-                <div id="invoicePreviewContainer" style="padding: 1rem; background: #f5f5f5;">
-                    <div id="previewContent" style="background: white; padding: 0; width: 100%; min-height: 640px; border: 1px solid #dddddd; border-radius: 8px; overflow: hidden;">
+                <div id="invoicePreviewContainer" class="quotation-step3-preview-frame-wrap">
+                    <div id="previewContent" class="quotation-step3-preview-frame-shell">
                         <iframe
                             id="invoicePdfPreviewFrame"
                             title="Invoice PDF Preview"
                             src="about:blank"
-                            style="width: 100%; min-height: 640px; border: 0; background: #fff;"
+                            class="quotation-step3-preview-frame"
                         ></iframe>
                     </div>
                 </div>
@@ -310,17 +314,12 @@
             const checked = chosen.some(t => String(t).trim() === safeContent);
             const escapedContent = escapeHtmlAttr(safeContent);
             const row = document.createElement('div');
-            row.className = 'term-item-row';
-            row.style.marginBottom = '0.55rem';
-            row.style.padding = '0';
-            row.style.width = '100%';
-            row.style.maxWidth = '100%';
-            row.style.boxSizing = 'border-box';
+            row.className = 'term-item-row quotation-step3-term-row';
             row.innerHTML = `
-                <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.45rem; cursor: pointer; margin-bottom: 0.2rem; width: 100%; max-width: 100%; box-sizing: border-box;">
-                    <input type="checkbox" class="term-checkbox" data-tc-id="${term.id}" data-is-default="${Number(term.is_default || 0)}" data-content="${escapedContent}" value="${escapedContent}" ${checked ? 'checked' : ''} style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
-                    <div style="min-width: 0; width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">
-                        <div style="margin: 0; font-size: 0.78rem; color: #4b5563; line-height: 1.45; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">${safeContent}</div>
+                <label class="custom-checkbox quotation-step3-term-label">
+                    <input type="checkbox" class="term-checkbox quotation-step3-term-checkbox" data-tc-id="${term.id}" data-is-default="${Number(term.is_default || 0)}" data-content="${escapedContent}" value="${escapedContent}" ${checked ? 'checked' : ''}>
+                    <div class="quotation-step3-term-content">
+                        <div class="quotation-step3-term-text">${safeContent}</div>
                     </div>
                 </label>
             `;
@@ -369,7 +368,7 @@
     }
 
     function openTermModal() {
-        addTermError.style.display = 'none';
+        addTermError.classList.add('is-hidden');
         addTermError.textContent = '';
         newTermContent.value = '';
         if (addTermBootstrapModal) {
@@ -462,7 +461,7 @@
 
                 invoiceNumberInput.value = draftInvoiceNumber;
                 invoiceidInput.value = data.draft.invoiceid || '';
-                if (btnApplyTC && data.draft.invoiceid) btnApplyTC.style.display = 'inline-block';
+                if (btnApplyTC && data.draft.invoiceid) btnApplyTC.classList.remove('is-hidden');
 
                 updateHeaderNumberBadge();
                 syncRenewedItemIdsInput();
@@ -511,7 +510,7 @@
         const base = "{{ url('invoices') }}/" + invoiceid + "/pdf";
         if (btnDownloadPI) {
             btnDownloadPI.href = base + '?type=pi';
-            btnDownloadPI.style.display = 'inline-flex';
+            btnDownloadPI.classList.remove('is-hidden');
         }
         syncTaxInvoiceButtons(invoiceid);
         if (digitalSignBtn) {
@@ -524,21 +523,21 @@
     function syncTaxInvoiceButtons(invoiceid) {
         if (!createTaxInvoiceBtn || !btnDownloadTaxInvoice) return;
         if (!invoiceid) {
-            createTaxInvoiceBtn.style.display = 'none';
-            btnDownloadTaxInvoice.style.display = 'none';
+            createTaxInvoiceBtn.classList.add('is-hidden');
+            btnDownloadTaxInvoice.classList.add('is-hidden');
             return;
         }
 
         const base = "{{ url('invoices') }}/" + invoiceid + "/pdf";
         if (draftTiNumber) {
-            createTaxInvoiceBtn.style.display = 'none';
-            btnDownloadTaxInvoice.style.display = 'inline-flex';
+            createTaxInvoiceBtn.classList.add('is-hidden');
+            btnDownloadTaxInvoice.classList.remove('is-hidden');
             btnDownloadTaxInvoice.onclick = function() {
                 window.open(base + '?type=tax_invoice', '_blank');
             };
         } else {
-            btnDownloadTaxInvoice.style.display = 'none';
-            createTaxInvoiceBtn.style.display = 'inline-flex';
+            btnDownloadTaxInvoice.classList.add('is-hidden');
+            createTaxInvoiceBtn.classList.remove('is-hidden');
             createTaxInvoiceBtn.disabled = false;
         }
     }
@@ -567,9 +566,25 @@
 
         if (!invoiceid) {
             previewFrame.srcdoc = `
-                <div style="display:flex;align-items:center;justify-content:center;min-height:640px;color:#6b7280;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
-                    <div style="text-align:center;">
-                        <i class="fas fa-info-circle" style="font-size:1.6rem; margin-bottom:0.5rem;"></i>
+                <style>
+                    body { margin: 0; }
+                    .preview-empty-state {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: 640px;
+                        color: #6b7280;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    }
+                    .preview-empty-state__inner { text-align: center; }
+                    .preview-empty-state__icon {
+                        font-size: 1.6rem;
+                        margin-bottom: 0.5rem;
+                    }
+                </style>
+                <div class="preview-empty-state">
+                    <div class="preview-empty-state__inner">
+                        <i class="fas fa-info-circle preview-empty-state__icon"></i>
                         <p>Save the invoice draft to load PDF preview.</p>
                     </div>
                 </div>
@@ -587,7 +602,7 @@
         if (e.target.classList.contains('term-checkbox')) {
             const allCheckboxes = document.querySelectorAll('.term-checkbox');
             if (createTaxInvoiceBtn) createTaxInvoiceBtn.disabled = !invoiceidInput.value;
-            if (btnApplyTC) btnApplyTC.style.display = invoiceidInput.value ? 'inline-block' : 'none';
+            if (btnApplyTC) btnApplyTC.classList.toggle('is-hidden', !invoiceidInput.value);
         }
     });
 
@@ -661,11 +676,11 @@
 
             if (!content) {
                 addTermError.textContent = 'Please enter the term content.';
-                addTermError.style.display = 'block';
+                addTermError.classList.remove('is-hidden');
                 return;
             }
 
-            addTermError.style.display = 'none';
+            addTermError.classList.add('is-hidden');
             addTermError.textContent = '';
 
             fetch("{{ route('invoices.terms.billing.store') }}", {
@@ -697,12 +712,12 @@
                     const escapedContent = escapeHtmlAttr(term.content);
                     const row = document.createElement('div');
                     row.style.marginBottom = '0.55rem';
-                    row.className = 'term-item-row';
+                    row.className = 'term-item-row quotation-step3-term-row';
                     row.innerHTML = `
-                        <label class="custom-checkbox" style="display: flex; align-items: flex-start; gap: 0.45rem; cursor: pointer; margin-bottom: 0.2rem; width: 100%; max-width: 100%; box-sizing: border-box;">
-                            <input type="checkbox" class="term-checkbox" checked data-tc-id="${term.id}" data-content="${escapedContent}" value="${escapedContent}" style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;">
-                            <div style="min-width: 0; width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">
-                                <div style="margin: 0; font-size: 0.78rem; color: #4b5563; line-height: 1.45; word-break: break-word; overflow-wrap: anywhere; white-space: normal;">${term.content}</div>
+                        <label class="custom-checkbox quotation-step3-term-label">
+                            <input type="checkbox" class="term-checkbox quotation-step3-term-checkbox" checked data-tc-id="${term.id}" data-content="${escapedContent}" value="${escapedContent}">
+                            <div class="quotation-step3-term-content">
+                                <div class="quotation-step3-term-text">${term.content}</div>
                             </div>
                         </label>
                     `;
@@ -712,7 +727,7 @@
                 })
                 .catch(error => {
                     addTermError.textContent = error.message || 'Unable to save term.';
-                    addTermError.style.display = 'block';
+                    addTermError.classList.remove('is-hidden');
                 });
         });
     }
@@ -877,7 +892,7 @@
 
     if (draftId) {
         updateDownloadButtons(draftId);
-        if (btnApplyTC) btnApplyTC.style.display = 'inline-block';
+        if (btnApplyTC) btnApplyTC.classList.remove('is-hidden');
     }
     syncTaxInvoiceButtons(invoiceidInput.value || draftId);
     syncRenewedItemIdsInput();

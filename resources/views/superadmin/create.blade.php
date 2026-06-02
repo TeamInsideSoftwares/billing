@@ -89,7 +89,7 @@
                 </div>
             </div>
             <div class="form-actions form-actions-xl">
-                <button type="submit" class="primary-button">Continue to Credentials</button>
+                <button type="submit" class="primary-button">Continue to Account User</button>
                 <a href="{{ route('superadmin.index') }}" class="text-link">Cancel</a>
             </div>
         </form>
@@ -102,7 +102,7 @@
             </div>
             <div class="form-grid">
                 <div>
-                    <label for="login_email">Login Email *</label>
+                    <label for="login_email">Account User Email *</label>
                     <input type="email" id="login_email" name="login_email" value="{{ old('login_email', $draft['account_email'] ?? '') }}" required>
                     @error('login_email') <span class="error">{{ $message }}</span> @enderror
                 </div>

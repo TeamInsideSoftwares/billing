@@ -9,11 +9,13 @@
 @section('content')
 @php
     $selectedClientId = old('clientid', $preSelectedClientId ?? ($order->clientid ?? request('c')));
+    $selectedQuotationId = old('quotationid', request('quotationid', ''));
     $todayDate = now()->format('Y-m-d');
     $maxEndDate = '2099-12-31';
     $isEditingOrder = (bool) $isEditMode;
     $isIframeMode = (string) request()->query('iframe') === '1';
     $isClientLocked = $isEditingOrder || $isIframeMode;
+    $clientQuotations = collect($clientQuotations ?? [])->values();
     $selectedClient = $isEditingOrder
         ? ($order->client ?? collect($clients ?? [])->firstWhere('clientid', $selectedClientId))
         : collect($clients ?? [])->firstWhere('clientid', $selectedClientId);
@@ -28,6 +30,26 @@
         ?? $selectedClient?->email
         ?? ''
     );
+    $initialOrderItems = [];
+    if (is_string(old('items_data')) && trim((string) old('items_data')) !== '') {
+        $decodedOldItems = json_decode((string) old('items_data'), true);
+        if (is_array($decodedOldItems)) {
+            $initialOrderItems = $decodedOldItems;
+        }
+    } elseif ($isEditingOrder && !empty($order)) {
+        $initialOrderItems = [[
+            'itemid' => $order->itemid,
+            'item_name' => $order->item_name,
+            'item_description' => $order->item_description,
+            'quantity' => (float) ($order->quantity ?? 1),
+            'no_of_users' => $order->no_of_users,
+            'frequency' => '',
+            'duration' => 1,
+            'start_date' => $order->start_date?->format('Y-m-d') ?? now()->format('Y-m-d'),
+            'end_date' => $order->end_date?->format('Y-m-d') ?? $maxEndDate,
+            'delivery_date' => $order->delivery_date?->format('Y-m-d'),
+        ]];
+    }
 @endphp
 
 <section class="panel-card panel-card-lg">
@@ -37,43 +59,55 @@
             @method('PUT')
         @endif
 
-        <div class="invoice-client-header mb-3">
+        <div class="invoice-client-header invoice-client-header--compact mb-3">
             <div class="invoice-client-header__row">
                 <div class="invoice-client-header__icon">
                     <i class="fas fa-user"></i>
                 </div>
-                <div class="invoice-client-header__body" style="min-width: 0; flex: 1;">
-                    @if(!$isClientLocked)
-                        <label for="clientid" class="field-label" style="margin-bottom: 0.25rem;">Select Client *</label>
-                        <select id="clientid" name="clientid" class="form-control" required>
-                            <option value="">Select Client</option>
-                            @php
-                                $clientsByType = collect($clients ?? [])->groupBy(function ($client) {
-                                    return strtolower((string) ($client->type ?? 'regular')) === 'trial' ? 'trial' : 'regular';
-                                });
-                            @endphp
-                            @foreach(['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
-                                @if(($clientsByType[$typeKey] ?? collect())->isNotEmpty())
-                                    <optgroup label="{{ $typeLabel }}">
-                                        @foreach($clientsByType[$typeKey] as $client)
-                                            <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
-                                                {{ $client->business_name ?? $client->contact_name }}
-                                            </option>
-                                        @endforeach
-                                    </optgroup>
-                                @endif
-                            @endforeach
-                        </select>
-                    @else
-                        <input type="hidden" name="clientid" value="{{ $selectedClientId }}">
-                        <div class="invoice-client-header__name">{{ $selectedClientName }}</div>
-                        <div class="invoice-client-header__email" style="{{ $selectedClientEmail ? '' : 'display:none;' }}">{{ $selectedClientEmail }}</div>
-                    @endif
+                <div class="invoice-client-header__body invoice-client-header__body--fluid">
+                    <div class="order-header-compact-grid">
+                        <div class="order-header-compact-col">
+                            @if(!$isClientLocked)
+                                <label for="clientid" class="label-compact mb-1">Select Client *</label>
+                                <select id="clientid" name="clientid" class="form-control select-form-input" required>
+                                    <option value="">Select Client</option>
+                                    @foreach($clients ?? [] as $client)
+                                        <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
+                                            {{ $client->business_name ?? $client->contact_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            @else
+                                <label class="label-compact mb-1">Client</label>
+                                <input type="hidden" name="clientid" value="{{ $selectedClientId }}">
+                                <div class="invoice-client-header__name invoice-client-header__name--compact">{{ $selectedClientName }}</div>
+                                <div class="invoice-client-header__email invoice-client-header__email--compact {{ $selectedClientEmail ? '' : 'is-hidden' }}">{{ $selectedClientEmail }}</div>
+                            @endif
+                        </div>
+
+                        @if(!$isEditMode)
+                            <div class="order-header-compact-col">
+                                <label for="quotationid" class="label-compact mb-1">Quotation</label>
+                                <select id="quotationid" class="form-control select-form-input" {{ empty($selectedClientId) ? 'disabled' : '' }}>
+                                    <option value="">Select Quotation</option>
+                                    @forelse($clientQuotations as $quotation)
+                                        <option value="{{ $quotation['quotationid'] }}" {{ (string) $selectedQuotationId === (string) $quotation['quotationid'] ? 'selected' : '' }}>
+                                            {{ $quotation['display_title'] ?? $quotation['quo_title'] ?? $quotation['quotation_number'] ?? $quotation['quotationid'] }}
+                                        </option>
+                                    @empty
+                                        <option value="" disabled>
+                                            {{ empty($selectedClientId) ? 'Select a client first' : 'No quotations found for this client' }}
+                                        </option>
+                                    @endforelse
+                                </select>
+                                <div class="form-hint">
+                                    Select a quotation to load its items into the order.
+                                </div>
+                            </div>
+                        @endif
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <div class="form-grid order-create-meta-grid">
         </div>
 
         <hr class="my-4">
@@ -113,7 +147,7 @@
             </div>
 
             @if($account?->have_users)
-                <div id="item_users_wrapper" class="order-field" style="display:none;">
+                <div id="item_users_wrapper" class="order-field is-hidden">
                     <label>Users</label>
                     <input type="number" id="item_users" class="form-control" min="1" step="1" value="1">
                 </div>
@@ -134,7 +168,7 @@
                 </select>
             </div>
 
-            <div id="item_duration_wrapper" class="order-field" style="display:none;">
+            <div id="item_duration_wrapper" class="order-field is-hidden">
                 <label>Duration</label>
                 <input type="number" id="item_duration" class="form-control" min="1" step="1" value="1">
             </div>
@@ -172,15 +206,15 @@
                     @endforelse
                 </select>
             </div>
-            <div class="order-field order-field-description" style="width: 50%;">
+            <div class="order-field order-field-description">
                 <label>Description</label>
-                <textarea id="item_description" class="form-control"></textarea>
+                <textarea id="item_description" class="form-control" rows="2" style="min-width: 600px;"></textarea>
             </div>
 
             @if(!$isEditMode)
-                <div class="order-field order-field-action text-end" style="grid-column: 1 / -1;">
+                <div class="order-field order-field-action text-end">
                     <button type="button" id="addItemBtn" class="primary-button">
-                        Add Order
+                        Add Item
                     </button>
                 </div>
             @endif
@@ -188,16 +222,40 @@
 
         <input type="hidden" name="items_data" id="items_data">
 
-        <div class="mt-4 flex items-center gap-2 order-create-submit-bar">
-            @if($isEditMode)
+        @if(!$isEditMode)
+            <div id="orderItemsEmptyState" class="empty-state mt-4">
+                {{-- No items added yet. Choose a quotation or add items manually. --}}
+            </div>
+
+            <div id="orderItemsTableWrap" class="order-create-table-wrap mt-4 is-hidden">
+                <table class="data-table table-no-margin" style="table-layout: fixed;">
+                    <thead>
+                        <tr>
+                            <th style="width: 38%;">Item</th>
+                            <th style="width: 8%;">Qty</th>
+                            <th style="width: 9%;">Users</th>
+                            <th class="text-nowrap">Start</th>
+                            <th class="text-nowrap">End</th>
+                            <th class="text-nowrap">Delivery</th>
+                            <th class="text-end" style="width: 12%;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderItemsBody"></tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 flex items-center gap-2 order-create-submit-bar">
+                <button type="submit" class="primary-button">
+                    Save Orders
+                </button>
+            </div>
+        @else
+            <div class="mt-4 flex items-center gap-2 order-create-submit-bar">
                 <button type="submit" class="primary-button">
                     Update Order
                 </button>
-            @endif
-            <span class="text-sm text-muted">
-                {{ $isEditMode ? '' : 'Add Order saves directly to the orders table.' }}
-            </span>
-        </div>
+            </div>
+        @endif
     </form>
 
     @if(!$isEditMode)
@@ -234,7 +292,7 @@
                                     <form
                                         method="POST"
                                         action="{{ route('orders.destroy', ['order' => $recentOrder->orderid, 'return_to' => 'create', 'c' => $selectedClientId, 'iframe' => request()->query('iframe')]) }}"
-                                        style="display:inline;"
+                                        class="inline-delete"
                                         onsubmit="return confirm('Cancel this order?')"
                                     >
                                         @csrf
@@ -253,74 +311,83 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const items = [];
     const isEditMode = @json((bool) $isEditMode);
+    const isIframe = window.self !== window.top;
     const todayDate = @json($todayDate);
     const maxEndDate = @json($maxEndDate);
-    @php
-        $existingOrderData = $order ? [
-            'itemid' => $order->itemid,
-            'item_name' => $order->item_name,
-            'item_description' => $order->item_description,
-            'quantity' => (float) ($order->quantity ?? 1),
-            'no_of_users' => $order->no_of_users,
-            'frequency' => '',
-            'duration' => 1,
-            'start_date' => $order->start_date?->format('Y-m-d') ?? now()->format('Y-m-d'),
-            'end_date' => $order->end_date?->format('Y-m-d') ?? '2099-12-31',
-            'delivery_date' => $order->delivery_date?->format('Y-m-d'),
-        ] : null;
-    @endphp
-    const existingOrder = @json($existingOrderData);
+    const initialItems = @json($initialOrderItems ?? []);
+    const clientQuotations = @json($clientQuotations ?? []);
     const existingClientItemIds = new Set((@json($existingClientItemIds ?? []))
         .map(value => String(value || ''))
         .filter(Boolean));
+
     const itemSelect = document.getElementById('item_itemid');
     const clientSelect = document.getElementById('clientid');
+    const quotationSelect = document.getElementById('quotationid');
     const addItemBtn = document.getElementById('addItemBtn');
     const itemsInput = document.getElementById('items_data');
+    const orderItemsBody = document.getElementById('orderItemsBody');
+    const orderItemsEmptyState = document.getElementById('orderItemsEmptyState');
+    const orderItemsTableWrap = document.getElementById('orderItemsTableWrap');
     const usersWrapper = document.getElementById('item_users_wrapper');
+    const usersInput = document.getElementById('item_users');
     const frequencyInput = document.getElementById('item_frequency');
     const durationInput = document.getElementById('item_duration');
     const durationWrapper = document.getElementById('item_duration_wrapper');
     const startDateInput = document.getElementById('item_start_date');
     const endDateInput = document.getElementById('item_end_date');
-    let editingItemIndex = null;
+    const deliveryDateInput = document.getElementById('item_delivery_date');
+    const descriptionInput = document.getElementById('item_description');
+    const quantityInput = document.getElementById('item_quantity');
+    const orderForm = document.getElementById('orderForm');
+    const quotationMap = new Map(clientQuotations.map((quotation) => [String(quotation.quotationid || ''), quotation]));
 
-    function isSelectedItemUserWise() {
-        const option = itemSelect.options[itemSelect.selectedIndex];
-        return option && option.dataset.userWise === '1';
+    let items = Array.isArray(initialItems) ? initialItems.map(normalizeItem) : [];
+    let editingItemIndex = null;
+    let activeQuotationId = '';
+
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
-    function toggleUsersField() {
-        if (!usersWrapper) return;
-        const show = isSelectedItemUserWise();
-        usersWrapper.style.display = show ? 'block' : 'none';
-        if (!show) {
-            document.getElementById('item_users').value = 1;
-        }
+    function normalizeItem(item) {
+        return {
+            itemid: String(item?.itemid || ''),
+            item_name: String(item?.item_name || item?.name || 'Item').trim() || 'Item',
+            item_description: String(item?.item_description || ''),
+            quantity: Math.max(1, Math.round(Number(item?.quantity || 1))),
+            no_of_users: item?.no_of_users === null || item?.no_of_users === undefined || String(item?.no_of_users || '').trim() === ''
+                ? null
+                : Math.max(1, Math.round(Number(item?.no_of_users || 1))),
+            frequency: String(item?.frequency || ''),
+            duration: item?.duration === null || item?.duration === undefined || String(item?.duration || '').trim() === ''
+                ? null
+                : Math.max(1, Math.round(Number(item?.duration || 1))),
+            start_date: String(item?.start_date || todayDate),
+            end_date: String(item?.end_date || maxEndDate),
+            delivery_date: String(item?.delivery_date || ''),
+        };
     }
 
     function syncItemsInput() {
-        itemsInput.value = JSON.stringify(items);
+        if (itemsInput) {
+            itemsInput.value = JSON.stringify(items);
+        }
+    }
+
+    function isSelectedItemUserWise() {
+        const option = itemSelect?.options?.[itemSelect.selectedIndex];
+        return String(option?.dataset?.userWise || '0') === '1';
     }
 
     function isOneTimeFrequency() {
-        const selectedFrequency = frequencyInput.value || '';
+        const selectedFrequency = frequencyInput?.value || '';
         return selectedFrequency === '' || selectedFrequency === 'One-Time';
-    }
-
-    function toggleDurationField() {
-        if (!durationWrapper) return;
-
-        const show = !isOneTimeFrequency();
-        durationWrapper.style.display = show ? 'block' : 'none';
-
-        if (!show) {
-            durationInput.value = 1;
-        } else if (!durationInput.value || Number(durationInput.value) < 1) {
-            durationInput.value = 1;
-        }
     }
 
     function formatDateLocal(date) {
@@ -376,39 +443,54 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function refreshEndDate() {
         toggleDurationField();
-        endDateInput.value = calculateEndDate(
-            startDateInput.value || todayDate,
-            frequencyInput.value || '',
-            durationInput.value || 1
-        );
+        if (endDateInput) {
+            endDateInput.value = calculateEndDate(
+                startDateInput?.value || todayDate,
+                frequencyInput?.value || '',
+                durationInput?.value || 1
+            );
+        }
     }
 
+    function toggleUsersField() {
+        if (!usersWrapper || !usersInput) return;
+        const show = isSelectedItemUserWise();
+        usersWrapper.style.display = show ? 'block' : 'none';
+        if (!show) {
+            usersInput.value = 1;
+        }
+    }
 
-    function populateFromSelection() {
-        const option = itemSelect.options[itemSelect.selectedIndex];
-        if (!option || !option.value) return;
-        document.getElementById('item_description').value = option.dataset.description || '';
-        startDateInput.value = todayDate;
-        refreshEndDate();
-        toggleUsersField();
+    function toggleDurationField() {
+        if (!durationWrapper || !durationInput) return;
+
+        const show = !isOneTimeFrequency();
+        durationWrapper.style.display = show ? 'block' : 'none';
+
+        if (!show) {
+            durationInput.value = 1;
+        } else if (!durationInput.value || Number(durationInput.value) < 1) {
+            durationInput.value = 1;
+        }
     }
 
     function currentItemPayload() {
-        const option = itemSelect.options[itemSelect.selectedIndex];
+        const option = itemSelect?.options?.[itemSelect.selectedIndex];
         return {
-            itemid: itemSelect.value,
-            item_name: option ? option.text.trim() : '',
-            item_description: document.getElementById('item_description').value || '',
-            quantity: document.getElementById('item_quantity').value || 1,
+            itemid: String(itemSelect?.value || ''),
+            item_name: option ? String(option.textContent || '').trim() : '',
+            item_description: String(descriptionInput?.value || ''),
+            quantity: Math.max(1, Math.round(Number(quantityInput?.value || 1))),
             no_of_users: usersWrapper && usersWrapper.style.display !== 'none'
-                ? (document.getElementById('item_users').value || 1)
+                ? Math.max(1, Math.round(Number(usersInput?.value || 1)))
                 : null,
-            frequency: frequencyInput.value || 'One-Time',
-
-            duration: isOneTimeFrequency() ? null : (durationInput.value || 1),
-            start_date: startDateInput.value || todayDate,
-            end_date: endDateInput.value || maxEndDate,
-            delivery_date: document.getElementById('item_delivery_date').value || '',
+            frequency: String(frequencyInput?.value || ''),
+            duration: isOneTimeFrequency()
+                ? null
+                : Math.max(1, Math.round(Number(durationInput?.value || 1))),
+            start_date: String(startDateInput?.value || todayDate),
+            end_date: String(endDateInput?.value || maxEndDate),
+            delivery_date: String(deliveryDateInput?.value || ''),
         };
     }
 
@@ -426,19 +508,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function setAddButtonState() {
-        if (!addItemBtn) return;
-        addItemBtn.textContent = editingItemIndex === null ? 'Add Order' : 'Update Order';
+        if (!addItemBtn || isEditMode) return;
+        addItemBtn.textContent = editingItemIndex === null ? 'Add Item' : 'Update Item';
     }
 
     function resetItemForm() {
-        itemSelect.value = '';
-        document.getElementById('item_quantity').value = 1;
-        document.getElementById('item_users').value = 1;
-        frequencyInput.value = '';
-        durationInput.value = 1;
-        startDateInput.value = todayDate;
-        document.getElementById('item_delivery_date').value = '';
-        document.getElementById('item_description').value = '';
+        if (itemSelect) itemSelect.value = '';
+        if (quantityInput) quantityInput.value = 1;
+        if (usersInput) usersInput.value = 1;
+        if (frequencyInput) frequencyInput.value = '';
+        if (durationInput) durationInput.value = 1;
+        if (startDateInput) startDateInput.value = todayDate;
+        if (endDateInput) endDateInput.value = maxEndDate;
+        if (deliveryDateInput) deliveryDateInput.value = '';
+        if (descriptionInput) descriptionInput.value = '';
         editingItemIndex = null;
         toggleUsersField();
         refreshEndDate();
@@ -447,30 +530,87 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function loadItemIntoForm(item) {
         if (!item) return;
-        itemSelect.value = item.itemid || '';
-        document.getElementById('item_quantity').value = item.quantity || 1;
-        document.getElementById('item_users').value = item.no_of_users || 1;
-        frequencyInput.value = item.frequency || '';
-        durationInput.value = item.duration || 1;
-        startDateInput.value = item.start_date || todayDate;
-        endDateInput.value = item.end_date || maxEndDate;
-        document.getElementById('item_delivery_date').value = item.delivery_date || '';
-        document.getElementById('item_description').value = item.item_description || '';
+        if (itemSelect) itemSelect.value = item.itemid || '';
+        if (quantityInput) quantityInput.value = item.quantity || 1;
+        if (usersInput) usersInput.value = item.no_of_users || 1;
+        if (frequencyInput) frequencyInput.value = item.frequency || '';
+        if (durationInput) durationInput.value = item.duration || 1;
+        if (startDateInput) startDateInput.value = item.start_date || todayDate;
+        if (endDateInput) endDateInput.value = item.end_date || maxEndDate;
+        if (deliveryDateInput) deliveryDateInput.value = item.delivery_date || '';
+        if (descriptionInput) descriptionInput.value = item.item_description || '';
         toggleUsersField();
         toggleDurationField();
+        setAddButtonState();
     }
 
-    if (clientSelect && !isEditMode) {
-        clientSelect.addEventListener('change', function () {
-            if (!this.value) return;
-            const url = new URL(window.location.href);
-            url.searchParams.set('c', this.value);
-            window.location.href = url.toString();
+    function renderItems() {
+        syncItemsInput();
+        if (isEditMode || !orderItemsBody) {
+            return;
+        }
+
+        orderItemsBody.innerHTML = '';
+
+        if (items.length === 0) {
+            orderItemsTableWrap?.classList.add('is-hidden');
+            orderItemsEmptyState?.classList.remove('is-hidden');
+            return;
+        }
+
+        orderItemsEmptyState?.classList.add('is-hidden');
+        orderItemsTableWrap?.classList.remove('is-hidden');
+
+        items.forEach((item, index) => {
+            const row = document.createElement('tr');
+            if (editingItemIndex === index) {
+                row.classList.add('is-active');
+            }
+            const itemDescription = String(item.item_description || '').trim();
+            row.innerHTML = `
+                <td>
+                    <div class="fw-semibold">${escapeHtml(item.item_name)}</div>
+                    ${itemDescription ? `<div class="small-text">${escapeHtml(itemDescription)}</div>` : ''}
+                </td>
+                <td>${escapeHtml(item.quantity)}</td>
+                <td>${item.no_of_users ? escapeHtml(item.no_of_users) : '-'}</td>
+                <td class="text-nowrap">${escapeHtml(item.start_date || '-')}</td>
+                <td class="text-nowrap">${escapeHtml(item.end_date || '-')}</td>
+                <td class="text-nowrap">${item.delivery_date ? escapeHtml(item.delivery_date) : '-'}</td>
+                <td class="text-end">
+                    <div class="d-inline-flex align-items-center gap-2">
+                        <button type="button" class="text-action-btn edit" data-edit-index="${index}">Edit</button>
+                        <button type="button" class="text-action-btn delete" data-remove-index="${index}">Remove</button>
+                    </div>
+                </td>
+            `;
+            orderItemsBody.appendChild(row);
+        });
+
+        orderItemsBody.querySelectorAll('[data-remove-index]').forEach((button) => {
+            button.addEventListener('click', function () {
+                const index = Number(this.dataset.removeIndex);
+                items.splice(index, 1);
+                if (editingItemIndex !== null) {
+                    editingItemIndex = null;
+                    setAddButtonState();
+                }
+                renderItems();
+            });
+        });
+
+        orderItemsBody.querySelectorAll('[data-edit-index]').forEach((button) => {
+            button.addEventListener('click', function () {
+                const index = Number(this.dataset.editIndex);
+                const item = items[index];
+                if (!item) return;
+
+                editingItemIndex = index;
+                loadItemIntoForm(item);
+                renderItems();
+            });
         });
     }
-
-    frequencyInput.addEventListener('change', refreshEndDate);
-    durationInput.addEventListener('input', refreshEndDate);
 
     async function confirmDuplicateItem() {
         if (typeof window.appConfirm === 'function') {
@@ -523,8 +663,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function handleItemSelectionDuplicateCheck() {
-        const selectedItemId = String(itemSelect.value || '');
-        if (!selectedItemId || isEditMode) {
+        const selectedItemId = String(itemSelect?.value || '');
+        if (!selectedItemId) {
             return true;
         }
 
@@ -547,48 +687,120 @@ document.addEventListener('DOMContentLoaded', function () {
         return true;
     }
 
-    itemSelect.addEventListener('change', async function () {
-        populateFromSelection();
-        await handleItemSelectionDuplicateCheck();
-    });
+    async function applyQuotationItems(quotationId) {
+        const quotation = quotationMap.get(String(quotationId || ''));
+        if (!quotation) {
+            return;
+        }
 
-    if (addItemBtn) {
-        addItemBtn.addEventListener('click', async function () {
-            if (!itemSelect.value) {
-                alert('Select an item first.');
-                return;
-            }
+        const importedItems = Array.isArray(quotation.items) ? quotation.items.map(normalizeItem) : [];
+        items = importedItems;
+        editingItemIndex = null;
+        activeQuotationId = String(quotationId || '');
+        renderItems();
+        resetItemForm();
+    }
 
-            if (!isEditMode) {
-                refreshEndDate();
-            }
-            const payload = currentItemPayload();
-            if (!payload.end_date) {
-                alert('End date is required.');
-                return;
-            }
+    async function handleQuotationChange() {
+        if (!quotationSelect) return;
+        const nextQuotationId = String(quotationSelect.value || '');
 
-            const orderForm = document.getElementById('orderForm');
-            if (isEditMode) {
-                items.splice(0, items.length, payload);
-                syncItemsInput();
-                orderForm.requestSubmit();
-                return;
-            } else {
-                items.splice(0, items.length, payload);
-                syncItemsInput();
-                orderForm.requestSubmit();
+        if (!nextQuotationId) {
+            if (items.length > 0) {
+                const confirmed = confirm('Clear the current items?');
+                if (!confirmed) {
+                    quotationSelect.value = activeQuotationId;
+                    return;
+                }
+            }
+            activeQuotationId = '';
+            items = [];
+            editingItemIndex = null;
+            renderItems();
+            resetItemForm();
+            return;
+        }
+
+        if (activeQuotationId !== nextQuotationId && items.length > 0) {
+            const confirmed = confirm('Loading a quotation will replace the current item list. Continue?');
+            if (!confirmed) {
+                quotationSelect.value = activeQuotationId;
                 return;
             }
+        }
+
+        await applyQuotationItems(nextQuotationId);
+    }
+
+    if (clientSelect && !isEditMode) {
+        clientSelect.addEventListener('change', function () {
+            if (!this.value) return;
+            const url = new URL(window.location.href);
+            url.searchParams.set('c', this.value);
+            window.location.href = url.toString();
         });
     }
 
-    const orderForm = document.getElementById('orderForm');
-    const isIframe = window.self !== window.top;
+    if (itemSelect) {
+        itemSelect.addEventListener('change', async function () {
+            const option = itemSelect.options[itemSelect.selectedIndex];
+            if (descriptionInput) {
+                descriptionInput.value = option?.dataset.description || '';
+            }
+            if (startDateInput) {
+                startDateInput.value = todayDate;
+            }
+            refreshEndDate();
+            toggleUsersField();
+            await handleItemSelectionDuplicateCheck();
+        });
+    }
+
+    if (frequencyInput) {
+        frequencyInput.addEventListener('change', refreshEndDate);
+    }
+
+    if (durationInput) {
+        durationInput.addEventListener('input', refreshEndDate);
+    }
+
+    if (quotationSelect) {
+        quotationSelect.addEventListener('change', handleQuotationChange);
+    }
+
+    if (addItemBtn && !isEditMode) {
+        addItemBtn.addEventListener('click', async function () {
+            if (!itemSelect || !itemSelect.value) {
+                alert('Select an item first.');
+                return;
+            }
+
+            if (!await handleItemSelectionDuplicateCheck()) {
+                return;
+            }
+
+            refreshEndDate();
+            const payload = currentItemPayload();
+            if (!payload.end_date) {
+                alert('End date is required.');
+                return;
+            }
+
+            if (editingItemIndex !== null) {
+                items.splice(editingItemIndex, 1, payload);
+                editingItemIndex = null;
+            } else {
+                items.push(payload);
+            }
+
+            renderItems();
+            resetItemForm();
+        });
+    }
 
     orderForm.addEventListener('submit', async function (event) {
         if (isEditMode) {
-            if (!itemSelect.value) {
+            if (!itemSelect || !itemSelect.value) {
                 event.preventDefault();
                 alert('Select an item first.');
                 return;
@@ -599,7 +811,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('End date is required.');
                 return;
             }
-            items.splice(0, items.length, payload);
+            items = [payload];
             syncItemsInput();
         } else {
             if (!items.length) {
@@ -607,6 +819,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Add at least one item before saving.');
                 return;
             }
+            syncItemsInput();
         }
 
         if (isIframe) {
@@ -645,9 +858,18 @@ document.addEventListener('DOMContentLoaded', function () {
     toggleUsersField();
     refreshEndDate();
     setAddButtonState();
+    syncItemsInput();
+    renderItems();
 
-    if (existingOrder) {
-        loadItemIntoForm(existingOrder);
+    if (isEditMode && items.length > 0) {
+        loadItemIntoForm(items[0]);
+    } else if (quotationSelect && quotationSelect.value) {
+        activeQuotationId = String(quotationSelect.value || '');
+        const selectedQuotation = quotationMap.get(activeQuotationId);
+        if (selectedQuotation && Array.isArray(selectedQuotation.items) && items.length === 0) {
+            items = selectedQuotation.items.map(normalizeItem);
+            renderItems();
+        }
     }
 });
 </script>

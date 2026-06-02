@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasAlphaNumericId;
+use App\Notifications\ResetPasswordNotification;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
 #[Fillable([
     'userid',
@@ -58,5 +60,25 @@ use HasAlphaNumericId, HasFactory, Notifiable;
     public function account(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Account::class, 'accountid', 'accountid');
+    }
+
+    public function getSlugAttribute(): string
+    {
+        $accountSlug = (string) ($this->account?->slug ?? '');
+        if ($accountSlug !== '') {
+            return $accountSlug;
+        }
+
+        $base = trim((string) ($this->name ?? ''));
+        if ($base === '') {
+            $base = (string) ($this->email ?? 'account-user');
+        }
+
+        return (string) Str::of($base)->slug('-');
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 }

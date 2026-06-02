@@ -149,7 +149,7 @@ class QuotationsController extends Controller
                 'number' => $quotation->quo_number ?: ('QUO-' . $quotation->quotationid),
                 'title' => $quotation->quo_title ?: ($quotation->quo_number ?: ('QUO-' . $quotation->quotationid)),
                 'client' => $quotation->client->business_name ?? $quotation->client->contact_name ?? 'Client',
-                'amount' => 'Rs ' . number_format($quotation->grand_total ?? 0),
+                'amount' => number_format($quotation->grand_total ?? 0),
                 'due' => $quotation->due_date?->format('d M Y') ?? 'N/A',
                 'status' => $quotation->status ?? 'draft',
             ];
@@ -176,10 +176,11 @@ class QuotationsController extends Controller
         $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
         $currentStep = max(1, min(4, (int) request('step', 1)));
+        $quotationDateBounds = $this->resolveFinancialYearDateBounds($accountid);
 
         $clientId = (string) request('c', request('clientid', ''));
         $selectedClient = $clientId !== ''
-            ? Client::query()->where('accountid', $accountid)->regular()->where('clientid', $clientId)->first()
+            ? Client::query()->where('accountid', $accountid)->where('clientid', $clientId)->first()
             : null;
         $draftId = (string) request('d', '');
         $draftQuotation = $draftId !== ''
@@ -190,10 +191,15 @@ class QuotationsController extends Controller
                 ->first()
             : null;
 
+        $clients = Client::where('accountid', $accountid)->regular()->orderBy('business_name')->get();
+        if ($selectedClient && strtolower((string) ($selectedClient->type ?? 'regular')) === 'trial' && !$clients->contains('clientid', $selectedClient->clientid)) {
+            $clients = $clients->prepend($selectedClient)->values();
+        }
+
         return view('quotations.create', [
             'title' => 'Create New Quotation',
             'currentStep' => $currentStep,
-            'clients' => Client::where('accountid', $accountid)->regular()->orderBy('business_name')->get(),
+            'clients' => $clients,
             'services' => Service::where('accountid', $accountid)->with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),
             'taxes' => ($account && $account->allow_multi_taxation)
                 ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get()
@@ -203,6 +209,7 @@ class QuotationsController extends Controller
             'selectedClientId' => $clientId,
             'nextQuotationNumber' => $this->generateQuotationNumber(),
             'draftQuotation' => $draftQuotation,
+            'quotationDateBounds' => $quotationDateBounds,
             'quotationTerms' => TermsCondition::query()
                 ->where('accountid', $accountid)
                 ->where('type', 'quotation')
@@ -214,18 +221,19 @@ class QuotationsController extends Controller
 
     public function saveStep2Draft(Request $request)
     {
+        $accountid = $this->resolveAccountId();
+        $quotationDateBounds = $this->resolveFinancialYearDateBounds($accountid);
         $validated = $request->validate([
             'quotationid' => 'nullable|string|exists:quotations,quotationid',
             'clientid' => 'required|exists:clients,clientid',
             'quo_number' => 'required|string|max:30',
             'quo_title' => 'required|string|max:255',
-            'issue_date' => 'required|date',
-            'due_date' => 'nullable|date|after_or_equal:issue_date',
+            'issue_date' => 'required|date|after_or_equal:' . $quotationDateBounds['min_date'] . '|before_or_equal:' . ($quotationDateBounds['issue_max_date'] ?? $quotationDateBounds['max_date']),
+            'due_date' => 'nullable|date|after_or_equal:issue_date|before_or_equal:' . ($quotationDateBounds['due_max_date'] ?? $quotationDateBounds['max_date']),
             'notes' => 'nullable|string',
             'items_data' => 'required|string',
         ]);
 
-        $accountid = $this->resolveAccountId();
         $user = Auth::user();
         $items = json_decode((string) $validated['items_data'], true);
         if (!is_array($items) || empty($items)) {
@@ -314,20 +322,21 @@ class QuotationsController extends Controller
     public function quotationsStore(Request $request)
     {
         $draftId = (string) $request->input('quotationid', '');
+        $accountid = $this->resolveAccountId();
+        $quotationDateBounds = $this->resolveFinancialYearDateBounds($accountid);
         $validated = $request->validate([
             'quotationid' => 'nullable|string|exists:quotations,quotationid',
             'clientid' => 'required|exists:clients,clientid',
             'quo_number' => 'required|string|max:30',
             'quo_title' => 'required|string|max:255',
-            'issue_date' => 'required|date',
-            'due_date' => 'nullable|date|after_or_equal:issue_date',
+            'issue_date' => 'required|date|after_or_equal:' . $quotationDateBounds['min_date'] . '|before_or_equal:' . ($quotationDateBounds['issue_max_date'] ?? $quotationDateBounds['max_date']),
+            'due_date' => 'nullable|date|after_or_equal:issue_date|before_or_equal:' . ($quotationDateBounds['due_max_date'] ?? $quotationDateBounds['max_date']),
             'status' => 'nullable|in:draft,active,cancelled',
             'notes' => 'nullable|string',
             'terms' => 'nullable',
             'items_data' => 'required|string',
         ]);
 
-        $accountid = $this->resolveAccountId();
         $user = Auth::user();
         $draftQuotation = null;
         if ($draftId !== '') {
@@ -487,21 +496,96 @@ class QuotationsController extends Controller
     public function quotationsEdit(Quotation $quotation): View
     {
         $accountid = $this->resolveAccountId();
+        $quotationDateBounds = $this->resolveFinancialYearDateBounds($accountid);
 
         return view('quotations.form', [
             'title' => 'Edit ' . ($quotation->quo_number ?? 'Quotation'),
             'quotation' => $quotation,
             'clients' => Client::where('accountid', $accountid)->regular()->get(),
+            'quotationDateBounds' => $quotationDateBounds,
         ]);
+    }
+
+    public function quotationsCopy(Request $request, Quotation $quotation)
+    {
+        $accountid = $this->resolveAccountId();
+        if ((string) $quotation->accountid !== $accountid) {
+            abort(403);
+        }
+
+        $quotation->loadMissing(['items']);
+        $validated = $request->validate([
+            'clientid' => 'nullable|exists:clients,clientid',
+        ]);
+        $targetClientId = (string) ($validated['clientid'] ?? $quotation->clientid ?? '');
+        if ($targetClientId === '') {
+            abort(422, 'Client is required.');
+        }
+
+        $targetClient = Client::query()
+            ->where('accountid', $accountid)
+            ->where('clientid', $targetClientId)
+            ->first();
+        if (!$targetClient) {
+            abort(422, 'Selected client is invalid.');
+        }
+
+        $user = Auth::user();
+        $newQuotationNumber = $this->generateQuotationNumber();
+        $newQuotation = Quotation::create([
+            'accountid' => $accountid,
+            'fy_id' => $quotation->fy_id ?: FinancialYear::query()->where('accountid', $accountid)->where('default', true)->value('fy_id'),
+            'clientid' => $targetClientId,
+            'quo_number' => $newQuotationNumber,
+            'quo_title' => (string) ($quotation->quo_title ?: 'Quotation'),
+            'status' => (string) ($quotation->status ?: 'draft'),
+            'issue_date' => $quotation->issue_date?->toDateString() ?? now()->toDateString(),
+            'due_date' => $quotation->due_date?->toDateString() ?? null,
+            'notes' => $quotation->notes,
+            'terms' => $quotation->terms ?? [],
+            'created_by' => (string) ($user?->userid ?? $user?->id ?? ''),
+        ]);
+
+        foreach ($quotation->items as $item) {
+            QuotationItem::create([
+                'quotationid' => $newQuotation->quotationid,
+                'accountid' => $accountid,
+                'clientid' => $targetClientId,
+                'orderid' => $item->orderid,
+                'itemid' => $item->itemid,
+                'item_name' => $item->item_name,
+                'item_description' => $item->item_description,
+                'quantity' => $item->quantity,
+                'unit_price' => $item->unit_price,
+                'tax_rate' => $item->tax_rate,
+                'discount_percent' => $item->discount_percent,
+                'discount_amount' => $item->discount_amount,
+                'duration' => $item->duration,
+                'frequency' => $item->frequency,
+                'no_of_users' => $item->no_of_users,
+                'start_date' => $item->start_date?->toDateString(),
+                'end_date' => $item->end_date?->toDateString(),
+                'status' => $item->status ?: 'active',
+                'line_total' => $item->line_total ?? $item->amount,
+                'amount' => $item->amount,
+                'sequence' => $item->sequence,
+            ]);
+        }
+
+        return redirect()
+            ->route('quotations.create', ['step' => 2, 'c' => $newQuotation->clientid, 'd' => $newQuotation->quotationid])
+            ->with('success', 'Quotation copied successfully.');
     }
 
     public function quotationsUpdate(Request $request, Quotation $quotation)
     {
+        $accountid = $this->resolveAccountId();
+        $quotationDateBounds = $this->resolveFinancialYearDateBounds($accountid);
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
             'quo_number' => 'required|string|unique:quotations,quo_number,' . $quotation->getKey() . ',quotationid',
-            'issue_date' => 'required|date',
-            'due_date' => 'nullable|date|after_or_equal:issue_date',
+            'issue_date' => 'required|date|after_or_equal:' . $quotationDateBounds['min_date'] . '|before_or_equal:' . ($quotationDateBounds['issue_max_date'] ?? $quotationDateBounds['max_date']),
+            'due_date' => 'nullable|date|after_or_equal:issue_date|before_or_equal:' . ($quotationDateBounds['due_max_date'] ?? $quotationDateBounds['max_date']),
             'status' => 'required|in:draft,active,cancelled',
         ]);
 

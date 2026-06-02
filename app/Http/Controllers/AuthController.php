@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AccountCredential;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -29,16 +29,17 @@ class AuthController extends Controller
         $remember = $request->boolean('remember');
 
         $superadminValid = $this->isSuperadminCredentialValid($email, $password);
-        $panelCredential = AccountCredential::query()
+        $panelUser = User::query()
             ->where('email', $email)
+            ->where('is_active', true)
             ->first();
-        $panelValid = $panelCredential instanceof AccountCredential
-            && Hash::check($password, (string) $panelCredential->password);
+        $panelValid = $panelUser instanceof User
+            && Hash::check($password, (string) $panelUser->password);
 
-        if ($superadminValid && $panelValid && $panelCredential) {
+        if ($superadminValid && $panelValid && $panelUser) {
             $request->session()->put('login_choice', [
                 'email' => $email,
-                'account_credential_id' => $panelCredential->getKey(),
+                'panel_user_id' => $panelUser->getKey(),
                 'remember' => $remember,
             ]);
 
@@ -50,8 +51,8 @@ class AuthController extends Controller
             return redirect()->route('superadmin.index')->with('success', 'Superadmin login successful.');
         }
 
-        if ($panelValid && $panelCredential) {
-            return $this->loginToPanel($request, $panelCredential, $remember);
+        if ($panelValid && $panelUser) {
+            return $this->loginToPanel($request, $panelUser, $remember);
         }
 
         return back()->withErrors([
@@ -76,10 +77,10 @@ class AuthController extends Controller
 
         $choice = (array) $request->session()->get('login_choice', []);
         $email = (string) ($choice['email'] ?? '');
-        $credentialId = (int) ($choice['account_credential_id'] ?? 0);
+        $userId = (string) ($choice['panel_user_id'] ?? '');
         $remember = (bool) ($choice['remember'] ?? false);
 
-        if ($email === '' || $credentialId <= 0) {
+        if ($email === '' || $userId === '') {
             $request->session()->forget('login_choice');
             return redirect()->route('login')->withErrors(['email' => 'Login session expired. Please sign in again.']);
         }
@@ -91,12 +92,12 @@ class AuthController extends Controller
             return redirect()->route('superadmin.index')->with('success', 'Superadmin login successful.');
         }
 
-        $credential = AccountCredential::query()->find($credentialId);
-        if (!$credential) {
+        $user = User::query()->find($userId);
+        if (!$user) {
             return redirect()->route('login')->withErrors(['email' => 'Panel account no longer exists.']);
         }
 
-        return $this->loginToPanel($request, $credential, $remember);
+        return $this->loginToPanel($request, $user, $remember);
     }
 
     public function logout(Request $request)
@@ -149,8 +150,8 @@ class AuthController extends Controller
 
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (AccountCredential $credential, string $password): void {
-                $credential->forceFill([
+            function (User $user, string $password): void {
+                $user->forceFill([
                     'password' => $password,
                     'remember_token' => Str::random(60),
                 ])->save();
@@ -176,19 +177,19 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'min:6', 'max:100', 'confirmed', 'different:current_password'],
         ]);
 
-        $credential = $request->user();
+        $user = $request->user();
 
-        if (!($credential instanceof AccountCredential)) {
+        if (!($user instanceof User)) {
             abort(403);
         }
 
-        if (!Hash::check((string) $validated['current_password'], $credential->password)) {
+        if (!Hash::check((string) $validated['current_password'], $user->password)) {
             return back()
                 ->withErrors(['current_password' => 'Your current password is incorrect.'])
                 ->withInput();
         }
 
-        $credential->update([
+        $user->update([
             'password' => (string) $validated['password'],
         ]);
 
@@ -239,13 +240,13 @@ class AuthController extends Controller
         $request->session()->put('superadmin_email', $email);
     }
 
-    private function loginToPanel(Request $request, AccountCredential $credential, bool $remember)
+    private function loginToPanel(Request $request, User $user, bool $remember)
     {
-        Auth::login($credential, $remember);
+        Auth::login($user, $remember);
         $request->session()->regenerate();
         $request->session()->forget(['superadmin_authenticated', 'superadmin_email', 'login_choice']);
 
-        $account = $credential->account;
+        $account = $user->account;
         if ($account && $account->expires_at && now()->startOfDay()->gt($account->expires_at->startOfDay())) {
             Auth::logout();
             $request->session()->invalidate();

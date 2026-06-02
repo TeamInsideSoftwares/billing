@@ -545,6 +545,27 @@ class SettingsController extends Controller
         return redirect()->to(route('settings.index') . '#financial-year')->with('success', 'Financial Year "' . $financialYear->financial_year . '" set as default.');
     }
 
+    public function financialYearSelect(Request $request): RedirectResponse
+    {
+        $accountid = $this->resolveAccountId();
+        $validated = $request->validate([
+            'fy_id' => 'required|string',
+        ]);
+
+        $financialYear = FinancialYear::query()
+            ->where('accountid', $accountid)
+            ->where('fy_id', $validated['fy_id'])
+            ->first();
+
+        if (!$financialYear) {
+            return redirect()->back()->with('error', 'Selected financial year is not available for this account.');
+        }
+
+        session(['selected_financial_year_id' => $financialYear->fy_id]);
+
+        return redirect()->back()->with('success', 'Financial Year switched to "' . $financialYear->financial_year . '".');
+    }
+
     public function settingsCreate(): View
     {
         return view('settings.form', ['title' => 'Add System Setting']);

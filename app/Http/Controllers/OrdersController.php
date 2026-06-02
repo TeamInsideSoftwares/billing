@@ -7,6 +7,8 @@ use App\Models\Client;
 use App\Models\ClientDocument;
 use App\Models\InvoiceItem;
 use App\Models\Order;
+use App\Models\Quotation;
+use App\Models\QuotationItem;
 use App\Models\Service;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -49,7 +51,7 @@ class OrdersController extends Controller
         return view('orders.select-client', [
             'title' => 'Manage Orders',
             'subtitle' => 'Choose a client to view their orders.',
-            'clients' => Client::where('accountid', $accountId)->orderBy('business_name')->orderBy('contact_name')->get(),
+            'clients' => Client::where('accountid', $accountId)->regular()->orderBy('business_name')->orderBy('contact_name')->get(),
         ]);
     }
 
@@ -65,7 +67,10 @@ class OrdersController extends Controller
 
         $query = Order::query()
             ->where('accountid', $accountId)
-            ->with(['client', 'item', 'invoices']);
+            ->with(['client', 'item', 'invoices'])
+            ->whereHas('client', function ($clientQuery) {
+                $clientQuery->regular();
+            });
 
         if ($clientId !== '') {
             $query->where('clientid', $clientId);
@@ -131,7 +136,7 @@ class OrdersController extends Controller
             'showClientPicker' => !$hasClientFilter && $selectedItemId === '',
             'selectedItemId' => $selectedItemId,
             'services' => $services,
-            'allClients' => Client::where('accountid', $accountId)->with('billingDetail')->orderBy('business_name')->orderBy('contact_name')->get(),
+            'allClients' => Client::where('accountid', $accountId)->regular()->with('billingDetail')->orderBy('business_name')->orderBy('contact_name')->get(),
         ]);
     }
 
@@ -139,9 +144,10 @@ class OrdersController extends Controller
     {
         $accountId = $this->resolveAccountId();
         $account = Account::where('accountid', $accountId)->first();
-        $preSelectedClientId = request('c');
+        $preSelectedClientId = (string) request('c', session()->getOldInput('clientid', ''));
         $carryRecent = request()->boolean('carry');
         $documents = collect();
+        $clientQuotations = collect();
         $existingClientItemIds = [];
         $recentOrders = collect();
 
@@ -176,6 +182,18 @@ class OrdersController extends Controller
                 ->values()
                 ->all();
 
+            $clientQuotations = Quotation::query()
+                ->where('accountid', $accountId)
+                ->where('clientid', $preSelectedClientId)
+                ->with(['items.item'])
+                ->orderByDesc('issue_date')
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(function (Quotation $quotation): array {
+                    return $this->buildQuotationOrderPayload($quotation);
+                })
+                ->values();
+
             if ($recentOrderIds->isNotEmpty()) {
                 $recentOrders = Order::query()
                     ->where('accountid', $accountId)
@@ -189,11 +207,12 @@ class OrdersController extends Controller
 
         return view('orders.create', [
             'title' => 'Create Orders',
-            'subtitle' => 'Each added item will be saved as its own order.',
-            'clients' => Client::where('accountid', $accountId)->orderBy('business_name')->orderBy('contact_name')->get(),
+            'subtitle' => 'Load a quotation, edit the items, then save them as individual orders.',
+            'clients' => Client::where('accountid', $accountId)->regular()->orderBy('business_name')->orderBy('contact_name')->get(),
             'services' => Service::where('accountid', $accountId)->with('costings', 'category')->orderBy('name')->get(),
             'preSelectedClientId' => $preSelectedClientId,
             'clientDocuments' => $documents->values(),
+            'clientQuotations' => $clientQuotations,
             'existingClientItemIds' => $existingClientItemIds,
             'recentOrders' => $recentOrders,
             'isEditMode' => false,
@@ -365,7 +384,7 @@ class OrdersController extends Controller
             'title' => 'Edit Order',
             'subtitle' => 'Edit this item-based order.',
             'order' => $order,
-            'clients' => Client::where('accountid', $accountId)->orderBy('business_name')->orderBy('contact_name')->get(),
+            'clients' => Client::where('accountid', $accountId)->regular()->orderBy('business_name')->orderBy('contact_name')->get(),
             'services' => Service::where('accountid', $accountId)->with('costings', 'category')->orderBy('name')->get(),
             'preSelectedClientId' => $order->clientid,
             'clientDocuments' => $documents->values(),
@@ -475,5 +494,43 @@ class OrdersController extends Controller
     private function wholeQuantity(mixed $value): int
     {
         return max(1, (int) round((float) $value, 0));
+    }
+
+    private function buildQuotationOrderPayload(Quotation $quotation): array
+    {
+        $quotationTitle = trim((string) ($quotation->quo_title ?? ''));
+        $quotationNumber = trim((string) ($quotation->quo_number ?? ''));
+        $displayTitle = $quotationTitle !== '' ? $quotationTitle : ($quotationNumber !== '' ? $quotationNumber : ('Quotation ' . $quotation->quotationid));
+
+        return [
+            'quotationid' => $quotation->quotationid,
+            'quotation_number' => $quotationNumber,
+            'quo_title' => $quotationTitle,
+            'display_title' => $displayTitle,
+            'items' => $quotation->items->map(function (QuotationItem $item): array {
+                $resolvedName = trim((string) ($item->item_name ?? ''));
+
+                if ($resolvedName === '') {
+                    $resolvedName = trim((string) ($item->item?->name ?? ''));
+                }
+
+                if ($resolvedName === '') {
+                    $resolvedName = 'Item';
+                }
+
+                return [
+                    'itemid' => $item->itemid,
+                    'item_name' => $resolvedName,
+                    'item_description' => (string) ($item->item_description ?? ''),
+                    'quantity' => (float) ($item->quantity ?? 1),
+                    'no_of_users' => !empty($item->no_of_users) ? (int) $item->no_of_users : null,
+                    'frequency' => (string) ($item->frequency ?? ''),
+                    'duration' => !empty($item->duration) ? (int) $item->duration : null,
+                    'start_date' => $item->start_date?->format('Y-m-d') ?? now()->toDateString(),
+                    'end_date' => $item->end_date?->format('Y-m-d') ?? '2099-12-31',
+                    'delivery_date' => null,
+                ];
+            })->values(),
+        ];
     }
 }

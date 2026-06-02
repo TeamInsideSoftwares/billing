@@ -7,6 +7,10 @@
     <a href="{{ route('quotations.pdf', $quotation) }}" target="_blank" class="secondary-button small">View PDF</a>
     <a href="{{ route('quotations.email-compose', $quotation) }}" class="primary-button small">Compose Email</a>
     <a href="{{ route('quotations.create', ['step' => 2, 'c' => request('c', $quotation->clientid), 'd' => $quotation->quotationid]) }}" class="primary-button small">Edit</a>
+    <form method="POST" action="{{ route('quotations.copy', $quotation) }}" class="inline-delete">
+        @csrf
+        <button type="submit" class="secondary-button small">Copy Quotation</button>
+    </form>
     <form method="POST" action="{{ route('quotations.destroy', ['quotation' => $quotation, 'c' => request('c')]) }}" class="inline-delete"
         onsubmit="return confirm('Cancel this quotation?')">
         @csrf

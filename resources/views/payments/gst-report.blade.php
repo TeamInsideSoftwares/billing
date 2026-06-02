@@ -102,7 +102,14 @@
                                 <tr>
                                     <td>{{ $loop->iteration }}</td>
                                     <td>
-                                        <a href="{{ route('invoices.show', ['invoice' => $row['invoiceid']]) }}" class="gst-link">
+                                        @php
+                                            $pdfType = 'tax_invoice';
+                                            $previewUrl = route('invoices.pdf', ['invoice' => $row['invoiceid'], 'type' => $pdfType]) . '?preview=1';
+                                        @endphp
+                                        <a href="{{ route('invoices.pdf', ['invoice' => $row['invoiceid'], 'type' => $pdfType]) }}"
+                                           class="gst-link js-gst-preview-link"
+                                           data-preview-url="{{ $previewUrl }}"
+                                           data-preview-title="Invoice PDF Preview">
                                             {{ $row['ti_number'] }}
                                         </a>
                                     </td>
@@ -132,4 +139,40 @@
             @endif
         </section>
     </div>
+
+    <div class="offcanvas offcanvas-end ledger-preview-canvas" tabindex="-1" id="gstPreviewCanvas" aria-labelledby="gstPreviewCanvasLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="gstPreviewCanvasLabel">Invoice PDF Preview</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-0">
+            <iframe id="gstPreviewFrame" class="ledger-preview-frame" src="about:blank" title="GST Report Invoice Preview"></iframe>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const panelEl = document.getElementById('gstPreviewCanvas');
+            const frameEl = document.getElementById('gstPreviewFrame');
+            const titleEl = document.getElementById('gstPreviewCanvasLabel');
+            if (!panelEl || !frameEl || typeof bootstrap === 'undefined') return;
+
+            const previewPanel = new bootstrap.Offcanvas(panelEl);
+            document.querySelectorAll('.js-gst-preview-link').forEach((link) => {
+                link.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    const url = this.dataset.previewUrl || this.getAttribute('href') || '';
+                    const title = this.dataset.previewTitle || 'Preview';
+                    if (!url) return;
+                    titleEl.textContent = title;
+                    frameEl.src = url;
+                    previewPanel.show();
+                });
+            });
+
+            panelEl.addEventListener('hidden.bs.offcanvas', function () {
+                frameEl.src = 'about:blank';
+            });
+        });
+    </script>
 @endsection

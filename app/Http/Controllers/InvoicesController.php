@@ -12,6 +12,7 @@ use App\Models\CommunicationLog;
 use App\Models\MessageTemplate;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\PaymentDetail;
 use App\Models\Setting;
 use App\Models\Service;
 use App\Models\Tax;
@@ -57,6 +58,25 @@ class InvoicesController extends Controller
             'proforma' => array_values(array_filter($terms)),
             'billing' => [],
         ];
+    }
+
+    private function latestPaymentForInvoice(Invoice $invoice): ?Payment
+    {
+        return Payment::query()
+            ->select('payments.*')
+            ->join('payment_details', 'payment_details.paymentid', '=', 'payments.paymentid')
+            ->where('payment_details.invoiceid', $invoice->invoiceid)
+            ->orderByDesc('payments.payment_date')
+            ->orderByDesc('payments.created_at')
+            ->first();
+    }
+
+    private function paymentIdsForInvoice(Invoice $invoice)
+    {
+        return PaymentDetail::query()
+            ->where('invoiceid', $invoice->invoiceid)
+            ->distinct()
+            ->pluck('paymentid');
     }
 
     private function getDefaultInvoiceTermsForBucket(Invoice $invoice, string $termBucket): array
@@ -142,11 +162,7 @@ class InvoicesController extends Controller
         $daysAgo = ((int) ($daysLeft ?? 0)) < 0 ? abs((int) $daysLeft) : 0;
         $templateType = !empty(trim((string) $invoice->ti_number)) ? 'ti' : 'pi';
         $renewalDate = '';
-        $latestPayment = Payment::query()
-            ->where('invoiceid', $invoice->invoiceid)
-            ->orderByDesc('payment_date')
-            ->orderByDesc('created_at')
-            ->first();
+        $latestPayment = $this->latestPaymentForInvoice($invoice);
         $paymentAmount = (float) ($latestPayment?->received_amount ?? 0);
         $paymentDate = $latestPayment?->payment_date?->format('d M Y') ?? '';
         $paymentReference = trim((string) ($latestPayment?->reference_number ?? ''));
@@ -313,7 +329,7 @@ class InvoicesController extends Controller
 
     private function buildInvoicePdfAttachment(Invoice $invoice, bool $isTaxInvoice): array
     {
-        $invoice->loadMissing(['client.billingDetail', 'invoiceItems', 'payments']);
+        $invoice->loadMissing(['client.billingDetail', 'invoiceItems', 'paymentDetails.payment']);
 
         $accountid = $this->resolveAccountId();
         $account = \App\Models\Account::find($accountid);
@@ -748,7 +764,7 @@ class InvoicesController extends Controller
         $selectedStatus = strtolower(trim((string) request('status', 'active')));
 
         $invoiceQuery = Invoice::where('accountid', $accountid)
-            ->with(['client', 'items', 'payments'])
+            ->with(['client', 'items', 'paymentDetails.payment'])
             ->latest();
 
         if ($selectedClientId) {
@@ -1099,6 +1115,7 @@ class InvoicesController extends Controller
         $accountid = $this->resolveAccountId();
         $legacyAccountId = $user?->id ? (string) $user->id : null;
         $account = \App\Models\Account::find($accountid);
+        $invoiceDateBounds = $this->resolveFinancialYearDateBounds($accountid);
         $orderId = request('o', request('orderid'));
         $clientId = request('c', request('clientid'));
         $currentUserId = $user?->userid ?? $user?->id;
@@ -1216,6 +1233,7 @@ class InvoicesController extends Controller
             'isTaxInvoice' => request('tax_invoice', 0) == 1,
             'selectedClientCurrency' => $selectedClientCurrency,
             'orderItemsForClient' => $orderItemsForClient,
+            'invoiceDateBounds' => $invoiceDateBounds,
         ]);
     }
 
@@ -1805,14 +1823,16 @@ class InvoicesController extends Controller
     public function invoicesStore(Request $request)
     {
         try {
+            $accountid = $this->resolveAccountId();
+            $invoiceDateBounds = $this->resolveFinancialYearDateBounds($accountid);
             $validated = $request->validate([
                 'invoiceid' => 'nullable|exists:invoices,invoiceid',
                 'clientid' => 'required|exists:clients,clientid',
                 'orderid' => 'nullable|exists:orders,orderid',
                 'invoice_number' => 'nullable|string',
                 'invoice_title' => 'required|string|max:255',
-                'issue_date' => 'required|date',
-                'due_date' => 'required|date|after_or_equal:issue_date',
+                'issue_date' => 'required|date|after_or_equal:' . $invoiceDateBounds['min_date'] . '|before_or_equal:' . ($invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date']),
+                'due_date' => 'required|date|after_or_equal:issue_date|before_or_equal:' . ($invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date']),
                 'notes' => 'nullable|string',
                 'terms' => 'nullable|string',
                 'status' => 'nullable|in:active,cancelled',
@@ -2111,20 +2131,21 @@ class InvoicesController extends Controller
 
     public function invoicesSaveDraft(Request $request)
     {
+        $accountid = $this->resolveAccountId();
+        $invoiceDateBounds = $this->resolveFinancialYearDateBounds($accountid);
         $validated = $request->validate([
             'invoiceid' => 'nullable|exists:invoices,invoiceid',
             'clientid' => 'required|exists:clients,clientid',
             'orderid' => 'nullable|exists:orders,orderid',
             'invoice_title' => 'sometimes|required|string|max:255',
-            'issue_date' => 'nullable|date',
-            'due_date' => 'nullable|date|after_or_equal:issue_date',
+            'issue_date' => 'nullable|date|after_or_equal:' . $invoiceDateBounds['min_date'] . '|before_or_equal:' . ($invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date']),
+            'due_date' => 'nullable|date|after_or_equal:issue_date|before_or_equal:' . ($invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date']),
             'notes' => 'nullable|string',
             'status' => 'nullable|in:draft,active,cancelled',
             'items_data' => 'nullable|json',
         ]);
 
         $user = Auth::user();
-        $accountid = $this->resolveAccountId();
         $legacyAccountId = $user?->id ? (string) $user->id : null;
         $accountCandidates = array_values(array_filter(array_unique([$accountid, $legacyAccountId])));
         $client = Client::findOrFail($validated['clientid']);
@@ -2475,6 +2496,8 @@ class InvoicesController extends Controller
     public function invoicesUpdate(Request $request, string $invoice)
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
+        $accountid = $this->resolveAccountId();
+        $invoiceDateBounds = $this->resolveFinancialYearDateBounds($accountid);
         $invoiceNumberColumn = 'pi_number';
         $itemModel = InvoiceItem::class;
 
@@ -2482,8 +2505,8 @@ class InvoicesController extends Controller
             'clientid' => 'required|exists:clients,clientid',
             'invoice_number' => 'required|string|unique:invoices,' . $invoiceNumberColumn . ',' . $invoice->invoiceid . ',invoiceid',
             'invoice_title' => 'nullable|string|max:255',
-            'issue_date' => 'required|date',
-            'due_date' => 'required|date|after_or_equal:issue_date',
+            'issue_date' => 'required|date|after_or_equal:' . $invoiceDateBounds['min_date'] . '|before_or_equal:' . ($invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date']),
+            'due_date' => 'required|date|after_or_equal:issue_date|before_or_equal:' . ($invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date']),
             'notes' => 'nullable|string',
             'items_data' => 'required|json',
         ]);
@@ -2579,9 +2602,7 @@ class InvoicesController extends Controller
                     ->update(['status' => 'cancelled']);
             }
 
-            $paymentIds = Payment::query()
-                ->where('invoiceid', $invoice->invoiceid)
-                ->pluck('paymentid');
+            $paymentIds = $this->paymentIdsForInvoice($invoice);
 
             if (Schema::hasColumn('ledger', 'status')) {
                 Ledger::query()
@@ -2610,9 +2631,7 @@ class InvoicesController extends Controller
                     ->update(['status' => 'active']);
             }
 
-            $paymentIds = Payment::query()
-                ->where('invoiceid', $invoice->invoiceid)
-                ->pluck('paymentid');
+            $paymentIds = $this->paymentIdsForInvoice($invoice);
 
             if (Schema::hasColumn('ledger', 'status')) {
                 Ledger::query()

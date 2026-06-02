@@ -16,26 +16,25 @@
     @endphp
 
     <section class="panel-card w-100 p-3 compose-mail-page">
-        <div class="bg-light border rounded p-3 mb-3">
-            <div class="d-flex align-items-center gap-2">
+        <div class="quotation-step3-header mb-3">
+            <div class="quotation-step3-header-row">
                 <a href="{{ route('quotations.create', ['step' => 3, 'c' => $quotation->clientid, 'd' => $quotation->quotationid]) }}"
-                    class="secondary-button">
-                    <i class="fas fa-arrow-left"></i>
+                    class="secondary-button quotation-step3-back-btn">
+                    <i class="fas fa-arrow-left text-sm"></i>
                 </a>
-                <div class="vr"></div>
-                <div class="d-inline-flex align-items-center justify-content-center rounded"
-                    style="width:36px;height:36px;background:#e0e7ff;color:#4f46e5;">
+                <div class="quotation-step3-divider"></div>
+                <div class="quotation-step3-avatar">
                     <i class="fas fa-user"></i>
                 </div>
-                <div class="grow">
-                    <div class="fw-semibold text-dark">{{ $clientName }}</div>
+                <div class="quotation-step3-client min-w-0">
+                    <div class="quotation-step3-client-name">{{ $clientName }}</div>
                     @if ($clientEmail)
-                        <div class="text-muted small">{{ $clientEmail }}</div>
+                        <div class="quotation-step3-client-email">{{ $clientEmail }}</div>
                     @endif
                 </div>
-                <div class="text-end">
+                <div class="quotation-step3-tools">
                     <span class="invoice-number-badge">{{ $displayDocNumber }}</span>
-                    <div class="invoice-compact-steps invoice-compact-steps--right mt-1" aria-label="Step progress">
+                    <div class="invoice-compact-steps invoice-compact-steps--right" aria-label="Step progress">
                         <span class="invoice-compact-step">1</span>
                         <span class="invoice-compact-step">2</span>
                         <span class="invoice-compact-step">3</span>
@@ -47,8 +46,8 @@
 
         <div class="d-flex justify-content-between align-items-center mb-2">
             <h4 class="mb-0">Message Compose</h4>
+            <span class="text-muted small">Select channel before sending</span>
         </div>
-        <div class="text-muted small mb-3">Select channel before sending</div>
 
         <div class="border rounded overflow-hidden mb-4" style="background:#fff;">
             <div class="bg-light border-bottom px-3 py-2 small fw-semibold">Channel</div>
@@ -116,7 +115,7 @@
                                 </div>
                             </div>
 
-                            <div class="whatsapp-sms-fields" style="display: none;">
+                            <div class="whatsapp-sms-fields is-hidden">
                                 <div class="row g-2 mb-3">
                                     <div class="col-12 col-md-6">
                                         <label class="field-label">Phone Number</label>
@@ -141,17 +140,17 @@
                             </div>
 
                             <div class="d-flex justify-content-end flex-wrap gap-2 mt-4 pt-3 border-top">
-                                <div class="email-actions" style="{{ $isComposeLocked ? 'display:none;' : '' }}">
+                                <div class="email-actions {{ $isComposeLocked ? 'is-hidden' : '' }}">
                                     <button type="submit" name="action" value="save" class="secondary-button">Save Email</button>
                                     <button type="submit" name="action" value="send" class="primary-button">Send to Client</button>
                                 </div>
-                                <div class="whatsapp-actions" style="{{ $isComposeLocked ? 'display:none;' : 'display: none;' }}">
+                                <div class="whatsapp-actions is-hidden">
                                     <button type="submit" name="action" value="save" class="secondary-button">Save WhatsApp Message</button>
-                                    <button type="submit" name="action" value="send" class="primary-button" style="background: #25d366; border-color: #25d366;">
+                                    <button type="submit" name="action" value="send" class="primary-button button-whatsapp">
                                         <i class="fab fa-whatsapp mr-1"></i> Send via WhatsApp
                                     </button>
                                 </div>
-                                <div class="sms-actions" style="{{ $isComposeLocked ? 'display:none;' : 'display: none;' }}">
+                                <div class="sms-actions is-hidden">
                                     <button type="submit" name="action" value="save" class="secondary-button">Save SMS</button>
                                     <button type="submit" name="action" value="send" class="primary-button">Send SMS</button>
                                 </div>
@@ -164,8 +163,7 @@
                     <div class="border rounded overflow-hidden position-sticky" style="top:.8rem; background: #fff;">
                         <div class="bg-light border-bottom px-3 py-2 small fw-semibold">Raw Message</div>
                         <div class="p-3">
-                            <pre id="previewRawBody" class="mb-0 mt-0 p-2 border rounded bg-light"
-                                style="min-height: 180px; white-space: pre-wrap; word-break: break-word;"></pre>
+                            <pre id="previewRawBody" class="mb-0 mt-0 p-2 border rounded bg-light compose-preview-raw"></pre>
                             <div class="mt-3">
                                 <div class="small fw-semibold text-muted mb-1">Attachments</div>
                                 <div id="previewAttachments" class="small text-break"></div>
@@ -338,10 +336,10 @@
 
                 let html = '';
                 if (imageAttachments.length > 0) {
-                    html += '<div class="small text-muted mb-1">Preview:</div><div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                    html += '<div class="small text-muted mb-1">Preview:</div><div class="compose-attachment-preview-grid">' +
                         imageAttachments.map((item) => (
                             '<a href="' + item.url + '" target="_blank" rel="noopener noreferrer">' +
-                            '<img src="' + item.url + '" alt="' + String(item.name).replace(/"/g, '&quot;') + '" class="img-fluid border rounded" style="max-height:120px;max-width:140px;">' +
+                            '<img src="' + item.url + '" alt="' + String(item.name).replace(/"/g, '&quot;') + '" class="img-fluid border rounded compose-attachment-image">' +
                             '</a>'
                         )).join('') +
                         '</div>';
@@ -394,11 +392,24 @@
                     applyTemplateForChannel(channel);
                 }
                 document.querySelectorAll('.email-fields, .email-actions').forEach((el) => {
-                    el.style.display = isEmail ? '' : 'none';
+                    if (el.classList.contains('email-actions')) {
+                        el.classList.toggle('is-hidden', !isEmail || isAlreadySent);
+                    } else {
+                        el.classList.toggle('is-hidden', !isEmail);
+                    }
                 });
-                document.querySelector('.whatsapp-sms-fields').style.display = isEmail ? 'none' : '';
-                document.querySelector('.whatsapp-actions').style.display = channel === 'whatsapp' ? '' : 'none';
-                document.querySelector('.sms-actions').style.display = channel === 'sms' ? '' : 'none';
+                const altFields = document.querySelector('.whatsapp-sms-fields');
+                if (altFields) {
+                    altFields.classList.toggle('is-hidden', isEmail);
+                }
+                const whatsappActions = document.querySelector('.whatsapp-actions');
+                if (whatsappActions) {
+                    whatsappActions.classList.toggle('is-hidden', channel !== 'whatsapp' || isAlreadySent);
+                }
+                const smsActions = document.querySelector('.sms-actions');
+                if (smsActions) {
+                    smsActions.classList.toggle('is-hidden', channel !== 'sms' || isAlreadySent);
+                }
                 refreshHints();
                 refreshAttachmentPreview();
             }

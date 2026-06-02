@@ -19,6 +19,12 @@
             if (!is_array($defaultInvoiceIds)) {
                 $defaultInvoiceIds = [$defaultInvoiceIds];
             }
+            $paymentDateBounds = $paymentDateBounds ?? [
+                'min_date' => date('Y-01-01'),
+                'max_date' => date('Y-12-31'),
+                'default_date' => date('Y-m-d'),
+                'label' => '',
+            ];
             $selectedClient = $isEditingPayment
                 ? $payment->client ?? null
                 : collect($clients ?? [])->firstWhere('clientid', $defaultClientId);
@@ -101,6 +107,7 @@
             if (!$defaultPaymentFlow) {
                 $defaultPaymentFlow = isset($payment) && $existingTdsTotal > 0 ? 'tds' : 'standard';
             }
+            $defaultTdsInputType = old('tds_input_type', 'percent');
         @endphp
         <form method="POST" action="{{ isset($payment) ? route('payments.update', $payment) : route('payments.store') }}"
             class="client-form payments-form-shell">
@@ -147,9 +154,11 @@
                         @endif
                     </div>
                     <div class="invoice-client-header__right">
-                        <div class="invoice-number-badge">
-                            {{ $displayReceiptNumber !== '' ? $displayReceiptNumber : 'Auto on save' }}
-                        </div>
+                        @if ($displayReceiptNumber !== '')
+                            <div class="invoice-number-badge">
+                                {{ $displayReceiptNumber }}
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -182,8 +191,8 @@
                     <label for="tds_amount">TDS Amount (<span id="currencyLabelTds">{{ $defaultCurrency }}</span>)</label>
                     <div class="payments-tds-group">
                         <select id="tds_input_type" class="payments-tds-type">
-                            <option value="amount">Amount</option>
-                            <option value="percent">%</option>
+                            <option value="percent" {{ $defaultTdsInputType === 'percent' ? 'selected' : '' }}>%</option>
+                            <option value="amount" {{ $defaultTdsInputType === 'amount' ? 'selected' : '' }}>Amount</option>
                         </select>
                         <input type="text" id="tds_amount"
                             value="{{ old('tds_amount', $existingTdsTotal > 0 ? $existingTdsTotal : '') }}">
@@ -195,10 +204,7 @@
                     @enderror
                 </div>
                 <div class="payments-full-span">
-                    <label>Related Invoices (Optional)</label>
-                    <div class="payments-invoice-tip">
-                        Tip: Check first the invoice you want to fully pay. Allocation follows checkbox order.
-                    </div>
+                    <label>Invoices</label>
                     <div id="invoice-list-wrap" class="payments-invoice-list-wrap">
                         <div id="invoice-list" class="payments-invoice-list"></div>
                     </div>
@@ -206,7 +212,9 @@
                 <div>
                     <label for="payment_date">Date *</label>
                     <input type="date" id="payment_date" name="payment_date"
-                        value="{{ old('payment_date', isset($payment) ? optional($payment->payment_date)->format('Y-m-d') : date('Y-m-d')) }}"
+                        min="{{ $paymentDateBounds['min_date'] }}"
+                        max="{{ $paymentDateBounds['max_date'] }}"
+                        value="{{ old('payment_date', isset($payment) ? optional($payment->payment_date)->format('Y-m-d') : $paymentDateBounds['default_date']) }}"
                         required>
                     @error('payment_date')
                         <span class="error">{{ $message }}</span>
@@ -254,6 +262,44 @@
         </form>
     </section>
     <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const paymentDate = document.getElementById('payment_date');
+            if (!paymentDate) {
+                return;
+            }
+
+            const minDate = paymentDate.getAttribute('min');
+            const maxDate = paymentDate.getAttribute('max');
+
+            const clampDate = () => {
+                if (!paymentDate.value) {
+                    paymentDate.setCustomValidity('');
+                    return;
+                }
+
+                if (minDate && paymentDate.value < minDate) {
+                    paymentDate.value = minDate;
+                    paymentDate.setCustomValidity('Payment date cannot be before the financial year start.');
+                    return;
+                }
+
+                if (maxDate && paymentDate.value > maxDate) {
+                    paymentDate.value = maxDate;
+                    paymentDate.setCustomValidity('Payment date cannot be after the allowed date.');
+                    return;
+                }
+
+                paymentDate.setCustomValidity('');
+            };
+
+            paymentDate.addEventListener('change', clampDate);
+            paymentDate.addEventListener('blur', clampDate);
+            paymentDate.addEventListener('input', function () {
+                paymentDate.setCustomValidity('');
+            });
+        });
+    </script>
+    <script>
         (function() {
             const clientCurrencies = @json($clientCurrencies);
             const invoiceTotals = @json($invoiceTotals);
@@ -296,6 +342,18 @@
                 return numeric.toFixed(2).replace(/\.?0+$/, '');
             }
 
+            function parseLooseNumber(value) {
+                if (typeof value !== 'string') return parseFloat(value || 0) || 0;
+                const normalized = value.replace(/,/g, '').replace(/\s+/g, '');
+                const parsed = parseFloat(normalized);
+                return Number.isFinite(parsed) ? parsed : 0;
+            }
+
+            function normalizeAllocationInput(input) {
+                if (!input) return;
+                input.value = formatInputNumber(parseLooseNumber(input.value));
+            }
+
             function selectedPaymentFlow() {
                 const selected = document.getElementById('payment_flow');
                 return selected ? selected.value : 'standard';
@@ -332,22 +390,7 @@
 
             function getAvailableWithoutTax(invoiceId) {
                 const totals = invoiceTotals[invoiceId] || {};
-                const withoutTax = parseFloat(totals.amount_without_tax || 0);
-                const grandTotal = parseFloat(totals.grand_total || 0);
-                const balanceDue = parseFloat(totals.balance_due || 0);
-                const baseDue = grandTotal > 0
-                    ? (balanceDue * withoutTax) / grandTotal
-                    : Math.max(0, balanceDue);
-                let available = Math.max(0, baseDue);
-                let saved = 0;
-                if (isEditingPayment && paymentDetailsMap[invoiceId]) {
-                    const savedReceived = parseFloat(paymentDetailsMap[invoiceId].received_amount || 0);
-                    const savedTds = parseFloat(paymentDetailsMap[invoiceId].tds_amount || 0);
-                    saved = savedReceived + savedTds;
-                    available += saved;
-                }
-                // Preserve previously saved allocation on edit even if invoice values changed.
-                return Math.max(0, available, saved);
+                return Math.max(0, parseFloat(totals.amount_without_tax || 0));
             }
 
             function renderInvoiceList() {
@@ -398,7 +441,7 @@
                             <input type="hidden" class="invoice-collectible-input" data-due="${available}" data-without-tax="${availableWithoutTax}" value="${Math.round(available).toLocaleString('en-US')}">
                             <div class="payments-alloc-wrap">
                                 <div class="payments-alloc-row">
-                                    <span class="invoice-allocated-label">Allocated:</span>
+                                    <span class="invoice-allocated-label">Amount:</span>
                                 </div>
                                 <input type="text" class="invoice-allocated-input payments-tds-row-input" value="0">
                                 <input type="text" class="invoice-tds-input payments-tds-row-input" value="${savedTdsAmount > 0 ? formatInputNumber(savedTdsAmount) : ''}">
@@ -433,7 +476,7 @@
 
             function recalculateStandardAllocations() {
                 if (selectedPaymentFlow() !== 'standard') return;
-                let remaining = parseFloat(receivedAmountInput.value || 0);
+                let remaining = parseLooseNumber(receivedAmountInput.value || 0);
                 if (isNaN(remaining) || remaining < 0) remaining = 0;
 
                 const rows = Array.from(invoiceList.querySelectorAll('.addon-option'));
@@ -458,7 +501,7 @@
 
                     if (checkbox && checkbox.checked) {
                         const available = getAvailableToCollect(invoiceId);
-                        const typed = parseFloat(allocatedInput?.value || '');
+                        const typed = parseLooseNumber(allocatedInput?.value || '');
                         if (!isNaN(typed) && typed > 0) {
                             allocated = Math.min(available, remaining, typed);
                         } else {
@@ -470,7 +513,9 @@
 
                     if (allocatedInput) {
                         allocatedInput.readOnly = !(checkbox && checkbox.checked);
-                        allocatedInput.value = formatInputNumber(allocated);
+                        if (document.activeElement !== allocatedInput) {
+                            allocatedInput.value = formatInputNumber(allocated);
+                        }
                     }
                     if (receivedHidden) receivedHidden.value = allocated.toFixed(2);
                     if (tdsHidden) tdsHidden.value = '0';
@@ -478,16 +523,16 @@
 
                     if (liveState) {
                         if (!checkbox || !checkbox.checked) {
-                            liveState.textContent = 'Not allocated yet';
+                            liveState.textContent = '';
                             liveState.style.color = '#64748b';
                         } else if (allocated <= 0) {
-                            liveState.textContent = `Now Remaining: ${Math.round(getAvailableToCollect(invoiceId)).toLocaleString('en-US')}`;
+                            liveState.textContent = `New Balance: ${Math.round(getAvailableToCollect(invoiceId)).toLocaleString('en-US')}`;
                             liveState.style.color = '#92400e';
                         } else if (nowRemaining <= 0.1) {
-                            liveState.textContent = 'Now Fully Paid';
+                            liveState.textContent = 'Fully Paid';
                             liveState.style.color = '#047857';
                         } else {
-                            liveState.textContent = `Now Remaining: ${Math.round(nowRemaining).toLocaleString('en-US')}`;
+                            liveState.textContent = `New Balance: ${Math.round(nowRemaining).toLocaleString('en-US')}`;
                             liveState.style.color = '#92400e';
                         }
                     }
@@ -508,13 +553,13 @@
                 const uncheckedRows = rows.filter((row) => !row.querySelector('.invoice-option-checkbox')?.checked);
 
                 const mode = tdsInputType?.value || 'amount';
-                const percent = parseFloat(tdsAmountInput?.value || '0') || 0;
+                const percent = parseLooseNumber(tdsAmountInput?.value || '0') || 0;
                 let computedMainTds = 0;
 
                 if (mode === 'percent') {
                     computedMainTds = checkedRows.reduce((sum, row) => {
                         const input = row.querySelector('.invoice-collectible-input');
-                        const base = parseFloat(input?.dataset.withoutTax || '0') || 0;
+                        const base = parseLooseNumber(input?.dataset.withoutTax || '0') || 0;
                         return sum + (base * percent / 100);
                     }, 0);
                     if (tdsAmountHidden) tdsAmountHidden.value = computedMainTds.toFixed(2);
@@ -528,14 +573,14 @@
                     const tdsInput = row.querySelector('.invoice-tds-input');
                     const liveState = row.querySelector('.invoice-live-state');
                     const input = row.querySelector('.invoice-collectible-input');
-                    const withoutTax = parseFloat(input?.dataset.withoutTax || '0') || 0;
+                    const withoutTax = parseLooseNumber(input?.dataset.withoutTax || '0') || 0;
                     let rowTds = 0;
 
                     if (checkbox && checkbox.checked) {
                         if (mode === 'percent') {
                             rowTds = withoutTax * percent / 100;
                         } else {
-                            const typed = parseFloat(tdsInput?.value || '0') || 0;
+                            const typed = parseLooseNumber(tdsInput?.value || '0') || 0;
                             rowTds = Math.min(withoutTax, Math.max(0, typed));
                         }
                     }
@@ -573,8 +618,8 @@
                     const sumTypedTds = checkedRows.reduce((sum, row) => {
                         const tdsInput = row.querySelector('.invoice-tds-input');
                         const input = row.querySelector('.invoice-collectible-input');
-                        const withoutTax = parseFloat(input?.dataset.withoutTax || '0') || 0;
-                        const typed = parseFloat(tdsInput?.value || '0') || 0;
+                        const withoutTax = parseLooseNumber(input?.dataset.withoutTax || '0') || 0;
+                        const typed = parseLooseNumber(tdsInput?.value || '0') || 0;
                         return sum + Math.min(withoutTax, Math.max(0, typed));
                     }, 0);
                     if (tdsAmountHidden) tdsAmountHidden.value = sumTypedTds.toFixed(2);
@@ -594,6 +639,9 @@
                 if (tdsWrap) tdsWrap.style.display = isStandard ? 'none' : '';
                 if (receivedWrap) receivedWrap.style.display = isStandard ? '' : 'none';
                 if (tdsInputType) tdsInputType.style.display = isStandard ? 'none' : '';
+                if (!isStandard && tdsInputType && tdsInputType.value !== 'percent') {
+                    tdsInputType.value = 'percent';
+                }
                 const isPercentMode = !isStandard && (tdsInputType?.value === 'percent');
                 if (tdsAmountInput) tdsAmountInput.readOnly = false;
                 if (tdsAmountInput) tdsAmountInput.style.background = '#fff';
@@ -664,6 +712,17 @@
                 }
             });
 
+            invoiceList.addEventListener('blur', (event) => {
+                if (event.target && event.target.classList.contains('invoice-allocated-input')) {
+                    normalizeAllocationInput(event.target);
+                    recalculateStandardAllocations();
+                }
+                if (event.target && event.target.classList.contains('invoice-tds-input')) {
+                    normalizeAllocationInput(event.target);
+                    recalculateTdsAllocations();
+                }
+            }, true);
+
             invoiceList.addEventListener('change', (event) => {
                 if (event.target && event.target.classList.contains('invoice-option-checkbox')) {
                     if (event.target.checked) {
@@ -688,6 +747,9 @@
             setCurrencyFromClient();
             updateSelectedClientHeader();
             renderInvoiceList();
+            if (tdsInputType) {
+                tdsInputType.value = 'percent';
+            }
             applyPaymentFlowUi();
         })();
     </script>

@@ -147,6 +147,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/quotations/{quotation}/email-compose', 'quotationEmailCompose')->name('quotations.email-compose');
         Route::post('/quotations/{quotation}/email-compose', 'quotationEmailComposeStore')->name('quotations.email-compose.store');
         Route::get('/quotations/{quotation}', 'quotationsShow')->name('quotations.show');
+        Route::post('/quotations/{quotation}/copy', 'quotationsCopy')->name('quotations.copy');
         Route::get('/quotations/{quotation}/edit', 'quotationsEdit')->name('quotations.edit');
         Route::put('/quotations/{quotation}', 'quotationsUpdate')->name('quotations.update');
         Route::delete('/quotations/{quotation}', 'quotationsDestroy')->name('quotations.destroy');
@@ -200,6 +201,7 @@ Route::middleware(['auth'])->group(function () {
     Route::controller(SettingsController::class)->group(function () {
         Route::post('/settings/fy-prefix', 'fyPrefixUpdate')->name('settings.fy-prefix.update');
         Route::get('/settings', 'settings')->name('settings.index');
+        Route::post('/financial-year/select', 'financialYearSelect')->name('financial-year.select');
         Route::put('/settings/account', 'accountUpdate')->name('account.update');
         Route::post('/settings/fixed-tax', 'fixedTaxUpdate')->name('account.fixed-tax.update');
         Route::post('/settings/serial-config', 'serialConfigUpdate')->name('serial.config.update');

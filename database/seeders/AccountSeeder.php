@@ -3,9 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use App\Models\Account;
-use App\Models\AccountCredential;
+use App\Models\User;
 
 class AccountSeeder extends Seeder
 {
@@ -25,11 +24,15 @@ class AccountSeeder extends Seeder
             // Add any other fields if necessary
         ]);
 
-        AccountCredential::updateOrCreate(
-            ['accountid' => $account->accountid],
+        User::updateOrCreate(
+            ['email' => 'team@insidesoftwares.com'],
             [
+                'accountid' => $account->accountid,
+                'name' => $account->name,
                 'email' => 'team@insidesoftwares.com',
-                'password' => Hash::make('123456'),
+                'password' => '123456',
+                'role' => 'admin',
+                'is_active' => true,
             ]
         );
     }

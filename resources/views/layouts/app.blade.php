@@ -261,6 +261,19 @@
                 </div>
 
                 <div class="topbar-actions">
+                    @if(!empty($sharedFinancialYears) && $sharedFinancialYears->count() > 0)
+                        <form method="POST" action="{{ route('financial-year.select') }}" class="topbar-fy-form">
+                            @csrf
+                            <select id="topbarFinancialYear" name="fy_id" class="topbar-fy-select">
+                                @foreach($sharedFinancialYears as $financialYear)
+                                    <option value="{{ $financialYear->fy_id }}"
+                                        {{ (string) ($sharedSelectedFinancialYearId ?? '') === (string) $financialYear->fy_id ? 'selected' : '' }}>
+                                        {{ $financialYear->financial_year }}{{ $financialYear->default ? ' (Default)' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @endif
                     @yield('header_actions')
                 </div>
             </header>
@@ -292,6 +305,16 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const topbarFySelect = document.getElementById('topbarFinancialYear');
+        if (topbarFySelect) {
+            topbarFySelect.addEventListener('change', function () {
+                const form = topbarFySelect.closest('form');
+                if (form) {
+                    form.submit();
+                }
+            });
+        }
+
         const notificationsDataEl = document.getElementById('notifications-data');
         const notificationsList = document.getElementById('notificationsList');
         const notificationBadge = document.querySelector('.notification-badge');
@@ -458,33 +481,61 @@
             return element.classList.contains('header-date-input') || element.classList.contains('module-date-input');
         };
 
-        // Initialize Flatpickr on all date inputs
-        flatpickr('input[type="date"]', {
-            dateFormat: 'Y-m-d',
-            allowInput: true,
-            disableMobile: true,
-            onReady: function(selectedDates, dateStr, instance) {
-                if (isManagedDateFilter(instance.element)) {
-                    instance.set('maxDate', 'today');
-                    if (instance.element.name === 'to') {
-                        const fromInput = instance.element.closest('form').querySelector('input[name="from"]');
-                        if (fromInput && fromInput.value) {
-                            instance.set('minDate', fromInput.value);
-                        }
-                    }
-                }
-            },
-            onChange: function(selectedDates, dateStr, instance) {
-                if (isManagedDateFilter(instance.element) && instance.element.name === 'from') {
-                    const toInput = instance.element.closest('form').querySelector('input[name="to"]');
-                    if (toInput && toInput._flatpickr) {
-                        toInput._flatpickr.set('minDate', dateStr);
-                        if (toInput.value && toInput.value < dateStr) {
-                            toInput._flatpickr.setDate(dateStr);
-                        }
-                    }
-                }
+        const buildDatePickerConfig = (element) => {
+            const config = {
+                dateFormat: 'Y-m-d',
+                allowInput: true,
+                disableMobile: true,
+            };
+
+            const minDate = element.getAttribute('min');
+            const maxDate = element.getAttribute('max');
+
+            if (minDate) {
+                config.minDate = minDate;
             }
+
+            if (maxDate) {
+                config.maxDate = maxDate;
+            }
+
+            if (isManagedDateFilter(element)) {
+                config.maxDate = 'today';
+            }
+
+            return config;
+        };
+
+        // Initialize Flatpickr on all date inputs.
+        document.querySelectorAll('input[type="date"]').forEach(function(input) {
+            if (input._flatpickr) {
+                return;
+            }
+
+            flatpickr(input, Object.assign(buildDatePickerConfig(input), {
+                onReady: function(selectedDates, dateStr, instance) {
+                    if (isManagedDateFilter(instance.element)) {
+                        instance.set('maxDate', 'today');
+                        if (instance.element.name === 'to') {
+                            const fromInput = instance.element.closest('form').querySelector('input[name="from"]');
+                            if (fromInput && fromInput.value) {
+                                instance.set('minDate', fromInput.value);
+                            }
+                        }
+                    }
+                },
+                onChange: function(selectedDates, dateStr, instance) {
+                    if (isManagedDateFilter(instance.element) && instance.element.name === 'from') {
+                        const toInput = instance.element.closest('form').querySelector('input[name="to"]');
+                        if (toInput && toInput._flatpickr) {
+                            toInput._flatpickr.set('minDate', dateStr);
+                            if (toInput.value && toInput.value < dateStr) {
+                                toInput._flatpickr.setDate(dateStr);
+                            }
+                        }
+                    }
+                }
+            }));
         });
 
         // Also handle dynamically added date inputs using MutationObserver
@@ -493,31 +544,13 @@
                 mutation.addedNodes.forEach(function(node) {
                     if (node.nodeType === 1) { // Element node
                         if (node.matches && node.matches('input[type="date"]') && !node._flatpickr) {
-                            flatpickr(node, {
-                                dateFormat: 'Y-m-d',
-                                allowInput: true,
-                                disableMobile: true,
-                                onReady: function(selectedDates, dateStr, instance) {
-                                    if (isManagedDateFilter(instance.element)) {
-                                        instance.set('maxDate', 'today');
-                                    }
-                                }
-                            });
+                            flatpickr(node, buildDatePickerConfig(node));
                         }
                         // Check for date inputs inside added nodes
                         const dateInputs = node.querySelectorAll ? node.querySelectorAll('input[type="date"]') : [];
                         dateInputs.forEach(function(input) {
                             if (!input._flatpickr) {
-                                flatpickr(input, {
-                                    dateFormat: 'Y-m-d',
-                                    allowInput: true,
-                                    disableMobile: true,
-                                    onReady: function(selectedDates, dateStr, instance) {
-                                        if (isManagedDateFilter(instance.element)) {
-                                            instance.set('maxDate', 'today');
-                                        }
-                                    }
-                                });
+                                flatpickr(input, buildDatePickerConfig(input));
                             }
                         });
                     }

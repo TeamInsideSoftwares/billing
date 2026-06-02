@@ -11,11 +11,6 @@
 @endsection
 
 @section('content')
-@php
-    $clientsByType = collect($allClients ?? [])->groupBy(function ($client) {
-        return strtolower((string) ($client->type ?? 'regular')) === 'trial' ? 'trial' : 'regular';
-    });
-@endphp
 <div class="order-index-shell">
     @if(!empty($showClientPicker))
         <div class="payment-client-picker-wrap">
@@ -38,14 +33,8 @@
                         <select name="c" id="client-select" class="form-control" autofocus>
                             <option value="" selected disabled>Select a client</option>
                             <option value="all">All Clients</option>
-                            @foreach(['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
-                                @if(($clientsByType[$typeKey] ?? collect())->isNotEmpty())
-                                    <optgroup label="{{ $typeLabel }}">
-                                        @foreach($clientsByType[$typeKey] as $client)
-                                            <option value="{{ $client->clientid }}">{{ $client->business_name ?? $client->contact_name }}</option>
-                                        @endforeach
-                                    </optgroup>
-                                @endif
+                            @foreach($allClients ?? [] as $client)
+                                <option value="{{ $client->clientid }}">{{ $client->business_name ?? $client->contact_name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -67,16 +56,10 @@
                     <label class="module-filter-label" for="orders_client_filter">Client</label>
                     <select name="c" id="orders_client_filter" class="form-control">
                         <option value="all" {{ empty($clientId) ? 'selected' : '' }}>All Clients</option>
-                        @foreach(['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
-                            @if(($clientsByType[$typeKey] ?? collect())->isNotEmpty())
-                                <optgroup label="{{ $typeLabel }}">
-                                    @foreach($clientsByType[$typeKey] as $client)
-                                        <option value="{{ $client->clientid }}" {{ (string) $clientId === (string) $client->clientid ? 'selected' : '' }}>
-                                            {{ $client->business_name ?? $client->contact_name }}
-                                        </option>
-                                    @endforeach
-                                </optgroup>
-                            @endif
+                        @foreach($allClients ?? [] as $client)
+                            <option value="{{ $client->clientid }}" {{ (string) $clientId === (string) $client->clientid ? 'selected' : '' }}>
+                                {{ $client->business_name ?? $client->contact_name }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
@@ -150,25 +133,25 @@
                                             @endif
                                         </div>
                                     </td>
-                                    <td>{{ $order['items'][0]['start_date'] ?? '-' }}</td>
-                                    <td>
+                                    <td class="order-date-cell">{{ $order['items'][0]['start_date'] ?? '-' }}</td>
+                                    <td class="order-date-cell">
                                         @php
                                             $orderEndDate = $order['items'][0]['end_date'] ?? null;
                                             $isOrderExpired = !empty($orderEndDate) && \Carbon\Carbon::parse($orderEndDate)->lt(now()->startOfDay());
                                         @endphp
-                                        <span class="{{ $isOrderExpired ? 'text-danger' : '' }}" style="{{ $isOrderExpired ? 'font-weight: 600;' : '' }}">
+                                        <span class="{{ $isOrderExpired ? 'text-danger fw-semibold' : '' }}">
                                             {{ $orderEndDate ?? '-' }}
                                         </span>
                                     </td>
                                     <td>
                                         @if(($order['status'] ?? '') === 'cancelled')
-                                            <span class="status-pill status-pill-cancelled">Cancelled</span>
+                                            <span class="status-pill is-cancelled">Cancelled</span>
                                         @elseif(($order['status'] ?? '') === 'suspended')
-                                            <span class="status-pill status-pill-pending">Suspended</span>
+                                            <span class="status-pill is-pending">Suspended</span>
                                         @elseif(($order['status'] ?? '') === 'completed')
-                                            <span class="status-pill status-pill-completed">Completed</span>
+                                            <span class="status-pill is-completed">Completed</span>
                                         @else
-                                            <span class="status-pill status-pill-running">{{ ($order['status'] ?? '') === 'running' ? 'Active' : ucfirst($order['status'] ?? 'active') }}</span>
+                                            <span class="status-pill is-running">{{ ($order['status'] ?? '') === 'running' ? 'Active' : ucfirst($order['status'] ?? 'active') }}</span>
                                         @endif
                                     </td>
                                     <td>

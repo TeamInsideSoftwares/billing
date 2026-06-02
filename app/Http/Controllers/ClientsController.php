@@ -497,8 +497,8 @@ class ClientsController extends Controller
     {
         $accountId = $this->resolveAccountId();
 
-        // Fetch all clients for selection dropdown/search
-        $clients = Client::where('accountid', $accountId)->orderByRaw('COALESCE(business_name, contact_name) ASC')->get();
+        // Fetch all regular clients for selection dropdown
+        $clients = Client::where('accountid', $accountId)->regular()->orderByRaw('COALESCE(business_name, contact_name) ASC')->get();
 
         if ($client) {
             if ((string) $client->accountid !== $accountId) {

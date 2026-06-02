@@ -43,6 +43,10 @@
     $currency = $client->currency ?? 'INR';
     $amount = (float) ($payment->received_amount ?? 0);
     $tdsAmount = (float) ($payment->paymentDetails->sum('tds_amount') ?? 0);
+    $summaryLabel = $amount > 0 && $tdsAmount > 0
+        ? 'Total Settlement'
+        : ($amount > 0 ? 'Received Amount' : 'TDS Amount');
+    $summaryAmount = $amount > 0 ? $amount : $tdsAmount;
 
     $clientName = $client->business_name ?? $client->contact_name ?? 'Client';
     $title = $displayTitle
@@ -52,6 +56,7 @@
 
     $paymentDate = optional($payment->payment_date)->format('d M Y');
     $paymentMode = strtoupper($payment->mode ?? '-');
+    $receiptNumber = trim((string) ($payment->receipt_number ?? ''));
     $invoiceSummary = $invoices->map(function ($item) {
         return $item->ti_number ?: $item->pi_number ?: $item->invoice_number;
     })->filter()->implode(', ');
@@ -62,12 +67,32 @@
 
 <section class="panel-card payment-show-card">
     <div class="payment-show-amount mb-3" style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; display: block;">
-        <div style="font-size: 0.85rem; color: #64748b; font-weight: 500;">Received Amount</div>
-        <h3 style="font-size: 1.75rem; font-weight: 700; color: #0f172a; margin: 0.25rem 0 0.5rem 0;">
-            {{ $currency }} {{ number_format($amount) }}
-        </h3>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+            <div style="flex: 1 1 auto;">
+                <div style="font-size: 0.85rem; color: #64748b; font-weight: 500;">{{ $summaryLabel }}</div>
+                <h3 style="font-size: 1.75rem; font-weight: 700; color: #0f172a; margin: 0.25rem 0 0.5rem 0;">
+                    {{ $currency }} {{ number_format($summaryAmount) }}
+                </h3>
+            </div>
+            @if($receiptNumber !== '')
+                <div style="flex: 0 0 auto; text-align: right;">
+                    <div style="font-size: 0.78rem; color: #64748b; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;">
+                        Receipt Number
+                    </div>
+                    <div style="font-size: 1rem; color: #0f172a; font-weight: 700;">
+                        {{ $receiptNumber }}
+                    </div>
+                </div>
+            @endif
+        </div>
         <p style="font-size: 0.85rem; color: #475569; margin: 0; font-weight: 500; line-height: 1.5;">
-            Actual amount received in bank/cash is <strong>{{ $currency }} {{ number_format($amount) }}</strong> and TDS deducted by client is <strong>{{ $currency }} {{ number_format($tdsAmount) }}</strong> (Total Settlement: <strong>{{ $currency }} {{ number_format($amount + $tdsAmount) }}</strong>).
+            @if($amount > 0 && $tdsAmount > 0)
+                Actual amount received in bank/cash is <strong>{{ $currency }} {{ number_format($amount) }}</strong> and TDS deducted by client is <strong>{{ $currency }} {{ number_format($tdsAmount) }}</strong> (Total Settlement: <strong>{{ $currency }} {{ number_format($amount + $tdsAmount) }}</strong>).
+            @elseif($amount > 0)
+                Actual amount received in bank/cash is <strong>{{ $currency }} {{ number_format($amount) }}</strong>.
+            @else
+                TDS deducted by client is <strong>{{ $currency }} {{ number_format($tdsAmount) }}</strong>.
+            @endif
         </p>
     </div>
 
@@ -96,13 +121,6 @@
                     </tr>
                 @endif
 
-                @if(!empty($payment->receipt_number))
-                    <tr>
-                        <th>Receipt Number</th>
-                        <td>{{ $payment->receipt_number }}</td>
-                    </tr>
-                @endif
-
                 @if($payment->reference_number)
                     <tr>
                         <th>Reference Number</th>
@@ -128,7 +146,6 @@
                     <thead>
                         <tr style="background: #f8fafc; border-bottom: 1px solid #dbe3ea; text-align: left;">
                             <th style="padding: 0.75rem 1rem; font-size: 0.8rem; font-weight: 600; color: #475569;">Invoice</th>
-                            <th style="padding: 0.75rem 1rem; font-size: 0.8rem; font-weight: 600; color: #475569; text-align: right;">Base Amount (Without Tax)</th>
                             <th style="padding: 0.75rem 1rem; font-size: 0.8rem; font-weight: 600; color: #475569; text-align: right;">TDS Amount</th>
                             <th style="padding: 0.75rem 1rem; font-size: 0.8rem; font-weight: 600; color: #475569; text-align: right;">Received Amount</th>
                         </tr>
@@ -140,7 +157,6 @@
                                 $invNumber = $inv ? ($inv->ti_number ?: $inv->pi_number ?: $inv->invoice_number) : '';
                                 $invTitle = $inv ? $inv->invoice_title : '';
                                 $dispTitle = $invTitle ?: ($invNumber ? "#$invNumber" : "Invoice #{$detail->invoiceid}");
-                                $baseAmt = (float) $detail->received_amount + (float) $detail->tds_amount;
                             @endphp
                             <tr style="border-bottom: 1px solid #f1f5f9;">
                                 <td style="padding: 0.75rem 1rem; font-size: 0.85rem; color: #0f172a; font-weight: 500;">
@@ -152,7 +168,6 @@
                                         {{ $dispTitle }}
                                     @endif
                                 </td>
-                                <td style="padding: 0.75rem 1rem; font-size: 0.85rem; color: #0f172a; text-align: right;">{{ $currency }} {{ number_format($baseAmt) }}</td>
                                 <td style="padding: 0.75rem 1rem; font-size: 0.85rem; color: #ef4444; text-align: right;">{{ $currency }} {{ number_format((float)$detail->tds_amount) }}</td>
                                 <td style="padding: 0.75rem 1rem; font-size: 0.85rem; color: #10b981; text-align: right; font-weight: 600;">{{ $currency }} {{ number_format((float)$detail->received_amount) }}</td>
                             </tr>

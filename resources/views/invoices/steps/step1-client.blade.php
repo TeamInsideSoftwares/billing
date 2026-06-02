@@ -1,90 +1,39 @@
 <!-- Step 1: Client Selection -->
 <div id="step1" class="invoice-step">
-    <style>
-        .invoice-step1-card {
-            max-width: 760px;
-            margin: 0 auto;
-            padding: 1.1rem 1rem;
-        }
-
-        .invoice-step1-head {
-            margin-bottom: 0.85rem;
-        }
-
-        .invoice-step1-head-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.75rem;
-        }
-
-        .invoice-step1-title {
-            margin: 0;
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: #111827;
-        }
-
-        .invoice-step1-subtitle {
-            margin: 0.3rem 0 0 0;
-            font-size: 0.88rem;
-            color: #6b7280;
-        }
-
-        .invoice-step1-actions {
-            margin-top: 1rem;
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        @media (max-width: 767px) {
-            .invoice-step1-card {
-                padding: 0.85rem 0.75rem;
-            }
-
-            .invoice-step1-head-row {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .invoice-step1-actions {
-                justify-content: stretch;
-            }
-
-            .invoice-step1-next-btn {
-                width: 100%;
-            }
-        }
-    </style>
-
-    <div class="invoice-meta-card invoice-step1-card">
-        <div class="invoice-step1-head">
-            <div class="invoice-step1-head-row">
-                <h4 class="invoice-step1-title">Select Client</h4>
-                <div class="invoice-compact-steps" aria-label="Step progress">
-                    <span class="invoice-compact-step is-active">1</span>
-                    <span class="invoice-compact-step">2</span>
-                    <span class="invoice-compact-step">3</span>
-                    <span class="invoice-compact-step">4</span>
+    <div class="quotation-centered-card">
+        <div class="quotation-step3-header">
+            <div class="quotation-step3-header-row">
+                <div class="quotation-step3-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="quotation-step3-client min-w-0">
+                    <div class="quotation-step3-client-name">Select Client</div>
+                    <div class="quotation-step3-client-email">Choose the client to continue the invoice flow.</div>
+                </div>
+                <div class="quotation-step3-tools">
+                    <div class="invoice-compact-steps invoice-compact-steps--right" aria-label="Step progress">
+                        <span class="invoice-compact-step is-active">1</span>
+                        <span class="invoice-compact-step">2</span>
+                        <span class="invoice-compact-step">3</span>
+                        <span class="invoice-compact-step">4</span>
+                    </div>
                 </div>
             </div>
-            <p class="invoice-step1-subtitle">Choose the client to continue and add invoice items.</p>
         </div>
 
-        <div>
+        <div class="soft-panel soft-panel--padded">
             <label for="clientid" class="field-label">Client</label>
             <select id="clientid" name="clientid" required class="form-input">
-                <option value="">Choose a client</option>
+                <option value="">Choose client</option>
                 @foreach($clients as $client)
                     <option value="{{ $client->clientid }}" data-currency="{{ $client->currency ?? 'INR' }}" {{ old('clientid', request('c')) == $client->clientid ? 'selected' : '' }}>
                         {{ $client->business_name ?? $client->contact_name }}
                     </option>
                 @endforeach
             </select>
-        </div>
-
-        <div class="invoice-step1-actions">
-            <button type="button" id="btnNextToStep2" class="primary-button invoice-step1-next-btn">Next &rarr;</button>
+            <div class="mt-3 d-flex justify-content-end">
+                <button type="button" id="btnNextToStep2" class="primary-button">Next</button>
+            </div>
         </div>
     </div>
 </div>

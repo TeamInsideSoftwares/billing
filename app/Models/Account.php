@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 
 class Account extends Model
 {
@@ -76,7 +77,7 @@ class Account extends Model
 
     public function credential(): HasOne
     {
-        return $this->hasOne(AccountCredential::class, 'accountid', 'accountid');
+        return $this->hasOne(User::class, 'accountid', 'accountid')->where('role', 'admin');
     }
 
     public function financialYears(): HasMany

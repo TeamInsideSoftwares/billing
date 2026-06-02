@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
-use App\Models\AccountCredential;
+use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -91,7 +91,7 @@ class AccountsController extends Controller
         }
 
         $validated = $request->validate([
-            'login_email' => ['required', 'email', 'max:150', Rule::unique('account_credentials', 'email')],
+            'login_email' => ['required', 'email', 'max:150', Rule::unique('account_users', 'email')],
             'password' => ['required', 'string', 'min:6', 'max:100'],
             'password_confirmation' => ['required', 'same:password'],
         ]);
@@ -118,16 +118,19 @@ class AccountsController extends Controller
                 'expires_at' => $draft['expires_at'],
             ]);
 
-            AccountCredential::create([
+            User::create([
                 'accountid' => $account->accountid,
+                'name' => $account->name,
                 'email' => $loginEmail,
                 'password' => $validated['password'],
+                'role' => 'admin',
+                'is_active' => true,
             ]);
         });
 
         $request->session()->forget(self::WIZARD_SESSION_KEY);
 
-        return redirect()->route('superadmin.index')->with('success', 'Account and credentials created successfully.');
+        return redirect()->route('superadmin.index')->with('success', 'Account and admin user created successfully.');
     }
 
     public function edit(Account $account): View
@@ -143,10 +146,10 @@ class AccountsController extends Controller
     public function update(Request $request, Account $account): RedirectResponse
     {
         $account->load('credential');
-        $credentialId = $account->credential?->id;
-        $loginEmailRule = Rule::unique('account_credentials', 'email');
-        if ($credentialId) {
-            $loginEmailRule = $loginEmailRule->ignore($credentialId, 'id');
+        $userId = $account->credential?->userid;
+        $loginEmailRule = Rule::unique('account_users', 'email');
+        if ($userId) {
+            $loginEmailRule = $loginEmailRule->ignore($userId, 'userid');
         }
 
         $validated = $request->validate([
@@ -181,20 +184,26 @@ class AccountsController extends Controller
                 'expires_at' => $validated['expires_at'] ?? null,
             ]);
 
-            $credential = $account->credential;
-            if ($credential) {
-                $credential->email = $newLoginEmail;
+            $accountUser = $account->credential;
+            if ($accountUser) {
+                $accountUser->name = $validated['name'];
+                $accountUser->email = $newLoginEmail;
+                $accountUser->role = 'admin';
+                $accountUser->is_active = true;
 
                 if (!empty($validated['password'])) {
-                    $credential->password = $validated['password'];
+                    $accountUser->password = $validated['password'];
                 }
 
-                $credential->save();
+                $accountUser->save();
             } else {
-                AccountCredential::create([
+                User::create([
                     'accountid' => $account->accountid,
+                    'name' => $validated['name'],
                     'email' => $newLoginEmail,
                     'password' => $validated['password'] ?? Str::random(16),
+                    'role' => 'admin',
+                    'is_active' => true,
                 ]);
             }
         });

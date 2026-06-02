@@ -549,13 +549,13 @@
                                         <input type="text" name="subject" class="settings-input template-subject-input" placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} update for @{{client_name}}" autocomplete="off">
                                     </div>
 
-                                    <div class="col-12 col-md-6 form-group mb-3 template-wa-template-id-group" style="display:none;">
+                                    <div class="col-12 col-md-6 form-group mb-3 template-wa-template-id-group settings-template-wa-group is-hidden">
                                         <label class="label-compact font-bold mb-1">WhatsApp Template ID *</label>
                                         <input type="text" class="settings-input template-wa-template-id-input" placeholder="wa_template_42" autocomplete="off">
                                     </div>
                                 </div>
 
-                                <div class="row g-3 template-sms-config-row" style="display:none;">
+                                <div class="row g-3 template-sms-config-row settings-template-sms-row is-hidden">
                                     <div class="col-12 col-md-6 form-group mb-3 template-external-id-group">
                                         <label class="label-compact font-bold mb-1">SMS Template ID *</label>
                                         <input type="text" name="template_id" class="settings-input template-external-id-input" placeholder="sms_template_15" autocomplete="off">
@@ -570,7 +570,7 @@
                                 <div class="form-group mb-3 col-span-2 flex-grow-1">
                                     <label class="label-compact font-bold mb-1">Message Body <span class="template-body-required-mark">*</span></label>
                                     <textarea name="body" id="templateBodyInput-{{ $defaultTypeKey }}" rows="6" class="settings-input template-body-input h-100" placeholder="Hi @{{client_name}},&#10;Please find the details below."></textarea>
-                                    <p class="text-sm text-muted mt-2 mb-1 template-variable-only-note" style="display:none;">
+                                    <p class="text-sm text-muted mt-2 mb-1 template-variable-only-note settings-template-variable-note is-hidden">
                                         For WhatsApp/SMS, message text is fixed by the provider template. Only keep/update dynamic variables here.
                                     </p>
                                     <div class="mt-2 d-flex flex-wrap gap-2 template-variable-badges"></div>
@@ -588,14 +588,14 @@
                         </form>
                     </div>
 
-                    <div class="col-12 col-md-4 mt-template-list-col d-flex h-100" style="display:none !important;">
+                    <div class="col-12 col-md-4 mt-template-list-col d-flex h-100 settings-template-list-col is-hidden">
                         <div class="mt-template-list d-flex flex-column w-100 h-100">
                             <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
                                 <div>
                                     <h6 class="mb-1">Saved templates</h6>
                                     <p class="text-sm text-muted mb-0">Click a template to edit it here.</p>
                                 </div>
-                                <span id="mt-saved-count" class="badge bg-light text-muted border px-2 py-1">
+                                <span id="mt-saved-count" class="badge bg-light text-muted border px-2 py-1 settings-template-list-count">
                                     {{ ($messageTemplatesByType[$defaultTypeKey] ?? collect())->count() }} saved
                                 </span>
                             </div>
@@ -641,10 +641,9 @@
 
                                             <button
                                                 type="button"
-                                                class="secondary-button small template-toggle-btn"
+                                                class="secondary-button small template-toggle-btn settings-template-toggle-btn"
                                                 data-toggle-url="{{ route('message-templates.toggle', $template) }}"
                                                 data-is-active="{{ $template->is_active ? '1' : '0' }}"
-                                                style="display:none;"
                                             ></button>
                                         </div>
                                     </div>
@@ -793,41 +792,41 @@
         </div>
 
         {{-- Add / Edit Form --}}
-        <div style="padding: 0.75rem; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 1rem;">
-            <h6 style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #1e293b; font-weight: 600;">
+        <div class="settings-soft-panel mb-3">
+            <h6 class="settings-soft-panel__title">
                 {{ $editingTerm ? 'Edit Term' : 'Add New Term' }}
             </h6>
-            <form method="POST" action="{{ route('terms-conditions.store') }}" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <form method="POST" action="{{ route('terms-conditions.store') }}" class="settings-term-form">
                 @csrf
                 @if($editingTerm)
                     <input type="hidden" name="tc_id" value="{{ $editingTerm->tc_id }}">
                 @endif
 
-                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                    <div style="flex: 1 1 200px;">
-                        <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b;">Type *</label>
-                        <select name="type" required style="width: 100%; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">
+                <div class="settings-form-row">
+                    <div class="settings-form-field">
+                        <label class="settings-form-label" for="settings_term_type">Type *</label>
+                        <select id="settings_term_type" name="type" required class="settings-form-control">
                             <option value="billing" {{ old('type', $editingTerm->type ?? '') == 'billing' ? 'selected' : '' }}>Billing</option>
                             <option value="quotation" {{ old('type', $editingTerm->type ?? '') == 'quotation' ? 'selected' : '' }}>Quotation</option>
                             <option value="proforma" {{ old('type', $editingTerm->type ?? '') == 'proforma' ? 'selected' : '' }}>Proforma</option>
                         </select>
                     </div>
-                    <div style="flex: 1 1 200px; display: flex; align-items: flex-end; padding-bottom: 0.1rem;">
+                    <div class="settings-form-field settings-form-field--align-end">
                         <label class="custom-checkbox">
                             <input type="hidden" name="is_default" value="0">
                             <input type="checkbox" name="is_default" value="1" {{ old('is_default', (int) ($editingTerm->is_default ?? 0)) ? 'checked' : '' }}>
-                            <span class="checkbox-label" style="font-size: 0.85rem; color: #64748b;">Set as default</span>
+                            <span class="checkbox-label">Set as default</span>
                         </label>
                     </div>
                 </div>
                 <div>
-                    <label style="font-size: 0.75rem; margin-bottom: 0.2rem; display: block; color: #64748b; font-weight: 600;">Terms and Condition *</label>
-                    <textarea id="settings_tc_content" name="content" placeholder="Enter terms and condition" style="width: 100%; min-height: 120px; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem;">{{ old('content', $editingTerm->content ?? '') }}</textarea>
+                    <label class="settings-form-label settings-form-label--strong" for="settings_tc_content">Terms and Condition *</label>
+                    <textarea id="settings_tc_content" name="content" placeholder="Enter terms and condition" class="settings-form-control settings-term-textarea">{{ old('content', $editingTerm->content ?? '') }}</textarea>
                 </div>
-                <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">
-                    <button type="submit" class="primary-button" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">{{ $editingTerm ? 'Update' : 'Add' }}</button>
+                <div class="settings-form-actions">
+                    <button type="submit" class="primary-button settings-form-button">{{ $editingTerm ? 'Update' : 'Add' }}</button>
                     @if($editingTerm)
-                        <a href="{{ route('settings.index', ['t' => request('t', $editingTerm->type ?? 'billing')]) }}#terms-conditions" style="padding: 0.4rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: none; color: #64748b; font-size: 0.85rem; display: inline-block;">Cancel</a>
+                        <a href="{{ route('settings.index', ['t' => request('t', $editingTerm->type ?? 'billing')]) }}#terms-conditions" class="settings-cancel-link">Cancel</a>
                     @endif
                 </div>
             </form>
@@ -857,10 +856,9 @@
                         @forelse($billingTerms as $index => $term)
                             <tr>
                                 <td class="tc-col-seq">
-                                    <form method="POST" action="{{ route('terms-conditions.update-sequence', $term) }}" style="display: inline-block; margin: 0;">
+                                    <form method="POST" action="{{ route('terms-conditions.update-sequence', $term) }}" class="settings-sequence-form">
                                         @csrf @method('PATCH')
-                                        <select name="sequence" onchange="this.form.submit()"
-                                                style="width: 50px; padding: 0.2rem 0.3rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem; text-align: center;">
+                                        <select name="sequence" onchange="this.form.submit()" class="settings-form-control settings-form-control--narrow">
                                             @for($i = 1; $i <= $billingTerms->count(); $i++)
                                                 <option value="{{ $i }}" {{ ($term->sequence ?? ($index + 1)) == $i ? 'selected' : '' }}>{{ $i }}</option>
                                             @endfor
@@ -870,20 +868,19 @@
                                 <td class="tc-term-text ps-3">{!! $term->content !!}</td>
                                 <td class="tc-col-default">
                                     @if($term->is_default)
-                                        <span style="background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Default</span>
+                                        <span class="settings-default-chip">Default</span>
                                     @else
-                                        <span style="color: #94a3b8; font-size: 0.75rem;">-</span>
+                                        <span class="settings-empty-chip">-</span>
                                     @endif
                                 </td>
                                 <td class="tc-col-status">
                                     <span
-                                        class="js-term-status-badge"
+                                        class="js-term-status-badge settings-term-status-badge {{ $term->is_active ? 'is-active' : 'is-inactive' }}"
                                         data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
                                         data-is-active="{{ $term->is_active ? '1' : '0' }}"
                                         role="button"
                                         tabindex="0"
                                         title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}"
-                                        style="{{ $term->is_active ? 'background:#dcfce7;color:#166534;' : 'background:#f1f5f9;color:#64748b;' }} padding:2px 6px; border-radius:10px; font-size:0.7rem; cursor:pointer;"
                                     >{{ $term->is_active ? 'Active' : 'Inactive' }}</span>
                                 </td>
                                 <td class="tc-col-action">
@@ -897,7 +894,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 1.1rem; font-size: 0.8rem;">No billing T&C added yet.</td></tr>
+                            <tr><td colspan="5" class="settings-empty-row">No billing T&C added yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -920,10 +917,9 @@
                         @forelse($quotationTerms as $index => $term)
                             <tr>
                                 <td class="tc-col-seq">
-                                    <form method="POST" action="{{ route('terms-conditions.update-sequence', $term) }}">
+                                    <form method="POST" action="{{ route('terms-conditions.update-sequence', $term) }}" class="settings-sequence-form">
                                         @csrf @method('PATCH')
-                                        <select name="sequence" onchange="this.form.submit()"
-                                                style="width: 50px; padding: 0.2rem 0.3rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem; text-align: center;">
+                                        <select name="sequence" onchange="this.form.submit()" class="settings-form-control settings-form-control--narrow">
                                             @for($i = 1; $i <= $quotationTerms->count(); $i++)
                                                 <option value="{{ $i }}" {{ ($term->sequence ?? ($index + 1)) == $i ? 'selected' : '' }}>{{ $i }}</option>
                                             @endfor
@@ -933,20 +929,19 @@
                                 <td class="tc-term-text ps-3">{!! $term->content !!}</td>
                                 <td class="tc-col-default">
                                     @if($term->is_default)
-                                        <span style="background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Default</span>
+                                        <span class="settings-default-chip">Default</span>
                                     @else
-                                        <span style="color: #94a3b8; font-size: 0.75rem;">-</span>
+                                        <span class="settings-empty-chip">-</span>
                                     @endif
                                 </td>
                                 <td class="tc-col-status">
                                     <span
-                                        class="js-term-status-badge"
+                                        class="js-term-status-badge settings-term-status-badge {{ $term->is_active ? 'is-active' : 'is-inactive' }}"
                                         data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
                                         data-is-active="{{ $term->is_active ? '1' : '0' }}"
                                         role="button"
                                         tabindex="0"
                                         title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}"
-                                        style="{{ $term->is_active ? 'background:#dcfce7;color:#166534;' : 'background:#f1f5f9;color:#64748b;' }} padding:2px 6px; border-radius:10px; font-size:0.7rem; cursor:pointer;"
                                     >{{ $term->is_active ? 'Active' : 'Inactive' }}</span>
                                 </td>
                                 <td class="tc-col-action">
@@ -960,7 +955,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 1.1rem; font-size: 0.8rem;">No quotation T&C added yet.</td></tr>
+                            <tr><td colspan="5" class="settings-empty-row">No quotation T&C added yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -983,10 +978,9 @@
                         @forelse($proformaTerms as $index => $term)
                             <tr>
                                 <td class="tc-col-seq">
-                                    <form method="POST" action="{{ route('terms-conditions.update-sequence', $term) }}">
+                                    <form method="POST" action="{{ route('terms-conditions.update-sequence', $term) }}" class="settings-sequence-form">
                                         @csrf @method('PATCH')
-                                        <select name="sequence" onchange="this.form.submit()"
-                                                style="width: 50px; padding: 0.2rem 0.3rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem; text-align: center;">
+                                        <select name="sequence" onchange="this.form.submit()" class="settings-form-control settings-form-control--narrow">
                                             @for($i = 1; $i <= $proformaTerms->count(); $i++)
                                                 <option value="{{ $i }}" {{ ($term->sequence ?? ($index + 1)) == $i ? 'selected' : '' }}>{{ $i }}</option>
                                             @endfor
@@ -996,20 +990,19 @@
                                 <td class="tc-term-text ps-3">{!! $term->content !!}</td>
                                 <td class="tc-col-default">
                                     @if($term->is_default)
-                                        <span style="background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Default</span>
+                                        <span class="settings-default-chip">Default</span>
                                     @else
-                                        <span style="color: #94a3b8; font-size: 0.75rem;">-</span>
+                                        <span class="settings-empty-chip">-</span>
                                     @endif
                                 </td>
                                 <td class="tc-col-status">
                                     <span
-                                        class="js-term-status-badge"
+                                        class="js-term-status-badge settings-term-status-badge {{ $term->is_active ? 'is-active' : 'is-inactive' }}"
                                         data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
                                         data-is-active="{{ $term->is_active ? '1' : '0' }}"
                                         role="button"
                                         tabindex="0"
                                         title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}"
-                                        style="{{ $term->is_active ? 'background:#dcfce7;color:#166534;' : 'background:#f1f5f9;color:#64748b;' }} padding:2px 6px; border-radius:10px; font-size:0.7rem; cursor:pointer;"
                                     >{{ $term->is_active ? 'Active' : 'Inactive' }}</span>
                                 </td>
                                 <td class="tc-col-action">
@@ -1023,7 +1016,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 1.1rem; font-size: 0.8rem;">No proforma T&C added yet.</td></tr>
+                            <tr><td colspan="5" class="settings-empty-row">No proforma T&C added yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -1161,7 +1154,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="settings-form-row settings-template-inline-actions">
                         <button type="submit" class="primary-button small">Add Tax</button>
                         <button type="button" class="text-link small" data-bs-dismiss="modal">Cancel</button>
                     </div>
@@ -1260,11 +1253,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Limit end year options visibility for clarity
             Array.from(fyEnd.options).forEach(opt => {
                 const optVal = parseInt(opt.value);
-                if (optVal === selectedStart + 1) {
-                    opt.style.display = 'block';
-                } else {
-                    opt.style.display = 'none';
-                }
+                opt.hidden = optVal !== selectedStart + 1;
             });
         });
 
@@ -1287,7 +1276,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         tcTabs.forEach((tab) => tab.classList.toggle('is-active', tab.dataset.tcType === resolved));
         tcPanes.forEach((pane) => {
-            pane.style.display = pane.dataset.tcType === resolved ? '' : 'none';
+            pane.classList.toggle('is-hidden', pane.dataset.tcType !== resolved);
         });
 
         const currentUrl = new URL(window.location.href);
@@ -1326,11 +1315,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const autoIncDiv = document.getElementById(`${prefix}-auto-increment-options`);
 
         if (radio.value === 'auto_generate') {
-            if (autoGenDiv) autoGenDiv.style.display = 'block';
-            if (autoIncDiv) autoIncDiv.style.display = 'none';
+            if (autoGenDiv) autoGenDiv.classList.remove('is-hidden');
+            if (autoIncDiv) autoIncDiv.classList.add('is-hidden');
         } else if (radio.value === 'auto_increment') {
-            if (autoGenDiv) autoGenDiv.style.display = 'none';
-            if (autoIncDiv) autoIncDiv.style.display = 'block';
+            if (autoGenDiv) autoGenDiv.classList.add('is-hidden');
+            if (autoIncDiv) autoIncDiv.classList.remove('is-hidden');
         }
     }
 
@@ -1361,19 +1350,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Visibility & Label Logic
             if (type === 'manual text') {
-                valInputGroup.style.display = 'block';
+                valInputGroup.classList.remove('is-hidden');
                 valLabel.innerText = 'Enter value';
-                lengthInputGroup.style.display = 'none';
+                lengthInputGroup.classList.add('is-hidden');
             } else if (type === 'auto generate') {
-                valInputGroup.style.display = 'none';
-                lengthInputGroup.style.display = 'block';
+                valInputGroup.classList.add('is-hidden');
+                lengthInputGroup.classList.remove('is-hidden');
             } else if (type === 'auto increment') {
-                valInputGroup.style.display = 'block';
+                valInputGroup.classList.remove('is-hidden');
                 valLabel.innerText = 'Start From';
-                lengthInputGroup.style.display = 'none';
+                lengthInputGroup.classList.add('is-hidden');
             } else {
-                valInputGroup.style.display = 'none';
-                lengthInputGroup.style.display = 'none';
+                valInputGroup.classList.add('is-hidden');
+                lengthInputGroup.classList.add('is-hidden');
             }
 
             // Preview Logic
@@ -1525,7 +1514,7 @@ function previewSignature(input, previewId) {
 
         reader.onload = function(e) {
             previewImg.src = e.target.result;
-            previewContainer.style.display = 'block';
+            previewContainer.classList.remove('is-hidden');
         };
 
         reader.readAsDataURL(input.files[0]);
@@ -1563,10 +1552,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (isEnabled) {
                 // Multi-taxation enabled - hide fixed tax field
-                fixedTaxSection.style.display = 'none';
+                fixedTaxSection.classList.add('is-hidden');
             } else {
                 // Multi-taxation disabled - show fixed tax field
-                fixedTaxSection.style.display = 'block';
+                fixedTaxSection.classList.remove('is-hidden');
             }
         });
     }
@@ -1746,13 +1735,12 @@ document.addEventListener('DOMContentLoaded', function() {
         bodyInput.removeAttribute('required');
         bodyInput.setAttribute('aria-required', 'false');
         bodyInput.setCustomValidity('');
-        if (nameRequiredMark) nameRequiredMark.style.display = isEmail ? '' : 'none';
-        if (bodyRequiredMark) bodyRequiredMark.style.display = isEmail ? '' : 'none';
+        if (nameRequiredMark) nameRequiredMark.classList.toggle('is-hidden', !isEmail);
+        if (bodyRequiredMark) bodyRequiredMark.classList.toggle('is-hidden', !isEmail);
         bodyInput.readOnly = false;
-        bodyInput.style.backgroundColor = '';
-        bodyInput.style.cursor = '';
+        bodyInput.classList.remove('is-readonly-field');
         if (variableOnlyNote) {
-            variableOnlyNote.style.display = isEmail ? 'none' : 'block';
+            variableOnlyNote.classList.toggle('is-hidden', isEmail);
         }
 
         if (!window.tinymce) return;
@@ -1846,13 +1834,11 @@ document.addEventListener('DOMContentLoaded', function() {
             nameInput.value = '';
             nameInput.placeholder = typeLabel + ' ' + channelLabel + ' Template';
         }
-        if (subjectGroup) {
-            subjectGroup.style.display = currentChannel === 'email' ? 'block' : 'none';
-        }
-        if (waTemplateIdGroup) waTemplateIdGroup.style.display = currentChannel === 'whatsapp' ? 'block' : 'none';
-        if (smsConfigRow) smsConfigRow.style.display = currentChannel === 'sms' ? 'flex' : 'none';
-        if (externalIdGroup) externalIdGroup.style.display = currentChannel === 'sms' ? 'block' : 'none';
-        if (senderIdGroup) senderIdGroup.style.display = currentChannel === 'sms' ? 'block' : 'none';
+        if (subjectGroup) subjectGroup.classList.toggle('is-hidden', currentChannel !== 'email');
+        if (waTemplateIdGroup) waTemplateIdGroup.classList.toggle('is-hidden', currentChannel !== 'whatsapp');
+        if (smsConfigRow) smsConfigRow.classList.toggle('is-hidden', currentChannel !== 'sms');
+        if (externalIdGroup) externalIdGroup.classList.toggle('is-hidden', currentChannel !== 'sms');
+        if (senderIdGroup) senderIdGroup.classList.toggle('is-hidden', currentChannel !== 'sms');
         if (subjectInput) {
             subjectInput.value = '';
             subjectInput.placeholder = typeLabel + ' update for @{{client_name}}';
@@ -1920,11 +1906,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (templateIdInput) templateIdInput.value = template.templateid || '';
         if (channelInput) channelInput.value = channel;
         if (nameInput) nameInput.value = template.name || '';
-        if (subjectGroup) subjectGroup.style.display = channel === 'email' ? 'block' : 'none';
-        if (waTemplateIdGroup) waTemplateIdGroup.style.display = channel === 'whatsapp' ? 'block' : 'none';
-        if (smsConfigRow) smsConfigRow.style.display = channel === 'sms' ? 'flex' : 'none';
-        if (externalIdGroup) externalIdGroup.style.display = channel === 'sms' ? 'block' : 'none';
-        if (senderIdGroup) senderIdGroup.style.display = channel === 'sms' ? 'block' : 'none';
+        if (subjectGroup) subjectGroup.classList.toggle('is-hidden', channel !== 'email');
+        if (waTemplateIdGroup) waTemplateIdGroup.classList.toggle('is-hidden', channel !== 'whatsapp');
+        if (smsConfigRow) smsConfigRow.classList.toggle('is-hidden', channel !== 'sms');
+        if (externalIdGroup) externalIdGroup.classList.toggle('is-hidden', channel !== 'sms');
+        if (senderIdGroup) senderIdGroup.classList.toggle('is-hidden', channel !== 'sms');
         if (subjectInput) subjectInput.value = template.subject || '';
         if (externalIdInput) externalIdInput.value = template.template_id || '';
         if (waTemplateIdInput) waTemplateIdInput.value = template.template_id || '';
@@ -1951,7 +1937,7 @@ document.addEventListener('DOMContentLoaded', function() {
         items.forEach((it) => {
             const t = it.dataset.type || '';
             const show = t === type;
-            it.style.display = show ? '' : 'none';
+            it.classList.toggle('is-hidden', !show);
             if (show) visible += 1;
         });
 
@@ -2227,7 +2213,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const toast = document.createElement('div');
                 toast.className = 'app-toast app-toast-error';
-                toast.innerHTML = `<i class="fas fa-exclamation-circle toast-icon"></i><span style="white-space: pre-line;">${messageText}</span>`;
+                toast.innerHTML = `<i class="fas fa-exclamation-circle toast-icon"></i><span class="settings-toast-message">${messageText}</span>`;
                 container.appendChild(toast);
                 setTimeout(() => {
                     if (toast.parentNode) {
@@ -2243,7 +2229,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const url = badgeEl?.dataset?.toggleUrl;
         if (!url) return;
 
-        badgeEl.style.pointerEvents = 'none';
+        badgeEl.classList.add('is-updating');
         try {
             const response = await fetch(url, {
                 method: 'PATCH',
@@ -2265,8 +2251,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 badgeEl.dataset.isActive = isActive ? '1' : '0';
                 badgeEl.textContent = isActive ? 'Active' : 'Inactive';
                 badgeEl.title = isActive ? 'Click to Deactivate' : 'Click to Activate';
-                badgeEl.style.background = isActive ? '#dcfce7' : '#f1f5f9';
-                badgeEl.style.color = isActive ? '#166534' : '#64748b';
+                badgeEl.classList.toggle('is-active', isActive);
+                badgeEl.classList.toggle('is-inactive', !isActive);
 
                 try {
                     const messageText = data.message || 'Term status updated.';
@@ -2284,7 +2270,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (_e) {}
         } finally {
-            badgeEl.style.pointerEvents = '';
+            badgeEl.classList.remove('is-updating');
         }
     }
 

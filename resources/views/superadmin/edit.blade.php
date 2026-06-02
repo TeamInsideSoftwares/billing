@@ -88,10 +88,10 @@
         </div>
 
         <hr>
-        <p class="eyebrow mb-2">Login Credentials</p>
+        <p class="eyebrow mb-2">Account User</p>
         <div class="form-grid">
             <div>
-                <label for="login_email">Login Email *</label>
+                <label for="login_email">Account User Email *</label>
                 <input type="email" id="login_email" name="login_email" value="{{ old('login_email', $account->credential->email ?? '') }}" required>
                 @error('login_email') <span class="error">{{ $message }}</span> @enderror
             </div>

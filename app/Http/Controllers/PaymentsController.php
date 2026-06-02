@@ -71,6 +71,20 @@ class PaymentsController extends Controller
             ->value('fy_id');
     }
 
+    private function resolveDefaultFinancialYear(string $accountid): ?FinancialYear
+    {
+        return FinancialYear::query()
+            ->where('accountid', $accountid)
+            ->where('default', true)
+            ->orderByDesc('created_at')
+            ->first();
+    }
+
+    private function resolvePaymentDateBounds(string $accountid): array
+    {
+        return $this->resolveFinancialYearDateBounds($accountid);
+    }
+
     private function normalizeInvoiceIds(array $invoiceIds): array
     {
         return array_values(array_unique(array_filter(array_map(
@@ -190,7 +204,9 @@ class PaymentsController extends Controller
         $clientId = request('c');
         $selectedClient = null;
 
-        $query = Payment::query()->where('accountid', $userAccountId)->with(['client', 'invoices', 'paymentDetails']);
+        $query = Payment::query()
+            ->where('accountid', $userAccountId)
+            ->with(['client', 'invoices', 'paymentDetails']);
 
         if ($clientId && $clientId !== 'all') {
             $query->where('clientid', $clientId);
@@ -551,11 +567,13 @@ class PaymentsController extends Controller
 
     public function paymentsCreate(): View
     {
+        $accountId = $this->resolveAccountId();
         $selectedClientId = request('c', request('clientid'));
         if ($selectedClientId === 'all') {
             $selectedClientId = null;
         }
         $selectedInvoiceId = request('i');
+        $paymentDateBounds = $this->resolvePaymentDateBounds($accountId);
 
         if ($selectedInvoiceId && !$selectedClientId) {
             $selectedClientId = Invoice::query()
@@ -567,18 +585,20 @@ class PaymentsController extends Controller
 
         return view('payments.form', [
             'title' => 'Record New Payment',
-            'clients' => Client::query()->where('accountid', $this->resolveAccountId())->regular()->get(),
-            'invoices' => Invoice::query()->where('accountid', $this->resolveAccountId())->with(['client', 'invoiceItems'])
+            'clients' => Client::query()->where('accountid', $accountId)->regular()->get(),
+            'invoices' => Invoice::query()->where('accountid', $accountId)->with(['client', 'invoiceItems'])
                 ->where('status', '!=', 'cancelled')
                 ->get(),
             'selectedClientId' => $selectedClientId,
             'selectedInvoiceIds' => $selectedInvoiceId ? [$selectedInvoiceId] : [],
             'selectedCurrency' => $selectedClient?->currency ?? 'INR',
+            'paymentDateBounds' => $paymentDateBounds,
         ]);
     }
 
     public function paymentsStore(Request $request)
     {
+        $paymentDateBounds = $this->resolvePaymentDateBounds($this->resolveAccountId());
         $validated = $request->validate([
             'payment_flow' => 'nullable|in:standard,tds',
             'clientid' => 'required|exists:clients,clientid',
@@ -590,7 +610,7 @@ class PaymentsController extends Controller
             'invoice_tds_amounts.*' => 'numeric|min:0',
             'received_amount' => 'required|numeric|min:0',
             'tds_amount' => 'nullable|numeric|min:0',
-            'payment_date' => 'required|date',
+            'payment_date' => 'required|date_format:Y-m-d|after_or_equal:' . $paymentDateBounds['min_date'] . '|before_or_equal:' . $paymentDateBounds['max_date'],
             'mode' => 'required|in:Bank Transfer,Online,Cash',
             'reference_number' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:2000',
@@ -757,6 +777,7 @@ class PaymentsController extends Controller
         $displayTitle = $primaryInvoice?->invoice_title
             ?? $primaryInvoice?->invoice_number
             ?? $payment->paymentid;
+        $paymentDateBounds = $this->resolvePaymentDateBounds($payment->accountid);
         return view('payments.form', [
             'title' => 'Edit ' . $displayTitle,
             'payment' => $payment,
@@ -766,6 +787,7 @@ class PaymentsController extends Controller
             'selectedClientId' => $payment->clientid,
             'selectedInvoiceIds' => $payment->invoices->pluck('invoiceid')->filter()->values()->all(),
             'selectedCurrency' => $payment->client?->currency ?? 'INR',
+            'paymentDateBounds' => $paymentDateBounds,
         ]);
     }
 
@@ -777,6 +799,7 @@ class PaymentsController extends Controller
                 ->route('payments.index', ['c' => $payment->clientid])
                 ->with('error', 'Cancelled payment cannot be edited.');
         }
+        $paymentDateBounds = $this->resolvePaymentDateBounds($payment->accountid);
         $validated = $request->validate([
             'payment_flow' => 'nullable|in:standard,tds',
             'clientid' => 'required|exists:clients,clientid',
@@ -788,7 +811,7 @@ class PaymentsController extends Controller
             'invoice_tds_amounts.*' => 'numeric|min:0',
             'received_amount' => 'required|numeric|min:0',
             'tds_amount' => 'nullable|numeric|min:0',
-            'payment_date' => 'required|date',
+            'payment_date' => 'required|date_format:Y-m-d|after_or_equal:' . $paymentDateBounds['min_date'] . '|before_or_equal:' . $paymentDateBounds['max_date'],
             'mode' => 'required|in:Bank Transfer,Online,Cash',
             'reference_number' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:2000',
