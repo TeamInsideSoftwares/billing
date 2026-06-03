@@ -277,7 +277,7 @@
                 <!-- Column 3: Payment Details & Actions -->
                 <div class="payments-col-card">
                     <div style="margin-bottom: 1.25rem;">
-                        <label for="payment_date" class="text-xl">Date *</label>
+                        <label for="payment_date">Date *</label>
                         <div class="payments-input-group">
                             <input type="date" id="payment_date" name="payment_date"
                                 min="{{ $paymentDateBounds['min_date'] }}" max="{{ $paymentDateBounds['max_date'] }}"

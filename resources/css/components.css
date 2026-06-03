@@ -11,11 +11,12 @@
 }
 
 label {
-  display: block;
-  margin-bottom: 0.625rem;
-  font-weight: 600;
-  color: #475569;
-  font-size: 0.875rem;
+    color: #121212;
+    margin-bottom: 3px;
+    font-size: 14px;
+    line-height: 18px;
+    font-weight: 500;
+    display: block;
 }
 
 input, select, textarea {
