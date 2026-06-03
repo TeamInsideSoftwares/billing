@@ -85,6 +85,13 @@ class PaymentsController extends Controller
         return $this->resolveFinancialYearDateBounds($accountid);
     }
 
+    private function filterDueInvoices($invoices)
+    {
+        return $invoices->filter(function (Invoice $invoice) {
+            return (float) ($invoice->balance_due ?? 0) > 0;
+        })->values();
+    }
+
     private function normalizeInvoiceIds(array $invoiceIds): array
     {
         return array_values(array_unique(array_filter(array_map(
@@ -189,6 +196,87 @@ class PaymentsController extends Controller
                 $remainingTds = max(0.0, $remainingTds - $allocatedTds);
             }
         }
+    }
+
+    private function resolvePaymentTdsInputType(Payment $payment): string
+    {
+        $storedType = strtolower(trim((string) ($payment->tds_input_type ?? '')));
+        if (in_array($storedType, ['percent', 'amount'], true)) {
+            return $storedType;
+        }
+
+        $payment->loadMissing(['paymentDetails.invoice']);
+
+        if ($payment->paymentDetails->count() < 2) {
+            return 'amount';
+        }
+
+        $tdsTotal = (float) $payment->paymentDetails->sum('tds_amount');
+        if ($tdsTotal <= 0) {
+            $tdsTotal = max(0, (float) ($payment->tds_amount ?? 0));
+        }
+        if ($tdsTotal <= 0) {
+            return 'amount';
+        }
+
+        $baseTotal = 0.0;
+        foreach ($payment->paymentDetails as $detail) {
+            $invoice = $detail->invoice;
+            if (!$invoice) {
+                continue;
+            }
+
+            $baseTotal += max(0.0, (float) ($invoice->subtotal - $invoice->discount_total));
+        }
+
+        if ($baseTotal <= 0) {
+            return 'amount';
+        }
+
+        $inferredPercent = ($tdsTotal / $baseTotal) * 100;
+        foreach ($payment->paymentDetails as $detail) {
+            $invoice = $detail->invoice;
+            if (!$invoice) {
+                continue;
+            }
+
+            $baseAmount = max(0.0, (float) ($invoice->subtotal - $invoice->discount_total));
+            $expectedTds = $baseAmount * $inferredPercent / 100;
+            if (abs((float) ($detail->tds_amount ?? 0) - $expectedTds) > 0.5) {
+                return 'amount';
+            }
+        }
+
+        return 'percent';
+    }
+
+    private function resolvePaymentTdsDisplayValue(Payment $payment, string $inputType): string
+    {
+        $tdsTotal = max(0, (float) $payment->paymentDetails->sum('tds_amount'));
+        if ($tdsTotal <= 0) {
+            $tdsTotal = max(0, (float) ($payment->tds_amount ?? 0));
+        }
+        if ($inputType !== 'percent') {
+            return $tdsTotal > 0 ? rtrim(rtrim(number_format($tdsTotal, 2, '.', ''), '0'), '.') : '';
+        }
+
+        $payment->loadMissing(['paymentDetails.invoice']);
+        $baseTotal = 0.0;
+        foreach ($payment->paymentDetails as $detail) {
+            $invoice = $detail->invoice;
+            if (!$invoice) {
+                continue;
+            }
+
+            $baseTotal += max(0.0, (float) ($invoice->subtotal - $invoice->discount_total));
+        }
+
+        if ($baseTotal <= 0) {
+            return '';
+        }
+
+        $percent = ($tdsTotal / $baseTotal) * 100;
+        return rtrim(rtrim(number_format($percent, 2, '.', ''), '0'), '.');
     }
 
     private function ensurePaymentBelongsToAccount(Payment $payment): void
@@ -586,12 +674,16 @@ class PaymentsController extends Controller
         return view('payments.form', [
             'title' => 'Record New Payment',
             'clients' => Client::query()->where('accountid', $accountId)->regular()->get(),
-            'invoices' => Invoice::query()->where('accountid', $accountId)->with(['client', 'invoiceItems'])
-                ->where('status', '!=', 'cancelled')
-                ->get(),
+            'invoices' => $this->filterDueInvoices(
+                Invoice::query()->where('accountid', $accountId)->with(['client', 'invoiceItems'])
+                    ->where('status', '!=', 'cancelled')
+                    ->get(),
+            ),
             'selectedClientId' => $selectedClientId,
             'selectedInvoiceIds' => $selectedInvoiceId ? [$selectedInvoiceId] : [],
             'selectedCurrency' => $selectedClient?->currency ?? 'INR',
+            'defaultTdsInputType' => 'percent',
+            'defaultTdsDisplayValue' => '',
             'paymentDateBounds' => $paymentDateBounds,
         ]);
     }
@@ -601,6 +693,7 @@ class PaymentsController extends Controller
         $paymentDateBounds = $this->resolvePaymentDateBounds($this->resolveAccountId());
         $validated = $request->validate([
             'payment_flow' => 'nullable|in:standard,tds',
+            'tds_input_type' => 'nullable|in:percent,amount',
             'clientid' => 'required|exists:clients,clientid',
             'invoice_ids' => 'nullable|array',
             'invoice_ids.*' => 'string|exists:invoices,invoiceid',
@@ -713,6 +806,7 @@ class PaymentsController extends Controller
             'receipt_number' => $this->generatePaymentReceiptNumber($userAccountId),
             'received_amount' => $paymentFlow === 'standard' ? (float) $validated['received_amount'] : 0.0,
             'tds_amount' => $paymentFlow === 'standard' ? 0.0 : (float) ($validated['tds_amount'] ?? 0),
+            'tds_input_type' => $paymentFlow === 'standard' ? null : (string) ($validated['tds_input_type'] ?? 'percent'),
             'payment_date' => $validated['payment_date'],
             'mode' => $validated['mode'],
             'reference_number' => $validated['reference_number'] ?? null,
@@ -773,6 +867,8 @@ class PaymentsController extends Controller
             abort(404);
         }
         $payment->loadMissing(['client', 'invoices']);
+        $defaultTdsInputType = $this->resolvePaymentTdsInputType($payment);
+        $defaultTdsDisplayValue = $this->resolvePaymentTdsDisplayValue($payment, $defaultTdsInputType);
         $primaryInvoice = $payment->invoices->first();
         $displayTitle = $primaryInvoice?->invoice_title
             ?? $primaryInvoice?->invoice_number
@@ -782,11 +878,15 @@ class PaymentsController extends Controller
             'title' => 'Edit ' . $displayTitle,
             'payment' => $payment,
             'clients' => Client::query()->where('accountid', $payment->accountid)->regular()->get(),
-            'invoices' => Invoice::query()->where('accountid', $payment->accountid)->with(['client', 'invoiceItems'])
-                ->get(),
+            'invoices' => $this->filterDueInvoices(
+                Invoice::query()->where('accountid', $payment->accountid)->with(['client', 'invoiceItems'])
+                    ->get(),
+            ),
             'selectedClientId' => $payment->clientid,
             'selectedInvoiceIds' => $payment->invoices->pluck('invoiceid')->filter()->values()->all(),
             'selectedCurrency' => $payment->client?->currency ?? 'INR',
+            'defaultTdsInputType' => $defaultTdsInputType,
+            'defaultTdsDisplayValue' => $defaultTdsDisplayValue,
             'paymentDateBounds' => $paymentDateBounds,
         ]);
     }
@@ -802,6 +902,7 @@ class PaymentsController extends Controller
         $paymentDateBounds = $this->resolvePaymentDateBounds($payment->accountid);
         $validated = $request->validate([
             'payment_flow' => 'nullable|in:standard,tds',
+            'tds_input_type' => 'nullable|in:percent,amount',
             'clientid' => 'required|exists:clients,clientid',
             'invoice_ids' => 'nullable|array',
             'invoice_ids.*' => 'string|exists:invoices,invoiceid',
@@ -922,6 +1023,7 @@ class PaymentsController extends Controller
                     : $this->generatePaymentReceiptNumber($payment->accountid),
                 'received_amount' => $paymentFlow === 'standard' ? (float) $validated['received_amount'] : 0.0,
                 'tds_amount' => $paymentFlow === 'standard' ? 0.0 : (float) ($validated['tds_amount'] ?? 0),
+                'tds_input_type' => $paymentFlow === 'standard' ? null : (string) ($validated['tds_input_type'] ?? 'percent'),
                 'payment_date' => $validated['payment_date'],
                 'mode' => $validated['mode'],
                 'reference_number' => $validated['reference_number'] ?? null,

@@ -107,7 +107,8 @@
             if (!$defaultPaymentFlow) {
                 $defaultPaymentFlow = isset($payment) && $existingTdsTotal > 0 ? 'tds' : 'standard';
             }
-            $defaultTdsInputType = old('tds_input_type', 'percent');
+            $defaultTdsInputType = old('tds_input_type', $defaultTdsInputType ?? 'percent');
+            $defaultTdsDisplayValue = old('tds_amount', $defaultTdsDisplayValue ?? '');
         @endphp
         <form method="POST" action="{{ isset($payment) ? route('payments.update', $payment) : route('payments.store') }}"
             class="client-form payments-form-shell">
@@ -190,12 +191,12 @@
                 <div id="tds-amount-wrap">
                     <label for="tds_amount">TDS Amount (<span id="currencyLabelTds">{{ $defaultCurrency }}</span>)</label>
                     <div class="payments-tds-group">
-                        <select id="tds_input_type" class="payments-tds-type">
+                        <select id="tds_input_type" name="tds_input_type" class="payments-tds-type">
                             <option value="percent" {{ $defaultTdsInputType === 'percent' ? 'selected' : '' }}>%</option>
                             <option value="amount" {{ $defaultTdsInputType === 'amount' ? 'selected' : '' }}>Amount</option>
                         </select>
                         <input type="text" id="tds_amount"
-                            value="{{ old('tds_amount', $existingTdsTotal > 0 ? $existingTdsTotal : '') }}">
+                            value="{{ $defaultTdsDisplayValue }}">
                     </div>
                     <input type="hidden" id="tds_amount_hidden" name="tds_amount"
                         value="{{ old('tds_amount', $existingTdsTotal > 0 ? $existingTdsTotal : '') }}">
@@ -306,6 +307,8 @@
             const invoiceOptions = @json($invoiceOptions);
             const paymentDetailsMap = @json($paymentDetailsMap);
             const isEditingPayment = @json(isset($payment));
+            const defaultTdsInputType = @json($defaultTdsInputType);
+            const defaultTdsDisplayValue = @json($defaultTdsDisplayValue);
             const selectedClientName = document.getElementById('selectedClientName');
             const selectedClientEmail = document.getElementById('selectedClientEmail');
             const clientEmailMap = @json(collect($clients ?? [])->mapWithKeys(fn($client) => [
@@ -405,7 +408,20 @@
                     return;
                 }
 
-                invoiceList.innerHTML = clientInvoices.map((invoice) => {
+                const visibleInvoices = clientInvoices.filter((invoice) => {
+                    const totals = invoiceTotals[invoice.invoiceid] || {};
+                    const statusKey = (totals.payment_status || 'unpaid');
+                    const isChecked = isEditingPayment && !!paymentDetailsMap[invoice.invoiceid];
+
+                    return statusKey !== 'paid' || isChecked;
+                });
+
+                if (!visibleInvoices.length) {
+                    invoiceList.innerHTML = '<p class="addons-empty">No unpaid invoices for this client</p>';
+                    return;
+                }
+
+                invoiceList.innerHTML = visibleInvoices.map((invoice) => {
                     const totals = invoiceTotals[invoice.invoiceid] || {};
                     const available = getAvailableToCollect(invoice.invoiceid);
                     const availableWithoutTax = getAvailableWithoutTax(invoice.invoiceid);
@@ -639,9 +655,6 @@
                 if (tdsWrap) tdsWrap.style.display = isStandard ? 'none' : '';
                 if (receivedWrap) receivedWrap.style.display = isStandard ? '' : 'none';
                 if (tdsInputType) tdsInputType.style.display = isStandard ? 'none' : '';
-                if (!isStandard && tdsInputType && tdsInputType.value !== 'percent') {
-                    tdsInputType.value = 'percent';
-                }
                 const isPercentMode = !isStandard && (tdsInputType?.value === 'percent');
                 if (tdsAmountInput) tdsAmountInput.readOnly = false;
                 if (tdsAmountInput) tdsAmountInput.style.background = '#fff';
@@ -680,6 +693,7 @@
                     setCurrencyFromClient();
                     updateSelectedClientHeader();
                     renderInvoiceList();
+                    applyPaymentFlowUi();
                 });
             }
 
@@ -747,8 +761,11 @@
             setCurrencyFromClient();
             updateSelectedClientHeader();
             renderInvoiceList();
-            if (tdsInputType) {
-                tdsInputType.value = 'percent';
+            if (tdsInputType && defaultTdsInputType) {
+                tdsInputType.value = defaultTdsInputType;
+            }
+            if (tdsAmountInput && defaultTdsDisplayValue !== null && defaultTdsDisplayValue !== undefined) {
+                tdsAmountInput.value = defaultTdsDisplayValue;
             }
             applyPaymentFlowUi();
         })();
