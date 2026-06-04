@@ -207,7 +207,7 @@
                                             </div>
                                         </td>
                                     </tr>
-                                    <tr class="order-items-row is-hidden" id="invoice-items-{{ $documentId }}">
+                                    <tr class="order-items-row" id="invoice-items-{{ $documentId }}">
                                         <td colspan="8" class="order-items-cell">
                                             <div class="order-items-inner">
                                                 <div class="order-items-head">
@@ -272,13 +272,8 @@
             const icon = document.getElementById('invoice-icon-' + invoiceId);
             if (!itemsRow || !icon) return;
 
-            if (itemsRow.classList.contains('is-hidden')) {
-                itemsRow.classList.remove('is-hidden');
-                icon.style.transform = 'rotate(90deg)';
-            } else {
-                itemsRow.classList.add('is-hidden');
-                icon.style.transform = 'rotate(0deg)';
-            }
+            const isActive = itemsRow.classList.toggle('active');
+            icon.style.transform = isActive ? 'rotate(90deg)' : 'rotate(0deg)';
         }
     </script>
 

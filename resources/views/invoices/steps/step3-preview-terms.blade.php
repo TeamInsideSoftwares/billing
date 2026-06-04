@@ -55,39 +55,44 @@
     <input type="hidden" name="currency_code" id="step3_currency_code" value="{{ $selectedClientCurrency }}">
     <input type="hidden" name="notes" id="step3_notes" value="">
 
-    <div class="row g-3 align-items-start">
-        <div class="col-12 col-md-3 min-w-0">
+    <div class="flex flex-col md:flex-row items-start gap-4">
+        <div class="w-full md:w-1/4 min-w-0">
             <div class="soft-panel soft-panel--compact quotation-step3-side-panel">
                 <div class="soft-panel__header">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="flex items-center gap-2">
                         <h5 class="soft-panel__title">{{ $isTaxInvoiceStep3 ? 'Tax T&C' : 'Proforma T&C' }}</h5>
                     </div>
-                    <div class="d-flex gap-2 align-items-center">
+                    <div class="flex gap-2 items-center">
                         <button type="button" id="btnApplyTC" class="primary-button quotation-step3-small-btn is-hidden">Apply</button>
                         <button type="button" id="btnAddTC" class="text-link quotation-step3-add-btn">+ Add</button>
                     </div>
                 </div>
-                <div class="modal fade" id="addTermModal" tabindex="-1">
-                    <div class="modal-dialog modal-dialog-centered modal-600">
-                        <div class="modal-content rounded-panel">
-                            <div class="modal-header modal-header-custom">
-                                <h5 class="modal-title quotation-step3-modal-title">
-                                    <i class="fas fa-file-signature quotation-step3-modal-icon"></i>Add Terms & Conditions
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div id="addTermModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+                    <!-- Backdrop overlay -->
+                    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm modal-close-overlay" onclick="closeModal('addTermModal')"></div>
+                    
+                    <!-- Dialog container -->
+                    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden z-10 flex flex-col max-h-[90vh]">
+                        <!-- Header -->
+                        <div class="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
+                            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fas fa-file-signature text-slate-400"></i> Add Terms & Conditions
+                            </h3>
+                            <button type="button" class="text-slate-400 hover:text-slate-650 text-lg font-bold" onclick="closeModal('addTermModal')">&times;</button>
+                        </div>
+                        <!-- Body -->
+                        <div class="p-6 overflow-y-auto flex-1 text-left space-y-4">
+                            @csrf
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Terms & Conditions</label>
+                                <textarea id="newTermContent" name="content" rows="5" placeholder="Enter the term text" required class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"></textarea>
                             </div>
-                            <div class="modal-body quotation-step3-modal-body">
-                                @csrf
-                                <div class="soft-panel__section">
-                                    <label class="quotation-step3-modal-label">Terms & Conditions</label>
-                                    <textarea id="newTermContent" name="content" rows="5" placeholder="Enter the term text" required class="soft-panel__textarea"></textarea>
-                                </div>
-                                <div id="addTermError" class="quotation-step3-modal-error is-hidden"></div>
-                                <div class="soft-panel__footer">
-                                    <button type="button" id="saveTermBtn" class="primary-button small">Save Term</button>
-                                    <button type="button" class="text-link small" id="btnCancelTermModal" data-bs-dismiss="modal">Cancel</button>
-                                </div>
-                            </div>
+                            <div id="addTermError" class="text-xs text-red-650 bg-red-50 p-2 rounded hidden"></div>
+                        </div>
+                        <!-- Footer -->
+                        <div class="flex justify-end items-center gap-2 p-4 border-t border-slate-100 bg-slate-50">
+                            <button type="button" class="px-4 py-2 text-slate-500 hover:text-slate-700 text-xs font-semibold" onclick="closeModal('addTermModal')">Cancel</button>
+                            <button type="button" id="saveTermBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow-sm transition-colors">Save Term</button>
                         </div>
                     </div>
                 </div>
@@ -109,7 +114,7 @@
             </div>
         </div>
 
-        <div class="col-12 col-md-9 min-w-0">
+        <div class="w-full md:w-3/4 min-w-0">
             <!-- Invoice Preview -->
             <div class="soft-panel quotation-step3-preview-panel">
                 <div class="quotation-step3-preview-header">
@@ -142,10 +147,10 @@
                 <div id="invoicePreviewContainer" class="quotation-step3-preview-frame-wrap">
                     <div id="previewContent" class="quotation-step3-preview-frame-shell">
                         <iframe
-                            id="invoicePdfPreviewFrame"
-                            title="Invoice PDF Preview"
-                            src="about:blank"
-                            class="quotation-step3-preview-frame"
+                             id="invoicePdfPreviewFrame"
+                             title="Invoice PDF Preview"
+                             src="about:blank"
+                             class="quotation-step3-preview-frame"
                         ></iframe>
                     </div>
                 </div>
@@ -153,9 +158,9 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mt-3">
+    <div class="flex justify-end items-center flex-wrap gap-2 mt-4">
         <button type="button" class="primary-button" id="btnSendEmail">
-            <i class="fas fa-envelope me-2"></i>Save & Go To Email Compose
+            <i class="fas fa-envelope mr-2"></i>Save & Go To Email Compose
         </button>
     </div>
 </div>
@@ -574,7 +579,7 @@
                         justify-content: center;
                         min-height: 640px;
                         color: #6b7280;
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        font-family: Inter, sans-serif;
                     }
                     .preview-empty-state__inner { text-align: center; }
                     .preview-empty-state__icon {

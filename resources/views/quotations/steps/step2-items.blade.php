@@ -115,7 +115,7 @@
                     <label class="field-label small">Disc %</label>
                     <input type="number" id="discount_percent" min="0" max="100" step="0.01" value="0" class="form-input">
                 </div>
-                <div id="usersWrap" class="{{ $accountHasUsers ? '' : 'd-none' }}">
+                <div id="usersWrap" class="{{ $accountHasUsers ? '' : 'hidden' }}">
                     <label class="field-label small">Users</label>
                     <input type="number" id="no_of_users" min="1" step="1" value="1" class="form-input">
                 </div>
@@ -151,14 +151,14 @@
         </div>
 
         <div class="table-shell mt-3">
-            <table class="data-table m-0 invoice-items-table d-none" id="itemsTable">
+            <table class="data-table m-0 invoice-items-table hidden" id="itemsTable">
                 <thead>
                     <tr>
                         <th>Item</th>
                         <th class="text-center">Qty</th>
                         <th class="text-center">Price</th>
                         <th class="text-center">Disc %</th>
-                        <th class="text-center {{ $accountHasUsers ? '' : 'd-none' }}" id="usersColHeader">Users</th>
+                        <th class="text-center {{ $accountHasUsers ? '' : 'hidden' }}" id="usersColHeader">Users</th>
                         <th>Freq</th>
                         <th class="text-center">Dur</th>
                         <th>Start</th>
@@ -172,7 +172,7 @@
             <div id="itemsEmpty" class="empty-state">No items added yet.</div>
         </div>
 
-        <div id="quoteSummary" class="totals-card totals-card--narrow mt-3 ms-auto d-none">
+        <div id="quoteSummary" class="totals-card totals-card--narrow mt-3 ms-auto hidden">
             <div class="total-row"><span>Subtotal</span><strong id="summarySubtotal">0</strong></div>
             <div class="total-row"><span>Discount</span><strong id="summaryDiscount">0</strong></div>
             <div class="total-row"><span>Tax</span><strong id="summaryTax">0</strong></div>

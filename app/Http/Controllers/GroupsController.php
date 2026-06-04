@@ -56,7 +56,7 @@ class GroupsController extends Controller
             'city' => 'nullable|string',
             'state' => 'nullable|string',
             'postal_code' => 'nullable|string',
-            'country' => 'nullable|string',
+            'country' => 'required|string',
         ]);
 
         $userAccountId = $this->resolveAccountId();
@@ -100,7 +100,7 @@ class GroupsController extends Controller
             'city' => 'nullable|string',
             'state' => 'nullable|string',
             'postal_code' => 'nullable|string',
-            'country' => 'nullable|string',
+            'country' => 'required|string',
         ]);
 
         $group->update($validated);

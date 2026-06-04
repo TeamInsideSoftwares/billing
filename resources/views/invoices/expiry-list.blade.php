@@ -33,7 +33,7 @@
 
                 <div class="module-filter-field">
                     <label class="module-filter-label" for="expiry_client_filter">Client</label>
-                    <select name="c" id="expiry_client_filter" class="form-control">
+                    <select name="c" id="expiry_client_filter" class="w-full bg-white border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                         <option value="">All Clients</option>
                         @foreach ($clients as $clientOption)
                             <option value="{{ $clientOption->clientid }}"
@@ -46,13 +46,13 @@
 
                 <div class="module-filter-field">
                     <label class="module-filter-label" for="expiry_from_filter">From</label>
-                    <input type="date" name="from" id="expiry_from_filter" class="form-control module-date-input"
+                    <input type="date" name="from" id="expiry_from_filter" class="w-full bg-white border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 module-date-input"
                         value="{{ $fromDate ?? '' }}">
                 </div>
 
                 <div class="module-filter-field">
                     <label class="module-filter-label" for="expiry_to_filter">To</label>
-                    <input type="date" name="to" id="expiry_to_filter" class="form-control module-date-input"
+                    <input type="date" name="to" id="expiry_to_filter" class="w-full bg-white border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 module-date-input"
                         value="{{ $toDate ?? '' }}" min="{{ $fromDate ?? '' }}">
                 </div>
 
@@ -155,8 +155,7 @@
                                         <strong>{{ $row['item_name'] }}</strong>
                                     </td>
                                     <td>
-                                        <span class="{{ (($row['days_left'] ?? null) !== null && $row['days_left'] < 0) ? 'text-danger' : '' }}"
-                                            style="{{ (($row['days_left'] ?? null) !== null && $row['days_left'] < 0) ? 'font-weight: 600;' : '' }}">
+                                        <span class="{{ (($row['days_left'] ?? null) !== null && $row['days_left'] < 0) ? 'text-red-600 font-semibold' : '' }}">
                                             {{ $row['end_date_display'] }}
                                         </span>
                                     </td>
@@ -164,11 +163,11 @@
                                         @if ($row['days_left'] === null)
                                             <span class="invoice-muted">-</span>
                                         @elseif($row['days_left'] > 0)
-                                            <span class="text-success" style="font-weight: 600;">{{ $row['days_left'] }} day(s)</span>
+                                            <span class="text-green-650 font-semibold">{{ $row['days_left'] }} day(s)</span>
                                         @elseif($row['days_left'] === 0)
-                                            <span class="text-warning" style="font-weight: 600;">Today</span>
+                                            <span class="text-amber-650 font-semibold">Today</span>
                                         @else
-                                            <span class="text-danger" style="font-weight: 600;">-{{ abs($row['days_left']) }} day(s)</span>
+                                            <span class="text-red-655 font-semibold">-{{ abs($row['days_left']) }} day(s)</span>
                                         @endif
                                     </td>
                                     <td class="text-center">

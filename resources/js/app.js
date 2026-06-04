@@ -1,5 +1,78 @@
 import './bootstrap';
 
+// Declarative DOM event handlers for utility components
+document.addEventListener('click', (event) => {
+    // Dropdown toggling
+    const dropdownBtn = event.target.closest('[data-bs-toggle="dropdown"], [data-app-toggle="dropdown"]');
+    if (dropdownBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        const parent = dropdownBtn.closest('.dropdown');
+        const menu = parent ? parent.querySelector('.dropdown-menu') : dropdownBtn.nextElementSibling;
+        
+        document.querySelectorAll('.dropdown-menu').forEach(otherMenu => {
+            if (otherMenu !== menu) {
+                otherMenu.classList.add('hidden');
+            }
+        });
+
+        if (menu) {
+            menu.classList.toggle('hidden');
+        }
+        return;
+    } else {
+        // Clicking outside closes all dropdowns
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.classList.add('hidden');
+        });
+    }
+
+    // Modal toggling (open)
+    const modalToggle = event.target.closest('[data-bs-toggle="modal"], [data-app-toggle="modal"]');
+    if (modalToggle) {
+        event.preventDefault();
+        const targetSelector = modalToggle.getAttribute('data-bs-target') || modalToggle.getAttribute('data-app-target');
+        if (targetSelector) {
+            const modalEl = document.querySelector(targetSelector);
+            if (modalEl) {
+                window.openModal(modalEl.id);
+            }
+        }
+        return;
+    }
+
+    // Modal dismiss (close)
+    const modalDismiss = event.target.closest('[data-bs-dismiss="modal"], [data-app-dismiss="modal"]');
+    if (modalDismiss) {
+        event.preventDefault();
+        const modalEl = modalDismiss.closest('[id$="Modal"], [id*="modal"]');
+        if (modalEl) {
+            window.closeModal(modalEl.id);
+        }
+        return;
+    }
+
+    // Tab toggling click handler
+    const tabBtn = event.target.closest('[data-bs-toggle="tab"], [data-app-toggle="tab"]');
+    if (tabBtn) {
+        event.preventDefault();
+        const tab = new TailwindTab(tabBtn);
+        tab.show();
+        // Dispatch shown event
+        tabBtn.dispatchEvent(new CustomEvent('shown.bs.tab', { bubbles: true, detail: { target: tabBtn } }));
+        return;
+    }
+
+    // Modal close when clicking outside modal body on overlay backdrop
+    if (event.target.matches('.modal-close-overlay')) {
+        const modalEl = event.target.closest('[id$="Modal"], [id*="modal"]');
+        if (modalEl) {
+            window.closeModal(modalEl.id);
+        }
+    }
+});
+
+
 document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.querySelector('[data-sidebar]');
     const toggle = document.querySelector('[data-sidebar-toggle]');

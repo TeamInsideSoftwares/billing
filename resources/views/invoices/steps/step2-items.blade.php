@@ -1125,19 +1125,19 @@
 </script>
 
 <!-- Modal for creating a new order -->
-<div class="modal fade" id="addOrderModal" tabindex="-1" aria-labelledby="addOrderModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 90%; width: 1000px;">
-        <div class="modal-content rounded-panel"
-            style="border: none; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);">
-            <div class="modal-header modal-header-custom"
-                style="padding: 1rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
-                <h5 class="modal-title" id="addOrderModalLabel"
-                    style="font-weight: 600; color: #1e293b; margin: 0; font-size: 1.1rem;">Create New Order</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" style="padding: 0; height: 70vh; background: #fff;">
-                <iframe id="addOrderIframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
-            </div>
+<div id="addOrderModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <!-- Backdrop overlay -->
+    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm modal-close-overlay" onclick="closeModal('addOrderModal')"></div>
+    
+    <!-- Dialog container -->
+    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl overflow-hidden z-10 flex flex-col h-[80vh]">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
+            <h3 class="text-base font-semibold text-slate-800" id="addOrderModalLabel">Create New Order</h3>
+            <button type="button" class="text-slate-400 hover:text-slate-650 text-lg font-bold" onclick="closeModal('addOrderModal')">&times;</button>
+        </div>
+        <div class="p-0 flex-1 bg-white overflow-hidden">
+            <iframe id="addOrderIframe" src="" class="w-full h-full border-none"></iframe>
         </div>
     </div>
 </div>

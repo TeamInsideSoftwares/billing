@@ -477,7 +477,7 @@
 
         <!-- Document Type Tabs (Top Level) -->
         <div class="mt-main-tabs-wrap border-bottom mt-3">
-            <div class="mt-main-tabs d-flex gap-4">
+            <div class="mt-main-tabs flex gap-4">
                 @foreach($messageTemplateTypes as $typeKey => $typeLabel)
                     <button type="button" class="mt-type-tab-btn {{ $loop->first ? 'is-active' : '' }}" data-type="{{ $typeKey }}">
                         {{ $typeLabel }}
@@ -510,22 +510,22 @@
                     }
                 @endphp
 
-                <div class="row align-items-stretch h-100">
-                    <div class="col-12 col-md-12 mt-editor-col d-flex h-100">
-                        <form method="POST" action="{{ route('message-templates.store') }}" class="message-template-form d-flex flex-column w-100 h-100" data-template-form="{{ $defaultTypeKey }}" data-store-action="{{ route('message-templates.store') }}" data-update-base="{{ url('settings/message-templates') }}">
+                <div class="flex flex-wrap -mx-3 items-stretch h-full">
+                    <div class="w-full px-3 mt-editor-col flex h-full">
+                        <form method="POST" action="{{ route('message-templates.store') }}" class="message-template-form flex flex-col w-full h-full" data-template-form="{{ $defaultTypeKey }}" data-store-action="{{ route('message-templates.store') }}" data-update-base="{{ url('settings/message-templates') }}">
                             @csrf
                             <input type="hidden" name="template_type" value="{{ $defaultTypeKey }}">
                             <input type="hidden" name="templateid" class="template-id-input" value="">
                             <input type="hidden" name="channel" class="template-channel-input" value="email">
 
-                            <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="flex justify-between items-center mb-3">
                                 <div>
                                     <strong class="template-editor-title">Create template</strong>
-                                    <p class="text-sm text-muted mb-0 template-editor-note">Fill the form to add a new template.</p>
+                                    <p class="text-sm text-slate-500 mb-0 template-editor-note">Fill the form to add a new template.</p>
                                 </div>
                             </div>
 
-                            <div class="mt-channel-pills d-flex gap-2 mb-4">
+                            <div class="mt-channel-pills flex gap-2 mb-4">
                                 <button type="button" class="mt-channel-pill-btn is-active" data-type="{{ $defaultTypeKey }}" data-channel="email">
                                     <i class="fas fa-envelope mr-1"></i> Email
                                 </button>
@@ -537,49 +537,49 @@
                                 </button>
                             </div>
 
-                            <div class="template-form-grid d-flex flex-column flex-grow-1">
-                                <div class="row g-3">
-                                    <div class="col-12 col-md-6 form-group mb-3">
+                            <div class="template-form-grid flex flex-col grow">
+                                <div class="flex flex-wrap -mx-3">
+                                    <div class="w-full md:w-1/2 px-3 form-group mb-3">
                                         <label class="label-compact font-bold mb-1">Template Name <span class="template-name-required-mark">*</span></label>
                                         <input type="text" name="name" class="settings-input template-name-input" placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} Email Template">
                                     </div>
 
-                                    <div class="col-12 col-md-6 form-group mb-3 template-subject-group">
+                                    <div class="w-full md:w-1/2 px-3 form-group mb-3 template-subject-group">
                                         <label class="label-compact font-bold mb-1">Subject (optional)</label>
                                         <input type="text" name="subject" class="settings-input template-subject-input" placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} update for @{{client_name}}" autocomplete="off">
                                     </div>
 
-                                    <div class="col-12 col-md-6 form-group mb-3 template-wa-template-id-group settings-template-wa-group is-hidden">
+                                    <div class="w-full md:w-1/2 px-3 form-group mb-3 template-wa-template-id-group settings-template-wa-group is-hidden">
                                         <label class="label-compact font-bold mb-1">WhatsApp Template ID *</label>
                                         <input type="text" class="settings-input template-wa-template-id-input" placeholder="wa_template_42" autocomplete="off">
                                     </div>
                                 </div>
 
-                                <div class="row g-3 template-sms-config-row settings-template-sms-row is-hidden">
-                                    <div class="col-12 col-md-6 form-group mb-3 template-external-id-group">
+                                <div class="flex flex-wrap -mx-3 template-sms-config-row settings-template-sms-row is-hidden">
+                                    <div class="w-full md:w-1/2 px-3 form-group mb-3 template-external-id-group">
                                         <label class="label-compact font-bold mb-1">SMS Template ID *</label>
                                         <input type="text" name="template_id" class="settings-input template-external-id-input" placeholder="sms_template_15" autocomplete="off">
                                     </div>
 
-                                    <div class="col-12 col-md-6 form-group mb-3 template-sender-id-group">
+                                    <div class="w-full md:w-1/2 px-3 form-group mb-3 template-sender-id-group">
                                         <label class="label-compact font-bold mb-1">SMS Sender ID (optional)</label>
                                         <input type="text" name="sender_id" class="settings-input template-sender-id-input" placeholder="" autocomplete="off">
                                     </div>
                                 </div>
 
-                                <div class="form-group mb-3 col-span-2 flex-grow-1">
+                                <div class="form-group mb-3 col-span-2 grow">
                                     <label class="label-compact font-bold mb-1">Message Body <span class="template-body-required-mark">*</span></label>
-                                    <textarea name="body" id="templateBodyInput-{{ $defaultTypeKey }}" rows="6" class="settings-input template-body-input h-100" placeholder="Hi @{{client_name}},&#10;Please find the details below."></textarea>
-                                    <p class="text-sm text-muted mt-2 mb-1 template-variable-only-note settings-template-variable-note is-hidden">
+                                    <textarea name="body" id="templateBodyInput-{{ $defaultTypeKey }}" rows="6" class="settings-input template-body-input h-full" placeholder="Hi @{{client_name}},&#10;Please find the details below."></textarea>
+                                    <p class="text-sm text-slate-500 mt-2 mb-1 template-variable-only-note settings-template-variable-note is-hidden">
                                         For WhatsApp/SMS, message text is fixed by the provider template. Only keep/update dynamic variables here.
                                     </p>
-                                    <div class="mt-2 d-flex flex-wrap gap-2 template-variable-badges"></div>
-                                    <div class="text-xs text-muted mt-2 template-variable-help">
+                                    <div class="mt-2 flex flex-wrap gap-2 template-variable-badges"></div>
+                                    <div class="text-xs text-slate-500 mt-2 template-variable-help">
                                         Showing common tags and tags relevant to the selected template type.
                                     </div>
                                 </div>
 
-                                <div class="d-flex align-items-center justify-content-end col-span-2 mt-3 pt-3 border-top mt-auto">
+                                <div class="flex items-center justify-end col-span-2 mt-3 pt-3 border-t mt-auto">
                                     <button type="submit" class="primary-button px-4 py-2 template-submit-btn">
                                         Save New Template
                                     </button>
@@ -588,26 +588,26 @@
                         </form>
                     </div>
 
-                    <div class="col-12 col-md-4 mt-template-list-col d-flex h-100 settings-template-list-col is-hidden">
-                        <div class="mt-template-list d-flex flex-column w-100 h-100">
-                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div class="w-full md:w-1/3 px-3 mt-template-list-col flex h-full settings-template-list-col is-hidden">
+                        <div class="mt-template-list flex flex-col w-full h-full">
+                            <div class="flex justify-between items-start gap-3 mb-3">
                                 <div>
                                     <h6 class="mb-1">Saved templates</h6>
-                                    <p class="text-sm text-muted mb-0">Click a template to edit it here.</p>
+                                    <p class="text-sm text-slate-500 mb-0">Click a template to edit it here.</p>
                                 </div>
-                                <span id="mt-saved-count" class="badge bg-light text-muted border px-2 py-1 settings-template-list-count">
+                                <span id="mt-saved-count" class="badge bg-slate-100 text-slate-600 border px-2 py-1 settings-template-list-count">
                                     {{ ($messageTemplatesByType[$defaultTypeKey] ?? collect())->count() }} saved
                                 </span>
                             </div>
 
-                            <div class="mt-template-list-body flex-grow-1 overflow-auto">
+                            <div class="mt-template-list-body grow overflow-auto">
                             @forelse($allTemplates as $template)
                                 <div class="mt-template-item" data-type="{{ $template->template_type ?? $template->type ?? '' }}">
-                                    <div class="d-flex justify-content-between align-items-start gap-3">
+                                    <div class="flex justify-between items-start gap-3">
                                         <div>
                                             <strong>{{ $template->name }}</strong>
-                                            <div class="d-flex flex-wrap gap-2 mt-2">
-                                                <span class="badge bg-light text-muted border px-2 py-1">{{ ucfirst($template->channel) }}</span>
+                                            <div class="flex flex-wrap gap-2 mt-2">
+                                                <span class="badge bg-slate-100 text-slate-600 border px-2 py-1">{{ ucfirst($template->channel) }}</span>
                                                 <span
                                                     class="badge js-template-status-badge {{ $template->is_active ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle' }} px-2 py-1"
                                                     role="button"
@@ -617,7 +617,7 @@
                                                     {{ $template->is_active ? 'Active' : 'Deactive' }}
                                                 </span>
                                                 @if(!empty($template->subject))
-                                                    <span class="text-sm text-muted">{{ $template->subject }}</span>
+                                                    <span class="text-sm text-slate-500">{{ $template->subject }}</span>
                                                 @endif
                                             </div>
                                         </div>
@@ -649,7 +649,7 @@
                                     </div>
                                 </div>
                             @empty
-                                <div class="text-sm text-muted">No templates saved yet.</div>
+                                <div class="text-sm text-slate-500">No templates saved yet.</div>
                             @endforelse
                             </div>
                         </div>
@@ -1128,38 +1128,40 @@
 </div>
 
 {{-- Fixed Tax Rate Modal --}}
-<div class="modal fade" id="fixedTaxRateModal" tabindex="-1">
-    <div class="modal-dialog modal-sm modal-dialog-centered modal-dialog modal-sm modal-dialog-centered modal-420">
-        <div class="modal-content rounded-panel">
-            <div class="modal-header modal-header-custom">
-                <h5 class="modal-title modal-title service-modal-title">
-                    Add Tax
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body modal-body service-modal-body">
-                <form method="POST" action="{{ route('account.fixed-tax.update') }}" id="fixed-tax-form">
-                    @csrf
-                    <div class="field-gap">
-                        <label class="label-compact">Rate (%)</label>
-                        <input type="number" name="fixed_tax_rate" placeholder="18" step="0.01" min="0" max="100" value="{{ old('fixed_tax_rate', $account->fixed_tax_rate ?? 0) }}" required
-                               class="service-input-full">
-                    </div>
-                    <div class="field-gap">
-                        <label class="label-compact">Type</label>
-                        <select name="fixed_tax_type" required
-                                class="service-input-full">
-                            @foreach(['GST'=>'GST','VAT'=>'VAT'] as $v=>$l)
-                                <option value="{{ $v }}" {{ old('fixed_tax_type', $account->fixed_tax_type ?? 'GST') == $v ? 'selected' : '' }}>{{ $l }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="settings-form-row settings-template-inline-actions">
-                        <button type="submit" class="primary-button small">Add Tax</button>
-                        <button type="button" class="text-link small" data-bs-dismiss="modal">Cancel</button>
-                    </div>
-                </form>
-            </div>
+<div id="fixedTaxRateModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <!-- Backdrop overlay -->
+    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm modal-close-overlay"></div>
+    
+    <!-- Dialog container -->
+    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden z-10 flex flex-col max-h-[90vh]">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
+            <h3 class="text-base font-bold text-slate-800">Add Tax</h3>
+            <button type="button" class="text-slate-400 hover:text-slate-600 text-lg" data-bs-dismiss="modal">&times;</button>
+        </div>
+        <!-- Body -->
+        <div class="p-6 overflow-y-auto flex-1">
+            <form method="POST" action="{{ route('account.fixed-tax.update') }}" id="fixed-tax-form">
+                @csrf
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Rate (%)</label>
+                    <input type="number" name="fixed_tax_rate" placeholder="18" step="0.01" min="0" max="100" value="{{ old('fixed_tax_rate', $account->fixed_tax_rate ?? 0) }}" required
+                           class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Type</label>
+                    <select name="fixed_tax_type" required
+                            class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-blue-500">
+                        @foreach(['GST'=>'GST','VAT'=>'VAT'] as $v=>$l)
+                            <option value="{{ $v }}" {{ old('fixed_tax_type', $account->fixed_tax_type ?? 'GST') == $v ? 'selected' : '' }}>{{ $l }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="flex justify-end items-center gap-2 mt-6">
+                    <button type="submit" class="primary-button text-sm">Add Tax</button>
+                    <button type="button" class="text-slate-500 hover:text-slate-700 text-sm font-medium" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

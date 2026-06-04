@@ -8,7 +8,21 @@
 @endsection
 
 @section('content')
-    <section class="panel-card panel-card-lg">
+    <style>
+        .primary-button,
+        .primary-button:hover,
+        .secondary-button,
+        .secondary-button:hover,
+        .payments-flow-btn,
+        .payments-flow-btn.active {
+            box-shadow: none !important;
+        }
+        .primary-button:hover,
+        .secondary-button:hover {
+            transform: none !important;
+        }
+    </style>
+    <section>
         @php
             $isEditingPayment = isset($payment);
             $defaultClientId = $isEditingPayment
@@ -116,154 +130,231 @@
                 @method('PUT')
             @endisset
             @csrf
-            <div class="invoice-client-header mb-3">
-                <div class="invoice-client-header__row">
-                    <div class="invoice-client-header__icon">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div class="invoice-client-header__body payments-client-header-body">
-                        @if (!$isEditingPayment)
-                            <label for="clientid" class="field-label payments-client-label">Select Client
-                                *</label>
-                            <select id="clientid" name="clientid" class="form-control" required>
-                                <option value="">Select Client</option>
-                                @php
-                                    $clientsByType = collect($clients ?? [])->groupBy(function ($client) {
-                                        return strtolower((string) ($client->type ?? 'regular')) === 'trial'
-                                            ? 'trial'
-                                            : 'regular';
-                                    });
-                                @endphp
-                                @foreach (['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
-                                    @if (($clientsByType[$typeKey] ?? collect())->isNotEmpty())
-                                        <optgroup label="{{ $typeLabel }}">
-                                            @foreach ($clientsByType[$typeKey] as $client)
-                                                <option value="{{ $client->clientid }}"
-                                                    {{ $defaultClientId == $client->clientid ? 'selected' : '' }}>
-                                                    {{ $client->business_name ?? $client->contact_name }}
-                                                </option>
-                                            @endforeach
-                                        </optgroup>
-                                    @endif
-                                @endforeach
-                            </select>
+
+            <div class="payments-three-col-layout">
+                <!-- Column 1: Client & Amount -->
+                <div class="payments-col-card">
+                    <div class="mb-6">
+                        <label class="field-label payments-client-label">Select Client *</label>
+                        @if ($isEditingPayment)
+                            <div class="payments-client-card flex gap-3 items-center py-3 px-4 bg-slate-50 border border-[var(--line)] rounded-lg">
+                                <div class="payments-client-avatar w-9 h-9 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-base shrink-0">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="payments-client-info flex-1 min-w-0">
+                                    <h5 class="payments-client-name text-[0.88rem] font-bold text-slate-900 m-0" id="selectedClientName">
+                                        {{ $selectedClientName }}</h5>
+                                    <div class="payments-client-email {{ $selectedClientEmail ? '' : 'is-hidden' }} text-xs text-[var(--text-muted)] mt-[2px]"
+                                        id="selectedClientEmail">
+                                        {{ $selectedClientEmail }}
+                                    </div>
+                                    <input type="hidden" id="clientid" name="clientid" value="{{ $defaultClientId }}">
+                                </div>
+                                @if ($displayReceiptNumber !== '')
+                                    <div class="payments-receipt-badge text-xs py-1 px-2">
+                                        {{ $displayReceiptNumber }}
+                                    </div>
+                                @endif
+                            </div>
                         @else
-                            <input type="hidden" id="clientid" name="clientid" value="{{ $defaultClientId }}">
-                            <div class="invoice-client-header__name" id="selectedClientName">{{ $selectedClientName }}</div>
-                            <div class="invoice-client-header__email {{ $selectedClientEmail ? '' : 'is-hidden' }}"
-                                id="selectedClientEmail">{{ $selectedClientEmail }}</div>
-                        @endif
-                    </div>
-                    <div class="invoice-client-header__right">
-                        @if ($displayReceiptNumber !== '')
-                            <div class="invoice-number-badge">
-                                {{ $displayReceiptNumber }}
+                            <div class="invoice-client-header mb-0 p-3 bg-slate-50 border border-[var(--line)] rounded-xl">
+                                <div class="invoice-client-header__row flex gap-3 items-start">
+                                    <div class="invoice-client-header__icon w-9 h-9 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center shrink-0 mt-[2px]">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <div class="invoice-client-header__body payments-client-header-body flex-1 min-w-0">
+                                        <select id="clientid" name="clientid" class="form-control mb-0" required>
+                                            <option value="">Select Client</option>
+                                            @php
+                                                $clientsByType = collect($clients ?? [])->groupBy(function ($client) {
+                                                    return strtolower((string) ($client->type ?? 'regular')) === 'trial'
+                                                        ? 'trial'
+                                                        : 'regular';
+                                                });
+                                            @endphp
+                                            @foreach (['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
+                                                @if (($clientsByType[$typeKey] ?? collect())->isNotEmpty())
+                                                    <optgroup label="{{ $typeLabel }}">
+                                                        @foreach ($clientsByType[$typeKey] as $client)
+                                                            <option value="{{ $client->clientid }}"
+                                                                {{ $defaultClientId == $client->clientid ? 'selected' : '' }}>
+                                                                {{ $client->business_name ?? $client->contact_name }}
+                                                            </option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                @endif
+                                            @endforeach
+                                        </select>
+
+                                        <div class="payments-client-info-preview is-hidden mt-2 border-t border-dashed border-[var(--line)] pt-2" id="selectedClientInfoPreview">
+                                            <h5 class="payments-client-name text-[0.85rem] font-bold m-0 text-[var(--text)]" id="selectedClientName">
+                                            </h5>
+                                            <div class="payments-client-email text-xs text-[var(--text-muted)] mt-[2px]" id="selectedClientEmail">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         @endif
                     </div>
-                </div>
-            </div>
-            <div class="form-grid">
-                <div>
-                    <label for="payment_flow">Payment Type *</label>
-                    <select id="payment_flow" name="payment_flow" class="form-control">
-                        <option value="standard" {{ $defaultPaymentFlow === 'standard' ? 'selected' : '' }}>Invoice Payment</option>
-                        <option value="tds" {{ $defaultPaymentFlow === 'tds' ? 'selected' : '' }}>TDS Deduction</option>
-                    </select>
-                </div>
-                <div id="received-amount-wrap">
-                    <label for="received_amount">Amount * (<span id="currencyLabel">{{ $defaultCurrency }}</span>)</label>
-                    @php
-                        $receivedAmountDisplay = old('received_amount', isset($payment) ? $payment->received_amount : '');
-                        if ($receivedAmountDisplay !== '' && is_numeric($receivedAmountDisplay)) {
-                            $receivedAmountDisplay = (float) $receivedAmountDisplay;
-                            if (abs($receivedAmountDisplay - round($receivedAmountDisplay)) < 0.000001) {
-                                $receivedAmountDisplay = (string) (int) round($receivedAmountDisplay);
-                            }
-                        }
-                    @endphp
-                    <input type="text" id="received_amount" name="received_amount"
-                        value="{{ $receivedAmountDisplay }}" required>
-                    @error('received_amount')
-                        <span class="error">{{ $message }}</span>
-                    @enderror
-                </div>
-                <div id="tds-amount-wrap">
-                    <label for="tds_amount">TDS Amount (<span id="currencyLabelTds">{{ $defaultCurrency }}</span>)</label>
-                    <div class="payments-tds-group">
-                        <select id="tds_input_type" name="tds_input_type" class="payments-tds-type">
-                            <option value="percent" {{ $defaultTdsInputType === 'percent' ? 'selected' : '' }}>%</option>
-                            <option value="amount" {{ $defaultTdsInputType === 'amount' ? 'selected' : '' }}>Amount</option>
+
+                    <div class="mb-6">
+                        <label>Payment Type *</label>
+                        <div class="payments-flow-toggle-group">
+                            <button type="button"
+                                class="payments-flow-btn {{ $defaultPaymentFlow === 'standard' ? 'active' : '' }}"
+                                data-value="standard">
+                                <i class="fas fa-file-invoice"></i>
+                                <span>Invoice Payment</span>
+                            </button>
+                            <button type="button"
+                                class="payments-flow-btn {{ $defaultPaymentFlow === 'tds' ? 'active' : '' }}"
+                                data-value="tds">
+                                <i class="fas fa-percent"></i>
+                                <span>TDS Deduction</span>
+                            </button>
+                        </div>
+                        <select id="payment_flow" name="payment_flow" class="is-hidden">
+                            <option value="standard" {{ $defaultPaymentFlow === 'standard' ? 'selected' : '' }}>Invoice
+                                Payment</option>
+                            <option value="tds" {{ $defaultPaymentFlow === 'tds' ? 'selected' : '' }}>TDS Deduction
+                            </option>
                         </select>
-                        <input type="text" id="tds_amount"
-                            value="{{ $defaultTdsDisplayValue }}">
                     </div>
-                    <input type="hidden" id="tds_amount_hidden" name="tds_amount"
-                        value="{{ old('tds_amount', $existingTdsTotal > 0 ? $existingTdsTotal : '') }}">
-                    @error('tds_amount')
-                        <span class="error">{{ $message }}</span>
-                    @enderror
+
+                    <div id="received-amount-wrap" class="mb-0">
+                        <label for="received_amount">Amount *</label>
+                        <div class="payments-input-group">
+                            <span class="payments-input-prefix" id="currencyLabel">{{ $defaultCurrency }}</span>
+                            @php
+                                $receivedAmountDisplay = old(
+                                    'received_amount',
+                                    isset($payment) ? $payment->received_amount : '',
+                                );
+                                if ($receivedAmountDisplay !== '' && is_numeric($receivedAmountDisplay)) {
+                                    $receivedAmountDisplay = (float) $receivedAmountDisplay;
+                                    if (abs($receivedAmountDisplay - round($receivedAmountDisplay)) < 0.000001) {
+                                        $receivedAmountDisplay = (string) (int) round($receivedAmountDisplay);
+                                    }
+                                }
+                            @endphp
+                            <input type="text" id="received_amount" name="received_amount"
+                                value="{{ $receivedAmountDisplay }}" required placeholder="0.00">
+                        </div>
+                        @error('received_amount')
+                            <span class="error">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div id="tds-amount-wrap" class="mb-0">
+                        <label for="tds_amount">TDS Rate / Amount</label>
+                        <div class="payments-tds-group">
+                            <select id="tds_input_type" name="tds_input_type" class="payments-tds-type text-[0.85rem]">
+                                <option value="percent" {{ $defaultTdsInputType === 'percent' ? 'selected' : '' }}>TDS %
+                                </option>
+                                <option value="amount" {{ $defaultTdsInputType === 'amount' ? 'selected' : '' }}>Fixed
+                                    Amount (<span id="currencyLabelTds">{{ $defaultCurrency }}</span>)</option>
+                            </select>
+                            <input type="text" id="tds_amount" value="{{ $defaultTdsDisplayValue }}" placeholder="0.00">
+                        </div>
+                        <input type="hidden" id="tds_amount_hidden" name="tds_amount"
+                            value="{{ old('tds_amount', $existingTdsTotal > 0 ? $existingTdsTotal : '') }}">
+                        @error('tds_amount')
+                            <span class="error">{{ $message }}</span>
+                        @enderror
+                    </div>
                 </div>
-                <div class="payments-full-span">
-                    <label>Invoices</label>
-                    <div id="invoice-list-wrap" class="payments-invoice-list-wrap">
+
+                <!-- Column 2: Outstanding Invoices -->
+                <div class="payments-col-card">
+                    <h3 class="payments-card-title">Invoices</h3>
+                    <div id="invoice-list-wrap" class="payments-invoice-list-wrap border-none p-0 bg-transparent">
                         <div id="invoice-list" class="payments-invoice-list"></div>
                     </div>
                 </div>
-                <div>
-                    <label for="payment_date">Date *</label>
-                    <input type="date" id="payment_date" name="payment_date"
-                        min="{{ $paymentDateBounds['min_date'] }}"
-                        max="{{ $paymentDateBounds['max_date'] }}"
-                        value="{{ old('payment_date', isset($payment) ? optional($payment->payment_date)->format('Y-m-d') : $paymentDateBounds['default_date']) }}"
-                        required>
-                    @error('payment_date')
-                        <span class="error">{{ $message }}</span>
-                    @enderror
+
+                <!-- Column 3: Payment Details & Actions -->
+                <div class="payments-col-card">
+                    <div class="mb-5">
+                        <label for="payment_date" class="text-xl">Date *</label>
+                        <div class="payments-input-group">
+                            <input type="date" id="payment_date" name="payment_date"
+                                min="{{ $paymentDateBounds['min_date'] }}" max="{{ $paymentDateBounds['max_date'] }}"
+                                value="{{ old('payment_date', isset($payment) ? optional($payment->payment_date)->format('Y-m-d') : $paymentDateBounds['default_date']) }}"
+                                required>
+                            <span class="payments-input-suffix cursor-pointer" onclick="try { document.getElementById('payment_date').showPicker(); } catch(e) { document.getElementById('payment_date').focus(); }">
+                                <i class="far fa-calendar-alt"></i>
+                            </span>
+                        </div>
+                        @error('payment_date')
+                            <span class="error">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="mb-5">
+                        <label>Mode *</label>
+                        <div class="payments-mode-toggle-group">
+                            <label
+                                class="payments-mode-btn {{ old('mode', isset($payment) ? $payment->mode : 'Bank Transfer') == 'Bank Transfer' ? 'active' : '' }}">
+                                <input type="radio" name="mode" value="Bank Transfer" class="is-hidden"
+                                    {{ old('mode', isset($payment) ? $payment->mode : 'Bank Transfer') == 'Bank Transfer' ? 'checked' : '' }}>
+                                <i class="fas fa-university"></i>
+                                <span>Bank Transfer</span>
+                            </label>
+                            <label
+                                class="payments-mode-btn {{ old('mode', isset($payment) ? $payment->mode : '') == 'Online' ? 'active' : '' }}">
+                                <input type="radio" name="mode" value="Online" class="is-hidden"
+                                    {{ old('mode', isset($payment) ? $payment->mode : '') == 'Online' ? 'checked' : '' }}>
+                                <i class="fas fa-credit-card"></i>
+                                <span>Online</span>
+                            </label>
+                            <label
+                                class="payments-mode-btn {{ old('mode', isset($payment) ? $payment->mode : '') == 'Cash' ? 'active' : '' }}">
+                                <input type="radio" name="mode" value="Cash" class="is-hidden"
+                                    {{ old('mode', isset($payment) ? $payment->mode : '') == 'Cash' ? 'checked' : '' }}>
+                                <i class="fas fa-money-bill-wave"></i>
+                                <span>Cash</span>
+                            </label>
+                        </div>
+                        @error('mode')
+                            <span class="error">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="mb-5">
+                        <label for="reference_number">Reference Number</label>
+                        <input type="text" id="reference_number" name="reference_number"
+                            value="{{ old('reference_number', isset($payment) ? $payment->reference_number : '') }}"
+                            placeholder="e.g. TXN10023920">
+                        @error('reference_number')
+                            <span class="error">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" rows="2" placeholder="Add payment notes or remarks..."
+                            class="min-h-[80px]">{{ old('description', isset($payment) ? $payment->description : '') }}</textarea>
+                        @error('description')
+                            <span class="error">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="form-actions mt-0 pt-5 border-t border-[var(--line)] flex items-center justify-between gap-4">
+                        <a href="{{ route('payments.index', !empty($selectedClientId) ? ['c' => $selectedClientId] : []) }}"
+                            class="secondary-button border border-blue-600 text-blue-600 bg-transparent">
+                            <i class="fas fa-times"></i>Cancel
+                        </a>
+                        <button type="submit" class="primary-button w-auto">
+                            {{ $isEditingPayment ? 'Update Payment' : 'Record Payment' }} <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
                 </div>
-                <div>
-                    <label for="mode">Mode *</label>
-                    <select id="mode" name="mode" required>
-                        <option value="Bank Transfer"
-                            {{ old('mode', isset($payment) ? $payment->mode : '') == 'Bank Transfer' ? 'selected' : '' }}>
-                            Bank Transfer</option>
-                        <option value="Online"
-                            {{ old('mode', isset($payment) ? $payment->mode : '') == 'Online' ? 'selected' : '' }}>Online
-                        </option>
-                        <option value="Cash"
-                            {{ old('mode', isset($payment) ? $payment->mode : '') == 'Cash' ? 'selected' : '' }}>Cash
-                        </option>
-                    </select>
-                    @error('mode')
-                        <span class="error">{{ $message }}</span>
-                    @enderror
-                </div>
-                <div>
-                    <label for="reference_number">Reference Number</label>
-                    <input type="text" id="reference_number" name="reference_number"
-                        value="{{ old('reference_number', isset($payment) ? $payment->reference_number : '') }}">
-                    @error('reference_number')
-                        <span class="error">{{ $message }}</span>
-                    @enderror
-                </div>
-                <div>
-                    <label for="description">Description</label>
-                    <textarea id="description" name="description" rows="2">{{ old('description', isset($payment) ? $payment->description : '') }}</textarea>
-                    @error('description')
-                        <span class="error">{{ $message }}</span>
-                    @enderror
-                </div>
-            </div>
-            <div class="form-actions">
-                <button type="submit"
-                    class="primary-button">{{ $isEditingPayment ? 'Update Payment' : 'Record Payment' }}</button>
-                <a href="{{ route('payments.index', !empty($selectedClientId) ? ['c' => $selectedClientId] : []) }}"
-                    class="text-link">Cancel</a>
             </div>
         </form>
     </section>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             const paymentDate = document.getElementById('payment_date');
             if (!paymentDate) {
                 return;
@@ -295,7 +386,7 @@
 
             paymentDate.addEventListener('change', clampDate);
             paymentDate.addEventListener('blur', clampDate);
-            paymentDate.addEventListener('input', function () {
+            paymentDate.addEventListener('input', function() {
                 paymentDate.setCustomValidity('');
             });
         });
@@ -312,8 +403,8 @@
             const selectedClientName = document.getElementById('selectedClientName');
             const selectedClientEmail = document.getElementById('selectedClientEmail');
             const clientEmailMap = @json(collect($clients ?? [])->mapWithKeys(fn($client) => [
-                    (string) $client->clientid => (string) ($client->primary_email ?? ($client->email ?? '')),
-                ])->all());
+                            (string) $client->clientid => (string) ($client->primary_email ?? ($client->email ?? '')),
+                        ])->all());
 
             const clientSelect = document.getElementById('clientid');
             const invoiceList = document.getElementById('invoice-list');
@@ -328,6 +419,37 @@
             let checkboxSelectionCounter = 0;
             let standardCheckedInvoiceIds = [];
             let tdsCheckedInvoiceIds = [];
+
+            // Segmented flow toggle handler
+            document.querySelectorAll('.payments-flow-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const val = this.dataset.value;
+                    const select = document.getElementById('payment_flow');
+                    if (select) {
+                        select.value = val;
+                        select.dispatchEvent(new Event('change'));
+                    }
+                    document.querySelectorAll('.payments-flow-btn').forEach(b => b.classList.remove(
+                        'active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // Segmented mode toggle handler
+            document.querySelectorAll('.payments-mode-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.payments-mode-btn').forEach(b => b.classList.remove(
+                        'active'));
+                    this.classList.add('active');
+                    const radio = this.querySelector('input[type="radio"]');
+                    if (radio) {
+                        radio.checked = true;
+                        radio.dispatchEvent(new Event('change', {
+                            bubbles: true
+                        }));
+                    }
+                });
+            });
 
             function formatAmount(value) {
                 return Number(value || 0).toLocaleString('en-US', {
@@ -374,7 +496,16 @@
                 const clientId = clientSelect.value || '';
                 const option = Array.from(clientSelect.options || []).find((row) => row.value === clientId);
                 const email = clientEmailMap[clientId] || '';
-                if (selectedClientName) selectedClientName.textContent = (option?.textContent || '').trim() || 'Select Client';
+                const previewEl = document.getElementById('selectedClientInfoPreview');
+
+                if (clientId && clientId !== 'all') {
+                    if (previewEl) previewEl.classList.remove('is-hidden');
+                } else {
+                    if (previewEl) previewEl.classList.add('is-hidden');
+                }
+
+                if (selectedClientName) selectedClientName.textContent = clientId ? (option?.textContent || '').trim() :
+                    '';
                 if (selectedClientEmail) {
                     selectedClientEmail.textContent = email;
                     selectedClientEmail.style.display = email ? '' : 'none';
@@ -398,13 +529,27 @@
 
             function renderInvoiceList() {
                 const clientId = clientSelect ? clientSelect.value : '';
+                const currency = clientSelect ? (clientCurrencies[clientId] || 'INR') : 'INR';
+
                 if (!clientId) {
-                    invoiceList.innerHTML = '<p class="addons-empty">Select a client first</p>';
+                    invoiceList.innerHTML = `
+                        <div class="payments-invoice-empty-state">
+                            <i class="fas fa-user-tag"></i>
+                            <p>Select a client first</p>
+                            <span>Choose a client from the dropdown above to view outstanding invoices.</span>
+                        </div>
+                    `;
                     return;
                 }
                 const clientInvoices = invoiceOptions.filter((invoice) => invoice.clientid === clientId);
                 if (!clientInvoices.length) {
-                    invoiceList.innerHTML = '<p class="addons-empty">No invoices for this client</p>';
+                    invoiceList.innerHTML = `
+                        <div class="payments-invoice-empty-state">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                            <p>No invoices for this client</p>
+                            <span>This client does not have any invoices created in the system.</span>
+                        </div>
+                    `;
                     return;
                 }
 
@@ -417,9 +562,17 @@
                 });
 
                 if (!visibleInvoices.length) {
-                    invoiceList.innerHTML = '<p class="addons-empty">No unpaid invoices for this client</p>';
+                    invoiceList.innerHTML = `
+                        <div class="payments-invoice-empty-state">
+                            <i class="fas fa-check-circle text-[var(--emerald)]"></i>
+                            <p>No outstanding invoices</p>
+                            <span>This client has no unpaid or partially paid invoices.</span>
+                        </div>
+                    `;
                     return;
                 }
+
+                const flow = selectedPaymentFlow();
 
                 invoiceList.innerHTML = visibleInvoices.map((invoice) => {
                     const totals = invoiceTotals[invoice.invoiceid] || {};
@@ -428,39 +581,42 @@
                     const amountWithoutTax = parseFloat(totals.amount_without_tax || 0);
                     const taxRate = parseFloat(totals.tax_rate || 0);
                     const taxAmount = amountWithoutTax * (taxRate / 100);
-                    const amountBreakup = `${Math.round(amountWithoutTax).toLocaleString('en-US')} + ${Math.round(taxAmount).toLocaleString('en-US')}`;
+                    const amountBreakup =
+                        `${Math.round(amountWithoutTax).toLocaleString('en-US')} + ${Math.round(taxAmount).toLocaleString('en-US')}`;
                     const isChecked = isEditingPayment && !!paymentDetailsMap[invoice.invoiceid];
-                    const savedTdsAmount = isEditingPayment && paymentDetailsMap[invoice.invoiceid]
-                        ? (parseFloat(paymentDetailsMap[invoice.invoiceid].tds_amount || 0) || 0)
-                        : 0;
+                    const savedTdsAmount = isEditingPayment && paymentDetailsMap[invoice.invoiceid] ?
+                        (parseFloat(paymentDetailsMap[invoice.invoiceid].tds_amount || 0) || 0) :
+                        0;
                     const status = (totals.payment_status || 'unpaid').replace('_', ' ');
                     const statusKey = (totals.payment_status || 'unpaid');
-                    const statusClass = statusKey === 'paid'
-                        ? 'payments-status-paid'
-                        : (statusKey === 'partly_paid' ? 'payments-status-partly' : 'payments-status-unpaid');
+                    const statusClass = statusKey === 'paid' ?
+                        'payments-status-paid' :
+                        (statusKey === 'partly_paid' ? 'payments-status-partly' : 'payments-status-unpaid');
                     const title = (invoice.invoice_title || invoice.invoice_number || 'Invoice').trim();
 
                     return `
-                        <div class="addon-option payments-invoice-row">
-                            <label class="custom-checkbox payments-invoice-check-wrap">
+                        <div class="addon-option payments-invoice-row ${isChecked ? 'checked-row' : ''}">
+                            <div class="payments-invoice-check-col">
                                 <input type="checkbox" class="invoice-option-checkbox" name="invoice_ids[]" value="${invoice.invoiceid}" ${isChecked ? 'checked' : ''}>
-                                <span class="checkbox-label payments-invoice-check-label">
-                                    <strong class="payments-invoice-title">${title}</strong>
-                                    <small class="payments-invoice-number">${invoice.invoice_number ? '#' + invoice.invoice_number : ''}</small>
-                                    <div class="payments-invoice-meta">
-                                        <span class="status-pill ${statusClass} payments-status-pill">${status}</span>
-                                        <span>Amount: <strong>${amountBreakup}</strong></span>
-                                        <span>Due: <strong>${Math.round(available).toLocaleString('en-US')}</strong></span>
-                                    </div>
-                                </span>
-                            </label>
-                            <input type="hidden" class="invoice-collectible-input" data-due="${available}" data-without-tax="${availableWithoutTax}" value="${Math.round(available).toLocaleString('en-US')}">
-                            <div class="payments-alloc-wrap">
-                                <div class="payments-alloc-row">
-                                    <span class="invoice-allocated-label">Amount:</span>
+                            </div>
+                            <div class="payments-invoice-info-col">
+                                <h5 class="payments-invoice-title">${title}</h5>
+                                <div class="payments-invoice-number">${invoice.invoice_number ? '#' + invoice.invoice_number : ''}</div>
+                                <div class="payments-invoice-meta">
+                                    <span class="status-pill ${statusClass} payments-status-pill">${status}</span>
+                                    <span>Amount: <strong>${amountBreakup}</strong></span>
+                                    <span>Due: <strong class="text-red-500">${Math.round(available).toLocaleString('en-US')}</strong></span>
                                 </div>
-                                <input type="text" class="invoice-allocated-input payments-tds-row-input" value="0">
-                                <input type="text" class="invoice-tds-input payments-tds-row-input" value="${savedTdsAmount > 0 ? formatInputNumber(savedTdsAmount) : ''}">
+                            </div>
+                            <input type="hidden" class="invoice-collectible-input" data-due="${available}" data-without-tax="${availableWithoutTax}" value="${Math.round(available).toLocaleString('en-US')}">
+                            <div class="payments-alloc-col">
+                                <div class="w-full mb-0.5">
+                                    <span class="invoice-allocated-label text-[0.72rem] font-semibold text-[var(--text-muted)]">Amount:</span>
+                                </div>
+                                <div class="payments-alloc-input-wrap">
+                                    <input type="text" class="invoice-allocated-input payments-tds-row-input" value="0">
+                                    <input type="text" class="invoice-tds-input payments-tds-row-input" value="${savedTdsAmount > 0 ? formatInputNumber(savedTdsAmount) : ''}">
+                                </div>
                                 <div class="invoice-live-state payments-live-state">
                                     Not allocated yet
                                 </div>
@@ -478,7 +634,6 @@
                 });
 
                 // Restore mode-specific checked state after render.
-                const flow = selectedPaymentFlow();
                 const preferredChecked = flow === 'tds' ? tdsCheckedInvoiceIds : standardCheckedInvoiceIds;
                 if (preferredChecked.length > 0) {
                     invoiceList.querySelectorAll('.invoice-option-checkbox').forEach((checkbox) => {
@@ -499,8 +654,10 @@
                 const checkedRows = rows
                     .filter((row) => row.querySelector('.invoice-option-checkbox')?.checked)
                     .sort((a, b) => {
-                        const aOrder = parseInt(a.querySelector('.invoice-option-checkbox')?.dataset.selectionOrder || '0', 10);
-                        const bOrder = parseInt(b.querySelector('.invoice-option-checkbox')?.dataset.selectionOrder || '0', 10);
+                        const aOrder = parseInt(a.querySelector('.invoice-option-checkbox')?.dataset
+                            .selectionOrder || '0', 10);
+                        const bOrder = parseInt(b.querySelector('.invoice-option-checkbox')?.dataset
+                            .selectionOrder || '0', 10);
                         return aOrder - bOrder;
                     });
                 const uncheckedRows = rows.filter((row) => !row.querySelector('.invoice-option-checkbox')?.checked);
@@ -535,20 +692,22 @@
                     }
                     if (receivedHidden) receivedHidden.value = allocated.toFixed(2);
                     if (tdsHidden) tdsHidden.value = '0';
-                    row.style.background = checkbox && checkbox.checked ? '#eef4ff' : '#fff';
+                    row.classList.toggle('checked-row', !!(checkbox && checkbox.checked));
 
                     if (liveState) {
                         if (!checkbox || !checkbox.checked) {
                             liveState.textContent = '';
                             liveState.style.color = '#64748b';
                         } else if (allocated <= 0) {
-                            liveState.textContent = `New Balance: ${Math.round(getAvailableToCollect(invoiceId)).toLocaleString('en-US')}`;
+                            liveState.textContent =
+                                `New Balance: ${Math.round(getAvailableToCollect(invoiceId)).toLocaleString('en-US')}`;
                             liveState.style.color = '#92400e';
                         } else if (nowRemaining <= 0.1) {
                             liveState.textContent = 'Fully Paid';
                             liveState.style.color = '#047857';
                         } else {
-                            liveState.textContent = `New Balance: ${Math.round(nowRemaining).toLocaleString('en-US')}`;
+                            liveState.textContent =
+                                `New Balance: ${Math.round(nowRemaining).toLocaleString('en-US')}`;
                             liveState.style.color = '#92400e';
                         }
                     }
@@ -562,8 +721,10 @@
                 const checkedRows = rows
                     .filter((row) => row.querySelector('.invoice-option-checkbox')?.checked)
                     .sort((a, b) => {
-                        const aOrder = parseInt(a.querySelector('.invoice-option-checkbox')?.dataset.selectionOrder || '0', 10);
-                        const bOrder = parseInt(b.querySelector('.invoice-option-checkbox')?.dataset.selectionOrder || '0', 10);
+                        const aOrder = parseInt(a.querySelector('.invoice-option-checkbox')?.dataset
+                            .selectionOrder || '0', 10);
+                        const bOrder = parseInt(b.querySelector('.invoice-option-checkbox')?.dataset
+                            .selectionOrder || '0', 10);
                         return aOrder - bOrder;
                     });
                 const uncheckedRows = rows.filter((row) => !row.querySelector('.invoice-option-checkbox')?.checked);
@@ -617,7 +778,7 @@
                             }
                         }
                     }
-                    row.style.background = checkbox && checkbox.checked ? '#eef4ff' : '#fff';
+                    row.classList.toggle('checked-row', !!(checkbox && checkbox.checked));
 
                     if (liveState) {
                         if (!checkbox || !checkbox.checked) {
@@ -659,13 +820,15 @@
                 if (tdsAmountInput) tdsAmountInput.readOnly = false;
                 if (tdsAmountInput) tdsAmountInput.style.background = '#fff';
                 if (tdsAmountInput) tdsAmountInput.placeholder = isPercentMode ? 'TDS %' : '';
-                if (tdsAmountInput) tdsAmountInput.style.display = isStandard ? 'none' : (isPercentMode ? 'block' : 'none');
+                if (tdsAmountInput) tdsAmountInput.style.display = isStandard ? 'none' : (isPercentMode ? 'block' :
+                    'none');
                 invoiceList.querySelectorAll('.addon-option').forEach((row) => {
                     const allocLabel = row.querySelector('.invoice-allocated-label');
                     const allocatedInput = row.querySelector('.invoice-allocated-input');
                     const tdsInput = row.querySelector('.invoice-tds-input');
+
                     if (isStandard) {
-                        if (allocLabel) allocLabel.textContent = 'Allocated:';
+                        if (allocLabel) allocLabel.textContent = 'Amount:';
                         if (allocatedInput) allocatedInput.style.display = 'block';
                         if (tdsInput) tdsInput.style.display = 'none';
                     } else {
@@ -677,6 +840,8 @@
                 const checkedForFlow = isStandard ? standardCheckedInvoiceIds : tdsCheckedInvoiceIds;
                 invoiceList.querySelectorAll('.invoice-option-checkbox').forEach((checkbox) => {
                     checkbox.checked = checkedForFlow.includes(checkbox.value);
+                    const row = checkbox.closest('.addon-option');
+                    if (row) row.classList.toggle('checked-row', checkbox.checked);
                 });
                 if (isStandard) {
                     if (tdsAmountInput) tdsAmountInput.value = '0';
@@ -697,9 +862,11 @@
                 });
             }
 
-            document.getElementById('payment_flow')?.addEventListener('change', applyPaymentFlowUi);
-            receivedAmountInput.addEventListener('input', recalculateStandardAllocations);
-            tdsAmountInput.addEventListener('input', recalculateTdsAllocations);
+            document.getElementById('payment_flow')?.addEventListener('change', () => {
+                applyPaymentFlowUi();
+            });
+            receivedAmountInput?.addEventListener('input', recalculateStandardAllocations);
+            tdsAmountInput?.addEventListener('input', recalculateTdsAllocations);
             tdsInputType?.addEventListener('change', () => {
                 const isPercentMode = tdsInputType.value === 'percent';
                 if (tdsAmountInput) tdsAmountInput.readOnly = false;
@@ -716,6 +883,8 @@
                 }
                 recalculateTdsAllocations();
             });
+
+
 
             invoiceList.addEventListener('input', (event) => {
                 if (event.target && event.target.classList.contains('invoice-tds-input')) {
@@ -746,7 +915,8 @@
                         event.target.dataset.selectionOrder = '';
                     }
                     const flow = selectedPaymentFlow();
-                    const checkedNow = Array.from(invoiceList.querySelectorAll('.invoice-option-checkbox:checked'))
+                    const checkedNow = Array.from(invoiceList.querySelectorAll(
+                            '.invoice-option-checkbox:checked'))
                         .map((checkbox) => checkbox.value);
                     if (flow === 'standard') {
                         standardCheckedInvoiceIds = checkedNow;
@@ -767,6 +937,16 @@
             if (tdsAmountInput && defaultTdsDisplayValue !== null && defaultTdsDisplayValue !== undefined) {
                 tdsAmountInput.value = defaultTdsDisplayValue;
             }
+
+            // Sync flow buttons initial active state
+            const flowSelect = document.getElementById('payment_flow');
+            if (flowSelect) {
+                const initialFlow = flowSelect.value;
+                document.querySelectorAll('.payments-flow-btn').forEach(b => {
+                    b.classList.toggle('active', b.dataset.value === initialFlow);
+                });
+            }
+
             applyPaymentFlowUi();
         })();
     </script>

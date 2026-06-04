@@ -216,26 +216,31 @@
 
         </div>
 
-        <div class="modal fade" id="addCategoryInlineModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
-                <div class="modal-content rounded-panel">
-                    <div class="modal-header modal-header-custom">
-                        <h5 class="modal-title service-modal-title">
-                            <i class="fas fa-folder-plus icon-spaced text-muted"></i>Add Category
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div id="addCategoryInlineModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+            <!-- Backdrop overlay -->
+            <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm modal-close-overlay" onclick="closeModal('addCategoryInlineModal')"></div>
+            
+            <!-- Dialog container -->
+            <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden z-10 flex flex-col max-h-[90vh]">
+                <!-- Header -->
+                <div class="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
+                    <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-folder-plus text-slate-400"></i> Add Category
+                    </h3>
+                    <button type="button" class="text-slate-400 hover:text-slate-655 text-lg font-bold" onclick="closeModal('addCategoryInlineModal')">&times;</button>
+                </div>
+                <!-- Body -->
+                <div class="p-6 overflow-y-auto flex-1 text-left space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1" for="inline-category-name">Category Name *</label>
+                        <input type="text" id="inline-category-name" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" maxlength="150" placeholder="Enter category name">
                     </div>
-                    <div class="modal-body service-modal-body">
-                        <div class="field-gap">
-                            <label class="label-compact" for="inline-category-name">Category Name *</label>
-                            <input type="text" id="inline-category-name" class="service-input-full" maxlength="150" placeholder="Enter category name">
-                        </div>
-                        <div id="inline-category-error" style="display:none; margin-bottom:0.75rem; padding:0.55rem 0.7rem; border-radius:8px; background:#fef2f2; color:#b91c1c; font-size:0.82rem;"></div>
-                        <div class="flex-center-gap">
-                            <button type="button" id="save-inline-category-btn" class="primary-button small">Save Category</button>
-                            <button type="button" class="text-link small" data-bs-dismiss="modal">Cancel</button>
-                        </div>
-                    </div>
+                    <div id="inline-category-error" class="text-xs text-red-600 bg-red-50 p-2 rounded hidden"></div>
+                </div>
+                <!-- Footer -->
+                <div class="flex justify-end items-center gap-2 p-4 border-t border-slate-100 bg-slate-50">
+                    <button type="button" class="px-4 py-2 text-slate-500 hover:text-slate-700 text-xs font-semibold" onclick="closeModal('addCategoryInlineModal')">Cancel</button>
+                    <button type="button" id="save-inline-category-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow-sm transition-colors">Save Category</button>
                 </div>
             </div>
         </div>
@@ -250,39 +255,41 @@
 
         {{-- Add Tax Modal --}}
         @if($account->allow_multi_taxation)
-        <div class="modal fade" id="addTaxModal" tabindex="-1">
-            <div class="modal-dialog modal-sm modal-dialog-centered modal-dialog modal-sm modal-dialog-centered modal-420">
-                <div class="modal-content rounded-panel">
-                    <div class="modal-header modal-header-custom">
-                        <h5 class="modal-title modal-title service-modal-title">
-                            <i class="fas fa-receipt icon-spaced text-muted"></i>Add Tax
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body modal-body service-modal-body">
-                        <form method="POST" action="{{ route('taxes.store') }}" id="quick-tax-form">
-                            @csrf
-                            <input type="hidden" name="redirect_back" value="1">
-                            <div class="field-gap">
-                                <label class="label-compact">Rate (%)</label>
-                                <input type="number" name="rate" placeholder="18" step="0.01" min="0" max="100" required
-                                       class="service-input-full">
-                            </div>
-                            <div class="field-gap">
-                                <label class="label-compact">Type</label>
-                                <select name="type" required
-                                        class="service-input-full">
-                                    @foreach(['GST'=>'GST','VAT'=>'VAT'] as $v=>$l)
-                                        <option value="{{ $v }}">{{ $l }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="flex-center-gap">
-                                <button type="submit" class="primary-button small">Add Tax</button>
-                                <button type="button" class="text-link small" data-bs-dismiss="modal">Cancel</button>
-                            </div>
-                        </form>
-                    </div>
+        <div id="addTaxModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+            <!-- Backdrop overlay -->
+            <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm modal-close-overlay" onclick="closeModal('addTaxModal')"></div>
+            
+            <!-- Dialog container -->
+            <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden z-10 flex flex-col max-h-[90vh]">
+                <!-- Header -->
+                <div class="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
+                    <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-receipt text-slate-400"></i> Add Tax
+                    </h3>
+                    <button type="button" class="text-slate-400 hover:text-slate-655 text-lg font-bold" onclick="closeModal('addTaxModal')">&times;</button>
+                </div>
+                <!-- Body -->
+                <div class="p-6 overflow-y-auto flex-1 text-left">
+                    <form method="POST" action="{{ route('taxes.store') }}" id="quick-tax-form" class="space-y-4">
+                        @csrf
+                        <input type="hidden" name="redirect_back" value="1">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Rate (%)</label>
+                            <input type="number" name="rate" placeholder="18" step="0.01" min="0" max="100" required class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Type</label>
+                            <select name="type" required class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                @foreach(['GST'=>'GST','VAT'=>'VAT'] as $v=>$l)
+                                    <option value="{{ $v }}">{{ $l }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="flex justify-end items-center gap-2 pt-2">
+                            <button type="button" class="px-4 py-2 text-slate-500 hover:text-slate-700 text-xs font-semibold" onclick="closeModal('addTaxModal')">Cancel</button>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow-sm transition-colors">Add Tax</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

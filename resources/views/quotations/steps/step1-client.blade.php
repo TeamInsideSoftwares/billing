@@ -29,7 +29,7 @@
                 </option>
             @endforeach
         </select>
-        <div class="mt-3 d-flex justify-content-end">
+        <div class="mt-3 flex justify-end">
             <button type="button" class="primary-button" id="toStep2">Next</button>
         </div>
     </div>

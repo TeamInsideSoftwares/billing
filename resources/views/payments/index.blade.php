@@ -114,7 +114,7 @@
                                 @endif
                             </td>
                             <td class="payment-cell-text">
-                                <div class="fw-semibold text-dark">{{ $payment['client'] }}</div>
+                                <div class="font-semibold text-slate-800">{{ $payment['client'] }}</div>
                                 <div class="payment-row-note">
                                     {{ $payment['invoice'] ?: 'No linked invoice' }}
                                 </div>

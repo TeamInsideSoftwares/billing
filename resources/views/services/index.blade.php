@@ -2,224 +2,248 @@
 
 @section('header_actions')
     <a href="{{ route('services.create') }}" class="primary-button">Add Item</a>
-    <button class="secondary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal"><i class="fas fa-folder icon-spaced-sm"></i>Manage Categories</button>
+    <button class="secondary-button" data-bs-toggle="modal" data-bs-target="#productCategoriesModal"><i
+            class="fas fa-folder icon-spaced-sm"></i>Manage Categories</button>
 @endsection
 
 @section('content')
-<div class="modal fade" id="productCategoriesModal" tabindex="-1">
-    <div class="modal-dialog modal-md modal-dialog-centered modal-650">
-        <div class="modal-content rounded-panel">
-            <div class="modal-header modal-header-custom">
-                <h5 class="modal-title service-modal-title"><i class="fas fa-folder icon-spaced text-muted"></i>Manage Categories</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div id="productCategoriesModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+        <!-- Backdrop overlay -->
+        <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm modal-close-overlay" onclick="closeModal('productCategoriesModal')"></div>
+        
+        <!-- Dialog container -->
+        <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden z-10 flex flex-col max-h-[90vh]">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-folder text-slate-400"></i> Manage Categories
+                </h3>
+                <button type="button" class="text-slate-400 hover:text-slate-650 text-lg font-bold" onclick="closeModal('productCategoriesModal')">&times;</button>
             </div>
-            <div class="modal-body service-modal-body">
-                <!-- Add/Edit Category Form -->
-                <form id="catForm" method="POST" action="{{ route('product-categories.store') }}" class="panel-note">
-                    @csrf
-                    <div id="methodField"></div>
-                    <h6 id="formTitle" class="eyebrow mb-3">Add New Category</h6>
-                    <div class="field-gap">
-                        <label class="label-compact">Name *</label>
-                        <input type="text" name="name" id="catName" value="{{ old('name') }}" required maxlength="150" class="service-input-full">
-                    </div>
-                    <div class="field-gap">
-                        <label class="label-compact">Status</label>
-                        <select name="status" id="catStatus" class="service-input-full">
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
-                    <div class="field-gap">
-                        <label class="label-compact">Description</label>
-                        <textarea name="description" id="catDescription" rows="1" class="service-input-full">{{ old('description') }}</textarea>
-                    </div>
-                    <div class="flex-center-gap">
-                        <button type="submit" id="catSubmitBtn" class="primary-button small">Save Category</button>
-                        <button type="button" id="catCancelBtn" class="text-link small hidden" onclick="resetCatForm()">Cancel</button>
-                    </div>
-                </form>
+            <!-- Body -->
+            <div class="p-6 overflow-y-auto flex-1 text-left">
+                    <!-- Add/Edit Category Form -->
+                    <form id="catForm" method="POST" action="{{ route('product-categories.store') }}" class="panel-note">
+                        @csrf
+                        <div id="methodField"></div>
+                        <h6 id="formTitle" class="eyebrow mb-3">Add New Category</h6>
+                        <div class="field-gap">
+                            <label class="label-compact">Name *</label>
+                            <input type="text" name="name" id="catName" value="{{ old('name') }}" required
+                                maxlength="150" class="service-input-full">
+                        </div>
+                        <div class="field-gap">
+                            <label class="label-compact">Status</label>
+                            <select name="status" id="catStatus" class="service-input-full">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="field-gap">
+                            <label class="label-compact">Description</label>
+                            <textarea name="description" id="catDescription" rows="1" class="service-input-full">{{ old('description') }}</textarea>
+                        </div>
+                        <div class="flex-center-gap">
+                            <button type="submit" id="catSubmitBtn" class="primary-button small">Save Category</button>
+                            <button type="button" id="catCancelBtn" class="text-link small hidden"
+                                onclick="resetCatForm()">Cancel</button>
+                        </div>
+                    </form>
 
-                <!-- Categories List -->
-                <div class="group-list-wrap">
-                    <h6 class="group-list-title">{{ count($productCategories) }} Categories</h6>
-                    @forelse($productCategories as $pc)
-                        <div class="group-list-item">
-                            <div class="flex-fill">
-                                <div class="group-list-item-head">
-                                    <div class="group-list-item-icon"><i class="fas fa-folder"></i></div>
-                                    <div>
-                                        <strong class="group-list-item-name">{{ $pc['name'] }}</strong>
-                                        @if($pc['description'])
-                                            <div class="group-list-item-email">{{ $pc['description'] }}</div>
-                                        @endif
+                    <!-- Categories List -->
+                    <div class="group-list-wrap">
+                        <h6 class="group-list-title">{{ count($productCategories) }} Categories</h6>
+                        @forelse($productCategories as $pc)
+                            <div class="group-list-item">
+                                <div class="flex-fill">
+                                    <div class="group-list-item-head">
+                                        <div class="group-list-item-icon"><i class="fas fa-folder"></i></div>
+                                        <div>
+                                            <strong class="group-list-item-name">{{ $pc['name'] }}</strong>
+                                            @if ($pc['description'])
+                                                <div class="group-list-item-email">{{ $pc['description'] }}</div>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="group-list-item-actions">
-                                <button type="button" class="text-action-btn edit" onclick="editCategory('{{ $pc['record_id'] }}', '{{ addslashes($pc['name']) }}', '{{ addslashes($pc['description'] ?? '') }}', '{{ strtolower($pc['status']) }}')">Edit</button>
-                                <form method="POST" action="{{ route('product-categories.destroy', $pc['record_id']) }}" class="inline" onsubmit="return confirm('Delete this category?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="text-action-btn delete">Delete</button>
-                                </form>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="group-list-empty">
-                            <i class="fas fa-folder-open empty-state-icon-sm"></i>
-                            <p class="group-list-empty-text">No categories yet. Create one above!</p>
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="services-accordion-container">
-    @php
-        $groupedServices = collect($services)->groupBy('category_name');
-    @endphp
-
-    @forelse ($groupedServices as $categoryName => $servicesInCategory)
-        <details class="category-accordion" open>
-            <summary class="accordion-header">
-                <span class="category-title">{{ $categoryName }}</span>
-                <span class="service-count">{{ count($servicesInCategory) }} items</span>
-                <span class="accordion-icon"></span>
-            </summary>
-            <div class="accordion-content">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th class="w-35">Item</th>
-                            <th class="w-8">Type</th>
-                            <th class="w-18">Costings</th>
-                            <th class="w-8">Grace</th>
-                            <th class="w-14">Add-ons</th>
-                            <th class="w-8">Status</th>
-                            <th class="w-8">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="services-sortable-body">
-                    @foreach ($servicesInCategory as $index => $service)
-                        <tr draggable="true" data-service-id="{{ $service['record_id'] }}" class="service-row-draggable">
-                            <td>
-                                <div class="service-item-head">
-                                    <div class="service-item-icon">
-                                        <i class="fas fa-{{ $service['type'] === 'product' ? 'box' : 'cog' }}"></i>
-                                    </div>
-                                    <div>
-                                        <span class="service-seq-badge" data-seq-badge>{{ $service['sequence'] }}</span>
-                                        <strong class="service-item-name">{!! isset($searchTerm) && $searchTerm ? str_ireplace($searchTerm, '<mark>'.$searchTerm.'</mark>', $service['name']) : $service['name'] !!}</strong>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="service-type-badge">
-                                    {{ $service['type'] ?? 'service' }}
-                                </span>
-                            </td>
-                            <td>
-                                @if(count($service['costings']) > 0)
-                                    <div class="service-pill-wrap">
-                                        @foreach($service['costings'] as $costing)
-                                            <span class="service-cost-pill">
-                                                {{ $costing['currency_code'] }} {{ number_format($costing['selling_price'], 0) }}
-                                            </span>
-                                        @endforeach
-                                    </div>
-                                @else
-                                    <span class="service-muted">No costings</span>
-                                @endif
-                            </td>
-                            <td>
-                                <span class="service-muted">{{ (int) ($service['grace_period'] ?? 0) }} day(s)</span>
-                            </td>
-                            <td>
-                                @if(!empty($service['addons']) && count($service['addons']) > 0)
-                                    <div class="service-pill-wrap">
-                                        @foreach($service['addons'] as $addon)
-                                            <span class="service-addon-pill">
-                                                {{ $addon['name'] }}
-                                            </span>
-                                        @endforeach
-                                    </div>
-                                @else
-                                    <span class="service-muted">—</span>
-                                @endif
-                            </td>
-                            <td>
-                                <span class="status-pill {{ strtolower($service['status']) }}">{{ $service['status'] }}</span>
-                            </td>
-                            <td>
-                                <div class="table-actions">
-                                    <a href="{{ route('services.edit', $service['record_id']) }}" class="text-action-btn edit">Edit</a>
-                                    <form method="POST" action="{{ route('services.destroy', $service['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $service['name'] }}?')">
+                                <div class="group-list-item-actions">
+                                    <button type="button" class="text-action-btn edit"
+                                        onclick="editCategory('{{ $pc['record_id'] }}', '{{ addslashes($pc['name']) }}', '{{ addslashes($pc['description'] ?? '') }}', '{{ strtolower($pc['status']) }}')">Edit</button>
+                                    <form method="POST"
+                                        action="{{ route('product-categories.destroy', $pc['record_id']) }}" class="inline"
+                                        onsubmit="return confirm('Delete this category?')">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="text-action-btn delete">Delete</button>
                                     </form>
                                 </div>
-                            </td>
-                        </tr>
-                    @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </details>
-    @empty
-        <div class="panel-card no-padding">
-            <div class="no-records-cell">
-                <i class="fas fa-boxes empty-state-icon"></i>
-                <p class="no-empty-state-text">No items found</p>
-                <p class="small-text">Get started by adding your first product or service.</p>
+                            </div>
+                        @empty
+                            <div class="group-list-empty">
+                                <i class="fas fa-folder-open empty-state-icon-sm"></i>
+                                <p class="group-list-empty-text">No categories yet. Create one above!</p>
+                            </div>
+                        @endforelse
+                    </div>
             </div>
         </div>
-    @endforelse
-</div>
+    </div>
 
-<script>
-    (function () {
-        const tbodies = document.querySelectorAll('.services-sortable-body');
-        if (!tbodies.length) return;
+    <div class="services-accordion-container">
+        @php
+            $groupedServices = collect($services)->groupBy('category_name');
+        @endphp
 
-        let draggedRow = null;
+        @forelse ($groupedServices as $categoryName => $servicesInCategory)
+            <details class="category-accordion" open>
+                <summary class="accordion-header">
+                    <span class="category-title">{{ $categoryName }}</span>
+                    <span class="service-count">{{ count($servicesInCategory) }} items</span>
+                    <span class="accordion-icon"></span>
+                </summary>
+                <div class="accordion-content">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th class="w-35">Item</th>
+                                <th class="w-8">Type</th>
+                                <th class="w-18">Costings</th>
+                                <th class="w-8">Grace</th>
+                                <th class="w-14">Add-ons</th>
+                                <th class="w-8">Status</th>
+                                <th class="w-8">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="services-sortable-body">
+                            @foreach ($servicesInCategory as $index => $service)
+                                <tr draggable="true" data-service-id="{{ $service['record_id'] }}"
+                                    class="service-row-draggable">
+                                    <td>
+                                        <div class="service-item-head">
+                                            <div class="service-item-icon">
+                                                <i class="fas fa-{{ $service['type'] === 'product' ? 'box' : 'cog' }}"></i>
+                                            </div>
+                                            <div>
+                                                <span class="service-seq-badge"
+                                                    data-seq-badge>{{ $service['sequence'] }}</span>
+                                                <strong class="service-item-name">{!! isset($searchTerm) && $searchTerm
+                                                    ? str_ireplace($searchTerm, '<mark>' . $searchTerm . '</mark>', $service['name'])
+                                                    : $service['name'] !!}</strong>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="service-type-badge">
+                                            {{ $service['type'] ?? 'service' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (count($service['costings']) > 0)
+                                            <div class="service-pill-wrap">
+                                                @foreach ($service['costings'] as $costing)
+                                                    <span class="service-cost-pill">
+                                                        {{ $costing['currency_code'] }}
+                                                        {{ number_format($costing['selling_price'], 0) }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <span class="service-muted">No costings</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="service-muted">{{ (int) ($service['grace_period'] ?? 0) }}
+                                            day(s)</span>
+                                    </td>
+                                    <td>
+                                        @if (!empty($service['addons']) && count($service['addons']) > 0)
+                                            <div class="service-pill-wrap">
+                                                @foreach ($service['addons'] as $addon)
+                                                    <span class="service-addon-pill">
+                                                        {{ $addon['name'] }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <span class="service-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span
+                                            class="status-pill {{ strtolower($service['status']) }}">{{ $service['status'] }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="table-actions">
+                                            <a href="{{ route('services.edit', $service['record_id']) }}"
+                                                class="text-action-btn edit">Edit</a>
+                                            <form method="POST"
+                                                action="{{ route('services.destroy', $service['record_id']) }}"
+                                                class="inline-delete"
+                                                onsubmit="return confirm('Delete {{ $service['name'] }}?')">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="text-action-btn delete">Delete</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        @empty
+            <div class="panel-card no-padding">
+                <div class="no-records-cell">
+                    <i class="fas fa-boxes empty-state-icon"></i>
+                    <p class="no-empty-state-text">No items found</p>
+                    <p class="small-text">Get started by adding your first product or service.</p>
+                </div>
+            </div>
+        @endforelse
+    </div>
 
-        tbodies.forEach(tbody => {
-            tbody.querySelectorAll('tr[draggable="true"]').forEach((row) => {
-                row.addEventListener('dragstart', function () {
-                    draggedRow = this;
-                    this.style.opacity = '0.5';
-                });
+    <script>
+        function initSortable() {
+            const tbodies = document.querySelectorAll('.services-sortable-body');
+            if (!tbodies.length) return;
 
-                row.addEventListener('dragend', function () {
-                    this.style.opacity = '1';
-                });
+            let draggedRow = null;
 
-                row.addEventListener('dragover', function (e) {
-                    e.preventDefault();
-                });
+            tbodies.forEach(tbody => {
+                tbody.querySelectorAll('tr[draggable="true"]').forEach((row) => {
+                    row.addEventListener('dragstart', function() {
+                        draggedRow = this;
+                        this.style.opacity = '0.5';
+                    });
 
-                row.addEventListener('drop', function (e) {
-                    e.preventDefault();
-                    if (!draggedRow || draggedRow === this) return;
+                    row.addEventListener('dragend', function() {
+                        this.style.opacity = '1';
+                    });
 
-                    const tbodyOfTarget = this.closest('tbody');
-                    const rows = Array.from(tbodyOfTarget.children);
-                    const draggedIndex = rows.indexOf(draggedRow);
-                    const targetIndex = rows.indexOf(this);
+                    row.addEventListener('dragover', function(e) {
+                        e.preventDefault();
+                    });
 
-                    if (draggedIndex < targetIndex) {
-                        this.after(draggedRow);
-                    } else {
-                        this.before(draggedRow);
-                    }
+                    row.addEventListener('drop', function(e) {
+                        e.preventDefault();
+                        if (!draggedRow || draggedRow === this) return;
 
-                    updateSequenceBadges(tbodyOfTarget);
-                    saveOrder(tbodyOfTarget);
+                        const tbodyOfTarget = this.closest('tbody');
+                        const rows = Array.from(tbodyOfTarget.children);
+                        const draggedIndex = rows.indexOf(draggedRow);
+                        const targetIndex = rows.indexOf(this);
+
+                        if (draggedIndex < targetIndex) {
+                            this.after(draggedRow);
+                        } else {
+                            this.before(draggedRow);
+                        }
+
+                        updateSequenceBadges(tbodyOfTarget);
+                        saveOrder(tbodyOfTarget);
+                    });
                 });
             });
-        });
+        }
 
         function updateSequenceBadges(tbody) {
             const rows = tbody.querySelectorAll('tr[data-service-id]');
@@ -232,7 +256,8 @@
         }
 
         function saveOrder(tbody) {
-            const order = Array.from(tbody.querySelectorAll('tr[data-service-id]')).map((row) => row.dataset.serviceId);
+            const order = Array.from(tbody.querySelectorAll('tr[data-service-id]')).map((row) => row.dataset
+                .serviceId);
             fetch("{{ route('services.reorder') }}", {
                 method: 'POST',
                 headers: {
@@ -240,45 +265,183 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json',
                 },
-                body: JSON.stringify({ order }),
+                body: JSON.stringify({
+                    order
+                }),
             });
         }
-    })();
 
-    function editCategory(id, name, description, status) {
-        const form = document.getElementById('catForm');
-        const title = document.getElementById('formTitle');
-        const submitBtn = document.getElementById('catSubmitBtn');
-        const cancelBtn = document.getElementById('catCancelBtn');
-        const methodField = document.getElementById('methodField');
+        // Initialize sortable on page load
+        initSortable();
 
-        form.action = 'product-categories/' + id;
-        methodField.innerHTML = '<input type="hidden" name="_method" value="PUT">';
+        function displayValidationErrors(form, errors) {
+            clearValidationErrors(form);
+            for (const field in errors) {
+                if (errors.hasOwnProperty(field)) {
+                    const errorMsg = errors[field].join('<br>');
+                    const inputEl = form.querySelector(`[name="${field}"]`);
+                    if (inputEl) {
+                        inputEl.classList.add('is-invalid');
+                        inputEl.style.borderColor = 'var(--danger)';
+                        
+                        const errorSpan = document.createElement('span');
+                        errorSpan.className = 'error validation-error-msg';
+                        errorSpan.innerHTML = errorMsg;
+                        
+                        if (inputEl.parentNode.classList.contains('input-row') || inputEl.parentNode.classList.contains('custom-checkbox')) {
+                            inputEl.parentNode.parentNode.appendChild(errorSpan);
+                        } else {
+                            inputEl.parentNode.appendChild(errorSpan);
+                        }
+                    }
+                }
+            }
+        }
 
-        document.getElementById('catName').value = name;
-        document.getElementById('catDescription').value = description;
-        document.getElementById('catStatus').value = status;
+        function clearValidationErrors(form) {
+            form.querySelectorAll('.validation-error-msg').forEach(el => el.remove());
+            form.querySelectorAll('.is-invalid, [style*="border-color"]').forEach(el => {
+                el.classList.remove('is-invalid');
+                el.style.borderColor = '';
+            });
+        }
 
-        title.innerText = 'Editing Category';
-        submitBtn.innerText = 'Update Now';
-        cancelBtn.style.display = 'inline-block';
-        document.getElementById('catName').focus();
-    }
+        function editCategory(id, name, description, status) {
+            const form = document.getElementById('catForm');
+            const title = document.getElementById('formTitle');
+            const submitBtn = document.getElementById('catSubmitBtn');
+            const cancelBtn = document.getElementById('catCancelBtn');
+            const methodField = document.getElementById('methodField');
 
-    function resetCatForm() {
-        const form = document.getElementById('catForm');
-        const title = document.getElementById('formTitle');
-        const submitBtn = document.getElementById('catSubmitBtn');
-        const cancelBtn = document.getElementById('catCancelBtn');
-        const methodField = document.getElementById('methodField');
+            form.action = "{{ route('product-categories.update', ':id') }}".replace(':id', id);
+            methodField.innerHTML = '<input type="hidden" name="_method" value="PUT">';
 
-        form.action = "{{ route('product-categories.store') }}";
-        methodField.innerHTML = '';
-        form.reset();
+            document.getElementById('catName').value = name;
+            document.getElementById('catDescription').value = description;
+            document.getElementById('catStatus').value = status;
 
-        title.innerText = 'Add New Category';
-        submitBtn.innerText = 'Save Category';
-        cancelBtn.style.display = 'none';
-    }
-</script>
+            title.innerText = 'Editing Category';
+            submitBtn.innerText = 'Update Now';
+            cancelBtn.style.display = 'inline-block';
+            document.getElementById('catName').focus();
+        }
+
+        function resetCatForm() {
+            const form = document.getElementById('catForm');
+            const title = document.getElementById('formTitle');
+            const submitBtn = document.getElementById('catSubmitBtn');
+            const cancelBtn = document.getElementById('catCancelBtn');
+            const methodField = document.getElementById('methodField');
+
+            form.action = "{{ route('product-categories.store') }}";
+            methodField.innerHTML = '';
+            form.reset();
+            clearValidationErrors(form);
+
+            title.innerText = 'Add New Category';
+            submitBtn.innerText = 'Save Category';
+            cancelBtn.style.display = 'none';
+        }
+
+        document.getElementById('productCategoriesModal').addEventListener('hidden.bs.modal', resetCatForm);
+
+        // Intercept forms inside the categories modal for AJAX submissions
+        document.getElementById('productCategoriesModal').addEventListener('submit', function(e) {
+            const form = e.target;
+            if (!form || form.tagName !== 'FORM') return;
+
+            e.preventDefault();
+            const submitBtn = form.querySelector('[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+            clearValidationErrors(form);
+
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 422) {
+                        return response.json().then(data => {
+                            displayValidationErrors(form, data.errors || { name: [data.message] });
+                            return null;
+                        });
+                    }
+                    throw new Error('Server returned error status ' + response.status);
+                }
+                return response.text();
+            })
+            .then(html => {
+                if (html === null) return;
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                // 1. Update the category list in the modal
+                const newGroupList = doc.querySelector('#productCategoriesModal .group-list-wrap');
+                const currentGroupList = document.querySelector('#productCategoriesModal .group-list-wrap');
+                if (newGroupList && currentGroupList) {
+                    currentGroupList.innerHTML = newGroupList.innerHTML;
+                }
+
+                // 2. Update the main page's services list (grouped by category)
+                const newAccordion = doc.querySelector('.services-accordion-container');
+                const currentAccordion = document.querySelector('.services-accordion-container');
+                if (newAccordion && currentAccordion) {
+                    currentAccordion.innerHTML = newAccordion.innerHTML;
+                    initSortable();
+                }
+
+                resetCatForm();
+
+                // 3. Update the global toast notification
+                const newToast = doc.querySelector('#app-toast-container');
+                if (newToast) {
+                    const currentToastContainer = document.getElementById('app-toast-container');
+                    if (currentToastContainer) {
+                        currentToastContainer.innerHTML = newToast.innerHTML;
+                    } else {
+                        const div = document.createElement('div');
+                        div.id = 'app-toast-container';
+                        div.className = 'app-toast-container';
+                        div.innerHTML = newToast.innerHTML;
+                        document.body.appendChild(div);
+                    }
+                    setTimeout(() => {
+                        const toast = document.querySelector('.app-toast');
+                        if (toast) toast.remove();
+                    }, 4000);
+                }
+            })
+            .catch(err => {
+                console.error('AJAX Error:', err);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        html: err.message || 'An error occurred. Please try again.',
+                        confirmButtonColor: '#3b82f6'
+                    });
+                } else {
+                    alert(err.message || 'An error occurred. Please try again.');
+                }
+            })
+            .finally(() => {
+                if (submitBtn) submitBtn.disabled = false;
+            });
+        });
+
+        @if (session('open_cat_modal'))
+            document.addEventListener("DOMContentLoaded", function() {
+                const modalEl = document.getElementById('productCategoriesModal');
+                if (modalEl) {
+                    const modal = new bootstrap.Modal(modalEl);
+                    modal.show();
+                }
+            });
+        @endif
+    </script>
 @endsection
