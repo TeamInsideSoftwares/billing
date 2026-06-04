@@ -139,12 +139,12 @@
     </div>
 
     @if($payment->paymentDetails->isNotEmpty())
-        <div class="mt-4 pt-3 border-top">
+        <div class="mt-4 pt-3 border-t">
             <h5 class="mb-3 text-muted small uppercase font-bold" style="letter-spacing: 0.05em; font-size: 0.8rem; font-weight: 700; color: #64748b; margin-top: 1.5rem;">Invoice Breakdown</h5>
             <div class="table-shell" style="border: 1px solid #dbe3ea; border-radius: 10px; overflow: hidden; background: #fff; margin-top: 0.5rem;">
                 <table class="data-table m-0" style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr style="background: #f8fafc; border-bottom: 1px solid #dbe3ea; text-align: left;">
+                        <tr style="background: #f8fafc; border-b: 1px solid #dbe3ea; text-align: left;">
                             <th style="padding: 0.75rem 1rem; font-size: 0.8rem; font-weight: 600; color: #475569;">Invoice</th>
                             <th style="padding: 0.75rem 1rem; font-size: 0.8rem; font-weight: 600; color: #475569; text-align: right;">TDS Amount</th>
                             <th style="padding: 0.75rem 1rem; font-size: 0.8rem; font-weight: 600; color: #475569; text-align: right;">Received Amount</th>
@@ -158,7 +158,7 @@
                                 $invTitle = $inv ? $inv->invoice_title : '';
                                 $dispTitle = $invTitle ?: ($invNumber ? "#$invNumber" : "Invoice #{$detail->invoiceid}");
                             @endphp
-                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <tr style="border-b: 1px solid #f1f5f9;">
                                 <td style="padding: 0.75rem 1rem; font-size: 0.85rem; color: #0f172a; font-weight: 500;">
                                     @if($inv)
                                         <a href="{{ route('invoices.pdf', ['invoice' => $inv->invoiceid, 'type' => trim((string) ($inv->ti_number ?? '')) !== '' ? 'tax_invoice' : 'pi']) }}" target="_blank" style="text-decoration: none; color: #4f46e5; font-weight: 600;">

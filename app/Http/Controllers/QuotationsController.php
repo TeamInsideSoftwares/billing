@@ -152,6 +152,7 @@ class QuotationsController extends Controller
                 'amount' => number_format($quotation->grand_total ?? 0),
                 'due' => $quotation->due_date?->format('d M Y') ?? 'N/A',
                 'status' => $quotation->status ?? 'draft',
+                'items' => $quotation->items,
             ];
         });
 

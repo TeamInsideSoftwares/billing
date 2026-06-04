@@ -203,18 +203,18 @@
             summaryDiscount.textContent = Number(disc).toLocaleString('en-US');
             summaryTax.textContent = Number(taxTotal).toLocaleString('en-US');
             summaryTotal.textContent = Number(grand).toLocaleString('en-US');
-            quoteSummary.classList.toggle('d-none', items.length === 0);
+            quoteSummary.classList.toggle('hidden', items.length === 0);
         }
 
         function render() {
             const showUsersColumn = accountHasUsers && items.some(it => Number(it.no_of_users || 0) > 0);
-            usersColHeader?.classList.toggle('d-none', !showUsersColumn);
+            usersColHeader?.classList.toggle('hidden', !showUsersColumn);
             body.innerHTML = '';
             if (itemsTable) {
-                itemsTable.classList.toggle('d-none', items.length === 0);
+                itemsTable.classList.toggle('hidden', items.length === 0);
             }
             if (itemsEmpty) {
-                itemsEmpty.classList.toggle('d-none', items.length > 0);
+                itemsEmpty.classList.toggle('hidden', items.length > 0);
             }
             items.forEach((it, idx) => {
                 const tr = document.createElement('tr');
@@ -223,7 +223,7 @@
                 }
                 const itemDescription = String(it.item_description || '').trim();
                 const itemLabel = itemDescription
-                    ? `${it.item_name}<div class="small text-muted">${itemDescription}</div>`
+                    ? `${it.item_name}<div class="text-xs text-slate-500">${itemDescription}</div>`
                     : it.item_name;
                 const isUserWise = Number(it.no_of_users || 0) > 0;
                 const lineTotal = computeLineTotal(it);
@@ -669,7 +669,7 @@
         });
 
         btnAddTC?.addEventListener('click', function () {
-            addTermError?.classList.add('d-none');
+            addTermError?.classList.add('hidden');
             if (window.tinymce && tinymce.get('newTermContent')) {
                 tinymce.get('newTermContent').setContent('');
             } else if (newTermContent) {
@@ -695,7 +695,7 @@
                 : String(newTermContent?.value || '').trim();
             if (!content) {
                 addTermError.textContent = 'Please enter term content.';
-                addTermError.classList.remove('d-none');
+                addTermError.classList.remove('hidden');
                 return;
             }
 
@@ -714,7 +714,7 @@
                     throw new Error(data.message || 'Unable to save term.');
                 }
                 const label = document.createElement('label');
-                label.className = 'custom-checkbox d-flex align-items-start gap-2 mb-2';
+                label.className = 'custom-checkbox flex items-start gap-2 mb-2';
                 label.style.width = '100%';
                 label.style.maxWidth = '100%';
                 label.style.boxSizing = 'border-box';
@@ -741,7 +741,7 @@
             })
             .catch((err) => {
                 addTermError.textContent = err.message || 'Unable to save term.';
-                addTermError.classList.remove('d-none');
+                addTermError.classList.remove('hidden');
             });
         });
 

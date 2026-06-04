@@ -3,7 +3,6 @@ import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-    base: './',
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.js'],
@@ -12,7 +11,7 @@ export default defineConfig({
         tailwindcss(),
     ],
     server: {
-        host: true,
+        host: '192.168.1.169',
         watch: {
             usePolling: true,
             debounce: 1000,

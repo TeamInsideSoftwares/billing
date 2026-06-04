@@ -42,11 +42,11 @@
 
     <div class="soft-panel soft-panel--padded">
         <h4 class="mb-2">Step 4: Compose & Send</h4>
-        <p class="text-muted mb-3">Quotation is ready. Continue to email compose.</p>
+        <p class="text-slate-500 mb-3">Quotation is ready. Continue to email compose.</p>
         @if(!empty($draftQuotation?->quotationid))
             <a href="{{ route('quotations.email-compose', $draftQuotation->quotationid) }}" class="primary-button">Go To Email Compose</a>
         @else
-            <p class="small text-muted">Create and save quotation first.</p>
+            <p class="text-xs text-slate-500">Create and save quotation first.</p>
         @endif
     </div>
 </div>

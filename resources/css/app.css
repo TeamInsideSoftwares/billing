@@ -1,13 +1,19 @@
+@layer theme, base, components, utilities;
+
 @import 'tailwindcss';
-@import './components.css';
+
+@layer components {
+    @import './components.css';
+}
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
+@source '../views/**/*.blade.php';
+@source '../js/**/*.js';
 
 @theme {
-    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-sans: Inter, sans-serif;
+    --color-surface-container-low: #f1f3ff;
 }
 
 :root {
@@ -874,17 +880,7 @@
         0 6px 14px rgba(6, 78, 59, 0.10);
 }
 
-/* Bootstrap visibility fix */
-#toast-container .toast,
-.toast-container .toast,
-#toast-container .toast:not(.showing):not(.show),
-.toast-container .toast:not(.showing):not(.show),
-#app-toast-container .app-toast,
-.app-toast-container .app-toast,
-#app-toast-container .app-toast:not(.showing):not(.show),
-.app-toast-container .app-toast:not(.showing):not(.show) {
-    opacity: 1;
-}
+
 
 /* Leaving Animation */
 .toast-leaving,
@@ -1279,6 +1275,11 @@
 
 .icon-action-btn:active {
     transform: scale(0.92);
+}
+
+/* Fallback for table row hover actions opacity */
+.group:hover .group-hover\:opacity-100 {
+    opacity: 1 !important;
 }
 
 .text-action-btn {
@@ -3503,7 +3504,7 @@ a {
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     border-radius: 0.125rem;
     color: #1e293b;
-    font-family: 'Inter', serif;
+    font-family: Inter, sans-serif;
 }
 
 .paper h1,
@@ -8023,7 +8024,7 @@ a {
 
 /* Premium enhancements for Invoice Show page */
 .invoice-show-container {
-    font-family: 'Inter', sans-serif;
+    font-family: Inter, sans-serif;
 }
 
 .panel-card {
@@ -8560,7 +8561,7 @@ a {
     justify-content: center;
     min-height: 640px;
     color: #6b7280;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: Inter, sans-serif;
 }
 
 .preview-empty-state__inner {
@@ -9388,3 +9389,21 @@ a {
         grid-column: span 1;
     }
 }
+
+/* Ensure modals and offcanvas sit on top of sticky topbar (z-index 100) */
+.fixed.z-50, 
+[id$="Modal"], 
+[id*="modal"], 
+[id$="Canvas"], 
+[id*="canvas"] {
+    z-index: 1050 !important;
+}
+
+#ledgerPreviewCanvas-backdrop,
+#gstPreviewCanvas-backdrop,
+.fixed.inset-0.z-40 {
+    z-index: 1040 !important;
+}
+
+
+

@@ -14,7 +14,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Inter, sans-serif;
             font-size: 10pt;
             color: #000;
             background: #fff;

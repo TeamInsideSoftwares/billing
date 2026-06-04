@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
 @section('header_actions')
-    <a href="{{ route('clients.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left icon-spaced"></i>Back to Clients
+    <a href="{{ route('clients.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-slate-700 font-semibold text-sm bg-white border border-slate-200 shadow-sm hover:bg-slate-50 hover:border-slate-400 transition-all cursor-pointer no-underline">
+        <i class="fas fa-arrow-left"></i>Back to Clients
     </a>
 @endsection
 
 @section('content')
-<section class="panel-card {{ isset($client) ? 'panel-card-lg' : '' }}">
+<section class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
     <form method="POST" action="{{ isset($client) ? route('clients.update', $client) : route('clients.store') }}" class="client-form" enctype="multipart/form-data">
         @isset($client)
             @method('PUT')
@@ -15,10 +15,10 @@
         @csrf
 
         @if ($errors->any())
-            <div class="alert error">
-                <ul class="plain-list">
+            <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                <ul class="list-none m-0 p-0">
                     @foreach ($errors->all() as $error)
-                        <li class="text-xs error">{{ $error }}</li>
+                        <li class="text-xs text-red-600">{{ $error }}</li>
                     @endforeach
                 </ul>
             </div>
@@ -27,25 +27,25 @@
         <input type="hidden" name="accountid" value="{{ isset($client) ? ($client->accountid ?? auth()->user()->accountid ?? 'ACC0000001') : (auth()->user()->accountid ?? 'ACC0000001') }}">
 
         <!-- Basic Info -->
-        <div class="section-header">
-            <div class="section-icon"><i class="fas fa-building"></i></div>
-            <h4 class="section-title">Client Information</h4>
+        <div class="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+            <div class="w-7 h-7 rounded-md bg-slate-100 text-slate-500 flex items-center justify-center text-xs shrink-0"><i class="fas fa-building"></i></div>
+            <h4 class="text-sm font-semibold text-slate-800 m-0">Client Information</h4>
         </div>
 
-        <div class="form-grid grid-cols-4">
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-4 mb-6">
             <div class="col-span-2">
-                <label for="business_name" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Client Business Name *</label>
-                <input type="text" id="business_name" name="business_name" value="{{ old('business_name', $client->business_name ?? '') }}" required {{ isset($client) ? 'class="input-full"' : '' }}>
-                @error('business_name') <span class="error">{{ $message }}</span> @enderror
+                <label for="business_name" class="block text-xs font-semibold text-slate-500 mb-0.5">Client Business Name *</label>
+                <input type="text" id="business_name" name="business_name" value="{{ old('business_name', $client->business_name ?? '') }}" required class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                @error('business_name') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="contact_name" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Contact Person</label>
-                <input type="text" id="contact_name" name="contact_name" value="{{ old('contact_name', $client->contact_name ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
+                <label for="contact_name" class="block text-xs font-semibold text-slate-500 mb-0.5">Contact Person</label>
+                <input type="text" id="contact_name" name="contact_name" value="{{ old('contact_name', $client->contact_name ?? '') }}" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
             </div>
             <div>
-                <label for="groupid" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Group</label>
-                <div class="input-row">
-                    <select id="groupid" name="groupid" class="{{ isset($client) ? 'select-form-input' : 'flex-fill' }}">
+                <label for="groupid" class="block text-xs font-semibold text-slate-500 mb-0.5">Group</label>
+                <div class="flex items-center gap-2">
+                    <select id="groupid" name="groupid" class="flex-1 bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                         <option value="">-- No Group --</option>
                         @foreach($groups as $group)
                             <option value="{{ $group->groupid }}" {{ old('groupid', $client->groupid ?? '') == $group->groupid ? 'selected' : '' }}>
@@ -53,40 +53,40 @@
                             </option>
                         @endforeach
                     </select>
-                    <button type="button" class="text-link text-link-button" data-bs-toggle="modal" data-bs-target="#groupsModal" title="Add Group"><i class="fas fa-plus"></i></button>
+                    <button type="button" class="inline-flex items-center justify-center px-2 py-1 text-sm border border-slate-200 rounded-md bg-white text-blue-600 hover:bg-blue-50 whitespace-nowrap cursor-pointer" data-bs-toggle="modal" data-bs-target="#groupsModal" title="Add Group"><i class="fas fa-plus"></i></button>
                 </div>
-                @error('groupid') <span class="error">{{ $message }}</span> @enderror
+                @error('groupid') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="primary_email" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Primary Email *</label>
-                <input type="email" id="primary_email" name="primary_email" value="{{ old('primary_email', $client->primary_email ?? '') }}" required placeholder="name@company.com" {{ isset($client) ? 'class="input-full"' : '' }}>
-                @error('primary_email') <span class="error">{{ $message }}</span> @enderror
+                <label for="primary_email" class="block text-xs font-semibold text-slate-500 mb-0.5">Primary Email *</label>
+                <input type="email" id="primary_email" name="primary_email" value="{{ old('primary_email', $client->primary_email ?? '') }}" required placeholder="name@company.com" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                @error('primary_email') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="email" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Secondary Emails</label>
-                <input type="text" id="email" name="email" value="{{ old('email', $client->email ?? '') }}" placeholder="accounts@company.com, finance@company.com" {{ isset($client) ? 'class="input-full"' : '' }}>
-                <span class="{{ isset($client) ? 'form-hint' : 'text-xs' }}">Optional. Use comma to add multiple emails</span>
-                @error('email') <span class="error">{{ $message }}</span> @enderror
+                <label for="email" class="block text-xs font-semibold text-slate-500 mb-0.5">Secondary Emails</label>
+                <input type="text" id="email" name="email" value="{{ old('email', $client->email ?? '') }}" placeholder="accounts@company.com, finance@company.com" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <span class="text-xs text-slate-400">Optional. Use comma to add multiple emails</span>
+                @error('email') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="phone" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Phone</label>
-                <input type="tel" id="phone" name="phone" value="{{ old('phone', $client->phone ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
+                <label for="phone" class="block text-xs font-semibold text-slate-500 mb-0.5">Phone</label>
+                <input type="tel" id="phone" name="phone" value="{{ old('phone', $client->phone ?? '') }}" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
             </div>
             <div>
-                <label for="whatsapp_number" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">WhatsApp</label>
-                <input type="tel" id="whatsapp_number" name="whatsapp_number" value="{{ old('whatsapp_number', $client->whatsapp_number ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
+                <label for="whatsapp_number" class="block text-xs font-semibold text-slate-500 mb-0.5">WhatsApp</label>
+                <input type="tel" id="whatsapp_number" name="whatsapp_number" value="{{ old('whatsapp_number', $client->whatsapp_number ?? '') }}" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
             </div>
             <div>
-                <label for="status" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Status</label>
-                <select id="status" name="status" {{ isset($client) ? 'class="input-full"' : '' }}>
+                <label for="status" class="block text-xs font-semibold text-slate-500 mb-0.5">Status</label>
+                <select id="status" name="status" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                     <option value="active" {{ old('status', $client->status ?? '') == 'active' ? 'selected' : '' }}>Active</option>
                     <option value="review" {{ old('status', $client->status ?? '') == 'review' ? 'selected' : '' }}>Review</option>
                     <option value="inactive" {{ old('status', $client->status ?? '') == 'inactive' ? 'selected' : '' }}>Inactive</option>
                 </select>
             </div>
             <div>
-                <label for="currency" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Currency *</label>
-                <select id="currency" name="currency" required {{ isset($client) ? 'class="input-full"' : '' }}>
+                <label for="currency" class="block text-xs font-semibold text-slate-500 mb-0.5">Currency *</label>
+                <select id="currency" name="currency" required class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                     <option value="">-- Select --</option>
                     @foreach(($currencies ?? []) as $currencyItem)
                         <option value="{{ $currencyItem->iso }}" {{ old('currency', $client->currency ?? 'INR') === $currencyItem->iso ? 'selected' : '' }}>
@@ -94,73 +94,73 @@
                         </option>
                     @endforeach
                 </select>
-                @error('currency') <span class="error">{{ $message }}</span> @enderror
+                @error('currency') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="logo" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Logo</label>
-                <input type="file" id="logo" name="logo" accept="image/*" class="file-input">
+                <label for="logo" class="block text-xs font-semibold text-slate-500 mb-0.5">Logo</label>
+                <input type="file" id="logo" name="logo" accept="image/*" class="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
                 @isset($client)
                     @if($client->logo_path)
-                        <div class="img-logo-container"><img src="{{ $client->logo_path }}" alt="Logo" class="img-logo-preview"></div>
+                        <div class="mt-2 w-16 h-16 rounded-lg border border-slate-200 overflow-hidden"><img src="{{ $client->logo_path }}" alt="Logo" class="object-contain w-full h-full"></div>
                     @endif
                 @endisset
-                @error('logo') <span class="error">{{ $message }}</span> @enderror
+                @error('logo') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
             </div>
         </div>
 
         <!-- Address -->
-        <div class="section-header">
-            <div class="section-icon"><i class="fas fa-map-marker-alt"></i></div>
-            <h4 class="section-title">Address</h4>
+        <div class="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+            <div class="w-7 h-7 rounded-md bg-slate-100 text-slate-500 flex items-center justify-center text-xs shrink-0"><i class="fas fa-map-marker-alt"></i></div>
+            <h4 class="text-sm font-semibold text-slate-800 m-0">Address</h4>
         </div>
 
-        <div class="form-grid grid-cols-4">
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-4 mb-6">
             <div>
-                <label for="country" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Country</label>
-                <select id="country" name="country" class="country-select {{ isset($client) ? 'input-full' : '' }}" data-selected="{{ old('country', $client->country ?? 'India') }}">
+                <label for="country" class="block text-xs font-semibold text-slate-500 mb-0.5">Country</label>
+                <select id="country" name="country" class="country-select w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" data-selected="{{ old('country', $client->country ?? 'India') }}">
                     <option value="">Select</option>
                 </select>
             </div>
             <div>
-                <label for="state" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">State *</label>
-                <select id="state" name="state" required class="state-select {{ isset($client) ? 'input-full' : '' }}" data-selected="{{ old('state', $client->state ?? '') }}">
+                <label for="state" class="block text-xs font-semibold text-slate-500 mb-0.5">State *</label>
+                <select id="state" name="state" required class="state-select w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" data-selected="{{ old('state', $client->state ?? '') }}">
                     <option value="">Select</option>
                 </select>
-                @error('state') <span class="error">{{ $message }}</span> @enderror
+                @error('state') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label for="city" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">City</label>
-                <select id="city" name="city" class="city-select {{ isset($client) ? 'input-full' : '' }}" data-selected="{{ old('city', $client->city ?? '') }}">
+                <label for="city" class="block text-xs font-semibold text-slate-500 mb-0.5">City</label>
+                <select id="city" name="city" class="city-select w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" data-selected="{{ old('city', $client->city ?? '') }}">
                     <option value="">Select</option>
                 </select>
             </div>
             <div>
-                <label for="postal_code" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Postal Code</label>
-                <input type="text" id="postal_code" name="postal_code" value="{{ old('postal_code', $client->postal_code ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
+                <label for="postal_code" class="block text-xs font-semibold text-slate-500 mb-0.5">Postal Code</label>
+                <input type="text" id="postal_code" name="postal_code" value="{{ old('postal_code', $client->postal_code ?? '') }}" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
             </div>
             <div class="col-span-2">
-                <label for="address_line_1" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Address</label>
-                <textarea id="address_line_1" name="address_line_1" rows="2" class="textarea-auto">{{ old('address_line_1', $client->address_line_1 ?? '') }}</textarea>
+                <label for="address_line_1" class="block text-xs font-semibold text-slate-500 mb-0.5">Address</label>
+                <textarea id="address_line_1" name="address_line_1" rows="2" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">{{ old('address_line_1', $client->address_line_1 ?? '') }}</textarea>
             </div>
         </div>
 
         <!-- Billing Details -->
-        <div class="section-header">
-            <div class="section-icon"><i class="fas fa-file-invoice-dollar"></i></div>
-            <h4 class="section-title">Billing Details</h4>
+        <div class="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+            <div class="w-7 h-7 rounded-md bg-slate-100 text-slate-500 flex items-center justify-center text-xs shrink-0"><i class="fas fa-file-invoice-dollar"></i></div>
+            <h4 class="text-sm font-semibold text-slate-800 m-0">Billing Details</h4>
         </div>
 
         <div class="mb-3">
-            <label class="custom-checkbox">
-                <input type="checkbox" id="billing_same_as_client" name="billing_same_as_client" value="1" {{ old('billing_same_as_client') ? 'checked' : '' }}>
-                <span class="checkbox-label">Same as client details</span>
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="billing_same_as_client" name="billing_same_as_client" value="1" {{ old('billing_same_as_client') ? 'checked' : '' }} class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                <span class="text-sm text-slate-700">Same as client details</span>
             </label>
         </div>
 
-        <div class="panel-note">
-            <div class="flex-between">
-                <label for="existing_bd_id" class="label-small {{ isset($client) ? 'mb-0' : '' }}">Use existing billing profile</label>
-                <select id="existing_bd_id" name="existing_bd_id" class="select-narrow">
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3">
+            <div class="flex justify-between items-center">
+                <label for="existing_bd_id" class="text-xs font-semibold text-slate-500">Use existing billing profile</label>
+                <select id="existing_bd_id" name="existing_bd_id" class="w-auto bg-white border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                     <option value="">-- New billing profile --</option>
                     @foreach($billingProfiles ?? [] as $profile)
                         <option value="{{ $profile->bd_id }}" {{ old('existing_bd_id', $client->bd_id ?? '') === $profile->bd_id ? 'selected' : '' }}>
@@ -169,135 +169,141 @@
                     @endforeach
                 </select>
             </div>
-            <button type="button" id="new-billing-btn" class="text-link button-top-margin"><i class="fas fa-plus icon-spaced-sm"></i> Create new billing profile</button>
-            @error('existing_bd_id') <span class="error">{{ $message }}</span> @enderror
+            <button type="button" id="new-billing-btn" class="text-blue-600 font-semibold text-xs hover:underline mt-3 bg-transparent border-0 cursor-pointer p-0"><i class="fas fa-plus"></i> Create new billing profile</button>
+            @error('existing_bd_id') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
         </div>
 
         <div id="new-billing-fields">
-            <div class="form-grid grid-cols-4">
+            <div class="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-4 mb-6">
                 <div class="col-span-2">
-                    <label for="billing_business_name" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Billing Business Name *</label>
-                    <input type="text" id="billing_business_name" name="billing_business_name" value="{{ old('billing_business_name', isset($client) ? ($client->billingDetail->business_name ?? $client->business_name) : '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
-                    @error('billing_business_name') <span class="error">{{ $message }}</span> @enderror
+                    <label for="billing_business_name" class="block text-xs font-semibold text-slate-500 mb-0.5">Billing Business Name *</label>
+                    <input type="text" id="billing_business_name" name="billing_business_name" value="{{ old('billing_business_name', isset($client) ? ($client->billingDetail->business_name ?? $client->business_name) : '') }}" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    @error('billing_business_name') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label for="billing_gstin" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">GSTIN</label>
+                    <label for="billing_gstin" class="block text-xs font-semibold text-slate-500 mb-0.5">GSTIN</label>
                     <input type="text" id="billing_gstin" name="billing_gstin" value="{{ old('billing_gstin', $client->billingDetail->gstin ?? '') }}"
                         maxlength="15" minlength="15" pattern="[A-Z0-9]{15}"
                         title="GSTIN must be exactly 15 characters"
                         oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
                         onblur="if(this.value && this.value.length!==15){this.setCustomValidity('GSTIN must be exactly 15 characters');this.reportValidity();}else{this.setCustomValidity('');}"
-                        {{ isset($client) ? 'class="input-full"' : '' }}>
-                    <span id="gstin_hint" class="{{ isset($client) ? 'form-hint' : 'text-xs' }}">Exactly 15 characters required</span>
-                    @error('billing_gstin') <span class="error">{{ $message }}</span> @enderror
+                        class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <span id="gstin_hint" class="text-xs text-slate-400">Exactly 15 characters required</span>
+                    @error('billing_gstin') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label for="billing_email" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Billing Email</label>
-                    <input type="email" id="billing_email" multiple name="billing_email" value="{{ old('billing_email', $client->billingDetail->billing_email ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
-                    @error('billing_email') <span class="error">{{ $message }}</span> @enderror
+                    <label for="billing_email" class="block text-xs font-semibold text-slate-500 mb-0.5">Billing Email</label>
+                    <input type="email" id="billing_email" multiple name="billing_email" value="{{ old('billing_email', $client->billingDetail->billing_email ?? '') }}" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    @error('billing_email') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label for="billing_phone" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Billing Phone</label>
-                    <input type="tel" id="billing_phone" name="billing_phone" value="{{ old('billing_phone', $client->billingDetail->billing_phone ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
-                    @error('billing_phone') <span class="error">{{ $message }}</span> @enderror
+                    <label for="billing_phone" class="block text-xs font-semibold text-slate-500 mb-0.5">Billing Phone</label>
+                    <input type="tel" id="billing_phone" name="billing_phone" value="{{ old('billing_phone', $client->billingDetail->billing_phone ?? '') }}" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    @error('billing_phone') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label for="billing_country" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Country</label>
-                    <select id="billing_country" name="billing_country" class="country-select {{ isset($client) ? 'input-full' : '' }}" data-selected="{{ old('billing_country', $client->billingDetail->country ?? 'India') }}">
+                    <label for="billing_country" class="block text-xs font-semibold text-slate-500 mb-0.5">Country</label>
+                    <select id="billing_country" name="billing_country" class="country-select w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" data-selected="{{ old('billing_country', $client->billingDetail->country ?? 'India') }}">
                         <option value="">Select</option>
                     </select>
                 </div>
                 <div>
-                    <label for="billing_state" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">State *</label>
-                    <select id="billing_state" name="billing_state" class="state-select {{ isset($client) ? 'input-full' : '' }}" data-selected="{{ old('billing_state', $client->billingDetail->state ?? '') }}" required>
+                    <label for="billing_state" class="block text-xs font-semibold text-slate-500 mb-0.5">State *</label>
+                    <select id="billing_state" name="billing_state" class="state-select w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" data-selected="{{ old('billing_state', $client->billingDetail->state ?? '') }}" required>
                         <option value="">Select</option>
                     </select>
-                    @error('billing_state') <span class="error">{{ $message }}</span> @enderror
+                    @error('billing_state') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label for="billing_city" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">City</label>
-                    <select id="billing_city" name="billing_city" class="city-select {{ isset($client) ? 'input-full' : '' }}" data-selected="{{ old('billing_city', $client->billingDetail->city ?? '') }}">
+                    <label for="billing_city" class="block text-xs font-semibold text-slate-500 mb-0.5">City</label>
+                    <select id="billing_city" name="billing_city" class="city-select w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" data-selected="{{ old('billing_city', $client->billingDetail->city ?? '') }}">
                         <option value="">Select</option>
                     </select>
                 </div>
                 <div>
-                    <label for="billing_postal_code" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Postal Code</label>
-                    <input type="text" id="billing_postal_code" name="billing_postal_code" value="{{ old('billing_postal_code', $client->billingDetail->postal_code ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
+                    <label for="billing_postal_code" class="block text-xs font-semibold text-slate-500 mb-0.5">Postal Code</label>
+                    <input type="text" id="billing_postal_code" name="billing_postal_code" value="{{ old('billing_postal_code', $client->billingDetail->postal_code ?? '') }}" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                 </div>
                 <div class="col-span-2">
-                    <label for="billing_address_line_1" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Billing Address</label>
-                    <textarea id="billing_address_line_1" name="billing_address_line_1" rows="2" class="textarea-auto">{{ old('billing_address_line_1', $client->billingDetail->address_line_1 ?? '') }}</textarea>
-                    @error('billing_address_line_1') <span class="error">{{ $message }}</span> @enderror
+                    <label for="billing_address_line_1" class="block text-xs font-semibold text-slate-500 mb-0.5">Billing Address</label>
+                    <textarea id="billing_address_line_1" name="billing_address_line_1" rows="2" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">{{ old('billing_address_line_1', $client->billingDetail->address_line_1 ?? '') }}</textarea>
+                    @error('billing_address_line_1') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                 </div>
             </div>
         </div>
 
-        <div class="form-actions">
-            <button type="submit" class="primary-button">{{ isset($client) ? 'Update Client' : 'Create Client' }}</button>
-            <a href="{{ route('clients.index') }}" class="text-link">Cancel</a>
+        <div class="flex items-center gap-3 pt-5 mt-4 border-t border-slate-200">
+            <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-white font-semibold text-sm bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg transition-all no-underline cursor-pointer">{{ isset($client) ? 'Update Client' : 'Create Client' }}</button>
+            <a href="{{ route('clients.index') }}" class="text-blue-600 font-semibold text-sm hover:underline">Cancel</a>
         </div>
     </form>
 </section>
 
 <!-- Groups Modal -->
-<div class="modal fade" id="groupsModal" tabindex="-1">
-    <div class="modal-dialog modal-md modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header {{ isset($client) ? 'modal-header-custom' : '' }}">
-                <h5 class="modal-title modal-title-strong"><i class="fas fa-layer-group icon-spaced-sm"></i>Manage Groups</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="panel-note">
-                    @csrf
-                    <div id="groupMethodField"></div>
-                    <h6 id="groupFormTitle" class="modal-subtitle">Add New Group</h6>
-                    <div class="form-grid grid-cols-2">
-                        <div>
-                            <label class="label-compact">Group Name *</label>
-                            <input type="text" name="group_name" id="groupName" required class="{{ isset($client) ? 'input-full' : '' }}">
-                        </div>
-                        <div>
-                            <label class="label-compact">Email</label>
-                            <input type="email" name="email" id="groupEmail" class="{{ isset($client) ? 'input-full' : '' }}">
-                        </div>
-                        <div>
-                            <label class="label-compact">Address Line 1</label>
-                            <input type="text" name="address_line_1" id="groupAddress1" class="{{ isset($client) ? 'input-full' : '' }}">
-                        </div>
-                        <div>
-                            <label class="label-compact">Address Line 2</label>
-                            <input type="text" name="address_line_2" id="groupAddress2" class="{{ isset($client) ? 'input-full' : '' }}">
-                        </div>
-                        <div>
-                            <label class="label-compact">Country</label>
-                            <select id="groupCountry" name="country" class="country-select {{ isset($client) ? 'input-full' : '' }}" data-selected="India">
-                                <option value="">Select Country</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="label-compact">State</label>
-                            <select id="groupState" name="state" class="state-select {{ isset($client) ? 'input-full' : '' }}" data-selected="">
-                                <option value="">Select State</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="label-compact">City</label>
-                            <select id="groupCity" name="city" class="city-select {{ isset($client) ? 'input-full' : '' }}" data-selected="">
-                                <option value="">Select City</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="label-compact">Postal Code</label>
-                            <input type="text" name="postal_code" id="groupPostalCode" class="{{ isset($client) ? 'input-full' : '' }}">
-                        </div>
+<div id="groupsModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <!-- Backdrop overlay -->
+    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm modal-close-overlay" onclick="closeModal('groupsModal')"></div>
+    
+    <!-- Dialog container -->
+    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden z-10 flex flex-col max-h-[90vh]">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
+            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                <i class="fas fa-layer-group text-slate-400"></i> Manage Groups
+            </h3>
+            <button type="button" class="text-slate-400 hover:text-slate-600 text-lg font-bold" onclick="closeModal('groupsModal')">&times;</button>
+        </div>
+        <!-- Body -->
+        <div class="p-6 overflow-y-auto flex-1 text-left">
+            <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="space-y-4">
+                @csrf
+                <div id="groupMethodField"></div>
+                <h6 id="groupFormTitle" class="text-sm font-bold text-slate-700 mb-2">Add New Group</h6>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Group Name *</label>
+                        <input type="text" name="group_name" id="groupName" required class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                     </div>
-                    <div class="flex-between">
-                        <button type="submit" id="groupSubmitBtn" class="primary-button small">Save</button>
-                        <button type="button" id="groupCancelBtn" class="text-link small hidden" onclick="resetGroupForm()">Cancel</button>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Email</label>
+                        <input type="email" name="email" id="groupEmail" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                     </div>
-                </form>
-            </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Address Line 1</label>
+                        <input type="text" name="address_line_1" id="groupAddress1" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Address Line 2</label>
+                        <input type="text" name="address_line_2" id="groupAddress2" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Country</label>
+                        <select id="groupCountry" name="country" class="country-select w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" data-selected="India">
+                            <option value="">Select Country</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">State</label>
+                        <select id="groupState" name="state" class="state-select w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" data-selected="">
+                            <option value="">Select State</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">City</label>
+                        <select id="groupCity" name="city" class="city-select w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" data-selected="">
+                            <option value="">Select City</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Postal Code</label>
+                        <input type="text" name="postal_code" id="groupPostalCode" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                </div>
+                <div class="flex justify-between items-center pt-2">
+                    <button type="submit" id="groupSubmitBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow-sm transition-colors">Save</button>
+                    <button type="button" id="groupCancelBtn" class="text-blue-600 hover:underline text-xs font-semibold hidden" onclick="resetGroupForm()">Cancel</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

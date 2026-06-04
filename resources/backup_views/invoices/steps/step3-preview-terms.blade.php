@@ -574,7 +574,7 @@
                         justify-content: center;
                         min-height: 640px;
                         color: #6b7280;
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        font-family: Inter, sans-serif;
                     }
                     .preview-empty-state__inner { text-align: center; }
                     .preview-empty-state__icon {

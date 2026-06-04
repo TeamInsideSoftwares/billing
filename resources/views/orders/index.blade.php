@@ -30,7 +30,7 @@
                 <form action="{{ route('orders.index') }}" method="GET" class="payment-client-picker-form">
                     <div class="payment-client-picker-field">
                         <label for="client-select">Client</label>
-                        <select name="c" id="client-select" class="form-control" autofocus>
+                        <select name="c" id="client-select" class="w-full bg-white border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" autofocus>
                             <option value="" selected disabled>Select a client</option>
                             <option value="all">All Clients</option>
                             @foreach($allClients ?? [] as $client)
@@ -54,7 +54,7 @@
             <form action="{{ route('orders.index') }}" method="GET" class="module-filter-grid">
                 <div class="module-filter-field">
                     <label class="module-filter-label" for="orders_client_filter">Client</label>
-                    <select name="c" id="orders_client_filter" class="form-control">
+                    <select name="c" id="orders_client_filter" class="w-full bg-white border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                         <option value="all" {{ empty($clientId) ? 'selected' : '' }}>All Clients</option>
                         @foreach($allClients ?? [] as $client)
                             <option value="{{ $client->clientid }}" {{ (string) $clientId === (string) $client->clientid ? 'selected' : '' }}>
@@ -66,7 +66,7 @@
 
                 <div class="module-filter-field">
                     <label class="module-filter-label" for="orders_item_filter">Product</label>
-                    <select name="itemid" id="orders_item_filter" class="form-control">
+                    <select name="itemid" id="orders_item_filter" class="w-full bg-white border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                         <option value="">All Products</option>
                         @php
                             $servicesByCategory = collect($services ?? [])->groupBy(function ($service) {
@@ -124,9 +124,9 @@
                                     <td>
                                         <strong>{{ $order['items'][0]['item_name'] ?? 'Item' }}</strong>
                                         @if(!empty($order['items'][0]['item_description']))
-                                            <div class="text-xs text-muted mt-1">{{ $order['items'][0]['item_description'] }}</div>
+                                            <div class="text-xs text-slate-500 mt-1">{{ $order['items'][0]['item_description'] }}</div>
                                         @endif
-                                        <div class="text-xs text-muted mt-1">
+                                        <div class="text-xs text-slate-500 mt-1">
                                             Qty: {{ rtrim(rtrim(number_format((float) ($order['items'][0]['quantity'] ?? 1), 2, '.', ''), '0'), '.') }}
                                             @if(!empty($order['items'][0]['no_of_users']))
                                                 | Users: {{ $order['items'][0]['no_of_users'] }}
@@ -139,7 +139,7 @@
                                             $orderEndDate = $order['items'][0]['end_date'] ?? null;
                                             $isOrderExpired = !empty($orderEndDate) && \Carbon\Carbon::parse($orderEndDate)->lt(now()->startOfDay());
                                         @endphp
-                                        <span class="{{ $isOrderExpired ? 'text-danger fw-semibold' : '' }}">
+                                        <span class="{{ $isOrderExpired ? 'text-red-650 font-semibold' : '' }}">
                                             {{ $orderEndDate ?? '-' }}
                                         </span>
                                     </td>

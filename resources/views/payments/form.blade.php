@@ -8,6 +8,20 @@
 @endsection
 
 @section('content')
+    <style>
+        .primary-button,
+        .primary-button:hover,
+        .secondary-button,
+        .secondary-button:hover,
+        .payments-flow-btn,
+        .payments-flow-btn.active {
+            box-shadow: none !important;
+        }
+        .primary-button:hover,
+        .secondary-button:hover {
+            transform: none !important;
+        }
+    </style>
     <section>
         @php
             $isEditingPayment = isset($payment);
@@ -120,46 +134,36 @@
             <div class="payments-three-col-layout">
                 <!-- Column 1: Client & Amount -->
                 <div class="payments-col-card">
-                    <div style="margin-bottom: 1.5rem;">
+                    <div class="mb-6">
                         <label class="field-label payments-client-label">Select Client *</label>
                         @if ($isEditingPayment)
-                            <div class="payments-client-card"
-                                style="display: flex; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid var(--line); border-radius: 8px;">
-                                <div class="payments-client-avatar"
-                                    style="width: 36px; height: 36px; background: #e0e7ff; color: #4f46e5; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0;">
+                            <div class="payments-client-card flex gap-3 items-center py-3 px-4 bg-slate-50 border border-[var(--line)] rounded-lg">
+                                <div class="payments-client-avatar w-9 h-9 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-base shrink-0">
                                     <i class="fas fa-user"></i>
                                 </div>
-                                <div class="payments-client-info" style="flex: 1; min-width: 0;">
-                                    <h5 class="payments-client-name" id="selectedClientName"
-                                        style="font-size: 0.88rem; font-weight: 700; color: #0f172a; margin: 0;">
+                                <div class="payments-client-info flex-1 min-w-0">
+                                    <h5 class="payments-client-name text-[0.88rem] font-bold text-slate-900 m-0" id="selectedClientName">
                                         {{ $selectedClientName }}</h5>
-                                    <div class="payments-client-email {{ $selectedClientEmail ? '' : 'is-hidden' }}"
-                                        id="selectedClientEmail"
-                                        style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                                    <div class="payments-client-email {{ $selectedClientEmail ? '' : 'is-hidden' }} text-xs text-[var(--text-muted)] mt-[2px]"
+                                        id="selectedClientEmail">
                                         {{ $selectedClientEmail }}
                                     </div>
                                     <input type="hidden" id="clientid" name="clientid" value="{{ $defaultClientId }}">
                                 </div>
                                 @if ($displayReceiptNumber !== '')
-                                    <div class="payments-receipt-badge"
-                                        style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                    <div class="payments-receipt-badge text-xs py-1 px-2">
                                         {{ $displayReceiptNumber }}
                                     </div>
                                 @endif
                             </div>
                         @else
-                            <div class="invoice-client-header"
-                                style="margin-bottom: 0; padding: 0.75rem; background: #f8fafc; border: 1px solid var(--line); border-radius: 12px;">
-                                <div class="invoice-client-header__row"
-                                    style="display: flex; gap: 0.75rem; align-items: start;">
-                                    <div class="invoice-client-header__icon"
-                                        style="width: 36px; height: 36px; background: #e0e7ff; color: #4f46e5; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
+                            <div class="invoice-client-header mb-0 p-3 bg-slate-50 border border-[var(--line)] rounded-xl">
+                                <div class="invoice-client-header__row flex gap-3 items-start">
+                                    <div class="invoice-client-header__icon w-9 h-9 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center shrink-0 mt-[2px]">
                                         <i class="fas fa-user"></i>
                                     </div>
-                                    <div class="invoice-client-header__body payments-client-header-body"
-                                        style="flex: 1; min-width: 0;">
-                                        <select id="clientid" name="clientid" class="form-control" required
-                                            style="margin-bottom: 0;">
+                                    <div class="invoice-client-header__body payments-client-header-body flex-1 min-w-0">
+                                        <select id="clientid" name="clientid" class="form-control mb-0" required>
                                             <option value="">Select Client</option>
                                             @php
                                                 $clientsByType = collect($clients ?? [])->groupBy(function ($client) {
@@ -182,13 +186,10 @@
                                             @endforeach
                                         </select>
 
-                                        <div class="payments-client-info-preview is-hidden" id="selectedClientInfoPreview"
-                                            style="margin-top: 0.5rem; border-top: 1px dashed var(--line); padding-top: 0.5rem;">
-                                            <h5 class="payments-client-name" id="selectedClientName"
-                                                style="font-size: 0.85rem; font-weight: 700; margin: 0; color: var(--text);">
+                                        <div class="payments-client-info-preview is-hidden mt-2 border-t border-dashed border-[var(--line)] pt-2" id="selectedClientInfoPreview">
+                                            <h5 class="payments-client-name text-[0.85rem] font-bold m-0 text-[var(--text)]" id="selectedClientName">
                                             </h5>
-                                            <div class="payments-client-email" id="selectedClientEmail"
-                                                style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                                            <div class="payments-client-email text-xs text-[var(--text-muted)] mt-[2px]" id="selectedClientEmail">
                                             </div>
                                         </div>
                                     </div>
@@ -197,7 +198,7 @@
                         @endif
                     </div>
 
-                    <div style="margin-bottom: 1.5rem;">
+                    <div class="mb-6">
                         <label>Payment Type *</label>
                         <div class="payments-flow-toggle-group">
                             <button type="button"
@@ -221,7 +222,7 @@
                         </select>
                     </div>
 
-                    <div id="received-amount-wrap" style="margin-bottom: 0;">
+                    <div id="received-amount-wrap" class="mb-0">
                         <label for="received_amount">Amount *</label>
                         <div class="payments-input-group">
                             <span class="payments-input-prefix" id="currencyLabel">{{ $defaultCurrency }}</span>
@@ -245,11 +246,10 @@
                         @enderror
                     </div>
 
-                    <div id="tds-amount-wrap" style="margin-bottom: 0;">
+                    <div id="tds-amount-wrap" class="mb-0">
                         <label for="tds_amount">TDS Rate / Amount</label>
                         <div class="payments-tds-group">
-                            <select id="tds_input_type" name="tds_input_type" class="payments-tds-type"
-                                style="font-size: 0.85rem !important;">
+                            <select id="tds_input_type" name="tds_input_type" class="payments-tds-type text-[0.85rem]">
                                 <option value="percent" {{ $defaultTdsInputType === 'percent' ? 'selected' : '' }}>TDS %
                                 </option>
                                 <option value="amount" {{ $defaultTdsInputType === 'amount' ? 'selected' : '' }}>Fixed
@@ -268,23 +268,21 @@
                 <!-- Column 2: Outstanding Invoices -->
                 <div class="payments-col-card">
                     <h3 class="payments-card-title">Invoices</h3>
-                    <div id="invoice-list-wrap" class="payments-invoice-list-wrap"
-                        style="border: none; padding: 0; background: transparent;">
+                    <div id="invoice-list-wrap" class="payments-invoice-list-wrap border-none p-0 bg-transparent">
                         <div id="invoice-list" class="payments-invoice-list"></div>
                     </div>
                 </div>
 
                 <!-- Column 3: Payment Details & Actions -->
                 <div class="payments-col-card">
-                    <div style="margin-bottom: 1.25rem;">
+                    <div class="mb-5">
                         <label for="payment_date" class="text-xl">Date *</label>
                         <div class="payments-input-group">
                             <input type="date" id="payment_date" name="payment_date"
                                 min="{{ $paymentDateBounds['min_date'] }}" max="{{ $paymentDateBounds['max_date'] }}"
                                 value="{{ old('payment_date', isset($payment) ? optional($payment->payment_date)->format('Y-m-d') : $paymentDateBounds['default_date']) }}"
                                 required>
-                            <span class="payments-input-suffix" onclick="document.getElementById('payment_date').focus();"
-                                style="cursor: pointer;">
+                            <span class="payments-input-suffix cursor-pointer" onclick="try { document.getElementById('payment_date').showPicker(); } catch(e) { document.getElementById('payment_date').focus(); }">
                                 <i class="far fa-calendar-alt"></i>
                             </span>
                         </div>
@@ -293,7 +291,7 @@
                         @enderror
                     </div>
 
-                    <div style="margin-bottom: 1.25rem;">
+                    <div class="mb-5">
                         <label>Mode *</label>
                         <div class="payments-mode-toggle-group">
                             <label
@@ -323,7 +321,7 @@
                         @enderror
                     </div>
 
-                    <div style="margin-bottom: 1.25rem;">
+                    <div class="mb-5">
                         <label for="reference_number">Reference Number</label>
                         <input type="text" id="reference_number" name="reference_number"
                             value="{{ old('reference_number', isset($payment) ? $payment->reference_number : '') }}"
@@ -333,24 +331,23 @@
                         @enderror
                     </div>
 
-                    <div style="margin-bottom: 1.5rem;">
+                    <div class="mb-6">
                         <label for="description">Description</label>
                         <textarea id="description" name="description" rows="2" placeholder="Add payment notes or remarks..."
-                            style="min-height: 80px;">{{ old('description', isset($payment) ? $payment->description : '') }}</textarea>
+                            class="min-h-[80px]">{{ old('description', isset($payment) ? $payment->description : '') }}</textarea>
                         @error('description')
                             <span class="error">{{ $message }}</span>
                         @enderror
                     </div>
 
-                    <div class="form-actions"
-                        style="margin-top: 0; padding-top: 1.25rem; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 1rem;">
-                        <button type="submit" class="primary-button" style="flex: 1;">
-                            {{ $isEditingPayment ? 'Update Payment' : 'Record Payment' }}
-                        </button>
+                    <div class="form-actions mt-0 pt-5 border-t border-[var(--line)] flex items-center justify-between gap-4">
                         <a href="{{ route('payments.index', !empty($selectedClientId) ? ['c' => $selectedClientId] : []) }}"
-                            class="text-link">
-                            Cancel
+                            class="secondary-button border border-blue-600 text-blue-600 bg-transparent">
+                            <i class="fas fa-times"></i>Cancel
                         </a>
+                        <button type="submit" class="primary-button w-auto">
+                            {{ $isEditingPayment ? 'Update Payment' : 'Record Payment' }} <i class="fas fa-arrow-right"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -567,7 +564,7 @@
                 if (!visibleInvoices.length) {
                     invoiceList.innerHTML = `
                         <div class="payments-invoice-empty-state">
-                            <i class="fas fa-check-circle" style="color: var(--emerald);"></i>
+                            <i class="fas fa-check-circle text-[var(--emerald)]"></i>
                             <p>No outstanding invoices</p>
                             <span>This client has no unpaid or partially paid invoices.</span>
                         </div>
@@ -608,13 +605,13 @@
                                 <div class="payments-invoice-meta">
                                     <span class="status-pill ${statusClass} payments-status-pill">${status}</span>
                                     <span>Amount: <strong>${amountBreakup}</strong></span>
-                                    <span>Due: <strong class="text-danger">${Math.round(available).toLocaleString('en-US')}</strong></span>
+                                    <span>Due: <strong class="text-red-500">${Math.round(available).toLocaleString('en-US')}</strong></span>
                                 </div>
                             </div>
                             <input type="hidden" class="invoice-collectible-input" data-due="${available}" data-without-tax="${availableWithoutTax}" value="${Math.round(available).toLocaleString('en-US')}">
                             <div class="payments-alloc-col">
-                                <div style="width: 100%; margin-bottom: 2px;">
-                                    <span class="invoice-allocated-label" style="font-size: 0.72rem; font-weight: 600; color: var(--text-muted);">Amount:</span>
+                                <div class="w-full mb-0.5">
+                                    <span class="invoice-allocated-label text-[0.72rem] font-semibold text-[var(--text-muted)]">Amount:</span>
                                 </div>
                                 <div class="payments-alloc-input-wrap">
                                     <input type="text" class="invoice-allocated-input payments-tds-row-input" value="0">
@@ -865,9 +862,11 @@
                 });
             }
 
-            document.getElementById('payment_flow')?.addEventListener('change', applyPaymentFlowUi);
-            receivedAmountInput.addEventListener('input', recalculateStandardAllocations);
-            tdsAmountInput.addEventListener('input', recalculateTdsAllocations);
+            document.getElementById('payment_flow')?.addEventListener('change', () => {
+                applyPaymentFlowUi();
+            });
+            receivedAmountInput?.addEventListener('input', recalculateStandardAllocations);
+            tdsAmountInput?.addEventListener('input', recalculateTdsAllocations);
             tdsInputType?.addEventListener('change', () => {
                 const isPercentMode = tdsInputType.value === 'percent';
                 if (tdsAmountInput) tdsAmountInput.readOnly = false;

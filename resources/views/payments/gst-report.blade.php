@@ -140,13 +140,19 @@
         </section>
     </div>
 
-    <div class="offcanvas offcanvas-end ledger-preview-canvas" tabindex="-1" id="gstPreviewCanvas" aria-labelledby="gstPreviewCanvasLabel">
-        <div class="offcanvas-header">
-            <h5 class="offcanvas-title" id="gstPreviewCanvasLabel">Invoice PDF Preview</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <!-- Offcanvas Backdrop Overlay -->
+    <div id="gstPreviewCanvas-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden" onclick="bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('gstPreviewCanvas')).hide()"></div>
+
+    <!-- Offcanvas container -->
+    <div id="gstPreviewCanvas" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white border-l border-slate-200 shadow-2xl transition-transform transform translate-x-full duration-300 flex flex-col" tabindex="-1" aria-labelledby="gstPreviewCanvasLabel">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
+            <h5 class="text-base font-bold text-slate-800" id="gstPreviewCanvasLabel">Invoice PDF Preview</h5>
+            <button type="button" class="text-slate-400 hover:text-slate-600 text-lg" onclick="bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('gstPreviewCanvas')).hide()">&times;</button>
         </div>
-        <div class="offcanvas-body p-0">
-            <iframe id="gstPreviewFrame" class="ledger-preview-frame" src="about:blank" title="GST Report Invoice Preview"></iframe>
+        <!-- Body -->
+        <div class="grow p-0 overflow-hidden">
+            <iframe id="gstPreviewFrame" class="w-full h-full border-0" src="about:blank" title="GST Report Invoice Preview"></iframe>
         </div>
     </div>
 
@@ -155,9 +161,9 @@
             const panelEl = document.getElementById('gstPreviewCanvas');
             const frameEl = document.getElementById('gstPreviewFrame');
             const titleEl = document.getElementById('gstPreviewCanvasLabel');
-            if (!panelEl || !frameEl || typeof bootstrap === 'undefined') return;
+            if (!panelEl || !frameEl || !bootstrap?.Offcanvas) return;
 
-            const previewPanel = new bootstrap.Offcanvas(panelEl);
+            const previewPanel = bootstrap.Offcanvas.getOrCreateInstance(panelEl);
             document.querySelectorAll('.js-gst-preview-link').forEach((link) => {
                 link.addEventListener('click', function (event) {
                     event.preventDefault();

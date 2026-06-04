@@ -125,13 +125,19 @@
         </section>
     </div>
 
-    <div class="offcanvas offcanvas-end ledger-preview-canvas" tabindex="-1" id="ledgerPreviewCanvas" aria-labelledby="ledgerPreviewCanvasLabel">
-        <div class="offcanvas-header">
-            <h5 class="offcanvas-title" id="ledgerPreviewCanvasLabel">Preview</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <!-- Offcanvas Backdrop Overlay -->
+    <div id="ledgerPreviewCanvas-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden" onclick="bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('ledgerPreviewCanvas')).hide()"></div>
+
+    <!-- Offcanvas container -->
+    <div id="ledgerPreviewCanvas" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white border-l border-slate-200 shadow-2xl transition-transform transform translate-x-full duration-300 flex flex-col" tabindex="-1" aria-labelledby="ledgerPreviewCanvasLabel">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
+            <h5 class="text-base font-bold text-slate-800" id="ledgerPreviewCanvasLabel">Preview</h5>
+            <button type="button" class="text-slate-400 hover:text-slate-600 text-lg" onclick="bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('ledgerPreviewCanvas')).hide()">&times;</button>
         </div>
-        <div class="offcanvas-body p-0">
-            <iframe id="ledgerPreviewFrame" class="ledger-preview-frame" src="about:blank" title="Ledger Preview"></iframe>
+        <!-- Body -->
+        <div class="grow p-0 overflow-hidden">
+            <iframe id="ledgerPreviewFrame" class="w-full h-full border-0" src="about:blank" title="Ledger Preview"></iframe>
         </div>
     </div>
 
@@ -149,9 +155,9 @@
                 jQuery('#ledgerDataTable').DataTable({
                     pageLength: 25,
                     order: [[0, 'asc']],
-                    dom: "<'row align-items-center g-2 mb-2'<'col-md-7'B><'col-md-5'f>>" +
-                         "<'row'<'col-12'tr>>" +
-                         "<'row mt-2'<'col-md-5'i><'col-md-7'p>>",
+                    dom: "<'flex flex-wrap items-center gap-2 mb-2'<'md:w-7/12'B><'md:w-5/12'f>>" +
+                         "<'row'<'w-full'tr>>" +
+                         "<'flex flex-wrap mt-2'<'md:w-5/12'i><'md:w-7/12'p>>",
                     buttons: [
                         { extend: 'excelHtml5', text: 'Excel' },
                         {
@@ -199,9 +205,9 @@
             const panelEl = document.getElementById('ledgerPreviewCanvas');
             const frameEl = document.getElementById('ledgerPreviewFrame');
             const titleEl = document.getElementById('ledgerPreviewCanvasLabel');
-            if (!panelEl || !frameEl || typeof bootstrap === 'undefined') return;
+            if (!panelEl || !frameEl || !bootstrap?.Offcanvas) return;
 
-            const previewPanel = new bootstrap.Offcanvas(panelEl);
+            const previewPanel = bootstrap.Offcanvas.getOrCreateInstance(panelEl);
             document.querySelectorAll('.js-ledger-preview-link').forEach((link) => {
                 link.addEventListener('click', function (event) {
                     event.preventDefault();
