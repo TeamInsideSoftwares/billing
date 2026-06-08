@@ -1,78 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Choose Access | {{ config('app.name', 'Billing Software') }}</title>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="login-page">
-    <main class="glass-card login-choice-card">
-        <p class="login-eyebrow mb-3">SkoolReady</p>
-        <h1 class="login-title">Choose Access</h1>
-        <p class="login-subtitle login-choice-subtitle">This login is valid for both Superadmin and Panel. Select where to continue.</p>
 
-        @if ($errors->any())
-            <div class="alert error">
-                @foreach ($errors->all() as $error)
-                    {{ $error }}
-                @endforeach
+<body class="bg-light">
+
+    <div class="container">
+        <div class="row min-vh-100 justify-content-center align-items-center">
+
+            <div class="col-md-7 col-lg-5">
+
+                <div class="card border-0 shadow-lg">
+
+                    <div class="card-body p-4 p-lg-5 text-center">
+
+                        <p class="text-primary fw-semibold text-uppercase small mb-2">
+                            SkoolReady
+                        </p>
+
+                        <h2 class="fw-bold mb-2">
+                            Choose Access
+                        </h2>
+
+                        <p class="text-muted mb-4">
+                            This login is valid for both Superadmin and Panel.
+                            Select where you would like to continue.
+                        </p>
+
+                        {{-- Errors --}}
+                        @if ($errors->any())
+                            <div class="alert alert-danger text-start">
+                                <ul class="mb-0 ps-3">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
+                        {{-- Superadmin --}}
+                        <form action="{{ route('login.choice.post') }}"
+                              method="POST"
+                              class="mb-3">
+
+                            @csrf
+
+                            <input type="hidden"
+                                   name="target"
+                                   value="superadmin">
+
+                            <button type="submit"
+                                    class="btn btn-primary w-100 py-2 fw-semibold">
+
+                                <i class="fas fa-user-shield me-2"></i>
+                                Continue to Superadmin
+
+                            </button>
+
+                        </form>
+
+                        {{-- Panel --}}
+                        <form action="{{ route('login.choice.post') }}"
+                              method="POST">
+
+                            @csrf
+
+                            <input type="hidden"
+                                   name="target"
+                                   value="panel">
+
+                            <button type="submit"
+                                    class="btn btn-outline-primary w-100 py-2 fw-semibold">
+
+                                <i class="fas fa-desktop me-2"></i>
+                                Continue to Panel
+
+                            </button>
+
+                        </form>
+
+                        <hr class="my-4">
+
+                        <a href="{{ route('login') }}"
+                           class="text-decoration-none">
+
+                            <i class="fas fa-arrow-left me-1"></i>
+                            Back to Sign In
+
+                        </a>
+
+                    </div>
+
+                </div>
+
             </div>
-        @endif
 
-        <form action="{{ route('login.choice.post') }}" method="POST" class="login-form login-choice-form">
-            @csrf
-            <input type="hidden" name="target" value="superadmin">
-            <button type="submit" class="primary-button login-button w-100 login-choice-btn">Continue to Superadmin</button>
-        </form>
-
-        <form action="{{ route('login.choice.post') }}" method="POST" class="login-form login-choice-form">
-            @csrf
-            <input type="hidden" name="target" value="panel">
-            <button type="submit" class="primary-button login-button w-100 login-choice-btn">Continue to Panel</button>
-        </form>
-
-        <div class="login-footer-row login-choice-footer">
-            <a href="{{ route('login') }}" class="forgot-link">Back to Sign In</a>
         </div>
-    </main>
+    </div>
 
-    <style>
-        body.login-page {
-            margin: 0;
-            display: grid;
-            place-items: center;
-            padding: 1.5rem;
-        }
-
-        .login-choice-card {
-            max-width: 520px;
-            padding: 2.75rem 2.6rem 2.35rem;
-            margin-inline: auto;
-            justify-self: center;
-        }
-
-        .login-choice-subtitle {
-            max-width: 420px;
-            margin: 0 auto 2.2rem;
-            line-height: 1.45;
-        }
-
-        .login-choice-form + .login-choice-form {
-            margin-top: 1rem;
-        }
-
-        .login-choice-btn {
-            margin-top: 0;
-            min-height: 2.5rem;
-            border-radius: 0.55rem;
-            font-weight: 700;
-        }
-
-        .login-choice-footer {
-            justify-content: flex-start;
-            margin-top: 1.2rem;
-        }
-    </style>
 </body>
+
 </html>

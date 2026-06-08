@@ -65,119 +65,233 @@
     {{-- Selected Client Dashboard State --}}
 
     {{-- Profile Header Card --}}
-    <div class="position-relative bg-light border p-3 rounded-3 mb-4 client-header-card">
-        <div class="row g-3 align-items-center">
+    {{-- Client Header --}}
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+
+        <div class="row align-items-center g-3">
+
+            {{-- Logo / Avatar --}}
             <div class="col-auto">
+
                 @if($client->logo_path)
-                <div class="client-avatar-large">
-                    <img src="{{ $client->logo_path }}" alt="Logo" class="img-fluid">
-                </div>
+
+                    <div class="border rounded-circle overflow-hidden bg-white d-flex align-items-center justify-content-center"
+                         style="width:80px;height:80px;">
+                        <img src="{{ $client->logo_path }}"
+                             alt="{{ $client->business_name }}"
+                             class="w-100 h-100 object-fit-contain">
+                    </div>
+
                 @else
-                <div class="client-initials-large">
-                    {{ strtoupper(substr($client->business_name ?? $client->contact_name, 0, 2)) }}
-                </div>
+
+                    <div class="rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center"
+                         style="width:80px;height:80px;font-size:1.5rem;">
+                        {{ strtoupper(substr($client->business_name ?? $client->contact_name, 0, 2)) }}
+                    </div>
+
                 @endif
+
             </div>
-            <div class="col text-start">
-                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                    <h3 class="fw-semibold text-dark mb-0">{{ $client->business_name }}</h3>
-                    <span class="status-badge {{ strtolower($client->status ?? 'active') }}">{{ ucfirst($client->status
-                        ?? 'Active') }}</span>
+
+            {{-- Client Info --}}
+            <div class="col">
+
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+
+                    <h3 class="fw-bold mb-0">
+                        {{ $client->business_name }}
+                    </h3>
+
+                    <span class="badge bg-success">
+                        {{ ucfirst($client->status ?? 'Active') }}
+                    </span>
+
                     @if($client->type === 'trial')
-                    <span class="status-badge trial">Trial</span>
+                        <span class="badge bg-warning text-dark">
+                            Trial
+                        </span>
                     @endif
+
                 </div>
-                <p class="text-muted mb-2"><i class="fas fa-envelope me-1"></i> {{ $client->primary_email ??
-                    $client->email }} | <i class="fas fa-phone me-1"></i> {{ $client->phone ?? 'No Phone' }}</p>
-                <div class="d-flex flex-wrap gap-2 text-muted small">
-                    <span><i class="fas fa-map-marker-alt me-1"></i> {{ $client->city ?? '-' }}{{ $client->state ? ', '
-                        . $client->state : '' }}</span>
-                    <span class="mx-1">•</span>
-                    <span><i class="fas fa-calendar-alt me-1"></i> Joined: {{ $client->created_at?->format('d M Y') ??
-                        '-' }}</span>
+
+                <p class="text-muted mb-2">
+                    <i class="fas fa-envelope me-1"></i>
+                    {{ $client->primary_email ?? $client->email }}
+
+                    <span class="mx-2">|</span>
+
+                    <i class="fas fa-phone me-1"></i>
+                    {{ $client->phone ?? 'No Phone' }}
+                </p>
+
+                <div class="d-flex flex-wrap gap-3 text-muted small">
+
+                    <span>
+                        <i class="fas fa-map-marker-alt me-1"></i>
+                        {{ $client->city ?? '-' }}
+                        {{ $client->state ? ', '.$client->state : '' }}
+                    </span>
+
+                    <span>
+                        <i class="fas fa-calendar-alt me-1"></i>
+                        Joined:
+                        {{ $client->created_at?->format('d M Y') ?? '-' }}
+                    </span>
+
                 </div>
+
             </div>
-            <div class="col-12 col-lg-auto text-lg-end mt-3 mt-lg-0">
-                <div class="quick-actions-bar d-flex flex-wrap gap-2 justify-content-lg-end">
+
+            {{-- Actions --}}
+            <div class="col-12 col-xl-auto">
+
+                <div class="d-flex flex-wrap gap-2 justify-content-xl-end">
+
                     <a href="{{ route('orders.create', ['c' => $client->clientid]) }}"
-                        class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
-                        <i class="fas fa-shopping-cart btn-icon"></i> Add Order
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-shopping-cart me-1"></i>
+                        Add Order
                     </a>
+
                     <a href="{{ route('quotations.create', ['c' => $client->clientid]) }}"
-                        class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
-                        <i class="fas fa-file-alt btn-icon"></i> Add Quotation
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-file-alt me-1"></i>
+                        Add Quotation
                     </a>
+
                     <a href="{{ route('invoices.create', ['clientid' => $client->clientid]) }}"
-                        class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
-                        <i class="fas fa-file-invoice-dollar btn-icon"></i> Add Invoice
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-file-invoice-dollar me-1"></i>
+                        Add Invoice
                     </a>
+
                     <a href="{{ route('payments.create', ['clientid' => $client->clientid]) }}"
-                        class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
-                        <i class="fas fa-wallet btn-icon"></i> Add Payment
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-wallet me-1"></i>
+                        Add Payment
                     </a>
+
                     <a href="{{ route('clients.index') }}"
-                        class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
-                        <i class="fas fa-file-pdf btn-icon"></i> Add PO
+                       class="btn btn-outline-secondary">
+                        <i class="fas fa-file-pdf me-1"></i>
+                        Add PO
                     </a>
+
                     <a href="{{ route('clients.edit', $client) }}"
-                        class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-                        <i class="fas fa-edit btn-icon"></i> Edit Profile
+                       class="btn btn-primary">
+                        <i class="fas fa-edit me-1"></i>
+                        Edit Profile
                     </a>
+
                 </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+{{-- Financial Metrics --}}
+<div class="row g-3 mb-4">
+
+    {{-- Outstanding --}}
+    <div class="col-6 col-lg-3">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body d-flex align-items-center">
+
+                <div class="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center me-3"
+                     style="width:50px;height:50px;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+
+                <div>
+                    <div class="text-muted small text-uppercase fw-semibold">
+                        Outstanding
+                    </div>
+                    <h5 class="mb-0 fw-bold text-danger">
+                        {{ $client->currency ?? 'INR' }}
+                        {{ number_format($outstanding, 0) }}
+                    </h5>
+                </div>
+
             </div>
         </div>
     </div>
 
-    {{-- Financial Metrics Bar --}}
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-lg-3">
-            <div class="card shadow-sm p-3 border-0 d-flex align-items-center gap-3">
-                <div class="metric-icon bg-danger-light text-danger">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div>
-                    <p class="text-muted small mb-0 fw-medium text-uppercase">Outstanding</p>
-                    <h4 class="fw-bolder mb-0 text-danger">{{ $client->currency ?? 'INR' }} {{
-                        number_format($outstanding, 0) }}</h4>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <div class="card shadow-sm p-3 border-0 d-flex align-items-center gap-3">
-                <div class="metric-icon bg-primary-light text-primary">
+    {{-- Total Invoiced --}}
+    <div class="col-6 col-lg-3">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body d-flex align-items-center">
+
+                <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                     style="width:50px;height:50px;">
                     <i class="fas fa-file-invoice"></i>
                 </div>
+
                 <div>
-                    <p class="text-muted small mb-0 fw-medium text-uppercase">Total Invoiced</p>
-                    <h4 class="fw-bolder mb-0">{{ $client->currency ?? 'INR' }} {{ number_format($invoicedTotal, 0) }}
-                    </h4>
+                    <div class="text-muted small text-uppercase fw-semibold">
+                        Total Invoiced
+                    </div>
+                    <h5 class="mb-0 fw-bold">
+                        {{ $client->currency ?? 'INR' }}
+                        {{ number_format($invoicedTotal, 0) }}
+                    </h5>
                 </div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <div class="card shadow-sm p-3 border-0 d-flex align-items-center gap-3">
-                <div class="metric-icon bg-success-light text-success">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div>
-                    <p class="text-muted small mb-0 fw-medium text-uppercase">Total Paid</p>
-                    <h4 class="fw-bolder mb-0 text-success">{{ $client->currency ?? 'INR' }} {{
-                        number_format($paidTotal, 0) }}</h4>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <div class="card shadow-sm p-3 border-0 d-flex align-items-center gap-3">
-                <div class="metric-icon bg-warning-light text-warning">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div>
-                    <p class="text-muted small mb-0 fw-medium text-uppercase">Active Orders</p>
-                    <h4 class="fw-bolder mb-0 text-warning">{{ $activeOrdersCount }}</h4>
-                </div>
+
             </div>
         </div>
     </div>
+
+    {{-- Total Paid --}}
+    <div class="col-6 col-lg-3">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body d-flex align-items-center">
+
+                <div class="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center me-3"
+                     style="width:50px;height:50px;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+
+                <div>
+                    <div class="text-muted small text-uppercase fw-semibold">
+                        Total Paid
+                    </div>
+                    <h5 class="mb-0 fw-bold text-success">
+                        {{ $client->currency ?? 'INR' }}
+                        {{ number_format($paidTotal, 0) }}
+                    </h5>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    {{-- Active Orders --}}
+    <div class="col-6 col-lg-3">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body d-flex align-items-center">
+
+                <div class="bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center me-3"
+                     style="width:50px;height:50px;">
+                    <i class="fas fa-clock"></i>
+                </div>
+
+                <div>
+                    <div class="text-muted small text-uppercase fw-semibold">
+                        Active Orders
+                    </div>
+                    <h5 class="mb-0 fw-bold text-warning">
+                        {{ $activeOrdersCount }}
+                    </h5>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
 
     {{-- Tabs Content Area --}}
     <div class="card shadow-sm p-4 border-0 mb-4">

@@ -940,7 +940,6 @@ class InvoicesController extends Controller
 
         return view('invoices.index', [
             'title' => 'Invoices',
-            'subtitle' => $selectedClientId ? 'Filtered by selected client.' : 'Showing invoices for all clients.',
             'clients' => $clients,
             'allInvoices' => $filteredInvoices,
             'allInvoiceRows' => $allInvoices,

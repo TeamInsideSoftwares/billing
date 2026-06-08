@@ -601,14 +601,25 @@ class ClientsController extends Controller
         ]);
     }
 
-    public function clientsShow(Client $client): View
+    public function clientsShow(Request $request, Client $client): View|JsonResponse
     {
-        $client->load(['invoices', 'payments', 'billingDetail', 'documents']);
+        $client->load(['invoices', 'payments', 'billingDetail', 'documents', 'group']);
         $paidTotal = (float) $client->payments->sum(function ($payment) {
             return (float) ($payment->received_amount ?? 0);
         });
         $outstanding = ($client->invoices->sum('grand_total') ?? 0) - $paidTotal;
         $allInvoices = $client->invoices->sortByDesc('created_at')->values();
+
+        if ($request->ajax() || $request->header('X-Modal-View') === 'client-show') {
+            return response()->json([
+                'success' => true,
+                'html' => view('clients.partials.show-content', [
+                    'client' => $client,
+                    'outstanding' => $outstanding,
+                    'allInvoices' => $allInvoices,
+                ])->render(),
+            ]);
+        }
 
         return view('clients.show', [
             'title' => $client->business_name ?? $client->contact_name ?? 'Client',

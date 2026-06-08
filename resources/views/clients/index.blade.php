@@ -172,8 +172,8 @@
                         </td>
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1">
-                                <a href="{{ route('clients.show', $client['record_id']) }}"
-                                    class="bg01 color01">View</a>
+                                <a href="{{ route('clients.dashboard', $client['record_id']) }}"
+                                    data-client-id="{{ $client['record_id'] }}" class="bg01 color01">View</a>
                                 <a href="#" class="bg02 color02 open-documents-modal" data-bs-toggle="modal"
                                     data-bs-target="#documentsModal" data-client-id="{{ $client['record_id'] }}"
                                     data-client-name="{{ $client['name'] }}">PO &
@@ -274,7 +274,8 @@
 
                     <!-- Action Buttons -->
                     <div class="tableActionButton d-flex flex-wrap gap-1 mt-2">
-                        <a href="{{ route('clients.show', $client['record_id']) }}"
+                        <a href="{{ route('clients.show', $client['record_id']) }}" data-bs-toggle="modal"
+                            data-bs-target="#clientShowModal" data-client-id="{{ $client['record_id'] }}"
                             class="bg01 color01 flex-grow-1 text-center">View</a>
                         <a href="#" class="bg02 color02 flex-grow-1 text-center open-documents-modal"
                             data-bs-toggle="modal" data-bs-target="#documentsModal"
@@ -701,6 +702,23 @@
     </div>
 </div>
 
+<div class="modal fade" id="clientShowModal" tabindex="-1" aria-labelledby="clientShowModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-white border-bottom py-2">
+                <h5 class="modal-title fw-semibold" id="clientShowModalLabel">Client Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-white p-4" id="clientShowModalBody">
+                <div class="text-center py-5 text-muted">
+                    <div class="spinner-border" role="status"></div>
+                    <p class="small mt-3 mb-0">Loading client details...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     function editGroup(btn) {
         const id = btn.dataset.id;
@@ -783,6 +801,7 @@
     const clientsIndexUrl = "{{ route('clients.index') }}";
     const clientsBaseUrl = "{{ url('/') }}";
     const documentsListUrlTemplate = @json(route('clients.documents.list', ['client' => '__CLIENT__']));
+    const clientShowUrlTemplate = @json(route('clients.show', ['client' => '__CLIENT__']));
 
     function buildGroupRow(group) {
         var initials = (group.group_name || '').substring(0, 2).toUpperCase();
@@ -998,6 +1017,54 @@
         var trigger = e.target.closest('.open-documents-modal');
         if (!trigger) return;
         openDocumentsModal(trigger, e);
+    });
+
+    function openClientShowModal(clientId, clientName) {
+        var modalEl = document.getElementById('clientShowModal');
+        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        var body = document.getElementById('clientShowModalBody');
+        var title = document.getElementById('clientShowModalLabel');
+        if (title) {
+            title.textContent = clientName ? clientName + ' - Details' : 'Client Details';
+        }
+        if (body) {
+            body.innerHTML = '<div class="text-center py-5 text-muted"><div class="spinner-border" role="status"></div><p class="small mt-3 mb-0">Loading client details...</p></div>';
+        }
+        modal.show();
+
+        fetch(clientShowUrlTemplate.replace('__CLIENT__', clientId), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-Modal-View': 'client-show',
+                'Accept': 'application/json'
+            }
+        })
+            .then(function (res) {
+                if (!res.ok) {
+                    throw new Error('HTTP ' + res.status);
+                }
+                return res.json();
+            })
+            .then(function (data) {
+                if (data.success && body) {
+                    body.innerHTML = data.html || '<p class="text-muted small mb-0">No details available.</p>';
+                } else if (body) {
+                    body.innerHTML = '<p class="text-muted small mb-0">Failed to load client details.</p>';
+                }
+            })
+            .catch(function (err) {
+                console.error('Client modal load error:', err);
+                if (body) {
+                    body.innerHTML = '<p class="text-muted small mb-0">Failed to load client details.</p>';
+                }
+            });
+    }
+
+    document.querySelectorAll('a[data-bs-target="#clientShowModal"]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            openClientShowModal(btn.dataset.clientId, btn.dataset.clientName || '');
+        });
     });
 
     function loadDocuments(clientId) {

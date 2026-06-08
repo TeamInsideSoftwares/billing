@@ -26,47 +26,52 @@
         });
     @endphp
     @if (!$clientId)
-        <div class="payment-client-picker-wrap">
-            <div class="payment-client-picker">
-                <div class="payment-client-picker-head">
-                    <div class="payment-client-picker-title">
-                        <div class="payment-client-picker-icon">
-                            <i class="fas fa-building"></i>
-                        </div>
-                        <div>
-                            <strong>Manage Payments</strong>
-                            <p>Choose a client first to view and record payments in a focused view.</p>
+<div class="position-relative">
+    <div class="row">
+        <div class="col-12 col-md-4 mx-auto">
+            <div class="bg-white p-3 rounded-3 shadow-sm">
+                <div class="bg-light p-4 rounded-3 border mx-auto">
+                    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div>
+                                <h5 class="fw-semibold text-black mb-0">Manage Payments</h5>
+                                <p class="text-muted mb-0">Choose a client first to view and record payments in a focused view.</p>
+                            </div>
                         </div>
                     </div>
-                    <span class="payment-client-count">{{ $clients->count() }} client(s)</span>
+                    <form action="{{ route('payments.index') }}" method="GET" class="payment-client-picker-form mainForm">
+                        <div class="row g-2 mb-3">
+                            <div class="col-12">
+                                <label for="client-select"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Client({{ $clients->count() }})<span class="text-danger">*</span></label>
+                                <select name="c" id="payment-client-select" class="form-select" autofocus>
+                                    <option value="" selected disabled>Select a client</option>
+                                    <option value="all">All Clients</option>
+                                    @foreach ($clients as $client)
+                                        <option value="{{ $client->clientid }}">
+                                            {{ $client->business_name ?? $client->contact_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+                            <button type="button" id="btnViewPayments" class="btn btn-outline-primary bg-white text-primary fw-medium px-3 py-2">
+                                <i class="fas fa-list btn-icon me-1"></i> View Payments
+                            </button>
+                            <button type="button" id="btnViewLedger" class="btn btn-outline-primary bg-white text-primary fw-medium px-3 py-2">
+                                <i class="fas fa-book btn-icon me-1"></i> View Ledger
+                            </button>
+                            <button type="button" id="btnCreatePayment" class="btn btn-outline-primary btn-primary text-white fw-medium px-4 py-2">
+                                <i class="fas fa-plus btn-icon me-1"></i> Record Payment
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                <form action="{{ route('payments.index') }}" method="GET" class="payment-client-picker-form">
-                    <div class="payment-client-picker-field">
-                        <label for="payment-client-select">Client</label>
-                        <select name="c" id="payment-client-select" class="form-select" autofocus>
-                            <option value="" selected disabled>Select a client</option>
-                            <option value="all">All Clients</option>
-                            @foreach ($clients as $client)
-                                <option value="{{ $client->clientid }}">
-                                    {{ $client->business_name ?? $client->contact_name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="payment-client-picker-actions">
-                        <button type="button" id="btnViewPayments" class="btn btn-outline-primary bg-white text-primary fw-medium px-3 py-2">
-                            <i class="fas fa-list btn-icon me-1"></i> View Payments
-                        </button>
-                        <button type="button" id="btnViewLedger" class="btn btn-outline-primary bg-white text-primary fw-medium px-3 py-2">
-                            <i class="fas fa-book btn-icon me-1"></i> View Ledger
-                        </button>
-                        <button type="button" id="btnCreatePayment" class="btn btn-outline-primary btn-primary text-white fw-medium px-4 py-2">
-                            <i class="fas fa-plus btn-icon me-1"></i> Record Payment
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
+    </div>
+</div>
     @else
         <div class="position-relative bg-white p-3 rounded-3 shadow-sm">
             <!-- Filters Card -->

@@ -80,6 +80,11 @@ class Client extends Model
         return $this->hasMany(User::class, 'clientid');
     }
 
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(Group::class, 'groupid');
+    }
+
     public function documents(): HasMany
     {
         return $this->hasMany(ClientDocument::class, 'clientid');

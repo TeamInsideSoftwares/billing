@@ -115,10 +115,10 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
                 <div class="card bg-light border-0 p-3" id="addItemFormCard">
                     <div class="row g-2">
-                        <div class="col-12">
+                        <div class="col-12 col-md-5">
                             <label for="manual_item_itemid"
                                 class="form-label small lh-sm fw-semibold text-dark mb-1">Item</label>
-                            <div style="display: flex; gap: 0.35rem; align-items: center;">
+                            <div class="input-group">
                                 <select id="manual_item_itemid" class="form-select" style="flex: 1;">
                                     <option value="">Select item</option>
 
@@ -154,7 +154,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                                 class="form-label small lh-sm fw-semibold text-dark mb-1">Unit Price</label>
                             <input type="number" id="manual_item_unit_price" class="form-control" min="0" step="0.01">
                         </div>
-                        <div class="col-6 col-md-1">
+                        <div class="col-6 col-md-2">
                             <label for="manual_item_discount"
                                 class="form-label small lh-sm fw-semibold text-dark mb-1">Disc %</label>
                             <input type="number" id="manual_item_discount" class="form-control" min="0" max="100"
@@ -181,7 +181,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                                 class="form-label small lh-sm fw-semibold text-dark mb-1">Users</label>
                             <input type="number" id="manual_item_users" class="form-control" value="1" min="1" step="1">
                         </div>
-                        <div class="col-6 col-md-2">
+                        <div class="col-6 col-md-3">
                             <label for="manual_item_frequency"
                                 class="form-label small lh-sm fw-semibold text-dark mb-1">Freq</label>
                             <select id="manual_item_frequency" class="form-select">
@@ -194,18 +194,18 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                                 <option value="Year(s)">Year(s)</option>
                             </select>
                         </div>
-                        <div id="manual_item_duration_wrap" class="col-6 col-md-2 is-hidden">
+                        <div id="manual_item_duration_wrap" class="col-6 col-md-3 is-hidden">
                             <label for="manual_item_duration"
                                 class="form-label small lh-sm fw-semibold text-dark mb-1">Dur</label>
                             <input type="number" id="manual_item_duration" class="form-control" min="0" step="1"
                                 placeholder="e.g. 12">
                         </div>
-                        <div id="manual_item_start_date_wrap" class="col-6 col-md-2">
+                        <div id="manual_item_start_date_wrap" class="col-6 col-md-3">
                             <label for="manual_item_start_date"
                                 class="form-label small lh-sm fw-semibold text-dark mb-1">Start</label>
                             <input type="date" id="manual_item_start_date" class="form-control">
                         </div>
-                        <div id="manual_item_end_date_wrap" class="col-6 col-md-2">
+                        <div id="manual_item_end_date_wrap" class="col-6 col-md-3">
                             <label for="manual_item_end_date"
                                 class="form-label small lh-sm fw-semibold text-dark mb-1">End</label>
                             <input type="date" id="manual_item_end_date" class="form-control">
@@ -261,9 +261,13 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                 id="manualGrandTotal">0</strong></div>
     </div>
 
-    <div class="mt-4">
-        <button type="button" class="btn btn-outline-primary btn-primary text-white fw-medium w-100" id="btnNextToStep3"
-            disabled>Review &amp; Terms &rarr;</button>
+    <div class="d-flex align-items-center justify-content-between mt-3">
+        <button type="button" id="btnBackToStep1" class="btn btn-outline-primary bg-white text-primary fw-medium">
+            <i class="fas fa-times btn-icon me-1"></i> Back
+        </button>
+        <button type="submit" id="btnNextToStep3" class="btn btn-outline-primary btn-primary text-white fw-medium">
+            Save & Next <i class="fas fa-arrow-right btn-icon ms-1"></i>
+        </button>
     </div>
 </div>
 

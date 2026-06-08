@@ -5,53 +5,118 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Forgot Password | {{ config('app.name', 'Billing Software') }}</title>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
+        }
+    </style>
 </head>
 
-<body class="login-page">
-    <main class="glass-card">
-        <p class="login-eyebrow">SkoolReady</p>
-        <h1 class="login-title">Forgot Password</h1>
-        <p class="login-subtitle">Enter your email to receive a reset link</p>
+<body>
 
-        @if (session('success'))
-            <div class="alert success">
-                {{ session('success') }}
-            </div>
-        @endif
+    <div class="container">
+        <div class="row min-vh-100 justify-content-center align-items-center">
 
-        @if (session('error'))
-            <div class="alert error">
-                {{ session('error') }}
-            </div>
-        @endif
+            <div class="col-md-6 col-lg-4">
 
-        @if ($errors->any())
-            <div class="alert error">
-                @foreach ($errors->all() as $error)
-                    {{ $error }}
-                @endforeach
-            </div>
-        @endif
+                <div class="card border-0 shadow-lg">
 
-        <form action="{{ route('password.email') }}" method="POST" class="login-form">
-            @csrf
-            <div>
-                <label for="email">Email Address</label>
-                <input type="email" name="email" id="email" value="{{ old('email') }}" required autofocus>
+                    <div class="card-body p-4 p-lg-5">
+
+                        <div class="text-center mb-4">
+
+                            <p class="text-primary fw-semibold text-uppercase small mb-2">
+                                SkoolReady
+                            </p>
+
+                            <h2 class="fw-bold mb-2">
+                                Forgot Password
+                            </h2>
+
+                            <p class="text-muted mb-0">
+                                Enter your email address to receive a password reset link.
+                            </p>
+
+                        </div>
+
+                        {{-- Success Message --}}
+                        @if (session('success'))
+                            <div class="alert alert-success">
+                                {{ session('success') }}
+                            </div>
+                        @endif
+
+                        {{-- Error Message --}}
+                        @if (session('error'))
+                            <div class="alert alert-danger">
+                                {{ session('error') }}
+                            </div>
+                        @endif
+
+                        {{-- Validation Errors --}}
+                        @if ($errors->any())
+                            <div class="alert alert-danger">
+                                <ul class="mb-0 ps-3">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
+                        <form action="{{ route('password.email') }}" method="POST">
+
+                            @csrf
+
+                            <div class="mb-4">
+                                <label for="email" class="form-label">
+                                    Email Address
+                                </label>
+
+                                <input type="email"
+                                       name="email"
+                                       id="email"
+                                       value="{{ old('email') }}"
+                                       class="form-control"
+                                       required
+                                       autofocus>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center">
+
+                                <a href="{{ route('login') }}"
+                                   class="text-decoration-none">
+                                    Back to Sign In
+                                </a>
+
+                                <button type="submit"
+                                        class="btn btn-primary">
+                                    Send Reset Link
+                                </button>
+
+                            </div>
+
+                        </form>
+
+                    </div>
+
+                </div>
+
             </div>
 
-            <div class="login-footer-row">
-                <a href="{{ route('login') }}" class="forgot-link">Back to Sign In</a>
-                <button type="submit" class="primary-button login-button">
-                    Send Reset Link
-                </button>
-            </div>
-        </form>
-    </main>
+        </div>
+    </div>
+
 </body>
 
 </html>

@@ -1,143 +1,268 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="dashboard-grid">
-    <div class="dashboard-header">
-        <div>
-            <p class="eyebrow">{{ now()->format('l, F j, Y') }}</p>
-            <h2 class="fw-700 mb-0">Dashboard</h2>
-        </div>
-    </div>
+<div class="container-fluid py-2">
+    {{-- KPI Cards --}}
+    <div class="row g-4 mb-4">
 
-    <div class="kpi-row">
         @foreach ($stats as $stat)
-            <div class="soft-card p-4 position-relative stat-card-equal">
-                @if (!empty($stat['url']))
-                    <a href="{{ $stat['url'] }}" class="dashboard-card-hit" aria-label="Open {{ $stat['label'] }}"></a>
-                @endif
-                <div class="stat-header">
-                    <div class="stat-icon {{ $stat['tone'] }}">
-                        <i class="fas {{ $stat['icon'] }}"></i>
-                    </div>
-                    @if(!empty($stat['change']))
-                        <span class="stat-change stat-change-sm {{ str_contains($stat['change'], '+') ? 'positive' : 'warning' }}">
-                            {{ $stat['change'] }}
-                        </span>
+            <div class="col-xl-2 col-lg-4 col-md-6">
+                <div class="card shadow-sm border-0 h-100 position-relative">
+
+                    @if (!empty($stat['url']))
+                        <a href="{{ $stat['url'] }}"
+                           class="position-absolute top-0 start-0 w-100 h-100"
+                           aria-label="Open {{ $stat['label'] }}"></a>
                     @endif
-                </div>
-                <div class="stat-content">
-                    <p class="eyebrow mb-1">{{ $stat['label'] }}</p>
-                    <h3 class="mb-0 fw-800">{{ $stat['value'] }}</h3>
+
+                    <div class="card-body">
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+
+                            <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center"
+                                 style="width:50px;height:50px;">
+                                <i class="fas {{ $stat['icon'] }} text-primary"></i>
+                            </div>
+
+                            @if(!empty($stat['change']))
+                                <span class="badge {{ str_contains($stat['change'], '+') ? 'bg-success' : 'bg-warning text-dark' }}">
+                                    {{ $stat['change'] }}
+                                </span>
+                            @endif
+
+                        </div>
+
+                        <p class="text-muted small mb-1">{{ $stat['label'] }}</p>
+                        <h3 class="fw-bold mb-0">{{ $stat['value'] }}</h3>
+
+                    </div>
                 </div>
             </div>
         @endforeach
-        <div class="soft-card p-4 position-relative stat-card-equal">
-            <a href="{{ route('payments.index') }}" class="dashboard-card-hit" aria-label="Open Payments"></a>
-            <div class="stat-header">
-                <div class="stat-icon success">
-                    <i class="fas fa-wallet"></i>
+
+        {{-- Revenue --}}
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="card shadow-sm border-0 h-100 position-relative">
+
+                <a href="{{ route('payments.index') }}"
+                   class="position-absolute top-0 start-0 w-100 h-100"
+                   aria-label="Open Payments"></a>
+
+                <div class="card-body">
+
+                    <div class="mb-3">
+                        <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center"
+                             style="width:50px;height:50px;">
+                            <i class="fas fa-wallet text-success"></i>
+                        </div>
+                    </div>
+
+                    <p class="text-muted small mb-1">Total Revenue</p>
+                    <h3 class="fw-bold mb-0">Rs {{ number_format($totalRevenue, 0) }}</h3>
+
                 </div>
             </div>
-            <div class="stat-content">
-                <p class="eyebrow mb-1">Total Revenue</p>
-                <h3 class="mb-0 fw-800">Rs {{ number_format($totalRevenue, 0) }}</h3>
-            </div>
         </div>
-        <div class="soft-card p-4 position-relative stat-card-equal">
-            <a href="{{ route('invoices.index') }}" class="dashboard-card-hit" aria-label="Open Invoices"></a>
-            <div class="stat-header">
-                <div class="stat-icon brand">
-                    <i class="fas fa-file-invoice-dollar"></i>
+
+        {{-- Invoices --}}
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="card shadow-sm border-0 h-100 position-relative">
+
+                <a href="{{ route('invoices.index') }}"
+                   class="position-absolute top-0 start-0 w-100 h-100"
+                   aria-label="Open Invoices"></a>
+
+                <div class="card-body">
+
+                    <div class="mb-3">
+                        <div class="bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center"
+                             style="width:50px;height:50px;">
+                            <i class="fas fa-file-invoice-dollar text-info"></i>
+                        </div>
+                    </div>
+
+                    <p class="text-muted small mb-1">Total Invoices</p>
+                    <h3 class="fw-bold mb-0">{{ $totalInvoices }}</h3>
+
                 </div>
             </div>
-            <div class="stat-content">
-                <p class="eyebrow mb-1">Total Invoices</p>
-                <h3 class="mb-0 fw-800">{{ $totalInvoices }}</h3>
-            </div>
         </div>
+
     </div>
 
-    <div class="dashboard-main">
-        <div class="dashboard-main-col">
-            <div class="soft-card p-4">
-                <div class="panel-head mb-4">
-                    <div>
-                        <p class="eyebrow">Renewal Operations</p>
-                        <h5 class="fw-700 mb-0">Items Needing Attention</h5>
+    {{-- Main Content --}}
+    <div class="row g-4">
+
+        {{-- Left Column --}}
+        <div class="col-lg-6">
+
+            {{-- Items Needing Attention --}}
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <small class="text-muted text-uppercase">
+                                Renewal Operations
+                            </small>
+                            <h5 class="fw-bold mb-0">
+                                Items Needing Attention
+                            </h5>
+                        </div>
+
+                        <a href="{{ route('invoices.expiry-list', ['tab' => 'upcoming']) }}"
+                           class="btn btn-sm btn-outline-primary">
+                            View All
+                        </a>
                     </div>
-                    <a href="{{ route('invoices.expiry-list', ['tab' => 'upcoming']) }}" class="text-link">View All</a>
-                </div>
-                <div class="list-group list-group-flush">
+
                     @forelse ($renewalsNeedAttention as $item)
+
                         @php($daysLeft = $item['days_left'])
-                        <div class="list-item">
-                            <div class="list-item-info">
-                                <div class="list-item-icon">
+
+                        <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+
+                            <div class="d-flex align-items-center">
+
+                                <div class="me-3">
                                     <i class="fas fa-sync-alt text-warning"></i>
                                 </div>
+
                                 <div>
-                                    <p class="mb-0 fw-600 list-item-title">{{ $item['item_name'] }}</p>
-                                    <small class="text-muted">{{ $item['client_name'] }} · Expires {{ $item['end_date_display'] }}</small>
+                                    <div class="fw-semibold">
+                                        {{ $item['item_name'] }}
+                                    </div>
+
+                                    <small class="text-muted">
+                                        {{ $item['client_name'] }}
+                                        • Expires {{ $item['end_date_display'] }}
+                                    </small>
                                 </div>
+
                             </div>
-                            <div class="renewal-meta">
+
+                            <div class="text-end">
+
                                 @if($daysLeft === 0)
-                                    <span class="renewal-pill warning">Due Today</span>
+                                    <span class="badge bg-warning text-dark">
+                                        Due Today
+                                    </span>
                                 @else
-                                    <span class="renewal-pill brand">{{ $daysLeft }}d left</span>
+                                    <span class="badge bg-primary">
+                                        {{ $daysLeft }}d left
+                                    </span>
                                 @endif
-                                <a href="{{ route('invoices.expiry-list', ['c' => $item['clientid'], 'tab' => 'upcoming']) }}" class="text-link">Open</a>
+
+                                <div class="mt-1">
+                                    <a href="{{ route('invoices.expiry-list', ['c' => $item['clientid'], 'tab' => 'upcoming']) }}">
+                                        Open
+                                    </a>
+                                </div>
+
                             </div>
+
                         </div>
+
                     @empty
-                        <p class="text-muted mb-0">No renewal items need attention right now.</p>
+
+                        <p class="text-muted mb-0">
+                            No renewal items need attention right now.
+                        </p>
+
                     @endforelse
+
                 </div>
             </div>
 
-            <div class="soft-card p-4">
-                <div class="panel-head mb-3">
-                    <h5 class="fw-700 mb-0">Recent Revenue</h5>
-                    <a href="{{ route('payments.index') }}" class="text-link">View All</a>
-                </div>
-                <div class="list-group list-group-flush">
+            {{-- Recent Revenue --}}
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="fw-bold mb-0">Recent Revenue</h5>
+
+                        <a href="{{ route('payments.index') }}"
+                           class="btn btn-sm btn-outline-success">
+                            View All
+                        </a>
+                    </div>
+
                     @forelse ($recentRevenue as $item)
-                        <div class="list-item">
-                            <div class="list-item-info">
-                                <div class="list-item-icon">
+
+                        <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+
+                            <div class="d-flex align-items-center">
+
+                                <div class="me-3">
                                     <i class="fas fa-arrow-down text-success"></i>
                                 </div>
+
                                 <div>
-                                    <p class="mb-0 fw-600 list-item-title">{{ $item['title'] }}</p>
-                                    <small class="text-muted">{{ $item['date'] }}</small>
+                                    <div class="fw-semibold">
+                                        {{ $item['title'] }}
+                                    </div>
+
+                                    <small class="text-muted">
+                                        {{ $item['date'] }}
+                                    </small>
                                 </div>
+
                             </div>
-                            <div class="amount-text success">
+
+                            <div class="fw-bold text-success">
                                 {{ $item['amount'] }}
                             </div>
+
                         </div>
+
                     @empty
-                        <p class="text-muted mb-0">No recent payments yet.</p>
+
+                        <p class="text-muted mb-0">
+                            No recent payments yet.
+                        </p>
+
                     @endforelse
+
                 </div>
             </div>
+
         </div>
 
-        <div class="dashboard-main-col">
-            <div class="soft-card p-4">
-                <div class="panel-head mb-4">
-                    <div>
-                        <p class="eyebrow">Client Health</p>
-                        <h5 class="fw-700 mb-0">Renewal Priority by Client</h5>
+        {{-- Right Column --}}
+        <div class="col-lg-6">
+
+            {{-- Client Health --}}
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <small class="text-muted text-uppercase">
+                                Client Health
+                            </small>
+
+                            <h5 class="fw-bold mb-0">
+                                Renewal Priority by Client
+                            </h5>
+                        </div>
+
+                        <a href="{{ route('clients.index') }}"
+                           class="btn btn-sm btn-outline-primary">
+                            Clients
+                        </a>
                     </div>
-                    <a href="{{ route('clients.index') }}" class="text-link">Clients</a>
-                </div>
-                <div class="list-group list-group-flush">
+
                     @forelse ($renewalClientPriorities as $client)
-                        <div class="list-item">
+
+                        <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+
                             <div>
-                                <p class="mb-0 fw-600 list-item-title">{{ $client['client_name'] }}</p>
+                                <div class="fw-semibold">
+                                    {{ $client['client_name'] }}
+                                </div>
+
                                 <small class="text-muted">
+
                                     @if (($client['nearest_days_left'] ?? null) === null)
                                         No timeline
                                     @elseif($client['nearest_days_left'] < 0)
@@ -147,66 +272,109 @@
                                     @else
                                         Nearest expiry in {{ $client['nearest_days_left'] }} day(s)
                                     @endif
+
                                 </small>
                             </div>
-                            <div class="renewal-client-metrics">
+
+                            <div class="text-end">
+
                                 @if (($client['expired_count'] ?? 0) > 0)
-                                    <span class="renewal-pill danger">{{ $client['expired_count'] }} expired</span>
+                                    <span class="badge bg-danger">
+                                        {{ $client['expired_count'] }} expired
+                                    </span>
                                 @endif
+
                                 @if (($client['due_this_week_count'] ?? 0) > 0)
-                                    <span class="renewal-pill warning">{{ $client['due_this_week_count'] }} this week</span>
+                                    <span class="badge bg-warning text-dark">
+                                        {{ $client['due_this_week_count'] }} this week
+                                    </span>
                                 @endif
+
                                 @if (($client['due_this_month_count'] ?? 0) > 0)
-                                    <span class="renewal-pill brand">{{ $client['due_this_month_count'] }} this month</span>
+                                    <span class="badge bg-primary">
+                                        {{ $client['due_this_month_count'] }} this month
+                                    </span>
                                 @endif
+
                             </div>
+
                         </div>
+
                     @empty
-                        <p class="text-muted mb-0">No client renewal priorities for the next 30 days.</p>
+
+                        <p class="text-muted mb-0">
+                            No client renewal priorities for the next 30 days.
+                        </p>
+
                     @endforelse
+
                 </div>
             </div>
 
-            <div class="soft-card p-4">
-                <div class="panel-head mb-3">
-                    <h5 class="fw-700 mb-0">Recently Expired Items</h5>
-                    <a href="{{ route('invoices.expiry-list', ['tab' => 'expired']) }}" class="text-link">Open Expiry List</a>
-                </div>
-                <div class="list-group list-group-flush">
+            {{-- Recently Expired --}}
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+
+                        <h5 class="fw-bold mb-0">
+                            Recently Expired Items
+                        </h5>
+
+                        <a href="{{ route('invoices.expiry-list', ['tab' => 'expired']) }}"
+                           class="btn btn-sm btn-outline-danger">
+                            Open Expiry List
+                        </a>
+
+                    </div>
+
                     @forelse ($expiredRenewals as $item)
-                        <div class="list-item">
-                            <div class="list-item-info">
-                                <div class="list-item-icon">
+
+                        <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+
+                            <div class="d-flex align-items-center">
+
+                                <div class="me-3">
                                     <i class="fas fa-exclamation-triangle text-danger"></i>
                                 </div>
+
                                 <div>
-                                    <p class="mb-0 fw-600 list-item-title">{{ $item['item_name'] }}</p>
-                                    <small class="text-muted">{{ $item['client_name'] }} · {{ $item['end_date_display'] }}</small>
+                                    <div class="fw-semibold">
+                                        {{ $item['item_name'] }}
+                                    </div>
+
+                                    <small class="text-muted">
+                                        {{ $item['client_name'] }}
+                                        • {{ $item['end_date_display'] }}
+                                    </small>
                                 </div>
+
                             </div>
-                            <div class="amount-text danger">
+
+                            <div class="fw-bold text-danger">
                                 @if(($item['days_left'] ?? 0) === 0)
                                     Today
                                 @else
                                     {{ abs($item['days_left']) }}d ago
                                 @endif
                             </div>
+
                         </div>
+
                     @empty
-                        <p class="text-muted mb-0">No expired items.</p>
+
+                        <p class="text-muted mb-0">
+                            No expired items.
+                        </p>
+
                     @endforelse
+
                 </div>
             </div>
-        </div>
-    </div>
-</div>
 
-<style>
-    .dashboard-card-hit {
-        position: absolute;
-        inset: 0;
-        z-index: 2;
-        border-radius: inherit;
-    }
-</style>
+        </div>
+
+    </div>
+
+</div>
 @endsection

@@ -296,7 +296,6 @@ class OrdersController extends Controller
 
         return view('orders.create', [
             'title' => 'Create Orders',
-            'subtitle' => 'Load a quotation, edit the items, then save them as individual orders.',
             'clients' => Client::where('accountid', $accountId)->regular()->orderBy('business_name')->orderBy('contact_name')->get(),
             'services' => Service::where('accountid', $accountId)->with('costings', 'category')->orderBy('name')->get(),
             'preSelectedClientId' => $preSelectedClientId,
