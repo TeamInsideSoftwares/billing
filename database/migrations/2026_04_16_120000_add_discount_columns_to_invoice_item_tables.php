@@ -10,11 +10,11 @@ return new class extends Migration
     {
         if (Schema::hasTable('pi_items')) {
             Schema::table('pi_items', function (Blueprint $table) {
-                if (!Schema::hasColumn('pi_items', 'discount_percent')) {
+                if (! Schema::hasColumn('pi_items', 'discount_percent')) {
                     $table->decimal('discount_percent', 5, 2)->default(0)->after('tax_rate');
                 }
 
-                if (!Schema::hasColumn('pi_items', 'discount_amount')) {
+                if (! Schema::hasColumn('pi_items', 'discount_amount')) {
                     $table->decimal('discount_amount', 12, 2)->default(0)->after('discount_percent');
                 }
             });
@@ -22,11 +22,11 @@ return new class extends Migration
 
         if (Schema::hasTable('ti_items')) {
             Schema::table('ti_items', function (Blueprint $table) {
-                if (!Schema::hasColumn('ti_items', 'discount_percent')) {
+                if (! Schema::hasColumn('ti_items', 'discount_percent')) {
                     $table->decimal('discount_percent', 5, 2)->default(0)->after('tax_rate');
                 }
 
-                if (!Schema::hasColumn('ti_items', 'discount_amount')) {
+                if (! Schema::hasColumn('ti_items', 'discount_amount')) {
                     $table->decimal('discount_amount', 12, 2)->default(0)->after('discount_percent');
                 }
             });
@@ -47,7 +47,7 @@ return new class extends Migration
                     $dropColumns[] = 'discount_amount';
                 }
 
-                if (!empty($dropColumns)) {
+                if (! empty($dropColumns)) {
                     $table->dropColumn($dropColumns);
                 }
             });
@@ -65,7 +65,7 @@ return new class extends Migration
                     $dropColumns[] = 'discount_amount';
                 }
 
-                if (!empty($dropColumns)) {
+                if (! empty($dropColumns)) {
                     $table->dropColumn($dropColumns);
                 }
             });

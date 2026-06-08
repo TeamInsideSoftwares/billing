@@ -10,10 +10,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            if (!Schema::hasColumn('payments', 'tds')) {
+            if (! Schema::hasColumn('payments', 'tds')) {
                 $table->boolean('tds')->default(false)->after('received_amount');
             }
-            if (!Schema::hasColumn('payments', 'description')) {
+            if (! Schema::hasColumn('payments', 'description')) {
                 $table->text('description')->nullable()->after('reference_number');
             }
         });
@@ -34,7 +34,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            if (!Schema::hasColumn('payments', 'tds_amount')) {
+            if (! Schema::hasColumn('payments', 'tds_amount')) {
                 $table->decimal('tds_amount', 12, 2)->default(0)->after('received_amount');
             }
         });
@@ -53,7 +53,7 @@ return new class extends Migration
             if (Schema::hasColumn('payments', 'description')) {
                 $dropColumns[] = 'description';
             }
-            if (!empty($dropColumns)) {
+            if (! empty($dropColumns)) {
                 $table->dropColumn($dropColumns);
             }
         });

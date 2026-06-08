@@ -8,12 +8,12 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('invoice_items')) {
+        if (! Schema::hasTable('invoice_items')) {
             return;
         }
 
         Schema::table('invoice_items', function (Blueprint $table) {
-            if (!Schema::hasColumn('invoice_items', 'orderid')) {
+            if (! Schema::hasColumn('invoice_items', 'orderid')) {
                 $table->string('orderid', 6)->nullable()->after('invoiceid');
                 $table->index('orderid');
                 $table->index(['clientid', 'orderid', 'end_date'], 'invoice_items_client_order_end_idx');
@@ -23,7 +23,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!Schema::hasTable('invoice_items')) {
+        if (! Schema::hasTable('invoice_items')) {
             return;
         }
 

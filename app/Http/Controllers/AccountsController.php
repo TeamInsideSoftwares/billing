@@ -70,7 +70,7 @@ class AccountsController extends Controller
     public function createCredentials(Request $request): View|RedirectResponse
     {
         $draft = $request->session()->get(self::WIZARD_SESSION_KEY);
-        if (!$draft) {
+        if (! $draft) {
             return redirect()->route('superadmin.create')
                 ->with('error', 'Please complete Step 1 first.');
         }
@@ -85,7 +85,7 @@ class AccountsController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $draft = $request->session()->get(self::WIZARD_SESSION_KEY);
-        if (!$draft) {
+        if (! $draft) {
             return redirect()->route('superadmin.create')
                 ->with('error', 'Session expired. Please start again.');
         }
@@ -191,7 +191,7 @@ class AccountsController extends Controller
                 $accountUser->role = 'admin';
                 $accountUser->is_active = true;
 
-                if (!empty($validated['password'])) {
+                if (! empty($validated['password'])) {
                     $accountUser->password = $validated['password'];
                 }
 
@@ -218,9 +218,9 @@ class AccountsController extends Controller
         $counter = 1;
 
         while (Account::query()->where('slug', $slug)->exists()) {
-            $suffix = '-' . $counter;
+            $suffix = '-'.$counter;
             $maxBaseLength = 150 - strlen($suffix);
-            $slug = substr((string) ($base !== '' ? $base : 'account'), 0, max(1, $maxBaseLength)) . $suffix;
+            $slug = substr((string) ($base !== '' ? $base : 'account'), 0, max(1, $maxBaseLength)).$suffix;
             $counter++;
         }
 

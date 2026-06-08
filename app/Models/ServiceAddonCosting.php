@@ -11,6 +11,7 @@ class ServiceAddonCosting extends Model
     use HasAlphaNumericId;
 
     protected $table = 'service_addon_costings';
+
     protected $primaryKey = 'addon_cid';
 
     protected function idLength(): int

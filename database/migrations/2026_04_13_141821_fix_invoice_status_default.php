@@ -11,12 +11,12 @@ return new class extends Migration
         // Update existing 'draft' status to 'unpaid'
         DB::table('proforma_invoices')->where('status', 'draft')->update(['status' => 'unpaid']);
         DB::table('tax_invoices')->where('status', 'draft')->update(['status' => 'unpaid']);
-        
+
         // Change default status
         Schema::table('proforma_invoices', function ($table) {
             $table->string('status', 20)->default('unpaid')->change();
         });
-        
+
         Schema::table('tax_invoices', function ($table) {
             $table->string('status', 20)->default('unpaid')->change();
         });
@@ -27,7 +27,7 @@ return new class extends Migration
         Schema::table('proforma_invoices', function ($table) {
             $table->string('status', 20)->default('draft')->change();
         });
-        
+
         Schema::table('tax_invoices', function ($table) {
             $table->string('status', 20)->default('draft')->change();
         });

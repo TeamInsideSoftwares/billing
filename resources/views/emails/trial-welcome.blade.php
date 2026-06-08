@@ -155,7 +155,8 @@
                     <tr>
                         <td class="content">
                             <p>Hello {{ $name }},</p>
-                            <p>Your trial account has been created successfully. Use the credentials below to sign in and get started.</p>
+                            <p>Your trial account has been created successfully. Use the credentials below to sign in
+                                and get started.</p>
 
                             <div class="meta-box">
                                 <p class="meta-row"><span>Login Email</span>{{ $email }}</p>

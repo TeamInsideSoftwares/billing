@@ -29,9 +29,13 @@ class CommunicationLog extends Model
     use HasAlphaNumericId;
 
     protected $table = 'communication_logs';
+
     protected $primaryKey = 'logid';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
+
     public $timestamps = true;
 
     protected function idLength(): int
@@ -43,5 +47,4 @@ class CommunicationLog extends Model
     {
         return [];
     }
-
 }

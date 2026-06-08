@@ -2,35 +2,35 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Models\AccountBillingDetail;
 use App\Models\Client;
+use App\Models\CommunicationLog;
+use App\Models\FinancialYear;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Ledger;
-use App\Models\FinancialYear;
-use App\Models\CommunicationLog;
 use App\Models\MessageTemplate;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentDetail;
-use App\Models\Setting;
+use App\Models\SerialConfiguration;
 use App\Models\Service;
+use App\Models\Setting;
 use App\Models\Tax;
 use App\Models\TermsCondition;
 use App\Services\InvoiceReminderService;
+use App\Traits\ConfiguresBrowsershot;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-use Carbon\Carbon;
-
-use App\Traits\ConfiguresBrowsershot;
 
 class InvoicesController extends Controller
 {
@@ -38,7 +38,7 @@ class InvoicesController extends Controller
 
     private function normalizeInvoiceTermsByType(mixed $terms): array
     {
-        if (!is_array($terms) || $terms === []) {
+        if (! is_array($terms) || $terms === []) {
             return [
                 'proforma' => [],
                 'billing' => [],
@@ -101,10 +101,10 @@ class InvoicesController extends Controller
 
     private function ensureInvoiceDefaultTerms(Invoice $invoice): void
     {
-        $termBucket = !empty(trim((string) $invoice->ti_number)) ? 'billing' : 'proforma';
+        $termBucket = ! empty(trim((string) $invoice->ti_number)) ? 'billing' : 'proforma';
         $storedTerms = $this->normalizeInvoiceTermsByType($invoice->terms);
 
-        if (!empty($storedTerms[$termBucket] ?? [])) {
+        if (! empty($storedTerms[$termBucket] ?? [])) {
             return;
         }
 
@@ -120,7 +120,7 @@ class InvoicesController extends Controller
 
     private function mapInvoiceTemplateType(Invoice $invoice): string
     {
-        return !empty(trim((string) $invoice->ti_number)) ? 'ti' : 'pi';
+        return ! empty(trim((string) $invoice->ti_number)) ? 'ti' : 'pi';
     }
 
     private function resolvePrimaryOrderIdFromItems(Invoice $invoice): ?string
@@ -129,8 +129,8 @@ class InvoicesController extends Controller
         $orderId = $invoice->invoiceItems
             ->sortBy('sequence')
             ->pluck('orderid')
-            ->map(fn($value) => trim((string) $value))
-            ->first(fn($value) => $value !== '');
+            ->map(fn ($value) => trim((string) $value))
+            ->first(fn ($value) => $value !== '');
 
         return $orderId !== null ? (string) $orderId : null;
     }
@@ -138,6 +138,7 @@ class InvoicesController extends Controller
     private function renderMessageTemplate(string $value, Invoice $invoice, ?string $companyName = null): string
     {
         $replace = $this->buildInvoiceMessageTemplateReplacements($invoice, $companyName);
+
         return strtr($value, $replace);
     }
 
@@ -160,14 +161,14 @@ class InvoicesController extends Controller
         $itemEndDate = $primaryItem?->end_date?->format('d M Y') ?? '';
         $daysLeft = $primaryItem?->end_date ? now()->startOfDay()->diffInDays($primaryItem->end_date->startOfDay(), false) : null;
         $daysAgo = ((int) ($daysLeft ?? 0)) < 0 ? abs((int) $daysLeft) : 0;
-        $templateType = !empty(trim((string) $invoice->ti_number)) ? 'ti' : 'pi';
+        $templateType = ! empty(trim((string) $invoice->ti_number)) ? 'ti' : 'pi';
         $renewalDate = '';
         $latestPayment = $this->latestPaymentForInvoice($invoice);
         $paymentAmount = (float) ($latestPayment?->received_amount ?? 0);
         $paymentDate = $latestPayment?->payment_date?->format('d M Y') ?? '';
         $paymentReference = trim((string) ($latestPayment?->reference_number ?? ''));
 
-        $hasInvoiceId = !empty((string) ($invoice->invoiceid ?? ''));
+        $hasInvoiceId = ! empty((string) ($invoice->invoiceid ?? ''));
         $piLink = $hasInvoiceId ? route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']) : '';
         $tiLink = $hasInvoiceId ? route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice']) : '';
 
@@ -183,13 +184,13 @@ class InvoicesController extends Controller
                 ->where('itemid', $primaryItem->itemid)
                 ->when(
                     $primaryItem?->end_date,
-                    fn($q) => $q->whereDate('end_date', $primaryItem->end_date->toDateString())
+                    fn ($q) => $q->whereDate('end_date', $primaryItem->end_date->toDateString())
                 )
                 ->orderByDesc('created_at')
                 ->first();
         }
         $primaryOrderId = $this->resolvePrimaryOrderIdFromItems($invoice);
-        if (!$sourceOrder && !empty($primaryOrderId)) {
+        if (! $sourceOrder && ! empty($primaryOrderId)) {
             $sourceOrder = Order::query()
                 ->where('accountid', $invoice->accountid)
                 ->find($primaryOrderId);
@@ -212,7 +213,7 @@ class InvoicesController extends Controller
             '{{ti_number}}' => (string) ($invoice->ti_number ?? ''),
             '{{pi_link}}' => $piLink,
             '{{ti_link}}' => $tiLink,
-            '{{total_amount}}' => $currency . ' ' . number_format($totalAmount, 2),
+            '{{total_amount}}' => $currency.' '.number_format($totalAmount, 2),
             '{{due_date}}' => $dueDate,
             // Reminder/Renewal/Expiry focused tags
             '{{template_type}}' => $templateType,
@@ -228,7 +229,7 @@ class InvoicesController extends Controller
             '{{order_number}}' => (string) ($sourceOrder?->order_number ?? ''),
             '{{order_start_date}}' => $sourceOrder?->start_date?->format('d M Y') ?? '',
             '{{order_end_date}}' => $sourceOrder?->end_date?->format('d M Y') ?? '',
-            '{{payment_amount}}' => $paymentAmount > 0 ? ($currency . ' ' . number_format($paymentAmount, 2)) : '',
+            '{{payment_amount}}' => $paymentAmount > 0 ? ($currency.' '.number_format($paymentAmount, 2)) : '',
             '{{payment_date}}' => $paymentDate,
             '{{payment_reference}}' => $paymentReference,
             // Backwards compatibility
@@ -253,7 +254,7 @@ class InvoicesController extends Controller
         $replace = $this->buildInvoiceMessageTemplateReplacements($invoice, $companyName);
         $variables = [];
         foreach ($tokens as $token) {
-            $placeholder = '{{' . $token . '}}';
+            $placeholder = '{{'.$token.'}}';
             $resolved = array_key_exists($placeholder, $replace)
                 ? (string) $replace[$placeholder]
                 : (string) $token;
@@ -272,6 +273,7 @@ class InvoicesController extends Controller
 
         if (preg_match('/^https?:\/\//i', $value)) {
             $value = str_replace('/storage/app/public/', '/storage/', $value);
+
             return $value;
         }
 
@@ -286,23 +288,23 @@ class InvoicesController extends Controller
             $relative = substr($relative, strlen('storage/'));
         }
 
-        return asset('storage/' . ltrim($relative, '/'));
+        return asset('storage/'.ltrim($relative, '/'));
     }
 
     private function resolveCampioInvoicePdfUrl(Invoice $invoice, bool $isTaxInvoice): string
     {
         $typeKey = $isTaxInvoice ? 'ti' : 'pi';
         $existing = collect($this->listStoredInvoicePdfVersions($invoice))
-            ->filter(fn($row) => (string) ($row['type'] ?? '') === $typeKey)
-            ->sortByDesc(fn($row) => (int) ($row['version'] ?? 0))
+            ->filter(fn ($row) => (string) ($row['type'] ?? '') === $typeKey)
+            ->sortByDesc(fn ($row) => (int) ($row['version'] ?? 0))
             ->first();
 
-        if (!empty($existing['path'])) {
+        if (! empty($existing['path'])) {
             return $this->buildFriendlyCampioPdfUrl($invoice, (string) $existing['path'], $isTaxInvoice);
         }
 
         $saved = $this->persistInvoicePdfVersion($invoice, $isTaxInvoice);
-        if (!empty($saved['path'])) {
+        if (! empty($saved['path'])) {
             return $this->buildFriendlyCampioPdfUrl($invoice, (string) $saved['path'], $isTaxInvoice);
         }
 
@@ -315,16 +317,16 @@ class InvoicesController extends Controller
         $disk = Storage::disk('public');
         $number = trim((string) ($isTaxInvoice ? ($invoice->ti_number ?: $invoice->invoice_number) : ($invoice->pi_number ?: $invoice->invoice_number)));
         $prefix = $isTaxInvoice ? 'Tax Invoice - ' : 'Proforma Invoice - ';
-        $friendlyBase = $prefix . ($number !== '' ? $number : $invoice->invoiceid);
+        $friendlyBase = $prefix.($number !== '' ? $number : $invoice->invoiceid);
         $friendlyBase = preg_replace('/[\\\\\\/:*?"<>|]+/', '-', $friendlyBase) ?: ($isTaxInvoice ? 'Tax-Invoice' : 'Proforma-Invoice');
         $friendlyBase = preg_replace('/\s+/', '-', $friendlyBase) ?: $friendlyBase;
-        $targetPath = 'clients/' . $invoice->clientid . '/invoices-share/' . $friendlyBase . '.pdf';
+        $targetPath = 'clients/'.$invoice->clientid.'/invoices-share/'.$friendlyBase.'.pdf';
 
-        if (!$disk->exists($targetPath)) {
+        if (! $disk->exists($targetPath)) {
             $disk->put($targetPath, (string) $disk->get($sourcePath));
         }
 
-        return asset('storage/' . $targetPath);
+        return asset('storage/'.$targetPath);
     }
 
     private function buildInvoicePdfAttachment(Invoice $invoice, bool $isTaxInvoice): array
@@ -332,23 +334,23 @@ class InvoicesController extends Controller
         $invoice->loadMissing(['client.billingDetail', 'invoiceItems', 'paymentDetails.payment']);
 
         $accountid = $this->resolveAccountId();
-        $account = \App\Models\Account::find($accountid);
+        $account = Account::find($accountid);
         $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
 
         $documentType = $isTaxInvoice ? 'Tax Invoice' : 'Proforma Invoice';
 
-        $normalizeTaxState = fn($v) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $v)));
+        $normalizeTaxState = fn ($v) => preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $v)));
         $clientState = $normalizeTaxState($invoice->client->state ?? '');
         $accountState = $normalizeTaxState($account->state ?? '');
         $sameStateGst = $clientState !== '' && $accountState !== '' && $clientState === $accountState;
 
         $signatureUrl = null;
         $sigPath = optional($accountBillingDetail)->signature_upload;
-        if (!empty($sigPath)) {
+        if (! empty($sigPath)) {
             if (str_starts_with($sigPath, 'http://') || str_starts_with($sigPath, 'https://')) {
                 $signatureUrl = $sigPath;
             } else {
-                $relative = str_starts_with($sigPath, 'storage/') ? $sigPath : 'storage/' . ltrim($sigPath, '/');
+                $relative = str_starts_with($sigPath, 'storage/') ? $sigPath : 'storage/'.ltrim($sigPath, '/');
                 $signatureUrl = public_path($relative);
             }
         }
@@ -364,7 +366,7 @@ class InvoicesController extends Controller
                 ->where('is_default', true)
                 ->orderByRaw('COALESCE(sequence, 999999), created_at ASC')
                 ->pluck('content')
-                ->map(fn($term) => trim((string) $term))
+                ->map(fn ($term) => trim((string) $term))
                 ->filter()
                 ->values()
                 ->all();
@@ -382,7 +384,7 @@ class InvoicesController extends Controller
         ))->render();
 
         $docNumber = $isTaxInvoice ? $invoice->ti_number : $invoice->pi_number;
-        $filename = $documentType . ' - ' . ($docNumber ?: $invoice->invoice_number) . '.pdf';
+        $filename = $documentType.' - '.($docNumber ?: $invoice->invoice_number).'.pdf';
 
         $pdfBinary = $this->getBrowsershot($html)->pdf();
 
@@ -399,21 +401,22 @@ class InvoicesController extends Controller
         $pdfAttachment = $this->buildInvoicePdfAttachment($invoice, $isTaxInvoice);
         $disk = Storage::disk('public');
         $typeKey = $isTaxInvoice ? 'ti' : 'pi';
-        $directory = 'clients/' . $invoice->clientid . '/invoices-pdf';
-        $baseName = $invoice->invoiceid . '_' . $typeKey;
+        $directory = 'clients/'.$invoice->clientid.'/invoices-pdf';
+        $baseName = $invoice->invoiceid.'_'.$typeKey;
         $existing = collect($disk->files($directory))
             ->map(function (string $path) use ($baseName) {
                 $name = pathinfo($path, PATHINFO_FILENAME);
-                if (preg_match('/^' . preg_quote($baseName, '/') . '__v(\d+)$/', $name, $m)) {
+                if (preg_match('/^'.preg_quote($baseName, '/').'__v(\d+)$/', $name, $m)) {
                     return (int) $m[1];
                 }
+
                 return null;
             })
-            ->filter(fn($v) => $v !== null)
+            ->filter(fn ($v) => $v !== null)
             ->values();
 
         $nextVersion = ((int) ($existing->max() ?? 0)) + 1;
-        $relativePath = $directory . '/' . $baseName . '__v' . $nextVersion . '.pdf';
+        $relativePath = $directory.'/'.$baseName.'__v'.$nextVersion.'.pdf';
         $disk->put($relativePath, $pdfAttachment['binary']);
 
         return [
@@ -421,7 +424,7 @@ class InvoicesController extends Controller
             'version' => $nextVersion,
             'filename' => basename($relativePath),
             'path' => $relativePath,
-            'url' => asset('storage/' . $relativePath),
+            'url' => asset('storage/'.$relativePath),
             'saved_at' => now()->toDateTimeString(),
         ];
     }
@@ -429,15 +432,15 @@ class InvoicesController extends Controller
     private function listStoredInvoicePdfVersions(Invoice $invoice): array
     {
         $disk = Storage::disk('public');
-        $directory = 'clients/' . $invoice->clientid . '/invoices-pdf';
-        if (!$disk->exists($directory)) {
+        $directory = 'clients/'.$invoice->clientid.'/invoices-pdf';
+        if (! $disk->exists($directory)) {
             return [];
         }
 
         $versions = collect($disk->files($directory))
             ->map(function (string $path) use ($invoice, $disk) {
                 $name = pathinfo($path, PATHINFO_FILENAME);
-                if (!preg_match('/^' . preg_quote($invoice->invoiceid, '/') . '_(pi|ti)__v(\d+)$/', $name, $m)) {
+                if (! preg_match('/^'.preg_quote($invoice->invoiceid, '/').'_(pi|ti)__v(\d+)$/', $name, $m)) {
                     return null;
                 }
 
@@ -446,8 +449,8 @@ class InvoicesController extends Controller
                     'version' => (int) $m[2],
                     'filename' => basename($path),
                     'path' => $path,
-                    'url' => asset('storage/' . $path),
-                    'saved_at' => optional($disk->lastModified($path) ? \Carbon\Carbon::createFromTimestamp($disk->lastModified($path)) : null)?->toDateTimeString(),
+                    'url' => asset('storage/'.$path),
+                    'saved_at' => optional($disk->lastModified($path) ? Carbon::createFromTimestamp($disk->lastModified($path)) : null)?->toDateTimeString(),
                 ];
             })
             ->filter()
@@ -476,7 +479,7 @@ class InvoicesController extends Controller
                 'MAIL_FROM_NAME',
             ])
             ->pluck('setting_value', 'setting_key')
-            ->map(fn($v) => is_string($v) ? trim($v) : $v)
+            ->map(fn ($v) => is_string($v) ? trim($v) : $v)
             ->toArray();
     }
 
@@ -521,16 +524,17 @@ class InvoicesController extends Controller
     {
         $baseUrl = rtrim((string) env('CAMPIO_BASE_URL', 'http://alpha.skoolready.com/campio'), '/');
         if ($baseUrl === '') {
-            \Illuminate\Support\Facades\Log::error('Campio: CAMPIO_BASE_URL not configured');
+            Log::error('Campio: CAMPIO_BASE_URL not configured');
+
             return ['ok' => false, 'message' => 'CAMPIO_BASE_URL is not configured.'];
         }
 
-        $endpoint = $baseUrl . '/api/campaigns/schedule/' . $channel;
+        $endpoint = $baseUrl.'/api/campaigns/schedule/'.$channel;
         $token = trim((string) env('CAMPIO_AUTH_TOKEN', ''));
         $apiKey = trim((string) env('CAMPIO_API_KEY', ''));
 
         // Log the full payload for debugging
-        \Illuminate\Support\Facades\Log::info('Campio: Sending ' . strtoupper($channel), [
+        Log::info('Campio: Sending '.strtoupper($channel), [
             'endpoint' => $endpoint,
             'account_id' => $payload['account_id'] ?? 'MISSING',
             'campaign_name' => $payload['campaign_name'] ?? '',
@@ -549,28 +553,30 @@ class InvoicesController extends Controller
         try {
             $response = $request->post($endpoint, $payload);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Campio: Request failed - ' . $e->getMessage());
-            return ['ok' => false, 'message' => 'Campio request failed: ' . $e->getMessage()];
+            Log::error('Campio: Request failed - '.$e->getMessage());
+
+            return ['ok' => false, 'message' => 'Campio request failed: '.$e->getMessage()];
         }
 
-        \Illuminate\Support\Facades\Log::info('Campio: Response received', [
+        Log::info('Campio: Response received', [
             'status' => $response->status(),
             'body' => $response->body(),
         ]);
 
         $json = $response->json();
-        if (!$response->successful()) {
-            \Illuminate\Support\Facades\Log::error('Campio: API error', [
+        if (! $response->successful()) {
+            Log::error('Campio: API error', [
                 'status' => $response->status(),
                 'json' => $json,
             ]);
             $message = is_array($json)
                 ? ((string) ($json['message'] ?? 'Campio API returned an error.'))
-                : ('Campio API returned HTTP ' . $response->status() . '.');
+                : ('Campio API returned HTTP '.$response->status().'.');
+
             return ['ok' => false, 'message' => $message];
         }
 
-        \Illuminate\Support\Facades\Log::info('Campio: SUCCESS', [
+        Log::info('Campio: SUCCESS', [
             'campaign_id' => $json['campaign_id'] ?? 'none',
             'status' => $json['status'] ?? 'none',
         ]);
@@ -584,7 +590,7 @@ class InvoicesController extends Controller
 
     private function fetchCampioTemplateHeaderTypes(string $accountid, string $channel): array
     {
-        if (!in_array($channel, ['whatsapp', 'sms'], true)) {
+        if (! in_array($channel, ['whatsapp', 'sms'], true)) {
             return [];
         }
 
@@ -601,25 +607,25 @@ class InvoicesController extends Controller
         }
 
         try {
-            $response = $request->get($baseUrl . '/api/templates/' . $channel, [
+            $response = $request->get($baseUrl.'/api/templates/'.$channel, [
                 'account_id' => $accountid,
             ]);
         } catch (\Throwable $e) {
             return [];
         }
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return [];
         }
 
         $rows = data_get($response->json(), 'data.templates', []);
-        if (!is_array($rows)) {
+        if (! is_array($rows)) {
             return [];
         }
 
         $map = [];
         foreach ($rows as $row) {
-            if (!is_array($row)) {
+            if (! is_array($row)) {
                 continue;
             }
 
@@ -657,15 +663,15 @@ class InvoicesController extends Controller
             $fileName = trim((string) $name);
             if ($fileName === '') {
                 $path = (string) parse_url($cleanUrl, PHP_URL_PATH);
-                $fileName = basename($path ?: ('attachment-' . ($index + 1) . '.pdf'));
+                $fileName = basename($path ?: ('attachment-'.($index + 1).'.pdf'));
                 if ($fileName === '' || $fileName === '/' || $fileName === '.') {
-                    $fileName = 'attachment-' . ($index + 1) . '.pdf';
+                    $fileName = 'attachment-'.($index + 1).'.pdf';
                 }
             }
             $fileName = preg_replace('/[\\\\\\/]+/', '-', $fileName) ?? $fileName;
             $fileName = preg_replace('/\s+/', ' ', trim($fileName)) ?? $fileName;
             if ($fileName === '' || $fileName === '.' || $fileName === '..') {
-                $fileName = 'attachment-' . ($index + 1) . '.pdf';
+                $fileName = 'attachment-'.($index + 1).'.pdf';
             }
 
             $normalizedUrl = $this->normalizeUrlForPayload($cleanUrl);
@@ -696,14 +702,14 @@ class InvoicesController extends Controller
 
         $path = (string) ($parts['path'] ?? '');
         $segments = explode('/', $path);
-        $encodedSegments = array_map(fn($s) => rawurlencode($s), $segments);
+        $encodedSegments = array_map(fn ($s) => rawurlencode($s), $segments);
         $encodedPath = implode('/', $encodedSegments);
 
-        $rebuilt = $parts['scheme'] . '://' . $parts['host']
-            . (isset($parts['port']) ? ':' . $parts['port'] : '')
-            . $encodedPath
-            . (isset($parts['query']) ? '?' . $parts['query'] : '')
-            . (isset($parts['fragment']) ? '#' . $parts['fragment'] : '');
+        $rebuilt = $parts['scheme'].'://'.$parts['host']
+            .(isset($parts['port']) ? ':'.$parts['port'] : '')
+            .$encodedPath
+            .(isset($parts['query']) ? '?'.$parts['query'] : '')
+            .(isset($parts['fragment']) ? '#'.$parts['fragment'] : '');
 
         return filter_var($rebuilt, FILTER_VALIDATE_URL) ? $rebuilt : '';
     }
@@ -718,7 +724,7 @@ class InvoicesController extends Controller
         }
 
         $text = str_replace(["\r\n", "\r"], "\n", $text);
-        $text = str_replace(["\\r\\n", "\\n"], "\n", $text);
+        $text = str_replace(['\\r\\n', '\\n'], "\n", $text);
 
         // Remove auto-appended legacy sections that list raw URLs.
         $text = preg_replace('/\n{2,}(Attachments:|Documents:)\n(?:[^\n]*https?:\/\/[^\n]*\n?)*/i', "\n", $text) ?? $text;
@@ -736,12 +742,13 @@ class InvoicesController extends Controller
     {
         $value = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $value = str_replace(["\r\n", "\r"], "\n", $value);
-        $value = str_replace(["\\r\\n", "\\n"], "\n", $value);
+        $value = str_replace(['\\r\\n', '\\n'], "\n", $value);
         // Remove 4-byte Unicode chars (emoji etc.) for non-utf8mb4 downstream DB columns.
         $value = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $value) ?? $value;
         // Remove control chars except tab/newline.
         $value = preg_replace('/[^\P{C}\n\t]+/u', '', $value) ?? $value;
         $value = preg_replace("/\n{3,}/", "\n\n", $value) ?? $value;
+
         return trim($value);
     }
 
@@ -787,7 +794,7 @@ class InvoicesController extends Controller
             $balanceDue = (float) ($invoice->balance_due ?? max(0, $grandTotal - $amountPaid));
 
             $paymentStatus = strtolower(trim((string) ($invoice->payment_status ?? '')));
-            if (!in_array($paymentStatus, ['paid', 'partly_paid', 'unpaid'], true)) {
+            if (! in_array($paymentStatus, ['paid', 'partly_paid', 'unpaid'], true)) {
                 $paymentStatus = 'unpaid';
                 if ($amountPaid > 0 && $balanceDue <= 0 && $grandTotal > 0) {
                     $paymentStatus = 'paid';
@@ -799,7 +806,7 @@ class InvoicesController extends Controller
             return $paymentStatus;
         };
 
-        $selectedTab = in_array($selectedTab, ['invoices', 'outstanding', 'partly_paid', 'unpaid', 'upcoming', 'cancelled', 'proforma', 'tax'], true)
+        $selectedTab = in_array($selectedTab, ['invoices', 'outstanding', 'partly_paid', 'unpaid', 'upcoming', 'draft', 'cancelled', 'proforma', 'tax'], true)
             ? $selectedTab
             : 'invoices';
         $selectedType = in_array($selectedType, ['', 'pi', 'tax'], true) ? $selectedType : '';
@@ -818,7 +825,8 @@ class InvoicesController extends Controller
         if ($selectedType !== '') {
             $typedInvoices = $typedInvoices->filter(function (Invoice $invoice) use ($selectedType) {
                 $isTaxInvoice = trim((string) ($invoice->ti_number ?? '')) !== '';
-                return $selectedType === 'tax' ? $isTaxInvoice : !$isTaxInvoice;
+
+                return $selectedType === 'tax' ? $isTaxInvoice : ! $isTaxInvoice;
             })->values();
         }
 
@@ -832,18 +840,25 @@ class InvoicesController extends Controller
 
         $activeInvoices = $typedInvoices->filter(function (Invoice $invoice) {
             $status = strtolower(trim((string) ($invoice->status ?? 'active')));
-            return !in_array($status, ['cancelled', 'draft'], true);
+
+            return ! in_array($status, ['cancelled', 'draft'], true);
         })->values();
 
-        $paidInvoices = $activeInvoices->filter(fn(Invoice $invoice) => $resolvePaymentStatus($invoice) === 'paid')->values();
-        $partlyPaidInvoices = $activeInvoices->filter(fn(Invoice $invoice) => $resolvePaymentStatus($invoice) === 'partly_paid')->values();
-        $unpaidInvoices = $activeInvoices->filter(fn(Invoice $invoice) => $resolvePaymentStatus($invoice) === 'unpaid')->values();
+        $paidInvoices = $activeInvoices->filter(fn (Invoice $invoice) => $resolvePaymentStatus($invoice) === 'paid')->values();
+        $partlyPaidInvoices = $activeInvoices->filter(fn (Invoice $invoice) => $resolvePaymentStatus($invoice) === 'partly_paid')->values();
+        $unpaidInvoices = $activeInvoices->filter(fn (Invoice $invoice) => $resolvePaymentStatus($invoice) === 'unpaid')->values();
         $outstandingInvoices = $activeInvoices
-            ->filter(fn(Invoice $invoice) => in_array($resolvePaymentStatus($invoice), ['partly_paid', 'unpaid'], true))
+            ->filter(fn (Invoice $invoice) => in_array($resolvePaymentStatus($invoice), ['partly_paid', 'unpaid'], true))
             ->values();
+
+        $upcomingInvoices = $activeInvoices->filter(function (Invoice $invoice) {
+            return $invoice->due_date && $invoice->due_date->isFuture();
+        })->values();
 
         $filteredInvoices = $paidInvoices;
         if ($selectedTab === 'upcoming') {
+            $filteredInvoices = $upcomingInvoices;
+        } elseif ($selectedTab === 'draft') {
             $filteredInvoices = $draftInvoices;
         } elseif ($selectedTab === 'cancelled') {
             $filteredInvoices = $cancelledInvoices;
@@ -856,6 +871,7 @@ class InvoicesController extends Controller
             $jsonInvoices = $forCreatePicker
                 ? $typedInvoices->filter(function (Invoice $invoice) {
                     $status = strtolower(trim((string) ($invoice->status ?? 'active')));
+
                     return $status !== 'cancelled';
                 })->values()
                 : $filteredInvoices;
@@ -869,7 +885,7 @@ class InvoicesController extends Controller
 
                     $statusValue = strtolower(trim((string) ($invoice->status ?? 'draft')));
                     $paymentStatus = strtolower(trim((string) ($invoice->payment_status ?? '')));
-                    if (!in_array($paymentStatus, ['paid', 'partly_paid', 'unpaid'], true)) {
+                    if (! in_array($paymentStatus, ['paid', 'partly_paid', 'unpaid'], true)) {
                         $paymentStatus = 'unpaid';
                         if ($amountPaid > 0 && $balanceDue <= 0 && $grandTotal > 0) {
                             $paymentStatus = 'paid';
@@ -887,9 +903,9 @@ class InvoicesController extends Controller
                         'clientid' => $invoice->clientid,
                         'issue_date' => $invoice->issue_date?->format('d M Y'),
                         'due_date' => $invoice->due_date?->format('d M Y'),
-                        'amount' => $currency . ' ' . number_format($invoice->grand_total ?? 0, 0),
-                        'amount_paid' => $currency . ' ' . number_format($amountPaid, 0),
-                        'balance_due' => $currency . ' ' . number_format($balanceDue, 0),
+                        'amount' => $currency.' '.number_format($invoice->grand_total ?? 0, 0),
+                        'amount_paid' => $currency.' '.number_format($amountPaid, 0),
+                        'balance_due' => $currency.' '.number_format($balanceDue, 0),
                         'status' => $statusValue !== '' ? $statusValue : 'draft',
                         'payment_status' => $paymentStatus,
                         'items' => $invoice->items->map(function ($item) use ($currency) {
@@ -899,7 +915,7 @@ class InvoicesController extends Controller
                                 'item_name' => $item->item_name,
                                 'qty' => $item->quantity,
                                 'quantity' => $item->quantity,
-                                'price' => $currency . ' ' . number_format($item->unit_price, 0),
+                                'price' => $currency.' '.number_format($item->unit_price, 0),
                                 'unit_price' => (float) $item->unit_price,
                                 'tax_rate' => (float) ($item->tax_rate ?? 0),
                                 'discount_percent' => (float) ($item->discount_percent ?? 0),
@@ -910,7 +926,7 @@ class InvoicesController extends Controller
                                 'no_of_users' => (int) ($item->no_of_users ?? 1),
                                 'start_date' => $item->start_date?->format('d M Y'),
                                 'end_date' => $item->end_date?->format('d M Y'),
-                                'total' => $currency . ' ' . number_format($item->line_total, 0),
+                                'total' => $currency.' '.number_format($item->line_total, 0),
                                 'line_total' => (float) $item->line_total,
                             ];
                         }),
@@ -932,7 +948,8 @@ class InvoicesController extends Controller
             'selectedTab' => $selectedTab,
             'selectedType' => $selectedType,
             'selectedStatus' => $selectedStatus,
-            'upcomingInvoicesCount' => $draftInvoices->count(),
+            'upcomingInvoicesCount' => $upcomingInvoices->count(),
+            'draftInvoicesCount' => $draftInvoices->count(),
             'cancelledInvoicesCount' => $cancelledInvoices->count(),
             'paidInvoicesCount' => $paidInvoices->count(),
             'outstandingInvoicesCount' => $outstandingInvoices->count(),
@@ -963,7 +980,7 @@ class InvoicesController extends Controller
         }
         $upcomingThreshold = $today->copy()->addDays($nextDays)->endOfDay();
 
-        $expiryItemBaseQuery = \App\Models\Order::query()
+        $expiryItemBaseQuery = Order::query()
             ->where('accountid', $accountid)
             ->whereNotNull('end_date')
             ->with([
@@ -982,7 +999,7 @@ class InvoicesController extends Controller
             $expiryItemBaseQuery->whereDate('end_date', '<=', $toDate);
         }
 
-        $mapExpiryItem = function (\App\Models\Order $order) use ($today) {
+        $mapExpiryItem = function (Order $order) use ($today) {
             $expiryDate = $order->end_date?->copy()->startOfDay();
             $daysLeft = $expiryDate ? $today->diffInDays($expiryDate, false) : null;
             $linkedInvoice = $this->resolveActiveInvoiceForOrder($order);
@@ -1023,9 +1040,9 @@ class InvoicesController extends Controller
         };
 
         $upcomingItems = (clone $expiryItemBaseQuery)
-            ->whereHas('client', fn($q) => $q->regular())
+            ->whereHas('client', fn ($q) => $q->regular())
             ->where(function ($query) {
-                $query->whereIn('status', ['active', 'running'])
+                $query->whereNotIn('status', ['cancelled', 'suspended'])
                     ->orWhereNull('status');
             })
             ->whereDate('end_date', '>', $today->toDateString())
@@ -1036,9 +1053,9 @@ class InvoicesController extends Controller
             ->values();
 
         $expiredItems = (clone $expiryItemBaseQuery)
-            ->whereHas('client', fn($q) => $q->regular())
+            ->whereHas('client', fn ($q) => $q->regular())
             ->where(function ($query) {
-                $query->whereIn('status', ['active', 'running'])
+                $query->whereNotIn('status', ['cancelled', 'suspended'])
                     ->orWhereNull('status');
             })
             ->whereDate('end_date', '<=', $today->toDateString())
@@ -1048,7 +1065,7 @@ class InvoicesController extends Controller
             ->values();
 
         $suspendedItems = (clone $expiryItemBaseQuery)
-            ->whereHas('client', fn($q) => $q->regular())
+            ->whereHas('client', fn ($q) => $q->regular())
             ->where('status', 'suspended')
             ->orderBy('end_date')
             ->get()
@@ -1058,9 +1075,9 @@ class InvoicesController extends Controller
         $trialItems = collect();
         if ($hasTrialClients) {
             $trialItems = (clone $expiryItemBaseQuery)
-                ->whereHas('client', fn($q) => $q->trial())
+                ->whereHas('client', fn ($q) => $q->trial())
                 ->where(function ($query) {
-                    $query->whereIn('status', ['active', 'running'])
+                    $query->whereNotIn('status', ['cancelled', 'suspended'])
                         ->orWhereNull('status');
                 })
                 ->orderBy('end_date')
@@ -1114,7 +1131,7 @@ class InvoicesController extends Controller
         $user = Auth::user();
         $accountid = $this->resolveAccountId();
         $legacyAccountId = $user?->id ? (string) $user->id : null;
-        $account = \App\Models\Account::find($accountid);
+        $account = Account::find($accountid);
         $invoiceDateBounds = $this->resolveFinancialYearDateBounds($accountid);
         $orderId = request('o', request('orderid'));
         $clientId = request('c', request('clientid'));
@@ -1122,7 +1139,7 @@ class InvoicesController extends Controller
         $draftId = request('d');
 
         $existingDraft = null;
-        if (!empty($draftId) && !empty($currentUserId)) {
+        if (! empty($draftId) && ! empty($currentUserId)) {
             $existingDraft = Invoice::query()
                 ->where('invoiceid', $draftId)
                 ->where('accountid', $accountid)
@@ -1132,24 +1149,24 @@ class InvoicesController extends Controller
         if (
             empty($existingDraft)
             && empty($draftId)
-            && !empty($clientId)
-            && !empty($currentUserId)
+            && ! empty($clientId)
+            && ! empty($currentUserId)
         ) {
             $existingDraft = Invoice::query()
                 ->where('clientid', $clientId)
                 ->where('accountid', $accountid)
                 ->where('status', 'draft')
                 ->where('created_by', $currentUserId)
-                ->when(!empty($orderId), fn($q) => $q->whereHas('invoiceItems', fn($itemQ) => $itemQ->where('orderid', $orderId)))
-                ->when(empty($orderId), fn($q) => $q->whereDoesntHave('invoiceItems', fn($itemQ) => $itemQ->whereNotNull('orderid')))
+                ->when(! empty($orderId), fn ($q) => $q->whereHas('invoiceItems', fn ($itemQ) => $itemQ->where('orderid', $orderId)))
+                ->when(empty($orderId), fn ($q) => $q->whereDoesntHave('invoiceItems', fn ($itemQ) => $itemQ->whereNotNull('orderid')))
                 ->where('updated_at', '>', now()->subHours(24))
                 ->latest('updated_at')
                 ->first();
         }
 
         $orderItemsForClient = collect();
-        if (!empty($clientId)) {
-            $orderItemsForClient = \App\Models\Order::query()
+        if (! empty($clientId)) {
+            $orderItemsForClient = Order::query()
                 ->where('accountid', $accountid)
                 ->where('clientid', $clientId)
                 ->where('status', '!=', 'cancelled')
@@ -1189,7 +1206,7 @@ class InvoicesController extends Controller
 
         // Get selected client currency
         $selectedClientCurrency = 'INR';
-        if (!empty($clientId)) {
+        if (! empty($clientId)) {
             $client = Client::query()
                 ->where('accountid', $accountid)
                 ->find($clientId);
@@ -1241,11 +1258,11 @@ class InvoicesController extends Controller
     {
         $clientId = $request->input('clientid');
 
-        if (!$clientId) {
+        if (! $clientId) {
             return response()->json([]);
         }
 
-        $orders = \App\Models\Order::where('clientid', $clientId)
+        $orders = Order::where('clientid', $clientId)
             ->where('status', '!=', 'cancelled')
             ->whereDoesntHave('invoices')
             ->with(['client:clientid,currency', 'item.costings'])
@@ -1278,11 +1295,11 @@ class InvoicesController extends Controller
         $clientId = $request->input('clientid');
         $accountid = $this->resolveAccountId();
 
-        if (!$clientId) {
+        if (! $clientId) {
             return response()->json([]);
         }
 
-        $orderItemsForClient = \App\Models\Order::query()
+        $orderItemsForClient = Order::query()
             ->where('accountid', $accountid)
             ->where('clientid', $clientId)
             ->where('status', '!=', 'cancelled')
@@ -1324,7 +1341,7 @@ class InvoicesController extends Controller
         $clientId = $request->input('clientid');
         $daysFilter = max(0, (int) $request->input('days', 30));
 
-        if (!$clientId) {
+        if (! $clientId) {
             return response()->json([]);
         }
 
@@ -1340,11 +1357,11 @@ class InvoicesController extends Controller
             ->map(function ($invoice) use ($today, $upcomingThreshold) {
                 $renewalItems = $invoice->items
                     ->map(function ($item) use ($today, $upcomingThreshold) {
-                        if (!$item->end_date) {
+                        if (! $item->end_date) {
                             return null;
                         }
 
-                        if (!$this->hasRecurringFrequency($item->frequency)) {
+                        if (! $this->hasRecurringFrequency($item->frequency)) {
                             return null;
                         }
 
@@ -1352,13 +1369,13 @@ class InvoicesController extends Controller
                             return null;
                         }
 
-                        $itemEndDate = $item->end_date instanceof \Carbon\Carbon
+                        $itemEndDate = $item->end_date instanceof Carbon
                             ? $item->end_date
-                            : \Carbon\Carbon::parse($item->end_date);
+                            : Carbon::parse($item->end_date);
 
                         $isExpired = $itemEndDate <= $today;
-                        $isUpcoming = !$isExpired && $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
-                        if (!$isExpired && !$isUpcoming) {
+                        $isUpcoming = ! $isExpired && $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
+                        if (! $isExpired && ! $isUpcoming) {
                             return null;
                         }
 
@@ -1408,7 +1425,7 @@ class InvoicesController extends Controller
 
     public function getOrderItems(Request $request, $orderid)
     {
-        $order = \App\Models\Order::with([
+        $order = Order::with([
             'item:itemid,user_wise',
             'item.costings',
             'client:clientid,currency',
@@ -1464,7 +1481,7 @@ class InvoicesController extends Controller
             'suggested_start_date' => $orderStartDate,
         ];
 
-        if (!Schema::hasColumn('invoice_items', 'orderid')) {
+        if (! Schema::hasColumn('invoice_items', 'orderid')) {
             return $result;
         }
 
@@ -1475,7 +1492,7 @@ class InvoicesController extends Controller
             ->whereDate('end_date', '<', '2099-12-31')
             ->max('end_date');
 
-        if (!empty($maxEndDate)) {
+        if (! empty($maxEndDate)) {
             $result['source'] = 'invoice_items';
             $result['suggested_start_date'] = Carbon::parse((string) $maxEndDate)->addDay()->toDateString();
         }
@@ -1483,14 +1500,14 @@ class InvoicesController extends Controller
         return $result;
     }
 
-    private function deriveOrderPricing(\App\Models\Order $order): array
+    private function deriveOrderPricing(Order $order): array
     {
-        $account = \App\Models\Account::find($order->accountid);
+        $account = Account::find($order->accountid);
         $serviceCosting = $order->item?->costings?->sortBy('currency_code')->first();
         $unitPrice = (float) ($serviceCosting->selling_price ?? 0);
         $taxRate = (float) ($serviceCosting->tax_rate ?? 0);
 
-        if ($account && !$account->allow_multi_taxation && (float) ($account->fixed_tax_rate ?? 0) > 0) {
+        if ($account && ! $account->allow_multi_taxation && (float) ($account->fixed_tax_rate ?? 0) > 0) {
             $taxRate = (float) $account->fixed_tax_rate;
         }
 
@@ -1526,16 +1543,16 @@ class InvoicesController extends Controller
                 return null;
             }
 
-            if (!$item->end_date) {
+            if (! $item->end_date) {
                 $isExpired = false;
                 $isUpcoming = false;
             } else {
-                $itemEndDate = $item->end_date instanceof \Carbon\Carbon
+                $itemEndDate = $item->end_date instanceof Carbon
                     ? $item->end_date
-                    : \Carbon\Carbon::parse($item->end_date);
+                    : Carbon::parse($item->end_date);
 
                 $isExpired = $itemEndDate <= $today;
-                $isUpcoming = !$isExpired && $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
+                $isUpcoming = ! $isExpired && $itemEndDate > $today && $itemEndDate <= $upcomingThreshold;
             }
 
             $taxRate = (float) ($item->tax_rate ?? 0);
@@ -1575,8 +1592,8 @@ class InvoicesController extends Controller
     private function calculateInvoiceItemAmounts(array $itemData, float $taxRate): array
     {
         $quantity = $this->wholeQuantity($itemData['quantity'] ?? 1);
-        $users = !empty($itemData['no_of_users']) ? max(1, (int) $itemData['no_of_users']) : 1;
-        $duration = !empty($itemData['duration']) ? max(1, (int) $itemData['duration']) : 1;
+        $users = ! empty($itemData['no_of_users']) ? max(1, (int) $itemData['no_of_users']) : 1;
+        $duration = ! empty($itemData['duration']) ? max(1, (int) $itemData['duration']) : 1;
         $durationMultiplier = $this->hasRecurringFrequency($itemData['frequency'] ?? null) ? $duration : 1;
 
         $unitPrice = $this->moneyAmount($itemData['unit_price'] ?? 0);
@@ -1647,12 +1664,14 @@ class InvoicesController extends Controller
         }
 
         $normalized = strtolower(trim((string) $value));
+
         return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
     }
 
     private function hasRecurringFrequency(mixed $frequency): bool
     {
         $normalized = strtolower(trim((string) ($frequency ?? '')));
+
         return $normalized !== '' && $normalized !== 'one-time';
     }
 
@@ -1688,6 +1707,7 @@ class InvoicesController extends Controller
             ],
         ]);
     }
+
     public function applyTerms(Request $request, string $invoice)
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
@@ -1698,8 +1718,8 @@ class InvoicesController extends Controller
             'renewed_item_ids' => 'nullable|string',
         ]);
 
-        $termBucket = !empty(trim((string) $invoice->ti_number)) ? 'billing' : 'proforma';
-        $terms = array_values(array_filter($request->input('terms', []), fn($t) => trim($t) !== ''));
+        $termBucket = ! empty(trim((string) $invoice->ti_number)) ? 'billing' : 'proforma';
+        $terms = array_values(array_filter($request->input('terms', []), fn ($t) => trim($t) !== ''));
         if (empty($terms)) {
             $terms = $this->getDefaultInvoiceTermsForBucket($invoice, $termBucket);
         }
@@ -1713,29 +1733,30 @@ class InvoicesController extends Controller
         $renewedItemIds = json_decode((string) $request->input('renewed_item_ids', '[]'), true);
         $this->finalizeRenewedSourceItems($invoice, is_array($renewedItemIds) ? $renewedItemIds : null);
 
-        $this->persistInvoicePdfVersion($invoice, !empty(trim((string) $invoice->ti_number)));
+        $this->persistInvoicePdfVersion($invoice, ! empty(trim((string) $invoice->ti_number)));
 
         return response()->json(['ok' => true, 'count' => count($terms)]);
     }
-
 
     protected function generateInvoiceNumber(): string
     {
         $accountid = $this->resolveAccountId();
 
         // Use dedicated proforma configuration for PI generation.
-        $serialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)
+        $serialConfig = SerialConfiguration::where('accountid', $accountid)
             ->where('document_type', 'proforma_invoice')
             ->first();
 
         if ($serialConfig) {
             $candidate = $serialConfig->generateNextSerialNumber();
+
             return $this->ensureUniqueDocumentNumber($candidate !== '' ? $candidate : 'PI-0001', $accountid, 'pi_number');
         }
 
         // Fallback: simple auto-increment if no serial configuration exists.
         $count = Invoice::where('accountid', $accountid)->count();
-        $candidate = 'PI-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+        $candidate = 'PI-'.str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+
         return $this->ensureUniqueDocumentNumber($candidate, $accountid, 'pi_number');
     }
 
@@ -1744,18 +1765,19 @@ class InvoicesController extends Controller
         $accountid = $this->resolveAccountId();
 
         // Check for SerialConfiguration
-        $serialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)
+        $serialConfig = SerialConfiguration::where('accountid', $accountid)
             ->where('document_type', 'tax_invoice')
             ->first();
 
         if ($serialConfig) {
             $candidate = $serialConfig->generateNextSerialNumber();
+
             return $this->ensureUniqueDocumentNumber($candidate !== '' ? $candidate : 'INV-0001', $accountid, 'ti_number');
         }
 
         // Fallback
         $count = Invoice::where('accountid', $accountid)->whereNotNull('ti_number')->where('ti_number', '!=', '')->count();
-        $candidate = 'INV-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+        $candidate = 'INV-'.str_pad($count + 1, 4, '0', STR_PAD_LEFT);
 
         return $this->ensureUniqueDocumentNumber($candidate, $accountid, 'ti_number');
     }
@@ -1773,7 +1795,7 @@ class InvoicesController extends Controller
 
         while (
             Invoice::where('accountid', $accountid)
-                ->when($numberColumn, fn($query) => $query->where($numberColumn, $number), function ($query) use ($number) {
+                ->when($numberColumn, fn ($query) => $query->where($numberColumn, $number), function ($query) use ($number) {
                     $query->where(function ($inner) use ($number) {
                         $inner->where('pi_number', $number)
                             ->orWhere('ti_number', $number);
@@ -1794,8 +1816,8 @@ class InvoicesController extends Controller
             return $candidate;
         }
 
-        if (!preg_match_all('/\d+/', $candidate, $matches, PREG_OFFSET_CAPTURE) || empty($matches[0])) {
-            return $candidate . '-' . ($incrementBy + 1);
+        if (! preg_match_all('/\d+/', $candidate, $matches, PREG_OFFSET_CAPTURE) || empty($matches[0])) {
+            return $candidate.'-'.($incrementBy + 1);
         }
 
         $groups = $matches[0];
@@ -1831,8 +1853,8 @@ class InvoicesController extends Controller
                 'orderid' => 'nullable|exists:orders,orderid',
                 'invoice_number' => 'nullable|string',
                 'invoice_title' => 'required|string|max:255',
-                'issue_date' => 'required|date|after_or_equal:' . $invoiceDateBounds['min_date'] . '|before_or_equal:' . ($invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date']),
-                'due_date' => 'required|date|after_or_equal:issue_date|before_or_equal:' . ($invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date']),
+                'issue_date' => 'required|date|after_or_equal:'.$invoiceDateBounds['min_date'].'|before_or_equal:'.($invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date']),
+                'due_date' => 'required|date|after_or_equal:issue_date|before_or_equal:'.($invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date']),
                 'notes' => 'nullable|string',
                 'terms' => 'nullable|string',
                 'status' => 'nullable|in:active,cancelled',
@@ -1848,7 +1870,7 @@ class InvoicesController extends Controller
         }
 
         $itemsData = json_decode($request->items_data, true);
-        if (!is_array($itemsData) || empty($itemsData)) {
+        if (! is_array($itemsData) || empty($itemsData)) {
             throw ValidationException::withMessages([
                 'items_data' => 'Add at least one invoice item before submitting.',
             ]);
@@ -1856,11 +1878,11 @@ class InvoicesController extends Controller
 
         // Set default status if not provided
         $validated['status'] = $validated['status'] ?? 'active';
-        if (!empty($validated['invoice_number'])) {
+        if (! empty($validated['invoice_number'])) {
             $this->assertDocumentNumberAvailable($validated['invoice_number'], null, 'pi_number');
         }
 
-        $invoiceSource = !empty($validated['orderid']) ? 'orders' : 'without_orders';
+        $invoiceSource = ! empty($validated['orderid']) ? 'orders' : 'without_orders';
 
         if ($invoiceSource === 'orders') {
             if (empty($validated['orderid'])) {
@@ -1869,12 +1891,12 @@ class InvoicesController extends Controller
                 ]);
             }
 
-            $order = \App\Models\Order::with(['invoices'])
+            $order = Order::with(['invoices'])
                 ->where('orderid', $validated['orderid'])
                 ->where('clientid', $validated['clientid'])
                 ->first();
 
-            if (!$order) {
+            if (! $order) {
                 throw ValidationException::withMessages([
                     'orderid' => 'The selected order does not belong to this client.',
                 ]);
@@ -1899,13 +1921,13 @@ class InvoicesController extends Controller
 
         // Check if we're updating an existing draft
         $existingDraft = null;
-        if (!empty($validated['invoiceid'])) {
+        if (! empty($validated['invoiceid'])) {
             $existingDraft = Invoice::where('status', 'draft')
                 ->find($validated['invoiceid']);
             if ($existingDraft) {
                 // Use draft's existing PI number
                 $validated['pi_number'] = $existingDraft->pi_number;
-                if (empty($existingDraft->fy_id) && !empty($validated['fy_id'])) {
+                if (empty($existingDraft->fy_id) && ! empty($validated['fy_id'])) {
                     $existingDraft->fy_id = $validated['fy_id'];
                     $existingDraft->save();
                 }
@@ -1918,7 +1940,7 @@ class InvoicesController extends Controller
         unset($validated['invoice_number']);
 
         $itemsData = json_decode($request->items_data, true);
-        if (!is_array($itemsData) || empty($itemsData)) {
+        if (! is_array($itemsData) || empty($itemsData)) {
             throw ValidationException::withMessages([
                 'items_data' => 'Add at least one invoice item before submitting.',
             ]);
@@ -1930,7 +1952,7 @@ class InvoicesController extends Controller
         $preparedItems = [];
 
         $accountid = $this->resolveAccountId();
-        $account = \App\Models\Account::find($accountid);
+        $account = Account::find($accountid);
         $accountHasUsers = (bool) ($account?->have_users ?? false);
 
         foreach ($itemsData as $index => $itemData) {
@@ -1976,8 +1998,8 @@ class InvoicesController extends Controller
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
                 'no_of_users' => $users,
-                'start_date' => !empty($itemData['start_date']) ? $itemData['start_date'] : null,
-                'end_date' => !empty($itemData['end_date']) ? $itemData['end_date'] : null,
+                'start_date' => ! empty($itemData['start_date']) ? $itemData['start_date'] : null,
+                'end_date' => ! empty($itemData['end_date']) ? $itemData['end_date'] : null,
                 'status' => 'active',
                 'amount' => $lineTotal,
                 'sequence' => $index + 1,
@@ -1990,7 +2012,7 @@ class InvoicesController extends Controller
         $invoice = null;
 
         try {
-            DB::transaction(function () use ($validated, $preparedItems, &$invoice, $request, $existingDraft, $invoiceSource, $grandTotal) {
+            DB::transaction(function () use ($validated, $preparedItems, &$invoice, $existingDraft, $grandTotal) {
                 if ($existingDraft) {
                     // Update existing draft
                     $existingDraft->update($validated);
@@ -2011,15 +2033,15 @@ class InvoicesController extends Controller
                 $this->syncInvoiceLedgerEntry($invoice, $grandTotal);
 
                 // Mark the linked order as completed when PI is created
-                if (!empty($validated['orderid'])) {
-                    \App\Models\Order::where('orderid', $validated['orderid'])
+                if (! empty($validated['orderid'])) {
+                    Order::where('orderid', $validated['orderid'])
                         ->whereNotIn('status', ['cancelled'])
                         ->update(['status' => 'completed']);
                 }
 
             });
         } catch (\Exception $e) {
-            \Log::error('Failed to create invoice: ' . $e->getMessage(), [
+            \Log::error('Failed to create invoice: '.$e->getMessage(), [
                 'validated' => $validated,
                 'preparedItems' => $preparedItems,
                 'trace' => $e->getTraceAsString(),
@@ -2065,12 +2087,12 @@ class InvoicesController extends Controller
 
     private function renewalSourceItemsSessionKey(string $invoiceid): string
     {
-        return 'invoice_renewal_source_items.' . $invoiceid;
+        return 'invoice_renewal_source_items.'.$invoiceid;
     }
 
     private function extractRenewedItemIdsFromItemsData(?array $itemsData): array
     {
-        if (!is_array($itemsData)) {
+        if (! is_array($itemsData)) {
             return [];
         }
 
@@ -2111,16 +2133,17 @@ class InvoicesController extends Controller
             return;
         }
 
-        $renewedItemIds = is_array($explicitRenewedItemIds) && !empty($explicitRenewedItemIds)
+        $renewedItemIds = is_array($explicitRenewedItemIds) && ! empty($explicitRenewedItemIds)
             ? $explicitRenewedItemIds
             : session()->get($this->renewalSourceItemsSessionKey($invoiceid), []);
-        if (!is_array($renewedItemIds) || empty($renewedItemIds)) {
+        if (! is_array($renewedItemIds) || empty($renewedItemIds)) {
             return;
         }
 
         $renewedItemIds = array_values(array_unique(array_filter(array_map('strval', $renewedItemIds))));
         if (empty($renewedItemIds)) {
             $this->forgetRenewalSourceItemIds($invoiceid);
+
             return;
         }
 
@@ -2138,8 +2161,8 @@ class InvoicesController extends Controller
             'clientid' => 'required|exists:clients,clientid',
             'orderid' => 'nullable|exists:orders,orderid',
             'invoice_title' => 'sometimes|required|string|max:255',
-            'issue_date' => 'nullable|date|after_or_equal:' . $invoiceDateBounds['min_date'] . '|before_or_equal:' . ($invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date']),
-            'due_date' => 'nullable|date|after_or_equal:issue_date|before_or_equal:' . ($invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date']),
+            'issue_date' => 'nullable|date|after_or_equal:'.$invoiceDateBounds['min_date'].'|before_or_equal:'.($invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date']),
+            'due_date' => 'nullable|date|after_or_equal:issue_date|before_or_equal:'.($invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date']),
             'notes' => 'nullable|string',
             'status' => 'nullable|in:draft,active,cancelled',
             'items_data' => 'nullable|json',
@@ -2153,26 +2176,26 @@ class InvoicesController extends Controller
         // Check if draft already exists for this client
         $orderId = $validated['orderid'] ?? null;
         $draft = null;
-        $isExplicitInvoiceEdit = !empty($validated['invoiceid']);
-        if (!empty($validated['invoiceid'])) {
+        $isExplicitInvoiceEdit = ! empty($validated['invoiceid']);
+        if (! empty($validated['invoiceid'])) {
             // Explicit edit flow: always target this exact invoice id.
             // Do not restrict by status here; older records may have different status values.
             $draft = Invoice::where('invoiceid', $validated['invoiceid'])
                 ->first();
         }
 
-        if (!$draft && !$isExplicitInvoiceEdit) {
+        if (! $draft && ! $isExplicitInvoiceEdit) {
             $draft = Invoice::where('clientid', $validated['clientid'])
                 ->whereIn('accountid', $accountCandidates)
                 ->where('status', 'draft')
                 ->where('created_by', $user?->userid ?? $user?->id)
-                ->when(!empty($orderId), fn($q) => $q->whereHas('invoiceItems', fn($itemQ) => $itemQ->where('orderid', $orderId)))
-                ->when(empty($orderId), fn($q) => $q->whereDoesntHave('invoiceItems', fn($itemQ) => $itemQ->whereNotNull('orderid')))
+                ->when(! empty($orderId), fn ($q) => $q->whereHas('invoiceItems', fn ($itemQ) => $itemQ->where('orderid', $orderId)))
+                ->when(empty($orderId), fn ($q) => $q->whereDoesntHave('invoiceItems', fn ($itemQ) => $itemQ->whereNotNull('orderid')))
                 ->where('updated_at', '>', now()->subHours(24))
                 ->first();
         }
 
-        if (!$draft && $isExplicitInvoiceEdit) {
+        if (! $draft && $isExplicitInvoiceEdit) {
             return response()->json([
                 'ok' => false,
                 'message' => 'Invoice not found for editing.',
@@ -2215,13 +2238,13 @@ class InvoicesController extends Controller
         $rawItemsData = $request->input('items_data');
         if ($rawItemsData !== null) {
             $itemsData = json_decode($rawItemsData, true);
-            if (!is_array($itemsData)) {
+            if (! is_array($itemsData)) {
                 $itemsData = [];
             }
 
             $draftItems = [];
             foreach ($itemsData as $index => $itemData) {
-                if (!is_array($itemData)) {
+                if (! is_array($itemData)) {
                     continue;
                 }
 
@@ -2248,9 +2271,9 @@ class InvoicesController extends Controller
                     'discount_amount' => max(0, (float) $amounts['discount_amount']),
                     'duration' => $itemData['duration'] ?? null,
                     'frequency' => $itemData['frequency'] ?? null,
-                    'no_of_users' => !empty($itemData['no_of_users']) ? max(1, (int) $itemData['no_of_users']) : null,
-                    'start_date' => !empty($itemData['start_date']) ? $itemData['start_date'] : null,
-                    'end_date' => !empty($itemData['end_date']) ? $itemData['end_date'] : null,
+                    'no_of_users' => ! empty($itemData['no_of_users']) ? max(1, (int) $itemData['no_of_users']) : null,
+                    'start_date' => ! empty($itemData['start_date']) ? $itemData['start_date'] : null,
+                    'end_date' => ! empty($itemData['end_date']) ? $itemData['end_date'] : null,
                     'status' => 'active',
                     'amount' => $this->moneyAmount($amounts['line_total'] ?? 0),
                     'sequence' => $index + 1,
@@ -2258,7 +2281,7 @@ class InvoicesController extends Controller
             }
 
             $draft->items()->delete();
-            if (!empty($draftItems)) {
+            if (! empty($draftItems)) {
                 $draft->items()->createMany($draftItems);
             }
         }
@@ -2292,26 +2315,26 @@ class InvoicesController extends Controller
         $draftId = request('d');
 
         $draft = null;
-        if (!empty($draftId)) {
+        if (! empty($draftId)) {
             $draft = Invoice::where('invoiceid', $draftId)
                 ->where('accountid', $accountid)
                 ->with(['invoiceItems.item'])
                 ->first();
         }
 
-        if (!$draft && empty($draftId)) {
+        if (! $draft && empty($draftId)) {
             $draft = Invoice::where('clientid', $clientid)
                 ->where('accountid', $accountid)
                 ->where('status', 'draft')
                 ->where('created_by', $user?->userid ?? $user?->id)
-                ->when(!empty($orderId), fn($q) => $q->whereHas('invoiceItems', fn($itemQ) => $itemQ->where('orderid', $orderId)))
-                ->when(empty($orderId), fn($q) => $q->whereDoesntHave('invoiceItems', fn($itemQ) => $itemQ->whereNotNull('orderid')))
+                ->when(! empty($orderId), fn ($q) => $q->whereHas('invoiceItems', fn ($itemQ) => $itemQ->where('orderid', $orderId)))
+                ->when(empty($orderId), fn ($q) => $q->whereDoesntHave('invoiceItems', fn ($itemQ) => $itemQ->whereNotNull('orderid')))
                 ->where('updated_at', '>', now()->subHours(24))
                 ->with(['invoiceItems.item'])
                 ->first();
         }
 
-        if (!$draft) {
+        if (! $draft) {
             return response()->json(['ok' => false]);
         }
 
@@ -2332,7 +2355,7 @@ class InvoicesController extends Controller
                 'terms' => $draft->terms ?? [],
                 'terms_by_type' => $this->normalizeInvoiceTermsByType($draft->terms),
                 'status' => $draft->status,
-                'items' => $draft->items->map(fn($i) => [
+                'items' => $draft->items->map(fn ($i) => [
                     'invoice_itemid' => $i->invoice_itemid,
                     'orderid' => $i->orderid,
                     'itemid' => $i->itemid,
@@ -2363,11 +2386,11 @@ class InvoicesController extends Controller
 
         // Load account billing details for preview
         $accountid = $this->resolveAccountId();
-        $account = \App\Models\Account::where('accountid', $accountid)->first();
-        $accountBillingDetail = \App\Models\AccountBillingDetail::where('accountid', $accountid)->first();
+        $account = Account::where('accountid', $accountid)->first();
+        $accountBillingDetail = AccountBillingDetail::where('accountid', $accountid)->first();
 
         return view('invoices.show', [
-            'title' => 'Invoice ' . ($invoice->invoice_number ?? 'Details'),
+            'title' => 'Invoice '.($invoice->invoice_number ?? 'Details'),
             'subtitle' => 'Invoice Details',
             'invoice' => $invoice,
             'account' => $account,
@@ -2388,11 +2411,11 @@ class InvoicesController extends Controller
         ];
 
         $primaryOrderId = $this->resolvePrimaryOrderIdFromItems($invoice);
-        if (!empty($primaryOrderId)) {
+        if (! empty($primaryOrderId)) {
             $query['o'] = $primaryOrderId;
         }
 
-        if (!empty($invoice->ti_number)) {
+        if (! empty($invoice->ti_number)) {
             $query['tax_invoice'] = 1;
         }
 
@@ -2428,7 +2451,7 @@ class InvoicesController extends Controller
         $hasRecurringFrequency = $this->hasRecurringFrequency($itemData['frequency'] ?? null);
 
         $accountid = $this->resolveAccountId();
-        $account = \App\Models\Account::find($accountid);
+        $account = Account::find($accountid);
         $accountHasUsers = (bool) ($account?->have_users ?? false);
         $service = Service::where('accountid', $accountid)->find($invoiceItem->itemid);
         $isUserWiseItem = $accountHasUsers && $this->isUserWiseEnabled($service?->user_wise);
@@ -2503,10 +2526,10 @@ class InvoicesController extends Controller
 
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'invoice_number' => 'required|string|unique:invoices,' . $invoiceNumberColumn . ',' . $invoice->invoiceid . ',invoiceid',
+            'invoice_number' => 'required|string|unique:invoices,'.$invoiceNumberColumn.','.$invoice->invoiceid.',invoiceid',
             'invoice_title' => 'nullable|string|max:255',
-            'issue_date' => 'required|date|after_or_equal:' . $invoiceDateBounds['min_date'] . '|before_or_equal:' . ($invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date']),
-            'due_date' => 'required|date|after_or_equal:issue_date|before_or_equal:' . ($invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date']),
+            'issue_date' => 'required|date|after_or_equal:'.$invoiceDateBounds['min_date'].'|before_or_equal:'.($invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date']),
+            'due_date' => 'required|date|after_or_equal:issue_date|before_or_equal:'.($invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date']),
             'notes' => 'nullable|string',
             'items_data' => 'required|json',
         ]);
@@ -2539,7 +2562,7 @@ class InvoicesController extends Controller
         $invoice->invoiceItems()->delete();
 
         $accountid = $this->resolveAccountId();
-        $account = \App\Models\Account::find($accountid);
+        $account = Account::find($accountid);
         $accountHasUsers = (bool) ($account?->have_users ?? false);
 
         foreach ($itemsData as $index => $itemData) {
@@ -2560,8 +2583,8 @@ class InvoicesController extends Controller
                 'duration' => $itemData['duration'] ?? null,
                 'frequency' => $itemData['frequency'] ?? null,
                 'no_of_users' => $isUserWiseItem ? max(1, (int) ($itemData['no_of_users'] ?? 1)) : null,
-                'start_date' => !empty($itemData['start_date']) ? $itemData['start_date'] : null,
-                'end_date' => !empty($itemData['end_date']) ? $itemData['end_date'] : null,
+                'start_date' => ! empty($itemData['start_date']) ? $itemData['start_date'] : null,
+                'end_date' => ! empty($itemData['end_date']) ? $itemData['end_date'] : null,
                 'status' => 'active',
                 'amount' => $amounts['line_total'],
                 'sequence' => $index + 1,
@@ -2703,7 +2726,7 @@ class InvoicesController extends Controller
 
         $today = now()->startOfDay();
         $endDate = $orderModel->end_date?->copy()->startOfDay();
-        if (!$endDate || $endDate->gt($today)) {
+        if (! $endDate || $endDate->gt($today)) {
             return $this->redirectExpiryListWithFilters($request, 'expired')
                 ->with('error', 'Only expired orders can be suspended.');
         }
@@ -2743,7 +2766,7 @@ class InvoicesController extends Controller
 
         $newEndDate = (string) $validated['end_date'];
         $startDate = $orderModel->start_date?->toDateString();
-        if (!empty($startDate) && $newEndDate < $startDate) {
+        if (! empty($startDate) && $newEndDate < $startDate) {
             return $this->redirectExpiryListWithFilters($request, request('tab', 'expired'))
                 ->with('error', 'End date cannot be before start date.');
         }
@@ -2787,15 +2810,15 @@ class InvoicesController extends Controller
 
         if ($sentCount > 0) {
             return $this->redirectExpiryListWithFilters($request, request('tab', 'expired'))
-                ->with('success', ucfirst($templateType) . ' reminder sent on ' . $sentCount . ' channel(s).');
+                ->with('success', ucfirst($templateType).' reminder sent on '.$sentCount.' channel(s).');
         }
 
         $failureMessage = ((int) ($result['failed'] ?? 0)) > 0
-            ? ucfirst($templateType) . ' reminder could not be delivered. Please verify templates and recipient details.'
-            : 'No active ' . $templateType . ' template found for this account.';
+            ? ucfirst($templateType).' reminder could not be delivered. Please verify templates and recipient details.'
+            : 'No active '.$templateType.' template found for this account.';
         $firstReason = collect((array) ($result['reasons'] ?? []))->filter()->first();
-        if (!empty($firstReason)) {
-            $failureMessage .= ' Reason: ' . $firstReason;
+        if (! empty($firstReason)) {
+            $failureMessage .= ' Reason: '.$firstReason;
         }
 
         return $this->redirectExpiryListWithFilters($request, request('tab', 'expired'))
@@ -2828,7 +2851,7 @@ class InvoicesController extends Controller
             return $fromDirectLink;
         }
 
-        if (empty($order->itemid) || !$order->end_date) {
+        if (empty($order->itemid) || ! $order->end_date) {
             return null;
         }
 
@@ -2846,7 +2869,7 @@ class InvoicesController extends Controller
 
     private function buildReminderInvoiceContextFromOrder(Order $order): Invoice
     {
-        $invoice = new Invoice();
+        $invoice = new Invoice;
         $invoice->accountid = (string) $order->accountid;
         $invoice->clientid = (string) $order->clientid;
         $invoice->invoiceid = '';
@@ -2859,7 +2882,7 @@ class InvoicesController extends Controller
         $invoice->created_at = $order->updated_at ?? now();
         $invoice->setRelation('client', $order->client);
 
-        $item = new InvoiceItem();
+        $item = new InvoiceItem;
         $item->accountid = (string) $order->accountid;
         $item->clientid = (string) $order->clientid;
         $item->invoiceid = '';
@@ -2888,7 +2911,7 @@ class InvoicesController extends Controller
     protected function assertDocumentNumberAvailable(string $invoiceNumber, ?string $ignoreInvoiceId = null, ?string $numberColumn = null): void
     {
         $numberExists = Invoice::query()
-            ->when($numberColumn, fn($query) => $query->where($numberColumn, $invoiceNumber), function ($query) use ($invoiceNumber) {
+            ->when($numberColumn, fn ($query) => $query->where($numberColumn, $invoiceNumber), function ($query) use ($invoiceNumber) {
                 $query->where(function ($inner) use ($invoiceNumber) {
                     $inner->where('pi_number', $invoiceNumber)
                         ->orWhere('ti_number', $invoiceNumber);
@@ -2944,7 +2967,7 @@ class InvoicesController extends Controller
             ]);
         }
 
-        return redirect($editUrl)->with('success', 'Tax Invoice ready: ' . $tiNumber);
+        return redirect($editUrl)->with('success', 'Tax Invoice ready: '.$tiNumber);
     }
 
     public function sendReminder(Request $request, string $invoice, InvoiceReminderService $invoiceReminderService)
@@ -2954,7 +2977,7 @@ class InvoicesController extends Controller
 
         $sentCount = (int) ($result['sent'] ?? 0);
         if ($sentCount > 0) {
-            $message = 'Reminder sent successfully on ' . $sentCount . ' channel(s).';
+            $message = 'Reminder sent successfully on '.$sentCount.' channel(s).';
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json(['success' => true, 'message' => $message, 'meta' => $result]);
             }
@@ -2966,8 +2989,8 @@ class InvoicesController extends Controller
             ? 'Reminder could not be delivered. Please verify reminder templates and recipient details.'
             : 'No active reminder template found for this account.';
         $firstReason = collect((array) ($result['reasons'] ?? []))->filter()->first();
-        if (!empty($firstReason)) {
-            $failureMessage .= ' Reason: ' . $firstReason;
+        if (! empty($firstReason)) {
+            $failureMessage .= ' Reason: '.$firstReason;
         }
 
         if ($request->wantsJson() || $request->ajax()) {
@@ -2984,7 +3007,7 @@ class InvoicesController extends Controller
             ->where('invoice_itemid', $item)
             ->first();
 
-        if (!$invoiceItem) {
+        if (! $invoiceItem) {
             return back()->with('error', 'Invoice item not found for reminder.');
         }
 
@@ -2998,7 +3021,7 @@ class InvoicesController extends Controller
 
         $sentCount = (int) ($result['sent'] ?? 0);
         if ($sentCount > 0) {
-            $message = 'Reminder sent for item "' . ($invoiceItem->item_name ?? 'Item') . '" on ' . $sentCount . ' channel(s).';
+            $message = 'Reminder sent for item "'.($invoiceItem->item_name ?? 'Item').'" on '.$sentCount.' channel(s).';
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json(['success' => true, 'message' => $message, 'meta' => $result]);
             }
@@ -3010,8 +3033,8 @@ class InvoicesController extends Controller
             ? 'Item reminder could not be delivered. Please verify reminder templates and recipient details.'
             : 'No active reminder template found for this account.';
         $firstReason = collect((array) ($result['reasons'] ?? []))->filter()->first();
-        if (!empty($firstReason)) {
-            $failureMessage .= ' Reason: ' . $firstReason;
+        if (! empty($firstReason)) {
+            $failureMessage .= ' Reason: '.$firstReason;
         }
 
         if ($request->wantsJson() || $request->ajax()) {
@@ -3037,7 +3060,7 @@ class InvoicesController extends Controller
         }
 
         $accountid = $this->resolveAccountId();
-        $account = \App\Models\Account::find($accountid);
+        $account = Account::find($accountid);
         $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
         $fromEmail = (string) ($accountBillingDetail?->billing_from_email ?? '');
         $toEmail = (string) (
@@ -3051,7 +3074,7 @@ class InvoicesController extends Controller
         $requestedType = strtolower(trim((string) request('attachment_type', '')));
         $defaultType = in_array($requestedType, ['pi', 'ti'], true)
             ? $requestedType
-            : (!empty(trim((string) $invoice->ti_number)) ? 'ti' : $this->mapInvoiceTemplateType($invoice));
+            : (! empty(trim((string) $invoice->ti_number)) ? 'ti' : $this->mapInvoiceTemplateType($invoice));
         $defaultSubjectNumber = $defaultType === 'ti' ? $invoice->ti_number : $invoice->pi_number;
         $billingAddressLines = array_values(array_filter([
             trim((string) ($accountBillingDetail?->address ?? '')),
@@ -3068,9 +3091,9 @@ class InvoicesController extends Controller
             $signatureName,
         ], $billingAddressLines)));
 
-        $defaultBody = "Hello,\n\nPlease find attached your invoice.\n\nInvoice No: " . ($defaultSubjectNumber ?: $invoice->invoice_number);
-        if (!empty($signatureLines)) {
-            $defaultBody .= "\n\nRegards,\n" . implode("\n", $signatureLines);
+        $defaultBody = "Hello,\n\nPlease find attached your invoice.\n\nInvoice No: ".($defaultSubjectNumber ?: $invoice->invoice_number);
+        if (! empty($signatureLines)) {
+            $defaultBody .= "\n\nRegards,\n".implode("\n", $signatureLines);
         }
 
         $user = Auth::user();
@@ -3098,7 +3121,7 @@ class InvoicesController extends Controller
         foreach ($templateRows as $row) {
             $channel = (string) $row->channel;
             $type = (string) $row->template_type;
-            if (!in_array($channel, ['email', 'whatsapp', 'sms'], true) || !in_array($type, ['pi', 'ti'], true)) {
+            if (! in_array($channel, ['email', 'whatsapp', 'sms'], true) || ! in_array($type, ['pi', 'ti'], true)) {
                 continue;
             }
 
@@ -3119,11 +3142,11 @@ class InvoicesController extends Controller
                     : strtolower(trim((string) ($row->header_type ?? ''))),
             ];
 
-            if (!in_array($channel, $availableChannelsByType[$type], true)) {
+            if (! in_array($channel, $availableChannelsByType[$type], true)) {
                 $availableChannelsByType[$type][] = $channel;
             }
 
-            if (!isset($firstTemplateByContext[$type][$channel])) {
+            if (! isset($firstTemplateByContext[$type][$channel])) {
                 $firstTemplateByContext[$type][$channel] = end($templateCatalog[$type][$channel]);
             }
         }
@@ -3135,12 +3158,12 @@ class InvoicesController extends Controller
 
         $fallbackTemplatesByType = [
             'pi' => [
-                'subject' => 'Invoice ' . ((string) ($invoice->pi_number ?: $invoice->invoice_number)),
+                'subject' => 'Invoice '.((string) ($invoice->pi_number ?: $invoice->invoice_number)),
                 'body' => $defaultBody,
                 'raw_body' => '',
             ],
             'ti' => [
-                'subject' => 'Invoice ' . ((string) ($invoice->ti_number ?: $invoice->invoice_number)),
+                'subject' => 'Invoice '.((string) ($invoice->ti_number ?: $invoice->invoice_number)),
                 'body' => $defaultBody,
                 'raw_body' => '',
             ],
@@ -3148,7 +3171,7 @@ class InvoicesController extends Controller
 
         // Get default channel from request or default to email
         $defaultChannel = trim((string) request('channel', 'email'));
-        if (!in_array($defaultChannel, ['email', 'whatsapp', 'sms'], true)) {
+        if (! in_array($defaultChannel, ['email', 'whatsapp', 'sms'], true)) {
             $defaultChannel = 'email';
         }
 
@@ -3180,7 +3203,7 @@ class InvoicesController extends Controller
         }
 
         // 2. If no specific email, load by document type + channel
-        if (!$latestEmail) {
+        if (! $latestEmail) {
             $latestEmail = CommunicationLog::query()
                 ->where('invoiceid', $invoice->invoiceid)
                 ->where('accountid', $currentAccountId)
@@ -3189,12 +3212,12 @@ class InvoicesController extends Controller
                 ->first();
         }
 
-        if ($latestEmail && !empty(trim((string) $latestEmail->to_email))) {
+        if ($latestEmail && ! empty(trim((string) $latestEmail->to_email))) {
             $toEmail = (string) $latestEmail->to_email;
         }
 
         $ccEmail = '';
-        if ($latestEmail && !empty(trim((string) $latestEmail->cc_email))) {
+        if ($latestEmail && ! empty(trim((string) $latestEmail->cc_email))) {
             $ccEmail = (string) $latestEmail->cc_email;
         }
 
@@ -3202,7 +3225,7 @@ class InvoicesController extends Controller
         if ($prefillSubject === null || trim((string) $prefillSubject) === '') {
             $prefillSubject = trim((string) ($invoice->invoice_title ?? '')) !== ''
                 ? ($channelTemplateSubject ?? trim((string) $invoice->invoice_title))
-                : ('Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number));
+                : ('Invoice '.($defaultSubjectNumber ?: $invoice->invoice_number));
         }
 
         $prefillBody = $latestEmail?->body;
@@ -3212,9 +3235,9 @@ class InvoicesController extends Controller
         $prefillBody = $this->sanitizeComposedMessageBody((string) $prefillBody);
 
         $prefillAttachmentTypes = [];
-        if (!empty($latestEmail?->attachment_type)) {
+        if (! empty($latestEmail?->attachment_type)) {
             $prefillAttachmentTypes = collect(explode(',', (string) $latestEmail->attachment_type))
-                ->map(fn($type) => trim($type))
+                ->map(fn ($type) => trim($type))
                 ->filter()
                 ->values()
                 ->all();
@@ -3223,12 +3246,12 @@ class InvoicesController extends Controller
             $prefillAttachmentTypes = [$defaultType];
         }
         $prefillAttachmentType = $prefillAttachmentTypes[0] ?? $defaultType;
-        if (!in_array($prefillAttachmentType, ['pi', 'ti'], true)) {
+        if (! in_array($prefillAttachmentType, ['pi', 'ti'], true)) {
             $prefillAttachmentType = $defaultType;
         }
 
         $prefillChannel = (string) ($latestEmail?->channel ?? 'email');
-        if (!in_array($prefillChannel, ['email', 'whatsapp', 'sms'], true)) {
+        if (! in_array($prefillChannel, ['email', 'whatsapp', 'sms'], true)) {
             $prefillChannel = 'email';
         }
         $prefillPhone = trim((string) (
@@ -3258,16 +3281,17 @@ class InvoicesController extends Controller
             'fallbackTemplatesByType' => $fallbackTemplatesByType,
             'composeEmail' => $latestEmail,
             'customAttachmentUrls' => collect(explode(',', (string) ($latestEmail?->custom_attachment_path ?? '')))
-                ->map(fn($path) => trim((string) $path))
+                ->map(fn ($path) => trim((string) $path))
                 ->filter()
-                ->map(fn($path) => $this->buildPublicAttachmentUrl($path))
+                ->map(fn ($path) => $this->buildPublicAttachmentUrl($path))
                 ->values()
                 ->all(),
             'customAttachmentNames' => collect(explode(',', (string) ($latestEmail?->custom_attachment_path ?? '')))
-                ->map(fn($path) => trim((string) $path))
+                ->map(fn ($path) => trim((string) $path))
                 ->filter()
                 ->map(function ($path) {
                     $url = $this->buildPublicAttachmentUrl($path);
+
                     return basename((string) parse_url($url, PHP_URL_PATH) ?: 'Attachment');
                 })
                 ->values()
@@ -3306,12 +3330,13 @@ class InvoicesController extends Controller
                     $emails = preg_split('/[\s,;]+/', (string) $value);
                     foreach ($emails as $email) {
                         $email = trim($email);
-                        if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        if (! empty($email) && ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                             $fail("The {$attribute} must contain only valid email addresses.");
+
                             return;
                         }
                     }
-                }
+                },
             ],
             'cc_email' => [
                 'nullable',
@@ -3321,12 +3346,13 @@ class InvoicesController extends Controller
                     $emails = preg_split('/[\s,;]+/', (string) $value);
                     foreach ($emails as $email) {
                         $email = trim($email);
-                        if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        if (! empty($email) && ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                             $fail("The {$attribute} must contain only valid email addresses.");
+
                             return;
                         }
                     }
-                }
+                },
             ],
             'subject' => 'nullable|string|max:255',
             'body' => 'nullable|string',
@@ -3375,7 +3401,7 @@ class InvoicesController extends Controller
             ->where('channel', $channel)
             ->first();
 
-        if (!$emailDraft) {
+        if (! $emailDraft) {
             $emailDraft = CommunicationLog::create([
                 'accountid' => $currentAccountId,
                 'invoiceid' => $invoice->invoiceid,
@@ -3400,7 +3426,7 @@ class InvoicesController extends Controller
             ?? ''
         ));
         $existingCustomAttachmentPaths = collect(explode(',', (string) ($emailDraft->custom_attachment_path ?? '')))
-            ->map(fn($path) => trim((string) $path))
+            ->map(fn ($path) => trim((string) $path))
             ->filter()
             ->values()
             ->all();
@@ -3429,8 +3455,8 @@ class InvoicesController extends Controller
             $existingCustomAttachmentPaths,
             $uploadedCustomAttachmentPaths
         ))));
-        $finalCustomAttachmentPath = !empty($finalCustomAttachmentPaths) ? implode(',', $finalCustomAttachmentPaths) : null;
-        $storeAttachmentPath = ($channel === 'email' && !empty($attachmentPaths)) ? implode(',', $attachmentPaths) : null;
+        $finalCustomAttachmentPath = ! empty($finalCustomAttachmentPaths) ? implode(',', $finalCustomAttachmentPaths) : null;
+        $storeAttachmentPath = ($channel === 'email' && ! empty($attachmentPaths)) ? implode(',', $attachmentPaths) : null;
         $storeCustomAttachmentPath = $channel === 'email' ? $finalCustomAttachmentPath : null;
         $sentAt = now();
         $documentLabel = $selectedType === 'ti' ? 'Tax Invoice (TI)' : 'Proforma Invoice (PI)';
@@ -3441,7 +3467,7 @@ class InvoicesController extends Controller
         // For non-email channels, resolve template tags.
         $finalBody = $this->sanitizeComposedMessageBody((string) ($validated['body'] ?? ''));
         if ($channel !== 'email' && $isSendAction) {
-            $accountName = (string) (optional(\App\Models\Account::find($currentAccountId))->name ?? '');
+            $accountName = (string) (optional(Account::find($currentAccountId))->name ?? '');
             $finalBody = $this->renderMessageTemplate((string) $finalBody, $invoice, $accountName);
             $finalBody = $this->sanitizeComposedMessageBody($finalBody);
         }
@@ -3458,8 +3484,9 @@ class InvoicesController extends Controller
             'channel' => $channel,
         ];
 
-        if (!$isSendAction) {
+        if (! $isSendAction) {
             $emailDraft->update($updatePayload + ['status' => 'draft']);
+
             return redirect()
                 ->route('invoices.email-compose', [
                     'invoice' => $invoice->invoiceid,
@@ -3489,7 +3516,7 @@ class InvoicesController extends Controller
 
             $channelTemplateConfig = $channelTemplateQuery->first();
 
-            if ($selectedTemplateId !== '' && !$channelTemplateConfig) {
+            if ($selectedTemplateId !== '' && ! $channelTemplateConfig) {
                 return back()->withErrors([
                     'selected_templateid' => 'Selected template is invalid for this channel/type.',
                 ])->withInput();
@@ -3548,29 +3575,29 @@ class InvoicesController extends Controller
                     $this->buildCampioRecipientRecord($invoice, $channel, $toEmailValue, $phone),
                 ],
                 'source_url' => url()->current(),
-                'notes' => 'Invoice communication: ' . strtoupper($channel),
+                'notes' => 'Invoice communication: '.strtoupper($channel),
             ];
-            if (!empty($channelTemplateConfig?->template_id)) {
+            if (! empty($channelTemplateConfig?->template_id)) {
                 $payload['template_id'] = (string) $channelTemplateConfig->template_id;
             }
-            if (!empty($channelTemplateConfig?->meta_template_id)) {
+            if (! empty($channelTemplateConfig?->meta_template_id)) {
                 $payload['meta_template_id'] = (string) $channelTemplateConfig->meta_template_id;
-            } elseif (!empty($channelTemplateConfig?->template_id)) {
+            } elseif (! empty($channelTemplateConfig?->template_id)) {
                 $payload['meta_template_id'] = (string) $channelTemplateConfig->template_id;
             }
-            if (!empty($channelTemplateConfig?->sender_id)) {
+            if (! empty($channelTemplateConfig?->sender_id)) {
                 $payload['sender_id'] = (string) $channelTemplateConfig->sender_id;
             }
-            if (!empty($channelTemplateConfig?->template_id)) {
-                $accountName = (string) (optional(\App\Models\Account::find($currentAccountId))->name ?? '');
+            if (! empty($channelTemplateConfig?->template_id)) {
+                $accountName = (string) (optional(Account::find($currentAccountId))->name ?? '');
                 $templateVariables = $this->extractCampioTemplateVariables((string) ($channelTemplateConfig->body ?? ''), $invoice, $accountName);
-                if (!empty($templateVariables)) {
+                if (! empty($templateVariables)) {
                     $payload['variables'] = $templateVariables;
                     $payload['dynamic_context'] = [
                         'fields' => collect($templateVariables)->values()->map(
-                            fn($value, $index) => [
+                            fn ($value, $index) => [
                                 // Campio scheduler resolves WhatsApp template vars only for Body_/Header_/Button_ prefixes.
-                                'key' => 'Body_' . ((int) $index + 1),
+                                'key' => 'Body_'.((int) $index + 1),
                                 'type' => 'custom',
                                 'value' => (string) $value,
                             ]
@@ -3578,15 +3605,15 @@ class InvoicesController extends Controller
                     ];
                 }
             }
-            if ($channel === 'whatsapp' && !empty($documentLinks) && $canUseWhatsappDocumentHeader) {
+            if ($channel === 'whatsapp' && ! empty($documentLinks) && $canUseWhatsappDocumentHeader) {
                 $payload['media_url'] = (string) ($documentLinks[0]['url'] ?? '');
-                if ($payload['media_url'] !== '' && !str_starts_with(strtolower($payload['media_url']), 'https://')) {
+                if ($payload['media_url'] !== '' && ! str_starts_with(strtolower($payload['media_url']), 'https://')) {
                     return back()->withErrors([
                         'general' => 'WhatsApp media delivery requires a public HTTPS document URL. Current PDF URL is HTTP. Please enable SSL/HTTPS for this domain, then try again.',
                     ])->withInput();
                 }
                 if ($payload['media_url'] !== '') {
-                    if (!isset($payload['dynamic_context']) || !is_array($payload['dynamic_context'])) {
+                    if (! isset($payload['dynamic_context']) || ! is_array($payload['dynamic_context'])) {
                         $payload['dynamic_context'] = [];
                     }
                     // Campio WhatsApp job reads media_url from dynamic_context for header media templates.
@@ -3595,7 +3622,7 @@ class InvoicesController extends Controller
             }
 
             $campioResult = $this->sendViaCampio($channel, $payload);
-            if (!$campioResult['ok']) {
+            if (! $campioResult['ok']) {
                 return back()->withErrors(['general' => $campioResult['message']])->withInput();
             }
 
@@ -3634,7 +3661,7 @@ class InvoicesController extends Controller
             $emailAttachmentUrls[] = $piUrl;
             $emailAttachmentItems[] = [
                 'url' => $piUrl,
-                'name' => 'Proforma Invoice - ' . ($piNumber !== '' ? $piNumber : $invoice->invoiceid) . '.pdf',
+                'name' => 'Proforma Invoice - '.($piNumber !== '' ? $piNumber : $invoice->invoiceid).'.pdf',
             ];
         }
         if (in_array('ti', $selectedTypes, true)) {
@@ -3643,7 +3670,7 @@ class InvoicesController extends Controller
             $emailAttachmentUrls[] = $tiUrl;
             $emailAttachmentItems[] = [
                 'url' => $tiUrl,
-                'name' => 'Tax Invoice - ' . ($tiNumber !== '' ? $tiNumber : $invoice->invoiceid) . '.pdf',
+                'name' => 'Tax Invoice - '.($tiNumber !== '' ? $tiNumber : $invoice->invoiceid).'.pdf',
             ];
         }
         foreach ($finalCustomAttachmentPaths as $customPath) {
@@ -3656,7 +3683,7 @@ class InvoicesController extends Controller
         }
 
         $emails = collect(preg_split('/[\s,;]+/', $toEmailValue))
-            ->map(fn($email) => trim((string) $email))
+            ->map(fn ($email) => trim((string) $email))
             ->filter()
             ->values()
             ->all();
@@ -3671,7 +3698,7 @@ class InvoicesController extends Controller
         }
 
         $ccEmails = collect(preg_split('/[\s,;]+/', $ccEmailValue))
-            ->map(fn($email) => trim((string) $email))
+            ->map(fn ($email) => trim((string) $email))
             ->filter()
             ->values()
             ->all();
@@ -3692,12 +3719,12 @@ class InvoicesController extends Controller
             'notes' => 'Invoice communication: EMAIL',
         ];
         $emailAttachments = $this->buildCampioAttachments($emailAttachmentItems);
-        if (!empty($emailAttachments)) {
+        if (! empty($emailAttachments)) {
             $payload['attachments'] = $emailAttachments;
         }
 
         $campioResult = $this->sendViaCampio('email', $payload);
-        if (!$campioResult['ok']) {
+        if (! $campioResult['ok']) {
             return back()->withErrors(['general' => $campioResult['message']])->withInput();
         }
 
@@ -3737,14 +3764,14 @@ class InvoicesController extends Controller
         } elseif ($type === 'pi') {
             $isTaxInvoice = false;
         } else {
-            $isTaxInvoice = !empty(trim($invoice->ti_number ?? ''));
+            $isTaxInvoice = ! empty(trim($invoice->ti_number ?? ''));
         }
 
         $pdfAttachment = $this->buildInvoicePdfAttachment($invoice, $isTaxInvoice);
 
         return response($pdfAttachment['binary'], 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $pdfAttachment['filename'] . '"',
+            'Content-Disposition' => 'inline; filename="'.$pdfAttachment['filename'].'"',
         ]);
     }
 
@@ -3762,7 +3789,7 @@ class InvoicesController extends Controller
     public function ajaxList(Request $request)
     {
         $clientId = $request->query('clientid');
-        if (!$clientId) {
+        if (! $clientId) {
             return response()->json(['invoices' => []]);
         }
 
@@ -3773,7 +3800,7 @@ class InvoicesController extends Controller
             ->get(['invoiceid', 'invoice_number', 'grand_total', 'currency', 'clientid']);
 
         return response()->json([
-            'invoices' => $invoices->map(fn($inv) => [
+            'invoices' => $invoices->map(fn ($inv) => [
                 'invoiceid' => $inv->invoiceid,
                 'invoice_number' => $inv->invoice_number,
                 'grand_total' => (float) ($inv->grand_total ?? 0),
@@ -3782,7 +3809,7 @@ class InvoicesController extends Controller
         ]);
     }
 
-    protected function calculateRenewalEndDate(\Carbon\Carbon $startDate, string $frequency, int $duration): ?\Carbon\Carbon
+    protected function calculateRenewalEndDate(Carbon $startDate, string $frequency, int $duration): ?Carbon
     {
         if ($duration <= 0 || $frequency === 'One-Time') {
             return null;

@@ -9,8 +9,11 @@ use Illuminate\Support\Str;
 class Tax extends Model
 {
     protected $table = 'account_taxes';
+
     protected $primaryKey = 'taxid';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [
@@ -34,7 +37,7 @@ class Tax extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            $model->taxid = 'TAX' . strtoupper(Str::random(3));
+            $model->taxid = 'TAX'.strtoupper(Str::random(3));
         });
     }
 

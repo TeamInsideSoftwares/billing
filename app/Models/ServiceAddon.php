@@ -12,6 +12,7 @@ class ServiceAddon extends Model
     use HasAlphaNumericId;
 
     protected $table = 'service_addons';
+
     protected $primaryKey = 'addonid';
 
     protected function idLength(): int
@@ -47,4 +48,3 @@ class ServiceAddon extends Model
         return $this->hasMany(ServiceAddonCosting::class, 'addonid', 'addonid')->orderBy('currency_code');
     }
 }
-

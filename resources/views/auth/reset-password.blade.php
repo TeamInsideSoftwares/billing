@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
+
 <body class="login-page">
     <main class="glass-card">
         <p class="login-eyebrow">SkoolReady</p>
@@ -41,7 +43,8 @@
 
             <div>
                 <label for="email">Email Address</label>
-                <input type="email" name="email" id="email" value="{{ old('email', $email) }}" required autofocus>
+                <input type="email" name="email" id="email" value="{{ old('email', $email) }}" required
+                    autofocus>
             </div>
 
             <div>
@@ -57,8 +60,10 @@
             <div>
                 <label for="password_confirmation">Confirm Password</label>
                 <div class="password-field">
-                    <input type="password" name="password_confirmation" id="password_confirmation" required minlength="6">
-                    <span class="password-eye" data-toggle-password="password_confirmation" tabindex="-1" aria-hidden="true">
+                    <input type="password" name="password_confirmation" id="password_confirmation" required
+                        minlength="6">
+                    <span class="password-eye" data-toggle-password="password_confirmation" tabindex="-1"
+                        aria-hidden="true">
                         <i class="fas fa-eye"></i>
                     </span>
                 </div>
@@ -109,4 +114,5 @@
         });
     </script>
 </body>
+
 </html>

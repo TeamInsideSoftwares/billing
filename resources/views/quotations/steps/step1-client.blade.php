@@ -1,36 +1,48 @@
-<div class="quotation-centered-card">
-    <div class="quotation-step3-header">
-        <div class="quotation-step3-header-row">
-            <div class="quotation-step3-avatar">
-                <i class="fas fa-user"></i>
+<div class="row g-3 align-items-stretch">
+    <div class="col-12 col-lg-4">
+        <div class="bg-light p-4 rounded-3 border h-100">
+            <div class="mb-3">
+                <h5 class="fw-semibold text-black mb-0">Select Client</h5>
             </div>
-            <div class="quotation-step3-client min-w-0">
-                <div class="quotation-step3-client-name">Select Client</div>
-                <div class="quotation-step3-client-email">Choose the client to continue the quotation flow.</div>
-            </div>
-            <div class="quotation-step3-tools">
-                <div class="invoice-compact-steps invoice-compact-steps--right" aria-label="Step progress">
-                    <span class="invoice-compact-step is-active">1</span>
-                    <span class="invoice-compact-step">2</span>
-                    <span class="invoice-compact-step">3</span>
-                    <span class="invoice-compact-step">4</span>
+            <div class="row g-2">
+                <div class="col-12">
+                    <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="clientid">Client *</label>
+                    <select id="clientid" class="form-select" required>
+                        <option value="">Choose client</option>
+                        @php $groupedClients = $clients->groupBy(fn ($c) => $c->type === 'trial' ? 'trial' : 'regular') @endphp
+                        @foreach (['regular', 'trial'] as $group)
+                            @if ($groupedClients->has($group))
+                            <optgroup label="{{ $group === 'regular' ? 'Regular Clients' : 'Trial Clients' }}">
+                                @foreach ($groupedClients[$group] as $client)
+                                    <option value="{{ $client->clientid }}" {{ $clientId == $client->clientid ? 'selected' : '' }}>
+                                        {{ $client->business_name ?? $client->contact_name }}
+                                    </option>
+                                @endforeach
+                            </optgroup>
+                            @endif
+                        @endforeach
+                    </select>
                 </div>
+            </div>
+            <div class="d-flex justify-content-end mt-3">
+                <button type="button" class="btn btn-outline-primary btn-primary text-white fw-medium" id="toStep2">
+                    Next <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                </button>
             </div>
         </div>
     </div>
-
-    <div class="soft-panel soft-panel--padded">
-        <label class="field-label" for="clientid">Client</label>
-        <select id="clientid" class="form-input" required>
-            <option value="">Choose client</option>
-            @foreach($clients as $client)
-                <option value="{{ $client->clientid }}" {{ $clientId == $client->clientid ? 'selected' : '' }}>
-                    {{ $client->business_name ?? $client->contact_name }}
-                </option>
-            @endforeach
-        </select>
-        <div class="mt-3 d-flex justify-content-end">
-            <button type="button" class="primary-button" id="toStep2">Next</button>
+    <div class="col-12 col-lg-8">
+        <div class="bg-light p-4 rounded-3 border h-100">
+            <div class="mb-3">
+                <h5 class="fw-semibold text-black mb-0">Progress</h5>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge text-bg-primary">1</span>
+                <span class="badge text-bg-light border text-dark">2</span>
+                <span class="badge text-bg-light border text-dark">3</span>
+                <span class="badge text-bg-light border text-dark">4</span>
+            </div>
+            <p class="small text-muted mt-3 mb-0">Choose the client first, then continue to quotation items.</p>
         </div>
     </div>
 </div>

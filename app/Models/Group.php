@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Group extends Model
 {
     protected $primaryKey = 'groupid';
+
     public function getRouteKeyName(): string
     {
         return 'groupid';

@@ -24,8 +24,11 @@ class Ledger extends Model
     use HasAlphaNumericId;
 
     protected $table = 'ledger';
+
     protected $primaryKey = 'ledgerid';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [

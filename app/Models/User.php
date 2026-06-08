@@ -9,6 +9,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
@@ -32,9 +33,10 @@ use Illuminate\Support\Str;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-use HasAlphaNumericId, HasFactory, Notifiable;
+    use HasAlphaNumericId, HasFactory, Notifiable;
 
     protected $table = 'account_users';
+
     protected $primaryKey = 'userid';
 
     protected function idLength(): int
@@ -57,7 +59,7 @@ use HasAlphaNumericId, HasFactory, Notifiable;
         ];
     }
 
-    public function account(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class, 'accountid', 'accountid');
     }

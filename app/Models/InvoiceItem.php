@@ -33,6 +33,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class InvoiceItem extends Model
 {
     protected $table = 'invoice_items';
+
     protected $primaryKey = 'invoice_itemid';
 
     protected function idLength(): int

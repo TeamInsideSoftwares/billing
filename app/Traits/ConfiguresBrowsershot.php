@@ -8,9 +8,6 @@ trait ConfiguresBrowsershot
 {
     /**
      * Get a pre-configured Browsershot instance.
-     *
-     * @param string $html
-     * @return Browsershot
      */
     protected function getBrowsershot(string $html): Browsershot
     {

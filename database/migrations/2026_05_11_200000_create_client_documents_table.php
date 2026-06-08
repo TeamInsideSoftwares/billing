@@ -22,7 +22,7 @@ return new class extends Migration
             $table->index(['accountid', 'clientid', 'type'], 'client_documents_lookup_idx');
         });
 
-        if (!Schema::hasTable('orders')) {
+        if (! Schema::hasTable('orders')) {
             return;
         }
 

@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('terms_conditions', function (Blueprint $table) {
-            if (!Schema::hasColumn('terms_conditions', 'is_default')) {
+            if (! Schema::hasColumn('terms_conditions', 'is_default')) {
                 $table->boolean('is_default')->default(false)->after('is_active');
                 $table->index(['accountid', 'type', 'is_default'], 'terms_account_type_default_idx');
             }
@@ -26,4 +26,3 @@ return new class extends Migration
         });
     }
 };
-

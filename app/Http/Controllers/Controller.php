@@ -5,32 +5,30 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\FinancialYear;
 use Carbon\Carbon;
-use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 abstract class Controller
 {
     /**
      * Resolves the current account ID from the authenticated user context.
      * Strict multi-tenant scoping - no hardcoded fallbacks to other accounts.
-     * 
-     * @return string
      */
     protected function resolveAccountId(): string
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             abort(401, 'Unauthorized');
         }
 
         $user = auth()->user();
-        
+
         // 1. If the logged-in entity is itself an Account (primary key is accountid)
-        if ($user instanceof \App\Models\Account) {
+        if ($user instanceof Account) {
             return $user->accountid;
         }
 
         // 2. If it's a User model with an accountid field
-        if (isset($user->accountid) && !empty($user->accountid)) {
+        if (isset($user->accountid) && ! empty($user->accountid)) {
             return $user->accountid;
         }
 
@@ -46,7 +44,7 @@ abstract class Controller
     /**
      * Resolve all financial years for the current account in display order.
      *
-     * @return \Illuminate\Support\Collection<int, \App\Models\FinancialYear>
+     * @return Collection<int, FinancialYear>
      */
     protected function resolveFinancialYears(string $accountid): Collection
     {
@@ -107,7 +105,7 @@ abstract class Controller
         $financialYear = $this->resolveSelectedFinancialYear($accountid);
 
         $fyStart = trim((string) ($account?->fy_startdate ?? '04-01'));
-        if (!preg_match('/^(\d{2})-(\d{2})$/', $fyStart, $matches)) {
+        if (! preg_match('/^(\d{2})-(\d{2})$/', $fyStart, $matches)) {
             $fyStart = '04-01';
             $matches = ['04-01', '04', '01'];
         }
@@ -123,7 +121,7 @@ abstract class Controller
             $startYear = (int) $fyMatches[1];
             $endYearValue = (string) $fyMatches[2];
             $endYear = strlen($endYearValue) === 2
-                ? (int) (substr((string) $startYear, 0, 2) . $endYearValue)
+                ? (int) (substr((string) $startYear, 0, 2).$endYearValue)
                 : (int) $endYearValue;
         }
 
@@ -172,7 +170,7 @@ abstract class Controller
             if ($defaultDueDate > $dueMaxDate) {
                 $defaultDueDate = $dueMaxDate;
             }
-        } elseif (!$isFutureFinancialYear) {
+        } elseif (! $isFutureFinancialYear) {
             $defaultIssueDate = $endOfFinancialYear->toDateString();
             $defaultDueDate = $endOfFinancialYear->toDateString();
         }
@@ -187,8 +185,7 @@ abstract class Controller
             'default_date' => $defaultIssueDate,
             'default_issue_date' => $defaultIssueDate,
             'default_due_date' => $defaultDueDate,
-            'label' => $financialYearLabel !== '' ? $financialYearLabel : trim($startOfFinancialYear->format('Y') . '-' . $endOfFinancialYear->format('Y')),
+            'label' => $financialYearLabel !== '' ? $financialYearLabel : trim($startOfFinancialYear->format('Y').'-'.$endOfFinancialYear->format('Y')),
         ];
     }
-
 }

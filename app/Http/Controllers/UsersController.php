@@ -35,11 +35,11 @@ class UsersController extends Controller
 
         if ($searchTerm !== '') {
             $query->where(function ($q) use ($searchTerm): void {
-                $q->where('name', 'like', '%' . $searchTerm . '%')
-                    ->orWhere('email', 'like', '%' . $searchTerm . '%')
-                    ->orWhere('department', 'like', '%' . $searchTerm . '%')
-                    ->orWhere('designation', 'like', '%' . $searchTerm . '%')
-                    ->orWhere('role', 'like', '%' . $searchTerm . '%');
+                $q->where('name', 'like', '%'.$searchTerm.'%')
+                    ->orWhere('email', 'like', '%'.$searchTerm.'%')
+                    ->orWhere('department', 'like', '%'.$searchTerm.'%')
+                    ->orWhere('designation', 'like', '%'.$searchTerm.'%')
+                    ->orWhere('role', 'like', '%'.$searchTerm.'%');
             });
         }
 
@@ -80,7 +80,7 @@ class UsersController extends Controller
         ]);
 
         $profileImagePath = null;
-        if (!empty($validated['cropped_image_data'])) {
+        if (! empty($validated['cropped_image_data'])) {
             $profileImagePath = $this->storeCroppedImage((string) $validated['cropped_image_data']);
         } elseif ($request->hasFile('profile_image')) {
             $profileImagePath = $request->file('profile_image')->store('users/profile-images', 'public');
@@ -152,21 +152,21 @@ class UsersController extends Controller
             'is_active' => (bool) ($validated['is_active'] ?? false),
         ];
 
-        if (!empty($validated['cropped_image_data'])) {
+        if (! empty($validated['cropped_image_data'])) {
             $newPath = $this->storeCroppedImage((string) $validated['cropped_image_data']);
-            if (!empty($user->profile_image)) {
+            if (! empty($user->profile_image)) {
                 Storage::disk('public')->delete($user->profile_image);
             }
             $payload['profile_image'] = $newPath;
         } elseif ($request->hasFile('profile_image')) {
             $newPath = $request->file('profile_image')->store('users/profile-images', 'public');
-            if (!empty($user->profile_image)) {
+            if (! empty($user->profile_image)) {
                 Storage::disk('public')->delete($user->profile_image);
             }
             $payload['profile_image'] = $newPath;
         }
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $payload['password'] = $validated['password'];
         }
 
@@ -202,12 +202,12 @@ class UsersController extends Controller
 
     private function storeCroppedImage(string $dataUri): ?string
     {
-        if (!preg_match('/^data:image\/(\w+);base64,/', $dataUri, $matches)) {
+        if (! preg_match('/^data:image\/(\w+);base64,/', $dataUri, $matches)) {
             return null;
         }
 
         $extension = strtolower($matches[1]);
-        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+        if (! in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
             return null;
         }
 
@@ -216,7 +216,7 @@ class UsersController extends Controller
             return null;
         }
 
-        $fileName = 'users/profile-images/' . Str::lower(Str::random(24)) . '.' . ($extension === 'jpeg' ? 'jpg' : $extension);
+        $fileName = 'users/profile-images/'.Str::lower(Str::random(24)).'.'.($extension === 'jpeg' ? 'jpg' : $extension);
         Storage::disk('public')->put($fileName, $binary);
 
         return $fileName;

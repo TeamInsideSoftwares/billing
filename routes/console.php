@@ -1,8 +1,8 @@
 <?php
 
-use App\Services\InvoiceReminderService;
-use App\Services\ClientConsolidatedReminderService;
 use App\Services\ClientConsolidatedPaymentReminderService;
+use App\Services\ClientConsolidatedReminderService;
+use App\Services\InvoiceReminderService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -16,13 +16,13 @@ Artisan::command('reminders:dispatch {--account=}', function (InvoiceReminderSer
     $summary = $invoiceReminderService->dispatchAutomatedDueReminders($accountId !== '' ? $accountId : null);
 
     $this->info('Reminder automation completed.');
-    $this->line('Accounts: ' . (int) ($summary['accounts'] ?? 0));
+    $this->line('Accounts: '.(int) ($summary['accounts'] ?? 0));
     if ($accountId !== '') {
-        $this->line('Filtered Account: ' . $accountId);
+        $this->line('Filtered Account: '.$accountId);
     }
-    $this->line('Sent: ' . (int) ($summary['sent'] ?? 0));
-    $this->line('Failed: ' . (int) ($summary['failed'] ?? 0));
-    $this->line('Skipped: ' . (int) ($summary['skipped'] ?? 0));
+    $this->line('Sent: '.(int) ($summary['sent'] ?? 0));
+    $this->line('Failed: '.(int) ($summary['failed'] ?? 0));
+    $this->line('Skipped: '.(int) ($summary['skipped'] ?? 0));
 })->purpose('Dispatch automated reminder and expiry notifications');
 
 Artisan::command('reminders:dispatch-consolidated {--account=}', function (ClientConsolidatedReminderService $consolidatedReminderService) {
@@ -30,13 +30,13 @@ Artisan::command('reminders:dispatch-consolidated {--account=}', function (Clien
     $summary = $consolidatedReminderService->dispatchAutomatedConsolidatedEmails($accountId !== '' ? $accountId : null);
 
     $this->info('Consolidated reminder automation completed.');
-    $this->line('Accounts: ' . (int) ($summary['accounts'] ?? 0));
+    $this->line('Accounts: '.(int) ($summary['accounts'] ?? 0));
     if ($accountId !== '') {
-        $this->line('Filtered Account: ' . $accountId);
+        $this->line('Filtered Account: '.$accountId);
     }
-    $this->line('Sent: ' . (int) ($summary['sent'] ?? 0));
-    $this->line('Failed: ' . (int) ($summary['failed'] ?? 0));
-    $this->line('Skipped: ' . (int) ($summary['skipped'] ?? 0));
+    $this->line('Sent: '.(int) ($summary['sent'] ?? 0));
+    $this->line('Failed: '.(int) ($summary['failed'] ?? 0));
+    $this->line('Skipped: '.(int) ($summary['skipped'] ?? 0));
 })->purpose('Dispatch automated consolidated client order summary emails');
 
 Schedule::command('reminders:dispatch')->dailyAt('09:00');
@@ -51,16 +51,16 @@ Artisan::command('reminders:dispatch-consolidated-payments {--account=} {--clien
     );
 
     $this->info('Consolidated payment due reminder automation completed.');
-    $this->line('Accounts: ' . (int) ($summary['accounts'] ?? 0));
+    $this->line('Accounts: '.(int) ($summary['accounts'] ?? 0));
     if ($accountId !== '') {
-        $this->line('Filtered Account: ' . $accountId);
+        $this->line('Filtered Account: '.$accountId);
     }
     if ($clientId !== '') {
-        $this->line('Filtered Client: ' . $clientId);
+        $this->line('Filtered Client: '.$clientId);
     }
-    $this->line('Sent: ' . (int) ($summary['sent'] ?? 0));
-    $this->line('Failed: ' . (int) ($summary['failed'] ?? 0));
-    $this->line('Skipped: ' . (int) ($summary['skipped'] ?? 0));
+    $this->line('Sent: '.(int) ($summary['sent'] ?? 0));
+    $this->line('Failed: '.(int) ($summary['failed'] ?? 0));
+    $this->line('Skipped: '.(int) ($summary['skipped'] ?? 0));
 })->purpose('Dispatch automated consolidated client payment due reminders');
 
 Schedule::command('reminders:dispatch-consolidated-payments')->dailyAt('09:15');

@@ -24,8 +24,11 @@ class MessageTemplate extends Model
     use HasAlphaNumericId;
 
     protected $table = 'account_templates';
+
     protected $primaryKey = 'templateid';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $casts = [

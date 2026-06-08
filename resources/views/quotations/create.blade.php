@@ -21,12 +21,12 @@
     ];
 @endphp
 
-<section class="panel-card">
+<div class="position-relative bg-white p-3 rounded-3">
     @if ($errors->any())
-        <div class="alert warning mb-3">
-            <ul class="plain-list mb-0">
+        <div class="alert alert-danger mb-4">
+            <ul class="mb-0 ps-3">
                 @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
+                    <li class="small">{{ $error }}</li>
                 @endforeach
             </ul>
         </div>
@@ -40,7 +40,7 @@
     @elseif($step === 4)
         @include('quotations.steps.step4-compose')
     @endif
-</section>
+</div>
 
 @php
     $serverDraftPayload = null;

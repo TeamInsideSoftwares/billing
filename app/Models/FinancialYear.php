@@ -11,6 +11,7 @@ class FinancialYear extends Model
     use HasAlphaNumericId;
 
     protected $table = 'financial_year';
+
     protected $primaryKey = 'fy_id';
 
     public function getRouteKeyName(): string

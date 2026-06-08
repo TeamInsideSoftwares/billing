@@ -31,7 +31,9 @@
                     </td>
                     <td class="">
                         <a href="{{ route('groups.edit', $group['record_id']) }}" class="text-action-btn edit">Edit</a>
-                        <form method="POST" action="{{ route('groups.destroy', $group['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $group['group_name'] }}?')">
+                        <form method="POST" action="{{ route('groups.destroy', $group['record_id']) }}" class="inline-delete"
+                            data-name="{{ $group['group_name'] }}"
+                            onsubmit="return confirm('Delete ' + this.dataset.name + '?')">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="text-action-btn delete">Delete</button>

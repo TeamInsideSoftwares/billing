@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('items', function (Blueprint $table) {
-            if (!Schema::hasColumn('items', 'grace_period')) {
+            if (! Schema::hasColumn('items', 'grace_period')) {
                 $table->unsignedInteger('grace_period')->default(0)->after('description');
             }
         });

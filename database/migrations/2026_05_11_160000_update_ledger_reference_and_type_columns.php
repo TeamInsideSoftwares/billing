@@ -9,11 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('ledger')) {
+        if (! Schema::hasTable('ledger')) {
             return;
         }
 
-        if (Schema::hasColumn('ledger', 'reference_number') && !Schema::hasColumn('ledger', 'invoiceid_paymentid')) {
+        if (Schema::hasColumn('ledger', 'reference_number') && ! Schema::hasColumn('ledger', 'invoiceid_paymentid')) {
             Schema::table('ledger', function (Blueprint $table) {
                 $table->renameColumn('reference_number', 'invoiceid_paymentid');
             });
@@ -21,7 +21,7 @@ return new class extends Migration
 
         try {
             DB::statement('ALTER TABLE `ledger` DROP INDEX `ledger_reference_type_unique`');
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Index may already be missing or renamed.
         }
 
@@ -40,20 +40,20 @@ return new class extends Migration
 
         try {
             DB::statement('ALTER TABLE `ledger` ADD UNIQUE `ledger_invoice_payment_type_unique` (`invoiceid_paymentid`, `type`)');
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Unique index may already exist.
         }
     }
 
     public function down(): void
     {
-        if (!Schema::hasTable('ledger')) {
+        if (! Schema::hasTable('ledger')) {
             return;
         }
 
         try {
             DB::statement('ALTER TABLE `ledger` DROP INDEX `ledger_invoice_payment_type_unique`');
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Index may already be missing.
         }
 
@@ -68,7 +68,7 @@ return new class extends Migration
             ->where('type', 'cr')
             ->update(['type' => 'payment']);
 
-        if (Schema::hasColumn('ledger', 'invoiceid_paymentid') && !Schema::hasColumn('ledger', 'reference_number')) {
+        if (Schema::hasColumn('ledger', 'invoiceid_paymentid') && ! Schema::hasColumn('ledger', 'reference_number')) {
             Schema::table('ledger', function (Blueprint $table) {
                 $table->renameColumn('invoiceid_paymentid', 'reference_number');
             });
@@ -76,7 +76,7 @@ return new class extends Migration
 
         try {
             DB::statement('ALTER TABLE `ledger` ADD UNIQUE `ledger_reference_type_unique` (`reference_number`, `type`)');
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Unique index may already exist.
         }
     }

@@ -1,263 +1,289 @@
 @extends('layouts.app')
 
+@php
+    if (isset($subtitle) && $subtitle === 'Showing orders across all clients.') {
+        $subtitle = null;
+    }
+@endphp
+
 @section('header_actions')
-    <div class="header-actions-wrapper">
-        @if($clientId || !empty($selectedItemId) || !empty($hasClientFilter))
-            <a href="{{ route('orders.create', array_filter(['c' => $clientId])) }}" class="primary-button">
-                <i class="fas fa-plus icon-spaced"></i>Create Orders
-            </a>
-        @endif
-    </div>
+<div class="d-flex align-items-center gap-2 flex-wrap">
+    @if(!empty($showClientPicker))
+    <a href="{{ route('orders.index', ['c' => 'all']) }}"
+        class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
+        <i class="fas fa-list btn-icon"></i> View Orders
+    </a>
+    @else
+    <a href="{{ route('orders.trials') }}"
+        class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
+        <i class="fas fa-user-clock btn-icon"></i> Trial Orders
+    </a>
+    <a href="{{ route('orders.create', array_filter(['c' => $clientId])) }}"
+        class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
+        <i class="fas fa-plus btn-icon"></i> Create Orders
+    </a>
+    @endif
+</div>
 @endsection
 
 @section('content')
-<div class="order-index-shell">
-    @if(!empty($showClientPicker))
-        <div class="payment-client-picker-wrap">
-            <div class="payment-client-picker">
-                <div class="payment-client-picker-head">
-                    <div class="payment-client-picker-title">
-                        <div class="payment-client-picker-icon">
-                            <i class="fas fa-building"></i>
-                        </div>
-                        <div>
-                            <strong>Manage Orders</strong>
-                            <p>Choose a client first to load item-based orders.</p>
+@if(!empty($showClientPicker))
+<div class="position-relative">
+    <div class="row">
+        <div class="col-12 col-md-4 mx-auto">
+            <div class="bg-white p-3 rounded-3 shadow-sm">
+                <div class="bg-light p-4 rounded-3 border mx-auto">
+                    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div>
+                                <h5 class="fw-semibold text-black mb-0">Manage Orders</h5>
+                                <p class="text-muted mb-0">Choose a client first to load item-based orders.</p>
+                            </div>
                         </div>
                     </div>
-                    <span class="payment-client-count">{{ $allClients->count() }} client(s)</span>
+                    <form action="{{ route('orders.index') }}" method="GET" class="mainForm">
+                        <div class="row g-2 mb-3">
+                            <div class="col-12">
+                                <label for="client-select"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Clients ({{
+                                    $allClients->count() }})<span class="text-danger">*</span></label>
+                                <select name="c" id="client-select" class="form-select" autofocus>
+                                    <option value="" selected disabled>Select a client</option>
+                                    <option value="all">All Clients</option>
+                                    @foreach($allClients ?? [] as $client)
+                                    <option value="{{ $client->clientid }}">{{ $client->business_name ??
+                                        $client->contact_name }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+                            <button type="button" id="btnCreateOrderFromPicker"
+                                class="btn btn-outline-primary btn-primary text-white fw-medium">
+                                Create Orders <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                <form action="{{ route('orders.index') }}" method="GET" class="payment-client-picker-form">
-                    <div class="payment-client-picker-field">
-                        <label for="client-select">Client</label>
-                        <select name="c" id="client-select" class="form-control" autofocus>
-                            <option value="" selected disabled>Select a client</option>
-                            <option value="all">All Clients</option>
-                            @foreach($allClients ?? [] as $client)
-                                <option value="{{ $client->clientid }}">{{ $client->business_name ?? $client->contact_name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="payment-client-picker-actions">
-                        <button type="submit" class="secondary-button action-btn-lg">
-                            <i class="fas fa-list icon-spaced"></i> View Orders
-                        </button>
-                        <button type="button" id="btnCreateOrderFromPicker" class="primary-button action-btn-lg">
-                            <i class="fas fa-plus icon-spaced"></i> Create Orders
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
-    @else
-        <section class="panel-card module-filter-panel filter-panel-regular">
-            <form action="{{ route('orders.index') }}" method="GET" class="module-filter-grid">
-                <div class="module-filter-field">
-                    <label class="module-filter-label" for="orders_client_filter">Client</label>
-                    <select name="c" id="orders_client_filter" class="form-control">
+    </div>
+</div>
+@else
+<div class="position-relative bg-white p-3 rounded-3 shadow-sm">
+    <!-- Filters Card -->
+    <div class="position-relative bg-light border p-3 rounded-3 mb-3">
+        <form action="{{ route('orders.index') }}" method="GET" class="mainForm">
+            <div class="row g-2">
+                <div class="col-12 col-md-5">
+                    <label class="form-label small lh-sm fw-semibold text-dark mb-1"
+                        for="orders_client_filter">Client</label>
+                    <select name="c" id="orders_client_filter" class="form-select">
                         <option value="all" {{ empty($clientId) ? 'selected' : '' }}>All Clients</option>
                         @foreach($allClients ?? [] as $client)
-                            <option value="{{ $client->clientid }}" {{ (string) $clientId === (string) $client->clientid ? 'selected' : '' }}>
-                                {{ $client->business_name ?? $client->contact_name }}
-                            </option>
+                        <option value="{{ $client->clientid }}" {{ (string) $clientId===(string) $client->clientid ?
+                            'selected' : '' }}>
+                            {{ $client->business_name ?? $client->contact_name }}
+                        </option>
                         @endforeach
                     </select>
                 </div>
 
-                <div class="module-filter-field">
-                    <label class="module-filter-label" for="orders_item_filter">Product</label>
-                    <select name="itemid" id="orders_item_filter" class="form-control">
+                <div class="col-12 col-md-5">
+                    <label class="form-label small lh-sm fw-semibold text-dark mb-1"
+                        for="orders_item_filter">Product</label>
+                    <select name="itemid" id="orders_item_filter" class="form-select">
                         <option value="">All Products</option>
                         @php
-                            $servicesByCategory = collect($services ?? [])->groupBy(function ($service) {
-                                return $service->category?->name ?? 'Uncategorized';
-                            })->sortKeys();
+                        $servicesByCategory = collect($services ?? [])->groupBy(function ($service) {
+                        return $service->category?->name ?? 'Uncategorized';
+                        })->sortKeys();
                         @endphp
                         @foreach($servicesByCategory as $categoryName => $categoryServices)
-                            <optgroup label="{{ $categoryName }}">
-                                @foreach($categoryServices as $service)
-                                    <option value="{{ $service->itemid }}" {{ (string) ($selectedItemId ?? '') === (string) $service->itemid ? 'selected' : '' }}>
-                                        {{ $service->name }}
-                                    </option>
-                                @endforeach
-                            </optgroup>
+                        <optgroup label="{{ $categoryName }}">
+                            @foreach($categoryServices as $service)
+                            <option value="{{ $service->itemid }}" {{ (string) ($selectedItemId ?? '' )===(string)
+                                $service->itemid ? 'selected' : '' }}>
+                                {{ $service->name }}
+                            </option>
+                            @endforeach
+                        </optgroup>
                         @endforeach
                     </select>
                 </div>
 
-                <div class="module-filter-actions">
-                    <button type="submit" class="primary-button">Apply</button>
-                    <a href="{{ route('orders.index', ['c' => empty($clientId) ? 'all' : $clientId]) }}" class="secondary-button">Reset</a>
+                <div class="col-12 col-md-2 mt-auto d-flex gap-2">
+                    <a href="{{ route('orders.index', ['c' => empty($clientId) ? 'all' : $clientId]) }}"
+                        class="btn btn-outline-primary bg-white text-primary fw-medium w-100 text-center justify-content-center">
+                        <i class="fas fa-sync-alt btn-icon me-1"></i> Reset
+                    </a>
+                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">
+                        Apply <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                    </button>
                 </div>
-            </form>
-        </section>
-
-        @forelse($groupedOrders as $clientName => $clientOrders)
-            <section class="order-group">
-                <div class="order-group-head">
-                    <span class="order-client-meta">
-                        <span class="category-title">{{ $clientName }}</span>
-                        @if(strtolower((string) ($clientOrders[0]['client_type'] ?? 'regular')) === 'trial')
-                            <span class="status-pill status-pill-pending ms-2">Trial</span>
-                        @endif
-                    </span>
-                    <span class="order-client-summary">
-                        <span class="service-count">{{ count($clientOrders) }} order(s)</span>
-                    </span>
-                </div>
-                <div class="order-table-wrap">
-                    <table class="data-table table-no-margin">
-                        <thead>
-                            <tr>
-                                <th>Order #</th>
-                                <th>Item</th>
-                                <th>Create Date</th>
-                                <th>Expiry Date</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($clientOrders as $order)
-                                <tr>
-                                    <td>{{ $order['number'] }}</td>
-                                    <td>
-                                        <strong>{{ $order['items'][0]['item_name'] ?? 'Item' }}</strong>
-                                        @if(!empty($order['items'][0]['item_description']))
-                                            <div class="text-xs text-muted mt-1">{{ $order['items'][0]['item_description'] }}</div>
-                                        @endif
-                                        <div class="text-xs text-muted mt-1">
-                                            Qty: {{ rtrim(rtrim(number_format((float) ($order['items'][0]['quantity'] ?? 1), 2, '.', ''), '0'), '.') }}
-                                            @if(!empty($order['items'][0]['no_of_users']))
-                                                | Users: {{ $order['items'][0]['no_of_users'] }}
-                                            @endif
-                                        </div>
-                                    </td>
-                                    <td class="order-date-cell">{{ $order['items'][0]['start_date'] ?? '-' }}</td>
-                                    <td class="order-date-cell">
-                                        @php
-                                            $orderEndDate = $order['items'][0]['end_date'] ?? null;
-                                            $isOrderExpired = !empty($orderEndDate) && \Carbon\Carbon::parse($orderEndDate)->lt(now()->startOfDay());
-                                        @endphp
-                                        <span class="{{ $isOrderExpired ? 'text-danger fw-semibold' : '' }}">
-                                            {{ $orderEndDate ?? '-' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        @if(($order['status'] ?? '') === 'cancelled')
-                                            <span class="status-pill is-cancelled">Cancelled</span>
-                                        @elseif(($order['status'] ?? '') === 'suspended')
-                                            <span class="status-pill is-pending">Suspended</span>
-                                        @elseif(($order['status'] ?? '') === 'completed')
-                                            <span class="status-pill is-completed">Completed</span>
-                                        @else
-                                            <span class="status-pill is-running">{{ ($order['status'] ?? '') === 'running' ? 'Active' : ucfirst($order['status'] ?? 'active') }}</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <div class="table-actions">
-                                            @if(!empty($order['items'][0]['end_date']) && \Carbon\Carbon::parse($order['items'][0]['end_date'])->isPast())
-                                                <button
-                                                    type="button"
-                                                    class="order-create-pi-link order-pill-created js-renew-order-btn"
-                                                    data-order-id="{{ $order['record_id'] }}"
-                                                    data-order-number="{{ $order['number'] }}"
-                                                    data-client-name="{{ $order['client'] }}"
-                                                    data-invoice-number="-"
-                                                    data-item-name="{{ $order['items'][0]['item_name'] ?? 'Item' }}"
-                                                    data-item-description="{{ $order['items'][0]['item_description'] ?? '' }}"
-                                                    data-start-date="{{ $order['items'][0]['start_date'] ?? '-' }}"
-                                                    data-end-date-display="{{ $order['items'][0]['end_date'] ?? '-' }}"
-                                                    data-days-left="{{ !empty($order['items'][0]['end_date']) ? \Carbon\Carbon::now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($order['items'][0]['end_date'])->startOfDay(), false) : '' }}"
-                                                    data-status="{{ ($order['status'] ?? '') === 'running' ? 'Active' : ucfirst($order['status'] ?? 'active') }}"
-                                                    data-end-date="{{ $order['items'][0]['end_date'] ?? '' }}"
-                                                    data-client-id="{{ $order['clientid'] }}"
-                                                    data-frequency="{{ $order['items'][0]['frequency'] ?? '' }}"
-                                                    data-duration="{{ $order['items'][0]['duration'] ?? 1 }}"
-                                                >
-                                                    Renew
-                                                </button>
-                                            @endif
-                                            @if(($order['status'] ?? '') !== 'cancelled')
-                                                <a href="{{ route('orders.edit', ['order' => $order['record_id']]) }}" class="text-action-btn edit">Edit</a>
-                                                <form method="POST" action="{{ route('orders.destroy', ['order' => $order['record_id']]) }}" class="inline-delete" onsubmit="return confirm('Cancel this order?')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-action-btn delete">Cancel</button>
-                                                </form>
-                                            @else
-                                                <form method="POST" action="{{ route('orders.restore', ['order' => $order['record_id']]) }}" class="inline-delete" onsubmit="return confirm('Restore this order?')">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <button type="submit" class="text-action-btn secondary">Restore</button>
-                                                </form>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-        @empty
-            <div class="order-empty">
-                <i class="fas fa-receipt empty-state-icon"></i>
-                <p class="no-empty-state-text">No orders found</p>
-                <p class="small-text">Create your first order to get started.</p>
             </div>
-        @endforelse
-    @endif
+        </form>
+    </div>
+
+    @forelse($groupedOrders as $clientName => $clientOrders)
+    <div class="card border shadow-sm mb-3">
+        <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center py-2 px-3">
+            <div class="d-flex align-items-center">
+                <span class="fw-bold text-dark fs-6">{{ $clientName }}</span>
+                @if(strtolower((string) ($clientOrders[0]['client_type'] ?? 'regular')) === 'trial')
+                <span class="status-pill is-pending ms-2">Trial</span>
+                @endif
+            </div>
+            <span class="badge bg-secondary-subtle text-secondary fw-semibold">{{ count($clientOrders) }}
+                order(s)</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table mainTable align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Order #</th>
+                        <th class="w-50">Item</th>
+                        <th>Create Date</th>
+                        <th>Expiry Date</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($clientOrders as $order)
+                    <tr>
+                        <td class="fw-semibold text-dark">#{{ $order['number'] }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ $order['items'][0]['item_name'] ?? 'Item' }}</div>
+                            @if(!empty($order['items'][0]['item_description']))
+                            <div class="text-muted small mt-1">{{ $order['items'][0]['item_description'] }}</div>
+                            @endif
+                            <div class="text-muted small mt-1">
+                                Qty: {{ rtrim(rtrim(number_format((float) ($order['items'][0]['quantity'] ?? 1), 2, '.',
+                                ''), '0'), '.') }}
+                                @if(!empty($order['items'][0]['no_of_users']))
+                                | Users: {{ $order['items'][0]['no_of_users'] }}
+                                @endif
+                            </div>
+                        </td>
+                        <td>{{ $order['items'][0]['start_date'] ?? '-' }}</td>
+                        <td>
+                            @php
+                            $orderEndDate = $order['items'][0]['end_date'] ?? null;
+                            $isOrderExpired = !empty($orderEndDate) &&
+                            \Carbon\Carbon::parse($orderEndDate)->lt(now()->startOfDay());
+                            @endphp
+                            <span class="{{ $isOrderExpired ? 'text-danger fw-bold' : '' }}">
+                                {{ $orderEndDate ?? '-' }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <div class="tableActionButton d-inline-flex gap-1">
+                                @if(!empty($order['items'][0]['end_date']) &&
+                                \Carbon\Carbon::parse($order['items'][0]['end_date'])->isPast())
+                                <button type="button" class="bg02 color02 border-0 js-renew-order-btn"
+                                    data-order-id="{{ $order['record_id'] }}" data-order-number="{{ $order['number'] }}"
+                                    data-client-name="{{ $order['client'] }}" data-invoice-number="-"
+                                    data-item-name="{{ $order['items'][0]['item_name'] ?? 'Item' }}"
+                                    data-item-description="{{ $order['items'][0]['item_description'] ?? '' }}"
+                                    data-start-date="{{ $order['items'][0]['start_date'] ?? '-' }}"
+                                    data-end-date-display="{{ $order['items'][0]['end_date'] ?? '-' }}"
+                                    data-days-left="{{ !empty($order['items'][0]['end_date']) ? \Carbon\Carbon::now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($order['items'][0]['end_date'])->startOfDay(), false) : '' }}"
+                                    data-status="{{ ($order['status'] ?? '') === 'running' ? 'Active' : ucfirst($order['status'] ?? 'active') }}"
+                                    data-end-date="{{ $order['items'][0]['end_date'] ?? '' }}"
+                                    data-client-id="{{ $order['clientid'] }}"
+                                    data-frequency="{{ $order['items'][0]['frequency'] ?? '' }}"
+                                    data-duration="{{ $order['items'][0]['duration'] ?? 1 }}">
+                                    Renew
+                                </button>
+                                @endif
+                                @if(($order['status'] ?? '') !== 'cancelled')
+                                <a href="{{ route('orders.edit', ['order' => $order['record_id']]) }}"
+                                    class="bg03 color03">Edit</a>
+                                <form method="POST"
+                                    action="{{ route('orders.destroy', ['order' => $order['record_id']]) }}"
+                                    class="d-inline" onsubmit="return confirm('Cancel this order?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="bg04 color04">Cancel</button>
+                                </form>
+                                @else
+                                <form method="POST"
+                                    action="{{ route('orders.restore', ['order' => $order['record_id']]) }}"
+                                    class="d-inline" onsubmit="return confirm('Restore this order?')">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="bg01 color01">Restore</button>
+                                </form>
+                                @endif
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @empty
+    <div class="card border-0 shadow-sm py-5 text-center text-muted mb-3">
+        <div class="card-body">
+            <i class="fas fa-receipt mb-3 text-secondary fs-1 opacity-50"></i>
+            <p class="fw-semibold text-dark mb-1">No orders found</p>
+            <p class="small text-muted mb-0">Create your first order to get started.</p>
+        </div>
+    </div>
+    @endforelse
 </div>
+@endif
 
 @include('invoices.partials.renew-order-modal')
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const clientPickerSelect = document.getElementById('client-select');
+    document.addEventListener('DOMContentLoaded', function () {
+        const clientPickerSelect = document.getElementById('client-select');
 
-    const clientForm = document.querySelector('.payment-client-picker-form');
-    clientForm?.addEventListener('submit', function () {
-        if (clientPickerSelect && !clientPickerSelect.value) {
-            clientPickerSelect.value = 'all';
-        }
-    });
+        const clientForm = document.querySelector('.payment-client-picker-form');
+        clientForm?.addEventListener('submit', function () {
+            if (clientPickerSelect && !clientPickerSelect.value) {
+                clientPickerSelect.value = 'all';
+            }
+        });
 
-    document.getElementById('btnCreateOrderFromPicker')?.addEventListener('click', function () {
-        const clientId = clientPickerSelect?.value || '';
-        if (clientId) {
-            window.location.href = "{{ route('orders.create') }}?c=" + encodeURIComponent(clientId);
-        } else {
-            alert('Please select a client first.');
-        }
-    });
+        document.getElementById('btnCreateOrderFromPicker')?.addEventListener('click', function () {
+            const clientId = clientPickerSelect?.value || '';
+            if (clientId) {
+                window.location.href = "{{ route('orders.create') }}?c=" + encodeURIComponent(clientId);
+            } else {
+                alert('Please select a client first.');
+            }
+        });
 
-    const renewModalEl = document.getElementById('renewOrderModal');
-    if (!renewModalEl || typeof bootstrap === 'undefined') return;
+        const renewModalEl = document.getElementById('renewOrderModal');
+        if (!renewModalEl || typeof bootstrap === 'undefined') return;
 
-    const renewModal = new bootstrap.Modal(renewModalEl);
-    const renewForm = document.getElementById('renewOrderForm');
-    const itemName = document.getElementById('renewOrderItemName');
-    const clientName = document.getElementById('renewOrderClientName');
-    const orderNumber = document.getElementById('renewOrderNumber');
-    const invoiceNumber = document.getElementById('renewOrderInvoiceRef');
-    const itemDescription = document.getElementById('renewOrderItemDescription');
-    const startDateDisplay = document.getElementById('renewOrderStartDate');
-    const currentEndDateDisplay = document.getElementById('renewOrderCurrentEndDate');
-    const statusDisplay = document.getElementById('renewOrderStatus');
-    const daysLeftDisplay = document.getElementById('renewOrderDaysLeft');
-    const todayDisplay = document.getElementById('renewOrderToday');
-    const endDateInput = document.getElementById('renew_order_end_date');
-    const clientInput = document.getElementById('renew_order_client');
-    const tabInput = document.getElementById('renew_order_tab');
-    const fromInput = document.getElementById('renew_order_from');
-    const toInput = document.getElementById('renew_order_to');
-    const nextDaysInput = document.getElementById('renew_order_next_days');
-    const returnToInput = document.getElementById('renew_order_return_to');
-    const frequencyInput = document.getElementById('renew_order_frequency');
-    const durationInput = document.getElementById('renew_order_duration');
-    const durationWrapper = document.getElementById('renew_order_duration_wrapper');
-    const renewRouteTemplate = @json(route('invoices.orders.renew', ['order' => '__ORDER__']));
+        const renewModal = new bootstrap.Modal(renewModalEl);
+        const renewForm = document.getElementById('renewOrderForm');
+        const itemName = document.getElementById('renewOrderItemName');
+        const clientName = document.getElementById('renewOrderClientName');
+        const orderNumber = document.getElementById('renewOrderNumber');
+        const invoiceNumber = document.getElementById('renewOrderInvoiceRef');
+        const itemDescription = document.getElementById('renewOrderItemDescription');
+        const startDateDisplay = document.getElementById('renewOrderStartDate');
+        const currentEndDateDisplay = document.getElementById('renewOrderCurrentEndDate');
+        const statusDisplay = document.getElementById('renewOrderStatus');
+        const daysLeftDisplay = document.getElementById('renewOrderDaysLeft');
+        const todayDisplay = document.getElementById('renewOrderToday');
+        const endDateInput = document.getElementById('renew_order_end_date');
+        const clientInput = document.getElementById('renew_order_client');
+        const tabInput = document.getElementById('renew_order_tab');
+        const fromInput = document.getElementById('renew_order_from');
+        const toInput = document.getElementById('renew_order_to');
+        const nextDaysInput = document.getElementById('renew_order_next_days');
+        const returnToInput = document.getElementById('renew_order_return_to');
+        const frequencyInput = document.getElementById('renew_order_frequency');
+        const durationInput = document.getElementById('renew_order_duration');
+        const durationWrapper = document.getElementById('renew_order_duration_wrapper');
+        const renewRouteTemplate = @json(route('invoices.orders.renew', ['order' => '__ORDER__']));
     const selectedClientId = @json($clientId ?? request('c'));
     const normalizeIsoDate = (rawValue) => {
         const value = String(rawValue || '').trim();

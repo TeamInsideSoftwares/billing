@@ -9,7 +9,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-public function up(): void
+    public function up(): void
     {
         Schema::table('financial_year', function (Blueprint $table) {
             $table->unsignedInteger('duration_months')->default(12);
@@ -22,7 +22,7 @@ public function up(): void
     /**
      * Reverse the migrations.
      */
-public function down(): void
+    public function down(): void
     {
         Schema::table('financial_year', function (Blueprint $table) {
             $table->dropColumn(['duration_months', 'start_date', 'end_date']);

@@ -48,6 +48,7 @@ class AuthController extends Controller
 
         if ($superadminValid) {
             $this->markSuperadminSession($request, $email);
+
             return redirect()->route('superadmin.index')->with('success', 'Superadmin login successful.');
         }
 
@@ -62,7 +63,7 @@ class AuthController extends Controller
 
     public function showLoginChoice(Request $request)
     {
-        if (!$request->session()->has('login_choice')) {
+        if (! $request->session()->has('login_choice')) {
             return redirect()->route('login');
         }
 
@@ -82,6 +83,7 @@ class AuthController extends Controller
 
         if ($email === '' || $userId === '') {
             $request->session()->forget('login_choice');
+
             return redirect()->route('login')->withErrors(['email' => 'Login session expired. Please sign in again.']);
         }
 
@@ -89,11 +91,12 @@ class AuthController extends Controller
 
         if ($validated['target'] === 'superadmin') {
             $this->markSuperadminSession($request, $email);
+
             return redirect()->route('superadmin.index')->with('success', 'Superadmin login successful.');
         }
 
         $user = User::query()->find($userId);
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login')->withErrors(['email' => 'Panel account no longer exists.']);
         }
 
@@ -179,11 +182,11 @@ class AuthController extends Controller
 
         $user = $request->user();
 
-        if (!($user instanceof User)) {
+        if (! ($user instanceof User)) {
             abort(403);
         }
 
-        if (!Hash::check((string) $validated['current_password'], $user->password)) {
+        if (! Hash::check((string) $validated['current_password'], $user->password)) {
             return back()
                 ->withErrors(['current_password' => 'Your current password is incorrect.'])
                 ->withInput();
@@ -212,7 +215,7 @@ class AuthController extends Controller
             return false;
         }
 
-        if (!$record) {
+        if (! $record) {
             return false;
         }
 
@@ -225,7 +228,7 @@ class AuthController extends Controller
         $phpPasswordHashValid = password_verify($plainPassword, $storedPassword);
         $legacySha512Valid = hash_equals(strtolower($storedPassword), strtolower(hash('sha512', $plainPassword)));
 
-        if (!$phpPasswordHashValid && !$legacySha512Valid) {
+        if (! $phpPasswordHashValid && ! $legacySha512Valid) {
             return false;
         }
 
@@ -253,7 +256,7 @@ class AuthController extends Controller
             $request->session()->regenerateToken();
 
             return back()->withErrors([
-                'email' => 'This account expired on ' . $account->expires_at->format('d M Y') . '. Please contact superadmin.',
+                'email' => 'This account expired on '.$account->expires_at->format('d M Y').'. Please contact superadmin.',
             ])->onlyInput('email');
         }
 

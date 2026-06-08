@@ -9,11 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('clients')) {
+        if (! Schema::hasTable('clients')) {
             return;
         }
 
-        if (!Schema::hasColumn('clients', 'primary_email')) {
+        if (! Schema::hasColumn('clients', 'primary_email')) {
             Schema::table('clients', function (Blueprint $table) {
                 $table->string('primary_email', 150)->nullable()->after('contact_name');
             });
@@ -33,6 +33,7 @@ return new class extends Migration
             $existingPrimary = strtolower(trim((string) ($row->primary_email ?? '')));
             if ($existingPrimary !== '') {
                 $seenPrimaryEmails[$existingPrimary] = true;
+
                 continue;
             }
 
@@ -40,7 +41,7 @@ return new class extends Migration
                 ->map(fn ($email) => strtolower(trim($email)))
                 ->first(fn ($email) => $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL));
 
-            if (!$firstEmail) {
+            if (! $firstEmail) {
                 continue;
             }
 
@@ -55,7 +56,7 @@ return new class extends Migration
             $seenPrimaryEmails[$firstEmail] = true;
         }
 
-        if (!$this->hasIndex('clients', 'clients_primary_email_unique')) {
+        if (! $this->hasIndex('clients', 'clients_primary_email_unique')) {
             Schema::table('clients', function (Blueprint $table) {
                 $table->unique('primary_email', 'clients_primary_email_unique');
             });
@@ -64,7 +65,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!Schema::hasTable('clients')) {
+        if (! Schema::hasTable('clients')) {
             return;
         }
 

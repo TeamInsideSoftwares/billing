@@ -36,7 +36,9 @@
                     <td class="table-actions">
                         <a href="{{ route('product-categories.show', $category['record_id']) }}" class="text-action-btn view">View</a>
                         <a href="{{ route('product-categories.edit', $category['record_id']) }}" class="text-action-btn edit">Edit</a>
-                        <form method="POST" action="{{ route('product-categories.destroy', $category['record_id']) }}" class="inline-delete" onsubmit="return confirm('Delete {{ $category['name'] }}?')">
+                        <form method="POST" action="{{ route('product-categories.destroy', $category['record_id']) }}" class="inline-delete"
+                            data-name="{{ $category['name'] }}"
+                            onsubmit="return confirm('Delete ' + this.dataset.name + '?')">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="text-action-btn delete">Delete</button>

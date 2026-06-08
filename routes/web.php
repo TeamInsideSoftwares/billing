@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AccountsController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingUiController;
 use App\Http\Controllers\ClientsController;
 use App\Http\Controllers\DashboardController;
@@ -11,10 +11,8 @@ use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\PaymentsController;
 use App\Http\Controllers\ProductCategoriesController;
 use App\Http\Controllers\QuotationsController;
-use App\Http\Controllers\SerialConfigurationsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\SubscriptionsController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
@@ -48,6 +46,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/clients', 'clientsStore')->name('clients.store');
         Route::patch('/clients/{client}/convert-to-regular', 'convertTrialToRegular')->name('clients.convert-to-regular');
         Route::get('/clients/{client}/documents/create', 'clientsDocumentsCreate')->name('clients.documents.create');
+        Route::get('/clients/{client}/documents', 'clientsDocumentsList')->name('clients.documents.list');
         Route::post('/clients/{client}/documents', 'clientsDocumentsStore')->name('clients.documents.store');
         Route::put('/clients/{client}/documents/{document}', 'clientsDocumentsUpdate')->name('clients.documents.update');
         Route::delete('/clients/{client}/documents/{document}', 'clientsDocumentsDestroy')->name('clients.documents.delete');
@@ -126,16 +125,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/gst-report', 'paymentsGstReport')->name('gst-report.index');
     });
 
-    Route::controller(SubscriptionsController::class)->group(function () {
-        Route::get('/subscriptions', 'subscriptions')->name('subscriptions.index');
-        Route::get('/subscriptions/create', 'subscriptionsCreate')->name('subscriptions.create');
-        Route::post('/subscriptions', 'subscriptionsStore')->name('subscriptions.store');
-        Route::get('/subscriptions/{subscription}', 'subscriptionsShow')->name('subscriptions.show');
-        Route::get('/subscriptions/{subscription}/edit', 'subscriptionsEdit')->name('subscriptions.edit');
-        Route::put('/subscriptions/{subscription}', 'subscriptionsUpdate')->name('subscriptions.update');
-        Route::delete('/subscriptions/{subscription}', 'subscriptionsDestroy')->name('subscriptions.destroy');
-    });
-
     Route::controller(QuotationsController::class)->group(function () {
         Route::get('/quotations', 'quotations')->name('quotations.index');
         Route::get('/quotations/create', 'quotationsCreate')->name('quotations.create');
@@ -186,6 +175,7 @@ Route::middleware(['auth'])->group(function () {
         // Specific routes first
         Route::get('/orders/select-client', 'selectClient')->name('orders.select-client');
         Route::get('/orders/json', 'getOrderJsonByNumber')->name('orders.json-by-number');
+        Route::get('/orders/trials', 'trialOrders')->name('orders.trials');
         Route::get('/orders', 'orders')->name('orders.index');
         Route::get('/orders/create', 'ordersCreate')->name('orders.create');
         Route::get('/orders/{order}/file/{type}', 'ordersFile')->name('orders.file');

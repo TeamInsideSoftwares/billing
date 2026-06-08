@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         if (Schema::hasTable('payments')) {
-            if (Schema::hasColumn('payments', 'tds') && !Schema::hasColumn('payments', 'type')) {
+            if (Schema::hasColumn('payments', 'tds') && ! Schema::hasColumn('payments', 'type')) {
                 Schema::table('payments', function (Blueprint $table) {
                     $table->string('type', 20)->nullable()->after('received_amount');
                 });
@@ -31,10 +31,10 @@ return new class extends Migration
 
         if (Schema::hasTable('ledger')) {
             Schema::table('ledger', function (Blueprint $table) {
-                if (!Schema::hasColumn('ledger', 'mode')) {
+                if (! Schema::hasColumn('ledger', 'mode')) {
                     $table->string('mode', 50)->nullable()->after('type');
                 }
-                if (!Schema::hasColumn('ledger', 'reference_number')) {
+                if (! Schema::hasColumn('ledger', 'reference_number')) {
                     $table->string('reference_number', 100)->nullable()->after('mode');
                 }
             });
@@ -44,7 +44,7 @@ return new class extends Migration
     public function down(): void
     {
         if (Schema::hasTable('payments')) {
-            if (!Schema::hasColumn('payments', 'tds') && Schema::hasColumn('payments', 'type')) {
+            if (! Schema::hasColumn('payments', 'tds') && Schema::hasColumn('payments', 'type')) {
                 Schema::table('payments', function (Blueprint $table) {
                     $table->boolean('tds')->default(false)->after('received_amount');
                 });

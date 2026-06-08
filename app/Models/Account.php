@@ -4,14 +4,14 @@ namespace App\Models;
 
 use App\Models\Concerns\HasAlphaNumericId;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Account extends Model
 {
     use HasAlphaNumericId, HasFactory;
+
     // 1. Tell Laravel the actual name of your primary key
     protected $primaryKey = 'accountid';
 

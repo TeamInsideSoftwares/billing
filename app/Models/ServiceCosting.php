@@ -11,6 +11,7 @@ class ServiceCosting extends Model
     use HasAlphaNumericId;
 
     protected $table = 'item_costings';
+
     protected $primaryKey = 'costingid';
 
     protected function idLength(): int

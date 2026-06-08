@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            if (!Schema::hasColumn('payments', 'tds_input_type')) {
+            if (! Schema::hasColumn('payments', 'tds_input_type')) {
                 $table->string('tds_input_type', 20)->nullable()->after('tds_amount');
             }
         });

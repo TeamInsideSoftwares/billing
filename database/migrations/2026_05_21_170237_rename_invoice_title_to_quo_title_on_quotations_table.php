@@ -10,7 +10,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (Schema::hasColumn('quotations', 'invoice_title') && !Schema::hasColumn('quotations', 'quo_title')) {
+        if (Schema::hasColumn('quotations', 'invoice_title') && ! Schema::hasColumn('quotations', 'quo_title')) {
             Schema::table('quotations', function ($table) {
                 $table->renameColumn('invoice_title', 'quo_title');
             });
@@ -22,7 +22,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (Schema::hasColumn('quotations', 'quo_title') && !Schema::hasColumn('quotations', 'invoice_title')) {
+        if (Schema::hasColumn('quotations', 'quo_title') && ! Schema::hasColumn('quotations', 'invoice_title')) {
             Schema::table('quotations', function ($table) {
                 $table->renameColumn('quo_title', 'invoice_title');
             });

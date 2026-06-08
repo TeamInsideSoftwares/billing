@@ -4,10 +4,11 @@ namespace App\Models;
 
 use App\Models\Concerns\HasAlphaNumericId;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'accountid',
@@ -36,6 +37,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Client extends Model
 {
     protected $primaryKey = 'clientid';
+
     public function getRouteKeyName(): string
     {
         return 'clientid';
@@ -53,7 +55,7 @@ class Client extends Model
         return $this->belongsTo(Account::class, 'accountid', 'accountid');
     }
 
-    public function billingDetail(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function billingDetail(): HasOne
     {
         return $this->hasOne(ClientBillingDetail::class, 'bd_id', 'bd_id');
     }

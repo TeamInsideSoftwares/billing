@@ -41,7 +41,7 @@ return new class extends Migration
             $table->dropColumn([
                 'prefix_type', 'prefix_value',
                 'number_type', 'number_value', 'number_length',
-                'suffix_type', 'suffix_value'
+                'suffix_type', 'suffix_value',
             ]);
         });
 
@@ -49,7 +49,7 @@ return new class extends Migration
             $table->dropColumn([
                 'prefix_type', 'prefix_value',
                 'number_type', 'number_value', 'number_length',
-                'suffix_type', 'suffix_value'
+                'suffix_type', 'suffix_value',
             ]);
         });
     }

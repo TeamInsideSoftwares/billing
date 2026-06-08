@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Models\ProductCategory;
 use App\Models\Service;
 use App\Models\ServiceCosting;
@@ -9,6 +10,7 @@ use App\Models\Tax;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ServicesController extends Controller
 {
@@ -42,7 +44,7 @@ class ServicesController extends Controller
 
         $searchTerm = request('search', '');
         if ($searchTerm) {
-            $query->where('items.name', 'like', '%' . $searchTerm . '%');
+            $query->where('items.name', 'like', '%'.$searchTerm.'%');
         }
 
         $resultCount = $query->count();
@@ -105,7 +107,7 @@ class ServicesController extends Controller
             ->orderBy('name');
         $catSearch = request('cat_search', '');
         if ($catSearch) {
-            $catQuery->where('name', 'like', '%' . $catSearch . '%');
+            $catQuery->where('name', 'like', '%'.$catSearch.'%');
         }
         $catResultCount = $catQuery->count();
         $productCategories = $catQuery->take(20)->get()->map(function ($pc) {
@@ -120,7 +122,7 @@ class ServicesController extends Controller
 
         return view('services.index', [
             'title' => 'All Items',
-            'subtitle' => $searchTerm ? 'Found ' . $resultCount . ' result(s) for "' . $searchTerm . '"' : null,
+            'subtitle' => $searchTerm ? 'Found '.$resultCount.' result(s) for "'.$searchTerm.'"' : null,
             'services' => $services,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
@@ -136,11 +138,11 @@ class ServicesController extends Controller
         $categories = ProductCategory::where('accountid', $accountid)->where('status', 'active')->orderBy('sequence')->orderBy('name')->get();
         $currencies = DB::table('currency')->orderBy('iso')->get(['iso', 'name']);
         $accountCurrency = auth()->check() ? (auth()->user()->account->currency_code ?? 'INR') : 'INR';
-        $account = \App\Models\Account::find($accountid);
-        
+        $account = Account::find($accountid);
+
         // Only load taxes if multi-taxation is enabled
-        $taxes = ($account && $account->allow_multi_taxation) 
-            ? Tax::where('accountid', $accountid)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() 
+        $taxes = ($account && $account->allow_multi_taxation)
+            ? Tax::where('accountid', $accountid)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get()
             : collect();
 
         // Available addons: all items except items being created in current request (via old input)
@@ -163,7 +165,7 @@ class ServicesController extends Controller
 
     public function servicesStore(Request $request)
     {
-        $account = \App\Models\Account::find($this->resolveAccountId());
+        $account = Account::find($this->resolveAccountId());
         $allowSync = (bool) ($account?->allow_sync ?? false);
 
         $validated = $request->validate([
@@ -192,7 +194,7 @@ class ServicesController extends Controller
         $validated['sync'] = $allowSync && ($validated['sync'] ?? 'no') === 'yes' ? 'yes' : 'no';
 
         DB::transaction(function () use ($validated) {
-            $account = \App\Models\Account::find($validated['accountid']);
+            $account = Account::find($validated['accountid']);
             $isMultiTax = $account && $account->allow_multi_taxation;
             $fixedTaxRate = $account ? ($account->fixed_tax_rate ?? 0) : 0;
 
@@ -267,15 +269,15 @@ class ServicesController extends Controller
         $service->load(['costings']);
         $accountCurrency = auth()->check() ? (auth()->user()->account->currency_code ?? 'INR') : 'INR';
         $accountid = $service->accountid;
-        $account = \App\Models\Account::find($accountid);
-        
+        $account = Account::find($accountid);
+
         // Only load taxes if multi-taxation is enabled
-        $taxes = ($account && $account->allow_multi_taxation) 
-            ? Tax::where('accountid', $accountid)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() 
+        $taxes = ($account && $account->allow_multi_taxation)
+            ? Tax::where('accountid', $accountid)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get()
             : collect();
 
         return view('services.form', [
-            'title' => 'Edit ' . ($service->name ?? 'Item'),
+            'title' => 'Edit '.($service->name ?? 'Item'),
             'service' => $service,
             'categories' => $categories,
             'defaultCurrency' => $accountCurrency,
@@ -288,7 +290,7 @@ class ServicesController extends Controller
 
     public function servicesUpdate(Request $request, Service $service)
     {
-        $account = \App\Models\Account::find($service->accountid);
+        $account = Account::find($service->accountid);
         $allowSync = (bool) ($account?->allow_sync ?? false);
 
         $validated = $request->validate([
@@ -314,7 +316,7 @@ class ServicesController extends Controller
         $validated['sync'] = $allowSync && ($validated['sync'] ?? 'no') === 'yes' ? 'yes' : 'no';
 
         DB::transaction(function () use ($validated, $service) {
-            $account = \App\Models\Account::find($service->accountid);
+            $account = Account::find($service->accountid);
             $isMultiTax = $account && $account->allow_multi_taxation;
             $fixedTaxRate = $account ? ($account->fixed_tax_rate ?? 0) : 0;
 
@@ -334,7 +336,7 @@ class ServicesController extends Controller
             $targetCategoryId = $validated['ps_catid'] ?? null;
             $categoryChanged = (string) ($service->ps_catid ?? '') !== (string) ($targetCategoryId ?? '');
 
-            if (!isset($validated['sequence']) && $categoryChanged) {
+            if (! isset($validated['sequence']) && $categoryChanged) {
                 $nextSequence = $this->resolveNextItemSequence($service->accountid, $targetCategoryId, $service->itemid);
             }
 
@@ -398,7 +400,7 @@ class ServicesController extends Controller
 
     public function servicesSaveAjax(Request $request)
     {
-        $account = \App\Models\Account::find($this->resolveAccountId());
+        $account = Account::find($this->resolveAccountId());
         $allowSync = (bool) ($account?->allow_sync ?? false);
 
         try {
@@ -420,10 +422,10 @@ class ServicesController extends Controller
                 'addons' => 'nullable|array',
                 'addons.*' => 'required|string|distinct|exists:items,itemid',
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all()),
+                'message' => 'Validation failed: '.implode(', ', $e->validator->errors()->all()),
             ], 422);
         }
 
@@ -455,7 +457,7 @@ class ServicesController extends Controller
                 }
 
                 $item->costings()->delete();
-                $account = \App\Models\Account::find($userAccountId);
+                $account = Account::find($userAccountId);
                 $isMultiTax = $account && $account->allow_multi_taxation;
                 $fixedTaxRate = $account ? ($account->fixed_tax_rate ?? 0) : 0;
 
@@ -483,7 +485,7 @@ class ServicesController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save item: ' . $e->getMessage(),
+                'message' => 'Failed to save item: '.$e->getMessage(),
             ], 500);
         }
     }

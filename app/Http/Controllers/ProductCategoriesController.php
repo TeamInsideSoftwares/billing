@@ -4,18 +4,37 @@ namespace App\Http\Controllers;
 
 use App\Models\ProductCategory;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class ProductCategoriesController extends Controller
 {
+    private function categoriesJsonResponse(string $accountId, string $message): JsonResponse
+    {
+        $categories = ProductCategory::where('accountid', $accountId)->orderBy('sequence')->orderBy('name')->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'categories' => $categories->map(function ($c) {
+                return [
+                    'record_id' => $c->ps_catid,
+                    'name' => $c->name,
+                    'description' => $c->description ?? '',
+                    'status' => strtolower($c->status ?? 'active'),
+                ];
+            }),
+        ]);
+    }
+
     public function productCategories(): View
     {
         $userAccountId = $this->resolveAccountId();
         $query = ProductCategory::where('accountid', $userAccountId)->orderBy('sequence')->orderBy('name');
         $searchTerm = request('search', '');
         if ($searchTerm) {
-            $query->where('name', 'like', '%' . $searchTerm . '%');
+            $query->where('name', 'like', '%'.$searchTerm.'%');
         }
         $resultCount = $query->count();
         $productCategories = $query->take(20)->get()->map(function ($pc) {
@@ -57,14 +76,7 @@ class ProductCategoriesController extends Controller
         $category = ProductCategory::create($validated);
 
         if ($request->expectsJson() || $request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Product category created successfully.',
-                'category' => [
-                    'ps_catid' => $category->ps_catid,
-                    'name' => $category->name,
-                ],
-            ]);
+            return $this->categoriesJsonResponse($userAccountId, 'Product category created successfully.');
         }
 
         return redirect()->back()->with('success', 'Product category created successfully.')->with('open_cat_modal', true);
@@ -75,6 +87,7 @@ class ProductCategoriesController extends Controller
         if ($productCategory->accountid !== $this->resolveAccountId()) {
             abort(403);
         }
+
         return view('product-categories.show', [
             'title' => 'Product Category Details',
             'productCategory' => $productCategory,
@@ -86,6 +99,7 @@ class ProductCategoriesController extends Controller
         if ($productCategory->accountid !== $this->resolveAccountId()) {
             abort(403);
         }
+
         return view('product-categories.form', ['title' => 'Edit Product Category', 'productCategory' => $productCategory]);
     }
 
@@ -104,6 +118,10 @@ class ProductCategoriesController extends Controller
         $validated['sequence'] = $validated['sequence'] ?? ($category->sequence ?? 0);
         $category->update($validated);
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return $this->categoriesJsonResponse($userAccountId, 'Product category updated successfully.');
+        }
+
         return redirect()->back()->with('success', 'Product category updated successfully.')->with('open_cat_modal', true);
     }
 
@@ -113,6 +131,10 @@ class ProductCategoriesController extends Controller
             abort(403);
         }
         $productCategory->delete();
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return $this->categoriesJsonResponse($this->resolveAccountId(), 'Product category deleted successfully.');
+        }
 
         return redirect()->back()->with('success', 'Product category deleted successfully.')->with('open_cat_modal', true);
     }

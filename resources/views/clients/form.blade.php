@@ -1,306 +1,462 @@
 @extends('layouts.app')
 
 @section('header_actions')
-    <a href="{{ route('clients.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left icon-spaced"></i>Back to Clients
-    </a>
+<a href="{{ route('clients.index') }}"
+    class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
+    <i class="fas fa-list btn-icon"></i> Client List
+</a>
 @endsection
 
 @section('content')
-<section class="panel-card {{ isset($client) ? 'panel-card-lg' : '' }}">
-    <form method="POST" action="{{ isset($client) ? route('clients.update', $client) : route('clients.store') }}" class="client-form" enctype="multipart/form-data">
+<div class="position-relative bg-white p-3 rounded-3">
+    <form method="POST" action="{{ isset($client) ? route('clients.update', $client) : route('clients.store') }}"
+        class="mainForm" enctype="multipart/form-data">
         @isset($client)
-            @method('PUT')
+        @method('PUT')
         @endisset
         @csrf
 
         @if ($errors->any())
-            <div class="alert error">
-                <ul class="plain-list">
-                    @foreach ($errors->all() as $error)
-                        <li class="text-xs error">{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
+        <div class="alert alert-danger mb-4">
+            <ul class="mb-0 ps-3">
+                @foreach ($errors->all() as $error)
+                <li class="small">{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
         @endif
 
-        <input type="hidden" name="accountid" value="{{ isset($client) ? ($client->accountid ?? auth()->user()->accountid ?? 'ACC0000001') : (auth()->user()->accountid ?? 'ACC0000001') }}">
+        <input type="hidden" name="accountid"
+            value="{{ isset($client) ? ($client->accountid ?? auth()->user()->accountid ?? 'ACC0000001') : (auth()->user()->accountid ?? 'ACC0000001') }}">
 
-        <!-- Basic Info -->
-        <div class="section-header">
-            <div class="section-icon"><i class="fas fa-building"></i></div>
-            <h4 class="section-title">Client Information</h4>
-        </div>
+        <div class="row g-3 align-items-stretch">
+            <!-- Column 1: Client Information -->
+            <div class="col-12 col-lg-3">
+                <div class="bg-light p-4 rounded-3 border h-100">
+                    <div class="mb-3">
+                        <h5 class="fw-semibold text-black mb-0">Client Information</h5>
+                    </div>
 
-        <div class="form-grid grid-cols-4">
-            <div class="col-span-2">
-                <label for="business_name" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Client Business Name *</label>
-                <input type="text" id="business_name" name="business_name" value="{{ old('business_name', $client->business_name ?? '') }}" required {{ isset($client) ? 'class="input-full"' : '' }}>
-                @error('business_name') <span class="error">{{ $message }}</span> @enderror
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label for="business_name"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Business Name<span
+                                    class="text-danger">*</span></label>
+                            <input type="text" id="business_name" name="business_name" class="form-control"
+                                value="{{ old('business_name', $client->business_name ?? '') }}" required>
+                            @error('business_name') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-12">
+                            <label for="contact_name" class="form-label small lh-sm fw-semibold text-dark mb-1">Contact
+                                Person Name</label>
+                            <input type="text" id="contact_name" name="contact_name" class="form-control"
+                                value="{{ old('contact_name', $client->contact_name ?? '') }}">
+                        </div>
+                        <div class="col-12">
+                            <label for="groupid" class="form-label small lh-sm fw-semibold text-dark mb-1">Does this
+                                Client fall in a group?</label>
+                            <div class="input-group">
+                                <select id="groupid" name="groupid" class="form-select">
+                                    <option value="">-- Without Group --</option>
+                                    @foreach($groups as $group)
+                                    <option value="{{ $group->groupid }}" {{ old('groupid', $client->groupid ?? '') ==
+                                        $group->groupid ? 'selected' : '' }}>
+                                        {{ $group->group_name }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                                <button type="button" class="btn btn-outline-primary btn-primary text-white"
+                                    data-bs-toggle="modal" data-bs-target="#groupsModal" title="Add Group">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            @error('groupid') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label for="primary_email" class="form-label small lh-sm fw-semibold text-dark mb-1">Primary
+                                Email<span class="text-danger">*</span></label>
+                            <input type="email" id="primary_email" name="primary_email" class="form-control"
+                                value="{{ old('primary_email', $client->primary_email ?? '') }}" required
+                                placeholder="name@company.com">
+                            @error('primary_email') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label for="email" class="form-label small lh-sm fw-semibold text-dark mb-1">Secondary
+                                Emails <span class="fw-normal">(Optional)</span></label>
+                            <input type="text" id="email" name="email" class="form-control"
+                                value="{{ old('email', $client->email ?? '') }}"
+                                placeholder="accounts@company.com, finance@company.com">
+                            <small class="text-dark small">Use comma to add multiple emails</small>
+                            @error('email') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="phone" class="form-label small lh-sm fw-semibold text-dark mb-1">Phone</label>
+                            <input type="tel" id="phone" name="phone" class="form-control"
+                                value="{{ old('phone', $client->phone ?? '') }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="whatsapp_number"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">WhatsApp</label>
+                            <input type="tel" id="whatsapp_number" name="whatsapp_number" class="form-control"
+                                value="{{ old('whatsapp_number', $client->whatsapp_number ?? '') }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="type" class="form-label small lh-sm fw-semibold text-dark mb-1">Client
+                                Type</label>
+                            <select id="type" name="type" class="form-select">
+                                <option value="regular" {{ old('type', $client->type ?? 'regular') == 'regular' ?
+                                    'selected' : '' }}>Regular</option>
+                                <option value="trial" {{ old('type', $client->type ?? 'regular') == 'trial' ? 'selected'
+                                    : '' }}>Trial</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="currency"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Currency<span
+                                    class="text-danger">*</span></label>
+                            <select id="currency" name="currency" required class="form-select">
+                                <option value="">-- Select --</option>
+                                @foreach(($currencies ?? []) as $currencyItem)
+                                <option value="{{ $currencyItem->iso }}" {{ old('currency', $client->currency ?? 'INR')
+                                    ===
+                                    $currencyItem->iso ? 'selected' : '' }}>
+                                    {{ $currencyItem->iso }} - {{ $currencyItem->name }}
+                                </option>
+                                @endforeach
+                            </select>
+                            @error('currency') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div>
-                <label for="contact_name" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Contact Person</label>
-                <input type="text" id="contact_name" name="contact_name" value="{{ old('contact_name', $client->contact_name ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
+
+            <!-- Column 2: Address -->
+            <div class="col-12 col-lg-3">
+                <div class="bg-light p-4 rounded-3 border h-100">
+                    <div class="mb-3">
+                        <h5 class="fw-semibold text-black mb-0">Address</h5>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-12 col-md-12">
+                            <label for="country"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
+                            <select id="country" name="country" class="form-select country-select"
+                                data-selected="{{ old('country', $client->country ?? 'India') }}">
+                                <option value="">Select</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label for="state" class="form-label small lh-sm fw-semibold text-dark mb-1">State<span
+                                    class="text-danger">*</span></label>
+                            <select id="state" name="state" required class="form-select state-select"
+                                data-selected="{{ old('state', $client->state ?? '') }}">
+                                <option value="">Select</option>
+                            </select>
+                            @error('state') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label for="city" class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
+                            <select id="city" name="city" class="form-select city-select"
+                                data-selected="{{ old('city', $client->city ?? '') }}">
+                                <option value="">Select</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label for="postal_code" class="form-label small lh-sm fw-semibold text-dark mb-1">Postal
+                                Code</label>
+                            <input type="text" id="postal_code" name="postal_code" class="form-control"
+                                value="{{ old('postal_code', $client->postal_code ?? '') }}">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label for="address_line_1"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Address</label>
+                            <textarea id="address_line_1" name="address_line_1" rows="3"
+                                class="form-control">{{ old('address_line_1', $client->address_line_1 ?? '') }}</textarea>
+                        </div>
+                    </div>
+                    <div class="mb-3 mt-4">
+                        <h5 class="fw-semibold text-black mb-0">Business Logo</h5>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-12 col-md-12">
+
+                            <!-- Custom Drag and Drop Area -->
+                            @php
+                            $hasLogo = isset($client) && $client->logo_path;
+                            @endphp
+                            <div class="logo-drag-drop-zone border border-dashed rounded-3 text-center bg-white position-relative py-2"
+                                style="cursor:pointer;" id="logo-drop-zone">
+                                <input type="file" id="logo" name="logo" accept="image/*"
+                                    class="position-absolute top-0 start-0 w-100 h-100 opacity-0">
+
+                                <div class="drop-zone-prompt {{ $hasLogo ? 'd-none' : 'd-flex' }} align-items-center justify-content-start"
+                                    id="drop-zone-prompt">
+                                    <i class="far fa-file text-secondary mb-2 fs-4"></i>
+                                    <span class="text-muted fw-medium ms-2">Drag and drop or <span
+                                            class="text-primary fw-semibold">browse files</span></span>
+                                </div>
+
+                                <div class="drop-zone-preview {{ $hasLogo ? '' : 'd-none' }} align-items-center justify-content-between w-100"
+                                    id="drop-zone-preview">
+                                    <img id="logo-preview-img" src="{{ $hasLogo ? $client->logo_path : '#' }}"
+                                        alt="Logo Preview" class="img-fluid rounded mb-0 shadow-sm" width="50px">
+                                    <button type="button" id="remove-logo-btn"
+                                        class="btn btn-sm btn-danger rounded-circle p-0 bg-transparent text-dark border-0"
+                                        title="Remove Image">
+                                        <i class="fas fa-upload fs-6 lh-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            @error('logo') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div>
-                <label for="groupid" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Group</label>
-                <div class="input-row">
-                    <select id="groupid" name="groupid" class="{{ isset($client) ? 'select-form-input' : 'flex-fill' }}">
-                        <option value="">-- No Group --</option>
-                        @foreach($groups as $group)
-                            <option value="{{ $group->groupid }}" {{ old('groupid', $client->groupid ?? '') == $group->groupid ? 'selected' : '' }}>
-                                {{ $group->group_name }}
+
+            <!-- Column 3: Billing Details -->
+            <div class="col-12 col-lg-6">
+                <div class="bg-light p-4 rounded-3 border h-100">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                        <h5 class="fw-semibold text-black mb-0">Billing Details</h5>
+                        <div class="d-flex align-items-center gap-1">
+                            <div class="mb-0 bg-white border rounded-1 px-2 py-1">
+                                <div class="form-check mb-0 form-check-large">
+                                    <input class="form-check-input" type="checkbox" id="billing_same_as_client"
+                                        name="billing_same_as_client" value="1" {{ old('billing_same_as_client')
+                                        ? 'checked' : '' }}>
+                                    <label class="form-check-label small lh-sm fw-normal text-dark"
+                                        for="billing_same_as_client">
+                                        Same as Client Details
+                                    </label>
+                                </div>
+                            </div>
+                            <button type="button" id="new-billing-btn"
+                                class="btn btn-outline-primary btn-primary text-white ms-1 btn-icon-square h-auto py-2"
+                                title="Reload Billing Profile">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="useExistingBilling" style="cursor:pointer;"
+                            {{ old('existing_bd_id', $client->bd_id ?? '') !== '' ? 'checked' : '' }}>
+                        <label class="form-check-label fw-normal text-dark" style="cursor:pointer;"
+                            for="useExistingBilling">
+                            Do you want to use the existing billing details for this client?
+                        </label>
+                    </div>
+
+                    <div id="existingBillingWrap"
+                        class="position-relative mb-3 {{ old('existing_bd_id', $client->bd_id ?? '') !== '' ? '' : 'd-none' }}">
+                        <label for="existing_bd_id" class="form-label small lh-sm fw-semibold text-dark mb-1">Select
+                            Existing Billing Profile</label>
+                        <select id="existing_bd_id" name="existing_bd_id" class="form-select form-select-sm">
+                            <option value="">-- New billing profile --</option>
+                            @foreach($billingProfiles ?? [] as $profile)
+                            <option value="{{ $profile->bd_id }}" {{ old('existing_bd_id', $client->bd_id ??
+                                '')
+                                ===
+                                $profile->bd_id ? 'selected' : '' }}>
+                                {{ $profile->business_name }} ({{ $profile->bd_id }})
                             </option>
-                        @endforeach
-                    </select>
-                    <button type="button" class="text-link text-link-button" data-bs-toggle="modal" data-bs-target="#groupsModal" title="Add Group"><i class="fas fa-plus"></i></button>
-                </div>
-                @error('groupid') <span class="error">{{ $message }}</span> @enderror
-            </div>
-            <div>
-                <label for="primary_email" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Primary Email *</label>
-                <input type="email" id="primary_email" name="primary_email" value="{{ old('primary_email', $client->primary_email ?? '') }}" required placeholder="name@company.com" {{ isset($client) ? 'class="input-full"' : '' }}>
-                @error('primary_email') <span class="error">{{ $message }}</span> @enderror
-            </div>
-            <div>
-                <label for="email" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Secondary Emails</label>
-                <input type="text" id="email" name="email" value="{{ old('email', $client->email ?? '') }}" placeholder="accounts@company.com, finance@company.com" {{ isset($client) ? 'class="input-full"' : '' }}>
-                <span class="{{ isset($client) ? 'form-hint' : 'text-xs' }}">Optional. Use comma to add multiple emails</span>
-                @error('email') <span class="error">{{ $message }}</span> @enderror
-            </div>
-            <div>
-                <label for="phone" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Phone</label>
-                <input type="tel" id="phone" name="phone" value="{{ old('phone', $client->phone ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
-            </div>
-            <div>
-                <label for="whatsapp_number" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">WhatsApp</label>
-                <input type="tel" id="whatsapp_number" name="whatsapp_number" value="{{ old('whatsapp_number', $client->whatsapp_number ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
-            </div>
-            <div>
-                <label for="status" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Status</label>
-                <select id="status" name="status" {{ isset($client) ? 'class="input-full"' : '' }}>
-                    <option value="active" {{ old('status', $client->status ?? '') == 'active' ? 'selected' : '' }}>Active</option>
-                    <option value="review" {{ old('status', $client->status ?? '') == 'review' ? 'selected' : '' }}>Review</option>
-                    <option value="inactive" {{ old('status', $client->status ?? '') == 'inactive' ? 'selected' : '' }}>Inactive</option>
-                </select>
-            </div>
-            <div>
-                <label for="currency" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Currency *</label>
-                <select id="currency" name="currency" required {{ isset($client) ? 'class="input-full"' : '' }}>
-                    <option value="">-- Select --</option>
-                    @foreach(($currencies ?? []) as $currencyItem)
-                        <option value="{{ $currencyItem->iso }}" {{ old('currency', $client->currency ?? 'INR') === $currencyItem->iso ? 'selected' : '' }}>
-                            {{ $currencyItem->iso }} - {{ $currencyItem->name }}
-                        </option>
-                    @endforeach
-                </select>
-                @error('currency') <span class="error">{{ $message }}</span> @enderror
-            </div>
-            <div>
-                <label for="logo" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Logo</label>
-                <input type="file" id="logo" name="logo" accept="image/*" class="file-input">
-                @isset($client)
-                    @if($client->logo_path)
-                        <div class="img-logo-container"><img src="{{ $client->logo_path }}" alt="Logo" class="img-logo-preview"></div>
-                    @endif
-                @endisset
-                @error('logo') <span class="error">{{ $message }}</span> @enderror
-            </div>
-        </div>
+                            @endforeach
+                        </select>
+                        @error('existing_bd_id') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                    </div>
 
-        <!-- Address -->
-        <div class="section-header">
-            <div class="section-icon"><i class="fas fa-map-marker-alt"></i></div>
-            <h4 class="section-title">Address</h4>
-        </div>
-
-        <div class="form-grid grid-cols-4">
-            <div>
-                <label for="country" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Country</label>
-                <select id="country" name="country" class="country-select {{ isset($client) ? 'input-full' : '' }}" data-selected="{{ old('country', $client->country ?? 'India') }}">
-                    <option value="">Select</option>
-                </select>
-            </div>
-            <div>
-                <label for="state" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">State *</label>
-                <select id="state" name="state" required class="state-select {{ isset($client) ? 'input-full' : '' }}" data-selected="{{ old('state', $client->state ?? '') }}">
-                    <option value="">Select</option>
-                </select>
-                @error('state') <span class="error">{{ $message }}</span> @enderror
-            </div>
-            <div>
-                <label for="city" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">City</label>
-                <select id="city" name="city" class="city-select {{ isset($client) ? 'input-full' : '' }}" data-selected="{{ old('city', $client->city ?? '') }}">
-                    <option value="">Select</option>
-                </select>
-            </div>
-            <div>
-                <label for="postal_code" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Postal Code</label>
-                <input type="text" id="postal_code" name="postal_code" value="{{ old('postal_code', $client->postal_code ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
-            </div>
-            <div class="col-span-2">
-                <label for="address_line_1" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Address</label>
-                <textarea id="address_line_1" name="address_line_1" rows="2" class="textarea-auto">{{ old('address_line_1', $client->address_line_1 ?? '') }}</textarea>
-            </div>
-        </div>
-
-        <!-- Billing Details -->
-        <div class="section-header">
-            <div class="section-icon"><i class="fas fa-file-invoice-dollar"></i></div>
-            <h4 class="section-title">Billing Details</h4>
-        </div>
-
-        <div class="mb-3">
-            <label class="custom-checkbox">
-                <input type="checkbox" id="billing_same_as_client" name="billing_same_as_client" value="1" {{ old('billing_same_as_client') ? 'checked' : '' }}>
-                <span class="checkbox-label">Same as client details</span>
-            </label>
-        </div>
-
-        <div class="panel-note">
-            <div class="flex-between">
-                <label for="existing_bd_id" class="label-small {{ isset($client) ? 'mb-0' : '' }}">Use existing billing profile</label>
-                <select id="existing_bd_id" name="existing_bd_id" class="select-narrow">
-                    <option value="">-- New billing profile --</option>
-                    @foreach($billingProfiles ?? [] as $profile)
-                        <option value="{{ $profile->bd_id }}" {{ old('existing_bd_id', $client->bd_id ?? '') === $profile->bd_id ? 'selected' : '' }}>
-                            {{ $profile->business_name }} ({{ $profile->bd_id }})
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <button type="button" id="new-billing-btn" class="text-link button-top-margin"><i class="fas fa-plus icon-spaced-sm"></i> Create new billing profile</button>
-            @error('existing_bd_id') <span class="error">{{ $message }}</span> @enderror
-        </div>
-
-        <div id="new-billing-fields">
-            <div class="form-grid grid-cols-4">
-                <div class="col-span-2">
-                    <label for="billing_business_name" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Billing Business Name *</label>
-                    <input type="text" id="billing_business_name" name="billing_business_name" value="{{ old('billing_business_name', isset($client) ? ($client->billingDetail->business_name ?? $client->business_name) : '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
-                    @error('billing_business_name') <span class="error">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <label for="billing_gstin" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">GSTIN</label>
-                    <input type="text" id="billing_gstin" name="billing_gstin" value="{{ old('billing_gstin', $client->billingDetail->gstin ?? '') }}"
-                        maxlength="15" minlength="15" pattern="[A-Z0-9]{15}"
-                        title="GSTIN must be exactly 15 characters"
-                        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
-                        onblur="if(this.value && this.value.length!==15){this.setCustomValidity('GSTIN must be exactly 15 characters');this.reportValidity();}else{this.setCustomValidity('');}"
-                        {{ isset($client) ? 'class="input-full"' : '' }}>
-                    <span id="gstin_hint" class="{{ isset($client) ? 'form-hint' : 'text-xs' }}">Exactly 15 characters required</span>
-                    @error('billing_gstin') <span class="error">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <label for="billing_email" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Billing Email</label>
-                    <input type="email" id="billing_email" multiple name="billing_email" value="{{ old('billing_email', $client->billingDetail->billing_email ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
-                    @error('billing_email') <span class="error">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <label for="billing_phone" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Billing Phone</label>
-                    <input type="tel" id="billing_phone" name="billing_phone" value="{{ old('billing_phone', $client->billingDetail->billing_phone ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
-                    @error('billing_phone') <span class="error">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <label for="billing_country" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Country</label>
-                    <select id="billing_country" name="billing_country" class="country-select {{ isset($client) ? 'input-full' : '' }}" data-selected="{{ old('billing_country', $client->billingDetail->country ?? 'India') }}">
-                        <option value="">Select</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="billing_state" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">State *</label>
-                    <select id="billing_state" name="billing_state" class="state-select {{ isset($client) ? 'input-full' : '' }}" data-selected="{{ old('billing_state', $client->billingDetail->state ?? '') }}" required>
-                        <option value="">Select</option>
-                    </select>
-                    @error('billing_state') <span class="error">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <label for="billing_city" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">City</label>
-                    <select id="billing_city" name="billing_city" class="city-select {{ isset($client) ? 'input-full' : '' }}" data-selected="{{ old('billing_city', $client->billingDetail->city ?? '') }}">
-                        <option value="">Select</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="billing_postal_code" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Postal Code</label>
-                    <input type="text" id="billing_postal_code" name="billing_postal_code" value="{{ old('billing_postal_code', $client->billingDetail->postal_code ?? '') }}" {{ isset($client) ? 'class="input-full"' : '' }}>
-                </div>
-                <div class="col-span-2">
-                    <label for="billing_address_line_1" class="{{ isset($client) ? 'text-sm' : 'label-small' }}">Billing Address</label>
-                    <textarea id="billing_address_line_1" name="billing_address_line_1" rows="2" class="textarea-auto">{{ old('billing_address_line_1', $client->billingDetail->address_line_1 ?? '') }}</textarea>
-                    @error('billing_address_line_1') <span class="error">{{ $message }}</span> @enderror
+                    <div id="new-billing-fields">
+                        <div class="row g-2">
+                            <div class="col-12 col-md-12">
+                                <label for="billing_business_name"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Billing Business Name<span
+                                        class="text-danger">*</span></label>
+                                <input type="text" id="billing_business_name" name="billing_business_name"
+                                    class="form-control"
+                                    value="{{ old('billing_business_name', isset($client) ? ($client->billingDetail->business_name ?? $client->business_name) : '') }}">
+                                @error('billing_business_name') <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-12 col-md-12">
+                                <label for="billing_gstin"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">GSTIN <span
+                                        id="gstin_hint" class="fw-normal">(Exactly 15 characters
+                                        required)</span></label>
+                                <input type="text" id="billing_gstin" name="billing_gstin" class="form-control"
+                                    value="{{ old('billing_gstin', $client->billingDetail->gstin ?? '') }}"
+                                    maxlength="15" minlength="15" pattern="[A-Z0-9]{15}"
+                                    title="GSTIN must be exactly 15 characters"
+                                    oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
+                                    onblur="if(this.value && this.value.length!==15){this.setCustomValidity('GSTIN must be exactly 15 characters');this.reportValidity();}else{this.setCustomValidity('');}">
+                                @error('billing_gstin') <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label for="billing_email"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Email</label>
+                                <input type="email" id="billing_email" multiple name="billing_email"
+                                    class="form-control"
+                                    value="{{ old('billing_email', $client->billingDetail->billing_email ?? '') }}">
+                                @error('billing_email') <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label for="billing_phone"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Phone</label>
+                                <input type="tel" id="billing_phone" name="billing_phone" class="form-control"
+                                    value="{{ old('billing_phone', $client->billingDetail->billing_phone ?? '') }}">
+                                @error('billing_phone') <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="billing_country"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
+                                <select id="billing_country" name="billing_country" class="form-select country-select"
+                                    data-selected="{{ old('billing_country', $client->billingDetail->country ?? 'India') }}">
+                                    <option value="">Select</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="billing_state"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">State<span
+                                        class="text-danger">*</span></label>
+                                <select id="billing_state" name="billing_state" class="form-select state-select"
+                                    data-selected="{{ old('billing_state', $client->billingDetail->state ?? '') }}"
+                                    required>
+                                    <option value="">Select</option>
+                                </select>
+                                @error('billing_state') <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="billing_city"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
+                                <select id="billing_city" name="billing_city" class="form-select city-select"
+                                    data-selected="{{ old('billing_city', $client->billingDetail->city ?? '') }}">
+                                    <option value="">Select</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="billing_postal_code"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Postal
+                                    Code</label>
+                                <input type="text" id="billing_postal_code" name="billing_postal_code"
+                                    class="form-control"
+                                    value="{{ old('billing_postal_code', $client->billingDetail->postal_code ?? '') }}">
+                            </div>
+                            <div class="col-12 col-md-12">
+                                <label for="billing_address_line_1"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Billing Address</label>
+                                <textarea id="billing_address_line_1" name="billing_address_line_1" rows="3"
+                                    class="form-control">{{ old('billing_address_line_1', $client->billingDetail->address_line_1 ?? '') }}</textarea>
+                                @error('billing_address_line_1') <div class="text-danger small mt-1">{{ $message }}
+                                </div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="form-actions">
-            <button type="submit" class="primary-button">{{ isset($client) ? 'Update Client' : 'Create Client' }}</button>
-            <a href="{{ route('clients.index') }}" class="text-link">Cancel</a>
+        <!-- Form Actions outside the columns -->
+        <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+            <a href="{{ route('clients.index') }}" class="btn btn-outline-primary bg-white text-primary fw-medium">
+                <i class="fas fa-times btn-icon me-1"></i> Cancel
+            </a>
+            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
+                {{ isset($client) ? 'Update Client' : 'Add Client' }}
+                <i class="fas fa-arrow-right btn-icon ms-1"></i>
+            </button>
         </div>
     </form>
-</section>
 
-<!-- Groups Modal -->
-<div class="modal fade" id="groupsModal" tabindex="-1">
-    <div class="modal-dialog modal-md modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header {{ isset($client) ? 'modal-header-custom' : '' }}">
-                <h5 class="modal-title modal-title-strong"><i class="fas fa-layer-group icon-spaced-sm"></i>Manage Groups</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="panel-note">
-                    @csrf
-                    <div id="groupMethodField"></div>
-                    <h6 id="groupFormTitle" class="modal-subtitle">Add New Group</h6>
-                    <div class="form-grid grid-cols-2">
-                        <div>
-                            <label class="label-compact">Group Name *</label>
-                            <input type="text" name="group_name" id="groupName" required class="{{ isset($client) ? 'input-full' : '' }}">
+    <!-- Groups Modal -->
+    <div class="modal fade" id="groupsModal" tabindex="-1" aria-labelledby="groupsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-md">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-white border-bottom py-2">
+                    <h5 class="modal-title fw-semibold" id="groupsModalLabel">Add Group</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-light p-4">
+                    <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="mainForm">
+                        @csrf
+                        <div id="groupMethodField"></div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label for="groupName" class="form-label small lh-sm fw-semibold text-dark mb-1">Group
+                                    Name<span class="text-danger">*</span></label>
+                                <input type="text" name="group_name" id="groupName" required class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="groupEmail"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Email</label>
+                                <input type="email" name="email" id="groupEmail" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="groupAddress1"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Address
+                                    Line 1</label>
+                                <input type="text" name="address_line_1" id="groupAddress1" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="groupAddress2"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Address
+                                    Line 2</label>
+                                <input type="text" name="address_line_2" id="groupAddress2" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="groupCountry"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
+                                <select id="groupCountry" name="country" class="form-select country-select"
+                                    data-selected="India">
+                                    <option value="">Select Country</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="groupState"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">State</label>
+                                <select id="groupState" name="state" class="form-select state-select" data-selected="">
+                                    <option value="">Select State</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="groupCity"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
+                                <select id="groupCity" name="city" class="form-select city-select" data-selected="">
+                                    <option value="">Select City</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="groupPostalCode"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Postal
+                                    Code</label>
+                                <input type="text" name="postal_code" id="groupPostalCode" class="form-control">
+                            </div>
                         </div>
-                        <div>
-                            <label class="label-compact">Email</label>
-                            <input type="email" name="email" id="groupEmail" class="{{ isset($client) ? 'input-full' : '' }}">
+                        <div class="d-flex align-items-center justify-content-between mt-3">
+                            <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium"
+                                data-bs-dismiss="modal">
+                                <i class="fas fa-times btn-icon me-1"></i> Cancel
+                            </button>
+                            <button type="submit" id="groupSubmitBtn"
+                                class="btn btn-outline-primary btn-primary text-white fw-medium">
+                                Save <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                            </button>
                         </div>
-                        <div>
-                            <label class="label-compact">Address Line 1</label>
-                            <input type="text" name="address_line_1" id="groupAddress1" class="{{ isset($client) ? 'input-full' : '' }}">
-                        </div>
-                        <div>
-                            <label class="label-compact">Address Line 2</label>
-                            <input type="text" name="address_line_2" id="groupAddress2" class="{{ isset($client) ? 'input-full' : '' }}">
-                        </div>
-                        <div>
-                            <label class="label-compact">Country</label>
-                            <select id="groupCountry" name="country" class="country-select {{ isset($client) ? 'input-full' : '' }}" data-selected="India">
-                                <option value="">Select Country</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="label-compact">State</label>
-                            <select id="groupState" name="state" class="state-select {{ isset($client) ? 'input-full' : '' }}" data-selected="">
-                                <option value="">Select State</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="label-compact">City</label>
-                            <select id="groupCity" name="city" class="city-select {{ isset($client) ? 'input-full' : '' }}" data-selected="">
-                                <option value="">Select City</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="label-compact">Postal Code</label>
-                            <input type="text" name="postal_code" id="groupPostalCode" class="{{ isset($client) ? 'input-full' : '' }}">
-                        </div>
-                    </div>
-                    <div class="flex-between">
-                        <button type="submit" id="groupSubmitBtn" class="primary-button small">Save</button>
-                        <button type="button" id="groupCancelBtn" class="text-link small hidden" onclick="resetGroupForm()">Cancel</button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script type="application/json"
+    id="billing-profiles-data">{!! json_encode(($billingProfiles ?? collect())->keyBy('bd_id')) !!}</script>
 
 <script>
     (function () {
@@ -325,7 +481,7 @@
         const clientState = document.getElementById('state');
         const clientPostal = document.getElementById('postal_code');
         const clientCountry = document.getElementById('country');
-        const billingProfiles = @json(($billingProfiles ?? collect())->keyBy('bd_id'));
+        const billingProfiles = JSON.parse(document.getElementById('billing-profiles-data').textContent || '{}');
 
         function loadSelectedBillingProfile() {
             const bdId = existingSelect.value;
@@ -336,10 +492,10 @@
             billingEmail.value = profile.billing_email || '';
             billingPhone.value = profile.billing_phone || '';
             billingAddress.value = profile.address_line_1 || '';
-            billingCity.value = profile.city || '';
-            billingState.value = profile.state || '';
-            billingPostal.value = profile.postal_code || '';
             billingCountry.value = profile.country || 'India';
+            billingState.value = profile.state || '';
+            billingCity.value = profile.city || '';
+            billingPostal.value = profile.postal_code || '';
         }
 
         function clearBillingFields() {
@@ -348,10 +504,10 @@
             billingEmail.value = '';
             billingPhone.value = '';
             billingAddress.value = '';
-            billingCity.value = '';
-            billingState.value = '';
-            billingPostal.value = '';
             billingCountry.value = 'India';
+            billingState.value = '';
+            billingCity.value = '';
+            billingPostal.value = '';
         }
 
         function setSelectValueAndNotify(selectEl, value) {
@@ -407,16 +563,88 @@
             await syncBillingLocationFromClient();
         }
 
+        const useExistingCheckbox = document.getElementById('useExistingBilling');
+        const existingBillingWrap = document.getElementById('existingBillingWrap');
+
+        useExistingCheckbox.addEventListener('change', function () {
+            if (this.checked) {
+                existingBillingWrap.classList.remove('d-none');
+            } else {
+                existingBillingWrap.classList.add('d-none');
+                existingSelect.value = '';
+                clearBillingFields();
+            }
+        });
+
         existingSelect.addEventListener('change', loadSelectedBillingProfile);
         newBillingBtn.addEventListener('click', function () { existingSelect.value = ''; clearBillingFields(); });
         sameAsClientCheckbox.addEventListener('change', function () { if (this.checked) copyClientDetailsToBilling(); });
-        [clientBusinessName, clientPrimaryEmail, clientSecondaryEmails, clientPhone, clientAddress, clientPostal].forEach(function(el) {
+        [clientBusinessName, clientPrimaryEmail, clientSecondaryEmails, clientPhone, clientAddress, clientPostal].forEach(function (el) {
             el.addEventListener('input', function () { if (sameAsClientCheckbox.checked) copyClientDetailsToBilling(); });
         });
-        [clientCity, clientState, clientCountry].forEach(function(el) {
+        [clientCity, clientState, clientCountry].forEach(function (el) {
             el.addEventListener('change', function () { if (sameAsClientCheckbox.checked) copyClientDetailsToBilling(); });
         });
         billingName.required = true;
+        // Logo Drag and Drop logic
+        const logoInput = document.getElementById('logo');
+        const logoDropZone = document.getElementById('logo-drop-zone');
+        const dropZonePrompt = document.getElementById('drop-zone-prompt');
+        const dropZonePreview = document.getElementById('drop-zone-preview');
+        const previewImg = document.getElementById('logo-preview-img');
+        const removeLogoBtn = document.getElementById('remove-logo-btn');
+        const existingLogoWrap = document.getElementById('existing-logo-wrap');
+
+        if (logoInput && logoDropZone) {
+            ['dragenter', 'dragover'].forEach(eventName => {
+                logoDropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    logoDropZone.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                logoDropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    logoDropZone.classList.remove('dragover');
+                }, false);
+            });
+
+            logoInput.addEventListener('change', function () {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        previewImg.src = e.target.result;
+                        dropZonePrompt.classList.add('d-none');
+                        dropZonePreview.classList.remove('d-none');
+                        if (existingLogoWrap) {
+                            existingLogoWrap.classList.add('d-none');
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    previewImg.src = '#';
+                    dropZonePrompt.classList.remove('d-none');
+                    dropZonePreview.classList.add('d-none');
+                    if (existingLogoWrap) {
+                        existingLogoWrap.classList.remove('d-none');
+                    }
+                }
+            });
+
+            if (removeLogoBtn) {
+                removeLogoBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    logoInput.value = '';
+                    logoInput.dispatchEvent(new Event('change'));
+                });
+            }
+        }
+
         loadSelectedBillingProfile();
         if (sameAsClientCheckbox.checked) copyClientDetailsToBilling();
     })();
@@ -429,16 +657,14 @@
 
     function resetGroupForm() {
         const form = document.getElementById('groupForm');
-        const title = document.getElementById('groupFormTitle');
         const submitBtn = document.getElementById('groupSubmitBtn');
-        const cancelBtn = document.getElementById('groupCancelBtn');
         const methodField = document.getElementById('groupMethodField');
         form.action = "{{ route('groups.store') }}";
         methodField.innerHTML = '';
         form.reset();
-        title.innerText = 'Add New Group';
-        submitBtn.innerText = 'Save';
-        cancelBtn.style.display = 'none';
+        if (submitBtn) {
+            submitBtn.innerHTML = 'Save <i class="fas fa-arrow-right btn-icon ms-1"></i>';
+        }
     }
 </script>
 @endsection

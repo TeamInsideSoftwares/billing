@@ -1,15 +1,15 @@
 @extends('layouts.app')
 
 @section('header_actions')
-    <div class="header-actions-wrapper">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
         <a href="{{ route('invoices.index') }}"
-            class="secondary-button">
-            <i class="fas fa-file-invoice icon-spaced"></i>Invoice List
+            class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
+            <i class="fas fa-file-invoice btn-icon"></i> Invoice List
         </a>
     </div>
 @endsection
 
-    @section('content')
+@section('content')
     @php
         $allowedTabs = !empty($hasTrialClients)
             ? ['upcoming', 'expired', 'suspended', 'trial']
@@ -26,77 +26,90 @@
         };
     @endphp
 
-    <div class="invoice-index-shell">
-        <section class="panel-card module-filter-panel filter-panel-regular">
-            <form action="{{ route('invoices.expiry-list') }}" method="GET" class="module-filter-grid">
+    <div class="position-relative bg-white p-3 rounded-3 shadow-sm">
+        <!-- Filters Card -->
+        <div class="position-relative bg-light border p-3 rounded-3 mb-2">
+            <form action="{{ route('invoices.expiry-list') }}" method="GET" class="mainForm">
                 <input type="hidden" name="tab" value="{{ $selectedTab ?? 'expired' }}">
 
-                <div class="module-filter-field">
-                    <label class="module-filter-label" for="expiry_client_filter">Client</label>
-                    <select name="c" id="expiry_client_filter" class="form-control">
-                        <option value="">All Clients</option>
-                        @foreach ($clients as $clientOption)
-                            <option value="{{ $clientOption->clientid }}"
-                                {{ (string) $selectedClientId === (string) $clientOption->clientid ? 'selected' : '' }}>
-                                {{ $clientOption->business_name ?? ($clientOption->contact_name ?? 'Client') }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+                <div class="row g-2">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="expiry_client_filter">Client</label>
+                        <select name="c" id="expiry_client_filter" class="form-select">
+                            <option value="">All Clients</option>
+                            @foreach ($clients as $clientOption)
+                                <option value="{{ $clientOption->clientid }}"
+                                    {{ (string) $selectedClientId === (string) $clientOption->clientid ? 'selected' : '' }}>
+                                    {{ $clientOption->business_name ?? ($clientOption->contact_name ?? 'Client') }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                <div class="module-filter-field">
-                    <label class="module-filter-label" for="expiry_from_filter">From</label>
-                    <input type="date" name="from" id="expiry_from_filter" class="form-control module-date-input"
-                        value="{{ $fromDate ?? '' }}">
-                </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="expiry_from_filter">From</label>
+                        <input type="date" name="from" id="expiry_from_filter" class="form-control"
+                            value="{{ $fromDate ?? '' }}">
+                    </div>
 
-                <div class="module-filter-field">
-                    <label class="module-filter-label" for="expiry_to_filter">To</label>
-                    <input type="date" name="to" id="expiry_to_filter" class="form-control module-date-input"
-                        value="{{ $toDate ?? '' }}" min="{{ $fromDate ?? '' }}">
-                </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="expiry_to_filter">To</label>
+                        <input type="date" name="to" id="expiry_to_filter" class="form-control"
+                            value="{{ $toDate ?? '' }}" min="{{ $fromDate ?? '' }}">
+                    </div>
 
-                <div class="module-filter-actions">
-                    <button type="submit" class="primary-button">Apply</button>
-                    <a href="{{ route('invoices.expiry-list', array_filter([
-                        'tab' => $selectedTab ?? 'expired',
-                    ])) }}"
-                        class="secondary-button">Reset</a>
+                    <div class="col-12 col-md-2 mt-auto d-flex gap-2">
+                        <a href="{{ route('invoices.expiry-list', array_filter([
+                            'tab' => $selectedTab ?? 'expired',
+                        ])) }}"
+                            class="btn btn-outline-primary bg-white text-primary fw-medium">
+                            <i class="fas fa-sync-alt btn-icon me-1"></i> Reset
+                        </a>
+                        <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
+                            Apply <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                        </button>
+                    </div>
                 </div>
             </form>
-        </section>
-
-        <div class="invoice-tabs-container">
-            <div class="invoice-tabs">
-                <a href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'upcoming', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}"
-                    class="invoice-tab {{ $currentTab === 'upcoming' ? 'is-active' : '' }}">
-                    Upcoming <span>{{ $upcomingItems->count() }}</span>
-                </a>
-                <a href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'expired', 'from' => $fromDate ?? '', 'to' => $toDate ?? ''])) }}"
-                    class="invoice-tab {{ $currentTab === 'expired' ? 'is-active' : '' }}">
-                    Expired <span>{{ $expiredItems->count() }}</span>
-                </a>
-                <a href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'suspended', 'from' => $fromDate ?? '', 'to' => $toDate ?? ''])) }}"
-                    class="invoice-tab {{ $currentTab === 'suspended' ? 'is-active' : '' }}">
-                    Suspended <span>{{ $suspendedItems->count() }}</span>
-                </a>
-                @if(!empty($hasTrialClients))
-                    <a href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'trial', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}"
-                        class="invoice-tab {{ $currentTab === 'trial' ? 'is-active' : '' }}">
-                        Trial <span>{{ ($trialItems ?? collect())->count() }}</span>
-                    </a>
-                @endif
-            </div>
         </div>
 
+        <ul class="nav nav-underline mb-3">
+            <li class="nav-item">
+                <a class="nav-link rounded-0 {{ $currentTab === 'upcoming' ? 'active' : 'text-secondary' }} d-flex align-items-center gap-1 fw-medium"
+                    href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'upcoming', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}">
+                    Upcoming <span class="badge rounded-pill {{ $currentTab === 'upcoming' ? 'bg-primary text-white' : 'bg-secondary text-white' }}">{{ $upcomingItems->count() }}</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded-0 {{ $currentTab === 'expired' ? 'active' : 'text-secondary' }} d-flex align-items-center gap-1 fw-medium"
+                    href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'expired', 'from' => $fromDate ?? '', 'to' => $toDate ?? ''])) }}">
+                    Expired <span class="badge rounded-pill {{ $currentTab === 'expired' ? 'bg-primary text-white' : 'bg-secondary text-white' }}">{{ $expiredItems->count() }}</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded-0 {{ $currentTab === 'suspended' ? 'active' : 'text-secondary' }} d-flex align-items-center gap-1 fw-medium"
+                    href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'suspended', 'from' => $fromDate ?? '', 'to' => $toDate ?? ''])) }}">
+                    Suspended <span class="badge rounded-pill {{ $currentTab === 'suspended' ? 'bg-primary text-white' : 'bg-secondary text-white' }}">{{ $suspendedItems->count() }}</span>
+                </a>
+            </li>
+            @if(!empty($hasTrialClients))
+                <li class="nav-item">
+                    <a class="nav-link rounded-0 {{ $currentTab === 'trial' ? 'active' : 'text-secondary' }} d-flex align-items-center gap-1 fw-medium"
+                        href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'trial', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}">
+                        Trial <span class="badge rounded-pill {{ $currentTab === 'trial' ? 'bg-primary text-white' : 'bg-secondary text-white' }}">{{ ($trialItems ?? collect())->count() }}</span>
+                    </a>
+                </li>
+            @endif
+        </ul>
+
         <section class="invoice-group">
-            <div class="invoice-list-meta">
+            <div class="invoice-list-meta px-1 mb-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
                 @if($currentTab === 'upcoming')
                     <div class="meta-info">
-                        <strong>Upcoming items</strong>
-                        <span class="small-text">Active items whose expiry date is still in the future.</span>
+                        <strong class="text-dark">Upcoming items</strong>
+                        <span class="text-muted small d-block">Active items whose expiry date is still in the future.</span>
                     </div>
-                    <form action="{{ route('invoices.expiry-list') }}" method="GET" class="compact-meta-filter">
+                    <form action="{{ route('invoices.expiry-list') }}" method="GET" class="d-flex align-items-center gap-2 flex-wrap">
                         <input type="hidden" name="tab" value="upcoming">
                         @if($selectedClientId)
                             <input type="hidden" name="c" value="{{ $selectedClientId }}">
@@ -107,150 +120,146 @@
                         @if(($toDate ?? '') !== '')
                             <input type="hidden" name="to" value="{{ $toDate }}">
                         @endif
-                        <label for="upcoming_next_days_inline">Next Days</label>
-                        <input type="number" name="next_days" id="upcoming_next_days_inline"
+                        <label class="small fw-semibold text-dark mb-0" for="upcoming_next_days_inline">Next Days</label>
+                        <input type="number" name="next_days" id="upcoming_next_days_inline" class="form-control form-control-sm" style="width: 80px;"
                             value="{{ $nextDays ?? 60 }}" min="1" step="1">
-                        <button type="submit" class="secondary-button small">Apply</button>
+                        <button type="submit" class="btn btn-sm btn-outline-primary bg-white text-primary fw-medium">Apply</button>
                     </form>
                 @elseif($currentTab === 'expired')
                     <div class="meta-info">
-                        <strong>Expired items</strong>
-                        <span class="small-text">Only items whose end date is already over.</span>
+                        <strong class="text-dark">Expired items</strong>
+                        <span class="text-muted small d-block">Only items whose end date is already over.</span>
                     </div>
                 @elseif($currentTab === 'trial')
                     <div class="meta-info">
-                        <strong>Trial items</strong>
-                        <span class="small-text">Orders belonging to trial-type clients.</span>
+                        <strong class="text-dark">Trial items</strong>
+                        <span class="text-muted small d-block">Orders belonging to trial-type clients.</span>
                     </div>
                 @else
                     <div class="meta-info">
-                        <strong>Suspended items</strong>
-                        <span class="small-text">These items were manually suspended.</span>
+                        <strong class="text-dark">Suspended items</strong>
+                        <span class="text-muted small d-block">These items were manually suspended.</span>
                     </div>
                 @endif
             </div>
 
             @if (collect($tabRows)->isEmpty())
-                <div class="invoice-empty">
-                    <i class="fas fa-check-circle empty-state-icon"></i>
-                    <p class="no-empty-state-text">No records found for this tab.</p>
+                <div class="card border-0 shadow-sm py-5 text-center text-muted mb-3">
+                    <div class="card-body">
+                        <i class="fas fa-check-circle mb-3 text-secondary fs-1 opacity-50"></i>
+                        <p class="fw-semibold text-dark mb-1">No records found for this tab.</p>
+                    </div>
                 </div>
             @else
-                <div class="invoice-table-wrap">
-                    <table class="data-table table-no-margin">
-                        <thead>
-                            <tr>
-                                <th>Client</th>
-                                <th>Item</th>
-                                <th>Expiry Date</th>
-                                <th>Days</th>
-                                <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($tabRows as $row)
+                <div class="card border-0 shadow-sm overflow-hidden mb-3">
+                    <div class="table-responsive">
+                        <table class="table mainTable border align-middle mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <td>{{ $row['client_name'] }}</td>
-                                    <td>
-                                        <strong>{{ $row['item_name'] }}</strong>
-                                    </td>
-                                    <td>
-                                        <span class="{{ (($row['days_left'] ?? null) !== null && $row['days_left'] < 0) ? 'text-danger' : '' }}"
-                                            style="{{ (($row['days_left'] ?? null) !== null && $row['days_left'] < 0) ? 'font-weight: 600;' : '' }}">
-                                            {{ $row['end_date_display'] }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        @if ($row['days_left'] === null)
-                                            <span class="invoice-muted">-</span>
-                                        @elseif($row['days_left'] > 0)
-                                            <span class="text-success" style="font-weight: 600;">{{ $row['days_left'] }} day(s)</span>
-                                        @elseif($row['days_left'] === 0)
-                                            <span class="text-warning" style="font-weight: 600;">Today</span>
-                                        @else
-                                            <span class="text-danger" style="font-weight: 600;">-{{ abs($row['days_left']) }} day(s)</span>
-                                        @endif
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="" style="justify-content: center;">
-                                            @if(strtolower((string) ($row['status'] ?? '')) !== 'cancelled')
-                                                <form method="POST"
-                                                    action="{{ route('invoices.orders.send-reminder', ['order' => $row['orderid']]) }}"
-                                                    class="inline-delete m-0"
-                                                    onsubmit="return confirm('Send manual reminder for this order?')">
-                                                    @csrf
-                                                    <input type="hidden" name="c" value="{{ $selectedClientId }}">
-                                                    <input type="hidden" name="tab" value="{{ $currentTab }}">
-                                                    <input type="hidden" name="from" value="{{ $fromDate ?? '' }}">
-                                                    <input type="hidden" name="to" value="{{ $toDate ?? '' }}">
-                                                    <input type="hidden" name="next_days" value="{{ $nextDays ?? '' }}">
-                                                    <button type="submit" class="text-action-btn secondary" title="Send Reminder">
-                                                        Send Reminder
-                                                    </button>
-                                                </form>
-                                            @endif
-
-                                            <button
-                                                type="button"
-                                                class="text-action-btn view js-renew-order-btn"
-                                                title="Renew"
-                                                data-order-id="{{ $row['orderid'] }}"
-                                                data-order-number="{{ $row['order_number'] }}"
-                                                data-client-name="{{ $row['client_name'] }}"
-                                                data-invoice-number="{{ $row['invoice_number'] }}"
-                                                data-item-name="{{ $row['item_name'] }}"
-                                                data-item-description="{{ $row['item_description'] }}"
-                                                data-start-date="{{ $row['start_date_display'] }}"
-                                                data-end-date-display="{{ $row['end_date_display'] }}"
-                                                data-days-left="{{ $row['days_left'] }}"
-                                                data-status="{{ ucfirst($row['status']) }}"
-                                                data-end-date="{{ $row['end_date'] ? $row['end_date']->format('Y-m-d') : '' }}"
-                                                data-client-id="{{ $row['clientid'] }}"
-                                                data-frequency="{{ $row['frequency'] ?? '' }}"
-                                                data-duration="{{ $row['duration'] ?? 1 }}"
-                                            >
-                                                Renew
-                                            </button>
-
-                                            @if ($currentTab === 'expired' && $row['status'] !== 'suspended')
-                                                <form method="POST"
-                                                    action="{{ route('invoices.orders.suspend', ['order' => $row['orderid']]) }}"
-                                                    class="inline-delete m-0"
-                                                    onsubmit="return confirm('Suspend this order?')">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <input type="hidden" name="c" value="{{ $selectedClientId }}">
-                                                    <input type="hidden" name="tab" value="{{ $currentTab }}">
-                                                    <input type="hidden" name="from" value="{{ $fromDate ?? '' }}">
-                                                    <input type="hidden" name="to" value="{{ $toDate ?? '' }}">
-                                                    <input type="hidden" name="next_days" value="{{ $nextDays ?? '' }}">
-                                                    <button type="submit" class="text-action-btn delete" title="Suspend">
-                                                        Suspend
-                                                    </button>
-                                                </form>
-                                            @elseif($row['status'] === 'suspended')
-                                                <form method="POST"
-                                                    action="{{ route('invoices.orders.unsuspend', ['order' => $row['orderid']]) }}"
-                                                    class="inline-delete m-0"
-                                                    onsubmit="return confirm('Unsuspend this order?')">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <input type="hidden" name="c" value="{{ $selectedClientId }}">
-                                                    <input type="hidden" name="tab" value="{{ $currentTab }}">
-                                                    <input type="hidden" name="from" value="{{ $fromDate ?? '' }}">
-                                                    <input type="hidden" name="to" value="{{ $toDate ?? '' }}">
-                                                    <input type="hidden" name="next_days" value="{{ $nextDays ?? '' }}">
-                                                    <button type="submit" class="text-action-btn secondary" title="Unsuspend">
-                                                        Unsuspend
-                                                    </button>
-                                                </form>
-                                            @endif
-                                        </div>
-                                    </td>
+                                    <th>Client</th>
+                                    <th>Item</th>
+                                    <th>Expiry Date</th>
+                                    <th>Days</th>
+                                    <th class="text-end">Actions</th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach ($tabRows as $row)
+                                    <tr>
+                                        <td>{{ $row['client_name'] }}</td>
+                                        <td>
+                                            <strong class="text-dark">{{ $row['item_name'] }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="{{ (($row['days_left'] ?? null) !== null && $row['days_left'] < 0) ? 'text-danger fw-semibold' : '' }}">
+                                                {{ $row['end_date_display'] }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if ($row['days_left'] === null)
+                                                <span class="text-muted">-</span>
+                                            @elseif($row['days_left'] > 0)
+                                                <span class="text-success fw-semibold">{{ $row['days_left'] }} day(s)</span>
+                                            @elseif($row['days_left'] === 0)
+                                                <span class="text-warning fw-semibold">Today</span>
+                                            @else
+                                                <span class="text-danger fw-semibold">-{{ abs($row['days_left']) }} day(s)</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="tableActionButton d-inline-flex gap-1">
+                                                @if(strtolower((string) ($row['status'] ?? '')) !== 'cancelled')
+                                                    <form method="POST"
+                                                        action="{{ route('invoices.orders.send-reminder', ['order' => $row['orderid']]) }}"
+                                                        class="d-inline"
+                                                        onsubmit="return confirm('Send manual reminder for this order?')">
+                                                        @csrf
+                                                        <input type="hidden" name="c" value="{{ $selectedClientId }}">
+                                                        <input type="hidden" name="tab" value="{{ $currentTab }}">
+                                                        <input type="hidden" name="from" value="{{ $fromDate ?? '' }}">
+                                                        <input type="hidden" name="to" value="{{ $toDate ?? '' }}">
+                                                        <input type="hidden" name="next_days" value="{{ $nextDays ?? '' }}">
+                                                        <button type="submit" class="bg01 color01">Send Reminder</button>
+                                                    </form>
+                                                @endif
+
+                                                <button
+                                                    type="button"
+                                                    class="bg03 color03 border-0 js-renew-order-btn"
+                                                    data-order-id="{{ $row['orderid'] }}"
+                                                    data-order-number="{{ $row['order_number'] }}"
+                                                    data-client-name="{{ $row['client_name'] }}"
+                                                    data-invoice-number="{{ $row['invoice_number'] }}"
+                                                    data-item-name="{{ $row['item_name'] }}"
+                                                    data-item-description="{{ $row['item_description'] }}"
+                                                    data-start-date="{{ $row['start_date_display'] }}"
+                                                    data-end-date-display="{{ $row['end_date_display'] }}"
+                                                    data-days-left="{{ $row['days_left'] }}"
+                                                    data-status="{{ ucfirst($row['status']) }}"
+                                                    data-end-date="{{ $row['end_date'] ? $row['end_date']->format('Y-m-d') : '' }}"
+                                                    data-client-id="{{ $row['clientid'] }}"
+                                                    data-frequency="{{ $row['frequency'] ?? '' }}"
+                                                    data-duration="{{ $row['duration'] ?? 1 }}"
+                                                >
+                                                    Renew
+                                                </button>
+
+                                                @if ($currentTab === 'expired' && $row['status'] !== 'suspended')
+                                                    <form method="POST"
+                                                        action="{{ route('invoices.orders.suspend', ['order' => $row['orderid']]) }}"
+                                                        class="d-inline"
+                                                        onsubmit="return confirm('Suspend this order?')">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <input type="hidden" name="c" value="{{ $selectedClientId }}">
+                                                        <input type="hidden" name="tab" value="{{ $currentTab }}">
+                                                        <input type="hidden" name="from" value="{{ $fromDate ?? '' }}">
+                                                        <input type="hidden" name="to" value="{{ $toDate ?? '' }}">
+                                                        <input type="hidden" name="next_days" value="{{ $nextDays ?? '' }}">
+                                                        <button type="submit" class="bg04 color04">Suspend</button>
+                                                    </form>
+                                                @elseif($row['status'] === 'suspended')
+                                                    <form method="POST"
+                                                        action="{{ route('invoices.orders.unsuspend', ['order' => $row['orderid']]) }}"
+                                                        class="d-inline"
+                                                        onsubmit="return confirm('Unsuspend this order?')">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <input type="hidden" name="c" value="{{ $selectedClientId }}">
+                                                        <input type="hidden" name="tab" value="{{ $currentTab }}">
+                                                        <input type="hidden" name="from" value="{{ $fromDate ?? '' }}">
+                                                        <input type="hidden" name="to" value="{{ $toDate ?? '' }}">
+                                                        <input type="hidden" name="next_days" value="{{ $nextDays ?? '' }}">
+                                                        <button type="submit" class="bg02 color02">Unsuspend</button>
+                                                    </form>
+                                                @endif
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             @endif
         </section>

@@ -15,7 +15,7 @@ return new class extends Migration
             return;
         }
 
-        DB::statement("ALTER TABLE `invoices` MODIFY `ti_number` VARCHAR(30) NULL");
+        DB::statement('ALTER TABLE `invoices` MODIFY `ti_number` VARCHAR(30) NULL');
     }
 
     /**
@@ -28,7 +28,6 @@ return new class extends Migration
         }
 
         DB::statement("UPDATE `invoices` SET `ti_number` = '' WHERE `ti_number` IS NULL");
-        DB::statement("ALTER TABLE `invoices` MODIFY `ti_number` VARCHAR(30) NOT NULL");
+        DB::statement('ALTER TABLE `invoices` MODIFY `ti_number` VARCHAR(30) NOT NULL');
     }
 };
-

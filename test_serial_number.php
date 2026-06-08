@@ -2,23 +2,24 @@
 
 /**
  * Test Script for Serial Number Generation
- * 
+ *
  * Run this from the project root:
  * php test_serial_number.php
- * 
+ *
  * Or include it in Laravel tinker:
  * include 'test_serial_number.php';
  */
 
-require __DIR__ . '/vendor/autoload.php';
+require __DIR__.'/vendor/autoload.php';
 
-$app = require_once __DIR__ . '/bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$app = require_once __DIR__.'/bootstrap/app.php';
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
 use App\Models\AccountBillingDetail;
-use App\Models\Invoice;
 use App\Models\FinancialYear;
+use App\Models\Invoice;
+use Illuminate\Contracts\Console\Kernel;
 
 echo "=== Serial Number Generation Test ===\n\n";
 
@@ -30,14 +31,14 @@ echo "Account ID: $accountId\n\n";
 // Check if billing detail exists
 $billingDetail = AccountBillingDetail::where('accountid', $accountId)->first();
 
-if (!$billingDetail) {
+if (! $billingDetail) {
     echo "❌ No billing detail found for account $accountId\n";
     echo "Please configure your serial number settings in Settings → Billing Details\n\n";
-    
+
     // Show existing invoice count
     $invoiceCount = Invoice::where('accountid', $accountId)->count();
     echo "Existing invoices: $invoiceCount\n";
-    
+
     if ($invoiceCount > 0) {
         echo "Recent invoice numbers:\n";
         Invoice::where('accountid', $accountId)
@@ -48,7 +49,7 @@ if (!$billingDetail) {
                 echo "  - {$inv->invoice_number} ({$inv->created_at})\n";
             });
     }
-    
+
     exit(1);
 }
 
@@ -61,7 +62,7 @@ echo "Number Type: {$billingDetail->number_type}\n";
 echo "Number Value: {$billingDetail->number_value}\n";
 echo "Number Length: {$billingDetail->number_length}\n";
 echo "Suffix: {$billingDetail->suffix} (Type: {$billingDetail->suffix_type})\n";
-echo "Reset on FY: " . ($billingDetail->reset_on_fy ? 'Yes' : 'No') . "\n\n";
+echo 'Reset on FY: '.($billingDetail->reset_on_fy ? 'Yes' : 'No')."\n\n";
 
 // Test serial number generation
 echo "--- Testing Serial Number Generation ---\n";
@@ -81,7 +82,7 @@ try {
     $nextNumber = $billingDetail->generateNextSerialNumber();
     echo "✓ Next invoice number will be: $nextNumber\n\n";
 } catch (Exception $e) {
-    echo "❌ Error generating serial number: " . $e->getMessage() . "\n\n";
+    echo '❌ Error generating serial number: '.$e->getMessage()."\n\n";
     exit(1);
 }
 
@@ -96,7 +97,7 @@ if ($invoices->isEmpty()) {
     echo "No invoices found yet\n";
 } else {
     foreach ($invoices as $inv) {
-        echo "  {$inv->invoice_number} - ₹" . number_format($inv->grand_total, 2) . " ({$inv->created_at})\n";
+        echo "  {$inv->invoice_number} - ₹".number_format($inv->grand_total, 2)." ({$inv->created_at})\n";
     }
 }
 

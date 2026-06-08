@@ -11,7 +11,9 @@ class AccountBillingDetail extends Model
     use HasAlphaNumericId;
 
     protected $primaryKey = 'account_bdid';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected function idLength(): int
@@ -40,4 +42,3 @@ class AccountBillingDetail extends Model
         return $this->belongsTo(Account::class, 'accountid', 'accountid');
     }
 }
-

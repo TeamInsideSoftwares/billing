@@ -18,8 +18,7 @@ class TrialWelcomeMail extends Mailable
         public string $temporaryPassword,
         public int $trialDays,
         public string $loginUrl,
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {

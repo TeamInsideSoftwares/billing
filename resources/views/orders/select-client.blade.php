@@ -1,17 +1,13 @@
 @extends('layouts.app')
 
 @section('content')
-    <section class="section-bar">
-        <div></div>
-    </section>
-
-    <div class="panel-card">
-        <div class="mb-6">
+    <div class="position-relative bg-white p-3 rounded-3 shadow-sm">
+        <div class="mb-3">
             <input 
                 type="text" 
                 id="client-search" 
                 placeholder="Search clients..." 
-                class="form-input client-search-input"
+                class="form-control"
             >
         </div>
 

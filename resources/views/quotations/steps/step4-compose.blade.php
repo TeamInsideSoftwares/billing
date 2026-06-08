@@ -10,43 +10,43 @@
     $displayDocNumber = trim((string) ($draftQuotation->quo_number ?? $draftQuotation->quotationid ?? ''));
 @endphp
 
-<div class="quotation-centered-card">
-    <div class="quotation-step3-header">
-        <div class="quotation-step3-header-row">
-            <a href="{{ route('quotations.create', ['step' => 3, 'c' => $draftQuotation->clientid ?? $clientId, 'd' => $draftQuotation->quotationid ?? null]) }}" class="secondary-button quotation-step3-back-btn">
-                <i class="fas fa-arrow-left text-sm"></i>
-            </a>
-            <div class="quotation-step3-divider"></div>
-            <div class="quotation-step3-avatar">
-                <i class="fas fa-envelope"></i>
-            </div>
-            <div class="quotation-step3-client min-w-0">
-                <div class="quotation-step3-client-name">{{ $composeClientName }}</div>
-                @if($composeClientEmail)
-                    <div class="quotation-step3-client-email">{{ $composeClientEmail }}</div>
-                @endif
-            </div>
-            <div class="quotation-step3-tools">
-                @if($displayDocNumber !== '')
-                    <div class="invoice-number-badge">{{ $displayDocNumber }}</div>
-                @endif
-                <div class="invoice-compact-steps invoice-compact-steps--right" aria-label="Step progress">
-                    <span class="invoice-compact-step">1</span>
-                    <span class="invoice-compact-step">2</span>
-                    <span class="invoice-compact-step">3</span>
-                    <span class="invoice-compact-step is-active">4</span>
+<div class="row g-3 align-items-stretch">
+    <div class="col-12">
+        <div class="bg-light p-4 rounded-3 border">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <a href="{{ route('quotations.create', ['step' => 3, 'c' => $draftQuotation->clientid ?? $clientId, 'd' => $draftQuotation->quotationid ?? null]) }}" class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
+                    <i class="fas fa-arrow-left btn-icon"></i> Back
+                </a>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    @if($displayDocNumber !== '')
+                        <div class="badge text-bg-secondary">{{ $displayDocNumber }}</div>
+                    @endif
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="badge text-bg-primary">1</span>
+                        <span class="badge text-bg-primary">2</span>
+                        <span class="badge text-bg-primary">3</span>
+                        <span class="badge text-bg-primary">4</span>
+                    </div>
                 </div>
+            </div>
+            <div class="mt-3">
+                <h5 class="fw-semibold text-black mb-0">{{ $composeClientName }}</h5>
+                @if($composeClientEmail)
+                    <div class="small text-muted">{{ $composeClientEmail }}</div>
+                @endif
             </div>
         </div>
     </div>
 
-    <div class="soft-panel soft-panel--padded">
-        <h4 class="mb-2">Step 4: Compose & Send</h4>
-        <p class="text-muted mb-3">Quotation is ready. Continue to email compose.</p>
-        @if(!empty($draftQuotation?->quotationid))
-            <a href="{{ route('quotations.email-compose', $draftQuotation->quotationid) }}" class="primary-button">Go To Email Compose</a>
-        @else
-            <p class="small text-muted">Create and save quotation first.</p>
-        @endif
+    <div class="col-12">
+        <div class="bg-light p-4 rounded-3 border">
+            <h5 class="fw-semibold text-black mb-2">Step 4: Compose & Send</h5>
+            <p class="small text-muted mb-3">Quotation is ready. Continue to email compose.</p>
+            @if(!empty($draftQuotation?->quotationid))
+                <a href="{{ route('quotations.email-compose', $draftQuotation->quotationid) }}" class="btn btn-outline-primary btn-primary text-white fw-medium">Go To Email Compose</a>
+            @else
+                <p class="small text-muted">Create and save quotation first.</p>
+            @endif
+        </div>
     </div>
 </div>

@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::table('invoice_emails', function (Blueprint $table) {
             try {
                 $table->dropIndex('invoice_emails_template_lookup_idx');
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
             }
             if (Schema::hasColumn('invoice_emails', 'templateid')) {
                 $table->dropColumn('templateid');
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('invoice_emails', function (Blueprint $table) {
-            if (!Schema::hasColumn('invoice_emails', 'templateid')) {
+            if (! Schema::hasColumn('invoice_emails', 'templateid')) {
                 $table->string('templateid', 6)->nullable()->after('channel');
             }
             $table->index(['invoiceid', 'channel', 'templateid'], 'invoice_emails_template_lookup_idx');

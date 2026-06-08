@@ -2,9 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Account;
 use App\Models\FinancialYear;
-use Illuminate\Support\Facades\URL;
+use App\Models\TermsCondition;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -31,17 +34,17 @@ class AppServiceProvider extends ServiceProvider
 
         // Share account business_name globally
         view()->composer('*', function ($view) {
-            if (!Auth::check()) {
+            if (! Auth::check()) {
                 return;
             }
 
             $viewData = $view->getData();
             $account = $viewData['account'] ?? null;
 
-            if (!$account) {
+            if (! $account) {
                 $user = Auth::user();
 
-                if ($user instanceof \App\Models\Account) {
+                if ($user instanceof Account) {
                     $account = $user;
                 } elseif (method_exists($user, 'account')) {
                     $account = $user->account;
@@ -49,11 +52,11 @@ class AppServiceProvider extends ServiceProvider
             }
 
             if ($account) {
-                if (!array_key_exists('account', $viewData)) {
+                if (! array_key_exists('account', $viewData)) {
                     $view->with('account', $account);
                 }
 
-                if (!array_key_exists('sharedFinancialYears', $view->getData())) {
+                if (! array_key_exists('sharedFinancialYears', $view->getData())) {
                     $sharedFinancialYears = FinancialYear::query()
                         ->where('accountid', $account->accountid)
                         ->orderByDesc('default')
@@ -61,7 +64,7 @@ class AppServiceProvider extends ServiceProvider
                         ->get(['fy_id', 'financial_year', 'default']);
 
                     $selectedFinancialYearId = trim((string) session('selected_financial_year_id', ''));
-                    if ($selectedFinancialYearId === '' || !$sharedFinancialYears->contains('fy_id', $selectedFinancialYearId)) {
+                    if ($selectedFinancialYearId === '' || ! $sharedFinancialYears->contains('fy_id', $selectedFinancialYearId)) {
                         $selectedFinancialYearId = (string) (
                             $sharedFinancialYears->firstWhere('default', true)?->fy_id
                             ?? $sharedFinancialYears->first()?->fy_id
@@ -82,8 +85,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Route model binding for TermsCondition
-        \Illuminate\Support\Facades\Route::bind('term', function ($value) {
-            return \App\Models\TermsCondition::where('tc_id', $value)->firstOrFail();
+        Route::bind('term', function ($value) {
+            return TermsCondition::where('tc_id', $value)->firstOrFail();
         });
     }
 }

@@ -17,7 +17,7 @@ return new class extends Migration
                 'tax_rate',
                 'cost_price',
                 'selling_price',
-                'sac_code'
+                'sac_code',
             ]);
         });
     }

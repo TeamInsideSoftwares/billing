@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'accountid',
@@ -29,6 +28,7 @@ class Order extends Model
     use HasAlphaNumericId;
 
     protected $table = 'orders';
+
     protected $primaryKey = 'orderid';
 
     protected function idLength(): int
@@ -118,7 +118,7 @@ class Order extends Model
 
         $count = self::where('accountid', $accountId)->count();
 
-        return self::ensureUniqueOrderNumberForAccount('ORD-' . str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT), $accountId);
+        return self::ensureUniqueOrderNumberForAccount('ORD-'.str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT), $accountId);
     }
 
     private static function ensureUniqueOrderNumberForAccount(string $candidate, string $accountId): string
@@ -129,9 +129,9 @@ class Order extends Model
 
         while (self::where('accountid', $accountId)->where('order_number', $number)->exists()) {
             if (preg_match('/^(.*?)(\d+)$/', $candidate, $matches)) {
-                $number = $matches[1] . str_pad((string) ((int) $matches[2] + $sequence - 1), strlen($matches[2]), '0', STR_PAD_LEFT);
+                $number = $matches[1].str_pad((string) ((int) $matches[2] + $sequence - 1), strlen($matches[2]), '0', STR_PAD_LEFT);
             } else {
-                $number = $candidate . '-' . $sequence;
+                $number = $candidate.'-'.$sequence;
             }
             $sequence++;
         }

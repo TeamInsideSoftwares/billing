@@ -19,12 +19,12 @@ class SubscriptionsController extends Controller
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
                 $q->whereHas('client', function ($q) use ($searchTerm) {
-                    $q->where('business_name', 'like', '%' . $searchTerm . '%')
-                        ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+                    $q->where('business_name', 'like', '%'.$searchTerm.'%')
+                        ->orWhere('contact_name', 'like', '%'.$searchTerm.'%');
                 })
-                ->orWhereHas('item', function ($q) use ($searchTerm) {
-                    $q->where('name', 'like', '%' . $searchTerm . '%');
-                });
+                    ->orWhereHas('item', function ($q) use ($searchTerm) {
+                        $q->where('name', 'like', '%'.$searchTerm.'%');
+                    });
             });
         }
         $resultCount = $query->count();
@@ -35,7 +35,7 @@ class SubscriptionsController extends Controller
                 'client' => $subscription->client->business_name ?? 'Client',
                 'service' => $subscription->item->name ?? 'Item',
                 'next_bill' => $subscription->next_billing_date?->format('d M Y'),
-                'amount' => 'Rs ' . number_format($subscription->price ?? 0),
+                'amount' => 'Rs '.number_format($subscription->price ?? 0),
                 'status' => $subscription->status ?? 'Active',
             ];
         });
@@ -43,8 +43,8 @@ class SubscriptionsController extends Controller
         return view('subscriptions.index', [
             'title' => 'Subscription Billing',
             'subtitle' => $searchTerm
-                ? $resultCount . ' subscriptions matching "' . $searchTerm . '"'
-                : count($subscriptions) . ' subscriptions',
+                ? $resultCount.' subscriptions matching "'.$searchTerm.'"'
+                : count($subscriptions).' subscriptions',
             'subscriptions' => $subscriptions,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
@@ -54,6 +54,7 @@ class SubscriptionsController extends Controller
     public function subscriptionsCreate(): View
     {
         $userAccountId = $this->resolveAccountId();
+
         return view('subscriptions.form', [
             'title' => 'New Subscription',
             'subtitle' => 'Recurring Revenue',
@@ -88,6 +89,7 @@ class SubscriptionsController extends Controller
             abort(403);
         }
         $subscription->load('client', 'item');
+
         return view('subscriptions.show', [
             'title' => $subscription->item->name ?? 'Subscription',
             'subtitle' => 'Subscription Details',
@@ -100,6 +102,7 @@ class SubscriptionsController extends Controller
         if ($subscription->accountid !== $this->resolveAccountId()) {
             abort(403);
         }
+
         return view('subscriptions.form', [
             'title' => 'Edit Subscription',
             'subtitle' => 'Update subscription details',

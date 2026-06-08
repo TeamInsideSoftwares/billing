@@ -35,7 +35,7 @@ trait HasAlphaNumericId
         return $this->getKeyName();
     }
 
-protected static function generateUniqueAlphaId(Model $model): string
+    protected static function generateUniqueAlphaId(Model $model): string
     {
         $attempts = 0;
         $length = method_exists($model, 'idLength') ? $model->idLength() : 6;
@@ -46,7 +46,7 @@ protected static function generateUniqueAlphaId(Model $model): string
         } while ($model->newQuery()->whereKey($id)->exists() && $attempts < 20);
 
         if ($attempts >= 20 && $model->newQuery()->whereKey($id)->exists()) {
-            throw new \RuntimeException('Unable to generate a unique ' . $length . '-character alphanumeric ID.');
+            throw new \RuntimeException('Unable to generate a unique '.$length.'-character alphanumeric ID.');
         }
 
         return $id;

@@ -28,7 +28,7 @@ class DashboardController extends Controller
             ->where('accountid', $accountid)
             ->whereNotNull('end_date')
             ->where(function ($query) {
-                $query->whereIn('status', ['active', 'running'])
+                $query->whereNotIn('status', ['cancelled', 'suspended'])
                     ->orWhereNull('status');
             })
             ->with([
@@ -146,13 +146,14 @@ class DashboardController extends Controller
             ->latest('created_at')
             ->take(5)
             ->get()
-            ->map(function($payment) {
+            ->map(function ($payment) {
                 $net = (float) ($payment->received_amount ?? 0);
+
                 return [
-                    'title' => 'Payment from ' . ($payment->client->business_name ?? $payment->client->contact_name ?? 'Unknown Client'),
-                    'amount' => 'Rs ' . number_format(abs($net), 0),
+                    'title' => 'Payment from '.($payment->client->business_name ?? $payment->client->contact_name ?? 'Unknown Client'),
+                    'amount' => number_format(abs($net), 0),
                     'date' => optional($payment->payment_date ?? $payment->created_at)?->format('d M, Y'),
-                    'status' => 'success'
+                    'status' => 'success',
                 ];
             });
 
@@ -172,5 +173,4 @@ class DashboardController extends Controller
             'recentRevenue' => $recentRevenue,
         ]);
     }
-
 }

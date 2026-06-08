@@ -1,84 +1,58 @@
 @php
-    $invoiceDateBounds = $invoiceDateBounds ?? [
-        'min_date' => date('Y-m-d'),
-        'max_date' => date('Y-m-d'),
-        'issue_max_date' => date('Y-m-d'),
-        'due_max_date' => date('Y-m-d'),
-        'default_issue_date' => '',
-        'default_due_date' => '',
-    ];
-    $selectedClientCurrency =
-        optional($clients->firstWhere('clientid', request('c', request('clientid'))))->currency ?? 'INR';
-    $selectedClient = $clients->firstWhere('clientid', request('c', request('clientid')));
-    $selectedClientName = $selectedClient
-        ? $selectedClient->business_name ?? ($selectedClient->contact_name ?? 'Unknown Client')
-        : 'No Client Selected';
-    $selectedClientEmail = $selectedClient->primary_email ?? $selectedClient->email ?? '';
-    $isTaxInvoiceStep2 = request('tax_invoice', 0) == 1 || !empty($invoice?->ti_number);
-    $initialHeaderNumberStep2 = $isTaxInvoiceStep2
-        ? ($invoice?->ti_number ?:
-        $nextTaxInvoiceNumber ?? $nextInvoiceNumber)
-        : ($invoice?->pi_number ?:
-        $nextInvoiceNumber);
-    $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
+$invoiceDateBounds = $invoiceDateBounds ?? [
+'min_date' => date('Y-m-d'),
+'max_date' => date('Y-m-d'),
+'issue_max_date' => date('Y-m-d'),
+'due_max_date' => date('Y-m-d'),
+'default_issue_date' => '',
+'default_due_date' => '',
+];
+$selectedClientCurrency =
+optional($clients->firstWhere('clientid', request('c', request('clientid'))))->currency ?? 'INR';
+$selectedClient = $clients->firstWhere('clientid', request('c', request('clientid')));
+$selectedClientName = $selectedClient
+? $selectedClient->business_name ?? ($selectedClient->contact_name ?? 'Unknown Client')
+: 'No Client Selected';
+$selectedClientEmail = $selectedClient->primary_email ?? $selectedClient->email ?? '';
+$isTaxInvoiceStep2 = request('tax_invoice', 0) == 1 || !empty($invoice?->ti_number);
+$initialHeaderNumberStep2 = $isTaxInvoiceStep2
+? ($invoice?->ti_number ?:
+$nextTaxInvoiceNumber ?? $nextInvoiceNumber)
+: ($invoice?->pi_number ?:
+$nextInvoiceNumber);
+$orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 @endphp
 <!-- Step 2: Select Items -->
-<div id="step2" class="invoice-step">
+<div id="step2">
     {{-- Client Info Header with Back Button --}}
-    <div class="invoice-client-header">
-        <div class="invoice-client-header__row">
-            <button type="button" id="btnBackToStep1" class="secondary-button invoice-back-btn">
-                <i class="fas fa-arrow-left" class="text-sm"></i>
-            </button>
-            <div class="invoice-client-header__divider"></div>
-            <div class="invoice-client-header__icon">
-                <i class="fas fa-user"></i>
+    <div class="d-flex align-items-center bg-light p-3 rounded-3 border mb-3 gap-3">
+        <button type="button" id="btnBackToStep1" class="btn btn-outline-primary bg-white text-primary fw-medium">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <div class="vr"></div>
+        <div
+            class="d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-2 p-2 flex-shrink-0">
+            <i class="fas fa-user"></i>
+        </div>
+        <div class="flex-grow-1 min-w-0">
+            <div class="fw-semibold text-dark">{{ $selectedClientName }}</div>
+            @if ($selectedClientEmail)
+            <div class="small text-secondary-emphasis">{{ $selectedClientEmail }}</div>
+            @endif
+        </div>
+        <div class="d-flex align-items-center gap-3 flex-shrink-0 text-end">
+            <span id="piNumberBadge"
+                class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 fw-bold rounded-1 px-3 py-2">
+                {{ $initialHeaderNumberStep2 }}
+            </span>
+            <div class="d-flex align-items-center gap-1" aria-label="Step progress">
+                @foreach ([1, 2, 3, 4] as $s)
+                <span @class([ 'd-inline-flex align-items-center justify-content-center rounded-circle fw-bold'
+                    , 'bg-primary text-white border-0'=> $s === 2,
+                    'bg-white text-secondary border' => $s !== 2,
+                    ]) style="width:1.5rem;height:1.5rem;font-size:0.74rem;">{{ $s }}</span>
+                @endforeach
             </div>
-            <div class="invoice-client-header__body">
-                <div class="invoice-client-header__name">{{ $selectedClientName }}</div>
-                @if ($selectedClientEmail)
-                    <div class="invoice-client-header__email">{{ $selectedClientEmail }}</div>
-                @endif
-            </div>
-            <div class="invoice-client-header__right">
-                <div id="piNumberBadge" class="invoice-number-badge">
-                    {{ $initialHeaderNumberStep2 }}
-                </div>
-                <div class="invoice-compact-steps invoice-compact-steps--right" aria-label="Step progress">
-                    <span class="invoice-compact-step">1</span>
-                    <span class="invoice-compact-step is-active">2</span>
-                    <span class="invoice-compact-step">3</span>
-                    <span class="invoice-compact-step">4</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="invoice-grid-4 mb-3">
-        <div class="overflow-visible">
-            <label for="invoice_title" class="field-label">Invoice Title</label>
-            <input type="text" id="invoice_title" name="invoice_title" class="form-input"
-                placeholder="e.g. Website Development - Monthly Subscription" required>
-            <div id="invoiceTitleError" class="invoice-field-error is-hidden">Invoice title is required.</div>
-        </div>
-        <div>
-            <label for="issue_date" class="field-label">Issue Date</label>
-            <input type="date" id="issue_date" name="issue_date" class="form-input" required
-                min="{{ $invoiceDateBounds['min_date'] }}"
-                max="{{ $invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date'] }}"
-                value="{{ old('issue_date', request('d') && $invoice ? $invoice->issue_date?->format('Y-m-d') : ($invoiceDateBounds['default_issue_date'] ?? date('Y-m-d'))) }}">
-        </div>
-        <div>
-            <label for="due_date" class="field-label">Due Date</label>
-            <input type="date" id="due_date" name="due_date" class="form-input" required
-                min="{{ $invoiceDateBounds['min_date'] }}"
-                max="{{ $invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date'] }}"
-                value="{{ old('due_date', request('d') && $invoice ? $invoice->due_date?->format('Y-m-d') : ($invoiceDateBounds['default_due_date'] ?? date('Y-m-d', strtotime('+7 days')))) }}">
-        </div>
-        <div>
-            <label for="notes" class="field-label">Notes</label>
-            <textarea id="notes" name="notes" rows="1" class="form-input invoice-notes-textarea"
-                placeholder="Optional notes">{{ old('notes', request('d') && $invoice ? $invoice->notes : '') }}</textarea>
         </div>
     </div>
 
@@ -87,126 +61,179 @@
     <input type="hidden" name="invoice_number" value="{{ $initialHeaderNumberStep2 }}">
     <input type="hidden" name="items_data" id="items_data" value="">
 
-    <div id="manualItemsSection" class="workflow-panel">
-        <div class="panel-heading-row">
-            <div>
-                <h4 class="panel-heading-title">Select Items</h4>
-                <p class="panel-heading-subtitle">Items are loaded from this client's orders.</p>
-            </div>
-            <div>
-                <button type="button" id="toggleAddItemFormBtn" class="text-link invoice-add-item-btn">
-                    <i class="fas fa-plus invoice-add-item-btn__icon"></i>
-                    <span class="invoice-add-item-btn__text">Add More Items</span>
-                </button>
+    <div class="row g-3 align-items-stretch mb-3">
+        <!-- Invoice Details -->
+        <div class="col-12 col-lg-4">
+            <div class="bg-light p-4 rounded-3 border h-100">
+                <h5 class="fw-semibold text-black mb-3">Invoice Details</h5>
+                <div class="row g-2">
+                    <div class="col-12">
+                        <label for="invoice_title" class="form-label small lh-sm fw-semibold text-dark mb-1">Invoice
+                            Title</label>
+                        <input type="text" id="invoice_title" name="invoice_title" class="form-control"
+                            placeholder="e.g. Website Development - Monthly Subscription" required>
+                        <div id="invoiceTitleError" class="text-danger small mt-1 is-hidden">Invoice title is required.
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label for="issue_date" class="form-label small lh-sm fw-semibold text-dark mb-1">Issue
+                            Date</label>
+                        <input type="date" id="issue_date" name="issue_date" class="form-control" required
+                            min="{{ $invoiceDateBounds['min_date'] }}"
+                            max="{{ $invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date'] }}"
+                            value="{{ old('issue_date', request('d') && $invoice ? $invoice->issue_date?->format('Y-m-d') : ($invoiceDateBounds['default_issue_date'] ?? date('Y-m-d'))) }}">
+                    </div>
+                    <div class="col-6">
+                        <label for="due_date" class="form-label small lh-sm fw-semibold text-dark mb-1">Due Date</label>
+                        <input type="date" id="due_date" name="due_date" class="form-control" required
+                            min="{{ $invoiceDateBounds['min_date'] }}"
+                            max="{{ $invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date'] }}"
+                            value="{{ old('due_date', request('d') && $invoice ? $invoice->due_date?->format('Y-m-d') : ($invoiceDateBounds['default_due_date'] ?? date('Y-m-d', strtotime('+7 days')))) }}">
+                    </div>
+                    <div class="col-12">
+                        <label for="notes" class="form-label small lh-sm fw-semibold text-dark mb-1">Notes</label>
+                        <textarea id="notes" name="notes" rows="1" class="form-control"
+                            placeholder="Optional notes">{{ old('notes', request('d') && $invoice ? $invoice->notes : '') }}</textarea>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="builder-card invoice-builder-card" id="addItemFormCard">
-            <div class="manual-grid manual-grid-add-items">
-                <div class="invoice-span-2">
-                    <label for="manual_item_itemid" class="field-label small">Item</label>
-                    <div style="display: flex; gap: 0.35rem; align-items: center;">
-                        <select id="manual_item_itemid" class="form-input" style="flex: 1;">
-                            <option value="">Select item</option>
-
-                            @foreach ($orderItemsFlat as $orderItem)
-                                <option value="{{ $orderItem['itemid'] }}"
-                                    data-orderid="{{ $orderItem['orderid'] }}"
-                                    data-selling-price="{{ $orderItem['unit_price'] ?? 0 }}"
-                                    data-tax-rate="{{ $orderItem['tax_rate'] ?? 0 }}"
-                                    data-user-wise="{{ (int) ($orderItem['requires_user_fields'] ?? 0) }}"
-                                    data-description="{{ $orderItem['item_description'] ?? '' }}"
-                                    data-item-name="{{ $orderItem['item_name'] ?? '' }}">
-                                    {{ $orderItem['display_order_number'] ?? $orderItem['order_number'] ?? $orderItem['orderid'] ?? 'Order' }} -
-                                    {{ $orderItem['item_name'] ?? 'Item' }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <button type="button" id="openAddOrderModalBtn" class="secondary-button"
-                            style="padding: 0 0.75rem; height: 38px; display: inline-flex; align-items: center; justify-content: center;"
-                            title="Create new order">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                </div>
-                <div>
-                    <label for="manual_item_quantity" class="field-label small">Qty</label>
-                    <input type="number" id="manual_item_quantity" class="form-input" value="1"
-                        min="1" step="1">
-                </div>
-                <div>
-                    <label for="manual_item_unit_price" class="field-label small">Unit Price</label>
-                    <input type="number" id="manual_item_unit_price" class="form-input" min="0"
-                        step="0.01">
-                </div>
-                <div>
-                    <label for="manual_item_discount" class="field-label small">Disc %</label>
-                    <input type="number" id="manual_item_discount" class="form-input" min="0"
-                        max="100" step="0.01" value="0">
-                </div>
-                @if ($account->allow_multi_taxation)
+        <!-- Select Items -->
+        <div class="col-12 col-lg-8">
+            <div class="bg-light p-4 rounded-3 border h-100">
+                <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
                     <div>
-                        <label for="manual_item_tax_rate" class="field-label small">Tax</label>
-                        <select id="manual_item_tax_rate" class="form-input">
-                            <option value="0">No Tax</option>
-                            @foreach ($taxes as $tax)
+                        <h5 class="fw-semibold text-black mb-0">Select Items</h5>
+                        <p class="text-muted small mb-0">Items are loaded from this client's orders.</p>
+                    </div>
+                    <button type="button" id="toggleAddItemFormBtn" class="btn btn-link text-decoration-none p-0">
+                        <i class="fas fa-plus"></i>
+                        <span>Add More Items</span>
+                    </button>
+                </div>
+
+                <div class="card bg-light border-0 p-3" id="addItemFormCard">
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label for="manual_item_itemid"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Item</label>
+                            <div style="display: flex; gap: 0.35rem; align-items: center;">
+                                <select id="manual_item_itemid" class="form-select" style="flex: 1;">
+                                    <option value="">Select item</option>
+
+                                    @foreach ($orderItemsFlat as $orderItem)
+                                    <option value="{{ $orderItem['itemid'] }}"
+                                        data-orderid="{{ $orderItem['orderid'] }}"
+                                        data-selling-price="{{ $orderItem['unit_price'] ?? 0 }}"
+                                        data-tax-rate="{{ $orderItem['tax_rate'] ?? 0 }}"
+                                        data-user-wise="{{ (int) ($orderItem['requires_user_fields'] ?? 0) }}"
+                                        data-description="{{ $orderItem['item_description'] ?? '' }}"
+                                        data-item-name="{{ $orderItem['item_name'] ?? '' }}">
+                                        {{ $orderItem['display_order_number'] ?? $orderItem['order_number'] ??
+                                        $orderItem['orderid'] ?? 'Order' }} -
+                                        {{ $orderItem['item_name'] ?? 'Item' }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                                <button type="button" id="openAddOrderModalBtn"
+                                    class="btn btn-outline-primary bg-white text-primary fw-medium"
+                                    title="Create new order">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label for="manual_item_quantity"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Qty</label>
+                            <input type="number" id="manual_item_quantity" class="form-control" value="1" min="1"
+                                step="1">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label for="manual_item_unit_price"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Unit Price</label>
+                            <input type="number" id="manual_item_unit_price" class="form-control" min="0" step="0.01">
+                        </div>
+                        <div class="col-6 col-md-1">
+                            <label for="manual_item_discount"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Disc %</label>
+                            <input type="number" id="manual_item_discount" class="form-control" min="0" max="100"
+                                step="0.01" value="0">
+                        </div>
+                        @if ($account->allow_multi_taxation)
+                        <div class="col-6 col-md-2">
+                            <label for="manual_item_tax_rate"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Tax</label>
+                            <select id="manual_item_tax_rate" class="form-control">
+                                <option value="0">No Tax</option>
+                                @foreach ($taxes as $tax)
                                 <option value="{{ $tax->rate }}">{{ $tax->tax_name }}
                                     ({{ number_format($tax->rate, 0) }}%)
                                 </option>
-                            @endforeach
-                        </select>
+                                @endforeach
+                            </select>
+                        </div>
+                        @else
+                        <input type="hidden" id="manual_item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
+                        @endif
+                        <div id="manual_item_users_wrap" class="col-6 col-md-1 is-hidden">
+                            <label for="manual_item_users"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Users</label>
+                            <input type="number" id="manual_item_users" class="form-control" value="1" min="1" step="1">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label for="manual_item_frequency"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Freq</label>
+                            <select id="manual_item_frequency" class="form-select">
+                                <option value="">None</option>
+                                <option value="One-Time">One-Time</option>
+                                <option value="Day(s)">Day(s)</option>
+                                <option value="Week(s)">Week(s)</option>
+                                <option value="Month(s)">Month(s)</option>
+                                <option value="Quarter(s)">Quarter(s)</option>
+                                <option value="Year(s)">Year(s)</option>
+                            </select>
+                        </div>
+                        <div id="manual_item_duration_wrap" class="col-6 col-md-2 is-hidden">
+                            <label for="manual_item_duration"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Dur</label>
+                            <input type="number" id="manual_item_duration" class="form-control" min="0" step="1"
+                                placeholder="e.g. 12">
+                        </div>
+                        <div id="manual_item_start_date_wrap" class="col-6 col-md-2">
+                            <label for="manual_item_start_date"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Start</label>
+                            <input type="date" id="manual_item_start_date" class="form-control">
+                        </div>
+                        <div id="manual_item_end_date_wrap" class="col-6 col-md-2">
+                            <label for="manual_item_end_date"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">End</label>
+                            <input type="date" id="manual_item_end_date" class="form-control">
+                        </div>
                     </div>
-                @else
-                    <input type="hidden" id="manual_item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
-                @endif
-                <div id="manual_item_users_wrap" class="is-hidden">
-                    <label for="manual_item_users" class="field-label small">Users</label>
-                    <input type="number" id="manual_item_users" class="form-input" value="1" min="1"
-                        step="1">
+                    <div class="d-flex align-items-start gap-2 mt-3">
+                        <textarea id="manual_item_description" class="form-control" rows="1"
+                            placeholder="Description (optional)" style="flex: 1;"></textarea>
+                        <button type="button" id="addManualItemBtn"
+                            class="btn btn-outline-primary btn-primary text-white fw-medium">Add</button>
+                    </div>
                 </div>
-                <div>
-                    <label for="manual_item_frequency" class="field-label small">Freq</label>
-                    <select id="manual_item_frequency" class="form-input">
-                        <option value="">None</option>
-                        <option value="One-Time">One-Time</option>
-                        <option value="Day(s)">Day(s)</option>
-                        <option value="Week(s)">Week(s)</option>
-                        <option value="Month(s)">Month(s)</option>
-                        <option value="Quarter(s)">Quarter(s)</option>
-                        <option value="Year(s)">Year(s)</option>
-                    </select>
-                </div>
-                <div id="manual_item_duration_wrap" class="is-hidden">
-                    <label for="manual_item_duration" class="field-label small">Dur</label>
-                    <input type="number" id="manual_item_duration" class="form-input" min="0"
-                        step="1" placeholder="e.g. 12">
-                </div>
-                <div id="manual_item_start_date_wrap">
-                    <label for="manual_item_start_date" class="field-label small">Start</label>
-                    <input type="date" id="manual_item_start_date" class="form-input">
-                </div>
-                <div id="manual_item_end_date_wrap">
-                    <label for="manual_item_end_date" class="field-label small">End</label>
-                    <input type="date" id="manual_item_end_date" class="form-input">
-                </div>
-            </div>
-            <div class="invoice-item-desc-row">
-                <textarea id="manual_item_description" class="form-input invoice-item-desc-input" rows="1"
-                    placeholder="Description (optional)"></textarea>
-                <button type="button" id="addManualItemBtn" class="primary-button invoice-item-add-btn">Add</button>
             </div>
         </div>
+    </div>
 
-        <div class="table-shell mt-3">
-            <table class="data-table m-0 invoice-items-table is-hidden" id="manualItemsTable">
-                <thead>
+    <!-- Items Table -->
+    <div class="card border-0 shadow-sm overflow-hidden">
+        <div class="table-responsive">
+            <table class="table mainTable align-middle mb-0 is-hidden" id="manualItemsTable">
+                <thead class="table-light">
                     <tr>
                         <th>Item</th>
                         <th class="text-center">Qty</th>
                         <th class="text-center">Price ({{ $selectedClientCurrency }})</th>
                         <th class="text-center">Disc %</th>
                         @if ($account->allow_multi_taxation)
-                            <th class="text-center">Tax %</th>
+                        <th class="text-center">Tax %</th>
                         @endif
                         <th id="manualUsersHeader" class="is-hidden text-center">Users</th>
                         <th>Freq</th>
@@ -214,31 +241,34 @@
                         <th id="manualStartHeader" class="is-hidden">Start</th>
                         <th id="manualEndHeader" class="is-hidden">End</th>
                         <th class="text-right">Total ({{ $selectedClientCurrency }})</th>
-                        <th class="text-center"></th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="manualItemsBody"></tbody>
             </table>
-            <div id="manualItemsEmpty" class="empty-state">No items added yet.</div>
         </div>
+    </div>
+    <div id="manualItemsEmpty" class="alert alert-light border mt-3 mb-0">No items added yet.</div>
 
-        <div id="manualOrderSummary" class="totals-card totals-card--narrow is-hidden mt-3 ms-auto">
-            <div class="total-row"><span>Subtotal</span><strong id="manualSubtotal">0</strong></div>
-            <div class="total-row"><span>Discount</span><strong id="manualDiscountTotal">0</strong></div>
-            <div class="total-row"><span>Tax</span><strong id="manualTaxTotal">0</strong></div>
-            <div class="total-row total-row-grand"><span>Total</span><strong id="manualGrandTotal">0</strong></div>
-        </div>
+    <div id="manualOrderSummary" class="bg-light border rounded-3 p-3 is-hidden mt-3 ms-auto" style="max-width: 320px;">
+        <div class="d-flex justify-content-between small mb-1 text-secondary"><span>Subtotal</span><strong
+                id="manualSubtotal">0</strong></div>
+        <div class="d-flex justify-content-between small mb-1 text-secondary"><span>Discount</span><strong
+                id="manualDiscountTotal">0</strong></div>
+        <div class="d-flex justify-content-between small mb-1 text-secondary"><span>Tax</span><strong
+                id="manualTaxTotal">0</strong></div>
+        <div class="d-flex justify-content-between small border-top pt-2 fw-bold text-dark"><span>Total</span><strong
+                id="manualGrandTotal">0</strong></div>
     </div>
 
     <div class="mt-4">
-        <button type="button" class="primary-button w-100 invoice-next-btn" id="btnNextToStep3" disabled>Review &
-            Terms
-            &rarr;</button>
+        <button type="button" class="btn btn-outline-primary btn-primary text-white fw-medium w-100" id="btnNextToStep3"
+            disabled>Review &amp; Terms &rarr;</button>
     </div>
 </div>
 
 <script>
-    (function() {
+    (function () {
         const addManualItemBtn = document.getElementById('addManualItemBtn');
         const manualItemsBody = document.getElementById('manualItemsBody');
         const manualItemsTable = document.getElementById('manualItemsTable');
@@ -264,7 +294,7 @@
         const clientId = "{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}";
         const fallbackPiNumber = "{{ $nextInvoiceNumber }}";
         const fallbackTiNumber = "{{ $nextTaxInvoiceNumber ?? $nextInvoiceNumber }}";
-        const accountHasUsers = @json((bool) ($account->have_users ?? false));
+        const accountHasUsers = @json((bool)($account -> have_users ?? false));
         const ONE_TIME_MAX_END_DATE = '2099-12-31';
         const orderItemsRouteTemplate = @json(route('invoices.order-items', ['orderid' => '__ORDERID__']));
         const TAX_READY_TOAST_KEY = 'invoice_tax_ready_toast';
@@ -362,9 +392,9 @@
             const name = escapeHtml(item.item_name || 'Item');
             const description = escapeHtml(item.item_description || '').trim();
             return description ? `
-            <div class="invoice-item-cell-title">${name}</div>
-            <div class="invoice-item-cell-desc">${description}</div>
-        ` : `<div class="invoice-item-cell-title">${name}</div>`;
+            <div class="fw-semibold text-dark">${name}</div>
+            <div class="small text-secondary-emphasis">${description}</div>
+        ` : `<div class="fw-semibold text-dark">${name}</div>`;
         }
 
         async function fetchOrderDatePrefill(orderId) {
@@ -420,7 +450,7 @@
         }
 
         // Auto-fill price when item selected
-        document.getElementById('manual_item_itemid').addEventListener('change', async function() {
+        document.getElementById('manual_item_itemid').addEventListener('change', async function () {
             const selected = this.options[this.selectedIndex];
             const price = selected.dataset.sellingPrice || 0;
             const taxRate = selected.dataset.taxRate || 0;
@@ -568,7 +598,7 @@
             }
         }
 
-        manualFrequencyInput?.addEventListener('change', function() {
+        manualFrequencyInput?.addEventListener('change', function () {
             toggleManualRecurringFields();
             applyOrderDatePrefill(currentOrderDatePrefill);
             scheduleManualEndDateSync();
@@ -624,7 +654,7 @@
             setDateInputValue(manualStartInput, '');
             setDateInputValue(manualEndInput, '');
             toggleManualRecurringFields();
-            @if ($account->have_users)
+            @if ($account -> have_users)
                 toggleManualUsersField();
             @endif
         }
@@ -635,11 +665,11 @@
             }
             if (toggleAddItemFormBtn) {
                 toggleAddItemFormBtn.innerHTML =
-                    '<i class="fas fa-times invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Cancel</span>';
+                    '<i class="fas fa-times"></i> Cancel';
             }
         }
 
-        addManualItemBtn.addEventListener('click', function() {
+        addManualItemBtn.addEventListener('click', function () {
             const itemId = document.getElementById('manual_item_itemid').value;
             const selectedOption = document.getElementById('manual_item_itemid').options[document
                 .getElementById('manual_item_itemid').selectedIndex];
@@ -767,16 +797,18 @@
                 <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${(rowRecurring || rowHasDates) ? (item.start_date || '-') : '-'}</td>
                 <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${(rowRecurring || rowHasDates) ? (item.end_date || '-') : '-'}</td>
                 <td class="text-center">${formatCurrency(Math.max(0, Number(item.discount_amount || 0) || Number(item.line_total || 0)))}</td>
-                <td class="text-center text-nowrap">
-                    <button type="button" class="text-action-btn edit edit-item-btn" data-index="${index}">Edit</button>
-                    <button type="button" class="text-action-btn delete remove-item-btn" data-index="${index}">Delete</button>
+                <td class="text-end">
+                    <div class="tableActionButton d-inline-flex gap-1">
+                        <button type="button" class="bg03 color03 border-0 edit-item-btn" data-index="${index}">Edit</button>
+                        <button type="button" class="bg04 color04 border-0 remove-item-btn" data-index="${index}">Delete</button>
+                    </div>
                 </td>
             `;
                 manualItemsBody.appendChild(row);
             });
 
             document.querySelectorAll('.edit-item-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
+                btn.addEventListener('click', function () {
                     const index = Number(this.dataset.index);
                     const item = manualItems[index];
                     if (!item) return;
@@ -830,7 +862,7 @@
             });
 
             document.querySelectorAll('.remove-item-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
+                btn.addEventListener('click', function () {
                     const index = Number(this.dataset.index);
                     manualItems.splice(index, 1);
 
@@ -862,7 +894,7 @@
             }
         }
 
-        btnNextToStep3.addEventListener('click', function() {
+        btnNextToStep3.addEventListener('click', function () {
             if (manualItems.length === 0) {
                 alert('Please add at least one item.');
                 return;
@@ -891,23 +923,23 @@
             const notesValue = document.getElementById('notes')?.value || '';
 
             fetch("{{ route('invoices.save-draft') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute(
-                            'content') || ''
-                    },
-                    body: JSON.stringify({
-                        invoiceid: "{{ request('d', '') }}" || undefined,
-                        clientid: clientId,
-                        orderid: document.getElementById('orderid')?.value || null,
-                        invoice_title: invoiceTitle.trim(),
-                        issue_date: issueDateValue,
-                        due_date: dueDateValue,
-                        notes: notesValue,
-                        items_data: itemsDataInput.value
-                    })
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute(
+                        'content') || ''
+                },
+                body: JSON.stringify({
+                    invoiceid: "{{ request('d', '') }}" || undefined,
+                    clientid: clientId,
+                    orderid: document.getElementById('orderid')?.value || null,
+                    invoice_title: invoiceTitle.trim(),
+                    issue_date: issueDateValue,
+                    due_date: dueDateValue,
+                    notes: notesValue,
+                    items_data: itemsDataInput.value
                 })
+            })
                 .then(async (response) => {
                     if (!response.ok) {
                         const text = await response.text();
@@ -936,7 +968,7 @@
                 });
         });
 
-        btnBackToStep1.addEventListener('click', function() {
+        btnBackToStep1.addEventListener('click', function () {
             const clientId = "{{ request('c', request('clientid')) }}";
             const clientToken = encodeURIComponent(clientId);
             let backUrl = "{{ route('invoices.create') }}?step=1&c=" + clientToken;
@@ -946,7 +978,7 @@
             window.location.href = backUrl;
         });
 
-        invoiceTitleInput.addEventListener('input', function() {
+        invoiceTitleInput.addEventListener('input', function () {
             if (this.value.trim()) {
                 invoiceTitleError.style.display = 'none';
             }
@@ -1027,8 +1059,8 @@
             if (toggleAddItemFormBtn) {
                 const isHidden = addItemFormCard ? addItemFormCard.classList.contains('is-hidden') : true;
                 toggleAddItemFormBtn.innerHTML = isHidden ?
-                    '<i class="fas fa-plus invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Add More Items</span>' :
-                    '<i class="fas fa-times invoice-add-item-btn__icon"></i><span class="invoice-add-item-btn__text">Cancel</span>';
+                    '<i class="fas fa-plus"></i> Add More Items' :
+                    '<i class="fas fa-times"></i> Cancel';
             }
         }
 
@@ -1049,7 +1081,7 @@
         // Modal & AJAX Order Creation integration
         const openAddOrderModalBtn = document.getElementById('openAddOrderModalBtn');
         if (openAddOrderModalBtn) {
-            openAddOrderModalBtn.addEventListener('click', function() {
+            openAddOrderModalBtn.addEventListener('click', function () {
                 if (!clientId) {
                     alert('Please select a client before continuing.');
                     return;
@@ -1070,7 +1102,7 @@
             });
         }
 
-        window.onOrderCreated = function(data) {
+        window.onOrderCreated = function (data) {
             const modalEl = document.getElementById('addOrderModal');
             if (modalEl) {
                 const modalInstance = bootstrap.Modal.getInstance(modalEl);
@@ -1087,11 +1119,11 @@
             const url = `{{ route('invoices.client-order-items') }}?clientid=${encodeURIComponent(clientId)}`;
 
             fetch(url, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
                 .then(response => response.json())
                 .then(items => {
                     const selectEl = document.getElementById('manual_item_itemid');
@@ -1127,15 +1159,12 @@
 <!-- Modal for creating a new order -->
 <div class="modal fade" id="addOrderModal" tabindex="-1" aria-labelledby="addOrderModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 90%; width: 1000px;">
-        <div class="modal-content rounded-panel"
-            style="border: none; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);">
-            <div class="modal-header modal-header-custom"
-                style="padding: 1rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
-                <h5 class="modal-title" id="addOrderModalLabel"
-                    style="font-weight: 600; color: #1e293b; margin: 0; font-size: 1.1rem;">Create New Order</h5>
+        <div class="modal-content border-0 shadow-lg" style="overflow: hidden;">
+            <div class="modal-header bg-white border-bottom">
+                <h5 class="modal-title fw-semibold" id="addOrderModalLabel">Create New Order</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" style="padding: 0; height: 70vh; background: #fff;">
+            <div class="modal-body bg-light p-0" style="height: 70vh;">
                 <iframe id="addOrderIframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
             </div>
         </div>

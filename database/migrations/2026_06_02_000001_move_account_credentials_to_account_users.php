@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!DB::getSchemaBuilder()->hasTable('account_credentials') || !DB::getSchemaBuilder()->hasTable('account_users')) {
+        if (! DB::getSchemaBuilder()->hasTable('account_credentials') || ! DB::getSchemaBuilder()->hasTable('account_users')) {
             return;
         }
 
@@ -49,6 +49,7 @@ return new class extends Migration
                         DB::table('account_users')
                             ->where('userid', $existing->userid)
                             ->update($payload);
+
                         continue;
                     }
 
@@ -60,7 +61,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!DB::getSchemaBuilder()->hasTable('account_users') || !DB::getSchemaBuilder()->hasTable('account_credentials')) {
+        if (! DB::getSchemaBuilder()->hasTable('account_users') || ! DB::getSchemaBuilder()->hasTable('account_credentials')) {
             return;
         }
 

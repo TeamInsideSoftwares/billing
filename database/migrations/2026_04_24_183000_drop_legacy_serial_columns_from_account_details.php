@@ -47,7 +47,7 @@ return new class extends Migration
             fn (string $column) => Schema::hasColumn('account_billing_details', $column)
         ));
 
-        if (!empty($billingToDrop)) {
+        if (! empty($billingToDrop)) {
             Schema::table('account_billing_details', function (Blueprint $table) use ($billingToDrop) {
                 $table->dropColumn($billingToDrop);
             });
@@ -58,7 +58,7 @@ return new class extends Migration
             fn (string $column) => Schema::hasColumn('account_quotation_details', $column)
         ));
 
-        if (!empty($quotationToDrop)) {
+        if (! empty($quotationToDrop)) {
             Schema::table('account_quotation_details', function (Blueprint $table) use ($quotationToDrop) {
                 $table->dropColumn($quotationToDrop);
             });
@@ -68,94 +68,93 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('account_billing_details', function (Blueprint $table) {
-            if (!Schema::hasColumn('account_billing_details', 'serial_number')) {
+            if (! Schema::hasColumn('account_billing_details', 'serial_number')) {
                 $table->string('serial_number', 20)->nullable();
             }
-            if (!Schema::hasColumn('account_billing_details', 'prefix_type')) {
+            if (! Schema::hasColumn('account_billing_details', 'prefix_type')) {
                 $table->string('prefix_type')->default('manual text');
             }
-            if (!Schema::hasColumn('account_billing_details', 'prefix_value')) {
+            if (! Schema::hasColumn('account_billing_details', 'prefix_value')) {
                 $table->string('prefix_value')->nullable();
             }
-            if (!Schema::hasColumn('account_billing_details', 'prefix_length')) {
+            if (! Schema::hasColumn('account_billing_details', 'prefix_length')) {
                 $table->integer('prefix_length')->default(0);
             }
-            if (!Schema::hasColumn('account_billing_details', 'prefix_separator')) {
+            if (! Schema::hasColumn('account_billing_details', 'prefix_separator')) {
                 $table->string('prefix_separator', 10)->nullable();
             }
-            if (!Schema::hasColumn('account_billing_details', 'number_type')) {
+            if (! Schema::hasColumn('account_billing_details', 'number_type')) {
                 $table->string('number_type')->default('auto increment');
             }
-            if (!Schema::hasColumn('account_billing_details', 'number_value')) {
+            if (! Schema::hasColumn('account_billing_details', 'number_value')) {
                 $table->string('number_value')->nullable();
             }
-            if (!Schema::hasColumn('account_billing_details', 'number_length')) {
+            if (! Schema::hasColumn('account_billing_details', 'number_length')) {
                 $table->integer('number_length')->default(4);
             }
-            if (!Schema::hasColumn('account_billing_details', 'number_separator')) {
+            if (! Schema::hasColumn('account_billing_details', 'number_separator')) {
                 $table->string('number_separator', 10)->nullable();
             }
-            if (!Schema::hasColumn('account_billing_details', 'suffix_type')) {
+            if (! Schema::hasColumn('account_billing_details', 'suffix_type')) {
                 $table->string('suffix_type')->default('manual text');
             }
-            if (!Schema::hasColumn('account_billing_details', 'suffix_value')) {
+            if (! Schema::hasColumn('account_billing_details', 'suffix_value')) {
                 $table->string('suffix_value')->nullable();
             }
-            if (!Schema::hasColumn('account_billing_details', 'suffix_length')) {
+            if (! Schema::hasColumn('account_billing_details', 'suffix_length')) {
                 $table->integer('suffix_length')->default(0);
             }
-            if (!Schema::hasColumn('account_billing_details', 'reset_on_fy')) {
+            if (! Schema::hasColumn('account_billing_details', 'reset_on_fy')) {
                 $table->boolean('reset_on_fy')->default(false);
             }
-            if (!Schema::hasColumn('account_billing_details', 'terms_conditions')) {
+            if (! Schema::hasColumn('account_billing_details', 'terms_conditions')) {
                 $table->text('terms_conditions')->nullable();
             }
         });
 
         Schema::table('account_quotation_details', function (Blueprint $table) {
-            if (!Schema::hasColumn('account_quotation_details', 'serial_number')) {
+            if (! Schema::hasColumn('account_quotation_details', 'serial_number')) {
                 $table->string('serial_number', 20)->nullable();
             }
-            if (!Schema::hasColumn('account_quotation_details', 'prefix_type')) {
+            if (! Schema::hasColumn('account_quotation_details', 'prefix_type')) {
                 $table->string('prefix_type')->default('manual text');
             }
-            if (!Schema::hasColumn('account_quotation_details', 'prefix_value')) {
+            if (! Schema::hasColumn('account_quotation_details', 'prefix_value')) {
                 $table->string('prefix_value')->nullable();
             }
-            if (!Schema::hasColumn('account_quotation_details', 'prefix_length')) {
+            if (! Schema::hasColumn('account_quotation_details', 'prefix_length')) {
                 $table->integer('prefix_length')->default(0);
             }
-            if (!Schema::hasColumn('account_quotation_details', 'prefix_separator')) {
+            if (! Schema::hasColumn('account_quotation_details', 'prefix_separator')) {
                 $table->string('prefix_separator', 10)->nullable();
             }
-            if (!Schema::hasColumn('account_quotation_details', 'number_type')) {
+            if (! Schema::hasColumn('account_quotation_details', 'number_type')) {
                 $table->string('number_type')->default('auto increment');
             }
-            if (!Schema::hasColumn('account_quotation_details', 'number_value')) {
+            if (! Schema::hasColumn('account_quotation_details', 'number_value')) {
                 $table->string('number_value')->nullable();
             }
-            if (!Schema::hasColumn('account_quotation_details', 'number_length')) {
+            if (! Schema::hasColumn('account_quotation_details', 'number_length')) {
                 $table->integer('number_length')->default(4);
             }
-            if (!Schema::hasColumn('account_quotation_details', 'number_separator')) {
+            if (! Schema::hasColumn('account_quotation_details', 'number_separator')) {
                 $table->string('number_separator', 10)->nullable();
             }
-            if (!Schema::hasColumn('account_quotation_details', 'suffix_type')) {
+            if (! Schema::hasColumn('account_quotation_details', 'suffix_type')) {
                 $table->string('suffix_type')->default('manual text');
             }
-            if (!Schema::hasColumn('account_quotation_details', 'suffix_value')) {
+            if (! Schema::hasColumn('account_quotation_details', 'suffix_value')) {
                 $table->string('suffix_value')->nullable();
             }
-            if (!Schema::hasColumn('account_quotation_details', 'suffix_length')) {
+            if (! Schema::hasColumn('account_quotation_details', 'suffix_length')) {
                 $table->integer('suffix_length')->default(0);
             }
-            if (!Schema::hasColumn('account_quotation_details', 'reset_on_fy')) {
+            if (! Schema::hasColumn('account_quotation_details', 'reset_on_fy')) {
                 $table->boolean('reset_on_fy')->default(false);
             }
-            if (!Schema::hasColumn('account_quotation_details', 'terms_conditions')) {
+            if (! Schema::hasColumn('account_quotation_details', 'terms_conditions')) {
                 $table->text('terms_conditions')->nullable();
             }
         });
     }
 };
-

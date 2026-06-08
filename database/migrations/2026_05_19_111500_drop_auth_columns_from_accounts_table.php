@@ -21,10 +21,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('accounts', function (Blueprint $table) {
-            if (!Schema::hasColumn('accounts', 'password')) {
+            if (! Schema::hasColumn('accounts', 'password')) {
                 $table->string('password')->nullable();
             }
-            if (!Schema::hasColumn('accounts', 'remember_token')) {
+            if (! Schema::hasColumn('accounts', 'remember_token')) {
                 $table->rememberToken();
             }
         });

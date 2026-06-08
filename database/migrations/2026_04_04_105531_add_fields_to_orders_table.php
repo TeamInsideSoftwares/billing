@@ -15,7 +15,7 @@ return new class extends Migration
             $table->unsignedInteger('no_of_users')->nullable()->after('frequency');
             $table->string('sales_person_id', 10)->nullable()->after('created_by');
             $table->dropColumn(['tax_total', 'currency_code']);
-            
+
         });
     }
 

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('po_number', 50)->nullable()->after('order_number');
             $table->date('po_date')->nullable()->after('po_number');
             $table->string('po_file', 255)->nullable()->after('po_date');
-            
+
             // Agreement fields
             $table->string('agreement_ref', 50)->nullable()->after('po_file');
             $table->date('agreement_date')->nullable()->after('agreement_ref');

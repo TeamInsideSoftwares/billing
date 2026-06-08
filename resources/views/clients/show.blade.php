@@ -4,11 +4,8 @@
     <a href="{{ route('clients.index') }}" class="secondary-button">
         Back to Clients
     </a>
-    <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'po']) }}" class="secondary-button">
-        Add PO
-    </a>
-    <a href="{{ route('clients.documents.create', ['client' => $client->clientid, 'type' => 'agreement']) }}" class="secondary-button">
-        Add Agreement
+    <a href="{{ route('clients.index') }}" class="secondary-button">
+        PO & Agreement
     </a>
     <a href="{{ route('orders.create', ['c' => $client->clientid]) }}" class="primary-button">
         Add Order

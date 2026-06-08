@@ -24,7 +24,7 @@ class OrdersController extends Controller
             abort(403);
         }
 
-        if (!in_array($type, ['po', 'agreement'], true)) {
+        if (! in_array($type, ['po', 'agreement'], true)) {
             abort(404);
         }
 
@@ -37,7 +37,7 @@ class OrdersController extends Controller
             ->latest('created_at')
             ->firstOrFail();
         $path = $document->file_path;
-        if (!$path || !Storage::disk('public')->exists($path)) {
+        if (! $path || ! Storage::disk('public')->exists($path)) {
             abort(404);
         }
 
@@ -111,7 +111,7 @@ class OrdersController extends Controller
                 ]],
                 'has_pi' => $order->invoices->isNotEmpty(),
                 'linked_invoice_id' => $linkedInvoice?->invoiceid,
-                'linked_invoice_has_ti' => !empty($linkedInvoice?->ti_number),
+                'linked_invoice_has_ti' => ! empty($linkedInvoice?->ti_number),
             ];
         });
 
@@ -133,10 +133,99 @@ class OrdersController extends Controller
             'selectedClient' => $selectedClient,
             'clientId' => $clientId,
             'hasClientFilter' => $hasClientFilter,
-            'showClientPicker' => !$hasClientFilter && $selectedItemId === '',
+            'showClientPicker' => ! $hasClientFilter && $selectedItemId === '',
             'selectedItemId' => $selectedItemId,
             'services' => $services,
             'allClients' => Client::where('accountid', $accountId)->regular()->with('billingDetail')->orderBy('business_name')->orderBy('contact_name')->get(),
+        ]);
+    }
+
+    public function trialOrders(): View
+    {
+        $accountId = $this->resolveAccountId();
+        $searchTerm = trim((string) request('search', ''));
+        $selectedClient = trim((string) request('client', ''));
+        $selectedItem = trim((string) request('item', ''));
+
+        $trialClientIds = Client::query()
+            ->where('accountid', $accountId)
+            ->trial()
+            ->pluck('clientid');
+
+        $query = Order::query()
+            ->where('accountid', $accountId)
+            ->whereIn('clientid', $trialClientIds)
+            ->with(['client']);
+
+        if ($searchTerm !== '') {
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('item_name', 'like', '%'.$searchTerm.'%')
+                    ->orWhereHas('client', function ($cq) use ($searchTerm) {
+                        $cq->where('business_name', 'like', '%'.$searchTerm.'%')
+                            ->orWhere('contact_name', 'like', '%'.$searchTerm.'%');
+                    });
+            });
+        }
+
+        if ($selectedClient !== '') {
+            $query->where('clientid', $selectedClient);
+        }
+
+        if ($selectedItem !== '') {
+            $query->where('item_name', $selectedItem);
+        }
+
+        $resultCount = $query->count();
+
+        $orders = $query->orderByDesc('created_at')->take(100)->get()->map(function (Order $order) {
+            $endDate = $order->end_date;
+            $isExpired = $endDate && $endDate->lt(now()->startOfDay());
+
+            return [
+                'record_id' => $order->orderid,
+                'number' => $order->order_number,
+                'client' => $order->client?->business_name ?? $order->client?->contact_name ?? 'Client',
+                'clientid' => $order->clientid,
+                'client_email' => $order->client?->primary_email ?? $order->client?->email,
+                'client_phone' => $order->client?->phone,
+                'client_status' => strtolower((string) ($order->client?->status ?? 'active')),
+                'item_name' => $order->item_name ?: ($order->item?->name ?? 'Item'),
+                'start_date' => $order->start_date?->format('d M Y'),
+                'end_date' => $endDate?->format('d M Y'),
+                'end_date_raw' => $endDate?->format('Y-m-d'),
+                'status' => (string) ($order->status ?? 'active'),
+                'is_expired' => $isExpired,
+                'order_date' => $order->created_at?->format('d M Y'),
+            ];
+        });
+
+        // Item name options from trial orders
+        $itemOptions = Order::query()
+            ->whereIn('clientid', $trialClientIds)
+            ->whereNotNull('item_name')
+            ->where('item_name', '!=', '')
+            ->select('item_name')
+            ->distinct()
+            ->orderBy('item_name')
+            ->pluck('item_name');
+
+        // Trial client options for dropdown
+        $clientOptions = Client::query()
+            ->where('accountid', $accountId)
+            ->trial()
+            ->orderByRaw('COALESCE(business_name, contact_name) ASC')
+            ->get(['clientid', 'business_name', 'contact_name']);
+
+        return view('orders.trials', [
+            'title' => 'Trial Orders',
+            'subtitle' => $searchTerm ? 'Found '.$resultCount.' result(s) for "'.$searchTerm.'"' : 'Orders from trial clients.',
+            'orders' => $orders,
+            'searchTerm' => $searchTerm,
+            'resultCount' => $resultCount,
+            'selectedClient' => $selectedClient,
+            'selectedItem' => $selectedItem,
+            'itemOptions' => $itemOptions,
+            'clientOptions' => $clientOptions,
         ]);
     }
 
@@ -151,7 +240,7 @@ class OrdersController extends Controller
         $existingClientItemIds = [];
         $recentOrders = collect();
 
-        if (!$carryRecent) {
+        if (! $carryRecent) {
             session()->forget('orders_create_recent_ids');
         }
 
@@ -236,7 +325,7 @@ class OrdersController extends Controller
         ]);
 
         $itemsData = json_decode((string) $validated['items_data'], true);
-        if (!is_array($itemsData) || $itemsData === []) {
+        if (! is_array($itemsData) || $itemsData === []) {
             return back()->withErrors(['items_data' => 'Add at least one item.'])->withInput();
         }
 
@@ -258,7 +347,7 @@ class OrdersController extends Controller
                 'no_of_users' => $itemData['no_of_users'] ?? null,
                 'start_date' => now()->toDateString(),
                 'end_date' => $itemData['end_date'] ?? '2099-12-31',
-                'delivery_date' => !empty($itemData['delivery_date']) ? $itemData['delivery_date'] : null,
+                'delivery_date' => ! empty($itemData['delivery_date']) ? $itemData['delivery_date'] : null,
             ]);
         }
 
@@ -283,14 +372,14 @@ class OrdersController extends Controller
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => count($createdOrders) . ' order item(s) created successfully.',
-                'orders' => $createdOrders
+                'message' => count($createdOrders).' order item(s) created successfully.',
+                'orders' => $createdOrders,
             ]);
         }
 
         return redirect()
             ->route('orders.create', ['c' => $redirectClientId, 'carry' => 1])
-            ->with('success', count($createdOrders) . ' order item(s) created successfully.');
+            ->with('success', count($createdOrders).' order item(s) created successfully.');
     }
 
     public function getOrderJson(Request $request, $order)
@@ -300,7 +389,7 @@ class OrdersController extends Controller
             ->where('accountid', $this->resolveAccountId())
             ->first();
 
-        if (!$orderModel) {
+        if (! $orderModel) {
             return response()->json(['error' => 'Order not found'], 404);
         }
 
@@ -330,7 +419,7 @@ class OrdersController extends Controller
     public function getOrderJsonByNumber(Request $request)
     {
         $lookup = $request->input('o');
-        if (!$lookup) {
+        if (! $lookup) {
             return response()->json(['error' => 'Order ID required'], 400);
         }
 
@@ -339,7 +428,7 @@ class OrdersController extends Controller
             ->orWhere('order_number', $lookup)
             ->first();
 
-        if (!$order) {
+        if (! $order) {
             return response()->json(['error' => 'Order not found'], 404);
         }
 
@@ -414,7 +503,7 @@ class OrdersController extends Controller
 
         $itemsData = json_decode((string) $validated['items_data'], true);
         $itemData = is_array($itemsData) ? ($itemsData[0] ?? null) : null;
-        if (!is_array($itemData)) {
+        if (! is_array($itemData)) {
             return back()->withErrors(['items_data' => 'One item is required for this order.'])->withInput();
         }
 
@@ -431,15 +520,19 @@ class OrdersController extends Controller
             'no_of_users' => $itemData['no_of_users'] ?? null,
             'start_date' => now()->toDateString(),
             'end_date' => $itemData['end_date'] ?? '2099-12-31',
-            'delivery_date' => !empty($itemData['delivery_date']) ? $itemData['delivery_date'] : null,
+            'delivery_date' => ! empty($itemData['delivery_date']) ? $itemData['delivery_date'] : null,
         ]);
 
         if ($request->query('return_to') === 'create') {
             return redirect()->route('orders.create', [
                 'c' => $order->clientid,
                 'carry' => 1,
-                'iframe' => $request->query('iframe')
+                'iframe' => $request->query('iframe'),
             ])->with('success', 'Order updated successfully.');
+        }
+
+        if ($request->query('return_to') === 'trials') {
+            return redirect()->route('orders.trials')->with('success', 'Order updated successfully.');
         }
 
         return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order updated successfully.');
@@ -466,8 +559,12 @@ class OrdersController extends Controller
             return redirect()->route('orders.create', [
                 'c' => $order->clientid,
                 'carry' => 1,
-                'iframe' => request()->query('iframe')
+                'iframe' => request()->query('iframe'),
             ])->with('success', 'Order cancelled successfully.');
+        }
+
+        if (request()->query('return_to') === 'trials') {
+            return redirect()->route('orders.trials')->with('success', 'Order cancelled successfully.');
         }
 
         return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order cancelled successfully.');
@@ -482,6 +579,10 @@ class OrdersController extends Controller
         $order->update([
             'status' => 'active',
         ]);
+
+        if (request()->query('return_to') === 'trials') {
+            return redirect()->route('orders.trials')->with('success', 'Order restored successfully.');
+        }
 
         return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order restored successfully.');
     }
@@ -500,7 +601,7 @@ class OrdersController extends Controller
     {
         $quotationTitle = trim((string) ($quotation->quo_title ?? ''));
         $quotationNumber = trim((string) ($quotation->quo_number ?? ''));
-        $displayTitle = $quotationTitle !== '' ? $quotationTitle : ($quotationNumber !== '' ? $quotationNumber : ('Quotation ' . $quotation->quotationid));
+        $displayTitle = $quotationTitle !== '' ? $quotationTitle : ($quotationNumber !== '' ? $quotationNumber : ('Quotation '.$quotation->quotationid));
 
         return [
             'quotationid' => $quotation->quotationid,
@@ -523,9 +624,9 @@ class OrdersController extends Controller
                     'item_name' => $resolvedName,
                     'item_description' => (string) ($item->item_description ?? ''),
                     'quantity' => (float) ($item->quantity ?? 1),
-                    'no_of_users' => !empty($item->no_of_users) ? (int) $item->no_of_users : null,
+                    'no_of_users' => ! empty($item->no_of_users) ? (int) $item->no_of_users : null,
                     'frequency' => (string) ($item->frequency ?? ''),
-                    'duration' => !empty($item->duration) ? (int) $item->duration : null,
+                    'duration' => ! empty($item->duration) ? (int) $item->duration : null,
                     'start_date' => $item->start_date?->format('Y-m-d') ?? now()->toDateString(),
                     'end_date' => $item->end_date?->format('Y-m-d') ?? '2099-12-31',
                     'delivery_date' => null,

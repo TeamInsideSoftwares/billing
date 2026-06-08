@@ -1,67 +1,77 @@
 @extends('layouts.app')
 
 @section('header_actions')
-    <a href="{{ route('payments.index', $selectedClientId !== '' ? ['c' => $selectedClientId] : []) }}" class="secondary-button">
-        <i class="fas fa-arrow-left icon-spaced"></i>Back to Payments
-    </a>
-    <a href="{{ route('payments.create', $selectedClientId !== '' ? ['c' => $selectedClientId] : []) }}" class="primary-button">
-        <i class="fas fa-plus icon-spaced"></i>Record Payment
-    </a>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <a href="{{ route('payments.index', $selectedClientId !== '' ? ['c' => $selectedClientId] : []) }}"
+            class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
+            <i class="fas fa-arrow-left btn-icon"></i> Back to Payments
+        </a>
+        <a href="{{ route('payments.create', $selectedClientId !== '' ? ['c' => $selectedClientId] : []) }}"
+            class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
+            <i class="fas fa-plus btn-icon"></i> Record Payment
+        </a>
+    </div>
 @endsection
 
 @section('content')
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
 
-    <div class="ledger-shell">
-        <section class="panel-card module-filter-panel filter-panel-regular">
-            <form method="GET" action="{{ route('payments.ledger') }}" class="module-filter-grid">
-                <div class="module-filter-field">
-                    <label class="module-filter-label" for="ledger_client_filter">Client</label>
-                    <select name="c" id="ledger_client_filter" class="form-control">
-                        <option value="all" {{ $selectedClientId === '' || $selectedClientId === 'all' ? 'selected' : '' }}>All Clients</option>
-                        @foreach($clients as $client)
-                            <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
-                                {{ $client->business_name ?? $client->contact_name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="module-filter-field">
-                    <label class="module-filter-label" for="ledger_fy_filter">Financial Year</label>
-                    <select name="fy" id="ledger_fy_filter" class="form-control">
-                        <option value="all" {{ $selectedFyId === 'all' ? 'selected' : '' }}>All</option>
-                        @foreach($financialYears as $fy)
-                            <option value="{{ $fy->fy_id }}" {{ (string) $selectedFyId === (string) $fy->fy_id ? 'selected' : '' }}>
-                                {{ $fy->financial_year }}{{ $fy->default ? ' (Default)' : '' }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="module-filter-actions">
-                    <button type="submit" class="primary-button">Apply</button>
-                    <a href="{{ route('payments.ledger') }}" class="secondary-button">Reset</a>
-                </div>
-            </form>
-        </section>
-
-        <section class="panel-card ledger-table-card">
-            @if($ledgerEntries->isEmpty())
-                <div class="no-records-cell">
-                    <i class="fas fa-book empty-state-icon"></i>
-                    <p class="no-empty-state-text">No ledger entries found</p>
-                    <p class="small-text">Try widening the filters or record invoices and payments first.</p>
-                </div>
-            @else
-                <div class="ledger-table-toolbar">
-                    <div>
-                        <strong class="ledger-table-title">Ledger Entries</strong>
-                        <div class="ledger-table-subtitle">{{ $ledgerEntries->count() }} row(s) in statement view</div>
+    <div class="position-relative bg-white p-3 rounded-3 shadow-sm">
+        <!-- Filters Card -->
+        <div class="position-relative bg-light border p-3 rounded-3 mb-2">
+            <form method="GET" action="{{ route('payments.ledger') }}" class="mainForm">
+                <div class="row g-2">
+                    <div class="col-12 col-md-5">
+                        <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="ledger_client_filter">Client</label>
+                        <select name="c" id="ledger_client_filter" class="form-select">
+                            <option value="all" {{ $selectedClientId === '' || $selectedClientId === 'all' ? 'selected' : '' }}>All Clients</option>
+                            @foreach($clients as $client)
+                                <option value="{{ $client->clientid }}" {{ (string) $selectedClientId === (string) $client->clientid ? 'selected' : '' }}>
+                                    {{ $client->business_name ?? $client->contact_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-5">
+                        <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="ledger_fy_filter">Financial Year</label>
+                        <select name="fy" id="ledger_fy_filter" class="form-select">
+                            <option value="all" {{ $selectedFyId === 'all' ? 'selected' : '' }}>All</option>
+                            @foreach($financialYears as $fy)
+                                <option value="{{ $fy->fy_id }}" {{ (string) $selectedFyId === (string) $fy->fy_id ? 'selected' : '' }}>
+                                    {{ $fy->financial_year }}{{ $fy->default ? ' (Default)' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-2 mt-auto d-flex gap-2">
+                        <a href="{{ route('payments.ledger') }}" class="btn btn-outline-primary bg-white text-primary fw-medium w-100 text-center justify-content-center">
+                            <i class="fas fa-sync-alt btn-icon me-1"></i> Reset
+                        </a>
+                        <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">
+                            Apply <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="ledger-table-wrap">
-                    <table id="ledgerDataTable" class="data-table ledger-table">
-                        <thead>
+            </form>
+        </div>
+
+        <!-- Table View -->
+        @if($ledgerEntries->isEmpty())
+            <div class="card border-0 shadow-sm py-5 text-center text-muted mb-3">
+                <div class="card-body">
+                    <i class="fas fa-book mb-3 text-secondary fs-1 opacity-50"></i>
+                    <p class="fw-semibold text-dark mb-1">No ledger entries found</p>
+                    <p class="small text-muted mb-0">Try widening the filters or record invoices and payments first.</p>
+                </div>
+            </div>
+        @else
+
+            <!-- Table Card -->
+            <div class="card border-0 shadow-sm overflow-hidden mb-3">
+                <div class="table-responsive p-3 bg-white">
+                    <table id="ledgerDataTable" class="table mainTable border align-middle mb-0">
+                        <thead class="table-light">
                             <tr>
                                 <th scope="col">Date</th>
                                 <th scope="col">Narration</th>
@@ -74,14 +84,14 @@
                         <tbody>
                             @foreach($ledgerEntries as $entry)
                                 <tr>
-                                    <td class="ledger-date-cell ledger-cell-text" data-order="{{ $entry['raw_date'] }}">{{ $entry['date'] }}</td>
+                                    <td data-order="{{ $entry['raw_date'] }}">{{ $entry['date'] }}</td>
                                     <td>
                                         @if(($entry['entry_kind'] ?? '') === 'tds')
                                             <span class="status-pill payments-status-partly ledger-kind-badge">TDS</span>
                                         @endif
                                         {{ $entry['description'] !== '' ? $entry['description'] : '-' }}
                                     </td>
-                                    <td class="ledger-cell-text">
+                                    <td>
                                         @if($entry['reference_url'])
                                             @php
                                                 $previewUrl = $entry['entry_kind'] === 'invoice'
@@ -89,40 +99,40 @@
                                                     : $entry['reference_url'] . (str_contains($entry['reference_url'], '?') ? '&' : '?') . 'preview=1';
                                             @endphp
                                             <a href="{{ $entry['reference_url'] }}"
-                                               class="ledger-ref-link js-ledger-preview-link"
+                                               class="text-decoration-none fw-medium js-ledger-preview-link"
                                                data-preview-url="{{ $previewUrl }}"
                                                data-preview-title="{{ $entry['entry_kind'] === 'invoice' ? 'Invoice PDF Preview' : 'Payment Preview' }}">
                                                 {{ $entry['reference_label'] }}
                                             </a>
                                         @else
-                                            <span class="ledger-ref-link">{{ $entry['reference_label'] }}</span>
+                                            <span class="fw-medium text-dark">{{ $entry['reference_label'] }}</span>
                                         @endif
                                         @if(!empty($entry['reference_meta']))
-                                            <div class="ledger-ref-meta">{{ $entry['reference_meta'] }}</div>
+                                            <div class="text-muted small mt-1">{{ $entry['reference_meta'] }}</div>
                                         @endif
                                     </td>
-                                    <td class="text-end ledger-amount-cell">
+                                    <td class="text-end fw-semibold text-dark">
                                         {{ $entry['debit'] > 0 ? number_format($entry['debit'], 0, '.', ',') : '-' }}
                                     </td>
-                                    <td class="text-end ledger-amount-cell">
+                                    <td class="text-end fw-semibold text-dark">
                                         {{ $entry['credit'] > 0 ? number_format($entry['credit'], 0, '.', ',') : '-' }}
                                     </td>
-                                    <td class="text-end ledger-balance-cell">
+                                    <td class="text-end fw-bold text-dark">
                                         {{ number_format($entry['balance'], 0, '.', ',') }}
                                     </td>
                                 </tr>
                             @endforeach
                         </tbody>
-                        <tfoot>
+                        <tfoot class="table-light border-top">
                             <tr>
-                                <th colspan="5">Closing Balance</th>
-                                <th class="text-end">{{ number_format($closingBalance, 0, '.', ',') }}</th>
+                                <th colspan="5" class="text-end fw-semibold text-muted">Closing Balance</th>
+                                <th class="text-end fw-bold text-primary">{{ number_format($closingBalance, 0, '.', ',') }}</th>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
-            @endif
-        </section>
+            </div>
+        @endif
     </div>
 
     <div class="offcanvas offcanvas-end ledger-preview-canvas" tabindex="-1" id="ledgerPreviewCanvas" aria-labelledby="ledgerPreviewCanvasLabel">

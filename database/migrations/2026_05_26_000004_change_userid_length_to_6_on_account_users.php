@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('account_users') || !Schema::hasColumn('account_users', 'userid')) {
+        if (! Schema::hasTable('account_users') || ! Schema::hasColumn('account_users', 'userid')) {
             return;
         }
 
@@ -17,11 +17,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!Schema::hasTable('account_users') || !Schema::hasColumn('account_users', 'userid')) {
+        if (! Schema::hasTable('account_users') || ! Schema::hasColumn('account_users', 'userid')) {
             return;
         }
 
         DB::statement('ALTER TABLE `account_users` MODIFY `userid` VARCHAR(10) NOT NULL');
     }
 };
-

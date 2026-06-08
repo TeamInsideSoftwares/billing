@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Account;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 
 class AccountSeeder extends Seeder
 {
@@ -14,13 +14,13 @@ class AccountSeeder extends Seeder
     public function run(): void
     {
         $account = Account::create([
-            'accountid'      => 'T499MU1L1l',
-            'name'           => 'Test',
-            'slug'           => 'test',
-            'email'          => 'team@insidesoftwares.com',
-            'status'         => 'active',
-            'currency_code'  => 'INR',
-            'timezone'       => 'Asia/Kolkata',
+            'accountid' => 'T499MU1L1l',
+            'name' => 'Test',
+            'slug' => 'test',
+            'email' => 'team@insidesoftwares.com',
+            'status' => 'active',
+            'currency_code' => 'INR',
+            'timezone' => 'Asia/Kolkata',
             // Add any other fields if necessary
         ]);
 

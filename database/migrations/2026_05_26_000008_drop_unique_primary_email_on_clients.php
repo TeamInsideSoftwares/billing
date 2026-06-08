@@ -9,7 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('clients')) {
+        if (! Schema::hasTable('clients')) {
             return;
         }
 
@@ -22,11 +22,11 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!Schema::hasTable('clients')) {
+        if (! Schema::hasTable('clients')) {
             return;
         }
 
-        if (!$this->hasIndex('clients', 'clients_primary_email_unique')) {
+        if (! $this->hasIndex('clients', 'clients_primary_email_unique')) {
             Schema::table('clients', function (Blueprint $table) {
                 $table->unique('primary_email', 'clients_primary_email_unique');
             });
@@ -44,4 +44,3 @@ return new class extends Migration
             ->exists();
     }
 };
-

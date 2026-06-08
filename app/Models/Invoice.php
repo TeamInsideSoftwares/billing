@@ -29,9 +29,13 @@ class Invoice extends Model
     use HasAlphaNumericId;
 
     protected $table = 'invoices';
+
     protected $primaryKey = 'invoiceid';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
+
     public $timestamps = true;
 
     public function getRouteKeyName(): string
@@ -120,7 +124,7 @@ class Invoice extends Model
 
         // If it's a string, try to decode it
         $decoded = json_decode($value, true);
-        
+
         // Handle double encoding: if decoded value is still a string, decode again
         if (is_string($decoded)) {
             $secondDecoded = json_decode($decoded, true);
@@ -139,7 +143,7 @@ class Invoice extends Model
 
     public function getInvoiceNumberAttribute(): string
     {
-        return (string) (!empty($this->ti_number) ? $this->ti_number : ($this->pi_number ?? ''));
+        return (string) (! empty($this->ti_number) ? $this->ti_number : ($this->pi_number ?? ''));
     }
 
     public function setInvoiceNumberAttribute(mixed $value): void

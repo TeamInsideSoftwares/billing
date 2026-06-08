@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
+use App\Models\AccountBillingDetail;
 use App\Models\Client;
 use App\Models\CommunicationLog;
 use App\Models\FinancialYear;
 use App\Models\Invoice;
 use App\Models\Ledger;
-use App\Models\Account;
-use App\Models\AccountBillingDetail;
 use App\Models\MessageTemplate;
 use App\Models\Payment;
 use App\Models\PaymentDetail;
@@ -16,7 +16,6 @@ use App\Models\SerialConfiguration;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -33,6 +32,7 @@ class PaymentsController extends Controller
 
         if ($serialConfig) {
             $candidate = trim((string) $serialConfig->generateNextSerialNumber());
+
             return $this->ensureUniquePaymentReceiptNumber($candidate !== '' ? $candidate : 'PR-0001', $accountid);
         }
 
@@ -42,7 +42,7 @@ class PaymentsController extends Controller
             ->where('receipt_number', '!=', '')
             ->count();
 
-        return $this->ensureUniquePaymentReceiptNumber('PR-' . str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT), $accountid);
+        return $this->ensureUniquePaymentReceiptNumber('PR-'.str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT), $accountid);
     }
 
     private function ensureUniquePaymentReceiptNumber(string $candidate, string $accountid): string
@@ -53,9 +53,9 @@ class PaymentsController extends Controller
 
         while (Payment::query()->where('accountid', $accountid)->where('receipt_number', $number)->exists()) {
             if (preg_match('/^(.*?)(\d+)$/', $candidate, $matches)) {
-                $number = $matches[1] . str_pad((string) ((int) $matches[2] + $sequence - 1), strlen($matches[2]), '0', STR_PAD_LEFT);
+                $number = $matches[1].str_pad((string) ((int) $matches[2] + $sequence - 1), strlen($matches[2]), '0', STR_PAD_LEFT);
             } else {
-                $number = $candidate . '-' . $sequence;
+                $number = $candidate.'-'.$sequence;
             }
             $sequence++;
         }
@@ -95,7 +95,7 @@ class PaymentsController extends Controller
     private function normalizeInvoiceIds(array $invoiceIds): array
     {
         return array_values(array_unique(array_filter(array_map(
-            fn($invoiceId) => trim((string) $invoiceId),
+            fn ($invoiceId) => trim((string) $invoiceId),
             $invoiceIds,
         ))));
     }
@@ -104,7 +104,7 @@ class PaymentsController extends Controller
     {
         $invoiceIds = $request->input('invoice_ids', []);
 
-        if (!is_array($invoiceIds)) {
+        if (! is_array($invoiceIds)) {
             $invoiceIds = [$invoiceIds];
         }
 
@@ -146,13 +146,13 @@ class PaymentsController extends Controller
 
         foreach ($invoiceIds as $index => $invoiceId) {
             $invoice = $invoices->get($invoiceId);
-            if (!$invoice) {
+            if (! $invoice) {
                 continue;
             }
 
             $isLast = $index === count($invoiceIds) - 1;
 
-            if (!empty($customReceived) || !empty($customTds)) {
+            if (! empty($customReceived) || ! empty($customTds)) {
                 $allocatedReceived = (float) ($customReceived[$invoiceId] ?? 0);
                 $allocatedTds = (float) ($customTds[$invoiceId] ?? 0);
             } else {
@@ -222,7 +222,7 @@ class PaymentsController extends Controller
         $baseTotal = 0.0;
         foreach ($payment->paymentDetails as $detail) {
             $invoice = $detail->invoice;
-            if (!$invoice) {
+            if (! $invoice) {
                 continue;
             }
 
@@ -236,7 +236,7 @@ class PaymentsController extends Controller
         $inferredPercent = ($tdsTotal / $baseTotal) * 100;
         foreach ($payment->paymentDetails as $detail) {
             $invoice = $detail->invoice;
-            if (!$invoice) {
+            if (! $invoice) {
                 continue;
             }
 
@@ -264,7 +264,7 @@ class PaymentsController extends Controller
         $baseTotal = 0.0;
         foreach ($payment->paymentDetails as $detail) {
             $invoice = $detail->invoice;
-            if (!$invoice) {
+            if (! $invoice) {
                 continue;
             }
 
@@ -276,6 +276,7 @@ class PaymentsController extends Controller
         }
 
         $percent = ($tdsTotal / $baseTotal) * 100;
+
         return rtrim(rtrim(number_format($percent, 2, '.', ''), '0'), '.');
     }
 
@@ -306,11 +307,11 @@ class PaymentsController extends Controller
         $searchTerm = request('search', '');
 
         if ($searchTerm) {
-            $query->where(function($q) use ($searchTerm) {
-                $q->where('reference_number', 'like', '%' . $searchTerm . '%')
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('reference_number', 'like', '%'.$searchTerm.'%')
                     ->orWhereHas('client', function ($cq) use ($searchTerm) {
-                        $cq->where('business_name', 'like', '%' . $searchTerm . '%')
-                            ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+                        $cq->where('business_name', 'like', '%'.$searchTerm.'%')
+                            ->orWhere('contact_name', 'like', '%'.$searchTerm.'%');
                     });
             });
         }
@@ -337,6 +338,7 @@ class PaymentsController extends Controller
                 ? $invoiceTitle
                 : ($paymentDescription !== '' ? $paymentDescription : 'Payment');
             $paymentStatus = strtolower(trim((string) ($payment->status ?? 'active')));
+
             return [
                 'record_id' => $payment->paymentid,
                 'number' => $displayTitle,
@@ -357,7 +359,7 @@ class PaymentsController extends Controller
 
         return view('payments.index', [
             'title' => 'All Payments',
-            'subtitle' => $searchTerm ? 'Search results for "' . $searchTerm . '"' : null,
+            'subtitle' => $searchTerm ? 'Search results for "'.$searchTerm.'"' : null,
             'payments' => $payments,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
@@ -381,7 +383,7 @@ class PaymentsController extends Controller
         if ($selectedFyId === '') {
             $selectedFyId = 'all';
         }
-        if ($selectedFyId !== 'all' && !$financialYears->contains('fy_id', $selectedFyId)) {
+        if ($selectedFyId !== 'all' && ! $financialYears->contains('fy_id', $selectedFyId)) {
             $selectedFyId = 'all';
         }
         $searchTerm = trim((string) request('search', ''));
@@ -402,11 +404,11 @@ class PaymentsController extends Controller
             })
             ->when($searchTerm !== '', function ($ledgerQuery) use ($searchTerm) {
                 $ledgerQuery->where(function ($searchQuery) use ($searchTerm) {
-                    $searchQuery->where('invoiceid_paymentid', 'like', '%' . $searchTerm . '%')
-                        ->orWhere('description', 'like', '%' . $searchTerm . '%')
+                    $searchQuery->where('invoiceid_paymentid', 'like', '%'.$searchTerm.'%')
+                        ->orWhere('description', 'like', '%'.$searchTerm.'%')
                         ->orWhereHas('client', function ($clientQuery) use ($searchTerm) {
-                            $clientQuery->where('business_name', 'like', '%' . $searchTerm . '%')
-                                ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+                            $clientQuery->where('business_name', 'like', '%'.$searchTerm.'%')
+                                ->orWhere('contact_name', 'like', '%'.$searchTerm.'%');
                         });
                 });
             })
@@ -436,6 +438,7 @@ class PaymentsController extends Controller
         $entries = $entries->filter(function (Ledger $entry) use ($invoiceMap, $paymentMap) {
             if ($entry->type === 'dr') {
                 $invoiceStatus = strtolower(trim((string) ($invoiceMap->get($entry->invoiceid_paymentid)?->status ?? '')));
+
                 return $invoiceStatus !== 'cancelled';
             }
 
@@ -447,7 +450,8 @@ class PaymentsController extends Controller
             $invoiceStatuses = $payment?->invoices?->map(function ($invoice) {
                 return strtolower(trim((string) ($invoice->status ?? '')));
             }) ?? collect();
-            return $invoiceStatuses->isEmpty() || $invoiceStatuses->contains(fn($status) => $status !== 'cancelled');
+
+            return $invoiceStatuses->isEmpty() || $invoiceStatuses->contains(fn ($status) => $status !== 'cancelled');
         })->values();
 
         if ($selectedFyId !== 'all') {
@@ -506,9 +510,9 @@ class PaymentsController extends Controller
                     $referenceNumber = trim((string) ($payment->reference_number ?? ''));
                     $referenceLabel = $modeLabel;
                     $receiptNumber = trim((string) ($payment->receipt_number ?? ''));
-                    $referenceMeta = $receiptNumber !== '' ? ('Receipt: ' . $receiptNumber) : '';
+                    $referenceMeta = $receiptNumber !== '' ? ('Receipt: '.$receiptNumber) : '';
                     if ($referenceNumber !== '') {
-                        $referenceMeta .= ($referenceMeta !== '' ? ' | ' : '') . ('Ref: ' . $referenceNumber);
+                        $referenceMeta .= ($referenceMeta !== '' ? ' | ' : '').('Ref: '.$referenceNumber);
                     }
                     $referenceUrl = route('payments.show', $payment->paymentid);
                     $entryKind = (float) ($payment->tds_amount ?? 0) > 0 ? 'tds' : 'payment';
@@ -566,7 +570,7 @@ class PaymentsController extends Controller
         $selectedMonth = max(1, min(12, (int) request('month', now()->month)));
         $selectedYear = max(2000, (int) request('year', now()->year));
 
-        $account = \App\Models\Account::query()
+        $account = Account::query()
             ->select(['accountid', 'state'])
             ->where('accountid', $accountid)
             ->first();
@@ -663,7 +667,7 @@ class PaymentsController extends Controller
         $selectedInvoiceId = request('i');
         $paymentDateBounds = $this->resolvePaymentDateBounds($accountId);
 
-        if ($selectedInvoiceId && !$selectedClientId) {
+        if ($selectedInvoiceId && ! $selectedClientId) {
             $selectedClientId = Invoice::query()
                 ->where('invoiceid', $selectedInvoiceId)
                 ->value('clientid');
@@ -703,7 +707,7 @@ class PaymentsController extends Controller
             'invoice_tds_amounts.*' => 'numeric|min:0',
             'received_amount' => 'required|numeric|min:0',
             'tds_amount' => 'nullable|numeric|min:0',
-            'payment_date' => 'required|date_format:Y-m-d|after_or_equal:' . $paymentDateBounds['min_date'] . '|before_or_equal:' . $paymentDateBounds['max_date'],
+            'payment_date' => 'required|date_format:Y-m-d|after_or_equal:'.$paymentDateBounds['min_date'].'|before_or_equal:'.$paymentDateBounds['max_date'],
             'mode' => 'required|in:Bank Transfer,Online,Cash',
             'reference_number' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:2000',
@@ -732,12 +736,12 @@ class PaymentsController extends Controller
             }
         }
 
-        if (!empty($invoiceIds)) {
+        if (! empty($invoiceIds)) {
             $sumReceived = 0;
             $sumTds = 0;
             foreach ($invoiceIds as $invoiceId) {
                 $invoice = $invoiceMap->get($invoiceId);
-                if (!$invoice) {
+                if (! $invoice) {
                     continue;
                 }
 
@@ -758,6 +762,7 @@ class PaymentsController extends Controller
 
                 if ($rowAllocation > ($availableLimit + 0.1)) {
                     $invNum = $invoice->ti_number ?: $invoice->pi_number ?: $invoice->invoice_number ?: $invoiceId;
+
                     return redirect()->back()
                         ->withInput()
                         ->withErrors(['invoice_ids' => "Allocation for invoice #{$invNum} exceeds its available amount without tax of {$availableLimit}."]);
@@ -874,8 +879,9 @@ class PaymentsController extends Controller
             ?? $primaryInvoice?->invoice_number
             ?? $payment->paymentid;
         $paymentDateBounds = $this->resolvePaymentDateBounds($payment->accountid);
+
         return view('payments.form', [
-            'title' => 'Edit ' . $displayTitle,
+            'title' => 'Edit '.$displayTitle,
             'payment' => $payment,
             'clients' => Client::query()->where('accountid', $payment->accountid)->regular()->get(),
             'invoices' => $this->filterDueInvoices(
@@ -912,7 +918,7 @@ class PaymentsController extends Controller
             'invoice_tds_amounts.*' => 'numeric|min:0',
             'received_amount' => 'required|numeric|min:0',
             'tds_amount' => 'nullable|numeric|min:0',
-            'payment_date' => 'required|date_format:Y-m-d|after_or_equal:' . $paymentDateBounds['min_date'] . '|before_or_equal:' . $paymentDateBounds['max_date'],
+            'payment_date' => 'required|date_format:Y-m-d|after_or_equal:'.$paymentDateBounds['min_date'].'|before_or_equal:'.$paymentDateBounds['max_date'],
             'mode' => 'required|in:Bank Transfer,Online,Cash',
             'reference_number' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:2000',
@@ -941,12 +947,12 @@ class PaymentsController extends Controller
             }
         }
 
-        if (!empty($invoiceIds)) {
+        if (! empty($invoiceIds)) {
             $sumReceived = 0;
             $sumTds = 0;
             foreach ($invoiceIds as $invoiceId) {
                 $invoice = $invoiceMap->get($invoiceId);
-                if (!$invoice) {
+                if (! $invoice) {
                     continue;
                 }
 
@@ -973,6 +979,7 @@ class PaymentsController extends Controller
 
                 if ($rowAllocation > ($availableLimit + 0.1)) {
                     $invNum = $invoice->ti_number ?: $invoice->pi_number ?: $invoice->invoice_number ?: $invoiceId;
+
                     return redirect()->back()
                         ->withInput()
                         ->withErrors(['invoice_ids' => "Allocation for invoice #{$invNum} exceeds its available amount without tax of {$availableLimit}."]);
@@ -1014,7 +1021,7 @@ class PaymentsController extends Controller
 
         $previousInvoiceIds = $payment->paymentDetails()->pluck('invoiceid')->filter()->values()->all();
 
-        DB::transaction(function () use ($payment, $validated, $request, $invoiceIds, $previousInvoiceIds, $customReceived, $customTds, $paymentFlow) {
+        DB::transaction(function () use ($payment, $validated, $invoiceIds, $previousInvoiceIds, $customReceived, $customTds, $paymentFlow) {
             $updatePayload = [
                 'fy_id' => $payment->fy_id ?: $this->resolveDefaultFyId($payment->accountid),
                 'clientid' => $validated['clientid'],
@@ -1089,6 +1096,7 @@ class PaymentsController extends Controller
             if ($hasPaymentStatusColumn && strtolower(trim((string) ($detail->payment?->status ?? 'active'))) === 'cancelled') {
                 return 0;
             }
+
             return (float) ($detail->received_amount ?? 0) + (float) ($detail->tds_amount ?? 0);
         });
         $amountPaid = max(0, $amountPaid);
@@ -1118,8 +1126,8 @@ class PaymentsController extends Controller
             ->where('type', 'cr')
             ->first();
 
-        if (!$ledgerEntry) {
-            $ledgerEntry = new Ledger();
+        if (! $ledgerEntry) {
+            $ledgerEntry = new Ledger;
             $ledgerEntry->invoiceid_paymentid = $payment->paymentid;
         }
 
@@ -1153,6 +1161,7 @@ class PaymentsController extends Controller
         if ($hasColumn === null) {
             $hasColumn = Schema::hasColumn('payments', 'status');
         }
+
         return $hasColumn;
     }
 
@@ -1162,6 +1171,7 @@ class PaymentsController extends Controller
         if ($hasColumn === null) {
             $hasColumn = Schema::hasColumn('ledger', 'status');
         }
+
         return $hasColumn;
     }
 
@@ -1253,13 +1263,13 @@ class PaymentsController extends Controller
             $payload['sender_id'] = (string) ($accountBilling?->billing_name ?: $accountBilling?->billing_from_email ?: '');
         } else {
             $payload['message'] = $this->sanitizeForCampioText($this->htmlToPlainText($body));
-            if (!empty($template->template_id)) {
+            if (! empty($template->template_id)) {
                 $payload['template_id'] = (string) $template->template_id;
             }
-            if (!empty($template->meta_template_id)) {
+            if (! empty($template->meta_template_id)) {
                 $payload['meta_template_id'] = (string) $template->meta_template_id;
             }
-            if (!empty($template->sender_id)) {
+            if (! empty($template->sender_id)) {
                 $payload['sender_id'] = (string) $template->sender_id;
             }
         }
@@ -1346,6 +1356,7 @@ class PaymentsController extends Controller
 
         if ($channel === 'email') {
             $record['email'] = $toEmail;
+
             return $record;
         }
 
@@ -1354,6 +1365,7 @@ class PaymentsController extends Controller
             $phoneDigits = substr($phoneDigits, 2);
         }
         $record['mobile'] = $phoneDigits !== '' ? $phoneDigits : $phone;
+
         return $record;
     }
 
@@ -1364,7 +1376,7 @@ class PaymentsController extends Controller
             return ['ok' => false, 'message' => 'CAMPIO_BASE_URL is not configured.'];
         }
 
-        $endpoint = $baseUrl . '/api/campaigns/schedule/' . $channel;
+        $endpoint = $baseUrl.'/api/campaigns/schedule/'.$channel;
         $token = trim((string) env('CAMPIO_AUTH_TOKEN', ''));
         $apiKey = trim((string) env('CAMPIO_API_KEY', ''));
 
@@ -1379,21 +1391,22 @@ class PaymentsController extends Controller
         try {
             $response = $request->post($endpoint, $payload);
         } catch (\Throwable $e) {
-            return ['ok' => false, 'message' => 'Campio request failed: ' . $e->getMessage()];
+            return ['ok' => false, 'message' => 'Campio request failed: '.$e->getMessage()];
         }
 
         $json = $response->json();
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::error('Campio payment_received dispatch failed', [
                 'channel' => $channel,
                 'status' => $response->status(),
                 'response' => $json,
             ]);
+
             return [
                 'ok' => false,
                 'message' => is_array($json)
                     ? ((string) ($json['message'] ?? 'Campio API returned an error.'))
-                    : ('Campio API returned HTTP ' . $response->status() . '.'),
+                    : ('Campio API returned HTTP '.$response->status().'.'),
             ];
         }
 
@@ -1407,10 +1420,11 @@ class PaymentsController extends Controller
     {
         $value = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $value = str_replace(["\r\n", "\r"], "\n", $value);
-        $value = str_replace(["\\r\\n", "\\n"], "\n", $value);
+        $value = str_replace(['\\r\\n', '\\n'], "\n", $value);
         $value = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $value) ?? $value;
         $value = preg_replace('/[^\P{C}\n\t]+/u', '', $value) ?? $value;
         $value = preg_replace("/\n{3,}/", "\n\n", $value) ?? $value;
+
         return trim($value);
     }
 

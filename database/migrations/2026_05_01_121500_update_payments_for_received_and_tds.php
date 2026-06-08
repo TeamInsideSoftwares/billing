@@ -10,10 +10,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            if (!Schema::hasColumn('payments', 'received_amount')) {
+            if (! Schema::hasColumn('payments', 'received_amount')) {
                 $table->decimal('received_amount', 12, 2)->default(0)->after('invoiceid');
             }
-            if (!Schema::hasColumn('payments', 'tds_amount')) {
+            if (! Schema::hasColumn('payments', 'tds_amount')) {
                 $table->decimal('tds_amount', 12, 2)->default(0)->after('received_amount');
             }
         });
@@ -47,7 +47,7 @@ return new class extends Migration
                 $dropColumns[] = 'status';
             }
 
-            if (!empty($dropColumns)) {
+            if (! empty($dropColumns)) {
                 $table->dropColumn($dropColumns);
             }
         });
@@ -56,13 +56,13 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            if (!Schema::hasColumn('payments', 'debit')) {
+            if (! Schema::hasColumn('payments', 'debit')) {
                 $table->decimal('debit', 12, 2)->default(0)->after('invoiceid');
             }
-            if (!Schema::hasColumn('payments', 'credit')) {
+            if (! Schema::hasColumn('payments', 'credit')) {
                 $table->decimal('credit', 12, 2)->default(0)->after('debit');
             }
-            if (!Schema::hasColumn('payments', 'status')) {
+            if (! Schema::hasColumn('payments', 'status')) {
                 $table->string('status', 20)->default('completed')->after('reference_number');
             }
         });
@@ -91,7 +91,7 @@ return new class extends Migration
             if (Schema::hasColumn('payments', 'received_amount')) {
                 $dropColumns[] = 'received_amount';
             }
-            if (!empty($dropColumns)) {
+            if (! empty($dropColumns)) {
                 $table->dropColumn($dropColumns);
             }
         });

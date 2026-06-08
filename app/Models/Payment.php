@@ -26,8 +26,11 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 class Payment extends Model
 {
     protected $primaryKey = 'paymentid';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
+
     protected $fillable = [
         'accountid',
         'fy_id',
@@ -42,9 +45,11 @@ class Payment extends Model
         'description',
         'status',
     ];
+
     protected $casts = [
         'payment_date' => 'date',
     ];
+
     public function getRouteKeyName(): string
     {
         return 'paymentid';
@@ -56,7 +61,6 @@ class Payment extends Model
     }
 
     use HasAlphaNumericId;
-
 
     public function account(): BelongsTo
     {

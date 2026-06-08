@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -10,7 +11,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('order_items')) {
+        if (! Schema::hasTable('order_items')) {
             return;
         }
 
@@ -50,13 +51,13 @@ return new class extends Migration
             $sourceOrderId = (string) ($itemRow->orderid ?? '');
             $newOrderId = $this->generateUniqueOrderId($usedOrderIds);
 
-            if ($sourceOrderId !== '' && !array_key_exists($sourceOrderId, $invoiceOrderMap)) {
+            if ($sourceOrderId !== '' && ! array_key_exists($sourceOrderId, $invoiceOrderMap)) {
                 $invoiceOrderMap[$sourceOrderId] = $newOrderId;
             }
 
             $candidateOrderNumber = trim((string) ($header->order_number ?? ''));
             if ($candidateOrderNumber === '') {
-                $candidateOrderNumber = 'ORD-' . str_pad((string) (count($usedOrderNumbers) + 1), 4, '0', STR_PAD_LEFT);
+                $candidateOrderNumber = 'ORD-'.str_pad((string) (count($usedOrderNumbers) + 1), 4, '0', STR_PAD_LEFT);
             }
 
             $rowsToInsert[] = [
@@ -83,7 +84,7 @@ return new class extends Migration
             DB::table('orders_new')->insert($chunk);
         }
 
-        if (!empty($invoiceOrderMap) && Schema::hasTable('invoices') && Schema::hasColumn('invoices', 'orderid')) {
+        if (! empty($invoiceOrderMap) && Schema::hasTable('invoices') && Schema::hasColumn('invoices', 'orderid')) {
             foreach ($invoiceOrderMap as $legacyOrderId => $newOrderId) {
                 DB::table('invoices')
                     ->where('orderid', $legacyOrderId)
@@ -98,7 +99,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!Schema::hasTable('orders')) {
+        if (! Schema::hasTable('orders')) {
             return;
         }
 
@@ -154,7 +155,7 @@ return new class extends Migration
                 'clientid' => $row->clientid,
                 'order_number' => $row->order_number,
                 'status' => $row->status,
-                'order_date' => $row->created_at ? \Illuminate\Support\Carbon::parse($row->created_at)->toDateString() : now()->toDateString(),
+                'order_date' => $row->created_at ? Carbon::parse($row->created_at)->toDateString() : now()->toDateString(),
                 'delivery_date' => $row->delivery_date,
                 'subtotal' => $row->line_total,
                 'tax_total' => ceil(max(0, ((float) $row->line_total - (float) $row->discount_amount) * ((float) $row->tax_rate / 100))),
@@ -219,9 +220,9 @@ return new class extends Migration
 
         while (in_array($value, $usedOrderNumbers, true)) {
             if (preg_match('/^(.*?)(\d+)$/', $candidate, $matches)) {
-                $value = $matches[1] . str_pad((string) ((int) $matches[2] + $sequence - 1), strlen($matches[2]), '0', STR_PAD_LEFT);
+                $value = $matches[1].str_pad((string) ((int) $matches[2] + $sequence - 1), strlen($matches[2]), '0', STR_PAD_LEFT);
             } else {
-                $value = $candidate . '-' . $sequence;
+                $value = $candidate.'-'.$sequence;
             }
 
             $sequence++;

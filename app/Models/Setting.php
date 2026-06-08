@@ -14,7 +14,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class Setting extends Model
 {
-protected $primaryKey = 'settingid';
+    protected $primaryKey = 'settingid';
+
     public function getRouteKeyName(): string
     {
         return 'settingid';

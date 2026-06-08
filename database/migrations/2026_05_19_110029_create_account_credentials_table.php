@@ -42,7 +42,7 @@ return new class extends Migration
                     ];
                 }
 
-                if (!empty($payload)) {
+                if (! empty($payload)) {
                     DB::table('account_credentials')->upsert(
                         $payload,
                         ['accountid'],

@@ -27,9 +27,13 @@ class Quotation extends Model
     use HasAlphaNumericId;
 
     protected $table = 'quotations';
+
     protected $primaryKey = 'quotationid';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
+
     public $timestamps = true;
 
     public function getRouteKeyName(): string
@@ -86,7 +90,7 @@ class Quotation extends Model
 
         // If it's a string, try to decode it
         $decoded = json_decode($value, true);
-        
+
         // Handle double encoding: if decoded value is still a string, decode again
         if (is_string($decoded)) {
             $secondDecoded = json_decode($decoded, true);
@@ -138,6 +142,7 @@ class Quotation extends Model
         return (float) floor((float) $this->items->sum(function ($item) {
             $lineTotal = (float) ($item->line_total ?? 0);
             $discountedAmount = (float) ($item->discount_amount ?? 0);
+
             return max(0, $lineTotal - ($discountedAmount > 0 ? $discountedAmount : $lineTotal));
         }));
     }
@@ -149,6 +154,7 @@ class Quotation extends Model
             $discountedAmount = (float) ($item->discount_amount ?? 0);
             $taxableAmount = max(0, $discountedAmount > 0 ? $discountedAmount : $lineTotal);
             $rate = (float) ($item->tax_rate ?? 0);
+
             return ceil($taxableAmount * ($rate / 100));
         });
     }

@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Service extends Model
 {
     protected $table = 'items';
+
     protected $primaryKey = 'itemid';
 
     use HasAlphaNumericId;

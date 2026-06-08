@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name', 150);
             $table->string('slug', 150)->unique();
             $table->string('status', 20)->default('active');
-            
+
             $table->string('legal_name', 150)->nullable();
             $table->string('email', 150)->unique();
             $table->string('password');

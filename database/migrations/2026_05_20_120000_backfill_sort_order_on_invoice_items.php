@@ -9,18 +9,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('invoice_items')) {
+        if (! Schema::hasTable('invoice_items')) {
             return;
         }
 
-        if (!Schema::hasColumn('invoice_items', 'sequence')) {
+        if (! Schema::hasColumn('invoice_items', 'sequence')) {
             Schema::table('invoice_items', function (Blueprint $table) {
                 $table->unsignedInteger('sequence')->default(1);
             });
         }
 
         $primaryKey = Schema::hasColumn('invoice_items', 'invoice_itemid') ? 'invoice_itemid' : 'invoiceitemid';
-        if (!Schema::hasColumn('invoice_items', $primaryKey)) {
+        if (! Schema::hasColumn('invoice_items', $primaryKey)) {
             return;
         }
 
@@ -59,7 +59,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!Schema::hasTable('invoice_items')) {
+        if (! Schema::hasTable('invoice_items')) {
             return;
         }
 
@@ -69,7 +69,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasColumn('invoice_items', 'sort_order')) {
+        if (! Schema::hasColumn('invoice_items', 'sort_order')) {
             Schema::table('invoice_items', function (Blueprint $table) {
                 $table->unsignedInteger('sort_order')->default(1);
             });

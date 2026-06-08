@@ -20,8 +20,11 @@ class PaymentDetail extends Model
     use HasAlphaNumericId;
 
     protected $table = 'payment_details';
+
     protected $primaryKey = 'detailid';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [

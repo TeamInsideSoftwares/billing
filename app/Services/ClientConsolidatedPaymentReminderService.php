@@ -39,18 +39,18 @@ class ClientConsolidatedPaymentReminderService
             ->whereNotIn('payment_status', ['paid'])
             ->where('due_date', '<=', $todayStr)
             ->when(
-                !empty($accountId),
+                ! empty($accountId),
                 fn ($query) => $query->where('accountid', (string) $accountId)
             )
             ->when(
-                !empty($clientId),
+                ! empty($clientId),
                 fn ($query) => $query->where('clientid', (string) $clientId)
             )
             ->with(['items', 'payments', 'client.billingDetail'])
             ->get();
 
         // Group by accountid and clientid to process per client
-        $groupedByClient = $dueInvoicesQuery->groupBy(fn (Invoice $invoice) => (string) $invoice->accountid . '|' . (string) $invoice->clientid);
+        $groupedByClient = $dueInvoicesQuery->groupBy(fn (Invoice $invoice) => (string) $invoice->accountid.'|'.(string) $invoice->clientid);
 
         $summary = [
             'accounts' => 0,
@@ -71,11 +71,12 @@ class ClientConsolidatedPaymentReminderService
                     'accountid' => (string) ($clientInvoices->first()?->accountid ?? ''),
                     'clientid' => (string) ($clientInvoices->first()?->clientid ?? ''),
                 ]);
+
                 continue;
             }
 
             $firstInvoice = $unpaidDueInvoices->first();
-            if (!$firstInvoice) {
+            if (! $firstInvoice) {
                 continue;
             }
 
@@ -91,6 +92,7 @@ class ClientConsolidatedPaymentReminderService
                     'accountid' => $accountId,
                     'clientid' => $clientId,
                 ]);
+
                 continue;
             }
 
@@ -111,6 +113,7 @@ class ClientConsolidatedPaymentReminderService
                     'accountid' => $accountId,
                     'clientid' => $clientId,
                 ]);
+
                 continue;
             }
 
@@ -124,7 +127,7 @@ class ClientConsolidatedPaymentReminderService
             $emailAttachments = [];
 
             foreach ($unpaidDueInvoices as $invoice) {
-                $pdfType = !empty($invoice->ti_number) ? 'tax_invoice' : 'pi';
+                $pdfType = ! empty($invoice->ti_number) ? 'tax_invoice' : 'pi';
                 $pdfLink = $this->resolveStoredInvoicePdfUrl($invoice, $pdfType === 'tax_invoice');
                 $payLink = route('invoices.show', ['invoice' => $invoice->invoiceid]);
                 $pdfName = $this->buildInvoicePdfFilename($invoice, $pdfType === 'tax_invoice');
@@ -133,7 +136,7 @@ class ClientConsolidatedPaymentReminderService
 
                 $items[] = [
                     'invoice_number' => (string) $invoice->invoice_number,
-                    'invoice_title'  => (string) ($invoice->invoice_title ?? ''),
+                    'invoice_title' => (string) ($invoice->invoice_title ?? ''),
                     'overdue_days' => $overdueDays,
                     'balance_due' => $invoice->balance_due,
                     'pdf_link' => $pdfLink,
@@ -149,7 +152,7 @@ class ClientConsolidatedPaymentReminderService
                 $totalOverdueAmount += $invoice->balance_due;
             }
 
-            $subject = 'Outstanding Payments Summary - ' . (string) ($client?->business_name ?: $client?->contact_name ?: 'Client');
+            $subject = 'Outstanding Payments Summary - '.(string) ($client?->business_name ?: $client?->contact_name ?: 'Client');
             $senderName = (string) ($accountBilling?->billing_name ?: $account?->name ?: 'Team');
             $senderEmail = (string) ($accountBilling?->billing_from_email ?: $account?->email ?: '');
             $senderPhone = (string) ($account?->phone ?? '');
@@ -192,7 +195,7 @@ class ClientConsolidatedPaymentReminderService
                 'notes' => 'Automated consolidated payment due reminder',
             ];
             $campioAttachments = $this->buildCampioAttachments($emailAttachments);
-            if (!empty($campioAttachments)) {
+            if (! empty($campioAttachments)) {
                 $payload['attachments'] = $campioAttachments;
             }
 
@@ -255,7 +258,7 @@ class ClientConsolidatedPaymentReminderService
             return ['ok' => false, 'message' => 'CAMPIO_BASE_URL is not configured.'];
         }
 
-        $endpoint = $baseUrl . '/api/campaigns/schedule/' . $channel;
+        $endpoint = $baseUrl.'/api/campaigns/schedule/'.$channel;
         $token = trim((string) env('CAMPIO_AUTH_TOKEN', ''));
         $apiKey = trim((string) env('CAMPIO_API_KEY', ''));
 
@@ -270,11 +273,11 @@ class ClientConsolidatedPaymentReminderService
         try {
             $response = $request->post($endpoint, $payload);
         } catch (\Throwable $e) {
-            return ['ok' => false, 'message' => 'Campio request failed: ' . $e->getMessage()];
+            return ['ok' => false, 'message' => 'Campio request failed: '.$e->getMessage()];
         }
 
         $json = $response->json();
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::error('Campio consolidated payment reminder dispatch failed', [
                 'channel' => $channel,
                 'status' => $response->status(),
@@ -285,7 +288,7 @@ class ClientConsolidatedPaymentReminderService
                 'ok' => false,
                 'message' => is_array($json)
                     ? ((string) ($json['message'] ?? 'Campio API returned an error.'))
-                    : ('Campio API returned HTTP ' . $response->status() . '.'),
+                    : ('Campio API returned HTTP '.$response->status().'.'),
             ];
         }
 
@@ -303,7 +306,7 @@ class ClientConsolidatedPaymentReminderService
             ->sortByDesc(fn (array $row) => (int) ($row['version'] ?? 0))
             ->first();
 
-        if (!empty($stored['url'])) {
+        if (! empty($stored['url'])) {
             return (string) $stored['url'];
         }
 
@@ -316,15 +319,15 @@ class ClientConsolidatedPaymentReminderService
     private function listStoredInvoicePdfVersions(Invoice $invoice): array
     {
         $disk = Storage::disk('public');
-        $directory = 'clients/' . $invoice->clientid . '/invoices-pdf';
-        if (!$disk->exists($directory)) {
+        $directory = 'clients/'.$invoice->clientid.'/invoices-pdf';
+        if (! $disk->exists($directory)) {
             return [];
         }
 
         return collect($disk->files($directory))
             ->map(function (string $path) use ($invoice, $disk) {
                 $name = pathinfo($path, PATHINFO_FILENAME);
-                if (!preg_match('/^' . preg_quote($invoice->invoiceid, '/') . '_(pi|ti)__v(\d+)$/', $name, $matches)) {
+                if (! preg_match('/^'.preg_quote($invoice->invoiceid, '/').'_(pi|ti)__v(\d+)$/', $name, $matches)) {
                     return null;
                 }
 
@@ -333,7 +336,7 @@ class ClientConsolidatedPaymentReminderService
                     'version' => (int) $matches[2],
                     'filename' => basename($path),
                     'path' => $path,
-                    'url' => asset('storage/' . $path),
+                    'url' => asset('storage/'.$path),
                     'saved_at' => optional($disk->lastModified($path) ? Carbon::createFromTimestamp($disk->lastModified($path)) : null)?->toDateTimeString(),
                 ];
             })
@@ -347,7 +350,7 @@ class ClientConsolidatedPaymentReminderService
         $documentType = $isTaxInvoice ? 'Tax Invoice' : 'Proforma Invoice';
         $number = trim((string) ($isTaxInvoice ? ($invoice->ti_number ?: $invoice->invoice_number) : ($invoice->pi_number ?: $invoice->invoice_number)));
 
-        return $documentType . ' - ' . ($number !== '' ? $number : $invoice->invoiceid) . '.pdf';
+        return $documentType.' - '.($number !== '' ? $number : $invoice->invoiceid).'.pdf';
     }
 
     private function buildCampioAttachments(array $attachmentsInput): array
@@ -355,7 +358,7 @@ class ClientConsolidatedPaymentReminderService
         $attachments = [];
 
         foreach ($attachmentsInput as $index => $item) {
-            if (!is_array($item)) {
+            if (! is_array($item)) {
                 continue;
             }
 
@@ -366,7 +369,7 @@ class ClientConsolidatedPaymentReminderService
 
             $name = trim((string) ($item['name'] ?? ''));
             if ($name === '') {
-                $name = 'attachment-' . ($index + 1) . '.pdf';
+                $name = 'attachment-'.($index + 1).'.pdf';
             }
 
             $attachments[] = [

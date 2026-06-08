@@ -1,39 +1,40 @@
 <!-- Step 1: Client Selection -->
-<div id="step1" class="invoice-step">
-    <div class="quotation-centered-card">
-        <div class="quotation-step3-header">
-            <div class="quotation-step3-header-row">
-                <div class="quotation-step3-avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="quotation-step3-client min-w-0">
-                    <div class="quotation-step3-client-name">Select Client</div>
-                    <div class="quotation-step3-client-email">Choose the client to continue the invoice flow.</div>
-                </div>
-                <div class="quotation-step3-tools">
-                    <div class="invoice-compact-steps invoice-compact-steps--right" aria-label="Step progress">
-                        <span class="invoice-compact-step is-active">1</span>
-                        <span class="invoice-compact-step">2</span>
-                        <span class="invoice-compact-step">3</span>
-                        <span class="invoice-compact-step">4</span>
-                    </div>
+<div id="step1">
+    <div class="bg-light p-4 rounded-3 border">
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="d-flex align-items-center justify-content-center bg-white rounded-circle border" style="width: 40px; height: 40px;">
+                <i class="fas fa-user text-primary"></i>
+            </div>
+            <div class="min-w-0">
+                <div class="fw-semibold text-dark">Select Client</div>
+                <div class="text-muted small">Choose the client to continue the invoice flow.</div>
+            </div>
+            <div class="ms-auto">
+                <div class="d-inline-flex align-items-center gap-1" aria-label="Step progress">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary text-white fw-semibold" style="width: 26px; height: 26px; font-size: 0.75rem;">1</span>
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light text-muted border fw-semibold" style="width: 26px; height: 26px; font-size: 0.75rem;">2</span>
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light text-muted border fw-semibold" style="width: 26px; height: 26px; font-size: 0.75rem;">3</span>
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light text-muted border fw-semibold" style="width: 26px; height: 26px; font-size: 0.75rem;">4</span>
                 </div>
             </div>
         </div>
 
-        <div class="soft-panel soft-panel--padded">
-            <label for="clientid" class="field-label">Client</label>
-            <select id="clientid" name="clientid" required class="form-input">
-                <option value="">Choose client</option>
-                @foreach($clients as $client)
-                    <option value="{{ $client->clientid }}" data-currency="{{ $client->currency ?? 'INR' }}" {{ old('clientid', request('c')) == $client->clientid ? 'selected' : '' }}>
-                        {{ $client->business_name ?? $client->contact_name }}
-                    </option>
-                @endforeach
-            </select>
-            <div class="mt-3 d-flex justify-content-end">
-                <button type="button" id="btnNextToStep2" class="primary-button">Next</button>
+        <div class="row g-2">
+            <div class="col-12">
+                <label for="clientid" class="form-label small lh-sm fw-semibold text-dark mb-1">Client</label>
+                <select id="clientid" name="clientid" required class="form-select">
+                    <option value="">Choose client</option>
+                    @foreach($clients as $client)
+                        <option value="{{ $client->clientid }}" data-currency="{{ $client->currency ?? 'INR' }}" {{ old('clientid', request('c')) == $client->clientid ? 'selected' : '' }}>
+                            {{ $client->business_name ?? $client->contact_name }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+            <button type="button" id="btnNextToStep2" class="btn btn-outline-primary btn-primary text-white fw-medium">Next</button>
         </div>
     </div>
 </div>

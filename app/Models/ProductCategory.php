@@ -45,4 +45,3 @@ class ProductCategory extends Model
         return $this->belongsTo(Account::class);
     }
 }
-

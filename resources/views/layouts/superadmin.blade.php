@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -18,6 +19,7 @@
             min-height: 100vh;
             background: #f5f7fb;
         }
+
         .superadmin-topbar {
             position: sticky;
             top: 0;
@@ -30,6 +32,7 @@
             justify-content: space-between;
             gap: 1rem;
         }
+
         .superadmin-brand {
             display: flex;
             align-items: center;
@@ -39,6 +42,7 @@
             font-weight: 700;
             color: #0f172a;
         }
+
         .superadmin-content {
             max-width: 1200px;
             margin: 0 auto;
@@ -46,6 +50,7 @@
         }
     </style>
 </head>
+
 <body class="superadmin-shell">
     @if (session('success') || session('error'))
         <div id="app-toast-container" class="app-toast-container">
@@ -82,4 +87,5 @@
         @yield('content')
     </main>
 </body>
+
 </html>

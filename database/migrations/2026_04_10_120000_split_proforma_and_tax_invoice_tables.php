@@ -19,7 +19,7 @@ return new class extends Migration
         }
 
         // Create proforma_invoices table
-        if (!Schema::hasTable('proforma_invoices')) {
+        if (! Schema::hasTable('proforma_invoices')) {
             Schema::create('proforma_invoices', function (Blueprint $table) {
                 $table->string('proformaid', 6)->primary();
                 $table->string('accountid', 10);
@@ -51,7 +51,7 @@ return new class extends Migration
         }
 
         // Create tax_invoices table with alphanumeric ID
-        if (!Schema::hasTable('tax_invoices')) {
+        if (! Schema::hasTable('tax_invoices')) {
             Schema::create('tax_invoices', function (Blueprint $table) {
                 $table->string('invoiceid', 6)->primary(); // Alphanumeric primary key
                 $table->string('accountid', 10);
@@ -85,7 +85,7 @@ return new class extends Migration
         }
 
         // Create pi_items table (proforma invoice items)
-        if (!Schema::hasTable('pi_items')) {
+        if (! Schema::hasTable('pi_items')) {
             Schema::create('pi_items', function (Blueprint $table) {
                 $table->string('proformaitemid', 6)->primary();
                 $table->string('proformaid', 6);
@@ -109,7 +109,7 @@ return new class extends Migration
         }
 
         // Create ti_items table (tax invoice items)
-        if (!Schema::hasTable('ti_items')) {
+        if (! Schema::hasTable('ti_items')) {
             Schema::create('ti_items', function (Blueprint $table) {
                 $table->string('invoiceitemid', 6)->primary();
                 $table->string('invoiceid', 6); // Alphanumeric foreign key
@@ -136,23 +136,23 @@ return new class extends Migration
     public function down(): void
     {
         if (Schema::hasTable('tax_invoices') && Schema::hasTable('proforma_invoices')) {
-            if (!Schema::hasColumn('tax_invoices', 'invoice_type')) {
+            if (! Schema::hasColumn('tax_invoices', 'invoice_type')) {
                 Schema::table('tax_invoices', function (Blueprint $table) {
                     $table->string('invoice_type', 30)->default('tax')->after('invoice_title');
                 });
             }
 
-            if (!Schema::hasColumn('tax_invoices', 'converted_from_invoiceid')) {
+            if (! Schema::hasColumn('tax_invoices', 'converted_from_invoiceid')) {
                 Schema::table('tax_invoices', function (Blueprint $table) {
                     $table->string('converted_from_invoiceid', 6)->nullable()->after('orderid');
                 });
             }
 
-            DB::statement("
+            DB::statement('
                 UPDATE tax_invoices
                 SET converted_from_invoiceid = proformaid
                 WHERE proformaid IS NOT NULL
-            ");
+            ');
 
             DB::statement("
                 INSERT INTO tax_invoices (
@@ -173,7 +173,7 @@ return new class extends Migration
         }
 
         if (Schema::hasTable('ti_items') && Schema::hasTable('pi_items')) {
-            DB::statement("
+            DB::statement('
                 INSERT INTO ti_items (
                     invoiceitemid, invoiceid, itemid, item_name, item_description,
                     quantity, unit_price, tax_rate, taxid, duration, frequency,
@@ -186,7 +186,7 @@ return new class extends Migration
                     no_of_users, start_date, end_date, line_total, sort_order,
                     created_at, updated_at
                 FROM pi_items
-            ");
+            ');
         }
 
         Schema::dropIfExists('pi_items');

@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Models\Concerns\HasAlphaNumericId;
 use App\Models\Concerns\HasSerialNumber;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Order;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -15,7 +14,9 @@ class SerialConfiguration extends Model
     use HasAlphaNumericId, HasSerialNumber;
 
     protected $primaryKey = 'serial_configid';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected function idLength(): int
@@ -203,7 +204,7 @@ class SerialConfiguration extends Model
         $max = null;
 
         foreach ($numbers as $number) {
-            if (!is_string($number) || !preg_match($pattern, $number, $matches) || !isset($matches['target'])) {
+            if (! is_string($number) || ! preg_match($pattern, $number, $matches) || ! isset($matches['target'])) {
                 continue;
             }
 

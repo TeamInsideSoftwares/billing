@@ -33,9 +33,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class QuotationItem extends Model
 {
     protected $table = 'quotation_items';
+
     protected $primaryKey = 'quo_itemid';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
+
     public $timestamps = true;
 
     protected function idLength(): int

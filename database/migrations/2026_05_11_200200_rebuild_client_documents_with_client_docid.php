@@ -10,12 +10,12 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('client_documents')) {
+        if (! Schema::hasTable('client_documents')) {
             return;
         }
 
         $columns = Schema::getColumnListing('client_documents');
-        if (in_array('client_docid', $columns, true) && !in_array('id', $columns, true)) {
+        if (in_array('client_docid', $columns, true) && ! in_array('id', $columns, true)) {
             return;
         }
 
@@ -50,7 +50,7 @@ return new class extends Migration
         $payload = [];
         foreach ($sourceRows as $row) {
             $payload[] = [
-                'client_docid' => !empty($row->client_docid) ? (string) $row->client_docid : $nextClientDocId(),
+                'client_docid' => ! empty($row->client_docid) ? (string) $row->client_docid : $nextClientDocId(),
                 'accountid' => $row->accountid,
                 'clientid' => $row->clientid,
                 'type' => $row->type,
@@ -72,7 +72,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!Schema::hasTable('client_documents')) {
+        if (! Schema::hasTable('client_documents')) {
             return;
         }
 

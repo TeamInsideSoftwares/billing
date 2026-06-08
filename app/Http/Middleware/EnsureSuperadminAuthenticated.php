@@ -10,7 +10,7 @@ class EnsureSuperadminAuthenticated
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->session()->get('superadmin_authenticated', false)) {
+        if (! $request->session()->get('superadmin_authenticated', false)) {
             return redirect()->route('login')->withErrors([
                 'email' => 'Please login with superadmin credentials.',
             ]);
@@ -19,4 +19,3 @@ class EnsureSuperadminAuthenticated
         return $next($request);
     }
 }
-

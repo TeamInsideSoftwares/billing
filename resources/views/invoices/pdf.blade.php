@@ -303,7 +303,7 @@
             object-fit: contain;
         }
 
-       .sig-line {
+        .sig-line {
             position: relative;
             padding-top: 0.45rem;
             font-size: 9pt;
@@ -316,8 +316,10 @@
             position: absolute;
             top: 0;
             left: 66%;
-            width: 150px;          /* line width */
-            height: 0.6px;         /* line thickness */
+            width: 150px;
+            /* line width */
+            height: 0.6px;
+            /* line thickness */
             background: #000;
             transform: translateX(-50%);
         }
@@ -475,40 +477,42 @@
         @endif
     </div>
 
-@php
-    $hasRecurring = $invoice->items->some(fn($i) => !empty($i->frequency) && $i->frequency !== 'One-Time');
-    $currency = $invoice->client->currency ?? 'INR';
-    $accountHasUsers = (bool) ($account->have_users ?? false);
-    $hasUsersColumn = $accountHasUsers && $invoice->items->contains(fn($i) => !empty($i->no_of_users) && (int) $i->no_of_users > 0);
+    @php
+        $hasRecurring = $invoice->items->some(fn($i) => !empty($i->frequency) && $i->frequency !== 'One-Time');
+        $currency = $invoice->client->currency ?? 'INR';
+        $accountHasUsers = (bool) ($account->have_users ?? false);
+        $hasUsersColumn =
+            $accountHasUsers &&
+            $invoice->items->contains(fn($i) => !empty($i->no_of_users) && (int) $i->no_of_users > 0);
 
-    $subtotal = 0;
-    $discountTotal = 0;
-    $discountedSubtotal = 0;
-    $taxTotal = 0;
+        $subtotal = 0;
+        $discountTotal = 0;
+        $discountedSubtotal = 0;
+        $taxTotal = 0;
 
-    foreach ($invoice->items as $item) {
-        $lt = (float) ($item->line_total ?? 0);
-        $discountPercent = max(0, min(100, (float) ($item->discount_percent ?? 0)));
-        $discountedAmount = max(0, $lt - (($lt * $discountPercent) / 100));
+        foreach ($invoice->items as $item) {
+            $lt = (float) ($item->line_total ?? 0);
+            $discountPercent = max(0, min(100, (float) ($item->discount_percent ?? 0)));
+            $discountedAmount = max(0, $lt - ($lt * $discountPercent) / 100);
 
-        $ta = ceil($discountedAmount * ((float) ($item->tax_rate ?? 0) / 100));
+            $ta = ceil($discountedAmount * ((float) ($item->tax_rate ?? 0) / 100));
 
-        $subtotal += $lt;
-        $discountedSubtotal += $discountedAmount;
-        $discountTotal += max(0, $lt - $discountedAmount);
-        $taxTotal += $ta;
-    }
+            $subtotal += $lt;
+            $discountedSubtotal += $discountedAmount;
+            $discountTotal += max(0, $lt - $discountedAmount);
+            $taxTotal += $ta;
+        }
 
-    $discountedSubtotal = floor($discountedSubtotal);
-    $discountTotal = floor($discountTotal);
-    $taxTotal = ceil($taxTotal);
+        $discountedSubtotal = floor($discountedSubtotal);
+        $discountTotal = floor($discountTotal);
+        $taxTotal = ceil($taxTotal);
 
-    $grandTotal = $discountedSubtotal + $taxTotal;
+        $grandTotal = $discountedSubtotal + $taxTotal;
 
-    $cgst = $sameStateGst ? $taxTotal / 2 : 0;
-    $sgst = $sameStateGst ? $taxTotal - $cgst : 0;
-    $igst = $sameStateGst ? 0 : $taxTotal;
-@endphp
+        $cgst = $sameStateGst ? $taxTotal / 2 : 0;
+        $sgst = $sameStateGst ? $taxTotal - $cgst : 0;
+        $igst = $sameStateGst ? 0 : $taxTotal;
+    @endphp
 
     <table>
         <thead>
@@ -536,8 +540,8 @@
                     $quantity = max(1, (int) ($item->quantity ?? 1));
                     $baseLineTotal = max(0, (float) ($item->line_total ?? 0));
                     $discountPercent = max(0, min(100, (float) ($item->discount_percent ?? 0)));
-                    $discountedAmount = max(0, $baseLineTotal - (($baseLineTotal * $discountPercent) / 100));
-                    $discountedRate = $quantity > 0 ? ($discountedAmount / $quantity) : 0;
+                    $discountedAmount = max(0, $baseLineTotal - ($baseLineTotal * $discountPercent) / 100);
+                    $discountedRate = $quantity > 0 ? $discountedAmount / $quantity : 0;
                     $discountedRateLabel = preg_replace('/\.00$/', '', number_format($discountedRate, 2, '.', ''));
                 @endphp
 
@@ -578,10 +582,9 @@
                     </td>
 
                     <td class="right" style="vertical-align: middle;">
-                       <b> {{ number_format($discountedAmount, 0) }}</b>
+                        <b> {{ number_format($discountedAmount, 0) }}</b>
                     </td>
                 </tr>
-
             @endforeach
             <tr>
                 <td colspan="{{ $hasUsersColumn ? 6 : 5 }}" style="text-align:right;">
@@ -603,14 +606,14 @@
                     {{ $sgst > 0 ? number_format($sgst, 0) : '0' }}
                     <strong>IGST</strong>
 
-                    {{ $igst > 0 ? number_format($igst, 0) : '0' }}</td>
-                <td class="right"
-                    style="padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
+                    {{ $igst > 0 ? number_format($igst, 0) : '0' }}
+                </td>
+                <td class="right" style="padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
                     <strong>GST</strong>
                 </td>
-                <td class="right"
-                    style="padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
-                <b> {{ number_format($taxTotal, 0) }}</b></td>
+                <td class="right" style="padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
+                    <b> {{ number_format($taxTotal, 0) }}</b>
+                </td>
             </tr>
         </tbody>
     </table>
@@ -652,7 +655,7 @@
                 {{ $accountBillingDetail->authorize_signatory ?? '' }}
             </div>
             <div>
-                {{ ($accountBillingDetail->billing_name ?? $account->name)}}
+                {{ $accountBillingDetail->billing_name ?? $account->name }}
             </div>
         </div>
     </div>

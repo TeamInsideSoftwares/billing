@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 class ClientConsolidatedReminderService
 {
     private const WINDOW_DAYS = 10;
+
     private const ATTACHMENT_TYPE = 'consolidated_order_summary';
 
     public function dispatchAutomatedConsolidatedEmails(?string $accountId = null): array
@@ -36,11 +37,11 @@ class ClientConsolidatedReminderService
             ->whereDate('end_date', '<', '2099-01-01')
             ->whereBetween('end_date', [$triggerFromDate, $triggerToDate])
             ->when(
-                !empty($accountId),
+                ! empty($accountId),
                 fn ($query) => $query->where('accountid', (string) $accountId)
             )
             ->where(function ($query) {
-                $query->whereIn('status', ['active', 'running'])
+                $query->whereNotIn('status', ['cancelled', 'suspended'])
                     ->orWhereNull('status');
             })
             ->orderBy('accountid')
@@ -55,13 +56,14 @@ class ClientConsolidatedReminderService
             'skipped' => 0,
         ];
 
-        $grouped = $triggerOrders->groupBy(fn (Order $order) => (string) $order->accountid . '|' . (string) $order->clientid);
+        $grouped = $triggerOrders->groupBy(fn (Order $order) => (string) $order->accountid.'|'.(string) $order->clientid);
 
         foreach ($grouped as $rows) {
             /** @var Order $first */
             $first = $rows->first();
-            if (!$first) {
+            if (! $first) {
                 $summary['skipped']++;
+
                 continue;
             }
 
@@ -73,7 +75,7 @@ class ClientConsolidatedReminderService
                 ->whereNotNull('end_date')
                 ->whereDate('end_date', '<', '2099-01-01')
                 ->where(function ($query) {
-                    $query->whereIn('status', ['active', 'running'])
+                    $query->whereNotIn('status', ['cancelled', 'suspended'])
                         ->orWhereNull('status');
                 })
                 ->with(['client.billingDetail'])
@@ -83,12 +85,14 @@ class ClientConsolidatedReminderService
             $client = $allClientOrders->first()?->client;
             if ($allClientOrders->isEmpty()) {
                 $summary['skipped']++;
+
                 continue;
             }
 
             $toEmail = $this->resolveRecipientEmailFromOrder($first);
             if ($toEmail === '') {
                 $summary['skipped']++;
+
                 continue;
             }
 
@@ -104,6 +108,7 @@ class ClientConsolidatedReminderService
 
             if ($alreadySent) {
                 $summary['skipped']++;
+
                 continue;
             }
 
@@ -122,11 +127,11 @@ class ClientConsolidatedReminderService
                     'end_date' => $endDate?->format('d M Y') ?? '-',
                     'days_label' => $daysDiff === null
                         ? '-'
-                        : ($daysDiff >= 0 ? ($daysDiff . ' day(s) left') : (abs($daysDiff) . ' day(s) ago')),
+                        : ($daysDiff >= 0 ? ($daysDiff.' day(s) left') : (abs($daysDiff).' day(s) ago')),
                 ];
             })->values();
 
-            $subject = 'Order Expiry Summary - ' . (string) ($client?->business_name ?: $client?->contact_name ?: 'Client');
+            $subject = 'Order Expiry Summary - '.(string) ($client?->business_name ?: $client?->contact_name ?: 'Client');
             $senderName = (string) ($accountBilling?->billing_name ?: $account?->name ?: 'Team');
             $senderEmail = (string) ($accountBilling?->billing_from_email ?: $account?->email ?: '');
             $senderPhone = (string) ($account?->phone ?? '');
@@ -225,7 +230,7 @@ class ClientConsolidatedReminderService
             return ['ok' => false, 'message' => 'CAMPIO_BASE_URL is not configured.'];
         }
 
-        $endpoint = $baseUrl . '/api/campaigns/schedule/' . $channel;
+        $endpoint = $baseUrl.'/api/campaigns/schedule/'.$channel;
         $token = trim((string) env('CAMPIO_AUTH_TOKEN', ''));
         $apiKey = trim((string) env('CAMPIO_API_KEY', ''));
 
@@ -240,11 +245,11 @@ class ClientConsolidatedReminderService
         try {
             $response = $request->post($endpoint, $payload);
         } catch (\Throwable $e) {
-            return ['ok' => false, 'message' => 'Campio request failed: ' . $e->getMessage()];
+            return ['ok' => false, 'message' => 'Campio request failed: '.$e->getMessage()];
         }
 
         $json = $response->json();
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::error('Campio consolidated reminder dispatch failed', [
                 'channel' => $channel,
                 'status' => $response->status(),
@@ -255,7 +260,7 @@ class ClientConsolidatedReminderService
                 'ok' => false,
                 'message' => is_array($json)
                     ? ((string) ($json['message'] ?? 'Campio API returned an error.'))
-                    : ('Campio API returned HTTP ' . $response->status() . '.'),
+                    : ('Campio API returned HTTP '.$response->status().'.'),
             ];
         }
 

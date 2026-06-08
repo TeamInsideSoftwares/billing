@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Group;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class GroupsController extends Controller
@@ -14,7 +15,7 @@ class GroupsController extends Controller
         $query = Group::where('accountid', $userAccountId);
         $searchTerm = request('search', '');
         if ($searchTerm) {
-            $query->where('group_name', 'like', '%' . $searchTerm . '%');
+            $query->where('group_name', 'like', '%'.$searchTerm.'%');
         }
         $resultCount = $query->count();
         $groups = $query->latest()->take(20)->get()->map(function ($g) {
@@ -34,10 +35,33 @@ class GroupsController extends Controller
 
         return view('groups.index', [
             'title' => 'Client Groups',
-            'subtitle' => $searchTerm ? 'Search results for "' . $searchTerm . '"' : null,
+            'subtitle' => $searchTerm ? 'Search results for "'.$searchTerm.'"' : null,
             'groups' => $groups,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
+        ]);
+    }
+
+    private function groupsJsonResponse(string $accountId, string $message): JsonResponse
+    {
+        $groups = Group::where('accountid', $accountId)->orderBy('group_name')->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'groups' => $groups->map(function ($g) {
+                return [
+                    'groupid' => $g->groupid,
+                    'group_name' => $g->group_name,
+                    'email' => $g->email,
+                    'address_line_1' => $g->address_line_1,
+                    'address_line_2' => $g->address_line_2,
+                    'city' => $g->city,
+                    'state' => $g->state,
+                    'postal_code' => $g->postal_code,
+                    'country' => $g->country,
+                ];
+            }),
         ]);
     }
 
@@ -64,6 +88,10 @@ class GroupsController extends Controller
 
         Group::create($validated);
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return $this->groupsJsonResponse($userAccountId, 'Group created successfully.');
+        }
+
         return redirect()->back()->with('success', 'Group created successfully.')->with('open_group_modal', true);
     }
 
@@ -72,6 +100,7 @@ class GroupsController extends Controller
         if ($group->accountid !== $this->resolveAccountId()) {
             abort(403);
         }
+
         return view('groups.show', [
             'title' => $group->group_name ?? 'Group',
             'subtitle' => 'Group Details',
@@ -84,7 +113,8 @@ class GroupsController extends Controller
         if ($group->accountid !== $this->resolveAccountId()) {
             abort(403);
         }
-        return view('groups.form', ['title' => 'Edit ' . ($group->group_name ?? 'Group'), 'group' => $group]);
+
+        return view('groups.form', ['title' => 'Edit '.($group->group_name ?? 'Group'), 'group' => $group]);
     }
 
     public function groupsUpdate(Request $request, $id)
@@ -105,6 +135,10 @@ class GroupsController extends Controller
 
         $group->update($validated);
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return $this->groupsJsonResponse($userAccountId, 'Group updated successfully.');
+        }
+
         return redirect()->back()->with('success', 'Group updated successfully.')->with('open_group_modal', true);
     }
 
@@ -114,6 +148,10 @@ class GroupsController extends Controller
             abort(403);
         }
         $group->delete();
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return $this->groupsJsonResponse($this->resolveAccountId(), 'Group deleted successfully.');
+        }
 
         return redirect()->back()->with('success', 'Group deleted successfully.')->with('open_group_modal', true);
     }

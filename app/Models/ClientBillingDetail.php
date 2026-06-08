@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ClientBillingDetail extends Model
 {
     protected $primaryKey = 'bd_id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [

@@ -9,7 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasColumn('ledger', 'status')) {
+        if (! Schema::hasColumn('ledger', 'status')) {
             Schema::table('ledger', function (Blueprint $table) {
                 $table->string('status', 20)->default('active')->after('description');
                 $table->index(['type', 'status']);
@@ -38,4 +38,3 @@ return new class extends Migration
         }
     }
 };
-

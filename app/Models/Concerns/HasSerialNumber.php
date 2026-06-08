@@ -10,8 +10,8 @@ trait HasSerialNumber
 
         foreach (['prefix', 'number', 'suffix'] as $index => $part) {
             // Check if this part is enabled
-            $showValue = $this->getAttribute($part . '_show');
-            if ($showValue !== null && !$showValue) {
+            $showValue = $this->getAttribute($part.'_show');
+            if ($showValue !== null && ! $showValue) {
                 continue;
             }
 
@@ -26,7 +26,7 @@ trait HasSerialNumber
             if ($part !== 'suffix') {
                 $nextPart = ['prefix' => 'number', 'number' => 'suffix'][$part] ?? null;
                 $nextValue = $nextPart ? trim($this->getPartValue($nextPart)) : '';
-                $separatorField = $part . '_separator';
+                $separatorField = $part.'_separator';
                 $separator = $this->normalizeSeparator($this->{$separatorField} ?? 'none');
 
                 if ($separator !== '' && $nextValue !== '') {
@@ -41,7 +41,7 @@ trait HasSerialNumber
     protected function getPartValue(string $part): string
     {
         $type = $this->getPartType($part);
-        $val = $this->{$part . '_value'} ?? '';
+        $val = $this->{$part.'_value'} ?? '';
 
         switch ($type) {
             case 'manual text':
@@ -62,7 +62,8 @@ trait HasSerialNumber
 
                 return $this->formatAutoIncrementNumber($nextNumber, $part);
             case 'auto generate':
-                $length = $this->{$part . '_length'} ?? 4;
+                $length = $this->{$part.'_length'} ?? 4;
+
                 return $this->generateAlphaNumeric($length);
             default:
                 return $val;
@@ -71,12 +72,12 @@ trait HasSerialNumber
 
     protected function getPartType(string $part): string
     {
-        return $this->{$part . '_type'} ?? ($part === 'number' ? 'auto increment' : 'manual text');
+        return $this->{$part.'_type'} ?? ($part === 'number' ? 'auto increment' : 'manual text');
     }
 
     protected function resolveConfiguredAutoIncrementStart(string $part): int
     {
-        $start = $this->{$part . '_value'} ?? null;
+        $start = $this->{$part.'_value'} ?? null;
 
         $start = (int) ($start ?: 0);
 
@@ -94,7 +95,7 @@ trait HasSerialNumber
             $serials = $this->getExistingSerialNumbers();
 
             foreach ($serials as $serial) {
-                if (!is_string($serial) || trim($serial) === '') {
+                if (! is_string($serial) || trim($serial) === '') {
                     continue;
                 }
 
@@ -104,7 +105,7 @@ trait HasSerialNumber
                 }
             }
 
-            if (!empty($existingNumbers)) {
+            if (! empty($existingNumbers)) {
                 $sorted = array_keys($existingNumbers);
                 sort($sorted, SORT_NUMERIC);
 
@@ -115,6 +116,7 @@ trait HasSerialNumber
                     }
                     if ($used === $candidate) {
                         $candidate++;
+
                         continue;
                     }
                     if ($used > $candidate) {
@@ -190,19 +192,19 @@ trait HasSerialNumber
                 $nextPart = $parts[$index + 1] ?? null;
 
                 if ($nextPart && $this->partHasOutput($nextPart)) {
-                    $pattern .= preg_quote($this->normalizeSeparator($this->{$part . '_separator'} ?? null), '/');
+                    $pattern .= preg_quote($this->normalizeSeparator($this->{$part.'_separator'} ?? null), '/');
                 }
             }
         }
 
-        return '/' . $pattern . '$/';
+        return '/'.$pattern.'$/';
     }
 
     protected function buildPartPattern(string $part, string $type, bool $isTarget): string
     {
         return match ($type) {
             'auto increment' => $isTarget ? '(?<target>\d+)' : '\d+',
-            'auto generate' => '[A-Z0-9]{' . max(1, (int) ($this->{$part . '_length'} ?? 4)) . '}',
+            'auto generate' => '[A-Z0-9]{'.max(1, (int) ($this->{$part.'_length'} ?? 4)).'}',
             default => preg_quote($this->resolveStaticPartValue($part, $type), '/'),
         };
     }
@@ -210,7 +212,7 @@ trait HasSerialNumber
     protected function resolveStaticPartValue(string $part, ?string $type = null): string
     {
         $type = $type ?? $this->getPartType($part);
-        $val = $this->{$part . '_value'} ?? '';
+        $val = $this->{$part.'_value'} ?? '';
 
         return match ($type) {
             'manual text', 'value/number', 'fixed value' => (string) $val,
@@ -225,9 +227,9 @@ trait HasSerialNumber
     protected function partHasOutput(string $part): bool
     {
         // Check if this part is enabled via show field
-        $showField = $part . '_show';
+        $showField = $part.'_show';
         $showValue = $this->getAttribute($showField);
-        if ($showValue !== null && !$showValue) {
+        if ($showValue !== null && ! $showValue) {
             return false;
         }
 
@@ -245,7 +247,8 @@ trait HasSerialNumber
         // Simple string increment: find trailing numbers and increment them
         return preg_replace_callback('/(\d+)$/', function ($matches) {
             $num = $matches[1];
-            $inc = (int)$num + 1;
+            $inc = (int) $num + 1;
+
             return str_pad($inc, strlen($num), '0', STR_PAD_LEFT);
         }, $str);
     }
@@ -263,6 +266,7 @@ trait HasSerialNumber
         for ($i = 0; $i < $length; $i++) {
             $result .= $chars[rand(0, strlen($chars) - 1)];
         }
+
         return $result;
     }
 

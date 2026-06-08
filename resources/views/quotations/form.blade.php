@@ -26,10 +26,17 @@
                 <label for="clientid">Select Client *</label>
                 <select id="clientid" name="clientid" required>
                     <option value="">-- Choose Client --</option>
-                    @foreach($clients as $client)
-                        <option value="{{ $client->clientid }}" {{ old('clientid', $quotation->clientid) == $client->clientid ? 'selected' : '' }}>
-                            {{ $client->business_name ?? $client->contact_name }}
-                        </option>
+                    @php $groupedClients = $clients->groupBy(fn ($c) => $c->type === 'trial' ? 'trial' : 'regular') @endphp
+                    @foreach (['regular', 'trial'] as $group)
+                        @if ($groupedClients->has($group))
+                        <optgroup label="{{ $group === 'regular' ? 'Regular Clients' : 'Trial Clients' }}">
+                            @foreach ($groupedClients[$group] as $client)
+                                <option value="{{ $client->clientid }}" {{ old('clientid', $quotation->clientid) == $client->clientid ? 'selected' : '' }}>
+                                    {{ $client->business_name ?? $client->contact_name }}
+                                </option>
+                            @endforeach
+                        </optgroup>
+                        @endif
                     @endforeach
                 </select>
             </div>

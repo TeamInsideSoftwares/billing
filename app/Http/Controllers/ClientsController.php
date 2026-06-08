@@ -7,18 +7,20 @@ use App\Models\Account;
 use App\Models\Client;
 use App\Models\ClientBillingDetail;
 use App\Models\ClientDocument;
+use App\Models\CommunicationLog;
 use App\Models\Group;
+use App\Models\Ledger;
 use App\Models\Order;
 use App\Models\Service;
 use Illuminate\Contracts\View\View;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class ClientsController extends Controller
@@ -96,7 +98,7 @@ class ClientsController extends Controller
             ->where('accountid', $validated['accountid'])
             ->where('itemid', $validated['itemid'])
             ->first();
-        if (!$service) {
+        if (! $service) {
             Log::warning('Client API blocked: invalid itemid for account.', [
                 'accountid' => $validated['accountid'] ?? null,
                 'primary_email' => $validated['primary_email'] ?? null,
@@ -217,8 +219,8 @@ class ClientsController extends Controller
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
-                $q->where('business_name', 'like', '%' . $searchTerm . '%')
-                    ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+                $q->where('business_name', 'like', '%'.$searchTerm.'%')
+                    ->orWhere('contact_name', 'like', '%'.$searchTerm.'%');
             });
         }
 
@@ -229,6 +231,12 @@ class ClientsController extends Controller
         if ($selectedCity !== '') {
             $query->where('city', $selectedCity);
         }
+
+        $selectedGroup = trim((string) request('groupid', ''));
+        if ($selectedGroup !== '') {
+            $query->where('groupid', $selectedGroup);
+        }
+
         $resultCount = $query->count();
 
         $clients = $query->latest()->paginate(20);
@@ -244,6 +252,7 @@ class ClientsController extends Controller
             $outstanding = $invoiceTotal - $paidTotal;
             $account = Account::find($client->accountid);
             $cur = $account?->currency_code ?? 'INR';
+
             return [
                 'record_id' => $client->clientid,
                 'name' => $client->business_name ?? $client->contact_name,
@@ -254,7 +263,7 @@ class ClientsController extends Controller
                 'city' => $client->city,
                 'currency' => $client->currency,
                 'status' => $client->status ?? 'Active',
-                'balance' => $client->currency . ' ' . number_format($outstanding, 0),
+                'balance' => $client->currency.' '.number_format($outstanding, 0),
                 'created_at' => $client->created_at,
                 'invoice_count' => $client->invoices->count(),
             ];
@@ -283,13 +292,14 @@ class ClientsController extends Controller
 
         return view('clients.index', [
             'title' => 'All Clients',
-            'subtitle' => $searchTerm ? 'Found ' . $resultCount . ' result(s) for "' . $searchTerm . '"' : null,
+            'subtitle' => $searchTerm ? 'Found '.$resultCount.' result(s) for "'.$searchTerm.'"' : null,
             'clients' => $clients,
             'groups' => $groups,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
             'selectedState' => $selectedState,
             'selectedCity' => $selectedCity,
+            'selectedGroup' => $selectedGroup,
             'stateOptions' => $stateOptions,
             'cityOptions' => $cityOptions,
         ]);
@@ -299,22 +309,34 @@ class ClientsController extends Controller
     {
         $accountId = $this->resolveAccountId();
         $searchTerm = trim((string) request('search', ''));
+        $selectedClient = trim((string) request('client', ''));
+        $selectedItem = trim((string) request('item', ''));
 
         $query = Client::query()
             ->where('accountid', $accountId)
             ->trial()
-            ->with(['invoices.invoiceItems', 'payments']);
+            ->with(['invoices.invoiceItems', 'payments', 'orders']);
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
-                $q->where('business_name', 'like', '%' . $searchTerm . '%')
-                    ->orWhere('contact_name', 'like', '%' . $searchTerm . '%');
+                $q->where('business_name', 'like', '%'.$searchTerm.'%')
+                    ->orWhere('contact_name', 'like', '%'.$searchTerm.'%');
+            });
+        }
+
+        if ($selectedClient !== '') {
+            $query->where('clientid', $selectedClient);
+        }
+
+        if ($selectedItem !== '') {
+            $query->whereHas('orders', function ($q) use ($selectedItem) {
+                $q->where('item_name', $selectedItem);
             });
         }
 
         $resultCount = $query->count();
 
-        $clients = $query->latest()->take(50)->get()->map(function ($client) {
+        $clients = $query->latest()->take(50)->get()->map(function ($client) use ($selectedItem) {
             $invoiceTotal = $client->invoices
                 ->where('status', '!=', 'cancelled')
                 ->where('payment_status', '!=', 'paid')
@@ -326,6 +348,14 @@ class ClientsController extends Controller
             $account = Account::find($client->accountid);
             // $cur = $account?->currency_code ?? 'INR';
 
+            $itemName = $selectedItem !== ''
+                ? $client->orders->where('item_name', $selectedItem)->first()?->item_name
+                : $client->orders->first()?->item_name;
+
+            $itemEndDate = $selectedItem !== ''
+                ? $client->orders->where('item_name', $selectedItem)->first()?->end_date
+                : $client->orders->first()?->end_date;
+
             return [
                 'record_id' => $client->clientid,
                 'name' => $client->business_name ?? $client->contact_name,
@@ -333,18 +363,47 @@ class ClientsController extends Controller
                 'email' => $client->primary_email ?? $client->email,
                 'phone' => $client->phone,
                 'currency' => $client->currency,
-                'balance' => $client->currency . ' ' . number_format($outstanding, 0),
+                'balance' => $client->currency.' '.number_format($outstanding, 0),
                 'invoice_count' => $client->invoices->count(),
                 'status' => $client->status ?? 'active',
+                'created_at' => $client->created_at,
+                'item_name' => $itemName,
+                'item_end_date' => $itemEndDate,
             ];
         });
 
+        // Distinct item names from orders of trial clients in this account
+        $trialClientIds = Client::query()
+            ->where('accountid', $accountId)
+            ->trial()
+            ->pluck('clientid');
+
+        $itemOptions = Order::query()
+            ->whereIn('clientid', $trialClientIds)
+            ->whereNotNull('item_name')
+            ->where('item_name', '!=', '')
+            ->select('item_name')
+            ->distinct()
+            ->orderBy('item_name')
+            ->pluck('item_name');
+
+        // All trial clients for the client filter dropdown
+        $clientOptions = Client::query()
+            ->where('accountid', $accountId)
+            ->trial()
+            ->orderByRaw('COALESCE(business_name, contact_name) ASC')
+            ->get(['clientid', 'business_name', 'contact_name']);
+
         return view('clients.trials', [
             'title' => 'Trial Clients',
-            'subtitle' => $searchTerm ? 'Found ' . $resultCount . ' result(s) for "' . $searchTerm . '"' : null,
+            'subtitle' => $searchTerm ? 'Found '.$resultCount.' result(s) for "'.$searchTerm.'"' : null,
             'clients' => $clients,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
+            'selectedClient' => $selectedClient,
+            'selectedItem' => $selectedItem,
+            'itemOptions' => $itemOptions,
+            'clientOptions' => $clientOptions,
         ]);
     }
 
@@ -360,7 +419,7 @@ class ClientsController extends Controller
             ->get(['iso', 'name']);
 
         return view('clients.form', [
-            'title' => 'Create New Client',
+            'title' => 'Add Client',
             'accounts' => Account::where('status', 'active')->get(),
             'groups' => Group::where('accountid', $accountId)->get(),
             'billingProfiles' => $billingProfiles,
@@ -409,7 +468,7 @@ class ClientsController extends Controller
         }
 
         // Normalize billing_email if multiple addresses provided
-        if (!empty($validated['billing_email'])) {
+        if (! empty($validated['billing_email'])) {
             $validated['billing_email'] = $this->normalizeClientEmails((string) $validated['billing_email']);
             if (strlen($validated['billing_email']) > 150) {
                 throw ValidationException::withMessages(['billing_email' => 'Combined billing emails exceed 150 characters.']);
@@ -428,7 +487,7 @@ class ClientsController extends Controller
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');
             $baseUrl = rtrim(config('app.url'), '/');
-            $validated['logo_path'] = $baseUrl . '/public/storage/' . $path;
+            $validated['logo_path'] = $baseUrl.'/public/storage/'.$path;
         }
 
         $validated['accountid'] = $validated['accountid'] ?? $userAccountId;
@@ -436,13 +495,13 @@ class ClientsController extends Controller
         $validated['type'] = 'regular';
         $selectedBillingDetail = null;
 
-        if (!empty($validated['existing_bd_id'])) {
+        if (! empty($validated['existing_bd_id'])) {
             $selectedBillingDetail = ClientBillingDetail::query()
                 ->where('bd_id', $validated['existing_bd_id'] ?? '')
                 ->where('accountid', $validated['accountid'])
                 ->first();
 
-            if (!$selectedBillingDetail) {
+            if (! $selectedBillingDetail) {
                 return back()->withInput()->withErrors([
                     'existing_bd_id' => 'Selected billing details are invalid for this account.',
                 ]);
@@ -461,7 +520,7 @@ class ClientsController extends Controller
             ]);
         } else {
             $selectedBillingDetail = ClientBillingDetail::create([
-                'bd_id' => Group::generateUniqueAlphaId(new Group()),
+                'bd_id' => Group::generateUniqueAlphaId(new Group),
                 'accountid' => $validated['accountid'],
                 'business_name' => $validated['billing_business_name'],
                 'gstin' => $validated['billing_gstin'] ?? null,
@@ -517,14 +576,14 @@ class ClientsController extends Controller
             $quotations = $client->quotations->sortByDesc('issue_date')->values();
             $documents = $client->documents->sortByDesc('created_at')->values();
 
-            $ledger = \App\Models\Ledger::where('clientid', $client->clientid)->orderBy('date', 'desc')->get();
-            $communicationLogs = \App\Models\CommunicationLog::where('clientid', $client->clientid)->orderBy('created_at', 'desc')->get();
+            $ledger = Ledger::where('clientid', $client->clientid)->orderBy('date', 'desc')->get();
+            $communicationLogs = CommunicationLog::where('clientid', $client->clientid)->orderBy('created_at', 'desc')->get();
 
             $activeOrdersCount = $client->orders->where('status', 'active')->count();
         }
 
         return view('clients.dashboard', [
-            'title' => $client ? ($client->business_name ?? $client->contact_name) . ' - Dashboard' : 'Client Dashboard',
+            'title' => $client ? ($client->business_name ?? $client->contact_name).' - Dashboard' : 'Client Dashboard',
             'subtitle' => $client ? 'Profile Landing Page' : 'Choose a client to view their profile dashboard',
             'clients' => $clients,
             'client' => $client,
@@ -560,45 +619,19 @@ class ClientsController extends Controller
         ]);
     }
 
-    public function clientsDocumentsCreate(Request $request, Client $client): View
+    public function clientsDocumentsCreate(): RedirectResponse
+    {
+        return redirect()->route('clients.index');
+    }
+
+    public function clientsDocumentsList(Client $client): JsonResponse
     {
         $accountId = $this->resolveAccountId();
         if ((string) $client->accountid !== $accountId) {
             abort(404);
         }
 
-        $focusType = strtolower((string) $request->query('type', 'po'));
-        if (!in_array($focusType, ['po', 'agreement'], true)) {
-            $focusType = 'po';
-        }
-
-        $client->load(['documents' => function ($query) {
-            $query->latest('document_date')
-                ->latest('created_at');
-        }]);
-
-        $editDocument = null;
-        $editId = (string) $request->query('edit', '');
-        if ($editId !== '') {
-            $candidate = $client->documents->firstWhere('client_docid', $editId);
-            if (
-                $candidate &&
-                (string) $candidate->accountid === $accountId &&
-                ($candidate->status ?? 'active') !== 'cancelled'
-            ) {
-                $editDocument = $candidate;
-                $focusType = $candidate->type;
-            }
-        }
-
-        return view('clients.documents-form', [
-            'title' => 'PO & Agreements for ' . ($client->business_name ?? $client->contact_name ?? 'Client'),
-            'client' => $client,
-            'focusType' => $focusType,
-            'editDocument' => $editDocument,
-            'poDocuments' => $client->documents->where('type', 'po')->values(),
-            'agreementDocuments' => $client->documents->where('type', 'agreement')->values(),
-        ]);
+        return $this->documentsJsonResponse($client, 'Documents loaded.');
     }
 
     public function clientsDocumentsStore(Request $request, Client $client)
@@ -633,9 +666,13 @@ class ClientsController extends Controller
             'file_path' => $filePath,
         ]);
 
+        if ($request->expectsJson() || $request->ajax()) {
+            return $this->documentsJsonResponse($client, ucfirst($validated['type']).' saved successfully.');
+        }
+
         return redirect()
             ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $validated['type']])
-            ->with('success', ucfirst($validated['type']) . ' saved successfully.');
+            ->with('success', ucfirst($validated['type']).' saved successfully.');
     }
 
     public function clientsDocumentsUpdate(Request $request, Client $client, ClientDocument $document)
@@ -652,7 +689,7 @@ class ClientsController extends Controller
         if (($document->status ?? 'active') === 'cancelled') {
             return redirect()
                 ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $document->type])
-                ->with('error', ucfirst($document->type) . ' is cancelled. Restore it before editing.');
+                ->with('error', ucfirst($document->type).' is cancelled. Restore it before editing.');
         }
 
         $validated = $request->validate([
@@ -682,9 +719,15 @@ class ClientsController extends Controller
             'status' => 'active',
         ]);
 
+        $client->load('documents');
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return $this->documentsJsonResponse($client, ucfirst($validated['type']).' updated successfully.');
+        }
+
         return redirect()
             ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $validated['type']])
-            ->with('success', ucfirst($validated['type']) . ' updated successfully.');
+            ->with('success', ucfirst($validated['type']).' updated successfully.');
     }
 
     public function clientsDocumentsCancel(Client $client, ClientDocument $document)
@@ -702,7 +745,7 @@ class ClientsController extends Controller
 
         return redirect()
             ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $document->type])
-            ->with('success', ucfirst($document->type) . ' cancelled successfully.');
+            ->with('success', ucfirst($document->type).' cancelled successfully.');
     }
 
     public function clientsDocumentsRestore(Client $client, ClientDocument $document)
@@ -718,11 +761,10 @@ class ClientsController extends Controller
 
         $document->update(['status' => 'active']);
 
-
         return redirect()
-             ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $document->type])
-             ->with('success', ucfirst($document->type) . ' restored successfully.');
-     }
+            ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $document->type])
+            ->with('success', ucfirst($document->type).' restored successfully.');
+    }
 
     public function clientsDocumentsDestroy(Client $client, ClientDocument $document)
     {
@@ -738,9 +780,42 @@ class ClientsController extends Controller
         $type = $document->type;
         $document->delete();
 
+        $client->load('documents');
+
+        $request = request();
+        if ($request->expectsJson() || $request->ajax()) {
+            return $this->documentsJsonResponse($client, ucfirst($type).' deleted successfully.');
+        }
+
         return redirect()
             ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $type])
-            ->with('success', ucfirst($type) . ' deleted successfully.');
+            ->with('success', ucfirst($type).' deleted successfully.');
+    }
+
+    private function documentsJsonResponse(Client $client, string $message): JsonResponse
+    {
+        $client->load(['documents' => function ($query) {
+            $query->latest('document_date')
+                ->latest('created_at');
+        }]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'documents' => $client->documents->map(function ($d) use ($client) {
+                return [
+                    'client_docid' => $d->client_docid,
+                    'type' => $d->type,
+                    'title' => $d->title,
+                    'document_number' => $d->document_number,
+                    'document_date' => $d->document_date?->format('Y-m-d'),
+                    'document_date_display' => $d->document_date?->format('d M Y') ?? '—',
+                    'file_path' => $d->file_path,
+                    'status' => $d->status ?? 'active',
+                    'file_url' => $d->file_path ? route('clients.documents.file', ['client' => $client->clientid, 'document' => $d->client_docid]) : null,
+                ];
+            }),
+        ]);
     }
 
     public function clientsDocumentsFile(Client $client, ClientDocument $document)
@@ -754,7 +829,7 @@ class ClientsController extends Controller
             abort(404);
         }
 
-        if (!$document->file_path || !Storage::disk('public')->exists($document->file_path)) {
+        if (! $document->file_path || ! Storage::disk('public')->exists($document->file_path)) {
             abort(404);
         }
 
@@ -773,7 +848,7 @@ class ClientsController extends Controller
             ->get(['iso', 'name']);
 
         return view('clients.form', [
-            'title' => 'Edit ' . ($client->business_name ?? $client->contact_name ?? 'Client'),
+            'title' => 'Edit '.($client->business_name ?? $client->contact_name ?? 'Client'),
             'client' => $client,
             'accounts' => Account::where('status', 'active')->get(),
             'groups' => Group::where('accountid', $accountId)->get(),
@@ -820,7 +895,7 @@ class ClientsController extends Controller
         }
 
         // Normalize billing_email if multiple addresses provided
-        if (!empty($validated['billing_email'])) {
+        if (! empty($validated['billing_email'])) {
             $validated['billing_email'] = $this->normalizeClientEmails((string) $validated['billing_email']);
             if (strlen($validated['billing_email']) > 150) {
                 throw ValidationException::withMessages(['billing_email' => 'Combined billing emails exceed 150 characters.']);
@@ -838,24 +913,24 @@ class ClientsController extends Controller
 
         if ($request->hasFile('logo')) {
             if ($client->logo_path) {
-                $storageBase = rtrim(config('app.url'), '/') . '/public/storage/';
+                $storageBase = rtrim(config('app.url'), '/').'/public/storage/';
                 $oldPath = str_replace($storageBase, '', $client->logo_path);
                 Storage::disk('public')->delete($oldPath);
             }
             $path = $request->file('logo')->store('logos', 'public');
             $baseUrl = rtrim(config('app.url'), '/');
-            $validated['logo_path'] = $baseUrl . '/public/storage/' . $path;
+            $validated['logo_path'] = $baseUrl.'/public/storage/'.$path;
         }
 
         $selectedBdId = $client->bd_id;
 
-        if (!empty($validated['existing_bd_id'])) {
+        if (! empty($validated['existing_bd_id'])) {
             $existingBillingDetail = ClientBillingDetail::query()
                 ->where('bd_id', $validated['existing_bd_id'] ?? '')
                 ->where('accountid', $client->accountid)
                 ->first();
 
-            if (!$existingBillingDetail) {
+            if (! $existingBillingDetail) {
                 return back()->withInput()->withErrors([
                     'existing_bd_id' => 'Selected billing details are invalid for this account.',
                 ]);
@@ -893,7 +968,7 @@ class ClientsController extends Controller
                 $selectedBdId = $client->billingDetail->bd_id;
             } else {
                 $newBillingDetail = ClientBillingDetail::create(array_merge($billingData, [
-                    'bd_id' => Group::generateUniqueAlphaId(new Group()),
+                    'bd_id' => Group::generateUniqueAlphaId(new Group),
                 ]));
                 $selectedBdId = $newBillingDetail->bd_id;
             }
@@ -944,7 +1019,7 @@ class ClientsController extends Controller
             ->values();
 
         if ($emails->isEmpty()) {
-            if (!$required) {
+            if (! $required) {
                 return null;
             }
 
@@ -954,9 +1029,9 @@ class ClientsController extends Controller
         }
 
         foreach ($emails as $email) {
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 throw ValidationException::withMessages([
-                    $field => 'Invalid email address: ' . $email,
+                    $field => 'Invalid email address: '.$email,
                 ]);
             }
         }
@@ -1068,7 +1143,7 @@ class ClientsController extends Controller
         }
 
         $provided = (string) $request->header('X-API-KEY', '');
-        if (!hash_equals($expectedApiKey, $provided)) {
+        if (! hash_equals($expectedApiKey, $provided)) {
             abort(401, 'Invalid API key.');
         }
     }

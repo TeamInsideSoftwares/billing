@@ -6,17 +6,17 @@ use App\Models\Account;
 use App\Models\AccountBillingDetail;
 use App\Models\FinancialYear;
 use App\Models\MessageTemplate;
+use App\Models\SerialConfiguration;
 use App\Models\Setting;
 use App\Models\Tax;
 use App\Models\TermsCondition;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class SettingsController extends Controller
@@ -39,7 +39,7 @@ class SettingsController extends Controller
         $query = Setting::where('accountid', $accountid);
         $searchTerm = request('search', '');
         if ($searchTerm) {
-            $query->where('setting_key', 'like', '%' . $searchTerm . '%');
+            $query->where('setting_key', 'like', '%'.$searchTerm.'%');
         }
         $resultCount = $query->count();
         $settings = $query->latest()->take(20)->get()->map(function ($setting) {
@@ -57,14 +57,14 @@ class SettingsController extends Controller
         $account = Account::with(['financialYears', 'billingDetails', 'taxes'])
             ->find($accountid);
 
-        if (!$account) {
+        if (! $account) {
             return redirect()->route('login')->withErrors([
                 'email' => 'Account mapping not found for this login. Please contact support.',
             ]);
         }
         $hasPersistedAccount = (bool) ($account && $account->exists);
 
-        if (!$account) {
+        if (! $account) {
             $account = new Account([
                 'accountid' => $accountid,
                 'allow_multi_taxation' => false,
@@ -99,11 +99,11 @@ class SettingsController extends Controller
         }
 
         // Serial configurations from dedicated table
-        $proformaSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'proforma_invoice')->first();
-        $taxInvoiceSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'tax_invoice')->first();
-        $quotationSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'quotation')->first();
-        $orderSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'order')->first();
-        $paymentReceiptSerialConfig = \App\Models\SerialConfiguration::where('accountid', $accountid)->where('document_type', 'payment_receipt')->first();
+        $proformaSerialConfig = SerialConfiguration::where('accountid', $accountid)->where('document_type', 'proforma_invoice')->first();
+        $taxInvoiceSerialConfig = SerialConfiguration::where('accountid', $accountid)->where('document_type', 'tax_invoice')->first();
+        $quotationSerialConfig = SerialConfiguration::where('accountid', $accountid)->where('document_type', 'quotation')->first();
+        $orderSerialConfig = SerialConfiguration::where('accountid', $accountid)->where('document_type', 'order')->first();
+        $paymentReceiptSerialConfig = SerialConfiguration::where('accountid', $accountid)->where('document_type', 'payment_receipt')->first();
 
         $termsQuery = TermsCondition::query()
             ->where('accountid', $accountid)
@@ -131,7 +131,7 @@ class SettingsController extends Controller
         $messageTemplatesByType = $messageTemplates->groupBy('template_type');
 
         $editingTerm = null;
-        if ($editId && strlen($editId) === 6 && !str_starts_with($editId, 'SET') && !str_starts_with($editId, 'ABD')) {
+        if ($editId && strlen($editId) === 6 && ! str_starts_with($editId, 'SET') && ! str_starts_with($editId, 'ABD')) {
             $editingTerm = TermsCondition::query()
                 ->where('accountid', $accountid)
                 ->where('tc_id', $editId)
@@ -157,7 +157,7 @@ class SettingsController extends Controller
 
         return view('settings.index', [
             'title' => 'Settings',
-            'subtitle' => $searchTerm ? 'Search results for "' . $searchTerm . '"' : null,
+            'subtitle' => $searchTerm ? 'Search results for "'.$searchTerm.'"' : null,
             'settings' => $settings,
             'account' => $account,
             'financialYears' => $financialYears,
@@ -189,7 +189,7 @@ class SettingsController extends Controller
         $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
 
-        if (!$account) {
+        if (! $account) {
             return redirect()->back()->with('error', 'Profile not found.');
         }
 
@@ -237,23 +237,23 @@ class SettingsController extends Controller
             $validated['fixed_tax_type'] = $request->input('fixed_tax_type', 'GST');
         }
 
-        if (!empty($validated['fy_month']) && !empty($validated['fy_day'])) {
-            $validated['fy_startdate'] = $validated['fy_month'] . '-' . $validated['fy_day'];
+        if (! empty($validated['fy_month']) && ! empty($validated['fy_day'])) {
+            $validated['fy_startdate'] = $validated['fy_month'].'-'.$validated['fy_day'];
         }
 
         // Handle logo upload
         if ($request->hasFile('logo')) {
             try {
                 $file = $request->file('logo');
-                $filename = time() . '_' . $file->getClientOriginalName();
+                $filename = time().'_'.$file->getClientOriginalName();
                 $uploadDir = public_path('uploads/logos');
                 File::ensureDirectoryExists($uploadDir, 0755, true);
                 $file->move($uploadDir, $filename);
-                chmod($uploadDir . '/' . $filename, 0644);
-                $validated['logo_path'] = asset('uploads/logos/' . $filename);
+                chmod($uploadDir.'/'.$filename, 0644);
+                $validated['logo_path'] = asset('uploads/logos/'.$filename);
             } catch (\Exception $e) {
                 return redirect()->back()
-                    ->with('error', 'Failed to upload logo: ' . $e->getMessage())
+                    ->with('error', 'Failed to upload logo: '.$e->getMessage())
                     ->withInput();
             }
         }
@@ -262,7 +262,8 @@ class SettingsController extends Controller
 
         // Determine redirect based on form source
         $redirectTo = $request->input('from_tax_modal') ? '#personal' : '#personal';
-        return redirect()->to(route('settings.index') . $redirectTo)->with('success', 'Profile updated successfully.');
+
+        return redirect()->to(route('settings.index').$redirectTo)->with('success', 'Profile updated successfully.');
     }
 
     public function fixedTaxUpdate(Request $request)
@@ -270,7 +271,7 @@ class SettingsController extends Controller
         $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
 
-        if (!$account) {
+        if (! $account) {
             return redirect()->back()->with('error', 'Account not found.');
         }
 
@@ -281,7 +282,7 @@ class SettingsController extends Controller
 
         $account->update($validated);
 
-        return redirect()->to(route('settings.index') . '#personal')->with('success', 'Fixed tax rate updated successfully.');
+        return redirect()->to(route('settings.index').'#personal')->with('success', 'Fixed tax rate updated successfully.');
     }
 
     public function serialConfigUpdate(Request $request)
@@ -320,16 +321,16 @@ class SettingsController extends Controller
         unset($validated['serial_configid']);
 
         if ($configId) {
-            \App\Models\SerialConfiguration::where('serial_configid', $configId)
+            SerialConfiguration::where('serial_configid', $configId)
                 ->where('accountid', $accountid)
                 ->update($validated);
         } else {
             $validated['accountid'] = $accountid;
-            \App\Models\SerialConfiguration::create($validated);
+            SerialConfiguration::create($validated);
         }
 
-        return redirect()->to(route('settings.index') . '#financial-year')
-            ->with('success', ucfirst(str_replace('_', ' ', $validated['document_type'])) . ' serial configuration saved.');
+        return redirect()->to(route('settings.index').'#financial-year')
+            ->with('success', ucfirst(str_replace('_', ' ', $validated['document_type'])).' serial configuration saved.');
     }
 
     public function accountBillingUpdate(Request $request)
@@ -337,11 +338,11 @@ class SettingsController extends Controller
         $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
 
-        if (!$account) {
-            return redirect()->to(route('settings.index') . '#billing-details')->with('error', 'Account not found.');
+        if (! $account) {
+            return redirect()->to(route('settings.index').'#billing-details')->with('error', 'Account not found.');
         }
 
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'account_bdid' => 'nullable|string|size:6|exists:account_billing_details,account_bdid',
             'billing_name' => 'nullable|string',
             'address' => 'nullable|string',
@@ -357,7 +358,7 @@ class SettingsController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return redirect()->to(route('settings.index') . '#billing-details')
+            return redirect()->to(route('settings.index').'#billing-details')
                 ->withErrors($validator)
                 ->withInput();
         }
@@ -378,22 +379,22 @@ class SettingsController extends Controller
         if ($request->hasFile('signature_upload') && $request->file('signature_upload')->isValid()) {
             try {
                 $file = $request->file('signature_upload');
-                $filename = time() . '_' . $file->getClientOriginalName();
+                $filename = time().'_'.$file->getClientOriginalName();
                 $uploadDir = public_path('uploads/signatures');
                 File::ensureDirectoryExists($uploadDir, 0755, true);
                 $file->move($uploadDir, $filename);
-                chmod($uploadDir . '/' . $filename, 0644);
-                $validated['signature_upload'] = asset('uploads/signatures/' . $filename);
+                chmod($uploadDir.'/'.$filename, 0644);
+                $validated['signature_upload'] = asset('uploads/signatures/'.$filename);
             } catch (\Exception $e) {
-                return redirect()->to(route('settings.index') . '#billing-details')
-                    ->with('error', 'Failed to upload signature: ' . $e->getMessage())
+                return redirect()->to(route('settings.index').'#billing-details')
+                    ->with('error', 'Failed to upload signature: '.$e->getMessage())
                     ->withInput();
             }
         } else {
             unset($validated['signature_upload']);
         }
 
-        if (!empty($validated['account_bdid'])) {
+        if (! empty($validated['account_bdid'])) {
             $billingDetail = AccountBillingDetail::where('account_bdid', $validated['account_bdid'])->where('accountid', $accountid)->firstOrFail();
             $billingDetail->update($validated);
         } else {
@@ -402,7 +403,8 @@ class SettingsController extends Controller
         }
 
         $redirectTo = $request->input('from_tab') === 'financial-year' ? '#financial-year' : '#billing-details';
-        return redirect()->to(route('settings.index') . $redirectTo)->with('success', 'Billing details updated successfully.');
+
+        return redirect()->to(route('settings.index').$redirectTo)->with('success', 'Billing details updated successfully.');
     }
 
     private function normalizeCommaSeparatedEmails(string $raw, bool $required = false, string $field = 'email'): ?string
@@ -419,13 +421,14 @@ class SettingsController extends Controller
                     $field => 'At least one email is required.',
                 ]);
             }
+
             return null;
         }
 
         foreach ($emails as $email) {
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 throw ValidationException::withMessages([
-                    $field => 'Invalid email address: ' . $email,
+                    $field => 'Invalid email address: '.$email,
                 ]);
             }
         }
@@ -448,14 +451,13 @@ class SettingsController extends Controller
         return $values->implode(', ');
     }
 
-
     /**
      * Reset serial counters in serial_configurations when FY changes.
      */
     private function resetSerialNumbersIfRequired($accountid)
     {
         $account = Account::find($accountid);
-        if (!$account || !$account->fy_startdate) {
+        if (! $account || ! $account->fy_startdate) {
             return; // No FY start date configured
         }
 
@@ -467,11 +469,11 @@ class SettingsController extends Controller
         // If FY starts on 1st of any month, it's a "full year" FY
         $isFullYearFy = ($fyDay == '01');
 
-        if (!$isFullYearFy) {
+        if (! $isFullYearFy) {
             return; // Don't reset for non-standard FY
         }
 
-        \App\Models\SerialConfiguration::query()
+        SerialConfiguration::query()
             ->where('accountid', $accountid)
             ->where('reset_on_fy', true)
             ->update(['number_value' => null]);
@@ -481,7 +483,7 @@ class SettingsController extends Controller
     {
         $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
-        if (!$account) {
+        if (! $account) {
             return redirect()->back()->with('error', 'Account not found.');
         }
 
@@ -490,7 +492,7 @@ class SettingsController extends Controller
             'year_end' => 'required|integer|min:2000|max:2100',
         ]);
 
-        $fyString = $validated['year_start'] . '-' . $validated['year_end'];
+        $fyString = $validated['year_start'].'-'.$validated['year_end'];
 
         // Check if we're changing the default FY
         $previousDefault = FinancialYear::where('accountid', $account->accountid)
@@ -508,7 +510,7 @@ class SettingsController extends Controller
         );
 
         // Reset serials if default FY changed
-        $defaultChanged = !$previousDefault || $previousDefault->fy_id !== $fy->fy_id;
+        $defaultChanged = ! $previousDefault || $previousDefault->fy_id !== $fy->fy_id;
 
         if ($defaultChanged) {
             $this->resetSerialNumbersIfRequired($accountid);
@@ -518,7 +520,7 @@ class SettingsController extends Controller
             ->where('fy_id', '!=', $fy->fy_id)
             ->update(['default' => false]);
 
-        return redirect()->to(route('settings.index') . '#financial-year')->with('success', 'Financial Year "' . $fyString . '" set as default.');
+        return redirect()->to(route('settings.index').'#financial-year')->with('success', 'Financial Year "'.$fyString.'" set as default.');
     }
 
     public function financialYearSetDefault(FinancialYear $financialYear)
@@ -538,11 +540,11 @@ class SettingsController extends Controller
         $financialYear->update(['default' => true]);
 
         // Reset serials if default FY changed
-        if (!$previousDefault || $previousDefault->fy_id !== $financialYear->fy_id) {
+        if (! $previousDefault || $previousDefault->fy_id !== $financialYear->fy_id) {
             $this->resetSerialNumbersIfRequired($accountid);
         }
 
-        return redirect()->to(route('settings.index') . '#financial-year')->with('success', 'Financial Year "' . $financialYear->financial_year . '" set as default.');
+        return redirect()->to(route('settings.index').'#financial-year')->with('success', 'Financial Year "'.$financialYear->financial_year.'" set as default.');
     }
 
     public function financialYearSelect(Request $request): RedirectResponse
@@ -557,13 +559,13 @@ class SettingsController extends Controller
             ->where('fy_id', $validated['fy_id'])
             ->first();
 
-        if (!$financialYear) {
+        if (! $financialYear) {
             return redirect()->back()->with('error', 'Selected financial year is not available for this account.');
         }
 
         session(['selected_financial_year_id' => $financialYear->fy_id]);
 
-        return redirect()->back()->with('success', 'Financial Year switched to "' . $financialYear->financial_year . '".');
+        return redirect()->back()->with('success', 'Financial Year switched to "'.$financialYear->financial_year.'".');
     }
 
     public function settingsCreate(): View
@@ -587,7 +589,7 @@ class SettingsController extends Controller
             'accountid' => $userAccountId,
         ]);
 
-        return redirect()->to(route('settings.index') . '#config')->with('success', 'Setting created successfully.');
+        return redirect()->to(route('settings.index').'#config')->with('success', 'Setting created successfully.');
     }
 
     public function settingsShow(Setting $setting): View
@@ -611,7 +613,7 @@ class SettingsController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        return redirect()->to(route('settings.index', ['e' => base64_encode($setting->settingid)]) . '#config');
+        return redirect()->to(route('settings.index', ['e' => base64_encode($setting->settingid)]).'#config');
     }
 
     public function settingsUpdate(Request $request, Setting $setting)
@@ -631,7 +633,7 @@ class SettingsController extends Controller
             'setting_value' => $validated['value'],
         ]);
 
-        return redirect()->to(route('settings.index') . '#config')->with('success', 'Setting updated successfully.');
+        return redirect()->to(route('settings.index').'#config')->with('success', 'Setting updated successfully.');
     }
 
     public function settingsDestroy(Setting $setting)
@@ -643,7 +645,7 @@ class SettingsController extends Controller
 
         $setting->delete();
 
-        return redirect()->to(route('settings.index') . '#config')->with('success', 'Setting deleted successfully.');
+        return redirect()->to(route('settings.index').'#config')->with('success', 'Setting deleted successfully.');
     }
 
     public function messageTemplateStore(Request $request): RedirectResponse
@@ -652,7 +654,7 @@ class SettingsController extends Controller
         $templateTypes = implode(',', array_keys($this->messageTemplateTypes()));
 
         $validator = Validator::make($request->all(), [
-            'template_type' => 'required|in:' . $templateTypes,
+            'template_type' => 'required|in:'.$templateTypes,
             'channel' => 'required|in:email,whatsapp,sms',
             'name' => 'nullable|required_if:channel,email|string',
             'template_id' => 'nullable|required_if:channel,sms,whatsapp|string',
@@ -664,7 +666,8 @@ class SettingsController extends Controller
         ]);
         if ($validator->fails()) {
             $errorText = collect($validator->errors()->all())->filter()->implode("\n");
-            return redirect()->to(route('settings.index') . '#message-templates')
+
+            return redirect()->to(route('settings.index').'#message-templates')
                 ->withErrors($validator)
                 ->with('mt_error_toast', $errorText)
                 ->with('mt_active_type', (string) $request->input('template_type', 'pi'))
@@ -685,8 +688,8 @@ class SettingsController extends Controller
         $prefetchedCampioTemplate = null;
         if (in_array($channel, ['sms', 'whatsapp'], true) && $incomingTemplateId !== '') {
             $prefetchedCampioTemplate = $this->findCampioTemplateById($accountid, $channel, $incomingTemplateId);
-            if ($templateIdChanged && !is_array($prefetchedCampioTemplate)) {
-                return redirect()->to(route('settings.index') . '#message-templates')
+            if ($templateIdChanged && ! is_array($prefetchedCampioTemplate)) {
+                return redirect()->to(route('settings.index').'#message-templates')
                     ->withErrors(['template_id' => 'Template ID not found in provider. Please verify and try again.'])
                     ->with('mt_error_toast', 'Template ID not found in provider. Please verify and try again.')
                     ->with('mt_active_type', $templateType)
@@ -706,17 +709,17 @@ class SettingsController extends Controller
             $resolvedMetaTemplateId = null;
 
             if (is_array($campioTemplate)) {
-                if ($templateIdChanged && !empty($campioTemplate['name'])) {
+                if ($templateIdChanged && ! empty($campioTemplate['name'])) {
                     $resolvedName = (string) $campioTemplate['name'];
-                } elseif ($resolvedName === '' && !empty($campioTemplate['name'])) {
+                } elseif ($resolvedName === '' && ! empty($campioTemplate['name'])) {
                     $resolvedName = (string) $campioTemplate['name'];
                 }
-                if ($templateIdChanged && !empty($campioTemplate['body'])) {
+                if ($templateIdChanged && ! empty($campioTemplate['body'])) {
                     $resolvedBody = (string) $campioTemplate['body'];
-                } elseif (trim($resolvedBody) === '' && !empty($campioTemplate['body'])) {
+                } elseif (trim($resolvedBody) === '' && ! empty($campioTemplate['body'])) {
                     $resolvedBody = (string) $campioTemplate['body'];
                 }
-                if ($channel === 'sms' && empty($resolvedSenderId) && !empty($campioTemplate['sender_id'])) {
+                if ($channel === 'sms' && empty($resolvedSenderId) && ! empty($campioTemplate['sender_id'])) {
                     $resolvedSenderId = (string) $campioTemplate['sender_id'];
                 }
                 if ($channel === 'whatsapp') {
@@ -728,7 +731,7 @@ class SettingsController extends Controller
 
             if ($channel !== 'email') {
                 if ($resolvedName === '') {
-                    $resolvedName = ucfirst($channel) . ' Template ' . (string) $templateId;
+                    $resolvedName = ucfirst($channel).' Template '.(string) $templateId;
                 }
                 if (trim($resolvedBody) === '') {
                     $resolvedBody = '@{{client_name}}';
@@ -752,7 +755,7 @@ class SettingsController extends Controller
             ]);
         });
 
-        return redirect()->to(route('settings.index') . '#message-templates')
+        return redirect()->to(route('settings.index').'#message-templates')
             ->with('success', 'Message template saved successfully.');
     }
 
@@ -775,7 +778,8 @@ class SettingsController extends Controller
         ]);
         if ($validator->fails()) {
             $errorText = collect($validator->errors()->all())->filter()->implode("\n");
-            return redirect()->to(route('settings.index') . '#message-templates')
+
+            return redirect()->to(route('settings.index').'#message-templates')
                 ->withErrors($validator)
                 ->with('mt_error_toast', $errorText)
                 ->with('mt_active_type', (string) $request->input('template_type', (string) $template->template_type))
@@ -791,8 +795,8 @@ class SettingsController extends Controller
         $prefetchedCampioTemplate = null;
         if (in_array($channel, ['sms', 'whatsapp'], true) && $incomingTemplateId !== '') {
             $prefetchedCampioTemplate = $this->findCampioTemplateById($accountid, $channel, $incomingTemplateId);
-            if ($templateIdChanged && !is_array($prefetchedCampioTemplate)) {
-                return redirect()->to(route('settings.index') . '#message-templates')
+            if ($templateIdChanged && ! is_array($prefetchedCampioTemplate)) {
+                return redirect()->to(route('settings.index').'#message-templates')
                     ->withErrors(['template_id' => 'Template ID not found in provider. Please verify and try again.'])
                     ->with('mt_error_toast', 'Template ID not found in provider. Please verify and try again.')
                     ->with('mt_active_type', $templateType)
@@ -813,17 +817,17 @@ class SettingsController extends Controller
 
             if (is_array($campioTemplate)) {
                 // Refresh from provider when template ID changes; otherwise keep user-edited values.
-                if ($templateIdChanged && !empty($campioTemplate['name'])) {
+                if ($templateIdChanged && ! empty($campioTemplate['name'])) {
                     $resolvedName = (string) $campioTemplate['name'];
-                } elseif ($resolvedName === '' && !empty($campioTemplate['name'])) {
+                } elseif ($resolvedName === '' && ! empty($campioTemplate['name'])) {
                     $resolvedName = (string) $campioTemplate['name'];
                 }
-                if ($templateIdChanged && !empty($campioTemplate['body'])) {
+                if ($templateIdChanged && ! empty($campioTemplate['body'])) {
                     $resolvedBody = (string) $campioTemplate['body'];
-                } elseif (trim($resolvedBody) === '' && !empty($campioTemplate['body'])) {
+                } elseif (trim($resolvedBody) === '' && ! empty($campioTemplate['body'])) {
                     $resolvedBody = (string) $campioTemplate['body'];
                 }
-                if ($channel === 'sms' && empty($resolvedSenderId) && !empty($campioTemplate['sender_id'])) {
+                if ($channel === 'sms' && empty($resolvedSenderId) && ! empty($campioTemplate['sender_id'])) {
                     $resolvedSenderId = (string) $campioTemplate['sender_id'];
                 }
                 if ($channel === 'whatsapp') {
@@ -835,7 +839,7 @@ class SettingsController extends Controller
 
             if ($channel !== 'email') {
                 if ($resolvedName === '') {
-                    $resolvedName = $template->name ?: (ucfirst($channel) . ' Template ' . (string) $templateId);
+                    $resolvedName = $template->name ?: (ucfirst($channel).' Template '.(string) $templateId);
                 }
                 if (trim($resolvedBody) === '') {
                     $resolvedBody = $template->body ?: '@{{client_name}}';
@@ -855,7 +859,7 @@ class SettingsController extends Controller
             ]);
         });
 
-        return redirect()->to(route('settings.index') . '#message-templates')
+        return redirect()->to(route('settings.index').'#message-templates')
             ->with('success', 'Message template updated successfully.');
     }
 
@@ -868,14 +872,14 @@ class SettingsController extends Controller
 
         $template->delete();
 
-        return redirect()->to(route('settings.index') . '#message-templates')
+        return redirect()->to(route('settings.index').'#message-templates')
             ->with('success', 'Message template deleted successfully.');
     }
 
     private function findCampioTemplateById(string $accountid, string $channel, string $templateId): ?array
     {
         $templateId = trim($templateId);
-        if ($templateId === '' || !in_array($channel, ['sms', 'whatsapp'], true)) {
+        if ($templateId === '' || ! in_array($channel, ['sms', 'whatsapp'], true)) {
             return null;
         }
 
@@ -892,25 +896,25 @@ class SettingsController extends Controller
         }
 
         try {
-            $response = $request->get($baseUrl . '/api/templates/' . $channel, [
+            $response = $request->get($baseUrl.'/api/templates/'.$channel, [
                 'account_id' => $accountid,
             ]);
         } catch (\Throwable $e) {
             return null;
         }
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return null;
         }
 
         $json = $response->json();
         $templates = data_get($json, 'data.templates', []);
-        if (!is_array($templates)) {
+        if (! is_array($templates)) {
             return null;
         }
 
         foreach ($templates as $row) {
-            if (!is_array($row)) {
+            if (! is_array($row)) {
                 continue;
             }
             $rowId = trim((string) ($row['id'] ?? ''));
@@ -919,7 +923,7 @@ class SettingsController extends Controller
             if ($channel === 'whatsapp') {
                 $matches = $matches || ($rowMetaTemplateId !== '' && $rowMetaTemplateId === $templateId);
             }
-            if (!$matches) {
+            if (! $matches) {
                 continue;
             }
 
@@ -960,7 +964,7 @@ class SettingsController extends Controller
             ]);
         }
 
-        return redirect()->to(route('settings.index') . '#message-templates')
+        return redirect()->to(route('settings.index').'#message-templates')
             ->with('success', 'Message template status updated successfully.');
     }
 
@@ -970,7 +974,7 @@ class SettingsController extends Controller
 
         $editId = $request->e ? base64_decode($request->e) : null;
 
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'tc_id' => 'nullable|string|size:6|exists:terms_conditions,tc_id',
             'type' => 'required|in:billing,quotation,proforma',
             'content' => 'required|string',
@@ -980,7 +984,7 @@ class SettingsController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return redirect()->to(route('settings.index') . '#terms-conditions')
+            return redirect()->to(route('settings.index').'#terms-conditions')
                 ->withErrors($validator)
                 ->withInput();
         }
@@ -992,7 +996,7 @@ class SettingsController extends Controller
         $validated['is_active'] = true;
         $validated['is_default'] = (bool) ($validated['is_default'] ?? false);
 
-        if (!empty($tc_id)) {
+        if (! empty($tc_id)) {
             // Update existing term
             $term = TermsCondition::where('tc_id', $tc_id)->where('accountid', $accountid)->firstOrFail();
             $term->update($validated);
@@ -1010,7 +1014,7 @@ class SettingsController extends Controller
         }
 
         // Redirect without edit_tc parameter to clear the form
-        return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', $message);
+        return redirect()->to(route('settings.index').'#terms-conditions')->with('success', $message);
     }
 
     public function termsConditionsUpdateSequence(Request $request, TermsCondition $term)
@@ -1047,7 +1051,7 @@ class SettingsController extends Controller
             }
         }
 
-        return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'Sequence updated successfully.');
+        return redirect()->to(route('settings.index').'#terms-conditions')->with('success', 'Sequence updated successfully.');
     }
 
     public function termsConditionsToggle(Request $request, TermsCondition $term)
@@ -1056,7 +1060,7 @@ class SettingsController extends Controller
         if ($term->accountid !== $accountid) {
             abort(403, 'Unauthorized');
         }
-        $term->update(['is_active' => !$term->is_active]);
+        $term->update(['is_active' => ! $term->is_active]);
 
         if ($request->wantsJson() || $request->ajax() || $request->expectsJson()) {
             return response()->json([
@@ -1066,7 +1070,7 @@ class SettingsController extends Controller
             ]);
         }
 
-        return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'T&C status toggled.');
+        return redirect()->to(route('settings.index').'#terms-conditions')->with('success', 'T&C status toggled.');
     }
 
     public function termsConditionsDestroy(TermsCondition $term)
@@ -1076,14 +1080,15 @@ class SettingsController extends Controller
             abort(403, 'Unauthorized');
         }
         $term->delete();
-        return redirect()->to(route('settings.index') . '#terms-conditions')->with('success', 'T&C deleted successfully.');
+
+        return redirect()->to(route('settings.index').'#terms-conditions')->with('success', 'T&C deleted successfully.');
     }
 
     public function fyPrefixUpdate(Request $request)
     {
         $accountid = $this->resolveAccountId();
         $account = Account::find($accountid);
-        if (!$account) {
+        if (! $account) {
             return redirect()->back()->with('error', 'Account not found.');
         }
 
@@ -1108,7 +1113,7 @@ class SettingsController extends Controller
             );
         }
 
-        return redirect()->to(route('settings.index') . '#financial-year')->with('success', 'FY Prefix configuration saved successfully.');
+        return redirect()->to(route('settings.index').'#financial-year')->with('success', 'FY Prefix configuration saved successfully.');
     }
 
     // ─── Tax Management ───
@@ -1120,20 +1125,22 @@ class SettingsController extends Controller
         $validated['suffix_type'] = $validated['suffix_type'] ?? 'manual text';
 
         foreach (['prefix', 'number', 'suffix'] as $part) {
-            $typeKey = $part . '_type';
-            $valueKey = $part . '_value';
-            $lengthKey = $part . '_length';
+            $typeKey = $part.'_type';
+            $valueKey = $part.'_value';
+            $lengthKey = $part.'_length';
             $type = $validated[$typeKey] ?? ($part === 'number' ? 'auto increment' : 'manual text');
 
             if ($type === 'auto increment') {
                 $start = $validated[$valueKey] ?? 1;
                 $validated[$valueKey] = (string) max(1, (int) $start);
                 $validated[$lengthKey] = null;
+
                 continue;
             }
 
             if ($type === 'auto generate') {
                 $validated[$lengthKey] = max(1, (int) ($validated[$lengthKey] ?? 4));
+
                 continue;
             }
 
@@ -1152,7 +1159,7 @@ class SettingsController extends Controller
     {
         $accountid = $this->resolveAccountId();
 
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'tax_name' => 'nullable|string',
             'rate' => 'required|numeric|min:0|max:100',
             'type' => 'required|in:GST,VAT,Sales Tax,Service Tax,Other',
@@ -1162,7 +1169,8 @@ class SettingsController extends Controller
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
             }
-            return redirect()->to(route('settings.index') . '#taxes')
+
+            return redirect()->to(route('settings.index').'#taxes')
                 ->withErrors($validator)
                 ->withInput();
         }
@@ -1186,7 +1194,7 @@ class SettingsController extends Controller
             return redirect()->back()->with('success', 'Tax created successfully.');
         }
 
-        return redirect()->to(route('settings.index') . '#taxes')->with('success', 'Tax created successfully.');
+        return redirect()->to(route('settings.index').'#taxes')->with('success', 'Tax created successfully.');
     }
 
     public function taxUpdate(Request $request, Tax $tax)
@@ -1203,7 +1211,7 @@ class SettingsController extends Controller
         ]);
         $tax->update($validated);
 
-        return redirect()->to(route('settings.index') . '#taxes')->with('success', 'Tax updated successfully.');
+        return redirect()->to(route('settings.index').'#taxes')->with('success', 'Tax updated successfully.');
     }
 
     public function taxDestroy(Tax $tax)
@@ -1213,7 +1221,8 @@ class SettingsController extends Controller
             abort(403, 'Unauthorized');
         }
         $tax->delete();
-        return redirect()->to(route('settings.index') . '#taxes')->with('success', 'Tax deleted successfully.');
+
+        return redirect()->to(route('settings.index').'#taxes')->with('success', 'Tax deleted successfully.');
     }
 
     public function taxToggle(Tax $tax)
@@ -1222,8 +1231,8 @@ class SettingsController extends Controller
         if ($tax->accountid !== $accountid) {
             abort(403, 'Unauthorized');
         }
-        $tax->update(['is_active' => !$tax->is_active]);
-        return redirect()->to(route('settings.index') . '#taxes')->with('success', 'Tax status toggled.');
-    }
+        $tax->update(['is_active' => ! $tax->is_active]);
 
+        return redirect()->to(route('settings.index').'#taxes')->with('success', 'Tax status toggled.');
+    }
 }

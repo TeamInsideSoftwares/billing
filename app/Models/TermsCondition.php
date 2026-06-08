@@ -11,8 +11,11 @@ class TermsCondition extends Model
     use HasAlphaNumericId;
 
     protected $table = 'terms_conditions';
+
     protected $primaryKey = 'tc_id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected function idLength(): int
