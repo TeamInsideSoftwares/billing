@@ -26,61 +26,95 @@ old('signature_upload') !== null);
 $isBusinessInfoValidation =
 $errors->any() &&
 !($isMessageTemplateValidation || $isFinancialYearValidation || $isBillingDetailsValidation);
+$activeSettingsTab = 'personal';
+
+if ($isFinancialYearValidation) {
+    $activeSettingsTab = 'financial-year';
+} elseif ($isMessageTemplateValidation) {
+    $activeSettingsTab = 'config';
+} elseif ($isBillingDetailsValidation) {
+    $activeSettingsTab = 'billing-details';
+}
 @endphp
 
 <section class="section-bar">
     <div></div>
 </section>
 
+<style>
+    .settings-tab-group {
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .settings-tab-group .settings-tab-btn {
+        color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.6) !important;
+        border: none;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        padding: 0.5rem 1rem;
+    }
+
+    .settings-tab-group .settings-tab-btn:hover {
+        color: var(--bs-primary, #0d6efd) !important;
+        border-bottom-color: transparent;
+    }
+
+    .settings-tab-group .settings-tab-btn.active {
+        color: var(--bs-primary, #0d6efd) !important;
+        border-bottom: 2px solid var(--bs-primary, #0d6efd) !important;
+        background-color: transparent !important;
+    }
+</style>
+
 <div class="settings-page position-relative bg-white p-3 rounded-3 shadow-sm">
     <!-- Tabs Wrapper -->
     <ul class="nav nav-underline mb-3 settings-tab-group" role="tablist">
         <li class="nav-item">
-            <button type="button" class="nav-link rounded-0 settings-tab-btn active" data-bs-toggle="tab"
+            <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'personal' ? 'active' : '' }}" data-bs-toggle="tab"
                 data-bs-target="#personal" role="tab" aria-controls="personal" aria-selected="true">
                 Business
             </button>
         </li>
         <li class="nav-item">
-            <button type="button" class="nav-link rounded-0 settings-tab-btn text-secondary" data-bs-toggle="tab"
+            <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'financial-year' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
                 data-bs-target="#financial-year" role="tab" aria-controls="financial-year" aria-selected="false">
                 Financial
             </button>
         </li>
         <li class="nav-item">
-            <button type="button" class="nav-link rounded-0 settings-tab-btn text-secondary" data-bs-toggle="tab"
+            <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'config' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
                 data-bs-target="#config" role="tab" aria-controls="config" aria-selected="false">
                 Config &amp; Templates
             </button>
         </li>
         @if ($account->allow_multi_taxation)
             <li class="nav-item">
-                <button type="button" class="nav-link rounded-0 settings-tab-btn text-secondary" data-bs-toggle="tab"
+                <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'billing-details' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
                     data-bs-target="#billing-details" role="tab" aria-controls="billing-details" aria-selected="false">
                     Billing Details
                 </button>
             </li>
             <li class="nav-item">
-                <button type="button" class="nav-link rounded-0 settings-tab-btn text-secondary" data-bs-toggle="tab"
+                <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'terms-conditions' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
                     data-bs-target="#terms-conditions" role="tab" aria-controls="terms-conditions" aria-selected="false">
                     Terms &amp; Conditions
                 </button>
             </li>
             <li class="nav-item">
-                <button type="button" class="nav-link rounded-0 settings-tab-btn text-secondary" data-bs-toggle="tab"
+                <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'taxes' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
                     data-bs-target="#taxes" role="tab" aria-controls="taxes" aria-selected="false">
                     Taxes
                 </button>
             </li>
         @else
             <li class="nav-item">
-                <button type="button" class="nav-link rounded-0 settings-tab-btn text-secondary" data-bs-toggle="tab"
+                <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'billing-details' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
                     data-bs-target="#billing-details" role="tab" aria-controls="billing-details" aria-selected="false">
                     Billing Details
                 </button>
             </li>
             <li class="nav-item">
-                <button type="button" class="nav-link rounded-0 settings-tab-btn text-secondary" data-bs-toggle="tab"
+                <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'terms-conditions' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
                     data-bs-target="#terms-conditions" role="tab" aria-controls="terms-conditions" aria-selected="false">
                     Terms &amp; Conditions
                 </button>
@@ -92,7 +126,7 @@ $errors->any() &&
 
     <div class="tab-content settings-tab-content">
     <!-- PERSONAL TAB -->
-    <div id="personal" class="tab-pane fade show active" role="tabpanel">
+    <div id="personal" class="tab-pane fade {{ $activeSettingsTab === 'personal' ? 'show active' : '' }}" role="tabpanel">
         <section class="py-3 px-1">
             <div class="d-flex align-items-center gap-2 mb-4">
                 <div class="fs-4 text-primary"><i class="fas fa-building"></i></div>
@@ -362,15 +396,16 @@ $errors->any() &&
     </div>
 
     <!-- FINANCIAL YEAR -->
-    <div id="financial-year" class="tab-pane fade" role="tabpanel">
-        <section class="py-3 px-1">
-            <div class="d-flex align-items-center gap-2 mb-4">
+    <div id="financial-year" class="tab-pane fade {{ $activeSettingsTab === 'financial-year' ? 'show active' : '' }}" role="tabpanel">
+        <section class="bg-white border-0 shadow-sm rounded-3 overflow-hidden">
+            <div class="border-0 bg-white py-2 px-3 d-flex align-items-center gap-2">
                 <div class="fs-4 text-primary"><i class="fas fa-calendar-alt"></i></div>
                 <div>
                     <h5 class="fw-semibold text-dark mb-0">Financial Year</h5>
                     <p class="small text-muted mb-0">Configure your financial year and serial numbers</p>
                 </div>
             </div>
+            <div class="bg-white p-2 pt-0">
 
             @if ($errors->any() && $isFinancialYearValidation)
                 <div class="alert alert-danger mb-4">
@@ -382,11 +417,13 @@ $errors->any() &&
                 </div>
             @endif
 
-            <div class="row g-4">
+            <div class="row g-2">
                 <!-- FY Form -->
                 <div class="col-12 col-md-5">
-                    <h6 class="fw-semibold text-dark mb-3">Add Financial Year</h6>
-                    <div class="bg-light p-3 rounded-3 border">
+                    <div class="bg-light p-2 rounded-3 h-100">
+                        <div class="mb-2">
+                            <h6 class="fw-semibold text-primary small lh-sm mb-0">Add Financial Year</h6>
+                        </div>
                         <form method="POST" action="{{ route('financial-year.update') }}">
                             @csrf
                             <div class="row g-2 align-items-end">
@@ -413,7 +450,7 @@ $errors->any() &&
                                 </div>
                                 <div class="col-auto">
                                     <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                        Add
+                                        <i class="fas fa-plus btn-icon me-1"></i> Add
                                     </button>
                                 </div>
                             </div>
@@ -423,57 +460,61 @@ $errors->any() &&
 
                 <!-- FY List -->
                 <div class="col-12 col-md-7">
-                    <h6 class="fw-semibold text-dark mb-3">Recorded Financial Years</h6>
-                    <div class="card border-0 shadow-sm overflow-hidden">
-                        <div class="table-responsive">
-                            <table class="table mainTable border align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 50px;">#</th>
-                                        <th>Financial Year</th>
-                                        <th>Status</th>
-                                        <th class="text-end pe-3">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse ($financialYears as $index => $fy)
+                    <div class="bg-light p-2 rounded-3 h-100">
+                        <div class="mb-2">
+                            <h6 class="fw-semibold text-primary small lh-sm mb-0">Recorded Financial Years</h6>
+                        </div>
+                        <div class="card border-0 shadow-sm overflow-hidden">
+                            <div class="table-responsive">
+                                <table class="table mainTable border align-middle mb-0">
+                                    <thead class="table-light">
                                         <tr>
-                                            <td class="text-muted small ps-3">{{ $index + 1 }}</td>
-                                            <td><span class="fw-semibold text-dark">{{ $fy->financial_year }}</span></td>
-                                            <td>
-                                                @if ($fy->default)
-                                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Default</span>
-                                                @else
-                                                    <span class="text-muted small">—</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-end pe-3">
-                                                @if (!$fy->default)
-                                                    <form method="POST"
-                                                        action="{{ route('financial-year.default', $fy->fy_id) }}"
-                                                        class="d-inline">
-                                                        @csrf
-                                                        @method('PUT')
-                                                        <button type="submit"
-                                                            class="btn btn-sm btn-outline-primary bg-white text-primary">Set Default</button>
-                                                    </form>
-                                                @endif
-                                            </td>
+                                            <th style="width: 50px;">#</th>
+                                            <th>Financial Year</th>
+                                            <th>Status</th>
+                                            <th class="text-end pe-3">Action</th>
                                         </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="4" class="text-center py-4 text-muted">No financial years yet.</td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        @forelse ($financialYears as $index => $fy)
+                                            <tr>
+                                                <td class="text-muted small ps-3">{{ $index + 1 }}</td>
+                                                <td><span class="fw-semibold text-dark">{{ $fy->financial_year }}</span></td>
+                                                <td>
+                                                    @if ($fy->default)
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Default</span>
+                                                    @else
+                                                        <span class="text-muted small">—</span>
+                                                    @endif
+                                                </td>
+                                                <td class="text-end pe-3">
+                                                    @if (!$fy->default)
+                                                        <form method="POST"
+                                                            action="{{ route('financial-year.default', $fy->fy_id) }}"
+                                                            class="d-inline">
+                                                            @csrf
+                                                            @method('PUT')
+                                                            <button type="submit"
+                                                                class="btn btn-sm btn-outline-primary bg-white text-primary">Set Default</button>
+                                                        </form>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="4" class="text-center py-4 text-muted">No financial years yet.</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Serial Configuration -->
-            <div class="border-top mt-4 pt-4">
+            <div class="border-top mt-3 pt-3">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <div class="fs-5 text-secondary"><i class="fas fa-hashtag"></i></div>
                     <h6 class="fw-semibold text-dark mb-0">Serial Number Configuration</h6>
@@ -481,11 +522,12 @@ $errors->any() &&
                 <p class="small text-muted mb-3">Configure how invoice and quotation numbers are generated.</p>
                 @include('settings.serial-config')
             </div>
+            </div>
         </section>
     </div>
 
     <!-- CONFIG -->
-    <div id="config" class="tab-pane fade" role="tabpanel">
+    <div id="config" class="tab-pane fade {{ $activeSettingsTab === 'config' ? 'show active' : '' }}" role="tabpanel">
         <section class="py-3 px-1">
             <div class="d-flex align-items-center gap-2 mb-4">
                 <div class="fs-4 text-primary"><i class="fas fa-cog"></i></div>
@@ -595,7 +637,7 @@ $errors->any() &&
             </div>
         </section>
     </div>    <!-- MESSAGE TEMPLATES -->
-    <div id="message-templates" class="tab-pane fade" role="tabpanel">
+    <div id="message-templates" class="tab-pane fade {{ $activeSettingsTab === 'message-templates' ? 'show active' : '' }}" role="tabpanel">
         <section class="py-3 px-1">
             <div class="d-flex align-items-center gap-2 mb-4">
                 <div class="fs-4 text-primary"><i class="fas fa-envelope-open-text"></i></div>
@@ -751,7 +793,7 @@ $errors->any() &&
     </div>
 
     <!-- BILLING DETAILS TAB -->
-    <div id="billing-details" class="tab-pane fade" role="tabpanel">
+    <div id="billing-details" class="tab-pane fade {{ $activeSettingsTab === 'billing-details' ? 'show active' : '' }}" role="tabpanel">
         <section class="py-3 px-1">
             <div class="d-flex align-items-center gap-2 mb-4">
                 <div class="fs-4 text-primary"><i class="fas fa-file-invoice-dollar"></i></div>
@@ -915,7 +957,7 @@ $errors->any() &&
 
 
     <!-- TERMS & CONDITIONS TAB -->
-    <div id="terms-conditions" class="tab-pane fade" role="tabpanel">
+    <div id="terms-conditions" class="tab-pane fade {{ $activeSettingsTab === 'terms-conditions' ? 'show active' : '' }}" role="tabpanel">
         <section class="py-3 px-1">
             <div class="d-flex align-items-center gap-2 mb-4">
                 <div class="fs-4 text-primary"><i class="fas fa-shield-alt"></i></div>
@@ -1249,7 +1291,7 @@ $errors->any() &&
     </div>
 
     <!-- TAXES TAB -->
-    <div id="taxes" class="tab-pane fade" role="tabpanel">
+    <div id="taxes" class="tab-pane fade {{ $activeSettingsTab === 'taxes' ? 'show active' : '' }}" role="tabpanel">
         <section class="py-3 px-1">
             <div class="d-flex align-items-center gap-2 mb-4">
                 <div class="fs-4 text-primary"><i class="fas fa-percent"></i></div>
@@ -1466,12 +1508,30 @@ $errors->any() &&
                 }
             }
 
+            function activateTab(tabId) {
+                if (!tabId) return;
+
+                const targetSelector = tabId.startsWith('#') ? tabId : `#${tabId}`;
+                const tabTrigger = document.querySelector(`[data-bs-target="${targetSelector}"]`);
+
+                if (!tabTrigger || !window.bootstrap || !bootstrap.Tab) {
+                    return;
+                }
+
+                bootstrap.Tab.getOrCreateInstance(tabTrigger).show();
+            }
+
             const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
             tabButtons.forEach((button) => {
                 button.addEventListener('shown.bs.tab', function (event) {
                     const targetId = (event.target.getAttribute('data-bs-target') || '').replace('#', '');
                     if (!targetId) return;
                     window.history.replaceState(null, null, `#${targetId}`);
+                    try {
+                        window.localStorage.setItem('settings_active_tab', targetId);
+                    } catch (error) {
+                        // Ignore storage failures in private mode or restricted browsers.
+                    }
                 });
             });
 
@@ -1499,16 +1559,25 @@ $errors->any() &&
             const hash = window.location.hash.replace('#', '');
             const urlParams = new URLSearchParams(window.location.search);
             const encodedE = urlParams.get('e');
+            let storedTab = null;
             let decodedE = null;
             try {
                 decodedE = encodedE ? atob(encodedE) : null;
             } catch (e) {
                 console.error('Failed to decode parameter e:', e);
             }
+
+            try {
+                storedTab = window.localStorage.getItem('settings_active_tab');
+            } catch (error) {
+                storedTab = null;
+            }
             const tcTypeFromUrl = (urlParams.get('t') || '').toLowerCase();
 
             if (hash) {
                 activateTab(hash);
+            } else if (storedTab) {
+                activateTab(storedTab);
             } else if (decodedE) {
                 if (decodedE.startsWith('TC')) activateTab('terms-conditions');
                 else if (decodedE.startsWith('SET')) activateTab('config');

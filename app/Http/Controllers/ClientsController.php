@@ -55,18 +55,90 @@ class ClientsController extends Controller
             ->whereRaw('LOWER(primary_email) = ?', [$validated['primary_email']])
             ->first();
         if ($existingClient && (string) $existingClient->accountid === (string) $validated['accountid']) {
-            Log::warning('Client API skipped: primary email already exists for account.', [
-                'accountid' => $validated['accountid'] ?? null,
-                'type' => $validated['type'] ?? null,
-                'primary_email' => $validated['primary_email'] ?? null,
-                'itemid' => $validated['itemid'] ?? null,
+            $existingActiveOrder = Order::query()
+                ->where('clientid', $existingClient->clientid)
+                ->where('itemid', $validated['itemid'])
+                ->where('status', 'active')
+                ->first();
+
+            if ($existingActiveOrder) {
+                Log::warning('Client API skipped: client already has an active order for this product.', [
+                    'accountid' => $validated['accountid'] ?? null,
+                    'clientid' => $existingClient->clientid,
+                    'primary_email' => $validated['primary_email'] ?? null,
+                    'itemid' => $validated['itemid'] ?? null,
+                    'orderid' => $existingActiveOrder->orderid,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You have already purchased this product.',
+                ], 409);
+            }
+
+            $service = Service::query()
+                ->where('accountid', $validated['accountid'])
+                ->where('itemid', $validated['itemid'])
+                ->first();
+            if (! $service) {
+                Log::warning('Client API blocked: invalid itemid for account.', [
+                    'accountid' => $validated['accountid'] ?? null,
+                    'primary_email' => $validated['primary_email'] ?? null,
+                    'itemid' => $validated['itemid'] ?? null,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid itemid for this account.',
+                ], 422);
+            }
+
+            try {
+                $order = DB::transaction(function () use ($existingClient, $validated, $service) {
+                    $startDate = Carbon::today();
+                    $frequency = trim((string) env('TRIAL_API_ORDER_FREQUENCY', 'month'));
+                    $duration = (int) env('TRIAL_API_ORDER_DURATION', 1);
+                    $endDate = $this->calculateOrderEndDate($startDate, $frequency, $duration);
+
+                    return Order::create([
+                        'accountid' => $validated['accountid'],
+                        'clientid' => $existingClient->clientid,
+                        'order_number' => Order::generateNextOrderNumberForAccount($validated['accountid']),
+                        'status' => 'active',
+                        'client_docid' => null,
+                        'itemid' => $service->itemid,
+                        'item_name' => $service->name ?? 'Item',
+                        'item_description' => $service->description ?? null,
+                        'quantity' => 1,
+                        'no_of_users' => $service->user_wise ? 1 : null,
+                        'start_date' => $startDate->toDateString(),
+                        'end_date' => $endDate->toDateString(),
+                        'delivery_date' => null,
+                    ]);
+                });
+            } catch (Throwable $e) {
+                Log::error('Order creation failed for existing client.', [
+                    'accountid' => $validated['accountid'] ?? null,
+                    'clientid' => $existingClient->clientid,
+                    'itemid' => $validated['itemid'] ?? null,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Order creation failed. Please check logs.',
+                ], 500);
+            }
+
+            Log::info('New order created for existing client (no trial conversion).', [
                 'clientid' => $existingClient->clientid,
+                'orderid' => $order->orderid,
+                'itemid' => $validated['itemid'],
             ]);
 
             return response()->json([
                 'success' => true,
-                'warning' => true,
-                'message' => 'Primary email already exists.',
+                'message' => 'Order created for existing client.',
                 'data' => [
                     'clientid' => $existingClient->clientid,
                     'accountid' => $existingClient->accountid,
@@ -74,8 +146,14 @@ class ClientsController extends Controller
                     'business_name' => $existingClient->business_name,
                     'contact_name' => $existingClient->contact_name,
                     'primary_email' => $existingClient->primary_email,
+                    'orderid' => $order->orderid,
+                    'order_number' => $order->order_number,
+                    'itemid' => $order->itemid,
+                    'item_name' => $order->item_name,
+                    'start_date' => optional($order->start_date)->format('Y-m-d'),
+                    'end_date' => optional($order->end_date)->format('Y-m-d'),
                 ],
-            ]);
+            ], 201);
         }
 
         if ($existingClient) {
@@ -159,7 +237,7 @@ class ClientsController extends Controller
                     'item_name' => $service->name ?? 'Item',
                     'item_description' => $service->description ?? null,
                     'quantity' => 1,
-                    'no_of_users' => null,
+                    'no_of_users' => $service->user_wise ? 1 : null,
                     'start_date' => $startDate->toDateString(),
                     'end_date' => $endDate->toDateString(),
                     'delivery_date' => null,
@@ -369,6 +447,21 @@ class ClientsController extends Controller
                 'created_at' => $client->created_at,
                 'item_name' => $itemName,
                 'item_end_date' => $itemEndDate,
+                'orders_data' => $client->orders->map(fn ($order) => [
+                    'record_id' => $order->orderid,
+                    'number' => $order->order_number,
+                    'clientid' => $client->clientid,
+                    'status' => $order->status ?? '',
+                    'items' => [[
+                        'item_name' => $order->item_name,
+                        'item_description' => $order->item_description,
+                        'quantity' => (float) ($order->quantity ?? 1),
+                        'no_of_users' => $order->no_of_users,
+                        'start_date' => $order->start_date?->format('Y-m-d'),
+                        'end_date' => $order->end_date?->format('Y-m-d'),
+                        'delivery_date' => $order->delivery_date?->format('Y-m-d'),
+                    ]],
+                ])->values(),
             ];
         });
 

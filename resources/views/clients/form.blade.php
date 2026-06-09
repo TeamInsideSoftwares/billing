@@ -8,7 +8,7 @@
 @endsection
 
 @section('content')
-<div class="position-relative bg-white p-3 rounded-3">
+<div class="position-relative bg-white p-2 rounded-3">
     <form method="POST" action="{{ isset($client) ? route('clients.update', $client) : route('clients.store') }}"
         class="mainForm" enctype="multipart/form-data">
         @isset($client)
@@ -29,12 +29,12 @@
         <input type="hidden" name="accountid"
             value="{{ isset($client) ? ($client->accountid ?? auth()->user()->accountid ?? 'ACC0000001') : (auth()->user()->accountid ?? 'ACC0000001') }}">
 
-        <div class="row g-3 align-items-stretch">
+        <div class="row g-2 align-items-stretch">
             <!-- Column 1: Client Information -->
             <div class="col-12 col-lg-3">
-                <div class="bg-light p-4 rounded-3 border h-100">
-                    <div class="mb-3">
-                        <h5 class="fw-semibold text-black mb-0">Client Information</h5>
+                <div class="bg-light p-2 rounded-3 h-100">
+                    <div class="mb-2">
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Client Information</h5>
                     </div>
 
                     <div class="row g-2">
@@ -132,12 +132,12 @@
 
             <!-- Column 2: Address -->
             <div class="col-12 col-lg-3">
-                <div class="bg-light p-4 rounded-3 border h-100">
-                    <div class="mb-3">
-                        <h5 class="fw-semibold text-black mb-0">Address</h5>
+                <div class="bg-light p-2 rounded-3 h-100">
+                    <div class="mb-2">
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Address</h5>
                     </div>
 
-                    <div class="row g-2">
+                    <div class="row g-2 form-grid">
                         <div class="col-12 col-md-12">
                             <label for="country"
                                 class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
@@ -175,8 +175,8 @@
                                 class="form-control">{{ old('address_line_1', $client->address_line_1 ?? '') }}</textarea>
                         </div>
                     </div>
-                    <div class="mb-3 mt-4">
-                        <h5 class="fw-semibold text-black mb-0">Business Logo</h5>
+                    <div class="mb-2 mt-3">
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Business Logo</h5>
                     </div>
                     <div class="row g-2">
                         <div class="col-12 col-md-12">
@@ -194,7 +194,7 @@
                                     id="drop-zone-prompt">
                                     <i class="far fa-file text-secondary mb-2 fs-4"></i>
                                     <span class="text-muted fw-medium ms-2">Drag and drop or <span
-                                            class="text-primary fw-semibold">browse files</span></span>
+                                            class="text-black fw-semibold">browse files</span></span>
                                 </div>
 
                                 <div class="drop-zone-preview {{ $hasLogo ? '' : 'd-none' }} align-items-center justify-content-between w-100"
@@ -217,9 +217,9 @@
 
             <!-- Column 3: Billing Details -->
             <div class="col-12 col-lg-6">
-                <div class="bg-light p-4 rounded-3 border h-100">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                        <h5 class="fw-semibold text-black mb-0">Billing Details</h5>
+                <div class="bg-light p-2 rounded-3 h-100">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Billing Details</h5>
                         <div class="d-flex align-items-center gap-1">
                             <div class="mb-0 bg-white border rounded-1 px-2 py-1">
                                 <div class="form-check mb-0 form-check-large">
@@ -241,7 +241,7 @@
                     </div>
 
 
-                    <div class="form-check mb-3">
+                    <div class="form-check mb-2">
                         <input class="form-check-input" type="checkbox" id="useExistingBilling" style="cursor:pointer;"
                             {{ old('existing_bd_id', $client->bd_id ?? '') !== '' ? 'checked' : '' }}>
                         <label class="form-check-label fw-normal text-dark" style="cursor:pointer;"
@@ -251,7 +251,7 @@
                     </div>
 
                     <div id="existingBillingWrap"
-                        class="position-relative mb-3 {{ old('existing_bd_id', $client->bd_id ?? '') !== '' ? '' : 'd-none' }}">
+                        class="position-relative mb-2 {{ old('existing_bd_id', $client->bd_id ?? '') !== '' ? '' : 'd-none' }}">
                         <label for="existing_bd_id" class="form-label small lh-sm fw-semibold text-dark mb-1">Select
                             Existing Billing Profile</label>
                         <select id="existing_bd_id" name="existing_bd_id" class="form-select form-select-sm">
@@ -269,7 +269,7 @@
                     </div>
 
                     <div id="new-billing-fields">
-                        <div class="row g-2">
+                        <div class="row g-2 form-grid">
                             <div class="col-12 col-md-12">
                                 <label for="billing_business_name"
                                     class="form-label small lh-sm fw-semibold text-dark mb-1">Billing Business Name<span
@@ -364,9 +364,6 @@
 
         <!-- Form Actions outside the columns -->
         <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
-            <a href="{{ route('clients.index') }}" class="btn btn-outline-primary bg-white text-primary fw-medium">
-                <i class="fas fa-times btn-icon me-1"></i> Cancel
-            </a>
             <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
                 {{ isset($client) ? 'Update Client' : 'Add Client' }}
                 <i class="fas fa-arrow-right btn-icon ms-1"></i>
@@ -386,7 +383,7 @@
                     <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="mainForm">
                         @csrf
                         <div id="groupMethodField"></div>
-                        <div class="row g-2 mb-3">
+                        <div class="row g-2 mb-3 form-grid">
                             <div class="col-md-6">
                                 <label for="groupName" class="form-label small lh-sm fw-semibold text-dark mb-1">Group
                                     Name<span class="text-danger">*</span></label>
@@ -401,13 +398,13 @@
                                 <label for="groupAddress1"
                                     class="form-label small lh-sm fw-semibold text-dark mb-1">Address
                                     Line 1</label>
-                                <input type="text" name="address_line_1" id="groupAddress1" class="form-control">
+                                <textarea name="address_line_1" id="groupAddress1" class="form-control" rows="2">{{ old('address_line_1') }}</textarea>
                             </div>
                             <div class="col-md-6">
                                 <label for="groupAddress2"
                                     class="form-label small lh-sm fw-semibold text-dark mb-1">Address
                                     Line 2</label>
-                                <input type="text" name="address_line_2" id="groupAddress2" class="form-control">
+                                <textarea name="address_line_2" id="groupAddress2" class="form-control" rows="2">{{ old('address_line_2') }}</textarea>
                             </div>
                             <div class="col-md-6">
                                 <label for="groupCountry"
@@ -492,10 +489,11 @@
             billingEmail.value = profile.billing_email || '';
             billingPhone.value = profile.billing_phone || '';
             billingAddress.value = profile.address_line_1 || '';
-            billingCountry.value = profile.country || 'India';
-            billingState.value = profile.state || '';
-            billingCity.value = profile.city || '';
             billingPostal.value = profile.postal_code || '';
+
+            setSelectValueAndNotify(billingCountry, profile.country || 'India');
+            setSelectValueAndNotify(billingState, profile.state || '');
+            billingCity.value = profile.city || '';
         }
 
         function clearBillingFields() {

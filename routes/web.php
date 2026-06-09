@@ -173,7 +173,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::controller(OrdersController::class)->group(function () {
         // Specific routes first
-        Route::get('/orders/select-client', 'selectClient')->name('orders.select-client');
         Route::get('/orders/json', 'getOrderJsonByNumber')->name('orders.json-by-number');
         Route::get('/orders/trials', 'trialOrders')->name('orders.trials');
         Route::get('/orders', 'orders')->name('orders.index');

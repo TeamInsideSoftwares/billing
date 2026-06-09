@@ -2,8 +2,8 @@
 
 @section('header_actions')
 <a href="{{ request()->query('return_to') === 'trials' ? route('orders.trials') : route('orders.index', ['c' => $preSelectedClientId ?? ($order->clientid ?? request('c'))]) }}"
-    class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
-    <i class="fas fa-arrow-left btn-icon"></i> Back to Orders
+    class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
+    <i class="fas fa-list btn-icon"></i> Order List
 </a>
 @endsection
 
@@ -53,7 +53,7 @@ $initialOrderItems = [[
 }
 @endphp
 
-<div class="position-relative bg-white p-3 rounded-3">
+<div class="position-relative bg-white p-2 rounded-3">
     <form method="POST"
         action="{{ $isEditMode ? route('orders.update', ['order' => $order->orderid, 'return_to' => request()->query('return_to')]) : route('orders.store') }}"
         id="orderForm" class="mainForm">
@@ -72,290 +72,274 @@ $initialOrderItems = [[
         </div>
         @endif
 
-        <div class="row g-3 align-items-stretch">
-            <div class="col-12 col-lg-4">
-                <div class="bg-light p-4 rounded-3 border h-100">
-                    <div class="mb-3">
-                        <h5 class="fw-semibold text-black mb-0">Client Details</h5>
-                    </div>
-
-                    <div class="row g-2">
-                        <div class="col-12 col-md-12">
-                            <label for="clientid" class="form-label small lh-sm fw-semibold text-dark mb-1">Select
-                                Client *</label>
-                            <select id="clientid" name="{{ $isClientLocked ? '' : 'clientid' }}" class="form-select" {{
-                                $isClientLocked ? 'disabled' : '' }} required>
-                                <option value="">Select Client</option>
-                                @foreach($clients ?? [] as $client)
-                                <option value="{{ $client->clientid }}" {{ (string)$selectedClientId===(string)$client->
-                                    clientid ? 'selected' : '' }}>
-                                    {{ $client->business_name ?? $client->contact_name }}
-                                </option>
-                                @endforeach
-                            </select>
-
-                            @if($isClientLocked)
-                            <input type="hidden" name="clientid" value="{{ $selectedClientId }}">
-                            @endif
-                            <!-- <label class="form-label small lh-sm fw-semibold text-dark mb-1">Client</label>
-                            <input type="hidden" name="clientid" value="{{ $selectedClientId }}">
-                            <div class="fw-semibold text-dark">{{ $selectedClientName }}</div>
-                            <div class="text-muted small {{ $selectedClientEmail ? '' : 'is-hidden' }}">{{
-                                $selectedClientEmail }}</div> -->
-                        </div>
-
-                        @if(!$isEditMode)
-                        <div class="col-12 col-md-12">
-                            <label for="quotationid"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">Quotation</label>
-                            <select id="quotationid" class="form-select" {{ empty($selectedClientId) ? 'disabled' : ''
-                                }}>
-                                <option value="">Select Quotation</option>
-                                @forelse($clientQuotations as $quotation)
-                                <option value="{{ $quotation['quotationid'] }}" {{ (string)
-                                    $selectedQuotationId===(string) $quotation['quotationid'] ? 'selected' : '' }}>
-                                    {{ $quotation['display_title'] ?? $quotation['quo_title'] ??
-                                    $quotation['quotation_number'] ?? $quotation['quotationid'] }}
-                                </option>
-                                @empty
-                                <option value="" disabled>
-                                    {{ empty($selectedClientId) ? 'Select a client first' : 'No quotations found for
-                                    this client' }}
-                                </option>
-                                @endforelse
-                            </select>
-                            <div class="form-text text-muted small mt-1">
-                                Select a quotation to load its items into the order.
-                            </div>
-                        </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-lg-8">
-                <div class="bg-light p-4 rounded-3 border h-100">
-                    <div class="mb-3">
-                        <h5 class="fw-semibold text-black mb-0">{{ $isEditMode ? 'Edit Item' : 'Add Items' }}</h5>
-                    </div>
-
-                    <div class="row g-3">
-                        <div class="col-12 col-md-4">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Item</label>
-                            <select id="item_itemid" class="form-select" {{ ($isEditMode &&
-                                !empty($isItemLockedByInvoice)) ? 'disabled' : '' }}>
-                                <option value="">Select Item</option>
-                                @php
-                                $groupedServices = $services->groupBy(fn($service) => $service->category->name ?? 'No
-                                Category');
-                                @endphp
-                                @foreach($groupedServices as $categoryName => $categoryServices)
-                                <optgroup label="{{ $categoryName }}">
-                                    @foreach($categoryServices as $service)
-                                    <option value="{{ $service->itemid }}"
-                                        data-description="{{ $service->description ?? '' }}"
-                                        data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
-                                        {{ $service->name }}
+        <div class="row g-2">
+            <div class="{{ $isEditMode ? 'col-12 col-lg-3' : 'col-12 col-lg-3' }}">
+                <div class="d-flex flex-column gap-3">
+                    <div class="bg-secondary p-2 rounded-3">
+                        <div class="row g-2">
+                            <div class="col-12 col-md-12">
+                                <select id="clientid" name="{{ $isClientLocked ? '' : 'clientid' }}" class="form-select"
+                                    {{ $isClientLocked ? 'disabled' : '' }} required>
+                                    <option value="">Select Client</option>
+                                    @foreach($clients ?? [] as $client)
+                                    <option value="{{ $client->clientid }}" {{
+                                        (string)$selectedClientId===(string)$client->
+                                        clientid ? 'selected' : '' }}>
+                                        {{ $client->business_name ?? $client->contact_name }}
                                     </option>
                                     @endforeach
-                                </optgroup>
-                                @endforeach
-                            </select>
-                        </div>
+                                </select>
 
-                        <div class="col-12 col-md-2">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Qty</label>
-                            <input type="number" id="item_quantity" class="form-control" min="1" step="1" value="1">
-                        </div>
+                                @if($isClientLocked)
+                                <input type="hidden" name="clientid" value="{{ $selectedClientId }}">
+                                @endif
+                                <!-- <label class="form-label small lh-sm fw-semibold text-dark mb-1">Client</label>
+                                <input type="hidden" name="clientid" value="{{ $selectedClientId }}">
+                                <div class="fw-semibold text-dark">{{ $selectedClientName }}</div>
+                                <div class="text-muted small {{ $selectedClientEmail ? '' : 'is-hidden' }}">{{
+                                    $selectedClientEmail }}</div> -->
+                            </div>
 
-                        @if($account?->have_users)
-                        <div class="col-12 col-md-2 is-hidden" id="item_users_wrapper">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Users</label>
-                            <input type="number" id="item_users" class="form-control" min="1" step="1" value="1">
+                            @if(!$isEditMode)
+                            <div class="col-12 col-md-12">
+                                <select id="quotationid" class="form-select" {{ empty($selectedClientId) ? 'disabled'
+                                    : '' }}>
+                                    <option value="">Import items from Quotations?</option>
+                                    @forelse($clientQuotations as $quotation)
+                                    <option value="{{ $quotation['quotationid'] }}" {{ (string)
+                                        $selectedQuotationId===(string) $quotation['quotationid'] ? 'selected' : '' }}>
+                                        {{ $quotation['display_title'] ?? $quotation['quo_title'] ??
+                                        $quotation['quotation_number'] ?? $quotation['quotationid'] }}
+                                    </option>
+                                    @empty
+                                    <option value="" disabled>
+                                        {{ empty($selectedClientId) ? 'Select a client first' : 'No quotations found for
+                                        this client' }}
+                                    </option>
+                                    @endforelse
+                                </select>
+                            </div>
+                            @endif
                         </div>
-                        @else
-                        <input type="hidden" id="item_users" value="1">
-                        @endif
+                    </div>
+                    <div class="bg-light p-2 rounded-3">
+                        <div class="row g-2">
+                            <div class="col-12 col-md-12">
+                                <div class="mb-1">
+                                    <h5 class="fw-semibold small lh-sm text-primary mb-0">{{ $isEditMode ? 'Edit Item' :
+                                        'Add Items' }}
+                                    </h5>
+                                </div>
+                            </div>
 
-                        <div class="col-12 col-md-2">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Frequency</label>
-                            <select id="item_frequency" class="form-select">
-                                <option value="">None</option>
-                                <option value="One-Time">One-Time</option>
-                                <option value="Day(s)">Day(s)</option>
-                                <option value="Week(s)">Week(s)</option>
-                                <option value="Month(s)">Month(s)</option>
-                                <option value="Quarter(s)">Quarter(s)</option>
-                                <option value="Year(s)">Year(s)</option>
-                            </select>
-                        </div>
+                            <div class="col-12 col-md-12">
+                                <select id="item_itemid" class="form-select" {{ ($isEditMode &&
+                                    !empty($isItemLockedByInvoice)) ? 'disabled' : '' }}>
+                                    <option value="">Select Item</option>
+                                    @php
+                                    $groupedServices = $services->groupBy(fn($service) => $service->category->name
+                                    ??
+                                    'No
+                                    Category');
+                                    @endphp
+                                    @foreach($groupedServices as $categoryName => $categoryServices)
+                                    <optgroup label="{{ $categoryName }}">
+                                        @foreach($categoryServices as $service)
+                                        <option value="{{ $service->itemid }}"
+                                            data-description="{{ $service->description ?? '' }}"
+                                            data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
+                                            {{ $service->name }}
+                                        </option>
+                                        @endforeach
+                                    </optgroup>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                        <div class="col-12 col-md-2 is-hidden" id="item_duration_wrapper">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Duration</label>
-                            <input type="number" id="item_duration" class="form-control" min="1" step="1" value="1">
-                        </div>
+                            <div class="col-12">
+                                <textarea id="item_description" class="form-control" placeholder="Description"
+                                    rows="3"></textarea>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Qty</label>
+                                <input type="number" id="item_quantity" class="form-control" min="1" step="1" value="1">
+                            </div>
 
-                        <div class="col-12 col-md-3">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Start Date</label>
-                            <input type="date" id="item_start_date" class="form-control" value="{{ $todayDate }}"
-                                readonly>
-                        </div>
+                            {{-- @if($account?->have_users) --}}
+                            <div class="col-12 col-md-2" id="item_users_wrapper">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">User</label>
+                                <input type="number" id="item_users" class="form-control" min="1" step="1" value="1">
+                            </div>
+                            {{-- @else --}}
+                            {{-- <input type="hidden" id="item_users" value="1"> --}}
+                            {{-- @endif --}}
 
-                        <div class="col-12 col-md-3">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">End Date</label>
-                            <input type="date" id="item_end_date" class="form-control" value="{{ $maxEndDate }}"
-                                readonly>
-                        </div>
+                            <div class="col-12 col-md-5">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Frequency</label>
+                                <select id="item_frequency" class="form-select">
+                                    <option value="One-Time">One-Time</option>
+                                    <option value="Day(s)">Day(s)</option>
+                                    <option value="Week(s)">Week(s)</option>
+                                    <option value="Month(s)">Month(s)</option>
+                                    <option value="Quarter(s)">Quarter(s)</option>
+                                    <option value="Year(s)">Year(s)</option>
+                                </select>
+                            </div>
 
-                        <div class="col-12 col-md-3">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Delivery Date</label>
-                            <input type="date" id="item_delivery_date" class="form-control">
-                        </div>
+                            <div class="col-12 col-md-2" id="item_duration_wrapper">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Dur</label>
+                                <input type="number" id="item_duration" class="form-control" min="1" step="1" value="1">
+                            </div>
 
-                        <div class="col-12 col-md-3">
-                            <label for="client_docid"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">PO</label>
-                            <select id="client_docid" name="client_docid" class="form-select">
-                                <option value="">Select Document</option>
-                                @php
-                                $poDocuments = collect($clientDocuments ?? [])
-                                ->filter(fn ($document) => (string) ($document->clientid ?? '') === (string)
-                                ($selectedClientId ?? ''))
-                                ->filter(fn ($document) => trim((string) ($document->title ?? '')) !== '')
-                                ->values();
-                                @endphp
-                                @forelse($poDocuments as $document)
-                                <option value="{{ $document->client_docid }}" {{ old('client_docid', $order->
-                                    client_docid ?? '') == $document->client_docid ? 'selected' : '' }}>
-                                    {{ $document->title }}
-                                </option>
-                                @empty
-                                <option value="" disabled>No PO documents found</option>
-                                @endforelse
-                            </select>
-                        </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Start Date</label>
+                                <div class="input-group">
+                                    <input type="date" id="item_start_date" class="form-control"
+                                        value="{{ $todayDate }}" readonly>
+                                    <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
+                                </div>
+                            </div>
 
-                        <div class="col-12">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Description</label>
-                            <textarea id="item_description" class="form-control" rows="3"></textarea>
-                        </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Expiry</label>
+                                <div class="input-group">
+                                    <input type="date" id="item_end_date" class="form-control" value="{{ $maxEndDate }}"
+                                        readonly>
+                                    <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
+                                </div>
+                            </div>
 
-                        @if(!$isEditMode)
-                        <div class="col-12 d-flex justify-content-end">
-                            <button type="button" id="addItemBtn"
-                                class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                Add Item
-                            </button>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Delivery
+                                    Date</label>
+                                <div class="input-group">
+                                    <input type="date" id="item_delivery_date" class="form-control">
+                                    <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label for="client_docid"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Document</label>
+                                <select id="client_docid" name="client_docid" class="form-select">
+                                    <option value="">Select</option>
+                                    @php
+                                    $poDocuments = collect($clientDocuments ?? [])
+                                    ->filter(fn ($document) => (string) ($document->clientid ?? '') === (string)
+                                    ($selectedClientId ?? ''))
+                                    ->filter(fn ($document) => trim((string) ($document->title ?? '')) !== '')
+                                    ->values();
+                                    @endphp
+                                    @forelse($poDocuments as $document)
+                                    <option value="{{ $document->client_docid }}" {{ old('client_docid', $order->
+                                        client_docid ?? '') == $document->client_docid ? 'selected' : '' }}>
+                                        {{ $document->title }}
+                                    </option>
+                                    @empty
+                                    <option value="" disabled>No PO documents found</option>
+                                    @endforelse
+                                </select>
+                            </div>
+
+                            @if(!$isEditMode)
+                            <div class="col-12 d-flex justify-content-end mt-2">
+                                <button type="button" id="addItemBtn"
+                                    class="btn btn-outline-primary btn-primary text-white fw-medium">
+                                    Add Item <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                                </button>
+                            </div>
+                            @endif
                         </div>
-                        @endif
                     </div>
                 </div>
             </div>
+
+            @if(!$isEditMode)
+            <div class="col-12 col-lg-9">
+                <div id="orderItemsTableWrap" class="order-create-table-wrap bg-light p-3 h-100 rounded-3 mt-0">
+                    <div
+                        class="d-flex justify-content-end align-items-center align-self-end gap-3 small text-dark mb-2">
+                        <div class="btn-group shadow-sm" role="group" aria-label="View Toggle">
+                            <button type="button"
+                                class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
+                                id="btn-grid-view">
+                                <i class="fas fa-th-large toggle-icon"></i> Grid
+                            </button>
+                            <button type="button"
+                                class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
+                                id="btn-list-view">
+                                <i class="fas fa-list toggle-icon"></i> List
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="order-items-list-view" class="card overflow-hidden">
+                        <div class="table-responsive">
+                            <table class="table mainTable align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="30%">Item</th>
+                                        <th class="text-center" width="10%">Qty</th>
+                                        <th class="text-center" width="10%">User</th>
+                                        <th class="text-center">Start Date</th>
+                                        <th class="text-center">Expiry</th>
+                                        <th class="text-center">Delivery Date</th>
+                                        <th class="text-end" width="12%">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orderItemsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="order-items-grid-view" class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-2 d-none">
+                    </div>
+                </div>
+            </div>
+            @endif
         </div>
 
         <input type="hidden" name="items_data" id="items_data">
 
         @if(!$isEditMode)
-        <div id="orderItemsEmptyState" class="empty-state mt-4">
-            {{-- No items added yet. Choose a quotation or add items manually. --}}
-        </div>
-
-        <div id="orderItemsTableWrap" class="order-create-table-wrap mt-4 is-hidden" style="display: none;">
-            <div class="card border-0 shadow-sm overflow-hidden">
-                <div class="table-responsive">
-                    <table class="table mainTable align-middle mb-0" style="table-layout: fixed;">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width: 38%;">Item</th>
-                                <th style="width: 8%;">Qty</th>
-                                <th style="width: 9%;">Users</th>
-                                <th class="text-nowrap">Start</th>
-                                <th class="text-nowrap">End</th>
-                                <th class="text-nowrap">Delivery</th>
-                                <th class="text-end" style="width: 12%;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="orderItemsBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div id="orderSubmitBar" class="d-flex align-items-center justify-content-end gap-2 mt-3"
+        <div id="orderSubmitBar" class="d-flex align-items-center justify-content-end gap-2 mt-2"
             style="display: none;">
             <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                Save Orders
+                Save Orders <i class="fas fa-arrow-right btn-icon ms-1"></i>
             </button>
         </div>
         @else
-        <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+        <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
             <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                Update Order
+                Update Order <i class="fas fa-arrow-right btn-icon ms-1"></i>
             </button>
         </div>
         @endif
     </form>
 
-    @if(!$isEditMode)
-    @if(!empty($selectedClientId) && ($recentOrders ?? collect())->isNotEmpty())
-    <div class="card border-0 shadow-sm overflow-hidden mt-4">
-        <div class="table-responsive">
-            <table class="table mainTable align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Order #</th>
-                        <th>Item</th>
-                        <th>Qty</th>
-                        <th>Start</th>
-                        <th>End</th>
-                        <th>Status</th>
-                        <th class="text-end"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($recentOrders as $recentOrder)
-                    <tr>
-                        <td>{{ $recentOrder->order_number ?? 'N/A' }}</td>
-                        <td>{{ $recentOrder->item_name ?? 'Item' }}</td>
-                        <td>{{ (int) ($recentOrder->quantity ?? 1) }}</td>
-                        <td>{{ $recentOrder->start_date?->format('d M Y') ?? '-' }}</td>
-                        <td>{{ $recentOrder->end_date?->format('d M Y') ?? '-' }}</td>
-                        <td>{{ ($recentOrder->status ?? '') === 'running' ? 'Active' : ucfirst((string)
-                            ($recentOrder->status ?? 'active')) }}</td>
-                        <td class="text-end">
-                            <div class="tableActionButton d-inline-flex gap-1">
-                                <a href="{{ route('orders.edit', ['order' => $recentOrder->orderid, 'return_to' => 'create', 'c' => $selectedClientId, 'iframe' => request()->query('iframe')]) }}"
-                                    class="bg03 color03">
-                                    Edit
-                                </a>
-                                <form method="POST"
-                                    action="{{ route('orders.destroy', ['order' => $recentOrder->orderid, 'return_to' => 'create', 'c' => $selectedClientId, 'iframe' => request()->query('iframe')]) }}"
-                                    class="inline-delete" onsubmit="return confirm('Cancel this order?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="bg04 color04 border-0">Cancel</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </div>
-    @endif
-    @endif
+
 </div>
+<script type="application/json" id="order-page-data">
+{!! json_encode([
+    'isEditMode' => (bool) $isEditMode,
+    'todayDate' => $todayDate,
+    'maxEndDate' => $maxEndDate,
+    'initialItems' => $initialOrderItems ?? [],
+    'clientQuotations' => $clientQuotations ?? [],
+    'existingClientItemIds' => $existingClientItemIds ?? [],
+]) !!}
+</script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const isEditMode = @json((bool) $isEditMode);
+        const pageData = JSON.parse(document.getElementById('order-page-data').textContent || '{}');
+        const isEditMode = pageData.isEditMode;
         const isIframe = window.self !== window.top;
-        const todayDate = @json($todayDate);
-        const maxEndDate = @json($maxEndDate);
-        const initialItems = @json($initialOrderItems ?? []);
-        const clientQuotations = @json($clientQuotations ?? []);
-        const existingClientItemIds = new Set((@json($existingClientItemIds ?? []))
+        const todayDate = pageData.todayDate;
+        const maxEndDate = pageData.maxEndDate;
+        const initialItems = pageData.initialItems;
+        const clientQuotations = pageData.clientQuotations;
+        const existingClientItemIds = new Set((pageData.existingClientItemIds || [])
             .map(value => String(value || ''))
             .filter(Boolean));
 
@@ -365,9 +349,12 @@ $initialOrderItems = [[
         const addItemBtn = document.getElementById('addItemBtn');
         const itemsInput = document.getElementById('items_data');
         const orderItemsBody = document.getElementById('orderItemsBody');
-        const orderItemsEmptyState = document.getElementById('orderItemsEmptyState');
         const orderItemsTableWrap = document.getElementById('orderItemsTableWrap');
         const orderSubmitBar = document.getElementById('orderSubmitBar');
+        const btnList = document.getElementById('btn-list-view');
+        const btnGrid = document.getElementById('btn-grid-view');
+        const listView = document.getElementById('order-items-list-view');
+        const gridView = document.getElementById('order-items-grid-view');
         const usersWrapper = document.getElementById('item_users_wrapper');
         const usersInput = document.getElementById('item_users');
         const frequencyInput = document.getElementById('item_frequency');
@@ -494,7 +481,7 @@ $initialOrderItems = [[
         function toggleUsersField() {
             if (!usersWrapper || !usersInput) return;
             const show = isSelectedItemUserWise();
-            usersWrapper.classList.toggle('is-hidden', !show);
+            usersInput.disabled = !show;
             if (!show) {
                 usersInput.value = 1;
             }
@@ -504,7 +491,7 @@ $initialOrderItems = [[
             if (!durationWrapper || !durationInput) return;
 
             const show = !isOneTimeFrequency();
-            durationWrapper.classList.toggle('is-hidden', !show);
+            durationInput.disabled = !show;
 
             if (!show) {
                 durationInput.value = 1;
@@ -520,7 +507,7 @@ $initialOrderItems = [[
                 item_name: option ? String(option.textContent || '').trim() : '',
                 item_description: String(descriptionInput?.value || ''),
                 quantity: Math.max(1, Math.round(Number(quantityInput?.value || 1))),
-                no_of_users: usersWrapper && !usersWrapper.classList.contains('is-hidden')
+                no_of_users: usersInput && !usersInput.disabled
                     ? Math.max(1, Math.round(Number(usersInput?.value || 1)))
                     : null,
                 frequency: String(frequencyInput?.value || ''),
@@ -548,7 +535,9 @@ $initialOrderItems = [[
 
         function setAddButtonState() {
             if (!addItemBtn || isEditMode) return;
-            addItemBtn.textContent = editingItemIndex === null ? 'Add Item' : 'Update Item';
+            addItemBtn.innerHTML = editingItemIndex === null
+                ? 'Add Item <i class="fas fa-arrow-right btn-icon ms-1"></i>'
+                : 'Update Item <i class="fas fa-arrow-right btn-icon ms-1"></i>';
         }
 
         function resetItemForm() {
@@ -590,21 +579,38 @@ $initialOrderItems = [[
             }
 
             orderItemsBody.innerHTML = '';
+            const gridViewWrap = document.getElementById('order-items-grid-view');
+            if (gridViewWrap) {
+                gridViewWrap.innerHTML = '';
+            }
 
             if (items.length === 0) {
-                orderItemsTableWrap?.classList.add('is-hidden');
-                orderItemsTableWrap?.style.setProperty('display', 'none');
-                orderItemsEmptyState?.classList.remove('is-hidden');
                 if (orderSubmitBar) orderSubmitBar.style.display = 'none';
+                orderItemsBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No items added yet. Choose a quotation or add items manually.
+                        </td>
+                    </tr>
+                `;
+                if (gridViewWrap) {
+                    gridViewWrap.innerHTML = `
+                        <div class="col-12 w-100">
+                            <div class="card border-0 text-center py-5 d-flex flex-column align-items-center justify-content-center bg-white rounded-3" style="min-height: 220px;">
+                                <i class="fas fa-box-open mb-2 text-secondary fs-1 opacity-50"></i>
+                                <p class="fs-5 lh-sm fw-semibold text-muted mb-0">No items added yet</p>
+                                <p class="text-muted mb-0">Choose a quotation or add items manually.</p>
+                            </div>
+                        </div>
+                    `;
+                }
                 return;
             }
 
-            orderItemsEmptyState?.classList.add('is-hidden');
-            orderItemsTableWrap?.classList.remove('is-hidden');
-            orderItemsTableWrap?.style.removeProperty('display');
             if (orderSubmitBar) orderSubmitBar.style.removeProperty('display');
 
             items.forEach((item, index) => {
+                // Render List row
                 const row = document.createElement('tr');
                 if (editingItemIndex === index) {
                     row.classList.add('is-active');
@@ -615,11 +621,11 @@ $initialOrderItems = [[
                     <div class="fw-semibold">${escapeHtml(item.item_name)}</div>
                     ${itemDescription ? `<div class="small-text">${escapeHtml(itemDescription)}</div>` : ''}
                 </td>
-                <td>${escapeHtml(item.quantity)}</td>
-                <td>${item.no_of_users ? escapeHtml(item.no_of_users) : '-'}</td>
-                <td class="text-nowrap">${escapeHtml(item.start_date || '-')}</td>
-                <td class="text-nowrap">${escapeHtml(item.end_date || '-')}</td>
-                <td class="text-nowrap">${item.delivery_date ? escapeHtml(item.delivery_date) : '-'}</td>
+                <td class="text-center">${escapeHtml(item.quantity)}</td>
+                <td class="text-center">${item.no_of_users ? escapeHtml(item.no_of_users) : '-'}</td>
+                <td class="text-center">${escapeHtml(item.start_date || '-')}</td>
+                <td class="text-center">${escapeHtml(item.end_date || '-')}</td>
+                <td class="text-center">${item.delivery_date ? escapeHtml(item.delivery_date) : '-'}</td>
                 <td class="text-end">
                     <div class="tableActionButton d-inline-flex gap-1">
                         <button type="button" class="bg03 color03 border-0" data-edit-index="${index}">Edit</button>
@@ -628,29 +634,92 @@ $initialOrderItems = [[
                 </td>
             `;
                 orderItemsBody.appendChild(row);
-            });
 
-            orderItemsBody.querySelectorAll('[data-remove-index]').forEach((button) => {
-                button.addEventListener('click', function () {
-                    const index = Number(this.dataset.removeIndex);
-                    items.splice(index, 1);
-                    if (editingItemIndex !== null) {
-                        editingItemIndex = null;
-                        setAddButtonState();
+                // Render Grid Card
+                if (gridViewWrap) {
+                    const col = document.createElement('div');
+                    col.className = 'col';
+                    if (editingItemIndex === index) {
+                        col.classList.add('is-active');
                     }
-                    renderItems();
-                });
+
+                    const namePrefix = escapeHtml(item.item_name.substring(0, 2).toUpperCase());
+
+                    col.innerHTML = `
+                        <div class="card h-100 border-0 overflow-hidden">
+                            <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-3">
+                                        <div class="flex-grow-1 min-w-0">
+                                            <h6 class="fw-bold text-black mb-1 text-truncate lh-sm" title="${escapeHtml(item.item_name)}">
+                                                ${escapeHtml(item.item_name)}
+                                            </h6>
+                                            <span class="d-block text-dark lh-sm text-break grid-text-medium" title="${escapeHtml(itemDescription)}">
+                                                ${itemDescription ? escapeHtml(itemDescription) : 'No description'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-light rounded-3 px-2 py-2 mt-auto grid-text-medium mb-2">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="text-muted small lh-sm">Quantity</span>
+                                            <strong class="text-dark fw-semibold">${escapeHtml(item.quantity)}</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="text-muted">Users</span>
+                                            <strong class="text-dark fw-semibold">${item.no_of_users ? escapeHtml(item.no_of_users) : '-'}</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="text-muted">Start Date</span>
+                                            <strong class="text-dark fw-semibold">${escapeHtml(item.start_date || '-')}</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="text-muted">Expiry</span>
+                                            <strong class="text-dark fw-semibold">${escapeHtml(item.end_date || '-')}</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-muted">Delivery</span>
+                                            <strong class="text-dark fw-semibold">${item.delivery_date ? escapeHtml(item.delivery_date) : '-'}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="tableActionButton d-flex flex-wrap gap-1 mt-2">
+                                    <button type="button" class="bg03 color03 border-0 flex-grow-1 text-center" data-edit-index="${index}">Edit</button>
+                                    <button type="button" class="bg04 color04 border-0 flex-grow-1 text-center" data-remove-index="${index}">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    gridViewWrap.appendChild(col);
+                }
             });
 
-            orderItemsBody.querySelectorAll('[data-edit-index]').forEach((button) => {
-                button.addEventListener('click', function () {
-                    const index = Number(this.dataset.editIndex);
-                    const item = items[index];
-                    if (!item) return;
+            // Bind listeners for BOTH list and grid elements
+            const containers = [orderItemsBody, gridViewWrap].filter(Boolean);
+            containers.forEach((container) => {
+                container.querySelectorAll('[data-remove-index]').forEach((button) => {
+                    button.addEventListener('click', function () {
+                        const index = Number(this.dataset.removeIndex);
+                        items.splice(index, 1);
+                        if (editingItemIndex !== null) {
+                            editingItemIndex = null;
+                            setAddButtonState();
+                        }
+                        renderItems();
+                    });
+                });
 
-                    editingItemIndex = index;
-                    loadItemIntoForm(item);
-                    renderItems();
+                container.querySelectorAll('[data-edit-index]').forEach((button) => {
+                    button.addEventListener('click', function () {
+                        const index = Number(this.dataset.editIndex);
+                        const item = items[index];
+                        if (!item) return;
+
+                        editingItemIndex = index;
+                        loadItemIntoForm(item);
+                        renderItems();
+                    });
                 });
             });
         }
@@ -799,6 +868,11 @@ $initialOrderItems = [[
             });
         }
 
+        if (startDateInput) {
+            startDateInput.addEventListener('change', refreshEndDate);
+            startDateInput.addEventListener('input', refreshEndDate);
+        }
+
         if (frequencyInput) {
             frequencyInput.addEventListener('change', refreshEndDate);
         }
@@ -897,6 +971,46 @@ $initialOrderItems = [[
                 }
             }
         });
+
+        function setView(viewType) {
+            if (viewType === 'grid') {
+                if (listView) listView.classList.add('d-none');
+                if (gridView) gridView.classList.remove('d-none');
+                if (btnList) {
+                    btnList.classList.remove('active', 'btn-primary');
+                    btnList.classList.add('btn-outline-primary');
+                }
+                if (btnGrid) {
+                    btnGrid.classList.add('active', 'btn-primary');
+                    btnGrid.classList.remove('btn-outline-primary');
+                }
+                localStorage.setItem('orders_view_preference', 'grid');
+            } else {
+                if (listView) listView.classList.remove('d-none');
+                if (gridView) gridView.classList.add('d-none');
+                if (btnList) {
+                    btnList.classList.add('active', 'btn-primary');
+                    btnList.classList.remove('btn-outline-primary');
+                }
+                if (btnGrid) {
+                    btnGrid.classList.remove('active', 'btn-primary');
+                    btnGrid.classList.add('btn-outline-primary');
+                }
+                localStorage.setItem('orders_view_preference', 'list');
+            }
+        }
+
+        if (btnList && btnGrid) {
+            btnList.addEventListener('click', () => setView('list'));
+            btnGrid.addEventListener('click', () => setView('grid'));
+
+            const savedPref = localStorage.getItem('orders_view_preference');
+            if (savedPref === 'grid') {
+                setView('grid');
+            } else {
+                setView('list');
+            }
+        }
 
         toggleUsersField();
         refreshEndDate();

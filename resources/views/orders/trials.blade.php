@@ -16,14 +16,14 @@
     <div class="position-relative bg-light border p-3 rounded-3 mb-2">
         <form action="{{ route('orders.trials') }}" method="GET" class="mainForm">
             <div class="row g-2">
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-3">
                     <label class="form-label small lh-sm fw-semibold text-dark mb-1"
                         for="trial_orders_search">Search</label>
                     <input type="text" name="search" id="trial_orders_search" class="form-control"
                         value="{{ $searchTerm ?? '' }}" placeholder="Client name or item name">
                 </div>
 
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-2">
                     <label class="form-label small lh-sm fw-semibold text-dark mb-1"
                         for="trial_orders_client">Client</label>
                     <select name="client" id="trial_orders_client" class="form-select">
@@ -37,7 +37,7 @@
                     </select>
                 </div>
 
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-2">
                     <label class="form-label small lh-sm fw-semibold text-dark mb-1"
                         for="trial_orders_item">Item</label>
                     <select name="item" id="trial_orders_item" class="form-select">
@@ -138,8 +138,20 @@
                         </td>
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1">
-                                <a href="{{ route('orders.edit', ['order' => $order['record_id'], 'return_to' => 'trials']) }}"
-                                    class="bg03 color03">Edit</a>
+                                <button type="button" class="bg03 color03 border-0 js-edit-order-btn"
+                                    data-order-id="{{ $order['record_id'] }}"
+                                    data-order-number="{{ $order['number'] }}"
+                                    data-client-id="{{ $order['clientid'] }}"
+                                    data-client-name="{{ $order['client'] }}"
+                                    data-item-id="{{ $order['itemid'] ?? '' }}"
+                                    data-item-name="{{ $order['item_name'] ?? '' }}"
+                                    data-item-description="{{ $order['item_description'] ?? '' }}"
+                                    data-quantity="{{ $order['quantity'] ?? 1 }}"
+                                    data-no-of-users="{{ $order['no_of_users'] ?? '' }}"
+                                    data-start-date="{{ $order['start_date_raw'] ?? '' }}"
+                                    data-end-date="{{ $order['end_date_raw'] ?? '' }}"
+                                    data-delivery-date="{{ $order['delivery_date'] ?? '' }}"
+                                    data-client-docid="{{ $order['client_docid'] ?? '' }}">Edit</button>
                             </div>
                         </td>
                     </tr>
@@ -226,8 +238,20 @@
                     <div class="tableActionButton d-flex flex-wrap gap-1 mt-3">
                         <a href="{{ route('clients.dashboard', $order['clientid']) }}"
                             class="bg01 color01 flex-grow-1 text-center">View Client</a>
-                        <a href="{{ route('orders.edit', ['order' => $order['record_id'], 'return_to' => 'trials']) }}"
-                            class="bg03 color03 flex-grow-1 text-center">Edit</a>
+                        <button type="button" class="bg03 color03 flex-grow-1 text-center border-0 js-edit-order-btn"
+                            data-order-id="{{ $order['record_id'] }}"
+                            data-order-number="{{ $order['number'] }}"
+                            data-client-id="{{ $order['clientid'] }}"
+                            data-client-name="{{ $order['client'] }}"
+                            data-item-id="{{ $order['itemid'] ?? '' }}"
+                            data-item-name="{{ $order['item_name'] ?? '' }}"
+                            data-item-description="{{ $order['item_description'] ?? '' }}"
+                            data-quantity="{{ $order['quantity'] ?? 1 }}"
+                            data-no-of-users="{{ $order['no_of_users'] ?? '' }}"
+                            data-start-date="{{ $order['start_date_raw'] ?? '' }}"
+                            data-end-date="{{ $order['end_date_raw'] ?? '' }}"
+                            data-delivery-date="{{ $order['delivery_date'] ?? '' }}"
+                            data-client-docid="{{ $order['client_docid'] ?? '' }}">Edit</button>
                     </div>
                 </div>
             </div>
@@ -247,8 +271,18 @@
 
 </div>
 
+@include('orders.partials.edit-order-modal')
+
+<script>
+    window.__editModalConfig = {
+        clientDocuments: @json($clientDocuments ?? []),
+        todayStr: '{{ now()->format('Y-m-d') }}',
+    };
+</script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // View Toggle Logic
         const btnList = document.getElementById('btn-list-view');
         const btnGrid = document.getElementById('btn-grid-view');
         const listView = document.getElementById('trial-orders-list-view');

@@ -33,7 +33,7 @@
                 <input type="hidden" name="tab" value="{{ $selectedTab ?? 'expired' }}">
 
                 <div class="row g-2">
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-2">
                         <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="expiry_client_filter">Client</label>
                         <select name="c" id="expiry_client_filter" class="form-select">
                             <option value="">All Clients</option>
@@ -46,13 +46,13 @@
                         </select>
                     </div>
 
-                    <div class="col-12 col-md-3">
+                    <div class="col-12 col-md-2">
                         <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="expiry_from_filter">From</label>
                         <input type="date" name="from" id="expiry_from_filter" class="form-control"
                             value="{{ $fromDate ?? '' }}">
                     </div>
 
-                    <div class="col-12 col-md-3">
+                    <div class="col-12 col-md-2">
                         <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="expiry_to_filter">To</label>
                         <input type="date" name="to" id="expiry_to_filter" class="form-control"
                             value="{{ $toDate ?? '' }}" min="{{ $fromDate ?? '' }}">
@@ -63,7 +63,7 @@
                             'tab' => $selectedTab ?? 'expired',
                         ])) }}"
                             class="btn btn-outline-primary bg-white text-primary fw-medium">
-                            <i class="fas fa-sync-alt btn-icon me-1"></i> Reset
+                            <i class="fas fa-sync-alt btn-icon me-1"></i> Clear
                         </a>
                         <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
                             Apply <i class="fas fa-arrow-right btn-icon ms-1"></i>
@@ -199,7 +199,7 @@
                                                         <input type="hidden" name="from" value="{{ $fromDate ?? '' }}">
                                                         <input type="hidden" name="to" value="{{ $toDate ?? '' }}">
                                                         <input type="hidden" name="next_days" value="{{ $nextDays ?? '' }}">
-                                                        <button type="submit" class="bg01 color01">Send Reminder</button>
+                                                        <button type="submit" class="bg01 color01">Renewal Reminder</button>
                                                     </form>
                                                 @endif
 
@@ -362,7 +362,7 @@
                     renewForm.action = renewRouteTemplate.replace('__ORDER__', orderId);
                     setText(itemName, item);
                     setText(clientName, client);
-                    setText(orderNumber, orderNo);
+                    setText(orderNumber, orderNo && orderNo !== '-' ? '#' + orderNo : '-');
                     setText(invoiceNumber, invoiceRef);
                     setText(startDateDisplay, startDate);
                     setText(currentEndDateDisplay, endDateDisplay);
@@ -377,14 +377,12 @@
 
                     // Set frequency and duration
                     if (frequencyInput) {
-                        frequencyInput.value = frequency || '';
+                        frequencyInput.value = frequency || 'One-Time';
                         frequencyInput.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                     if (durationInput) {
                         durationInput.value = duration || 1;
-                    }
-                    if (durationWrapper) {
-                        durationWrapper.style.display = (frequency && frequency !== 'One-Time') ? 'block' : 'none';
+                        durationInput.disabled = !frequency || frequency === 'One-Time';
                     }
                     refreshEndDate();
 
@@ -412,12 +410,12 @@
             // Frequency/Duration auto-calculation
             function isOneTimeFrequency() {
                 const selectedFrequency = frequencyInput?.value || '';
-                return selectedFrequency === '' || selectedFrequency === 'One-Time';
+                return selectedFrequency === 'One-Time';
             }
 
             function toggleDurationField() {
-                if (!durationWrapper) return;
-                durationWrapper.style.display = isOneTimeFrequency() ? 'none' : 'block';
+                if (!durationInput) return;
+                durationInput.disabled = isOneTimeFrequency();
             }
 
             function formatDateLocal(date) {

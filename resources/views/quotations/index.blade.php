@@ -15,7 +15,7 @@
     <div class="position-relative bg-light border p-3 rounded-3 mb-2">
         <form action="{{ route('quotations.index') }}" method="GET" class="mainForm">
             <div class="row g-2">
-                <div class="col-12 col-md-10">
+                <div class="col-12 col-md-2">
                     <label class="form-label small lh-sm fw-semibold text-dark mb-1"
                         for="quotation_client_filter">Client</label>
                     <select name="c" id="quotation_client_filter" class="form-select">

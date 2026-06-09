@@ -256,7 +256,9 @@
                                     @if($account->allow_multi_taxation)
                                     <select name="costings[{{ $index }}][tax_rate]" class="form-select form-select-sm">
                                         <option value="0">-- None --</option>
-                                        @php($groupedTaxes = $taxes->groupBy(fn($tax) => $tax->type ?: 'Other'))
+                                        @php
+                                            $groupedTaxes = $taxes->groupBy(fn($tax) => $tax->type ?: 'Other');
+                                        @endphp
                                         @foreach($groupedTaxes as $taxType => $typeTaxes)
                                         @if($typeTaxes->isNotEmpty())
                                         <optgroup label="{{ $taxType }}">

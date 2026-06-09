@@ -44,17 +44,6 @@ class OrdersController extends Controller
         return Storage::disk('public')->response($path);
     }
 
-    public function selectClient(): View
-    {
-        $accountId = $this->resolveAccountId();
-
-        return view('orders.select-client', [
-            'title' => 'Manage Orders',
-            'subtitle' => 'Choose a client to view their orders.',
-            'clients' => Client::where('accountid', $accountId)->regular()->orderBy('business_name')->orderBy('contact_name')->get(),
-        ]);
-    }
-
     public function orders(): View
     {
         $accountId = $this->resolveAccountId();
@@ -83,7 +72,7 @@ class OrdersController extends Controller
             $query->where('itemid', $selectedItemId);
         }
 
-        $records = $query->orderByDesc('created_at')->take(100)->get();
+        $records = $query->orderByDesc('start_date')->orderByDesc('created_at')->take(100)->get();
         $orders = $records->map(function (Order $order) {
             $linkedInvoice = $order->invoices->sortByDesc('created_at')->first();
 
@@ -100,6 +89,8 @@ class OrdersController extends Controller
                 'status' => (string) ($order->status ?? ''),
                 'verified' => ($order->status ?? '') !== 'cancelled',
                 'item_count' => 1,
+                'itemid' => $order->itemid,
+                'client_docid' => $order->client_docid,
                 'items' => [[
                     'item_name' => $order->item_name ?: ($order->item?->name ?? 'Item'),
                     'item_description' => $order->item_description,
@@ -123,11 +114,19 @@ class OrdersController extends Controller
             ->where('accountid', $accountId)
             ->with('category')
             ->orderBy('name')
-            ->get(['itemid', 'name', 'ps_catid']);
+            ->get(['itemid', 'name', 'ps_catid', 'user_wise']);
+
+        $clientDocuments = ClientDocument::query()
+            ->where('accountid', $accountId)
+            ->where('type', 'po')
+            ->where('status', 'active')
+            ->orderByDesc('document_date')
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy('clientid');
 
         return view('orders.index', [
             'title' => $clientId ? 'All Orders' : 'Manage Orders',
-            'subtitle' => $clientId !== '' ? 'Showing orders for selected client.' : 'Showing orders across all clients.',
             'orders' => $orders,
             'groupedOrders' => $groupedOrders,
             'selectedClient' => $selectedClient,
@@ -136,6 +135,7 @@ class OrdersController extends Controller
             'showClientPicker' => ! $hasClientFilter && $selectedItemId === '',
             'selectedItemId' => $selectedItemId,
             'services' => $services,
+            'clientDocuments' => $clientDocuments,
             'allClients' => Client::where('accountid', $accountId)->regular()->with('billingDetail')->orderBy('business_name')->orderBy('contact_name')->get(),
         ]);
     }
@@ -190,9 +190,16 @@ class OrdersController extends Controller
                 'client_phone' => $order->client?->phone,
                 'client_status' => strtolower((string) ($order->client?->status ?? 'active')),
                 'item_name' => $order->item_name ?: ($order->item?->name ?? 'Item'),
+                'itemid' => $order->itemid,
+                'item_description' => $order->item_description,
+                'quantity' => (float) ($order->quantity ?? 1),
+                'no_of_users' => $order->no_of_users,
                 'start_date' => $order->start_date?->format('d M Y'),
+                'start_date_raw' => $order->start_date?->format('Y-m-d'),
                 'end_date' => $endDate?->format('d M Y'),
                 'end_date_raw' => $endDate?->format('Y-m-d'),
+                'delivery_date' => $order->delivery_date?->format('Y-m-d'),
+                'client_docid' => $order->client_docid,
                 'status' => (string) ($order->status ?? 'active'),
                 'is_expired' => $isExpired,
                 'order_date' => $order->created_at?->format('d M Y'),
@@ -216,9 +223,24 @@ class OrdersController extends Controller
             ->orderByRaw('COALESCE(business_name, contact_name) ASC')
             ->get(['clientid', 'business_name', 'contact_name']);
 
+        $services = Service::query()
+            ->where('accountid', $accountId)
+            ->with('category')
+            ->orderBy('name')
+            ->get(['itemid', 'name', 'description', 'ps_catid', 'user_wise']);
+
+        $clientDocuments = ClientDocument::query()
+            ->where('accountid', $accountId)
+            ->where('type', 'po')
+            ->where('status', 'active')
+            ->orderByDesc('document_date')
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy('clientid');
+
         return view('orders.trials', [
             'title' => 'Trial Orders',
-            'subtitle' => $searchTerm ? 'Found '.$resultCount.' result(s) for "'.$searchTerm.'"' : 'Orders from trial clients.',
+            'subtitle' => $searchTerm ? 'Found '.$resultCount.' result(s) for "'.$searchTerm.'"' : null,
             'orders' => $orders,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
@@ -226,6 +248,8 @@ class OrdersController extends Controller
             'selectedItem' => $selectedItem,
             'itemOptions' => $itemOptions,
             'clientOptions' => $clientOptions,
+            'services' => $services,
+            'clientDocuments' => $clientDocuments,
         ]);
     }
 
@@ -377,7 +401,7 @@ class OrdersController extends Controller
         }
 
         return redirect()
-            ->route('orders.create', ['c' => $redirectClientId, 'carry' => 1])
+            ->route('orders.index', ['c' => $redirectClientId])
             ->with('success', count($createdOrders).' order item(s) created successfully.');
     }
 
@@ -521,6 +545,14 @@ class OrdersController extends Controller
             'end_date' => $itemData['end_date'] ?? '2099-12-31',
             'delivery_date' => ! empty($itemData['delivery_date']) ? $itemData['delivery_date'] : null,
         ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Order updated successfully.',
+                'order' => $order->fresh(),
+            ]);
+        }
 
         if ($request->query('return_to') === 'create') {
             return redirect()->route('orders.create', [

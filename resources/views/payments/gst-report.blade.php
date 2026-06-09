@@ -27,7 +27,7 @@
                     <input type="hidden" name="c" value="{{ $selectedClientId }}">
                 @endif
                 <div class="row g-2">
-                    <div class="col-12 col-md-5">
+                    <div class="col-12 col-md-2">
                         <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="gst_month_filter">Month</label>
                         <select name="month" id="gst_month_filter" class="form-select">
                             @foreach($monthOptions as $monthValue => $monthLabel)
@@ -37,7 +37,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-12 col-md-5">
+                    <div class="col-12 col-md-2">
                         <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="gst_year_filter">Year</label>
                         <select name="year" id="gst_year_filter" class="form-select">
                             @foreach($availableYears as $year)

@@ -20,17 +20,37 @@
 
 @section('content')
 
-<div class="position-relative bg-white p-3 rounded-3 shadow-sm">
+<div class="position-relative bg-white p-2 rounded-3">
     <!-- Filters Card -->
-    <div class="position-relative bg-light border p-3 rounded-3 mb-2">
+    <div class="position-relative bg-light p-2 rounded-3 mb-2">
         <form action="{{ route('clients.index') }}" method="GET" class="mainForm">
             @if ($selectedGroup)
             <input type="hidden" name="groupid" value="{{ $selectedGroup }}">
             @endif
             <div class="row g-2">
+                @if ($selectedGroup)
+                @php
+                $activeGroup = $groups->firstWhere('groupid', $selectedGroup);
+                @endphp
+                <div class="col-12 col-md-12">
+                    <div class="d-flex align-items-center gap-2 mb-0 px-1 active-filter-container">
+                        <span class="small text-muted fw-medium d-inline-flex align-items-center gap-1">
+                            <i class="fas fa-filter text-secondary" style="font-size: 0.75rem;"></i> Filtered by:
+                        </span>
+                        <span
+                            class="badge bg-primary-subtle text-primary border border-primary-subtle fw-medium d-inline-flex align-items-center gap-2 rounded-pill px-2 py-1.5"
+                            style="font-size: 0.8rem;">
+                            <i class="fas fa-layer-group" style="font-size: 0.75rem;"></i>
+                            <span class="text-dark align-self-center">{{ $activeGroup?->group_name ?? 'Group
+                                #'.$selectedGroup }}</span>
+                            <a href="{{ route('clients.index') }}" class="group-filter-clear-btn" title="Clear filter">
+                                <i class="fas fa-times" style="font-size: 0.65rem;"></i>
+                            </a>
+                        </span>
+                    </div>
+                </div>
+                @endif
                 <div class="col-12 col-md-2">
-                    <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                        for="clients_state_filter">State</label>
                     <select name="state" id="clients_state_filter" class="form-select">
                         <option value="">All States</option>
                         @foreach ($stateOptions ?? collect() as $stateOption)
@@ -43,8 +63,6 @@
                 </div>
 
                 <div class="col-12 col-md-2">
-                    <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                        for="clients_city_filter">City</label>
                     <select name="city" id="clients_city_filter" class="form-select">
                         <option value="">All Cities</option>
                         @foreach ($cityOptions ?? collect() as $cityOption)
@@ -57,38 +75,25 @@
                 </div>
 
                 <div class="col-12 col-md-3">
-                    <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                        for="clients_search_filter">Search</label>
-                    <input type="text" name="search" id="clients_search_filter" class="form-control"
-                        value="{{ $searchTerm ?? '' }}" placeholder="Business name or contact person">
+                    <div class="position-relative">
+                        <i class="fas fa-search position-absolute text-muted"
+                            style="left: 14px; top: 50%; transform: translateY(-50%); font-size: 15px;"></i>
+                        <input type="text" name="search" id="clients_search_filter" class="form-control"
+                            value="{{ $searchTerm ?? '' }}" placeholder="Search Client Name or Contact Person"
+                            style="padding-left: 38px;">
+                    </div>
                 </div>
 
                 <div class="col-12 col-md-2 mt-auto d-flex gap-2">
                     <a href="{{ route('clients.index') }}"
                         class="btn btn-outline-primary bg-white text-primary fw-medium"><i
-                            class="fas fa-sync-alt btn-icon me-1"></i> Reset</a>
+                            class="fas fa-sync-alt btn-icon me-1"></i> Clear</a>
                     <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">Apply <i
                             class="fas fa-arrow-right btn-icon ms-1"></i></button>
                 </div>
             </div>
         </form>
     </div>
-
-    @if ($selectedGroup)
-    @php
-    $activeGroup = $groups->firstWhere('groupid', $selectedGroup);
-    @endphp
-    <div class="d-flex align-items-center gap-2 mb-2 px-1">
-        <span class="small text-muted">Filtered by group:</span>
-        <span class="badge bg-primary-subtle text-primary fw-normal d-inline-flex align-items-center gap-1">
-            <i class="fas fa-layer-group" style="font-size: 0.65rem;"></i>
-            {{ $activeGroup?->group_name ?? 'Group #'.$selectedGroup }}
-            <a href="{{ route('clients.index') }}" class="text-primary ms-1 text-decoration-none">
-                <i class="fas fa-times" style="font-size: 0.65rem;"></i>
-            </a>
-        </span>
-    </div>
-    @endif
 
     <!-- View Toggle Bar & Legend -->
     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -116,9 +121,9 @@
     </div>
 
     <!-- Clients List View (Table View) -->
-    <div id="clients-list-view" class="card border-0 shadow-sm overflow-hidden">
+    <div id="clients-list-view" class="card overflow-hidden">
         <div class="table-responsive">
-            <table class="table mainTable border align-middle mb-0">
+            <table class="table mainTable align-middle mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>Client</th>
@@ -206,10 +211,10 @@
 
     <!-- Clients Grid View (5 blocks in one row on desktop) -->
     <div id="clients-grid-view"
-        class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-3 p-1 mt-2 bg-light rounded-end-3 d-none">
+        class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 p-1 mt-2 bg-light rounded-end-3 d-none">
         @forelse ($clients as $client)
         <div class="col">
-            <div class="card h-100 border overflow-hidden">
+            <div class="card h-100 border-0 overflow-hidden">
                 <div class="card-body p-3 d-flex flex-column justify-content-between">
                     <div>
                         <!-- Flex Avatar, Info -->
@@ -274,8 +279,7 @@
 
                     <!-- Action Buttons -->
                     <div class="tableActionButton d-flex flex-wrap gap-1 mt-2">
-                        <a href="{{ route('clients.show', $client['record_id']) }}" data-bs-toggle="modal"
-                            data-bs-target="#clientShowModal" data-client-id="{{ $client['record_id'] }}"
+                        <a href="{{ route('clients.dashboard', $client['record_id']) }}"
                             class="bg01 color01 flex-grow-1 text-center">View</a>
                         <a href="#" class="bg02 color02 flex-grow-1 text-center open-documents-modal"
                             data-bs-toggle="modal" data-bs-target="#documentsModal"
@@ -362,18 +366,53 @@
         border-bottom: 2px solid var(--bs-primary, #0d6efd) !important;
         background-color: transparent !important;
     }
+
+    .group-filter-clear-btn {
+        width: 18px;
+        height: 18px;
+        background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
+        color: var(--bs-primary, #0d6efd);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+    }
+
+    .group-filter-clear-btn:hover {
+        background-color: #dc3545 !important;
+        color: #ffffff !important;
+        transform: rotate(90deg);
+    }
+
+    .active-filter-container {
+        animation: fadeInFilter 0.3s ease-out;
+    }
+
+    @keyframes fadeInFilter {
+        from {
+            opacity: 0;
+            transform: translateY(4px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 </style>
 <!-- Manage Groups Modal -->
 <div class="modal fade" id="manageGroupsModal" tabindex="-1" aria-labelledby="manageGroupsModalLabel"
     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-white border-bottom py-2">
+            <div class="modal-header border-0 bg-white py-2">
                 <h5 class="modal-title fw-semibold" id="manageGroupsModalLabel">Client Groups</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body bg-white p-4">
-                <ul class="nav nav-tabs mb-0" id="groupModalTabs" role="tablist">
+            <div class="modal-body bg-white p-2 pt-0">
+                <ul class="nav nav-tabs mb-0 border-bottom-0" id="groupModalTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active fw-semibold rounded-0 px-3" id="add-group-tab"
                             data-bs-toggle="tab" data-bs-target="#add-group-pane" type="button" role="tab"
@@ -391,7 +430,7 @@
                 </ul>
 
                 <div class="tab-content" id="groupModalTabsContent">
-                    <div class="tab-pane fade show bg-light p-3 active" id="add-group-pane" role="tabpanel"
+                    <div class="tab-pane fade show bg-light p-2 pt-3 active" id="add-group-pane" role="tabpanel"
                         aria-labelledby="add-group-tab">
                         <!-- Form to Add/Edit Group -->
                         <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="mainForm">
@@ -412,19 +451,19 @@
                                     <input type="email" name="email" id="groupEmail" class="form-control"
                                         value="{{ old('email') }}">
                                 </div>
-                                <div class="col-12 col-md-12">
+                                <div class="col-12 col-md-6">
                                     <label for="groupAddress1"
                                         class="form-label small lh-sm fw-semibold text-dark mb-1">Address
                                         Line 1</label>
-                                    <input type="text" name="address_line_1" id="groupAddress1" class="form-control"
-                                        value="{{ old('address_line_1') }}">
+                                    <textarea name="address_line_1" id="groupAddress1" class="form-control"
+                                        rows="2">{{ old('address_line_1') }}</textarea>
                                 </div>
-                                <div class="col-12 col-md-12">
+                                <div class="col-12 col-md-6">
                                     <label for="groupAddress2"
                                         class="form-label small lh-sm fw-semibold text-dark mb-1">Address
                                         Line 2</label>
-                                    <input type="text" name="address_line_2" id="groupAddress2" class="form-control"
-                                        value="{{ old('address_line_2') }}">
+                                    <textarea name="address_line_2" id="groupAddress2" class="form-control"
+                                        rows="2">{{ old('address_line_2') }}</textarea>
                                 </div>
                                 <div class="col-12 col-md-6">
                                     <label for="groupCountry"
@@ -472,11 +511,11 @@
                         </form>
                     </div>
 
-                    <div class="tab-pane bg-light p-3 fade" id="group-list-pane" role="tabpanel"
+                    <div class="tab-pane bg-light p-2 pt-3 fade" id="group-list-pane" role="tabpanel"
                         aria-labelledby="group-list-tab">
                         <!-- Groups List -->
                         <div class="position-relative">
-                            <div class="card border-0 shadow-sm overflow-hidden">
+                            <div class="card border-0 overflow-hidden">
                                 <div class="table-responsive">
                                     <table class="table mainTable border align-middle mb-0">
                                         <thead class="table-light">
@@ -509,7 +548,7 @@
                                                 <td class="text-end">
                                                     <div class="tableActionButton d-inline-flex gap-1">
                                                         <a href="{{ route('clients.index') }}?groupid={{ $group->groupid }}"
-                                                            class="bg04 color04 border-0"
+                                                            class="bg01 color01 border-0"
                                                             title="View clients in this group">View Clients</a>
                                                         <button type="button" class="bg03 color03 border-0"
                                                             onclick="editGroup(this)" data-id="{{ $group->groupid }}"
@@ -562,8 +601,8 @@
                 <h5 class="modal-title fw-semibold" id="documentsModalLabel"></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body bg-white p-4">
-                <ul class="nav nav-tabs mb-0" id="documentModalTabs" role="tablist">
+            <div class="modal-body bg-white p-2 pt-0">
+                <ul class="nav nav-tabs mb-0 border-bottom-0" id="documentModalTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active fw-semibold rounded-0 px-3" id="add-document-tab"
                             data-bs-toggle="tab" data-bs-target="#add-document-pane" type="button" role="tab"
@@ -581,7 +620,7 @@
                 </ul>
 
                 <div class="tab-content" id="documentModalTabsContent">
-                    <div class="tab-pane fade show bg-light p-3 active" id="add-document-pane" role="tabpanel"
+                    <div class="tab-pane fade show bg-light p-2 pt-3 active" id="add-document-pane" role="tabpanel"
                         aria-labelledby="add-document-tab">
                         <form id="documentForm" method="POST" enctype="multipart/form-data" class="mainForm">
                             @csrf
@@ -668,7 +707,7 @@
                         </form>
                     </div>
 
-                    <div class="tab-pane bg-light p-3 fade" id="document-list-pane" role="tabpanel"
+                    <div class="tab-pane bg-light p-2 pt-3 fade" id="document-list-pane" role="tabpanel"
                         aria-labelledby="document-list-tab">
                         <div class="position-relative">
                             <div class="card border-0 shadow-sm overflow-hidden">
@@ -800,8 +839,8 @@
 
     const clientsIndexUrl = "{{ route('clients.index') }}";
     const clientsBaseUrl = "{{ url('/') }}";
-    const documentsListUrlTemplate = @json(route('clients.documents.list', ['client' => '__CLIENT__']));
-    const clientShowUrlTemplate = @json(route('clients.show', ['client' => '__CLIENT__']));
+    const documentsListUrlTemplate = "{{ route('clients.documents.list', ['client' => '__CLIENT__']) }}";
+    const clientShowUrlTemplate = "{{ route('clients.show', ['client' => '__CLIENT__']) }}";
 
     function buildGroupRow(group) {
         var initials = (group.group_name || '').substring(0, 2).toUpperCase();

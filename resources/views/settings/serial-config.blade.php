@@ -16,12 +16,14 @@
     ];
 @endphp
 
-<div class="row serial-config-grid">
+<div class="row g-2">
 
     <!-- Proforma Invoice Serial Config -->
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="serial-config-card">
-            <h4 class="serial-config-title">Proforma Invoice Serial</h4>
+        <div class="bg-light p-2 rounded-3 h-100">
+            <div class="mb-2">
+                <h6 class="fw-semibold text-primary small lh-sm mb-0">Proforma Invoice Serial</h6>
+            </div>
             <form method="POST" action="{{ route('serial.config.update') }}" id="proforma-serial-form">
                 @csrf
                 <input type="hidden" name="from_tab" value="financial-year">
@@ -37,78 +39,99 @@
                             ? $proformaSerialConfig->generateNextSerialNumber()
                             : 'Configure serial first';
                 @endphp
-                <!-- Parts Toggle -->
 
-                <div class="serial-section">
-                    <label class="serial-preview-label">Preview</label>
-                    <div id="proforma-preview"
-                        class="serial-preview {{ empty($proformaSerialConfig) ? 'serial-preview--empty' : 'serial-preview--ready' }}">
-                        {{ $proformaPreview }}
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold mb-1">Preview</label>
+                    <div class="bg-primary-subtle border border-primary rounded-2 px-3 py-2 text-center">
+                        <span id="proforma-preview"
+                            class="fw-bold text-primary font-monospace">
+                            {{ $proformaPreview }}
+                        </span>
                     </div>
                 </div>
-
                 @foreach (['prefix' => 'First Value', 'number' => 'Second Value', 'suffix' => 'Third Value'] as $part => $label)
                     @php
-                        $proformaHasSeparator = in_array($part, ['prefix', 'number']);
-                        $proformaGridClass = $proformaHasSeparator
-                            ? 'serial-part-grid serial-part-grid--with-separator'
-                            : 'serial-part-grid';
+                        $isEnabled = isset($proformaSerialConfig)
+                            ? ($proformaSerialConfig->{$part . '_show'} ?? 1)
+                            : true;
+                        $selectedType = isset($proformaSerialConfig)
+                            ? ($proformaSerialConfig->{$part . '_type'} ??
+                                ($part == 'number' ? 'auto increment' : 'manual text'))
+                            : ($part == 'number' ? 'auto increment' : 'manual text');
+                        $hasSeparator = in_array($part, ['prefix', 'number']);
+                        $valLabel = $selectedType == 'auto increment'
+                            ? 'Start From'
+                            : 'Value';
                     @endphp
-                    <div class="serial-part-row {{ !(isset($proformaSerialConfig) && ($proformaSerialConfig->{$part . '_show'} ?? 1)) ? 'serial-part-row--disabled' : '' }}"
+                    <div class="border-bottom pb-3 mb-3 serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
                         data-part="{{ $part }}">
-                        <label class="serial-part-toggle-label">
-                            <input type="checkbox" class="part-toggle serial-part-toggle"
-                                data-part="{{ $part }}" name="{{ $part }}_show" value="1"
-                                {{ isset($proformaSerialConfig) && ($proformaSerialConfig->{$part . '_show'} ?? 1) ? 'checked' : '' }}>
-                        </label>
-                        <div class="{{ $proformaGridClass }}">
-                            <!-- Type Selection -->
-                            <div>
-                                <label class="serial-field-label">{{ $label }}</label>
-                                <select name="{{ $part }}_type" class="serial-select serial-type-select"
-                                    data-part="{{ $part }}" data-target="proforma">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <input type="checkbox"
+                                class="form-check-input part-toggle serial-part-toggle"
+                                data-part="{{ $part }}"
+                                name="{{ $part }}_show"
+                                value="1"
+                                {{ $isEnabled ? 'checked' : '' }}>
+                            <label class="fw-semibold small mb-0">
+                                {{ $label }}
+                            </label>
+                        </div>
+                        <div class="row g-2 align-items-end serial-part-grid">
+                            <!-- Type -->
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
+                                <label class="form-label small mb-1">
+                                    Type
+                                </label>
+                                <select name="{{ $part }}_type"
+                                    class="form-select form-select-sm serial-type-select"
+                                    data-part="{{ $part }}"
+                                    data-target="proforma">
                                     @foreach ($serialOptions as $val => $text)
                                         <option value="{{ $val }}"
-                                            {{ (isset($proformaSerialConfig) ? $proformaSerialConfig->{$part . '_type'} ?? ($part == 'number' ? 'auto increment' : 'manual text') : ($part == 'number' ? 'auto increment' : 'manual text')) == $val ? 'selected' : '' }}>
-                                            {{ $text }}</option>
+                                            {{ $selectedType == $val ? 'selected' : '' }}>
+                                            {{ $text }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
+                            <!-- Value -->
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
 
-                            <!-- Value/Length Input -->
-                            <div>
-                                <!-- Value input (used for text or start from) -->
                                 <div class="input-group-val">
-                                    @php
-                                        $valLabel =
-                                            ($proformaSerialConfig->{$part . '_type'} ?? '') == 'auto increment'
-                                                ? 'Start From'
-                                                : 'Enter its value';
-                                    @endphp
-                                    <label class="serial-field-label val-label">{{ $valLabel }}</label>
-                                    <input type="text" name="{{ $part }}_value"
-                                        value="{{ $part == 'number' && ($proformaSerialConfig->{$part . '_type'} ?? 'auto increment') == 'auto increment' ? $proformaSerialConfig->number_value ?? 1 : $proformaSerialConfig->{$part . '_value'} ?? '' }}"
-                                        placeholder="Value" class="serial-input">
+                                    <label class="form-label small mb-1 val-label">
+                                        {{ $valLabel }}
+                                    </label>
+                                    <input type="text"
+                                        name="{{ $part }}_value"
+                                        class="form-control form-control-sm serial-input"
+                                        placeholder="Enter value"
+                                        value="{{ $part == 'number' && $selectedType == 'auto increment'
+                                            ? $proformaSerialConfig->number_value ?? 1
+                                            : $proformaSerialConfig->{$part . '_value'} ?? '' }}">
                                 </div>
-
-                                <!-- Length input (used for auto generate) -->
                                 <div class="input-group-len d-none">
-                                    <label class="serial-field-label">Length</label>
-                                    <input type="text" name="{{ $part }}_length" placeholder="Length"
-                                        value="{{ $proformaSerialConfig->{$part . '_length'} ?? 4 }}"
-                                        class="serial-input">
+                                    <label class="form-label small mb-1">
+                                        Length
+                                    </label>
+                                    <input type="text"
+                                        name="{{ $part }}_length"
+                                        class="form-control form-control-sm serial-input"
+                                        value="{{ $proformaSerialConfig->{$part . '_length'} ?? 4 }}">
                                 </div>
                             </div>
-
-                            @if ($proformaHasSeparator)
-                                <!-- Separator Dropdown -->
-                                <div>
-                                    <label class="serial-field-label">Separator</label>
-                                    <select name="{{ $part }}_separator" class="serial-select">
+                            <!-- Separator -->
+                            @if ($hasSeparator)
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label small mb-1">
+                                        Separator
+                                    </label>
+                                    <select name="{{ $part }}_separator"
+                                        class="form-select form-select-sm">
                                         @foreach ($sepOptions as $val => $text)
                                             <option value="{{ $val }}"
                                                 {{ ($proformaSerialConfig->{$part . '_separator'} ?? 'none') == $val ? 'selected' : '' }}>
-                                                {{ $text }}</option>
+                                                {{ $text }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -116,25 +139,25 @@
                         </div>
                     </div>
                 @endforeach
-
-                <div class="serial-warning">
+                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-3 d-flex align-items-center gap-2">
                     <input type="checkbox" name="reset_on_fy" id="proforma-reset-on-fy" value="1"
                         {{ $proformaSerialConfig->reset_on_fy ?? false ? 'checked' : '' }}
-                        class="serial-warning-checkbox">
-                    <label for="proforma-reset-on-fy" class="serial-warning-label">
+                        class="form-check-input serial-warning-checkbox">
+                    <label for="proforma-reset-on-fy" class="form-label small text-warning-emphasis fw-medium mb-0">
                         Reset Proforma Serial Number when new FY starts
                     </label>
                 </div>
-
-                <button type="submit" class="primary-button serial-save-button">Save Proforma Serial</button>
+                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Proforma Serial</button>
             </form>
         </div>
     </div>
 
     <!-- Tax Invoice Serial Config -->
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="serial-config-card">
-            <h4 class="serial-config-title">Tax Invoice Serial</h4>
+        <div class="bg-light p-2 rounded-3 h-100">
+            <div class="mb-2">
+                <h6 class="fw-semibold text-primary small lh-sm mb-0">Tax Invoice Serial</h6>
+            </div>
             <form method="POST" action="{{ route('serial.config.update') }}" id="billing-serial-form">
                 @csrf
                 <input type="hidden" name="from_tab" value="financial-year">
@@ -146,87 +169,105 @@
                 <input type="hidden" name="accountid" value="{{ $account->accountid }}">
 
                 @php
-                    $taxInvoicePreview =
+                    $billingPreview =
                         isset($taxInvoiceSerialConfig) &&
                         method_exists($taxInvoiceSerialConfig, 'generateNextSerialNumber')
                             ? $taxInvoiceSerialConfig->generateNextSerialNumber()
                             : 'Configure serial first';
                 @endphp
-                <!-- Parts Toggle -->
 
-                <div class="serial-section">
-                    <label class="serial-preview-label">Preview</label>
-                    <div id="billing-preview"
-                        class="serial-preview {{ empty($taxInvoiceSerialConfig) ? 'serial-preview--empty' : 'serial-preview--ready' }}">
-                        {{ $taxInvoicePreview }}
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold mb-1">Preview</label>
+                    <div class="bg-primary-subtle border border-primary rounded-2 px-3 py-2 text-center">
+                        <span id="billing-preview"
+                            class="fw-bold text-primary font-monospace">
+                            {{ $billingPreview }}
+                        </span>
                     </div>
                 </div>
-
                 @foreach (['prefix' => 'First Value', 'number' => 'Second Value', 'suffix' => 'Third Value'] as $part => $label)
                     @php
+                        $isEnabled = isset($taxInvoiceSerialConfig)
+                            ? ($taxInvoiceSerialConfig->{$part . '_show'} ?? 1)
+                            : true;
+                        $selectedType = isset($taxInvoiceSerialConfig)
+                            ? ($taxInvoiceSerialConfig->{$part . '_type'} ??
+                                ($part == 'number' ? 'auto increment' : 'manual text'))
+                            : ($part == 'number' ? 'auto increment' : 'manual text');
                         $hasSeparator = in_array($part, ['prefix', 'number']);
-                        $gridClass = $hasSeparator
-                            ? 'serial-part-grid serial-part-grid--with-separator'
-                            : 'serial-part-grid';
+                        $valLabel = $selectedType == 'auto increment'
+                            ? 'Start From'
+                            : 'Value';
                     @endphp
-                    <div class="serial-part-row {{ !(isset($taxInvoiceSerialConfig) && ($taxInvoiceSerialConfig->{$part . '_show'} ?? 1)) ? 'serial-part-row--disabled' : '' }}"
+                    <div class="border-bottom pb-3 mb-3 serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
                         data-part="{{ $part }}">
-                        <label class="serial-part-toggle-label">
-                            <input type="checkbox" class="part-toggle serial-part-toggle"
-                                data-part="{{ $part }}" name="{{ $part }}_show" value="1"
-                                {{ isset($taxInvoiceSerialConfig) && ($taxInvoiceSerialConfig->{$part . '_show'} ?? 1) ? 'checked' : '' }}>
-                        </label>
-                        <div class="{{ $gridClass }}">
-                            <!-- Type Selection -->
-                            <div>
-                                <label class="serial-field-label">{{ $label }}</label>
-                                <select name="{{ $part }}_type" class="serial-select serial-type-select"
-                                    data-part="{{ $part }}" data-target="billing">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <input type="checkbox"
+                                class="form-check-input part-toggle serial-part-toggle"
+                                data-part="{{ $part }}"
+                                name="{{ $part }}_show"
+                                value="1"
+                                {{ $isEnabled ? 'checked' : '' }}>
+                            <label class="fw-semibold small mb-0">
+                                {{ $label }}
+                            </label>
+                        </div>
+                        <div class="row g-2 align-items-end serial-part-grid">
+                            <!-- Type -->
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
+                                <label class="form-label small mb-1">
+                                    Type
+                                </label>
+                                <select name="{{ $part }}_type"
+                                    class="form-select form-select-sm serial-type-select"
+                                    data-part="{{ $part }}"
+                                    data-target="billing">
                                     @foreach ($serialOptions as $val => $text)
                                         <option value="{{ $val }}"
-                                            {{ (isset($taxInvoiceSerialConfig) ? $taxInvoiceSerialConfig->{$part . '_type'} ?? ($part == 'number' ? 'auto increment' : 'manual text') : ($part == 'number' ? 'auto increment' : 'manual text')) == $val ? 'selected' : '' }}>
-                                            {{ $text }}</option>
+                                            {{ $selectedType == $val ? 'selected' : '' }}>
+                                            {{ $text }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
+                            <!-- Value -->
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
 
-                            <!-- Value/Length Input -->
-                            <div>
-                                <!-- Value input (used for text or start from) -->
                                 <div class="input-group-val">
-                                    @php
-                                        $valLabel =
-                                            (isset($taxInvoiceSerialConfig) &&
-                                                $taxInvoiceSerialConfig->{$part . '_type'} ??
-                                                '') ==
-                                            'auto increment'
-                                                ? 'Start From'
-                                                : 'Enter its value';
-                                    @endphp
-                                    <label class="serial-field-label val-label">{{ $valLabel }}</label>
-                                    <input type="text" name="{{ $part }}_value"
-                                        value="{{ $part == 'number' && (isset($taxInvoiceSerialConfig) ? $taxInvoiceSerialConfig->{$part . '_type'} ?? 'auto increment' : 'auto increment') == 'auto increment' ? $taxInvoiceSerialConfig->number_value ?? 1 : $taxInvoiceSerialConfig->{$part . '_value'} ?? '' }}"
-                                        placeholder="Value" class="serial-input">
+                                    <label class="form-label small mb-1 val-label">
+                                        {{ $valLabel }}
+                                    </label>
+                                    <input type="text"
+                                        name="{{ $part }}_value"
+                                        class="form-control form-control-sm serial-input"
+                                        placeholder="Enter value"
+                                        value="{{ $part == 'number' && $selectedType == 'auto increment'
+                                            ? $taxInvoiceSerialConfig->number_value ?? 1
+                                            : $taxInvoiceSerialConfig->{$part . '_value'} ?? '' }}">
                                 </div>
-
-                                <!-- Length input (used for auto generate) -->
                                 <div class="input-group-len d-none">
-                                    <label class="serial-field-label">Length</label>
-                                    <input type="text" name="{{ $part }}_length" placeholder="Length"
-                                        value="{{ $taxInvoiceSerialConfig->{$part . '_length'} ?? 4 }}"
-                                        class="serial-input">
+                                    <label class="form-label small mb-1">
+                                        Length
+                                    </label>
+                                    <input type="text"
+                                        name="{{ $part }}_length"
+                                        class="form-control form-control-sm serial-input"
+                                        value="{{ $taxInvoiceSerialConfig->{$part . '_length'} ?? 4 }}">
                                 </div>
                             </div>
-
+                            <!-- Separator -->
                             @if ($hasSeparator)
-                                <!-- Separator Dropdown -->
-                                <div>
-                                    <label class="serial-field-label">Separator</label>
-                                    <select name="{{ $part }}_separator" class="serial-select">
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label small mb-1">
+                                        Separator
+                                    </label>
+                                    <select name="{{ $part }}_separator"
+                                        class="form-select form-select-sm">
                                         @foreach ($sepOptions as $val => $text)
                                             <option value="{{ $val }}"
                                                 {{ ($taxInvoiceSerialConfig->{$part . '_separator'} ?? 'none') == $val ? 'selected' : '' }}>
-                                                {{ $text }}</option>
+                                                {{ $text }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -234,25 +275,25 @@
                         </div>
                     </div>
                 @endforeach
-
-                <div class="serial-warning">
+                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-3 d-flex align-items-center gap-2">
                     <input type="checkbox" name="reset_on_fy" id="billing-reset-on-fy" value="1"
                         {{ $taxInvoiceSerialConfig->reset_on_fy ?? false ? 'checked' : '' }}
-                        class="serial-warning-checkbox">
-                    <label for="billing-reset-on-fy" class="serial-warning-label">
-                        Reset Tax Invoice Serial Number when new FY starts
+                        class="form-check-input serial-warning-checkbox">
+                    <label for="billing-reset-on-fy" class="form-label small text-warning-emphasis fw-medium mb-0">
+                        Reset Tax Serial Number when new FY starts
                     </label>
                 </div>
-
-                <button type="submit" class="primary-button serial-save-button">Save Tax Invoice Serial</button>
+                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Tax Invoice Serial</button>
             </form>
         </div>
     </div>
 
     <!-- Quotation Serial Config -->
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="serial-config-card">
-            <h4 class="serial-config-title">Quotation Serial</h4>
+        <div class="bg-light p-2 rounded-3 h-100">
+            <div class="mb-2">
+                <h6 class="fw-semibold text-primary small lh-sm mb-0">Quotation Serial</h6>
+            </div>
             <form method="POST" action="{{ route('serial.config.update') }}" id="quotation-serial-form">
                 @csrf
                 <input type="hidden" name="from_tab" value="financial-year">
@@ -270,65 +311,99 @@
                             ? $quotationSerialConfig->generateNextSerialNumber()
                             : 'Configure serial first';
                 @endphp
-                <!-- Parts Toggle -->
 
-                <div class="serial-section">
-                    <label class="serial-preview-label">Preview</label>
-                    <div id="quotation-preview"
-                        class="serial-preview {{ empty($quotationSerialConfig) ? 'serial-preview--empty' : 'serial-preview--ready' }}">
-                        {{ $quotationPreview }}
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold mb-1">Preview</label>
+                    <div class="bg-primary-subtle border border-primary rounded-2 px-3 py-2 text-center">
+                        <span id="quotation-preview"
+                            class="fw-bold text-primary font-monospace">
+                            {{ $quotationPreview }}
+                        </span>
                     </div>
                 </div>
-
                 @foreach (['prefix' => 'First Value', 'number' => 'Second Value', 'suffix' => 'Third Value'] as $part => $label)
                     @php
+                        $isEnabled = isset($quotationSerialConfig)
+                            ? ($quotationSerialConfig->{$part . '_show'} ?? 1)
+                            : true;
+                        $selectedType = isset($quotationSerialConfig)
+                            ? ($quotationSerialConfig->{$part . '_type'} ??
+                                ($part == 'number' ? 'auto increment' : 'manual text'))
+                            : ($part == 'number' ? 'auto increment' : 'manual text');
                         $hasSeparator = in_array($part, ['prefix', 'number']);
-                        $gridClass = $hasSeparator
-                            ? 'serial-part-grid serial-part-grid--with-separator'
-                            : 'serial-part-grid';
+                        $valLabel = $selectedType == 'auto increment'
+                            ? 'Start From'
+                            : 'Value';
                     @endphp
-                    <div class="serial-part-row {{ !(isset($quotationSerialConfig) && ($quotationSerialConfig->{$part . '_show'} ?? 1)) ? 'serial-part-row--disabled' : '' }}"
+                    <div class="border-bottom pb-3 mb-3 serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
                         data-part="{{ $part }}">
-                        <label class="serial-part-toggle-label">
-                            <input type="checkbox" class="part-toggle serial-part-toggle"
-                                data-part="{{ $part }}" name="{{ $part }}_show" value="1"
-                                {{ isset($quotationSerialConfig) && ($quotationSerialConfig->{$part . '_show'} ?? 1) ? 'checked' : '' }}>
-                        </label>
-                        <div class="{{ $gridClass }}">
-                            <div>
-                                <label class="serial-field-label">{{ $label }}</label>
-                                <select name="{{ $part }}_type" class="serial-select serial-type-select"
-                                    data-part="{{ $part }}" data-target="quotation">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <input type="checkbox"
+                                class="form-check-input part-toggle serial-part-toggle"
+                                data-part="{{ $part }}"
+                                name="{{ $part }}_show"
+                                value="1"
+                                {{ $isEnabled ? 'checked' : '' }}>
+                            <label class="fw-semibold small mb-0">
+                                {{ $label }}
+                            </label>
+                        </div>
+                        <div class="row g-2 align-items-end serial-part-grid">
+                            <!-- Type -->
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
+                                <label class="form-label small mb-1">
+                                    Type
+                                </label>
+                                <select name="{{ $part }}_type"
+                                    class="form-select form-select-sm serial-type-select"
+                                    data-part="{{ $part }}"
+                                    data-target="quotation">
                                     @foreach ($serialOptions as $val => $text)
                                         <option value="{{ $val }}"
-                                            {{ ($quotationSerialConfig->{$part . '_type'} ?? ($part == 'number' ? 'auto increment' : 'manual text')) == $val ? 'selected' : '' }}>
-                                            {{ $text }}</option>
+                                            {{ $selectedType == $val ? 'selected' : '' }}>
+                                            {{ $text }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div>
+                            <!-- Value -->
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
+
                                 <div class="input-group-val">
-                                    @php $valLabel = ($quotationSerialConfig->{$part.'_type'} ?? '') == 'auto increment' ? 'Start From' : 'Enter its value'; @endphp
-                                    <label class="serial-field-label val-label">{{ $valLabel }}</label>
-                                    <input type="text" name="{{ $part }}_value"
-                                        value="{{ $part == 'number' && ($quotationSerialConfig->{$part . '_type'} ?? 'auto increment') == 'auto increment' ? $quotationSerialConfig->number_value ?? 1 : $quotationSerialConfig->{$part . '_value'} ?? '' }}"
-                                        placeholder="Value" class="serial-input">
+                                    <label class="form-label small mb-1 val-label">
+                                        {{ $valLabel }}
+                                    </label>
+                                    <input type="text"
+                                        name="{{ $part }}_value"
+                                        class="form-control form-control-sm serial-input"
+                                        placeholder="Enter value"
+                                        value="{{ $part == 'number' && $selectedType == 'auto increment'
+                                            ? $quotationSerialConfig->number_value ?? 1
+                                            : $quotationSerialConfig->{$part . '_value'} ?? '' }}">
                                 </div>
                                 <div class="input-group-len d-none">
-                                    <label class="serial-field-label">Length</label>
-                                    <input type="text" name="{{ $part }}_length" placeholder="Length"
-                                        value="{{ $quotationSerialConfig->{$part . '_length'} ?? 4 }}"
-                                        class="serial-input">
+                                    <label class="form-label small mb-1">
+                                        Length
+                                    </label>
+                                    <input type="text"
+                                        name="{{ $part }}_length"
+                                        class="form-control form-control-sm serial-input"
+                                        value="{{ $quotationSerialConfig->{$part . '_length'} ?? 4 }}">
                                 </div>
                             </div>
+                            <!-- Separator -->
                             @if ($hasSeparator)
-                                <div>
-                                    <label class="serial-field-label">Separator</label>
-                                    <select name="{{ $part }}_separator" class="serial-select">
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label small mb-1">
+                                        Separator
+                                    </label>
+                                    <select name="{{ $part }}_separator"
+                                        class="form-select form-select-sm">
                                         @foreach ($sepOptions as $val => $text)
                                             <option value="{{ $val }}"
                                                 {{ ($quotationSerialConfig->{$part . '_separator'} ?? 'none') == $val ? 'selected' : '' }}>
-                                                {{ $text }}</option>
+                                                {{ $text }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -336,25 +411,25 @@
                         </div>
                     </div>
                 @endforeach
-
-                <div class="serial-warning">
+                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-3 d-flex align-items-center gap-2">
                     <input type="checkbox" name="reset_on_fy" id="quotation-reset-on-fy" value="1"
                         {{ $quotationSerialConfig->reset_on_fy ?? false ? 'checked' : '' }}
-                        class="serial-warning-checkbox">
-                    <label for="quotation-reset-on-fy" class="serial-warning-label">
+                        class="form-check-input serial-warning-checkbox">
+                    <label for="quotation-reset-on-fy" class="form-label small text-warning-emphasis fw-medium mb-0">
                         Reset Quotation Serial Number when new FY starts
                     </label>
                 </div>
-
-                <button type="submit" class="primary-button serial-save-button">Save Quotation Serial</button>
+                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Quotation Serial</button>
             </form>
         </div>
     </div>
 
     <!-- Order Serial Config -->
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="serial-config-card">
-            <h4 class="serial-config-title">Order Serial</h4>
+        <div class="bg-light p-2 rounded-3 h-100">
+            <div class="mb-2">
+                <h6 class="fw-semibold text-primary small lh-sm mb-0">Order Serial</h6>
+            </div>
             <form method="POST" action="{{ route('serial.config.update') }}" id="order-serial-form">
                 @csrf
                 <input type="hidden" name="from_tab" value="financial-year">
@@ -370,72 +445,99 @@
                             ? $orderSerialConfig->generateNextSerialNumber()
                             : 'Configure serial first';
                 @endphp
-                <!-- Parts Toggle -->
 
-                <div class="serial-section">
-                    <label class="serial-preview-label">Preview</label>
-                    <div id="order-preview"
-                        class="serial-preview {{ empty($orderSerialConfig) ? 'serial-preview--empty' : 'serial-preview--ready' }}">
-                        {{ $orderPreview }}
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold mb-1">Preview</label>
+                    <div class="bg-primary-subtle border border-primary rounded-2 px-3 py-2 text-center">
+                        <span id="order-preview"
+                            class="fw-bold text-primary font-monospace">
+                            {{ $orderPreview }}
+                        </span>
                     </div>
                 </div>
-
                 @foreach (['prefix' => 'First Value', 'number' => 'Second Value', 'suffix' => 'Third Value'] as $part => $label)
                     @php
+                        $isEnabled = isset($orderSerialConfig)
+                            ? ($orderSerialConfig->{$part . '_show'} ?? 1)
+                            : true;
+                        $selectedType = isset($orderSerialConfig)
+                            ? ($orderSerialConfig->{$part . '_type'} ??
+                                ($part == 'number' ? 'auto increment' : 'manual text'))
+                            : ($part == 'number' ? 'auto increment' : 'manual text');
                         $hasSeparator = in_array($part, ['prefix', 'number']);
-                        $gridClass = $hasSeparator
-                            ? 'serial-part-grid serial-part-grid--with-separator'
-                            : 'serial-part-grid';
+                        $valLabel = $selectedType == 'auto increment'
+                            ? 'Start From'
+                            : 'Value';
                     @endphp
-                    <div class="serial-part-row {{ !(isset($orderSerialConfig) && ($orderSerialConfig->{$part . '_show'} ?? 1)) ? 'serial-part-row--disabled' : '' }}"
+                    <div class="border-bottom pb-3 mb-3 serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
                         data-part="{{ $part }}">
-                        <label class="serial-part-toggle-label">
-                            <input type="checkbox" class="part-toggle serial-part-toggle"
-                                data-part="{{ $part }}" name="{{ $part }}_show" value="1"
-                                {{ isset($orderSerialConfig) && ($orderSerialConfig->{$part . '_show'} ?? 1) ? 'checked' : '' }}>
-                        </label>
-                        <div class="{{ $gridClass }}">
-                            <div>
-                                <label class="serial-field-label">{{ $label }}</label>
-                                <select name="{{ $part }}_type" class="serial-select serial-type-select"
-                                    data-part="{{ $part }}" data-target="order">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <input type="checkbox"
+                                class="form-check-input part-toggle serial-part-toggle"
+                                data-part="{{ $part }}"
+                                name="{{ $part }}_show"
+                                value="1"
+                                {{ $isEnabled ? 'checked' : '' }}>
+                            <label class="fw-semibold small mb-0">
+                                {{ $label }}
+                            </label>
+                        </div>
+                        <div class="row g-2 align-items-end serial-part-grid">
+                            <!-- Type -->
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
+                                <label class="form-label small mb-1">
+                                    Type
+                                </label>
+                                <select name="{{ $part }}_type"
+                                    class="form-select form-select-sm serial-type-select"
+                                    data-part="{{ $part }}"
+                                    data-target="order">
                                     @foreach ($serialOptions as $val => $text)
                                         <option value="{{ $val }}"
-                                            {{ (isset($orderSerialConfig) ? $orderSerialConfig->{$part . '_type'} ?? ($part == 'number' ? 'auto increment' : 'manual text') : ($part == 'number' ? 'auto increment' : 'manual text')) == $val ? 'selected' : '' }}>
-                                            {{ $text }}</option>
+                                            {{ $selectedType == $val ? 'selected' : '' }}>
+                                            {{ $text }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div>
+                            <!-- Value -->
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
+
                                 <div class="input-group-val">
-                                    @php
-                                        $valLabel =
-                                            (isset($orderSerialConfig) && $orderSerialConfig->{$part . '_type'} ??
-                                                '') ==
-                                            'auto increment'
-                                                ? 'Start From'
-                                                : 'Enter its value';
-                                    @endphp
-                                    <label class="serial-field-label val-label">{{ $valLabel }}</label>
-                                    <input type="text" name="{{ $part }}_value"
-                                        value="{{ $part == 'number' && (isset($orderSerialConfig) ? $orderSerialConfig->{$part . '_type'} ?? 'auto increment' : 'auto increment') == 'auto increment' ? $orderSerialConfig->number_value ?? 1 : $orderSerialConfig->{$part . '_value'} ?? '' }}"
-                                        placeholder="Value" class="serial-input">
+                                    <label class="form-label small mb-1 val-label">
+                                        {{ $valLabel }}
+                                    </label>
+                                    <input type="text"
+                                        name="{{ $part }}_value"
+                                        class="form-control form-control-sm serial-input"
+                                        placeholder="Enter value"
+                                        value="{{ $part == 'number' && $selectedType == 'auto increment'
+                                            ? $orderSerialConfig->number_value ?? 1
+                                            : $orderSerialConfig->{$part . '_value'} ?? '' }}">
                                 </div>
                                 <div class="input-group-len d-none">
-                                    <label class="serial-field-label">Length</label>
-                                    <input type="text" name="{{ $part }}_length" placeholder="Length"
-                                        value="{{ $orderSerialConfig->{$part . '_length'} ?? 4 }}"
-                                        class="serial-input">
+                                    <label class="form-label small mb-1">
+                                        Length
+                                    </label>
+                                    <input type="text"
+                                        name="{{ $part }}_length"
+                                        class="form-control form-control-sm serial-input"
+                                        value="{{ $orderSerialConfig->{$part . '_length'} ?? 4 }}">
                                 </div>
                             </div>
+                            <!-- Separator -->
                             @if ($hasSeparator)
-                                <div>
-                                    <label class="serial-field-label">Separator</label>
-                                    <select name="{{ $part }}_separator" class="serial-select">
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label small mb-1">
+                                        Separator
+                                    </label>
+                                    <select name="{{ $part }}_separator"
+                                        class="form-select form-select-sm">
                                         @foreach ($sepOptions as $val => $text)
                                             <option value="{{ $val }}"
-                                                {{ (isset($orderSerialConfig) ? $orderSerialConfig->{$part . '_separator'} ?? 'none' : 'none') == $val ? 'selected' : '' }}>
-                                                {{ $text }}</option>
+                                                {{ ($orderSerialConfig->{$part . '_separator'} ?? 'none') == $val ? 'selected' : '' }}>
+                                                {{ $text }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -443,25 +545,25 @@
                         </div>
                     </div>
                 @endforeach
-
-                <div class="serial-warning">
+                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-3 d-flex align-items-center gap-2">
                     <input type="checkbox" name="reset_on_fy" id="order-reset-on-fy" value="1"
                         {{ $orderSerialConfig->reset_on_fy ?? false ? 'checked' : '' }}
-                        class="serial-warning-checkbox">
-                    <label for="order-reset-on-fy" class="serial-warning-label">
+                        class="form-check-input serial-warning-checkbox">
+                    <label for="order-reset-on-fy" class="form-label small text-warning-emphasis fw-medium mb-0">
                         Reset Order Serial Number when new FY starts
                     </label>
                 </div>
-
-                <button type="submit" class="primary-button serial-save-button">Save Order Serial</button>
+                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Order Serial</button>
             </form>
         </div>
     </div>
 
     <!-- Payment Receipt Serial Config -->
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="serial-config-card">
-            <h4 class="serial-config-title">Payment Receipt Number</h4>
+        <div class="bg-light p-2 rounded-3 h-100">
+            <div class="mb-2">
+                <h6 class="fw-semibold text-primary small lh-sm mb-0">Payment Receipt Number</h6>
+            </div>
             <form method="POST" action="{{ route('serial.config.update') }}" id="payment-receipt-serial-form">
                 @csrf
                 <input type="hidden" name="from_tab" value="financial-year">
@@ -480,71 +582,98 @@
                             : 'Configure serial first';
                 @endphp
 
-                <div class="serial-section">
-                    <label class="serial-preview-label">Preview</label>
-                    <div id="payment-receipt-preview"
-                        class="serial-preview {{ empty($paymentReceiptSerialConfig) ? 'serial-preview--empty' : 'serial-preview--ready' }}">
-                        {{ $paymentReceiptPreview }}
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold mb-1">Preview</label>
+                    <div class="bg-primary-subtle border border-primary rounded-2 px-3 py-2 text-center">
+                        <span id="payment-receipt-preview"
+                            class="fw-bold text-primary font-monospace">
+                            {{ $paymentReceiptPreview }}
+                        </span>
                     </div>
                 </div>
-
                 @foreach (['prefix' => 'First Value', 'number' => 'Second Value', 'suffix' => 'Third Value'] as $part => $label)
                     @php
+                        $isEnabled = isset($paymentReceiptSerialConfig)
+                            ? ($paymentReceiptSerialConfig->{$part . '_show'} ?? 1)
+                            : true;
+                        $selectedType = isset($paymentReceiptSerialConfig)
+                            ? ($paymentReceiptSerialConfig->{$part . '_type'} ??
+                                ($part == 'number' ? 'auto increment' : 'manual text'))
+                            : ($part == 'number' ? 'auto increment' : 'manual text');
                         $hasSeparator = in_array($part, ['prefix', 'number']);
-                        $gridClass = $hasSeparator
-                            ? 'serial-part-grid serial-part-grid--with-separator'
-                            : 'serial-part-grid';
+                        $valLabel = $selectedType == 'auto increment'
+                            ? 'Start From'
+                            : 'Value';
                     @endphp
-                    <div class="serial-part-row {{ !(isset($paymentReceiptSerialConfig) && ($paymentReceiptSerialConfig->{$part . '_show'} ?? 1)) ? 'serial-part-row--disabled' : '' }}"
+                    <div class="border-bottom pb-3 mb-3 serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
                         data-part="{{ $part }}">
-                        <label class="serial-part-toggle-label">
-                            <input type="checkbox" class="part-toggle serial-part-toggle"
-                                data-part="{{ $part }}" name="{{ $part }}_show" value="1"
-                                {{ isset($paymentReceiptSerialConfig) && ($paymentReceiptSerialConfig->{$part . '_show'} ?? 1) ? 'checked' : '' }}>
-                        </label>
-                        <div class="{{ $gridClass }}">
-                            <div>
-                                <label class="serial-field-label">{{ $label }}</label>
-                                <select name="{{ $part }}_type" class="serial-select serial-type-select"
-                                    data-part="{{ $part }}" data-target="payment-receipt">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <input type="checkbox"
+                                class="form-check-input part-toggle serial-part-toggle"
+                                data-part="{{ $part }}"
+                                name="{{ $part }}_show"
+                                value="1"
+                                {{ $isEnabled ? 'checked' : '' }}>
+                            <label class="fw-semibold small mb-0">
+                                {{ $label }}
+                            </label>
+                        </div>
+                        <div class="row g-2 align-items-end serial-part-grid">
+                            <!-- Type -->
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
+                                <label class="form-label small mb-1">
+                                    Type
+                                </label>
+                                <select name="{{ $part }}_type"
+                                    class="form-select form-select-sm serial-type-select"
+                                    data-part="{{ $part }}"
+                                    data-target="payment-receipt">
                                     @foreach ($serialOptions as $val => $text)
                                         <option value="{{ $val }}"
-                                            {{ (isset($paymentReceiptSerialConfig) ? $paymentReceiptSerialConfig->{$part . '_type'} ?? ($part == 'number' ? 'auto increment' : 'manual text') : ($part == 'number' ? 'auto increment' : 'manual text')) == $val ? 'selected' : '' }}>
-                                            {{ $text }}</option>
+                                            {{ $selectedType == $val ? 'selected' : '' }}>
+                                            {{ $text }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div>
+                            <!-- Value -->
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
+
                                 <div class="input-group-val">
-                                    @php
-                                        $valLabel =
-                                            (isset($paymentReceiptSerialConfig) &&
-                                                $paymentReceiptSerialConfig->{$part . '_type'} ??
-                                                '') ==
-                                            'auto increment'
-                                                ? 'Start From'
-                                                : 'Enter its value';
-                                    @endphp
-                                    <label class="serial-field-label val-label">{{ $valLabel }}</label>
-                                    <input type="text" name="{{ $part }}_value"
-                                        value="{{ $part == 'number' && (isset($paymentReceiptSerialConfig) ? $paymentReceiptSerialConfig->{$part . '_type'} ?? 'auto increment' : 'auto increment') == 'auto increment' ? $paymentReceiptSerialConfig->number_value ?? 1 : $paymentReceiptSerialConfig->{$part . '_value'} ?? '' }}"
-                                        placeholder="Value" class="serial-input">
+                                    <label class="form-label small mb-1 val-label">
+                                        {{ $valLabel }}
+                                    </label>
+                                    <input type="text"
+                                        name="{{ $part }}_value"
+                                        class="form-control form-control-sm serial-input"
+                                        placeholder="Enter value"
+                                        value="{{ $part == 'number' && $selectedType == 'auto increment'
+                                            ? $paymentReceiptSerialConfig->number_value ?? 1
+                                            : $paymentReceiptSerialConfig->{$part . '_value'} ?? '' }}">
                                 </div>
                                 <div class="input-group-len d-none">
-                                    <label class="serial-field-label">Length</label>
-                                    <input type="text" name="{{ $part }}_length" placeholder="Length"
-                                        value="{{ $paymentReceiptSerialConfig->{$part . '_length'} ?? 4 }}"
-                                        class="serial-input">
+                                    <label class="form-label small mb-1">
+                                        Length
+                                    </label>
+                                    <input type="text"
+                                        name="{{ $part }}_length"
+                                        class="form-control form-control-sm serial-input"
+                                        value="{{ $paymentReceiptSerialConfig->{$part . '_length'} ?? 4 }}">
                                 </div>
                             </div>
+                            <!-- Separator -->
                             @if ($hasSeparator)
-                                <div>
-                                    <label class="serial-field-label">Separator</label>
-                                    <select name="{{ $part }}_separator" class="serial-select">
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label small mb-1">
+                                        Separator
+                                    </label>
+                                    <select name="{{ $part }}_separator"
+                                        class="form-select form-select-sm">
                                         @foreach ($sepOptions as $val => $text)
                                             <option value="{{ $val }}"
-                                                {{ (isset($paymentReceiptSerialConfig) ? $paymentReceiptSerialConfig->{$part . '_separator'} ?? 'none' : 'none') == $val ? 'selected' : '' }}>
-                                                {{ $text }}</option>
+                                                {{ ($paymentReceiptSerialConfig->{$part . '_separator'} ?? 'none') == $val ? 'selected' : '' }}>
+                                                {{ $text }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -552,17 +681,15 @@
                         </div>
                     </div>
                 @endforeach
-
-                <div class="serial-warning">
+                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-3 d-flex align-items-center gap-2">
                     <input type="checkbox" name="reset_on_fy" id="payment-receipt-reset-on-fy" value="1"
                         {{ $paymentReceiptSerialConfig->reset_on_fy ?? false ? 'checked' : '' }}
-                        class="serial-warning-checkbox">
-                    <label for="payment-receipt-reset-on-fy" class="serial-warning-label">
+                        class="form-check-input serial-warning-checkbox">
+                    <label for="payment-receipt-reset-on-fy" class="form-label small text-warning-emphasis fw-medium mb-0">
                         Reset Payment Receipt Serial Number when new FY starts
                     </label>
                 </div>
-
-                <button type="submit" class="primary-button serial-save-button">Save Payment Receipt Serial</button>
+                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Payment Receipt Serial</button>
             </form>
         </div>
     </div>
@@ -632,6 +759,7 @@
 
             // Visual feedback: opacity only (keep row clickable)
             row.classList.toggle('serial-part-row--disabled', !isChecked);
+            row.classList.toggle('opacity-50', !isChecked);
         }
 
         function toggleInputs(select) {
