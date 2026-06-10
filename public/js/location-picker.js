@@ -3,7 +3,7 @@
  * Handles Country -> State -> City dependent dropdowns
  */
 
-const LocationPicker = (function() {
+const LocationPicker = (function () {
     const apiBase = 'https://countriesnow.space/api/v0.1/countries';
 
     async function fetchCountries() {
@@ -116,7 +116,7 @@ const LocationPicker = (function() {
 
         forms.forEach(async (form) => {
             const countrySelects = form.querySelectorAll('.country-select');
-            
+
             countrySelects.forEach(async (countrySelect) => {
                 // Find nearest siblings within the same form context
                 const parent = countrySelect.closest('.form-grid') || form;
@@ -137,7 +137,7 @@ const LocationPicker = (function() {
                     const country = countrySelect.value;
                     const savedState = stateSelect.dataset.selected;
                     const savedCity = citySelect.dataset.selected;
-                    
+
                     stateSelect.innerHTML = '<option value="">Select State</option>';
                     citySelect.innerHTML = '<option value="">Select City</option>';
 
@@ -178,8 +178,59 @@ const LocationPicker = (function() {
         });
     }
 
+    /**
+     * Re-populate states and cities for a given country select element using
+     * the dataset.selected values on the country/state/city selects.
+     * Use this when programmatically setting data-selected and needing
+     * the dropdowns to reflect those values immediately (e.g. edit forms).
+     *
+     * @param {HTMLSelectElement} countrySelect
+     */
+    async function loadSelection(countrySelect) {
+        const parent = countrySelect.closest('.form-grid') || countrySelect.closest('form');
+        if (!parent) return;
+
+        const stateSelect = parent.querySelector('.state-select');
+        const citySelect = parent.querySelector('.city-select');
+        if (!stateSelect || !citySelect) return;
+
+        const country = countrySelect.dataset.selected || '';
+        const savedState = stateSelect.dataset.selected || '';
+        const savedCity = citySelect.dataset.selected || '';
+
+        // Set the country dropdown value
+        countrySelect.value = country;
+        if (!countrySelect.value && country) {
+            // Country not yet in list — wait for countries to be populated then retry
+            await new Promise(resolve => setTimeout(resolve, 500));
+            countrySelect.value = country;
+        }
+
+        stateSelect.innerHTML = '<option value="">Select State</option>';
+        citySelect.innerHTML = '<option value="">Select City</option>';
+
+        if (!country) return;
+
+        const states = await fetchStates(country);
+        states.forEach(s => {
+            const opt = new Option(s, s);
+            if (s === savedState) opt.selected = true;
+            stateSelect.add(opt);
+        });
+
+        if (!stateSelect.value) return;
+
+        const cities = uniqueCities(await fetchCities(country, stateSelect.value));
+        cities.forEach(c => {
+            const opt = new Option(c, c);
+            if (normalizeLocationLabel(c) === normalizeLocationLabel(savedCity)) opt.selected = true;
+            citySelect.add(opt);
+        });
+    }
+
     return {
-        init: init
+        init: init,
+        loadSelection: loadSelection,
     };
 })();
 

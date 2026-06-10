@@ -28,6 +28,8 @@
 
         <input type="hidden" name="accountid"
             value="{{ isset($client) ? ($client->accountid ?? auth()->user()->accountid ?? 'ACC0000001') : (auth()->user()->accountid ?? 'ACC0000001') }}">
+        <input type="hidden" name="clientid_hidden" id="clientid_hidden"
+            value="{{ isset($client) ? $client->clientid : '' }}">
 
         <div class="row g-2 align-items-stretch">
             <!-- Column 1: Client Information -->
@@ -45,12 +47,7 @@
                             <input type="text" id="business_name" name="business_name" class="form-control"
                                 value="{{ old('business_name', $client->business_name ?? '') }}" required>
                             @error('business_name') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                        </div>
-                        <div class="col-12">
-                            <label for="contact_name" class="form-label small lh-sm fw-semibold text-dark mb-1">Contact
-                                Person Name</label>
-                            <input type="text" id="contact_name" name="contact_name" class="form-control"
-                                value="{{ old('contact_name', $client->contact_name ?? '') }}">
+                            <div class="text-danger small mt-1 ajax-error" id="ajax-error-business_name"></div>
                         </div>
                         <div class="col-12">
                             <label for="groupid" class="form-label small lh-sm fw-semibold text-dark mb-1">Does this
@@ -71,6 +68,7 @@
                                 </button>
                             </div>
                             @error('groupid') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                            <div class="text-danger small mt-1 ajax-error" id="ajax-error-groupid"></div>
                         </div>
                         <div class="col-12 col-md-12">
                             <label for="primary_email" class="form-label small lh-sm fw-semibold text-dark mb-1">Primary
@@ -79,6 +77,7 @@
                                 value="{{ old('primary_email', $client->primary_email ?? '') }}" required
                                 placeholder="name@company.com">
                             @error('primary_email') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                            <div class="text-danger small mt-1 ajax-error" id="ajax-error-primary_email"></div>
                         </div>
                         <div class="col-12 col-md-12">
                             <label for="email" class="form-label small lh-sm fw-semibold text-dark mb-1">Secondary
@@ -88,17 +87,20 @@
                                 placeholder="accounts@company.com, finance@company.com">
                             <small class="text-dark small">Use comma to add multiple emails</small>
                             @error('email') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                            <div class="text-danger small mt-1 ajax-error" id="ajax-error-email"></div>
                         </div>
                         <div class="col-12 col-md-6">
                             <label for="phone" class="form-label small lh-sm fw-semibold text-dark mb-1">Phone</label>
                             <input type="tel" id="phone" name="phone" class="form-control"
                                 value="{{ old('phone', $client->phone ?? '') }}">
+                            <div class="text-danger small mt-1 ajax-error" id="ajax-error-phone"></div>
                         </div>
                         <div class="col-12 col-md-6">
                             <label for="whatsapp_number"
                                 class="form-label small lh-sm fw-semibold text-dark mb-1">WhatsApp</label>
                             <input type="tel" id="whatsapp_number" name="whatsapp_number" class="form-control"
                                 value="{{ old('whatsapp_number', $client->whatsapp_number ?? '') }}">
+                            <div class="text-danger small mt-1 ajax-error" id="ajax-error-whatsapp_number"></div>
                         </div>
                         <div class="col-12 col-md-6">
                             <label for="type" class="form-label small lh-sm fw-semibold text-dark mb-1">Client
@@ -107,8 +109,9 @@
                                 <option value="regular" {{ old('type', $client->type ?? 'regular') == 'regular' ?
                                     'selected' : '' }}>Regular</option>
                                 <option value="trial" {{ old('type', $client->type ?? 'regular') == 'trial' ? 'selected'
-                                    : '' }}>Trial</option>
+                                    : '' }}>Prospect (No invoices can be generated)</option>
                             </select>
+                            <div class="text-danger small mt-1 ajax-error" id="ajax-error-type"></div>
                         </div>
                         <div class="col-12 col-md-6">
                             <label for="currency"
@@ -125,63 +128,10 @@
                                 @endforeach
                             </select>
                             @error('currency') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                            <div class="text-danger small mt-1 ajax-error" id="ajax-error-currency"></div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Column 2: Address -->
-            <div class="col-12 col-lg-3">
-                <div class="bg-light p-2 rounded-3 h-100">
-                    <div class="mb-2">
-                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Address</h5>
-                    </div>
-
-                    <div class="row g-2 form-grid">
-                        <div class="col-12 col-md-12">
-                            <label for="country"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
-                            <select id="country" name="country" class="form-select country-select"
-                                data-selected="{{ old('country', $client->country ?? 'India') }}">
-                                <option value="">Select</option>
-                            </select>
-                        </div>
-                        <div class="col-12 col-md-12">
-                            <label for="state" class="form-label small lh-sm fw-semibold text-dark mb-1">State<span
-                                    class="text-danger">*</span></label>
-                            <select id="state" name="state" required class="form-select state-select"
-                                data-selected="{{ old('state', $client->state ?? '') }}">
-                                <option value="">Select</option>
-                            </select>
-                            @error('state') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                        </div>
-                        <div class="col-12 col-md-12">
-                            <label for="city" class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
-                            <select id="city" name="city" class="form-select city-select"
-                                data-selected="{{ old('city', $client->city ?? '') }}">
-                                <option value="">Select</option>
-                            </select>
-                        </div>
-                        <div class="col-12 col-md-12">
-                            <label for="postal_code" class="form-label small lh-sm fw-semibold text-dark mb-1">Postal
-                                Code</label>
-                            <input type="text" id="postal_code" name="postal_code" class="form-control"
-                                value="{{ old('postal_code', $client->postal_code ?? '') }}">
-                        </div>
-                        <div class="col-12 col-md-12">
-                            <label for="address_line_1"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">Address</label>
-                            <textarea id="address_line_1" name="address_line_1" rows="3"
-                                class="form-control">{{ old('address_line_1', $client->address_line_1 ?? '') }}</textarea>
-                        </div>
-                    </div>
-                    <div class="mb-2 mt-3">
-                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Business Logo</h5>
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-12 col-md-12">
-
-                            <!-- Custom Drag and Drop Area -->
+                        <div class="col-12 mt-2">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Business Logo</label>
                             @php
                             $hasLogo = isset($client) && $client->logo_path;
                             @endphp
@@ -190,14 +140,14 @@
                                 <input type="file" id="logo" name="logo" accept="image/*"
                                     class="position-absolute top-0 start-0 w-100 h-100 opacity-0">
 
-                                <div class="drop-zone-prompt {{ $hasLogo ? 'd-none' : 'd-flex' }} align-items-center justify-content-start"
+                                <div class="drop-zone-prompt {{ $hasLogo ? 'd-none' : 'd-flex' }} align-items-center justify-content-start px-2"
                                     id="drop-zone-prompt">
-                                    <i class="far fa-file text-secondary mb-2 fs-4"></i>
-                                    <span class="text-muted fw-medium ms-2">Drag and drop or <span
-                                            class="text-black fw-semibold">browse files</span></span>
+                                    <i class="far fa-file text-secondary mb-0 fs-5"></i>
+                                    <span class="text-muted fw-medium ms-2">Drag & drop or
+                                        <span class="text-primary fw-semibold">browse</span></span>
                                 </div>
 
-                                <div class="drop-zone-preview {{ $hasLogo ? '' : 'd-none' }} align-items-center justify-content-between w-100"
+                                <div class="drop-zone-preview {{ $hasLogo ? '' : 'd-none' }} align-items-center justify-content-between w-100 px-2"
                                     id="drop-zone-preview">
                                     <img id="logo-preview-img" src="{{ $hasLogo ? $client->logo_path : '#' }}"
                                         alt="Logo Preview" class="img-fluid rounded mb-0 shadow-sm" width="50px">
@@ -208,8 +158,96 @@
                                     </button>
                                 </div>
                             </div>
-
                             @error('logo') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                            <div class="text-danger small mt-1 ajax-error" id="ajax-error-logo"></div>
+                        </div>
+                        <div class="col-12 mt-2 text-end">
+                            <button type="button" id="btn-save-client-info"
+                                class="btn btn-outline-primary btn-primary text-white fw-medium">
+                                <i class="fas fa-save me-1"></i> Save Client Info
+                            </button>
+                            <div id="ajax-save-client-success" class="text-success small mt-1 fw-semibold d-none"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 2: Address & Contacts -->
+            <div class="col-12 col-lg-3">
+                <div class="bg-light p-2 rounded-3 h-100 d-flex flex-column">
+                    <div class="mb-2">
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Business Address</h5>
+                    </div>
+
+                    <div class="row g-2 form-grid mb-3">
+                        <div class="col-12 col-md-6">
+                            <label for="country"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
+                            <select id="country" name="country" class="form-select country-select"
+                                data-selected="{{ old('country', $client->country ?? 'India') }}">
+                                <option value="">Select</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="state" class="form-label small lh-sm fw-semibold text-dark mb-1">State<span
+                                    class="text-danger">*</span></label>
+                            <select id="state" name="state" required class="form-select state-select"
+                                data-selected="{{ old('state', $client->state ?? '') }}">
+                                <option value="">Select</option>
+                            </select>
+                            @error('state') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="city" class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
+                            <select id="city" name="city" class="form-select city-select"
+                                data-selected="{{ old('city', $client->city ?? '') }}">
+                                <option value="">Select</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="postal_code" class="form-label small lh-sm fw-semibold text-dark mb-1">Postal
+                                Code</label>
+                            <input type="text" id="postal_code" name="postal_code" class="form-control"
+                                value="{{ old('postal_code', $client->postal_code ?? '') }}">
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <label for="address_line_1"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Address</label>
+                            <textarea id="address_line_1" name="address_line_1" rows="2"
+                                class="form-control">{{ old('address_line_1', $client->address_line_1 ?? '') }}</textarea>
+                        </div>
+                        <div class="col-12 col-md-12">
+                            <div class="mt-3 bg-white p-2 rounded-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="fw-semibold text-primary small lh-sm mb-0 align-self-end">Client Contacts
+                                    </h5>
+                                    <button type="button"
+                                        class="btn btn-xs lh-base btn-outline-primary btn-primary text-white py-1 px-2 h-auto"
+                                        id="add-contact-btn">
+                                        <i class="fas fa-plus me-1"></i> Add Contact
+                                    </button>
+                                </div>
+
+                                <div class="table-responsive border rounded bg-white">
+                                    <table class="table table-striped mainTable mb-0" id="contacts-table">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th class="text-center px-2" width="10%">SN</th>
+                                                <th class="px-2" width="60%">Name & Designation</th>
+                                                <th class="text-end px-2" width="30%">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="contacts-table-body">
+                                            <!-- Dynamic rows -->
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <input type="hidden" name="contacts_json" id="contacts_json">
+                                @error('contacts_json')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -373,17 +411,17 @@
 
     <!-- Groups Modal -->
     <div class="modal fade" id="groupsModal" tabindex="-1" aria-labelledby="groupsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-white border-bottom py-2">
-                    <h5 class="modal-title fw-semibold" id="groupsModalLabel">Add Group</h5>
+                <div class="modal-header border-0 bg-white py-2">
+                    <h5 class="modal-title fw-semibold" id="groupsModalLabel">Add Client Group</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body bg-light p-4">
+                <div class="modal-body bg-light p-3">
                     <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="mainForm">
                         @csrf
                         <div id="groupMethodField"></div>
-                        <div class="row g-2 mb-3 form-grid">
+                        <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label for="groupName" class="form-label small lh-sm fw-semibold text-dark mb-1">Group
                                     Name<span class="text-danger">*</span></label>
@@ -394,55 +432,174 @@
                                     class="form-label small lh-sm fw-semibold text-dark mb-1">Email</label>
                                 <input type="email" name="email" id="groupEmail" class="form-control">
                             </div>
-                            <div class="col-md-6">
-                                <label for="groupAddress1"
-                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Address
-                                    Line 1</label>
-                                <textarea name="address_line_1" id="groupAddress1" class="form-control" rows="2">{{ old('address_line_1') }}</textarea>
+
+                            <!-- Registered Address (col-md-6) -->
+                            <div class="col-12 col-md-6">
+                                <div class="p-2 rounded h-100 form-grid" style="background: #f3f3f3;">
+                                    <h6 class="fw-semibold text-primary mb-2">Registered Address</h6>
+                                    <div class="row g-2">
+                                        <div class="col-12">
+                                            <label for="groupRegisteredAddress"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">Address</label>
+                                            <input type="text" name="registered_address" id="groupRegisteredAddress"
+                                                class="form-control" value="{{ old('registered_address') }}">
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupCountry"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
+                                            <select id="groupCountry" name="country" class="form-select country-select"
+                                                data-selected="India">
+                                                <option value="">Select Country</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupState"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">State</label>
+                                            <select id="groupState" name="state" class="form-select state-select"
+                                                data-selected="">
+                                                <option value="">Select State</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupCity"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
+                                            <select id="groupCity" name="city" class="form-select city-select"
+                                                data-selected="">
+                                                <option value="">Select City</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupPostalCode"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">Postal
+                                                Code</label>
+                                            <input type="text" name="postal_code" id="groupPostalCode"
+                                                class="form-control" value="{{ old('postal_code') }}">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label for="groupAddress2"
-                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Address
-                                    Line 2</label>
-                                <textarea name="address_line_2" id="groupAddress2" class="form-control" rows="2">{{ old('address_line_2') }}</textarea>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="groupCountry"
-                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
-                                <select id="groupCountry" name="country" class="form-select country-select"
-                                    data-selected="India">
-                                    <option value="">Select Country</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="groupState"
-                                    class="form-label small lh-sm fw-semibold text-dark mb-1">State</label>
-                                <select id="groupState" name="state" class="form-select state-select" data-selected="">
-                                    <option value="">Select State</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="groupCity"
-                                    class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
-                                <select id="groupCity" name="city" class="form-select city-select" data-selected="">
-                                    <option value="">Select City</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="groupPostalCode"
-                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Postal
-                                    Code</label>
-                                <input type="text" name="postal_code" id="groupPostalCode" class="form-control">
+
+                            <!-- Business Address (col-md-6) -->
+                            <div class="col-12 col-md-6">
+                                <div class="p-2 rounded h-100 form-grid" style="background: #f3f3f3;">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <h6 class="fw-semibold text-primary mb-0 align-self-end">Business Address</h6>
+                                        <div class="mb-0 bg-white border rounded-1 px-1 py-0">
+                                            <div class="form-check mb-0">
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="formGroupSameAsRegistered" value="1">
+                                                <label class="form-check-label small lh-sm fw-normal text-dark"
+                                                    for="formGroupSameAsRegistered">
+                                                    Same as Registered Address
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-12">
+                                            <label for="groupBusinessAddress"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">Address</label>
+                                            <input type="text" name="business_address" id="groupBusinessAddress"
+                                                class="form-control" value="{{ old('business_address') }}">
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupBusinessCountry"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
+                                            <select id="groupBusinessCountry" name="business_country"
+                                                class="form-select country-select" data-selected="India">
+                                                <option value="">Select Country</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupBusinessState"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">State</label>
+                                            <select id="groupBusinessState" name="business_state"
+                                                class="form-select state-select" data-selected="">
+                                                <option value="">Select State</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupBusinessCity"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
+                                            <select id="groupBusinessCity" name="business_city"
+                                                class="form-select city-select" data-selected="">
+                                                <option value="">Select City</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupBusinessPostalCode"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">Postal
+                                                Code</label>
+                                            <input type="text" name="business_postal_code" id="groupBusinessPostalCode"
+                                                class="form-control" value="{{ old('business_postal_code') }}">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="d-flex align-items-center justify-content-between mt-3">
-                            <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium"
-                                data-bs-dismiss="modal">
-                                <i class="fas fa-times btn-icon me-1"></i> Cancel
-                            </button>
+                        <div class="d-flex align-items-center justify-content-end mt-2">
                             <button type="submit" id="groupSubmitBtn"
                                 class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                Save <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                                Save Client Group <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Modal -->
+    <div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-md">
+            <div class="modal-content border-0">
+                <div class="modal-header bg-white border-0 py-2">
+                    <h5 class="modal-title fw-semibold" id="contactModalLabel">Add Client Contact</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-light p-3">
+                    <div id="contact-form-errors" class="alert alert-danger d-none py-2 mb-3 small"></div>
+                    <form id="contactForm" onsubmit="event.preventDefault();" class="mainForm">
+                        <input type="hidden" id="contact_index" value="">
+                        <input type="hidden" id="contact_id_field" value="">
+                        <div class="row g-2">
+                            <div class="col-12 col-md-12">
+                                <label for="contact_name_field"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Name<span
+                                        class="text-danger">*</span></label>
+                                <input type="text" id="contact_name_field" required class="form-control">
+                            </div>
+                            <div class="col-12 col-md-12">
+                                <label for="contact_designation_field"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Designation</label>
+                                <input type="text" id="contact_designation_field" class="form-control">
+                            </div>
+                            <div class="col-12 col-md-12">
+                                <label for="contact_email_field"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Email</label>
+                                <input type="email" id="contact_email_field" class="form-control">
+                            </div>
+                            <div class="col-12 col-md-12">
+                                <label for="contact_phone_field"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Phone</label>
+                                <input type="tel" id="contact_phone_field" class="form-control">
+                            </div>
+                            <div class="col-12 col-md-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="contact_is_primary_field"
+                                        style="cursor:pointer;">
+                                    <label class="form-check-label fw-normal text-dark mb-0" style="cursor:pointer;"
+                                        for="contact_is_primary_field">
+                                        Mark as Primary Contact
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-end mt-2">
+                            <button type="button" id="save-contact-btn"
+                                class="btn btn-outline-primary btn-primary text-white fw-medium">
+                                Save Contact <i class="fas fa-arrow-right btn-icon ms-1"></i>
                             </button>
                         </div>
                     </form>
@@ -455,8 +612,12 @@
 <script type="application/json"
     id="billing-profiles-data">{!! json_encode(($billingProfiles ?? collect())->keyBy('bd_id')) !!}</script>
 
+<script type="application/json"
+    id="existing-contacts-data">{!! json_encode(old('contacts_json') ? json_decode(old('contacts_json'), true) : (isset($client) ? $client->contacts : [])) !!}</script>
+
 <script>
     (function () {
+        let clientId = document.getElementById('clientid_hidden').value;
         const existingSelect = document.getElementById('existing_bd_id');
         const billingName = document.getElementById('billing_business_name');
         const billingGstin = document.getElementById('billing_gstin');
@@ -643,6 +804,391 @@
             }
         }
 
+        const btnSaveClientInfo = document.getElementById('btn-save-client-info');
+        const successClientMsg = document.getElementById('ajax-save-client-success');
+
+        if (btnSaveClientInfo) {
+            btnSaveClientInfo.addEventListener('click', async function (e) {
+                e.preventDefault();
+
+                document.querySelectorAll('.ajax-error').forEach(el => el.textContent = '');
+                successClientMsg.classList.add('d-none');
+                successClientMsg.textContent = '';
+
+                btnSaveClientInfo.disabled = true;
+                btnSaveClientInfo.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+
+                const formData = new FormData();
+                formData.append('_token', '{{ csrf_token() }}');
+                if (clientId) {
+                    formData.append('clientid', clientId);
+                }
+                formData.append('business_name', document.getElementById('business_name').value);
+                formData.append('groupid', document.getElementById('groupid').value);
+                formData.append('primary_email', document.getElementById('primary_email').value);
+                formData.append('email', document.getElementById('email').value);
+                formData.append('phone', document.getElementById('phone').value);
+                formData.append('whatsapp_number', document.getElementById('whatsapp_number').value);
+                formData.append('type', document.getElementById('type').value);
+                formData.append('currency', document.getElementById('currency').value);
+
+                const logoInput = document.getElementById('logo');
+                if (logoInput && logoInput.files[0]) {
+                    formData.append('logo', logoInput.files[0]);
+                }
+
+                try {
+                    const response = await fetch("{{ route('clients.ajax-save-info') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        clientId = result.clientid;
+                        document.getElementById('clientid_hidden').value = clientId;
+
+                        const form = document.querySelector('.mainForm');
+                        if (form) {
+                            form.action = "{{ route('clients.update', ':id') }}".replace(':id', clientId);
+                            let methodInput = form.querySelector('input[name="_method"]');
+                            if (!methodInput) {
+                                methodInput = document.createElement('input');
+                                methodInput.type = 'hidden';
+                                methodInput.name = '_method';
+                                methodInput.value = 'PUT';
+                                form.appendChild(methodInput);
+                            }
+
+                            const mainSubmitBtn = form.querySelector('button[type="submit"]');
+                            if (mainSubmitBtn) {
+                                mainSubmitBtn.innerHTML = 'Update Client <i class="fas fa-arrow-right btn-icon ms-1"></i>';
+                            }
+                        }
+
+                        successClientMsg.textContent = result.message;
+                        successClientMsg.classList.remove('d-none');
+                        renderContacts();
+
+                        if (result.logo_path) {
+                            const previewImg = document.getElementById('logo-preview-img');
+                            if (previewImg) {
+                                previewImg.src = result.logo_path;
+                            }
+                        }
+                    } else if (response.status === 422) {
+                        const errData = await response.json();
+                        for (const [field, messages] of Object.entries(errData.errors || {})) {
+                            const errEl = document.getElementById(`ajax-error-${field}`);
+                            if (errEl) {
+                                errEl.textContent = messages[0];
+                            }
+                        }
+                    } else {
+                        alert('Something went wrong. Please check fields.');
+                    }
+                } catch (error) {
+                    console.error('AJAX Client save error', error);
+                    alert('An error occurred while saving.');
+                } finally {
+                    btnSaveClientInfo.disabled = false;
+                    btnSaveClientInfo.innerHTML = '<i class="fas fa-save me-1"></i> Save Client Info';
+                }
+            });
+        }
+
+        // Client Contacts management
+        let contactsList = [];
+        const existingContactsEl = document.getElementById('existing-contacts-data');
+        if (existingContactsEl) {
+            try {
+                contactsList = JSON.parse(existingContactsEl.textContent || '[]');
+            } catch (e) {
+                console.error('Failed to parse contacts', e);
+            }
+        }
+
+        const contactsTableBody = document.getElementById('contacts-table-body');
+        const contactsJsonInput = document.getElementById('contacts_json');
+
+        function renderContacts() {
+            if (!contactsTableBody) return;
+            contactsTableBody.innerHTML = '';
+
+            if (!clientId) {
+                contactsTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="text-center text-muted py-3 small">Please save Client Info first to manage contacts.</td>
+                    </tr>
+                `;
+                contactsJsonInput.value = '';
+                return;
+            }
+
+            if (contactsList.length === 0) {
+                contactsTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="text-center text-muted py-3 small">No contacts added yet.</td>
+                    </tr>
+                `;
+                contactsJsonInput.value = '';
+                return;
+            }
+
+            contactsList.forEach((contact, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-center px-2 align-middle" width="10%">${index + 1}</td>
+                    <td class="px-2 align-middle fw-medium">
+                         ${contact.is_primary
+                        ? '<span class="badge bg-light text-success border border-success-subtle px-2 py-0.5 rounded-pill d-inline-flex" style="font-size: 0.65rem;">Primary</span> <br/>'
+                        : ''
+                    }
+                        ${escapeHtml(contact.name)} <div class="small lh-sm text-muted">${escapeHtml(contact.designation || '')}</div></td>
+                    <td class="text-end px-2 align-middle">
+                        <div class="tableActionButton d-inline-flex gap-1">
+                            <button type="button" class="bg03 color03 edit-contact-btn" data-index="${index}">
+                                Edit
+                            </button>
+                            <button type="button" class="bg04 color04 delete-contact-btn" data-index="${index}">
+                                Delete
+                            </button>
+                        </div>
+                    </td>
+                `;
+                contactsTableBody.appendChild(tr);
+            });
+
+            contactsJsonInput.value = JSON.stringify(contactsList);
+
+            // Attach event listeners
+            contactsTableBody.querySelectorAll('.edit-contact-btn').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const idx = parseInt(this.getAttribute('data-index'), 10);
+                    openContactModal(idx);
+                });
+            });
+
+            contactsTableBody.querySelectorAll('.delete-contact-btn').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const idx = parseInt(this.getAttribute('data-index'), 10);
+                    deleteContact(idx);
+                });
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        const contactModal = new bootstrap.Modal(document.getElementById('contactModal'));
+        const contactForm = document.getElementById('contactForm');
+        const contactFormErrors = document.getElementById('contact-form-errors');
+        const contactIndexInput = document.getElementById('contact_index');
+        const contactNameInput = document.getElementById('contact_name_field');
+        const contactDesignationInput = document.getElementById('contact_designation_field');
+        const contactEmailInput = document.getElementById('contact_email_field');
+        const contactPhoneInput = document.getElementById('contact_phone_field');
+        const contactIsPrimaryInput = document.getElementById('contact_is_primary_field');
+        const saveContactBtn = document.getElementById('save-contact-btn');
+        const addContactBtn = document.getElementById('add-contact-btn');
+
+        if (addContactBtn) {
+            addContactBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                if (!clientId) {
+                    window.appAlert('Please save Client Information first before adding contacts.', {
+                        title: 'Client Info Required',
+                        icon: 'warning'
+                    });
+                    return;
+                }
+                openContactModal(-1);
+            });
+        }
+
+        function openContactModal(index) {
+            contactFormErrors.classList.add('d-none');
+            contactFormErrors.textContent = '';
+
+            if (index >= 0) {
+                document.getElementById('contactModalLabel').textContent = 'Edit Client Contact';
+                const contact = contactsList[index];
+                contactIndexInput.value = index;
+                document.getElementById('contact_id_field').value = contact.contactid || '';
+                contactNameInput.value = contact.name || '';
+                contactDesignationInput.value = contact.designation || '';
+                contactEmailInput.value = contact.email || '';
+                contactPhoneInput.value = contact.phone || '';
+                contactIsPrimaryInput.checked = !!contact.is_primary;
+            } else {
+                document.getElementById('contactModalLabel').textContent = 'Add Client Contact';
+                contactIndexInput.value = '';
+                document.getElementById('contact_id_field').value = '';
+                contactForm.reset();
+                contactIsPrimaryInput.checked = (contactsList.length === 0);
+            }
+            contactModal.show();
+        }
+
+        if (saveContactBtn) {
+            saveContactBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const name = contactNameInput.value.trim();
+                const designation = contactDesignationInput.value.trim();
+                const email = contactEmailInput.value.trim();
+                const phone = contactPhoneInput.value.trim();
+                const isPrimary = contactIsPrimaryInput.checked;
+
+                if (!name) {
+                    contactFormErrors.textContent = 'Name is required.';
+                    contactFormErrors.classList.remove('d-none');
+                    return;
+                }
+
+                const indexVal = contactIndexInput.value;
+                const contactData = {
+                    name: name,
+                    designation: designation,
+                    email: email,
+                    phone: phone,
+                    is_primary: isPrimary
+                };
+
+                if (clientId) {
+                    saveContactBtn.disabled = true;
+                    saveContactBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+
+                    const contactId = document.getElementById('contact_id_field').value;
+                    const url = "{{ route('clients.contacts.ajax-save', ':client') }}".replace(':client', clientId);
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            contactid: contactId || null,
+                            name: name,
+                            designation: designation,
+                            email: email || null,
+                            phone: phone || null,
+                            is_primary: isPrimary
+                        })
+                    })
+                        .then(async res => {
+                            if (res.ok) {
+                                const data = await res.json();
+                                contactsList = data.contacts;
+                                contactModal.hide();
+                                renderContacts();
+                            } else {
+                                const errData = await res.json();
+                                let errMsg = 'Failed to save contact.';
+                                if (errData.errors && errData.errors.name) {
+                                    errMsg = errData.errors.name[0];
+                                }
+                                contactFormErrors.textContent = errMsg;
+                                contactFormErrors.classList.remove('d-none');
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            contactFormErrors.textContent = 'An error occurred while saving contact.';
+                            contactFormErrors.classList.remove('d-none');
+                        })
+                        .finally(() => {
+                            saveContactBtn.disabled = false;
+                            saveContactBtn.innerHTML = 'Save Contact <i class="fas fa-arrow-right btn-icon ms-1"></i>';
+                        });
+                } else {
+                    if (isPrimary) {
+                        contactsList.forEach(c => c.is_primary = false);
+                    }
+
+                    if (indexVal !== '') {
+                        const idx = parseInt(indexVal, 10);
+                        contactsList[idx] = contactData;
+                    } else {
+                        contactsList.push(contactData);
+                    }
+
+                    const hasPrimary = contactsList.some(c => c.is_primary);
+                    if (!hasPrimary && contactsList.length > 0) {
+                        contactsList[0].is_primary = true;
+                    }
+
+                    contactModal.hide();
+                    renderContacts();
+                }
+            });
+        }
+
+        async function deleteContact(index) {
+            const isConfirmed = await window.appConfirm('Are you sure you want to delete this contact?', {
+                title: 'Confirm Delete',
+                icon: 'warning',
+                confirmButtonText: 'Yes, delete',
+                cancelButtonText: 'Cancel'
+            });
+
+            if (isConfirmed) {
+                const contact = contactsList[index];
+                if (clientId && contact.contactid) {
+                    const url = "{{ route('clients.contacts.ajax-delete', [':client', ':contact']) }}"
+                        .replace(':client', clientId)
+                        .replace(':contact', contact.contactid);
+
+                    fetch(url, {
+                        method: 'DELETE',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                        .then(async res => {
+                            if (res.ok) {
+                                const data = await res.json();
+                                contactsList = data.contacts;
+                                renderContacts();
+                            } else {
+                                alert('Failed to delete contact.');
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            alert('An error occurred while deleting.');
+                        });
+                } else {
+                    const wasPrimary = contactsList[index].is_primary;
+                    contactsList.splice(index, 1);
+
+                    if (wasPrimary && contactsList.length > 0) {
+                        contactsList[0].is_primary = true;
+                    }
+
+                    renderContacts();
+                }
+            }
+        }
+
+        renderContacts();
+
         loadSelectedBillingProfile();
         if (sameAsClientCheckbox.checked) copyClientDetailsToBilling();
     })();
@@ -653,6 +1199,31 @@
         modal.hide();
     }
 
+    document.getElementById('formGroupSameAsRegistered').addEventListener('change', function () {
+        if (!this.checked) return;
+
+        const regAddr = document.getElementById('groupRegisteredAddress');
+        const busAddr = document.getElementById('groupBusinessAddress');
+        if (regAddr && busAddr) { busAddr.value = regAddr.value; }
+
+        const regPostal = document.getElementById('groupPostalCode');
+        const busPostal = document.getElementById('groupBusinessPostalCode');
+        if (regPostal && busPostal) { busPostal.value = regPostal.value; }
+
+        const busCountryEl = document.getElementById('groupBusinessCountry');
+        const busStateEl = document.getElementById('groupBusinessState');
+        const busCityEl = document.getElementById('groupBusinessCity');
+        const regCountryEl = document.getElementById('groupCountry');
+        const regStateEl = document.getElementById('groupState');
+        const regCityEl = document.getElementById('groupCity');
+
+        busCountryEl.dataset.selected = regCountryEl.value;
+        busStateEl.dataset.selected = regStateEl.value;
+        busCityEl.dataset.selected = regCityEl.value;
+
+        LocationPicker.loadSelection(busCountryEl);
+    });
+
     function resetGroupForm() {
         const form = document.getElementById('groupForm');
         const submitBtn = document.getElementById('groupSubmitBtn');
@@ -662,6 +1233,16 @@
         form.reset();
         if (submitBtn) {
             submitBtn.innerHTML = 'Save <i class="fas fa-arrow-right btn-icon ms-1"></i>';
+        }
+        const countryEl = document.getElementById('groupCountry');
+        const busCountryEl = document.getElementById('groupBusinessCountry');
+        if (countryEl) {
+            countryEl.dataset.selected = 'India';
+            countryEl.dispatchEvent(new Event('change'));
+        }
+        if (busCountryEl) {
+            busCountryEl.dataset.selected = 'India';
+            busCountryEl.dispatchEvent(new Event('change'));
         }
     }
 </script>

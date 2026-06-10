@@ -772,7 +772,7 @@ class InvoicesController extends Controller
 
         $invoiceQuery = Invoice::where('accountid', $accountid)
             ->with(['client', 'items', 'paymentDetails.payment'])
-            ->latest();
+            ->orderBy('issue_date', 'desc');
 
         if ($selectedClientId) {
             $invoiceQuery->where('clientid', $selectedClientId);
@@ -806,7 +806,7 @@ class InvoicesController extends Controller
             return $paymentStatus;
         };
 
-        $selectedTab = in_array($selectedTab, ['invoices', 'outstanding', 'partly_paid', 'unpaid', 'upcoming', 'draft', 'cancelled', 'proforma', 'tax'], true)
+        $selectedTab = in_array($selectedTab, ['invoices', 'outstanding', 'partly_paid', 'unpaid', 'draft', 'cancelled', 'proforma', 'tax'], true)
             ? $selectedTab
             : 'invoices';
         $selectedType = in_array($selectedType, ['', 'pi', 'tax'], true) ? $selectedType : '';
@@ -851,14 +851,8 @@ class InvoicesController extends Controller
             ->filter(fn (Invoice $invoice) => in_array($resolvePaymentStatus($invoice), ['partly_paid', 'unpaid'], true))
             ->values();
 
-        $upcomingInvoices = $activeInvoices->filter(function (Invoice $invoice) {
-            return $invoice->due_date && $invoice->due_date->isFuture();
-        })->values();
-
         $filteredInvoices = $paidInvoices;
-        if ($selectedTab === 'upcoming') {
-            $filteredInvoices = $upcomingInvoices;
-        } elseif ($selectedTab === 'draft') {
+        if ($selectedTab === 'draft') {
             $filteredInvoices = $draftInvoices;
         } elseif ($selectedTab === 'cancelled') {
             $filteredInvoices = $cancelledInvoices;
@@ -947,7 +941,6 @@ class InvoicesController extends Controller
             'selectedTab' => $selectedTab,
             'selectedType' => $selectedType,
             'selectedStatus' => $selectedStatus,
-            'upcomingInvoicesCount' => $upcomingInvoices->count(),
             'draftInvoicesCount' => $draftInvoices->count(),
             'cancelledInvoicesCount' => $cancelledInvoices->count(),
             'paidInvoicesCount' => $paidInvoices->count(),
@@ -963,7 +956,12 @@ class InvoicesController extends Controller
         $clients = Client::where('accountid', $accountid)->orderBy('business_name')->get();
         $hasTrialClients = Client::where('accountid', $accountid)->trial()->exists();
         $selectedClientId = $request->query('c', $request->query('clientid'));
+        $selectedClient = $selectedClientId ? Client::where('accountid', $accountid)->find($selectedClientId) : null;
         $selectedTab = $request->query('tab', 'expired');
+        if ($selectedClient && strtolower((string) ($selectedClient->type ?? '')) === 'trial') {
+            $selectedTab = 'trial';
+        }
+
         $allowedTabs = $hasTrialClients
             ? ['upcoming', 'expired', 'suspended', 'trial']
             : ['upcoming', 'expired', 'suspended'];
@@ -983,7 +981,7 @@ class InvoicesController extends Controller
             ->where('accountid', $accountid)
             ->whereNotNull('end_date')
             ->with([
-                'client:clientid,business_name,contact_name,currency',
+                'client',
                 'invoices:invoiceid,invoice_title,pi_number,ti_number,status,created_at',
                 'item:itemid,name',
             ]);
@@ -1008,6 +1006,7 @@ class InvoicesController extends Controller
                 'order_number' => (string) ($order->order_number ?? '-'),
                 'invoiceid' => (string) ($linkedInvoice?->invoiceid ?? ''),
                 'clientid' => (string) $order->clientid,
+                'client_type' => (string) ($order->type ?? $order->client?->type ?? 'regular'),
                 'client_name' => (string) (
                     $order->client?->business_name
                     ?: $order->client?->contact_name
@@ -1039,7 +1038,7 @@ class InvoicesController extends Controller
         };
 
         $upcomingItems = (clone $expiryItemBaseQuery)
-            ->whereHas('client', fn ($q) => $q->regular())
+            ->regular()
             ->where(function ($query) {
                 $query->whereNotIn('status', ['cancelled', 'suspended'])
                     ->orWhereNull('status');
@@ -1052,7 +1051,7 @@ class InvoicesController extends Controller
             ->values();
 
         $expiredItems = (clone $expiryItemBaseQuery)
-            ->whereHas('client', fn ($q) => $q->regular())
+            ->regular()
             ->where(function ($query) {
                 $query->whereNotIn('status', ['cancelled', 'suspended'])
                     ->orWhereNull('status');
@@ -1064,7 +1063,7 @@ class InvoicesController extends Controller
             ->values();
 
         $suspendedItems = (clone $expiryItemBaseQuery)
-            ->whereHas('client', fn ($q) => $q->regular())
+            ->regular()
             ->where('status', 'suspended')
             ->orderBy('end_date')
             ->get()
@@ -1074,7 +1073,7 @@ class InvoicesController extends Controller
         $trialItems = collect();
         if ($hasTrialClients) {
             $trialItems = (clone $expiryItemBaseQuery)
-                ->whereHas('client', fn ($q) => $q->trial())
+                ->trial()
                 ->where(function ($query) {
                     $query->whereNotIn('status', ['cancelled', 'suspended'])
                         ->orWhereNull('status');
@@ -2614,6 +2613,26 @@ class InvoicesController extends Controller
     {
         $invoice = $this->resolveInvoiceDocument($invoice);
         $selectedClientId = trim((string) request('c', ''));
+
+        if (strtolower((string) $invoice->status) === 'draft') {
+            DB::transaction(function () use ($invoice) {
+                // Delete related ledger entries
+                Ledger::query()
+                    ->where('invoiceid_paymentid', $invoice->invoiceid)
+                    ->delete();
+
+                // Delete related invoice items
+                $invoice->items()->delete();
+
+                // Delete the invoice itself
+                $invoice->delete();
+            });
+
+            return redirect()
+                ->route('invoices.index', $selectedClientId ? ['c' => $selectedClientId] : [])
+                ->with('success', 'Draft invoice deleted successfully.');
+        }
+
         DB::transaction(function () use ($invoice) {
             $invoice->update(['status' => 'cancelled']);
 
@@ -2766,6 +2785,13 @@ class InvoicesController extends Controller
         $newEndDate = (string) $validated['end_date'];
         $startDate = $orderModel->start_date?->toDateString();
         if (! empty($startDate) && $newEndDate < $startDate) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'End date cannot be before start date.',
+                ], 422);
+            }
+
             return $this->redirectExpiryListWithFilters($request, request('tab', 'expired'))
                 ->with('error', 'End date cannot be before start date.');
         }
@@ -2773,6 +2799,14 @@ class InvoicesController extends Controller
         $orderModel->update([
             'end_date' => $newEndDate,
         ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Order expiry date updated successfully.',
+                'end_date' => $newEndDate,
+            ]);
+        }
 
         if ($request->input('return_to') === 'orders') {
             $clientId = (string) ($request->input('c') ?: $orderModel->clientid);

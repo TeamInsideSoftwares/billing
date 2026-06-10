@@ -25,11 +25,15 @@ class GroupsController extends Controller
                 'email' => $g->email ?? '-',
                 'city' => $g->city ?? '-',
                 'state' => $g->state ?? '-',
-                'address_line_1' => $g->address_line_1 ?? '',
-                'address_line_2' => $g->address_line_2 ?? '',
+                'registered_address' => $g->registered_address ?? '',
                 'postal_code' => $g->postal_code ?? '',
                 'country' => $g->country ?? 'India',
                 'gstin' => $g->gstin ?? '',
+                'business_address' => $g->business_address ?? '',
+                'business_city' => $g->business_city ?? '',
+                'business_state' => $g->business_state ?? '',
+                'business_postal_code' => $g->business_postal_code ?? '',
+                'business_country' => $g->business_country ?? 'India',
             ];
         });
 
@@ -54,12 +58,16 @@ class GroupsController extends Controller
                     'groupid' => $g->groupid,
                     'group_name' => $g->group_name,
                     'email' => $g->email,
-                    'address_line_1' => $g->address_line_1,
-                    'address_line_2' => $g->address_line_2,
+                    'registered_address' => $g->registered_address,
                     'city' => $g->city,
                     'state' => $g->state,
                     'postal_code' => $g->postal_code,
                     'country' => $g->country,
+                    'business_address' => $g->business_address,
+                    'business_city' => $g->business_city,
+                    'business_state' => $g->business_state,
+                    'business_postal_code' => $g->business_postal_code,
+                    'business_country' => $g->business_country,
                 ];
             }),
         ]);
@@ -75,12 +83,16 @@ class GroupsController extends Controller
         $validated = $request->validate([
             'group_name' => 'required|string',
             'email' => 'nullable|email',
-            'address_line_1' => 'nullable|string',
-            'address_line_2' => 'nullable|string',
+            'registered_address' => 'nullable|string',
             'city' => 'nullable|string',
             'state' => 'nullable|string',
             'postal_code' => 'nullable|string',
             'country' => 'nullable|string',
+            'business_address' => 'nullable|string',
+            'business_city' => 'nullable|string',
+            'business_state' => 'nullable|string',
+            'business_postal_code' => 'nullable|string',
+            'business_country' => 'nullable|string',
         ]);
 
         $userAccountId = $this->resolveAccountId();
@@ -125,12 +137,16 @@ class GroupsController extends Controller
         $validated = $request->validate([
             'group_name' => 'required|string',
             'email' => 'nullable|email',
-            'address_line_1' => 'nullable|string',
-            'address_line_2' => 'nullable|string',
+            'registered_address' => 'nullable|string',
             'city' => 'nullable|string',
             'state' => 'nullable|string',
             'postal_code' => 'nullable|string',
             'country' => 'nullable|string',
+            'business_address' => 'nullable|string',
+            'business_city' => 'nullable|string',
+            'business_state' => 'nullable|string',
+            'business_postal_code' => 'nullable|string',
+            'business_country' => 'nullable|string',
         ]);
 
         $group->update($validated);

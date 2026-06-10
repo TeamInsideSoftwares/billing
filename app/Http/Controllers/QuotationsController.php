@@ -137,14 +137,16 @@ class QuotationsController extends Controller
                     ->orWhere('quo_title', 'like', '%'.$searchTerm.'%')
                     ->orWhereHas('client', function ($cq) use ($searchTerm) {
                         $cq->where('business_name', 'like', '%'.$searchTerm.'%')
-                            ->orWhere('contact_name', 'like', '%'.$searchTerm.'%');
+                            ->orWhereHas('contacts', function ($cqContact) use ($searchTerm) {
+                                $cqContact->where('name', 'like', '%'.$searchTerm.'%');
+                            });
                     });
             });
         }
 
         $resultCount = $query->count();
 
-        $quotations = $query->latest()->take(20)->get()->map(function (Quotation $quotation) {
+        $quotations = $query->orderBy('issue_date', 'desc')->take(20)->get()->map(function (Quotation $quotation) {
             return [
                 'record_id' => $quotation->quotationid,
                 'client_id' => $quotation->clientid,
@@ -167,8 +169,8 @@ class QuotationsController extends Controller
             'resultCount' => $resultCount,
             'clients' => Client::query()
                 ->where('accountid', $userAccountId)
+                ->with('primaryContact')
                 ->orderBy('business_name')
-                ->orderBy('contact_name')
                 ->get(),
             'selectedClientId' => $selectedClientId,
         ]);

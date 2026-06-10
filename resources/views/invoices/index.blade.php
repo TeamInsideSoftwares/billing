@@ -18,22 +18,20 @@
 @php
 $selectedClient = $clients->firstWhere('clientid', $selectedClientId);
 $selectedClientCurrency = $selectedClient->currency ?? null;
-$currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', 'upcoming', 'draft', 'cancelled'], true)
+$currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', 'draft', 'cancelled'], true)
 ? $selectedTab
 : 'invoices';
 @endphp
 
-<div class="position-relative bg-white p-3 rounded-3 shadow-sm">
+<div class="position-relative bg-white p-2 rounded-3">
     <!-- Filters Card -->
-    <div class="position-relative bg-light border p-3 rounded-3 mb-2">
+    <div class="position-relative bg-light p-2 rounded-3 mb-2">
         <form action="{{ route('invoices.index') }}" method="GET" class="mainForm">
             <input type="hidden" name="tab" value="{{ $selectedTab ?? 'invoices' }}">
             <input type="hidden" name="type" value="{{ $selectedType ?? '' }}">
 
             <div class="row g-2">
                 <div class="col-12 col-md-2">
-                    <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                        for="invoice_client_filter">Client</label>
                     <select name="c" id="invoice_client_filter" class="form-select">
                         <option value="">All Clients</option>
                         @foreach ($clients as $clientOption)
@@ -50,10 +48,10 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                             'tab' => $selectedTab ?? 'invoices',
                             'type' => $selectedType ?? '',
                         ])) }}" class="btn btn-outline-primary bg-white text-primary fw-medium">
-                        <i class="fas fa-sync-alt btn-icon me-1"></i> Reset
+                        <i class="fas fa-sync-alt btn-icon me-1"></i> Clear
                     </a>
                     <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                        Apply <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                        <i class="fas fa-filter btn-icon me-1"></i> Filter
                     </button>
                 </div>
             </div>
@@ -78,14 +76,6 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link rounded-0 {{ $currentTab === 'upcoming' ? 'active' : 'text-secondary' }} d-flex align-items-center gap-1 fw-medium"
-                href="{{ route('invoices.index', array_filter(['tab' => 'upcoming', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}">
-                Upcoming <span
-                    class="badge rounded-pill {{ $currentTab === 'upcoming' ? 'bg-primary text-white' : 'bg-secondary text-white' }}">{{
-                    $upcomingInvoicesCount ?? 0 }}</span>
-            </a>
-        </li>
-        <li class="nav-item">
             <a class="nav-link rounded-0 {{ $currentTab === 'draft' ? 'active' : 'text-secondary' }} d-flex align-items-center gap-1 fw-medium"
                 href="{{ route('invoices.index', array_filter(['tab' => 'draft', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}">
                 Draft <span
@@ -103,14 +93,7 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
         </li>
     </ul>
 
-    @if ($currentTab === 'upcoming')
-    <div class="invoice-list-meta px-1 mb-2">
-        <div class="meta-info">
-            <strong class="text-dark">Upcoming invoices</strong>
-            <span class="text-muted small d-block">Active invoices with a future due date.</span>
-        </div>
-    </div>
-    @elseif ($currentTab === 'draft')
+    @if ($currentTab === 'draft')
     <div class="invoice-list-meta px-1 mb-2">
         <div class="meta-info">
             <strong class="text-dark">Draft invoices</strong>
@@ -147,16 +130,15 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
             <table class="table mainTable border align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th style="width: 5%;"></th>
-                        <th style="width: 15%;">Issue Date</th>
-                        <th style="width: 20%;">Client</th>
-                        <th style="width: 25%;">Invoice</th>
-                        <th style="width: 10%;">Amount{{ $selectedClientCurrency ? ' (' . $selectedClientCurrency . ')'
-                            : '' }}</th>
-                        <th style="width: 10%;">Balance{{ $selectedClientCurrency ? ' (' . $selectedClientCurrency . ')'
+                        <th style="width: 10%;">Issue Date</th>
+                        <th style="width: 10%;">Due Date</th>
+                        <th style="width: 15%;">Client</th>
+                        <th style="width: 20%;">Invoice</th>
+                        <th style="width: 15%;">Amount / Balance{{ $selectedClientCurrency ? ' (' .
+                            $selectedClientCurrency . ')'
                             : '' }}</th>
                         <th style="width: 10%;">Payment Status</th>
-                        <th style="width: 5%;" class="text-end">Actions</th>
+                        <th style="width: 10%;" class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="invoice-items-accordion">
@@ -183,15 +165,10 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                         @endphp
                         <tr>
                             <td>
-                                <button type="button" class="expand-order-btn" data-bs-toggle="collapse"
-                                    data-bs-target="#invoice-items-{{ $documentId }}"
-                                    data-bs-parent="#invoice-items-accordion" aria-expanded="false"
-                                    aria-controls="invoice-items-{{ $documentId }}">
-                                    <i class="fas fa-chevron-down expand-order-icon"></i>
-                                </button>
+                                {{ $invoice->issue_date?->format('d M Y') ?? '-' }}
                             </td>
                             <td>
-                                {{ $invoice->issue_date?->format('d M Y') ?? '-' }}
+                                {{ $invoice->due_date?->format('d M Y') ?? '-' }}
                             </td>
                             <td>
                                 <div class="fw-semibold text-dark">{{ $clientName }}</div>
@@ -214,9 +191,7 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                             </td>
                             <td>
                                 <span class="fw-semibold text-dark">{{ number_format($invoiceAmount, 0) }}</span>
-                            </td>
-                            <td>
-                                <span class="fw-semibold text-dark">{{ number_format($balanceDue, 0) }}</span>
+                                <div class="text-muted small">Due: {{ number_format($balanceDue, 0) }}</div>
                             </td>
                             <td>
                                 @if ($paymentStatus === 'paid')
@@ -229,9 +204,6 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                             </td>
                             <td class="text-end">
                                 <div class="tableActionButton d-inline-flex gap-1">
-                                    <a href="{{ route('invoices.show', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
-                                        class="bg01 color01">View</a>
-
                                     @if (($invoice->status ?? '') === 'cancelled')
                                     <form method="POST"
                                         action="{{ route('invoices.restore', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
@@ -240,9 +212,23 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                                         @method('PATCH')
                                         <button type="submit" class="bg02 color02">Restore</button>
                                     </form>
+                                    @elseif (strtolower($invoice->status ?? '') === 'draft')
+                                    <a href="{{ route('invoices.edit', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
+                                        class="bg02 color02">Continue</a>
+                                    <form method="POST"
+                                        action="{{ route('invoices.destroy', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
+                                        class="d-inline" onsubmit="return confirm('Delete this draft?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="bg04 color04">Delete</button>
+                                    </form>
                                     @else
-                                    <a href="{{ route('invoices.pdf', $invoice) }}"
-                                        class="bg02 color02 text-decoration-none" target="_blank">PDF</a>
+                                    <button type="button" class="bg01 color01 border-0 view-pdf-btn"
+                                        data-pdf-url="{{ route('invoices.pdf', $invoice) }}">
+                                        View
+                                    </button>
+                                    <a href="{{ route('invoices.email-compose', $invoice->invoiceid) }}"
+                                        class="bg03 color03">Send</a>
                                     <a href="{{ route('invoices.edit', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
                                         class="bg03 color03">Edit</a>
                                     <form method="POST"
@@ -256,77 +242,46 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                                 </div>
                             </td>
                         </tr>
-                        <tr>
-                            <td colspan="8" class="p-0 border-0">
-                                <div class="collapse" id="invoice-items-{{ $documentId }}"
-                                    data-bs-parent="#invoice-items-accordion">
-                                    <div
-                                        class="card border-0 rounded-0 bg-light border-top border-primary border-3 shadow-none">
-                                        <div class="card-body p-0">
-                                            @if ($invoice->items->isNotEmpty())
-                                            <div class="row row-cols-1 row-cols-md-3 g-0 mx-0 p-3">
-                                                @foreach ($invoice->items as $item)
-                                                @php
-                                                $itemExpired = !empty($item->end_date) && $item->end_date < now();
-                                                    @endphp <div class="col mb-3 px-2">
-                                                    <div class="border rounded-3 bg-white p-3 h-100">
-                                                        <div
-                                                            class="d-flex align-items-start justify-content-between gap-3">
-                                                            <div class="min-w-0">
-                                                                <div class="fw-semibold text-dark">{{ $item->item_name
-                                                                    ?? 'Item' }}</div>
-                                                                @if (!empty($item->description))
-                                                                <div class="text-muted small mt-1">
-                                                                    {{ $item->description }}
-                                                                </div>
-                                                                @endif
-                                                            </div>
-                                                        </div>
-                                                        <div
-                                                            class="d-flex flex-wrap gap-2 gap-md-3 mt-3 text-muted small">
-                                                            <span><strong class="text-dark">Qty:</strong> {{
-                                                                number_format((float) ($item->quantity ?? 1), 0)
-                                                                }}</span>
-                                                            <span><strong class="text-dark">Amount:</strong> {{
-                                                                number_format((float) ($item->line_total ?? $item->total
-                                                                ?? 0), 0) }}</span>
-                                                            <span><strong class="text-dark">Freq:</strong> {{
-                                                                !empty($item->frequency) ? ucfirst(str_replace('_', ' ',
-                                                                $item->frequency)) : '-' }}</span>
-                                                            <span><strong class="text-dark">Start:</strong> {{
-                                                                !empty($item->start_date) ? $item->start_date->format('d
-                                                                M Y') : '-' }}</span>
-                                                            <span><strong class="text-dark">End:</strong>
-                                                                @if (!empty($item->end_date))
-                                                                <span
-                                                                    class="{{ $itemExpired ? 'text-danger fw-semibold' : 'text-dark' }}">
-                                                                    {{ $item->end_date->format('d M Y') }}
-                                                                </span>
-                                                                @else
-                                                                -
-                                                                @endif
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                            </div>
-                                            @endforeach
-                                        </div>
-                                        @else
-                                        <div class="alert alert-light border rounded-0 mb-0" role="alert">
-                                            No items in this invoice
-                                        </div>
-                                        @endif
-                                    </div>
-                                </div>
+                        @endforeach
+                </tbody>
+            </table>
         </div>
-        </td>
-        </tr>
-        @endforeach
-        </tbody>
-        </table>
+    </div>
+    @endif
+</div>
+
+<div class="modal fade" id="pdfViewerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-white border-bottom py-2">
+                <h5 class="modal-title fw-semibold">Invoice PDF</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" style="height: 85vh;">
+                <iframe id="pdfViewerFrame" src="" style="width: 100%; height: 100%; border: 0;"></iframe>
+            </div>
+        </div>
     </div>
 </div>
-@endif
-</div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = new bootstrap.Modal(document.getElementById('pdfViewerModal'));
+        const iframe = document.getElementById('pdfViewerFrame');
+
+        document.querySelectorAll('.view-pdf-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                iframe.src = this.dataset.pdfUrl;
+                modal.show();
+            });
+        });
+
+        document.getElementById('pdfViewerModal').addEventListener('hidden.bs.modal', function () {
+            iframe.src = '';
+        });
+    });
+</script>
+@endpush
 
 @endsection

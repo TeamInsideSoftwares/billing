@@ -24,7 +24,7 @@
                         @endphp
                         @foreach (['regular', 'trial'] as $group)
                         @if ($groupedClients->has($group))
-                        <optgroup label="{{ $group === 'regular' ? 'Regular Clients' : 'Trial Clients' }}">
+                        <optgroup label="{{ $group === 'regular' ? 'Regular Clients' : 'Prospect Clients' }}">
                             @foreach ($groupedClients[$group] as $clientOption)
                             <option value="{{ $clientOption->clientid }}" {{ (string) $selectedClientId===(string)
                                 $clientOption->clientid ? 'selected' : '' }}>
@@ -63,7 +63,6 @@
             <table class="table mainTable border align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th style="width: 5%;"></th>
                         <th style="width: 15%;">Issue Date</th>
                         <th style="width: 20%;">Client</th>
                         <th style="width: 20%;">Quotation</th>
@@ -75,14 +74,6 @@
                 <tbody id="quotation-items-accordion">
                     @foreach ($quotations as $quotation)
                     <tr>
-                        <td>
-                            <button type="button" class="expand-order-btn" data-bs-toggle="collapse"
-                                data-bs-target="#quotation-items-{{ $quotation['record_id'] }}"
-                                data-bs-parent="#quotation-items-accordion" aria-expanded="false"
-                                aria-controls="quotation-items-{{ $quotation['record_id'] }}">
-                                <i class="fas fa-chevron-down expand-order-icon"></i>
-                            </button>
-                        </td>
                         <td>{{ $quotation['issue_date'] }}
                         </td>
                         <td>
@@ -107,16 +98,18 @@
                         <td><span class="fw-semibold text-dark">{{ $quotation['amount'] }}</span></td>
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1">
-                                <a href="{{ route('quotations.show', ['quotation' => $quotation['record_id'], 'c' => $selectedClientId]) }}"
-                                    class="bg01 color01">View</a>
+                                <button type="button" class="bg01 color01 border-0 view-pdf-btn"
+                                    data-pdf-url="{{ route('quotations.pdf', $quotation['record_id']) }}">
+                                    View
+                                </button>
                                 <a href="{{ route('quotations.create', ['step' => 2, 'c' => $quotation['client_id'] ?? $selectedClientId, 'd' => $quotation['record_id']]) }}"
                                     class="bg03 color03">Edit</a>
                                 <button type="button" class="bg02 color02 border-0 js-open-quotation-copy"
                                     data-copy-url="{{ route('quotations.copy', ['quotation' => $quotation['record_id']]) }}"
                                     data-copy-client-id="{{ $quotation['client_id'] ?? $selectedClientId }}"
                                     data-copy-client-name="{{ $quotation['client'] }}">Copy</button>
-                                <a href="{{ route('quotations.pdf', $quotation['record_id']) }}"
-                                    class="bg02 color02 text-decoration-none" target="_blank">PDF</a>
+                                <a href="{{ route('quotations.email-compose', $quotation['record_id']) }}"
+                                    class="bg03 color03">Send</a>
                                 <form method="POST" class="d-inline"
                                     action="{{ route('quotations.destroy', ['quotation' => $quotation['record_id'], 'c' => $selectedClientId]) }}"
                                     onsubmit="return confirm(@js('Cancel ' . $quotation['number'] . '?'))">
@@ -127,74 +120,26 @@
                             </div>
                         </td>
                     </tr>
-                    <tr>
-                        <td colspan="8" class="p-0 border-0">
-                            <div class="collapse" id="quotation-items-{{ $quotation['record_id'] }}"
-                                data-bs-parent="#quotation-items-accordion">
-                                <div
-                                    class="card border-0 rounded-0 bg-light border-top border-primary border-3 shadow-none">
-                                    <div class="card-body p-0">
-                                        @if (isset($quotation['items']) && $quotation['items']->isNotEmpty())
-                                        <div class="row row-cols-1 row-cols-md-3 g-3 mx-0 p-3">
-                                            @foreach ($quotation['items'] as $item)
-                                            @php
-                                            $itemExpired = !empty($item->end_date) && $item->end_date < now(); @endphp
-                                                <div class="col px-2">
-                                                <div class="border rounded-3 bg-white p-3 h-100">
-                                                    <div class="d-flex align-items-start justify-content-between gap-3">
-                                                        <div class="min-w-0">
-                                                            <div class="fw-semibold text-dark">{{ $item->item_name ??
-                                                                'Item' }}</div>
-                                                            @if (!empty($item->description))
-                                                            <div class="text-muted small mt-1">{{ $item->description }}
-                                                            </div>
-                                                            @endif
-                                                        </div>
-                                                        <span
-                                                            class="badge text-bg-light border text-secondary text-uppercase">
-                                                            {{ ucfirst($item->status ?? 'active') }}
-                                                        </span>
-                                                    </div>
-                                                    <div class="d-flex flex-wrap gap-2 gap-md-3 mt-3 text-muted small">
-                                                        <span><strong class="text-dark">Qty:</strong> {{
-                                                            number_format((float) ($item->quantity ?? 1), 0) }}</span>
-                                                        <span><strong class="text-dark">Freq:</strong> {{
-                                                            !empty($item->frequency) ? ucfirst(str_replace('_', ' ',
-                                                            $item->frequency)) : '-' }}</span>
-                                                        <span><strong class="text-dark">Start:</strong> {{
-                                                            !empty($item->start_date) ? $item->start_date->format('d M
-                                                            Y') : '-' }}</span>
-                                                        <span><strong class="text-dark">End:</strong>
-                                                            @if (!empty($item->end_date))
-                                                            <span
-                                                                class="{{ $itemExpired ? 'text-danger fw-semibold' : 'text-dark' }}">
-                                                                {{ $item->end_date->format('d M Y') }}
-                                                            </span>
-                                                            @else
-                                                            -
-                                                            @endif
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                        </div>
-                                        @endforeach
-                                    </div>
-                                    @else
-                                    <div class="alert alert-light border mb-0" role="alert">
-                                        No items in this quotation
-                                    </div>
-                                    @endif
-                                </div>
-                            </div>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
-        </td>
-        </tr>
-        @endforeach
-        </tbody>
-        </table>
     </div>
+    @endif
 </div>
-@endif
+
+<div class="modal fade" id="pdfViewerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-white border-bottom py-2">
+                <h5 class="modal-title fw-semibold">Quotation PDF</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" style="height: 85vh;">
+                <iframe id="pdfViewerFrame" src="" style="width: 100%; height: 100%; border: 0;"></iframe>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="quotationCopyModal" tabindex="-1" aria-hidden="true">
@@ -258,6 +203,20 @@
                 clientSelect.value = this.dataset.copyClientId || '';
                 modal.show();
             });
+        });
+
+        const pdfModal = new bootstrap.Modal(document.getElementById('pdfViewerModal'));
+        const pdfFrame = document.getElementById('pdfViewerFrame');
+
+        document.querySelectorAll('.view-pdf-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                pdfFrame.src = this.dataset.pdfUrl;
+                pdfModal.show();
+            });
+        });
+
+        document.getElementById('pdfViewerModal').addEventListener('hidden.bs.modal', function () {
+            pdfFrame.src = '';
         });
     });
 </script>

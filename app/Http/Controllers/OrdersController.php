@@ -11,6 +11,7 @@ use App\Models\Quotation;
 use App\Models\QuotationItem;
 use App\Models\Service;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -56,10 +57,8 @@ class OrdersController extends Controller
 
         $query = Order::query()
             ->where('accountid', $accountId)
-            ->with(['client', 'item', 'invoices'])
-            ->whereHas('client', function ($clientQuery) {
-                $clientQuery->regular();
-            });
+            ->regular()
+            ->with(['client', 'item', 'invoices']);
 
         if ($clientId !== '') {
             $query->where('clientid', $clientId);
@@ -136,7 +135,7 @@ class OrdersController extends Controller
             'selectedItemId' => $selectedItemId,
             'services' => $services,
             'clientDocuments' => $clientDocuments,
-            'allClients' => Client::where('accountid', $accountId)->regular()->with('billingDetail')->orderBy('business_name')->orderBy('contact_name')->get(),
+            'allClients' => Client::where('accountid', $accountId)->regular()->with(['billingDetail', 'primaryContact'])->orderBy('business_name')->get(),
         ]);
     }
 
@@ -147,14 +146,9 @@ class OrdersController extends Controller
         $selectedClient = trim((string) request('client', ''));
         $selectedItem = trim((string) request('item', ''));
 
-        $trialClientIds = Client::query()
-            ->where('accountid', $accountId)
-            ->trial()
-            ->pluck('clientid');
-
         $query = Order::query()
             ->where('accountid', $accountId)
-            ->whereIn('clientid', $trialClientIds)
+            ->trial()
             ->with(['client']);
 
         if ($searchTerm !== '') {
@@ -162,7 +156,9 @@ class OrdersController extends Controller
                 $q->where('item_name', 'like', '%'.$searchTerm.'%')
                     ->orWhereHas('client', function ($cq) use ($searchTerm) {
                         $cq->where('business_name', 'like', '%'.$searchTerm.'%')
-                            ->orWhere('contact_name', 'like', '%'.$searchTerm.'%');
+                            ->orWhereHas('contacts', function ($cqContact) use ($searchTerm) {
+                                $cqContact->where('name', 'like', '%'.$searchTerm.'%');
+                            });
                     });
             });
         }
@@ -207,6 +203,7 @@ class OrdersController extends Controller
         });
 
         // Item name options from trial orders
+        $trialClientIds = Client::query()->where('accountid', $accountId)->trial()->pluck('clientid');
         $itemOptions = Order::query()
             ->whereIn('clientid', $trialClientIds)
             ->whereNotNull('item_name')
@@ -220,8 +217,9 @@ class OrdersController extends Controller
         $clientOptions = Client::query()
             ->where('accountid', $accountId)
             ->trial()
-            ->orderByRaw('COALESCE(business_name, contact_name) ASC')
-            ->get(['clientid', 'business_name', 'contact_name']);
+            ->with('primaryContact')
+            ->orderBy('business_name')
+            ->get();
 
         $services = Service::query()
             ->where('accountid', $accountId)
@@ -320,7 +318,7 @@ class OrdersController extends Controller
 
         return view('orders.create', [
             'title' => 'Create Orders',
-            'clients' => Client::where('accountid', $accountId)->regular()->orderBy('business_name')->orderBy('contact_name')->get(),
+            'clients' => Client::where('accountid', $accountId)->regular()->with('primaryContact')->orderBy('business_name')->get(),
             'services' => Service::where('accountid', $accountId)->with('costings', 'category')->orderBy('name')->get(),
             'preSelectedClientId' => $preSelectedClientId,
             'clientDocuments' => $documents->values(),
@@ -439,6 +437,21 @@ class OrdersController extends Controller
         ]);
     }
 
+    public function ordersTimelineAjax(Order $order): JsonResponse
+    {
+        $userAccountId = $this->resolveAccountId();
+        if ((string) $order->accountid !== $userAccountId) {
+            abort(403);
+        }
+
+        $timeline = $order->timeline()
+            ->with('creator')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($timeline);
+    }
+
     public function getOrderJsonByNumber(Request $request)
     {
         $lookup = $request->input('o');
@@ -496,7 +509,7 @@ class OrdersController extends Controller
             'title' => 'Edit Order',
             'subtitle' => 'Edit this item-based order.',
             'order' => $order,
-            'clients' => Client::where('accountid', $accountId)->regular()->orderBy('business_name')->orderBy('contact_name')->get(),
+            'clients' => Client::where('accountid', $accountId)->regular()->with('primaryContact')->orderBy('business_name')->get(),
             'services' => Service::where('accountid', $accountId)->with('costings', 'category')->orderBy('name')->get(),
             'preSelectedClientId' => $order->clientid,
             'clientDocuments' => $documents->values(),

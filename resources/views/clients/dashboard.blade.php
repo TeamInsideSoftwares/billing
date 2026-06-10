@@ -360,11 +360,11 @@
                             <div class="col-md-6 text-start">
                                 <div class="card border border-light rounded-3 p-3 h-100">
                                     <h5 class="fw-bold text-dark mb-3"><i
-                                            class="fas fa-address-book text-muted-light me-1"></i> Contact Details</h5>
+                                            class="fas fa-building text-muted-light me-1"></i> Business Details</h5>
                                     <div class="d-flex flex-column gap-2 text-start">
                                         <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">Contact Person</div>
-                                            <div class="col-8">{{ $client->contact_name ?: '-' }}</div>
+                                            <div class="col-4 fw-semibold text-secondary">Business Name</div>
+                                            <div class="col-8 fw-semibold text-dark">{{ $client->business_name ?: '-' }}</div>
                                         </div>
                                         <div class="row">
                                             <div class="col-4 fw-semibold text-secondary">Primary Email</div>
@@ -390,6 +390,18 @@
                                         <div class="row">
                                             <div class="col-4 fw-semibold text-secondary">Tax Number / GST</div>
                                             <div class="col-8">{{ $client->tax_number ?: 'N/A' }}</div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-4 fw-semibold text-secondary">Address</div>
+                                            <div class="col-8">
+                                                @if($client->address_line_1 || $client->city || $client->state || $client->postal_code || $client->country)
+                                                    {{ $client->address_line_1 }}@if($client->address_line_2)<br>{{ $client->address_line_2 }}@endif<br>
+                                                    {{ $client->city }}{{ $client->state ? ', ' . $client->state : '' }} {{ $client->postal_code }}<br>
+                                                    {{ $client->country }}
+                                                @else
+                                                    -
+                                                @endif
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -420,16 +432,65 @@
                                         <div class="row">
                                             <div class="col-4 fw-semibold text-secondary">Address</div>
                                             <div class="col-8">
-                                                {{ $client->billingDetail->address_line_1 ?? '-' }}<br>
-                                                {{ $client->billingDetail->city ?? '' }}{{
-                                                $client->billingDetail?->state ? ', ' . $client->billingDetail->state :
-                                                '' }} {{ $client->billingDetail->postal_code ?? '' }}<br>
-                                                {{ $client->billingDetail->country ?? '' }}
+                                                @if($client->billingDetail?->address_line_1 || $client->billingDetail?->city || $client->billingDetail?->state || $client->billingDetail?->postal_code || $client->billingDetail?->country)
+                                                    {{ $client->billingDetail->address_line_1 ?? '-' }}@if($client->billingDetail->address_line_2)<br>{{ $client->billingDetail->address_line_2 }}@endif<br>
+                                                    {{ $client->billingDetail->city ?? '' }}{{
+                                                    $client->billingDetail?->state ? ', ' . $client->billingDetail->state :
+                                                    '' }} {{ $client->billingDetail->postal_code ?? '' }}<br>
+                                                    {{ $client->billingDetail->country ?? '' }}
+                                                @else
+                                                    -
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+
+                            {{-- Contact Persons Card --}}
+                            <div class="col-12 text-start">
+                                <div class="card border border-light rounded-3 p-3">
+                                    <h5 class="fw-bold text-dark mb-3"><i
+                                            class="fas fa-address-book text-muted-light me-1"></i> Contact Persons</h5>
+                                    @forelse($client->contacts->sortByDesc('is_primary') as $loop_index => $contact)
+                                        @if(!$loop->first)
+                                            <hr class="my-3">
+                                        @endif
+                                        <div class="d-flex flex-column gap-2 text-start">
+                                            <div class="row">
+                                                <div class="col-4 fw-semibold text-secondary">Name</div>
+                                                <div class="col-8 fw-semibold text-dark d-flex align-items-center gap-2">
+                                                    {{ $contact->name }}
+                                                    @if($contact->is_primary)
+                                                        <span class="badge bg-success" style="font-size: 0.65rem;">Primary</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            @if($contact->designation)
+                                            <div class="row">
+                                                <div class="col-4 fw-semibold text-secondary">Designation</div>
+                                                <div class="col-8">{{ $contact->designation }}</div>
+                                            </div>
+                                            @endif
+                                            @if($contact->email)
+                                            <div class="row">
+                                                <div class="col-4 fw-semibold text-secondary">Email</div>
+                                                <div class="col-8 text-truncate">{{ $contact->email }}</div>
+                                            </div>
+                                            @endif
+                                            @if($contact->phone)
+                                            <div class="row">
+                                                <div class="col-4 fw-semibold text-secondary">Phone</div>
+                                                <div class="col-8">{{ $contact->phone }}</div>
+                                            </div>
+                                            @endif
+                                        </div>
+                                    @empty
+                                        <p class="text-muted mb-0">No contacts found for this client.</p>
+                                    @endforelse
+                                </div>
+                            </div>
+
                             @if(!empty($client->notes))
                             <div class="col-12 text-start mt-3">
                                 <div class="card border border-light rounded-3 p-3 bg-light-soft">
@@ -527,13 +588,12 @@
                                         </td>
                                         <td>
                                             <div class="tableActionButton d-inline-flex gap-1">
-                                                <a href="{{ route('invoices.show', $invoice->invoiceid) }}"
-                                                    class="bg01 color01">View</a>
+                                                <button type="button" class="bg01 color01 border-0 view-pdf-btn"
+                                                    data-pdf-url="{{ route('invoices.pdf', $invoice->invoiceid) }}">
+                                                    View
+                                                </button>
                                                 <a href="{{ route('invoices.edit', $invoice->invoiceid) }}"
                                                     class="bg03 color03">Edit</a>
-                                                <a href="{{ route('invoices.pdf', $invoice->invoiceid) }}"
-                                                    target="_blank" class="bg02 color02"><i class="fas fa-file-pdf"></i>
-                                                    PDF</a>
                                             </div>
                                         </td>
                                     </tr>
@@ -578,13 +638,12 @@
                                         </td>
                                         <td>
                                             <div class="tableActionButton d-inline-flex gap-1">
-                                                <a href="{{ route('quotations.show', $quotation->quotationid) }}"
-                                                    class="bg01 color01">View</a>
+                                                <button type="button" class="bg01 color01 border-0 view-pdf-btn"
+                                                    data-pdf-url="{{ route('quotations.pdf', $quotation->quotationid) }}">
+                                                    View
+                                                </button>
                                                 <a href="{{ route('quotations.edit', $quotation->quotationid) }}"
                                                     class="bg03 color03">Edit</a>
-                                                <a href="{{ route('quotations.pdf', $quotation->quotationid) }}"
-                                                    target="_blank" class="bg02 color02"><i class="fas fa-file-pdf"></i>
-                                                    PDF</a>
                                             </div>
                                         </td>
                                     </tr>
@@ -630,8 +689,10 @@
                                                 }}</span></td>
                                         <td>
                                             <div class="tableActionButton d-inline-flex gap-1">
-                                                <a href="{{ route('payments.show', $payment->paymentid) }}"
-                                                    class="bg01 color01">View Details</a>
+                                                <button type="button" class="bg01 color01 border-0 view-pdf-btn"
+                                                    data-pdf-url="{{ route('payments.show', $payment->paymentid) }}">
+                                                    View
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -808,6 +869,20 @@
     @endif
 </div>
 
+<div class="modal fade" id="pdfViewerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-white border-bottom py-2">
+                <h5 class="modal-title fw-semibold">PDF Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" style="height: 85vh;">
+                <iframe id="pdfViewerFrame" src="" style="width: 100%; height: 100%; border: 0;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -830,6 +905,20 @@
                 const target = event.target.getAttribute('data-bs-target');
                 window.location.hash = target;
             });
+        });
+
+        const pdfModal = new bootstrap.Modal(document.getElementById('pdfViewerModal'));
+        const pdfFrame = document.getElementById('pdfViewerFrame');
+
+        document.querySelectorAll('.view-pdf-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                pdfFrame.src = this.dataset.pdfUrl;
+                pdfModal.show();
+            });
+        });
+
+        document.getElementById('pdfViewerModal').addEventListener('hidden.bs.modal', function () {
+            pdfFrame.src = '';
         });
     });
 </script>

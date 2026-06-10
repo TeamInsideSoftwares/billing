@@ -275,7 +275,7 @@ $initialOrderItems = [[
 
                     <div id="order-items-list-view" class="card overflow-hidden">
                         <div class="table-responsive">
-                            <table class="table mainTable align-middle mb-0">
+                            <table class="table table-striped mainTable align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th width="30%">Item</th>
@@ -371,6 +371,7 @@ $initialOrderItems = [[
         let items = Array.isArray(initialItems) ? initialItems.map(normalizeItem) : [];
         let editingItemIndex = null;
         let activeQuotationId = '';
+        let confirmedDuplicateItemId = null;
 
         function escapeHtml(value) {
             return String(value || '')
@@ -551,6 +552,7 @@ $initialOrderItems = [[
             if (deliveryDateInput) deliveryDateInput.value = '';
             if (descriptionInput) descriptionInput.value = '';
             editingItemIndex = null;
+            confirmedDuplicateItemId = null;
             toggleUsersField();
             refreshEndDate();
             setAddButtonState();
@@ -567,6 +569,7 @@ $initialOrderItems = [[
             if (endDateInput) endDateInput.value = item.end_date || maxEndDate;
             if (deliveryDateInput) deliveryDateInput.value = item.delivery_date || '';
             if (descriptionInput) descriptionInput.value = item.item_description || '';
+            confirmedDuplicateItemId = item.itemid || null;
             toggleUsersField();
             toggleDurationField();
             setAddButtonState();
@@ -651,7 +654,7 @@ $initialOrderItems = [[
                                 <div>
                                     <div class="d-flex align-items-center gap-2 mb-3">
                                         <div class="flex-grow-1 min-w-0">
-                                            <h6 class="fw-bold text-black mb-1 text-truncate lh-sm" title="${escapeHtml(item.item_name)}">
+                                            <h6 class="fw-bold text-black mb-1 lh-sm" title="${escapeHtml(item.item_name)}">
                                                 ${escapeHtml(item.item_name)}
                                             </h6>
                                             <span class="d-block text-dark lh-sm text-break grid-text-medium" title="${escapeHtml(itemDescription)}">
@@ -780,6 +783,10 @@ $initialOrderItems = [[
                 return true;
             }
 
+            if (confirmedDuplicateItemId === selectedItemId) {
+                return true;
+            }
+
             if (hasDuplicateItemId(selectedItemId, editingItemIndex)) {
                 const shouldKeepDuplicate = await confirmDuplicateItem();
                 if (!shouldKeepDuplicate) {
@@ -796,6 +803,7 @@ $initialOrderItems = [[
                 }
             }
 
+            confirmedDuplicateItemId = selectedItemId;
             return true;
         }
 
@@ -864,6 +872,7 @@ $initialOrderItems = [[
                 }
                 refreshEndDate();
                 toggleUsersField();
+                confirmedDuplicateItemId = null;
                 await handleItemSelectionDuplicateCheck();
             });
         }

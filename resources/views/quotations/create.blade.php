@@ -173,6 +173,19 @@
             return Number(value || 0).toLocaleString('en-US');
         }
 
+        function formatDateToDisplay(dateStr) {
+            if (!dateStr) return '-';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            const year = parts[0];
+            const monthIndex = parseInt(parts[1], 10) - 1;
+            const day = parseInt(parts[2], 10);
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            if (monthIndex < 0 || monthIndex > 11 || isNaN(day)) return dateStr;
+            const dayStr = String(day).padStart(2, '0');
+            return `${dayStr} ${months[monthIndex]} ${year}`;
+        }
+
         function computeLineTotal(item) {
             const q = Math.max(1, Number(item.quantity || 1));
             const p = Math.max(0, Number(item.unit_price || 0));
@@ -228,7 +241,7 @@
                 const isUserWise = Number(it.no_of_users || 0) > 0;
                 const lineTotal = computeLineTotal(it);
                 const usersCell = showUsersColumn ? `<td class="text-center">${isUserWise ? formatNumber(it.no_of_users) : '-'}</td>` : '';
-                tr.innerHTML = `<td>${itemLabel}</td><td>${formatNumber(it.quantity)}</td><td>${formatNumber(it.unit_price)}</td><td>${formatNumber(it.discount_percent)}</td>${usersCell}<td>${it.frequency || '-'}</td><td>${it.duration || '-'}</td><td>${it.start_date || '-'}</td><td>${it.end_date || '-'}</td><td>${formatNumber(lineTotal)}</td><td><button type="button" data-edit="${idx}" class="text-action-btn edit">Edit</button> <button type="button" data-i="${idx}" class="text-action-btn delete">Remove</button></td>`;
+                tr.innerHTML = `<td>${itemLabel}</td><td>${formatNumber(it.quantity)}</td><td>${formatNumber(it.unit_price)}</td><td>${formatNumber(it.discount_percent)}</td>${usersCell}<td>${it.frequency || '-'}</td><td>${it.duration || '-'}</td><td>${formatDateToDisplay(it.start_date)}</td><td>${formatDateToDisplay(it.end_date)}</td><td>${formatNumber(lineTotal)}</td><td><button type="button" data-edit="${idx}" class="text-action-btn edit">Edit</button> <button type="button" data-i="${idx}" class="text-action-btn delete">Remove</button></td>`;
                 body.appendChild(tr);
             });
             body.querySelectorAll('button[data-i]').forEach(btn => btn.addEventListener('click', function () {

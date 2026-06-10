@@ -32,7 +32,7 @@ class DashboardController extends Controller
                     ->orWhereNull('status');
             })
             ->with([
-                'client:clientid,business_name,contact_name',
+                'client',
                 'item:itemid,name',
             ])
             ->orderBy('end_date')

@@ -392,6 +392,19 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                 .replace(/'/g, '&#39;');
         }
 
+        function formatDateToDisplay(dateStr) {
+            if (!dateStr) return '-';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            const year = parts[0];
+            const monthIndex = parseInt(parts[1], 10) - 1;
+            const day = parseInt(parts[2], 10);
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            if (monthIndex < 0 || monthIndex > 11 || isNaN(day)) return dateStr;
+            const dayStr = String(day).padStart(2, '0');
+            return `${dayStr} ${months[monthIndex]} ${year}`;
+        }
+
         function renderItemCell(item) {
             const name = escapeHtml(item.item_name || 'Item');
             const description = escapeHtml(item.item_description || '').trim();
@@ -798,8 +811,8 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                 <td class="text-center ${showUserColumns ? '' : 'is-hidden'}">${rowUsers ? Math.max(1, Number(item.no_of_users || 1)) : '-'}</td>
                 <td>${item.frequency ? (frequencyLabels[item.frequency] || item.frequency) : '-'}</td>
                 <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.duration || '-') : '-'}</td>
-                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${(rowRecurring || rowHasDates) ? (item.start_date || '-') : '-'}</td>
-                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${(rowRecurring || rowHasDates) ? (item.end_date || '-') : '-'}</td>
+                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${(rowRecurring || rowHasDates) ? formatDateToDisplay(item.start_date) : '-'}</td>
+                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${(rowRecurring || rowHasDates) ? formatDateToDisplay(item.end_date) : '-'}</td>
                 <td class="text-center">${formatCurrency(Math.max(0, Number(item.discount_amount || 0) || Number(item.line_total || 0)))}</td>
                 <td class="text-end">
                     <div class="tableActionButton d-inline-flex gap-1">

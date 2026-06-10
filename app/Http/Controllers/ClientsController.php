@@ -6,6 +6,7 @@ use App\Mail\TrialWelcomeMail;
 use App\Models\Account;
 use App\Models\Client;
 use App\Models\ClientBillingDetail;
+use App\Models\ClientContact;
 use App\Models\ClientDocument;
 use App\Models\CommunicationLog;
 use App\Models\Group;
@@ -110,10 +111,11 @@ class ClientsController extends Controller
                         'item_name' => $service->name ?? 'Item',
                         'item_description' => $service->description ?? null,
                         'quantity' => 1,
-                        'no_of_users' => $service->user_wise ? 1 : null,
+                        'no_of_users' => $service->user_wise ? 2 : null,
                         'start_date' => $startDate->toDateString(),
                         'end_date' => $endDate->toDateString(),
                         'delivery_date' => null,
+                        'type' => $validated['type'] === 'trial' ? 'trial' : 'regular',
                     ]);
                 });
             } catch (Throwable $e) {
@@ -210,7 +212,6 @@ class ClientsController extends Controller
                     'accountid' => $validated['accountid'],
                     'type' => $validated['type'],
                     'business_name' => $businessName,
-                    'contact_name' => $validated['contact_name'] ?? null,
                     'primary_email' => $validated['primary_email'],
                     'email' => null,
                     'phone' => $validated['phone'] ?? null,
@@ -227,6 +228,15 @@ class ClientsController extends Controller
                     'groupid' => $validated['groupid'] ?? null,
                 ]);
 
+                $client->contacts()->create([
+                    'accountid' => $client->accountid,
+                    'name' => $validated['contact_name'] ?: 'Primary Contact',
+                    'phone' => $validated['phone'] ?? null,
+                    'email' => $validated['primary_email'] ?? null,
+                    'designation' => 'Primary Contact',
+                    'is_primary' => true,
+                ]);
+
                 $order = Order::create([
                     'accountid' => $validated['accountid'],
                     'clientid' => $client->clientid,
@@ -237,10 +247,11 @@ class ClientsController extends Controller
                     'item_name' => $service->name ?? 'Item',
                     'item_description' => $service->description ?? null,
                     'quantity' => 1,
-                    'no_of_users' => $service->user_wise ? 1 : null,
+                    'no_of_users' => $service->user_wise ? 2 : null,
                     'start_date' => $startDate->toDateString(),
                     'end_date' => $endDate->toDateString(),
                     'delivery_date' => null,
+                    'type' => $validated['type'] === 'trial' ? 'trial' : 'regular',
                 ]);
             });
 
@@ -290,7 +301,7 @@ class ClientsController extends Controller
     public function clients(): View
     {
         $accountId = $this->resolveAccountId();
-        $query = Client::query()->where('accountid', $accountId)->regular()->with(['invoices.invoiceItems', 'payments']);
+        $query = Client::query()->where('accountid', $accountId)->regular()->with(['invoices.invoiceItems', 'payments', 'primaryContact']);
         $searchTerm = trim((string) request('search', ''));
         $selectedState = trim((string) request('state', ''));
         $selectedCity = trim((string) request('city', ''));
@@ -298,7 +309,9 @@ class ClientsController extends Controller
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('business_name', 'like', '%'.$searchTerm.'%')
-                    ->orWhere('contact_name', 'like', '%'.$searchTerm.'%');
+                    ->orWhereHas('contacts', function ($qContact) use ($searchTerm) {
+                        $qContact->where('name', 'like', '%'.$searchTerm.'%');
+                    });
             });
         }
 
@@ -317,7 +330,7 @@ class ClientsController extends Controller
 
         $resultCount = $query->count();
 
-        $clients = $query->latest()->paginate(20);
+        $clients = $query->orderBy('business_name')->paginate(20);
 
         $clients->getCollection()->transform(function ($client) {
             $invoiceTotal = $client->invoices
@@ -393,12 +406,14 @@ class ClientsController extends Controller
         $query = Client::query()
             ->where('accountid', $accountId)
             ->trial()
-            ->with(['invoices.invoiceItems', 'payments', 'orders']);
+            ->with(['invoices.invoiceItems', 'payments', 'orders', 'primaryContact']);
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('business_name', 'like', '%'.$searchTerm.'%')
-                    ->orWhere('contact_name', 'like', '%'.$searchTerm.'%');
+                    ->orWhereHas('contacts', function ($qContact) use ($searchTerm) {
+                        $qContact->where('name', 'like', '%'.$searchTerm.'%');
+                    });
             });
         }
 
@@ -434,6 +449,10 @@ class ClientsController extends Controller
                 ? $client->orders->where('item_name', $selectedItem)->first()?->end_date
                 : $client->orders->first()?->end_date;
 
+            $itemOrderId = $selectedItem !== ''
+                ? $client->orders->where('item_name', $selectedItem)->first()?->orderid
+                : $client->orders->first()?->orderid;
+
             return [
                 'record_id' => $client->clientid,
                 'name' => $client->business_name ?? $client->contact_name,
@@ -447,6 +466,7 @@ class ClientsController extends Controller
                 'created_at' => $client->created_at,
                 'item_name' => $itemName,
                 'item_end_date' => $itemEndDate,
+                'item_order_id' => $itemOrderId,
                 'orders_data' => $client->orders->map(fn ($order) => [
                     'record_id' => $order->orderid,
                     'number' => $order->order_number,
@@ -484,8 +504,9 @@ class ClientsController extends Controller
         $clientOptions = Client::query()
             ->where('accountid', $accountId)
             ->trial()
-            ->orderByRaw('COALESCE(business_name, contact_name) ASC')
-            ->get(['clientid', 'business_name', 'contact_name']);
+            ->with('primaryContact')
+            ->orderBy('business_name')
+            ->get();
 
         return view('clients.trials', [
             'title' => 'Trial Clients',
@@ -528,7 +549,7 @@ class ClientsController extends Controller
             'accountid' => 'required|string|exists:accounts,accountid|max:10',
             'business_name' => 'required|string',
             'groupid' => 'nullable|exists:groups,groupid',
-            'contact_name' => 'nullable|string',
+            'contacts_json' => 'nullable|json',
             'primary_email' => 'required|email|max:150',
             'email' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
@@ -639,8 +660,55 @@ class ClientsController extends Controller
             'billing_postal_code',
             'billing_address_line_1',
             'billing_phone',
+            'contacts_json',
         ])->all();
-        $this->createClientRecord($clientData);
+
+        $contacts = [];
+        if ($request->filled('contacts_json')) {
+            $rawContacts = json_decode($request->input('contacts_json'), true) ?: [];
+            $hasPrimary = false;
+            foreach ($rawContacts as $item) {
+                $name = trim((string) ($item['name'] ?? ''));
+                if ($name === '') {
+                    continue;
+                }
+                $isPrimary = filter_var($item['is_primary'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                if ($isPrimary) {
+                    $hasPrimary = true;
+                }
+                $contacts[] = [
+                    'name' => $name,
+                    'phone' => trim((string) ($item['phone'] ?? '')) ?: null,
+                    'email' => trim((string) ($item['email'] ?? '')) ?: null,
+                    'designation' => trim((string) ($item['designation'] ?? '')) ?: null,
+                    'is_primary' => $isPrimary,
+                ];
+            }
+            if (! empty($contacts) && ! $hasPrimary) {
+                $contacts[0]['is_primary'] = true;
+            }
+        }
+
+        if (empty($contacts)) {
+            throw ValidationException::withMessages([
+                'contacts_json' => ['At least one contact must be added.'],
+            ]);
+        }
+
+        DB::transaction(function () use ($clientData, $contacts) {
+            $client = $this->createClientRecord($clientData);
+
+            foreach ($contacts as $contact) {
+                $client->contacts()->create([
+                    'accountid' => $client->accountid,
+                    'name' => $contact['name'],
+                    'phone' => $contact['phone'],
+                    'email' => $contact['email'],
+                    'designation' => $contact['designation'],
+                    'is_primary' => $contact['is_primary'],
+                ]);
+            }
+        });
 
         return redirect()->route('clients.index')->with('success', 'Client created successfully.');
     }
@@ -650,14 +718,14 @@ class ClientsController extends Controller
         $accountId = $this->resolveAccountId();
 
         // Fetch all regular clients for selection dropdown
-        $clients = Client::where('accountid', $accountId)->regular()->orderByRaw('COALESCE(business_name, contact_name) ASC')->get();
+        $clients = Client::where('accountid', $accountId)->regular()->with('primaryContact')->orderBy('business_name')->get();
 
         if ($client) {
             if ((string) $client->accountid !== $accountId) {
                 abort(404);
             }
 
-            $client->load(['invoices', 'payments', 'billingDetail', 'documents', 'orders', 'quotations']);
+            $client->load(['invoices', 'payments', 'billingDetail', 'documents', 'orders', 'quotations', 'contacts', 'primaryContact']);
 
             $invoicedTotal = (float) $client->invoices->where('status', '!=', 'cancelled')->sum('grand_total');
             $paidTotal = (float) $client->payments->sum('received_amount');
@@ -951,6 +1019,8 @@ class ClientsController extends Controller
             ->orderBy('iso')
             ->get(['iso', 'name']);
 
+        $client->load('contacts');
+
         return view('clients.form', [
             'title' => 'Edit '.($client->business_name ?? $client->contact_name ?? 'Client'),
             'client' => $client,
@@ -966,7 +1036,7 @@ class ClientsController extends Controller
         $validated = $request->validate([
             'business_name' => 'required|string',
             'groupid' => 'nullable|exists:groups,groupid',
-            'contact_name' => 'nullable|string',
+            'contacts_json' => 'nullable|json',
             'primary_email' => 'required|email|max:150',
             'email' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
@@ -1090,8 +1160,56 @@ class ClientsController extends Controller
             'billing_postal_code',
             'billing_address_line_1',
             'billing_phone',
+            'contacts_json',
         ])->all();
-        $client->update($clientData);
+
+        $contacts = [];
+        if ($request->filled('contacts_json')) {
+            $rawContacts = json_decode($request->input('contacts_json'), true) ?: [];
+            $hasPrimary = false;
+            foreach ($rawContacts as $item) {
+                $name = trim((string) ($item['name'] ?? ''));
+                if ($name === '') {
+                    continue;
+                }
+                $isPrimary = filter_var($item['is_primary'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                if ($isPrimary) {
+                    $hasPrimary = true;
+                }
+                $contacts[] = [
+                    'name' => $name,
+                    'phone' => trim((string) ($item['phone'] ?? '')) ?: null,
+                    'email' => trim((string) ($item['email'] ?? '')) ?: null,
+                    'designation' => trim((string) ($item['designation'] ?? '')) ?: null,
+                    'is_primary' => $isPrimary,
+                ];
+            }
+            if (! empty($contacts) && ! $hasPrimary) {
+                $contacts[0]['is_primary'] = true;
+            }
+        }
+
+        if (empty($contacts)) {
+            throw ValidationException::withMessages([
+                'contacts_json' => ['At least one contact must be added.'],
+            ]);
+        }
+
+        DB::transaction(function () use ($client, $clientData, $contacts) {
+            $client->update($clientData);
+
+            $client->contacts()->delete();
+            foreach ($contacts as $contact) {
+                $client->contacts()->create([
+                    'accountid' => $client->accountid,
+                    'name' => $contact['name'],
+                    'phone' => $contact['phone'],
+                    'email' => $contact['email'],
+                    'designation' => $contact['designation'],
+                    'is_primary' => $contact['is_primary'],
+                ]);
+            }
+        });
 
         return redirect()->route('clients.index')->with('success', 'Client updated successfully.');
     }
@@ -1109,7 +1227,10 @@ class ClientsController extends Controller
             abort(404);
         }
 
-        $client->update(['type' => 'regular']);
+        DB::transaction(function () use ($client) {
+            $client->update(['type' => 'regular']);
+            $client->orders()->where('type', 'trial')->update(['type' => 'regular']);
+        });
 
         return redirect()->route('clients.trials')->with('success', 'Client converted to regular successfully.');
     }
@@ -1250,6 +1371,172 @@ class ClientsController extends Controller
         if (! hash_equals($expectedApiKey, $provided)) {
             abort(401, 'Invalid API key.');
         }
+    }
+
+    /**
+     * Save or update basic client information via AJAX.
+     */
+    public function clientsSaveInfoAjax(Request $request): JsonResponse
+    {
+        $userAccountId = $this->resolveAccountId();
+
+        $validated = $request->validate([
+            'clientid' => 'nullable|string|exists:clients,clientid',
+            'business_name' => 'required|string|max:150',
+            'groupid' => 'nullable|exists:groups,groupid',
+            'primary_email' => 'required|email|max:150',
+            'email' => 'nullable|string|max:500',
+            'phone' => 'nullable|string|max:50',
+            'whatsapp_number' => 'nullable|string|max:50',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'type' => 'nullable|in:regular,trial',
+            'currency' => 'required|string|size:3|exists:currency,iso',
+        ]);
+
+        $validated['primary_email'] = strtolower(trim((string) ($validated['primary_email'] ?? '')));
+        if (! empty($validated['email'])) {
+            $validated['email'] = $this->normalizeClientEmails((string) ($validated['email'] ?? ''), false, 'email');
+            $validated['email'] = $this->removeEmailFromList($validated['email'], $validated['primary_email']);
+            if ($validated['email'] !== null && strlen($validated['email']) > 500) {
+                throw ValidationException::withMessages(['email' => 'Secondary emails exceed 500 characters.']);
+            }
+        }
+
+        $client = null;
+        if (! empty($validated['clientid'])) {
+            $client = Client::where('clientid', $validated['clientid'])->where('accountid', $userAccountId)->firstOrFail();
+        }
+
+        if ($request->hasFile('logo')) {
+            if ($client && $client->logo_path) {
+                $storageBase = rtrim(config('app.url'), '/').'/public/storage/';
+                $oldPath = str_replace($storageBase, '', $client->logo_path);
+                Storage::disk('public')->delete($oldPath);
+            }
+            $path = $request->file('logo')->store('logos', 'public');
+            $baseUrl = rtrim(config('app.url'), '/');
+            $logoPath = $baseUrl.'/public/storage/'.$path;
+        } else {
+            $logoPath = $client ? $client->logo_path : null;
+        }
+
+        $clientData = [
+            'accountid' => $userAccountId,
+            'business_name' => $validated['business_name'],
+            'groupid' => $validated['groupid'] ?? null,
+            'primary_email' => $validated['primary_email'],
+            'email' => $validated['email'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+            'whatsapp_number' => $validated['whatsapp_number'] ?? null,
+            'type' => $validated['type'] ?? 'regular',
+            'currency' => $validated['currency'],
+            'logo_path' => $logoPath,
+            'status' => $client ? $client->status : 'active',
+        ];
+
+        if ($client) {
+            $client->update($clientData);
+            $message = 'Client information updated successfully.';
+        } else {
+            $client = Client::create($clientData);
+            $message = 'Client information saved successfully.';
+        }
+
+        return response()->json([
+            'success' => true,
+            'clientid' => $client->clientid,
+            'logo_path' => $client->logo_path,
+            'message' => $message,
+            'client' => $client,
+        ]);
+    }
+
+    /**
+     * Save or update client contact via AJAX.
+     */
+    public function clientsContactSaveAjax(Request $request, Client $client): JsonResponse
+    {
+        $accountId = $this->resolveAccountId();
+        if ((string) $client->accountid !== $accountId) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'contactid' => 'nullable|string|exists:client_contacts,contactid',
+            'name' => 'required|string|max:150',
+            'designation' => 'nullable|string|max:150',
+            'email' => 'nullable|email|max:150',
+            'phone' => 'nullable|string|max:50',
+            'is_primary' => 'boolean',
+        ]);
+
+        $isPrimary = ! empty($validated['is_primary']);
+
+        if ($isPrimary) {
+            $client->contacts()->update(['is_primary' => false]);
+        }
+
+        if (! empty($validated['contactid'])) {
+            $contact = $client->contacts()->where('contactid', $validated['contactid'])->firstOrFail();
+            $contact->update([
+                'name' => $validated['name'],
+                'designation' => $validated['designation'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'is_primary' => $isPrimary,
+            ]);
+            $message = 'Contact updated successfully.';
+        } else {
+            if ($client->contacts()->count() === 0) {
+                $isPrimary = true;
+            }
+            $contact = $client->contacts()->create([
+                'accountid' => $accountId,
+                'name' => $validated['name'],
+                'designation' => $validated['designation'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'is_primary' => $isPrimary,
+            ]);
+            $message = 'Contact added successfully.';
+        }
+
+        $contacts = $client->contacts()->orderBy('created_at')->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'contacts' => $contacts,
+        ]);
+    }
+
+    /**
+     * Delete client contact via AJAX.
+     */
+    public function clientsContactDeleteAjax(Client $client, ClientContact $contact): JsonResponse
+    {
+        $accountId = $this->resolveAccountId();
+        if ((string) $client->accountid !== $accountId || (string) $contact->clientid !== (string) $client->clientid) {
+            abort(403);
+        }
+
+        $wasPrimary = $contact->is_primary;
+        $contact->delete();
+
+        if ($wasPrimary) {
+            $firstContact = $client->contacts()->orderBy('created_at')->first();
+            if ($firstContact) {
+                $firstContact->update(['is_primary' => true]);
+            }
+        }
+
+        $contacts = $client->contacts()->orderBy('created_at')->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Contact deleted successfully.',
+            'contacts' => $contacts,
+        ]);
     }
 
     private function createClientRecord(array $attributes): Client

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -20,7 +21,7 @@ return new class extends Migration
             && ! Schema::hasColumn('client_billing_details', 'id');
 
         if (! $alreadyRestructured) {
-            if (Schema::hasColumn('client_billing_details', 'id')) {
+            if (Schema::hasColumn('client_billing_details', 'id') && DB::getDriverName() !== 'sqlite') {
                 Schema::table('client_billing_details', function (Blueprint $table) {
                     $table->dropColumn('id');
                 });

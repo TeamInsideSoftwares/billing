@@ -25,14 +25,12 @@
                 @error('email') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div class="col-span-2">
-                <label for="address_line_1">Address Line 1</label>
-                <input type="text" id="address_line_1" name="address_line_1" value="{{ old('address_line_1', isset($group) ? $group->address_line_1 : '') }}">
-                @error('address_line_1') <span class="error">{{ $message }}</span> @enderror
+                <h4 style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--primary-color, #0d6efd); font-weight: 600;">Registered Address</h4>
             </div>
             <div class="col-span-2">
-                <label for="address_line_2">Address Line 2</label>
-                <input type="text" id="address_line_2" name="address_line_2" value="{{ old('address_line_2', isset($group) ? $group->address_line_2 : '') }}">
-                @error('address_line_2') <span class="error">{{ $message }}</span> @enderror
+                <label for="registered_address">Address</label>
+                <input type="text" id="registered_address" name="registered_address" value="{{ old('registered_address', isset($group) ? $group->registered_address : '') }}">
+                @error('registered_address') <span class="error">{{ $message }}</span> @enderror
             </div>
             <div>
                 <label for="city">City</label>
@@ -53,6 +51,35 @@
                 <label for="country">Country</label>
                 <input type="text" id="country" name="country" value="{{ old('country', isset($group) ? $group->country : 'India') }}">
                 @error('country') <span class="error">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="col-span-2">
+                <h4 style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--primary-color, #0d6efd); font-weight: 600;">Business Address</h4>
+            </div>
+            <div class="col-span-2">
+                <label for="business_address">Address</label>
+                <input type="text" id="business_address" name="business_address" value="{{ old('business_address', isset($group) ? $group->business_address : '') }}">
+                @error('business_address') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div>
+                <label for="business_city">City</label>
+                <input type="text" id="business_city" name="business_city" value="{{ old('business_city', isset($group) ? $group->business_city : '') }}">
+                @error('business_city') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div>
+                <label for="business_state">State</label>
+                <input type="text" id="business_state" name="business_state" value="{{ old('business_state', isset($group) ? $group->business_state : '') }}">
+                @error('business_state') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div>
+                <label for="business_postal_code">Postal Code</label>
+                <input type="text" id="business_postal_code" name="business_postal_code" value="{{ old('business_postal_code', isset($group) ? $group->business_postal_code : '') }}">
+                @error('business_postal_code') <span class="error">{{ $message }}</span> @enderror
+            </div>
+            <div>
+                <label for="business_country">Country</label>
+                <input type="text" id="business_country" name="business_country" value="{{ old('business_country', isset($group) ? $group->business_country : 'India') }}">
+                @error('business_country') <span class="error">{{ $message }}</span> @enderror
             </div>
         </div>
         <div class="form-actions">

@@ -10,22 +10,14 @@
 @endsection
 
 @section('content')
-<div class="position-relative bg-white p-3 rounded-3 shadow-sm">
+<div class="position-relative bg-white p-2 rounded-3">
 
     <!-- Filters -->
-    <div class="position-relative bg-light border p-3 rounded-3 mb-2">
+    <div class="position-relative bg-light p-2 rounded-3 mb-2">
         <form action="{{ route('orders.trials') }}" method="GET" class="mainForm">
             <div class="row g-2">
-                <div class="col-12 col-md-3">
-                    <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                        for="trial_orders_search">Search</label>
-                    <input type="text" name="search" id="trial_orders_search" class="form-control"
-                        value="{{ $searchTerm ?? '' }}" placeholder="Client name or item name">
-                </div>
 
                 <div class="col-12 col-md-2">
-                    <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                        for="trial_orders_client">Client</label>
                     <select name="client" id="trial_orders_client" class="form-select">
                         <option value="">All Clients</option>
                         @foreach ($clientOptions as $option)
@@ -38,8 +30,6 @@
                 </div>
 
                 <div class="col-12 col-md-2">
-                    <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                        for="trial_orders_item">Item</label>
                     <select name="item" id="trial_orders_item" class="form-select">
                         <option value="">All Items</option>
                         @foreach ($itemOptions as $item)
@@ -51,13 +41,23 @@
                     </select>
                 </div>
 
+                <div class="col-12 col-md-3">
+                    <div class="position-relative">
+                        <i class="fas fa-search position-absolute text-muted"
+                            style="left: 14px; top: 50%; transform: translateY(-50%); font-size: 15px;"></i>
+                        <input type="text" name="search" id="trial_orders_search" class="form-control"
+                            value="{{ $searchTerm ?? '' }}" placeholder="Client name or item name"
+                            style="padding-left: 38px;">
+                    </div>
+                </div>
+
                 <div class="col-12 col-md-2 mt-auto d-flex gap-2">
                     <a href="{{ route('orders.trials') }}"
-                        class="btn btn-outline-primary bg-white text-primary fw-medium w-100 text-center justify-content-center">
-                        <i class="fas fa-sync-alt btn-icon me-1"></i> Reset
+                        class="btn btn-outline-primary bg-white text-primary fw-medium text-center justify-content-center">
+                        <i class="fas fa-sync-alt btn-icon me-1"></i> Clear
                     </a>
-                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">
-                        Apply <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
+                        Filter <i class="fas fa-arrow-right btn-icon ms-1"></i>
                     </button>
                 </div>
             </div>
@@ -139,10 +139,8 @@
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1">
                                 <button type="button" class="bg03 color03 border-0 js-edit-order-btn"
-                                    data-order-id="{{ $order['record_id'] }}"
-                                    data-order-number="{{ $order['number'] }}"
-                                    data-client-id="{{ $order['clientid'] }}"
-                                    data-client-name="{{ $order['client'] }}"
+                                    data-order-id="{{ $order['record_id'] }}" data-order-number="{{ $order['number'] }}"
+                                    data-client-id="{{ $order['clientid'] }}" data-client-name="{{ $order['client'] }}"
                                     data-item-id="{{ $order['itemid'] ?? '' }}"
                                     data-item-name="{{ $order['item_name'] ?? '' }}"
                                     data-item-description="{{ $order['item_description'] ?? '' }}"
@@ -239,12 +237,9 @@
                         <a href="{{ route('clients.dashboard', $order['clientid']) }}"
                             class="bg01 color01 flex-grow-1 text-center">View Client</a>
                         <button type="button" class="bg03 color03 flex-grow-1 text-center border-0 js-edit-order-btn"
-                            data-order-id="{{ $order['record_id'] }}"
-                            data-order-number="{{ $order['number'] }}"
-                            data-client-id="{{ $order['clientid'] }}"
-                            data-client-name="{{ $order['client'] }}"
-                            data-item-id="{{ $order['itemid'] ?? '' }}"
-                            data-item-name="{{ $order['item_name'] ?? '' }}"
+                            data-order-id="{{ $order['record_id'] }}" data-order-number="{{ $order['number'] }}"
+                            data-client-id="{{ $order['clientid'] }}" data-client-name="{{ $order['client'] }}"
+                            data-item-id="{{ $order['itemid'] ?? '' }}" data-item-name="{{ $order['item_name'] ?? '' }}"
                             data-item-description="{{ $order['item_description'] ?? '' }}"
                             data-quantity="{{ $order['quantity'] ?? 1 }}"
                             data-no-of-users="{{ $order['no_of_users'] ?? '' }}"
@@ -276,7 +271,7 @@
 <script>
     window.__editModalConfig = {
         clientDocuments: @json($clientDocuments ?? []),
-        todayStr: '{{ now()->format('Y-m-d') }}',
+        todayStr: '{{ now()->format('Y- m - d') }}',
     };
 </script>
 

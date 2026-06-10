@@ -11,13 +11,9 @@ $subtitle = null;
     @if(!empty($showClientPicker))
     <a href="{{ route('orders.index', ['c' => 'all']) }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-        <i class="fas fa-list btn-icon"></i> View Orders
+        <i class="fas fa-list btn-icon"></i> Order List
     </a>
     @else
-    <a href="{{ route('orders.trials') }}"
-        class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
-        <i class="fas fa-user-clock btn-icon"></i> Trial Orders
-    </a>
     <a href="{{ route('orders.create', array_filter(['c' => $clientId])) }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
         <i class="fas fa-plus btn-icon"></i> Create Orders
@@ -28,16 +24,17 @@ $subtitle = null;
 
 @section('content')
 @if(!empty($showClientPicker))
-<div class="position-relative">
-    <div class="row">
-        <div class="col-12 col-md-4 mx-auto">
-            <div class="bg-white p-2 rounded-3">
-                <div class="bg-light p-4 rounded-3 border mx-auto">
-                    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+<div class="position-relative d-flex align-items-center justify-content-center"
+    style="min-height: calc(100vh - 160px);">
+    <div class="row w-100">
+        <div class="col-12 col-md-3 mx-auto">
+            <div class="mb-5">
+                <div class="bg-white p-4 rounded-3 mx-auto mb-5">
+                    <div class="d-flex align-items-center justify-content-between mb-3 pb-1">
                         <div class="d-flex align-items-center gap-2">
                             <div>
                                 <h5 class="fw-semibold text-black mb-0">Manage Orders</h5>
-                                <p class="text-muted mb-0">Choose a client first to load item-based orders.</p>
+                                <p class="text-dark mb-0">Choose a client first to load item-based orders.</p>
                             </div>
                         </div>
                     </div>
@@ -61,7 +58,7 @@ $subtitle = null;
                         <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
                             <button type="button" id="btnCreateOrderFromPicker"
                                 class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                Create Orders <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                                Create Order <i class="fas fa-arrow-right btn-icon ms-1"></i>
                             </button>
                         </div>
                     </form>
@@ -73,9 +70,9 @@ $subtitle = null;
 @else
 <div class="position-relative bg-white p-2 rounded-3">
     <!-- Filters Card -->
-    <div class="position-relative bg-light p-2 rounded-3 mb-2">
+    <div class="position-relative bg-light p-2 rounded-3 mb-3">
         <form action="{{ route('orders.index') }}" method="GET" class="mainForm">
-            <div class="row g-2">
+            <div class="row g-2 align-items-center">
                 <div class="col-12 col-md-2">
                     <select name="c" id="orders_client_filter" class="form-select">
                         <option value="all" {{ empty($clientId) ? 'selected' : '' }}>All Clients</option>
@@ -115,43 +112,50 @@ $subtitle = null;
                         <i class="fas fa-sync-alt btn-icon me-1"></i> Clear
                     </a>
                     <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                        Apply <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                        <i class="fas fa-filter btn-icon me-1"></i> Filter
                     </button>
+                </div>
+
+                <div class="col-12 col-md-6 d-flex justify-content-end align-items-center gap-2 mt-auto">
+                    @if(empty($showClientPicker))
+                    <a href="{{ route('clients.trials') }}"
+                        class="btn btn-sm btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium h-auto">
+                        <i class="fas fa-user-clock btn-icon"></i> Prospect Orders
+                    </a>
+                    @endif
+                    <div class="btn-group shadow-sm" role="group" aria-label="View Toggle">
+                        <button type="button"
+                            class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
+                            id="btn-grid-view">
+                            <i class="fas fa-th-large toggle-icon"></i> Grid
+                        </button>
+                        <button type="button"
+                            class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
+                            id="btn-list-view">
+                            <i class="fas fa-list toggle-icon"></i> List
+                        </button>
+                    </div>
                 </div>
             </div>
         </form>
     </div>
 
-    <!-- View Toggle Bar -->
-    <div class="d-flex justify-content-end align-items-center mb-2 px-2">
-        <div class="btn-group shadow-sm" role="group" aria-label="View Toggle">
-            <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
-                id="btn-grid-view">
-                <i class="fas fa-th-large toggle-icon"></i> Grid
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
-                id="btn-list-view">
-                <i class="fas fa-list toggle-icon"></i> List
-            </button>
-        </div>
-    </div>
-
     @forelse($groupedOrders as $clientName => $clientOrders)
     <div class="card border-0 mb-3">
-        <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center py-2 px-3">
+        <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pb-1 pt-0 px-1">
             <div class="d-flex align-items-center">
-                <span class="fw-bold text-primary fs-6">{{ $clientName }} -> {{ count($clientOrders) }}
-                    order(s)</span>
+                <span class="fw-bold fs-5 lh-sm">{{ $clientName }} ({{ count($clientOrders) }}
+                    orders)</span>
                 @if(strtolower((string) ($clientOrders[0]['client_type'] ?? 'regular')) === 'trial')
                 <span class="status-pill is-pending ms-2">Trial</span>
                 @endif
             </div>
         </div>
         <div class="table-responsive orders-list-view">
-            <table class="table mainTable align-middle mb-0">
+            <table class="table table-striped border mainTable align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th width="10%">Order #</th>
+                        <th width="10%">Order</th>
                         <th width="40%">Item</th>
                         <th class="text-center" width="15%">Create Date</th>
                         <th class="text-center" width="15%">Expiry</th>
@@ -163,9 +167,20 @@ $subtitle = null;
                     <tr>
                         <td class="fw-semibold text-dark">#{{ $order['number'] }}</td>
                         <td>
-                            <div class="fw-bold text-dark">{{ $order['items'][0]['item_name'] ?? 'Item' }}</div>
+                            <div class="d-flex align-items-center flex-wrap gap-1">
+                                <span class="fw-bold text-dark">{{ $order['items'][0]['item_name'] ?? 'Item' }}</span>
+                                @if(!empty($order['items'][0]['item_description']))
+                                <button type="button"
+                                    class="btn p-0 border-0 bg-transparent btn-desc-toggle d-inline-flex align-items-center"
+                                    style="outline: none; box-shadow: none;">
+                                    <i class="fas fa-arrow-right text-primary ms-2 desc-toggle-icon"
+                                        style="transition: transform 0.2s ease; font-size: 0.8rem;"></i>
+                                </button>
+                                @endif
+                            </div>
                             @if(!empty($order['items'][0]['item_description']))
-                            <div class="text-dark mt-1">{{ $order['items'][0]['item_description'] }}</div>
+                            <div class="text-dark mt-1 d-none desc-container">{{
+                                $order['items'][0]['item_description'] }}</div>
                             @endif
                             <div class="d-flex flex-wrap text-black mt-2">
                                 <div class="border border-dark-subtle rounded-pill small lh-sm px-2 py-1 me-2 my-1">
@@ -184,13 +199,13 @@ $subtitle = null;
                                 @if(!empty($order['items'][0]['delivery_date']))
                                 <div class="border border-dark-subtle rounded-pill small lh-sm px-2 py-1 me-2 my-1">
                                     <small>Delivery Date:</small> <span class="fw-semibold">{{
-                                        $order['items'][0]['delivery_date']
+                                        \Carbon\Carbon::parse($order['items'][0]['delivery_date'])->format('d M Y')
                                         }}</span>
                                 </div>
                                 @endif
                             </div>
                         </td>
-                        <td class="text-center">{{ $order['items'][0]['start_date'] ?? '-' }}</td>
+                        <td class="text-center">{{ !empty($order['items'][0]['start_date']) ? \Carbon\Carbon::parse($order['items'][0]['start_date'])->format('d M Y') : '-' }}</td>
                         <td class=" text-center">
                             @php
                             $orderEndDate = $order['items'][0]['end_date'] ?? null;
@@ -208,7 +223,7 @@ $subtitle = null;
                             }
                             @endphp
 
-                            {{ $orderEndDate ?? '-' }}
+                            {{ $orderEndDate ? \Carbon\Carbon::parse($orderEndDate)->format('d M Y') : '-' }}
 
                             @if($showDays)
                             <br>
@@ -225,6 +240,11 @@ $subtitle = null;
                         </td>
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1">
+                                <button type="button" class="bg01 color01 border-0 js-view-timeline-btn"
+                                    data-order-id="{{ $order['record_id'] }}"
+                                    data-order-number="{{ $order['number'] }}">
+                                    Timeline
+                                </button>
                                 @if(!empty($order['items'][0]['end_date']) &&
                                 \Carbon\Carbon::parse($order['items'][0]['end_date'])->isPast())
                                 <button type="button" class="bg02 color02 border-0 js-renew-order-btn"
@@ -283,10 +303,10 @@ $subtitle = null;
         </div>
 
         <div
-            class="orders-grid-view row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 p-3 bg-light rounded-bottom-3 d-none">
+            class="orders-grid-view row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 p-1 bg-light rounded-bottom-3 d-none mt-1">
             @foreach($clientOrders as $order)
             <div class="col">
-                <div class="card h-100 border-0 overflow-hidden shadow-sm">
+                <div class="card h-100 border-0 overflow-hidden">
                     <div class="card-body p-3 d-flex flex-column justify-content-between"
                         style="background-color: #fff; border-radius: 8px;">
                         <div>
@@ -299,20 +319,27 @@ $subtitle = null;
                                     style="font-size: 11px;">Cancelled</span>
                                 @endif
                             </div>
-                            <h6 class="fw-bold text-dark mb-1 text-truncate lh-sm"
-                                title="{{ $order['items'][0]['item_name'] ?? 'Item' }}">
-                                {{ $order['items'][0]['item_name'] ?? 'Item' }}
-                            </h6>
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <h6 class="fw-bold text-dark mb-0 lh-sm"
+                                    title="{{ $order['items'][0]['item_name'] ?? 'Item' }}" style="max-width: 85%;">
+                                    {{ $order['items'][0]['item_name'] ?? 'Item' }}
+                                </h6>
+                                @if(!empty($order['items'][0]['item_description']))
+                                <button type="button"
+                                    class="btn p-0 border-0 bg-transparent btn-desc-toggle d-inline-flex align-items-center"
+                                    style="outline: none; box-shadow: none;">
+                                    <i class="fas fa-arrow-right text-primary desc-toggle-icon"
+                                        style="transition: transform 0.2s ease; font-size: 0.8rem;"></i>
+                                </button>
+                                @endif
+                            </div>
                             @if(!empty($order['items'][0]['item_description']))
-                            <span class="d-block text-dark lh-sm text-break grid-text-medium" style="min-height: 32px;"
-                                title="{{ $order['items'][0]['item_description'] }}">
+                            <span class="d-block text-dark lh-sm text-break grid-text-medium d-none desc-container mt-1"
+                                style="min-height: 32px;" title="{{ $order['items'][0]['item_description'] }}">
                                 {{ $order['items'][0]['item_description'] }}
                             </span>
                             @else
-                            <span class="d-block text-dark lh-sm text-break grid-text-medium"
-                                style="min-height: 32px; font-style: italic;">
-                                No description
-                            </span>
+
                             @endif
 
                             <div class="bg-light rounded-3 px-2 py-2 grid-text-medium mb-2 mt-2">
@@ -331,20 +358,17 @@ $subtitle = null;
                                 @if(!empty($order['items'][0]['delivery_date']))
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="text-muted small">Delivery Date</span>
-                                    <strong class="text-dark fw-semibold">{{ $order['items'][0]['delivery_date']
-                                        }}</strong>
+                                    <strong class="text-dark fw-semibold">{{ \Carbon\Carbon::parse($order['items'][0]['delivery_date'])->format('d M Y') }}</strong>
                                 </div>
                                 @endif
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="text-muted small">Create Date</span>
-                                    <strong class="text-dark fw-semibold">{{ $order['items'][0]['start_date'] ?? '-'
-                                        }}</strong>
+                                    <strong class="text-dark fw-semibold">{{ !empty($order['items'][0]['start_date']) ? \Carbon\Carbon::parse($order['items'][0]['start_date'])->format('d M Y') : '-' }}</strong>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="text-muted small">Expiry</span>
                                     <div class="text-end">
-                                        <strong class="text-dark fw-semibold d-block">{{ $order['items'][0]['end_date']
-                                            ?? '-' }}</strong>
+                                        <strong class="text-dark fw-semibold d-block">{{ !empty($order['items'][0]['end_date']) ? \Carbon\Carbon::parse($order['items'][0]['end_date'])->format('d M Y') : '-' }}</strong>
                                         @php
                                         $orderEndDate = $order['items'][0]['end_date'] ?? null;
                                         $showDays = $orderEndDate && !in_array($orderEndDate, ['9999-12-31',
@@ -371,6 +395,11 @@ $subtitle = null;
                         </div>
 
                         <div class="tableActionButton d-flex flex-wrap gap-1 mt-2">
+                            <button type="button"
+                                class="bg-timeline color-timeline border-0 text-center js-view-timeline-btn flex-grow-1"
+                                data-order-id="{{ $order['record_id'] }}" data-order-number="{{ $order['number'] }}">
+                                Timeline
+                            </button>
                             @if(!empty($order['items'][0]['end_date']) &&
                             \Carbon\Carbon::parse($order['items'][0]['end_date'])->isPast())
                             <button type="button"
@@ -443,17 +472,38 @@ $subtitle = null;
 
 @include('orders.partials.edit-order-modal')
 
+@include('orders.partials.order-timeline-modal')
+
 <script>
     window.__editModalConfig = {
         clientDocuments: @json($clientDocuments ?? []),
-        todayStr: '{{ now()->format('Y-m-d') }}',
-        renewRouteTemplate: '{{ route('invoices.orders.renew', ['order' => '__ORDER__']) }}',
-        selectedClientId: '{{ $clientId ?? request('c') }}',
+        todayStr: '{{ now()->format('Y- m - d') }}',
+            renewRouteTemplate: '{{ route('invoices.orders.renew', ['order' => '__ORDER__']) }}',
+                selectedClientId: '{{ $clientId ?? request('c') }}',
     };
 </script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Item description toggle logic
+        document.addEventListener('click', function (e) {
+            const toggleBtn = e.target.closest('.btn-desc-toggle');
+            if (!toggleBtn) return;
+
+            e.preventDefault();
+            const parent = toggleBtn.closest('td') || toggleBtn.closest('.col');
+            if (parent) {
+                const descContainer = parent.querySelector('.desc-container');
+                const toggleIcon = toggleBtn.querySelector('.desc-toggle-icon');
+                if (descContainer) {
+                    descContainer.classList.toggle('d-none');
+                }
+                if (toggleIcon) {
+                    toggleIcon.classList.toggle('rotated');
+                }
+            }
+        });
+
         // View Toggle Logic
         const btnList = document.getElementById('btn-list-view');
         const btnGrid = document.getElementById('btn-grid-view');

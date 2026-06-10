@@ -7,10 +7,6 @@
         data-bs-toggle="modal" data-bs-target="#manageGroupsModal">
         <i class="fas fa-layer-group btn-icon"></i> Client Groups
     </button>
-    <a href="{{ route('clients.trials') }}"
-        class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
-        <i class="fas fa-user-clock btn-icon"></i> View Trial Clients
-    </a>
     <a href="{{ route('clients.create') }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
         <i class="fas fa-plus btn-icon"></i> Add Client
@@ -88,8 +84,8 @@
                     <a href="{{ route('clients.index') }}"
                         class="btn btn-outline-primary bg-white text-primary fw-medium"><i
                             class="fas fa-sync-alt btn-icon me-1"></i> Clear</a>
-                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">Apply <i
-                            class="fas fa-arrow-right btn-icon ms-1"></i></button>
+                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium"><i
+                            class="fas fa-filter btn-icon me-1"></i>Filter</button>
                 </div>
             </div>
         </form>
@@ -108,22 +104,28 @@
                 <span class="status-dot legend-dot inactive"></span> Inactive
             </div>
         </div>
-        <div class="btn-group shadow-sm" role="group" aria-label="View Toggle">
-            <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
-                id="btn-grid-view">
-                <i class="fas fa-th-large toggle-icon"></i> Grid
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
-                id="btn-list-view">
-                <i class="fas fa-list toggle-icon"></i> List
-            </button>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('clients.trials') }}"
+                class="btn btn-sm btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
+                <i class="fas fa-user-clock btn-icon"></i> Prospect Clients
+            </a>
+            <div class="btn-group shadow-sm" role="group" aria-label="View Toggle">
+                <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                    id="btn-grid-view">
+                    <i class="fas fa-th-large toggle-icon"></i> Grid
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                    id="btn-list-view">
+                    <i class="fas fa-list toggle-icon"></i> List
+                </button>
+            </div>
         </div>
     </div>
 
     <!-- Clients List View (Table View) -->
     <div id="clients-list-view" class="card overflow-hidden">
         <div class="table-responsive">
-            <table class="table mainTable align-middle mb-0">
+            <table class="table table-striped mainTable align-middle mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>Client</th>
@@ -165,10 +167,14 @@
                         </td>
                         <td>{{ $client['state'] ?? '—' }}</td>
                         <td class="text-center">
-                            <span class="fw-semibold text-dark">
-                                <span class="currency-code-small text-muted">{{ $client['currency'] }}</span> {{
-                                substr($client['balance'], strlen($client['currency']) + 1) }}
-                            </span>
+                            @php
+                            $rawVal = (float) str_replace([$client['currency'], ' ', ','], '', $client['balance']);
+                            $balanceClass = $rawVal < 0 ? 'text-danger' : ($rawVal> 0 ? 'text-success' : 'text-dark');
+                                @endphp
+                                <span class="fw-semibold {{ $balanceClass }}">
+                                    <span class="currency-code-small text-muted">{{ $client['currency'] }}</span> {{
+                                    substr($client['balance'], strlen($client['currency']) + 1) }}
+                                </span>
                         </td>
                         <td class="text-center">
                             <span class="text-primary fw-semibold">
@@ -265,10 +271,15 @@
                     <div class="bg-light rounded-3 px-3 py-2 mt-auto grid-text-medium mb-2">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="text-muted">Outstanding</span>
-                            <strong class="text-dark fw-semibold grid-value-large">
-                                <span class="currency-code-grid text-muted">{{ $client['currency'] }}</span> {{
-                                substr($client['balance'], strlen($client['currency']) + 1) }}
-                            </strong>
+                            @php
+                            $rawValGrid = (float) str_replace([$client['currency'], ' ', ','], '', $client['balance']);
+                            $balanceClassGrid = $rawValGrid < 0 ? 'text-danger' : ($rawValGrid> 0 ? 'text-success' :
+                                'text-dark');
+                                @endphp
+                                <strong class="{{ $balanceClassGrid }} fw-semibold grid-value-large">
+                                    <span class="currency-code-grid text-muted">{{ $client['currency'] }}</span> {{
+                                    substr($client['balance'], strlen($client['currency']) + 1) }}
+                                </strong>
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="text-muted">Invoices</span>
@@ -338,253 +349,229 @@
     @endif
 
 </div>
-
-<style>
-    #manageGroupsModal .nav-tabs,
-    #documentsModal .nav-tabs {
-        border-bottom: 1px solid #dee2e6;
-    }
-
-    #manageGroupsModal .nav-tabs .nav-link,
-    #documentsModal .nav-tabs .nav-link {
-        color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.6) !important;
-        border: none;
-        border-bottom: 2px solid transparent;
-        background: transparent;
-        padding: 0.5rem 1rem;
-    }
-
-    #manageGroupsModal .nav-tabs .nav-link:hover,
-    #documentsModal .nav-tabs .nav-link:hover {
-        color: var(--bs-primary, #0d6efd) !important;
-        border-bottom-color: transparent;
-    }
-
-    #manageGroupsModal .nav-tabs .nav-link.active,
-    #documentsModal .nav-tabs .nav-link.active {
-        color: var(--bs-primary, #0d6efd) !important;
-        border-bottom: 2px solid var(--bs-primary, #0d6efd) !important;
-        background-color: transparent !important;
-    }
-
-    .group-filter-clear-btn {
-        width: 18px;
-        height: 18px;
-        background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
-        color: var(--bs-primary, #0d6efd);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        text-decoration: none;
-    }
-
-    .group-filter-clear-btn:hover {
-        background-color: #dc3545 !important;
-        color: #ffffff !important;
-        transform: rotate(90deg);
-    }
-
-    .active-filter-container {
-        animation: fadeInFilter 0.3s ease-out;
-    }
-
-    @keyframes fadeInFilter {
-        from {
-            opacity: 0;
-            transform: translateY(4px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-</style>
 <!-- Manage Groups Modal -->
 <div class="modal fade" id="manageGroupsModal" tabindex="-1" aria-labelledby="manageGroupsModalLabel"
     aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-0 bg-white py-2">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-light py-2 border-0">
                 <h5 class="modal-title fw-semibold" id="manageGroupsModalLabel">Client Groups</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body bg-white p-2 pt-0">
-                <ul class="nav nav-tabs mb-0 border-bottom-0" id="groupModalTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active fw-semibold rounded-0 px-3" id="add-group-tab"
-                            data-bs-toggle="tab" data-bs-target="#add-group-pane" type="button" role="tab"
-                            aria-controls="add-group-pane" aria-selected="true">
-                            <i class="fas fa-plus-circle me-1"></i><span id="groupTabTitle">Add Client Group</span>
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link fw-semibold rounded-0 px-3" id="group-list-tab" data-bs-toggle="tab"
-                            data-bs-target="#group-list-pane" type="button" role="tab" aria-controls="group-list-pane"
-                            aria-selected="false">
-                            <i class="fas fa-list me-1"></i>Client Group List ({{ $groups->count() }})
-                        </button>
-                    </li>
-                </ul>
-
-                <div class="tab-content" id="groupModalTabsContent">
-                    <div class="tab-pane fade show bg-light p-2 pt-3 active" id="add-group-pane" role="tabpanel"
-                        aria-labelledby="add-group-tab">
-                        <!-- Form to Add/Edit Group -->
-                        <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="mainForm">
-                            @csrf
-                            <input type="hidden" id="groupId" name="_group_id" value="">
-                            <div id="methodField"></div>
-                            <div class="row g-2">
-                                <div class="col-12 col-md-12">
-                                    <label for="groupName"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Group Name<span
-                                            class="text-danger">*</span></label>
-                                    <input type="text" name="group_name" id="groupName" class="form-control"
-                                        value="{{ old('group_name') }}" required>
-                                </div>
-                                <div class="col-12 col-md-12">
-                                    <label for="groupEmail"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Email</label>
-                                    <input type="email" name="email" id="groupEmail" class="form-control"
-                                        value="{{ old('email') }}">
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label for="groupAddress1"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Address
-                                        Line 1</label>
-                                    <textarea name="address_line_1" id="groupAddress1" class="form-control"
-                                        rows="2">{{ old('address_line_1') }}</textarea>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label for="groupAddress2"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Address
-                                        Line 2</label>
-                                    <textarea name="address_line_2" id="groupAddress2" class="form-control"
-                                        rows="2">{{ old('address_line_2') }}</textarea>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label for="groupCountry"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
-                                    <select id="groupCountry" name="country" class="form-select country-select"
-                                        data-selected="India">
-                                        <option value="">Select Country</option>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label for="groupState"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">State</label>
-                                    <select id="groupState" name="state" class="form-select state-select"
-                                        data-selected="">
-                                        <option value="">Select State</option>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label for="groupCity"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
-                                    <select id="groupCity" name="city" class="form-select city-select" data-selected="">
-                                        <option value="">Select City</option>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label for="groupPostalCode"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Postal
-                                        Code</label>
-                                    <input type="text" name="postal_code" id="groupPostalCode" class="form-control"
-                                        value="{{ old('postal_code') }}">
+            <div class="modal-body bg-white p-2">
+                <!-- Group Form -->
+                <div id="add-group-pane" class="bg-light p-2 rounded-3 mb-3">
+                    <h6 class="fw-semibold text-dark mb-2 px-1">
+                        <span id="groupTabTitle">Add Client Group</span>
+                    </h6>
+                    <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="mainForm">
+                        @csrf
+                        <input type="hidden" id="groupId" name="_group_id" value="">
+                        <div id="methodField"></div>
+                        <div class="row g-2">
+                            <div class="col-12 col-md-6">
+                                <label for="groupName" class="form-label small lh-sm fw-semibold text-dark mb-1">Group
+                                    Name<span class="text-danger">*</span></label>
+                                <input type="text" name="group_name" id="groupName" class="form-control"
+                                    value="{{ old('group_name') }}" required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label for="groupEmail"
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Email</label>
+                                <input type="email" name="email" id="groupEmail" class="form-control"
+                                    value="{{ old('email') }}">
+                            </div>
+                            <!-- Registered Address (col-6) -->
+                            <div class="col-12 col-md-6">
+                                <div class="p-2 rounded-3 border h-100 form-grid">
+                                    <h6 class="fw-semibold text-primary mb-2">Registered Address</h6>
+                                    <div class="row g-2">
+                                        <div class="col-12">
+                                            <textarea name="registered_address" id="groupRegisteredAddress"
+                                                class="form-control" placeholder="Address"
+                                                style="min-height: 60px;">{{ old('registered_address') }}</textarea>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupCountry"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
+                                            <select id="groupCountry" name="country" class="form-select country-select"
+                                                data-selected="India">
+                                                <option value="">Select Country</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupState"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">State</label>
+                                            <select id="groupState" name="state" class="form-select state-select"
+                                                data-selected="">
+                                                <option value="">Select State</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupCity"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
+                                            <select id="groupCity" name="city" class="form-select city-select"
+                                                data-selected="">
+                                                <option value="">Select City</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupPostalCode"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">Postal
+                                                Code</label>
+                                            <input type="text" name="postal_code" id="groupPostalCode"
+                                                class="form-control" value="{{ old('postal_code') }}">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="d-flex align-items-center justify-content-between mt-3">
-                                <div><button type="button" id="groupCancelBtn"
-                                        class="btn btn-outline-primary bg-white text-primary fw-medium d-none"
-                                        onclick="resetGroupForm()">
-                                        <i class="fas fa-arrow-left btn-icon me-1"></i> Back to Add Group
-                                    </button></div>
-                                <button type="submit" id="groupSubmitBtn"
-                                    class="btn btn-outline-primary btn-primary text-white fw-medium text-end">
-                                    Save Group <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div class="tab-pane bg-light p-2 pt-3 fade" id="group-list-pane" role="tabpanel"
-                        aria-labelledby="group-list-tab">
-                        <!-- Groups List -->
-                        <div class="position-relative">
-                            <div class="card border-0 overflow-hidden">
-                                <div class="table-responsive">
-                                    <table class="table mainTable border align-middle mb-0">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th width="30%">Group</th>
-                                                <th width="30%">Address</th>
-                                                <th class="text-end" width="40%">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @forelse($groups as $group)
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex align-items-center gap-3">
-                                                        <div
-                                                            class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold">
-                                                            <span class="d-block position-absolute">{{
-                                                                strtoupper(substr($group->group_name, 0, 2)) }}</span>
-                                                        </div>
-                                                        <div>
-                                                            <span class="d-block fw-semibold">{{ $group->group_name
-                                                                }}</span>
-                                                            <span class="d-block text-muted small">{{ $group->email ??
-                                                                '—' }}</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>{{ implode(', ', array_filter([$group->city, $group->state,
-                                                    $group->country, $group->postal_code])) ?: '—' }}</td>
-                                                <td class="text-end">
-                                                    <div class="tableActionButton d-inline-flex gap-1">
-                                                        <a href="{{ route('clients.index') }}?groupid={{ $group->groupid }}"
-                                                            class="bg01 color01 border-0"
-                                                            title="View clients in this group">View Clients</a>
-                                                        <button type="button" class="bg03 color03 border-0"
-                                                            onclick="editGroup(this)" data-id="{{ $group->groupid }}"
-                                                            data-name="{{ $group->group_name }}"
-                                                            data-email="{{ $group->email }}"
-                                                            data-address1="{{ $group->address_line_1 }}"
-                                                            data-address2="{{ $group->address_line_2 }}"
-                                                            data-city="{{ $group->city }}"
-                                                            data-state="{{ $group->state }}"
-                                                            data-postal="{{ $group->postal_code }}"
-                                                            data-country="{{ $group->country }}">Edit</button>
-                                                        <form method="POST"
-                                                            action="{{ route('groups.destroy', $group->groupid) }}"
-                                                            class="d-inline" data-name="{{ $group->group_name }}"
-                                                            onsubmit="return confirm('Delete group ' + this.dataset.name + '?')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit"
-                                                                class="bg04 color04 border-0">Delete</button>
-                                                        </form>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            @empty
-                                            <tr>
-                                                <td colspan="3" class="text-center py-4 text-muted bg-white">
-                                                    <i class="fas fa-folder-open text-muted mb-2 fs-2 opacity-50"></i>
-                                                    <p class="text-muted small mb-0">No groups yet. Create one above!
-                                                    </p>
-                                                </td>
-                                            </tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
+                            <!-- Business Address (col-6) -->
+                            <div class="col-12 col-md-6">
+                                <div class="p-2 rounded-3 h-100 form-grid" style="background: #f3f3f3;">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <h6 class="fw-semibold text-primary mb-0">Business Address</h6>
+                                        <div class="mb-0 bg-white border rounded-1 px-1 py-0">
+                                            <div class="form-check mb-0 form-check-small">
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="groupSameAsRegistered" value="1">
+                                                <label class="form-check-label small lh-sm fw-normal text-dark"
+                                                    for="groupSameAsRegistered">
+                                                    Same as Registered Address
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-12">
+                                            <textarea name="business_address" id="groupBusinessAddress"
+                                                class="form-control" placeholder="Address"
+                                                style="min-height: 60px;">{{ old('business_address') }}</textarea>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupBusinessCountry"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
+                                            <select id="groupBusinessCountry" name="business_country"
+                                                class="form-select country-select" data-selected="India">
+                                                <option value="">Select Country</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupBusinessState"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">State</label>
+                                            <select id="groupBusinessState" name="business_state"
+                                                class="form-select state-select" data-selected="">
+                                                <option value="">Select State</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupBusinessCity"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
+                                            <select id="groupBusinessCity" name="business_city"
+                                                class="form-select city-select" data-selected="">
+                                                <option value="">Select City</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="groupBusinessPostalCode"
+                                                class="form-label small lh-sm fw-semibold text-dark mb-1">Postal
+                                                Code</label>
+                                            <input type="text" name="business_postal_code" id="groupBusinessPostalCode"
+                                                class="form-control" value="{{ old('business_postal_code') }}">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="d-flex align-items-center justify-content-end mt-3">
+                            <button type="submit" id="groupSubmitBtn"
+                                class="btn btn-outline-primary btn-primary text-white fw-medium text-end">
+                                Save Client Group <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Groups List -->
+                <div id="group-list-pane" class="position-relative bg-light p-2 rounded-3">
+                    <h6 class="fw-semibold text-dark mb-2 px-1">
+                        <span id="group-list-tab">Client Group List ({{ $groups->count()}})</span>
+                    </h6>
+                    <div class="card border-0 overflow-hidden">
+                        <div class="table-responsive">
+                            <table class="table table-striped mainTable border align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="25%">Group</th>
+                                        <th width="20%">Registered Address</th>
+                                        <th width="20%">Business Address</th>
+                                        <th class="text-end" width="35%">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($groups as $group)
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div
+                                                    class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold">
+                                                    <span class="d-block position-absolute">{{
+                                                        strtoupper(substr($group->group_name, 0, 2)) }}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="d-block fw-semibold">{{ $group->group_name
+                                                        }}</span>
+                                                    <span class="d-block text-muted small">{{ $group->email ??
+                                                        '—' }}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ implode(', ', array_filter([$group->city, $group->state,
+                                            $group->country, $group->postal_code])) ?: '—' }}</td>
+                                        <td>{{ implode(', ', array_filter([$group->business_city,
+                                            $group->business_state,
+                                            $group->business_country, $group->business_postal_code])) ?: '—' }}</td>
+                                        <td class="text-end">
+                                            <div class="tableActionButton d-inline-flex gap-1">
+                                                <a href="{{ route('clients.index') }}?groupid={{ $group->groupid }}"
+                                                    class="bg01 color01 border-0"
+                                                    title="View clients in this group">View Clients</a>
+                                                <button type="button" class="bg03 color03 border-0"
+                                                    onclick="editGroup(this)" data-id="{{ $group->groupid }}"
+                                                    data-name="{{ $group->group_name }}"
+                                                    data-email="{{ $group->email }}"
+                                                    data-registered-address="{{ $group->registered_address }}"
+                                                    data-city="{{ $group->city }}" data-state="{{ $group->state }}"
+                                                    data-postal="{{ $group->postal_code }}"
+                                                    data-country="{{ $group->country }}"
+                                                    data-business-address="{{ $group->business_address }}"
+                                                    data-business-city="{{ $group->business_city }}"
+                                                    data-business-state="{{ $group->business_state }}"
+                                                    data-business-postal="{{ $group->business_postal_code }}"
+                                                    data-business-country="{{ $group->business_country }}">Edit</button>
+                                                <form method="POST"
+                                                    action="{{ route('groups.destroy', $group->groupid) }}"
+                                                    class="d-inline group-delete-form"
+                                                    data-group-name="{{ $group->group_name }}">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="bg04 color04 border-0">Delete</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    <tr>
+                                        <td colspan="3" class="text-center py-4 text-muted bg-white">
+                                            <i class="fas fa-folder-open text-muted mb-2 fs-2 opacity-50"></i>
+                                            <p class="text-muted small mb-0">No groups yet. Create one above!
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -595,144 +582,112 @@
 
 <!-- Documents Modal -->
 <div class="modal fade" id="documentsModal" tabindex="-1" aria-labelledby="documentsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-white border-bottom py-2">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-light py-2 border-0">
                 <h5 class="modal-title fw-semibold" id="documentsModalLabel"></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body bg-white p-2 pt-0">
-                <ul class="nav nav-tabs mb-0 border-bottom-0" id="documentModalTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active fw-semibold rounded-0 px-3" id="add-document-tab"
-                            data-bs-toggle="tab" data-bs-target="#add-document-pane" type="button" role="tab"
-                            aria-controls="add-document-pane" aria-selected="true">
-                            <i class="fas fa-plus-circle me-1"></i><span id="documentTabTitle">Add Document</span>
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link fw-semibold rounded-0 px-3" id="document-list-tab" data-bs-toggle="tab"
-                            data-bs-target="#document-list-pane" type="button" role="tab"
-                            aria-controls="document-list-pane" aria-selected="false">
-                            <i class="fas fa-list me-1"></i><span id="documentListTabLabel">Document List (0)</span>
-                        </button>
-                    </li>
-                </ul>
-
-                <div class="tab-content" id="documentModalTabsContent">
-                    <div class="tab-pane fade show bg-light p-2 pt-3 active" id="add-document-pane" role="tabpanel"
-                        aria-labelledby="add-document-tab">
-                        <form id="documentForm" method="POST" enctype="multipart/form-data" class="mainForm">
-                            @csrf
-                            <input type="hidden" id="docClientId" name="clientid" value="">
-                            <input type="hidden" id="docId" name="_doc_id" value="">
-                            <div id="docMethodField"></div>
-                            <div class="row g-2">
-                                <div class="col-12 col-md-4">
-                                    <label for="docType"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Type<span
-                                            class="text-danger">*</span></label>
-                                    <select id="docType" name="type" class="form-select" required>
-                                        <option value="">Select type</option>
-                                        <option value="po">Purchase Order</option>
-                                        <option value="agreement">Agreement</option>
-                                    </select>
+            <div class="modal-body bg-white p-2">
+                <!-- Document Form -->
+                <div id="add-document-pane" class="bg-light p-2 rounded-3 mb-3">
+                    <h6 class="fw-semibold text-dark mb-2 px-1">
+                        <span id="documentTabTitle">Add Document</span>
+                    </h6>
+                    <form id="documentForm" method="POST" enctype="multipart/form-data" class="mainForm">
+                        @csrf
+                        <input type="hidden" id="docClientId" name="clientid" value="">
+                        <input type="hidden" id="docId" name="_doc_id" value="">
+                        <div id="docMethodField"></div>
+                        <div class="row g-2">
+                            <div class="col-12 col-md-2">
+                                <select id="docType" name="type" class="form-select" required>
+                                    <option value="">Select type</option>
+                                    <option value="po">Purchase Order</option>
+                                    <option value="agreement">Agreement</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <input type="text" id="docTitle" name="title" class="form-control" placeholder="Title"
+                                    maxlength="150">
+                            </div>
+                            <div class="col-12 col-md-2">
+                                <input type="text" id="docNumber" name="document_number" class="form-control"
+                                    placeholder="Doc Number" maxlength="100">
+                            </div>
+                            <div class="col-12 col-md-2">
+                                <div class="input-group">
+                                    <input type="date" id="docDate" name="document_date" class="form-control"
+                                        placeholder="Doc Date" value="{{ date('Y-m-d') }}">
+                                    <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
                                 </div>
-                                <div class="col-12 col-md-12">
-                                    <label for="docTitle"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Title</label>
-                                    <input type="text" id="docTitle" name="title" class="form-control" maxlength="150">
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label for="docNumber"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Document
-                                        Number</label>
-                                    <input type="text" id="docNumber" name="document_number" class="form-control"
-                                        maxlength="100">
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label for="docDate"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Document Date</label>
-                                    <div class="input-group">
-                                        <input type="date" id="docDate" name="document_date" class="form-control"
-                                            value="{{ date('Y-m-d') }}">
-                                        <span class="input-group-text"><i
-                                                class="far fa-calendar-alt text-muted"></i></span>
+                            </div>
+                            <div class="col-12 col-md-10">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Upload File</label>
+                                <div class="logo-drag-drop-zone border border-dashed rounded-3 text-center bg-white position-relative py-2"
+                                    style="cursor:pointer;" id="docUploadDropZone">
+                                    <input type="file" id="docFile" name="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                        class="position-absolute top-0 start-0 w-100 h-100 opacity-0">
+                                    <div class="drop-zone-prompt d-flex align-items-center justify-content-start"
+                                        id="docDropPrompt">
+                                        <i class="far fa-file text-secondary mb-2 fs-4"></i>
+                                        <span class="text-muted fw-medium ms-2">Drag and drop or <span
+                                                class="text-primary fw-semibold">browse files</span></span>
                                     </div>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Upload File</label>
-                                    <div class="logo-drag-drop-zone border border-dashed rounded-3 text-center bg-white position-relative py-2"
-                                        style="cursor:pointer;" id="docUploadDropZone">
-                                        <input type="file" id="docFile" name="file"
-                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                            class="position-absolute top-0 start-0 w-100 h-100 opacity-0">
-                                        <div class="drop-zone-prompt d-flex align-items-center justify-content-start"
-                                            id="docDropPrompt">
-                                            <i class="far fa-file text-secondary mb-2 fs-4"></i>
-                                            <span class="text-muted fw-medium ms-2">Drag and drop or <span
-                                                    class="text-primary fw-semibold">browse files</span></span>
+                                    <div class="drop-zone-preview d-none align-items-center justify-content-between w-100"
+                                        id="docDropPreview">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <img id="docPreviewImg" src="#" alt="Preview"
+                                                class="img-fluid rounded shadow-sm d-none" width="50px">
+                                            <i id="docFileIcon" class="far fa-file-alt fs-3 text-secondary d-none"></i>
+                                            <span id="docFileName" class="text-muted small fw-medium"></span>
                                         </div>
-                                        <div class="drop-zone-preview d-none align-items-center justify-content-between w-100"
-                                            id="docDropPreview">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <img id="docPreviewImg" src="#" alt="Preview"
-                                                    class="img-fluid rounded shadow-sm d-none" width="50px">
-                                                <i id="docFileIcon"
-                                                    class="far fa-file-alt fs-3 text-secondary d-none"></i>
-                                                <span id="docFileName" class="text-muted small fw-medium"></span>
-                                            </div>
-                                            <button type="button" id="docRemoveBtn"
-                                                class="btn btn-sm p-0 bg-transparent text-dark border-0"
-                                                title="Remove File">
-                                                <i class="fas fa-times fs-5 lh-sm"></i>
-                                            </button>
-                                        </div>
+                                        <button type="button" id="docRemoveBtn"
+                                            class="btn btn-sm p-0 bg-transparent text-dark border-0"
+                                            title="Remove File">
+                                            <i class="fas fa-times fs-5 lh-sm"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-                            <div class="d-flex align-items-center justify-content-between mt-3">
-                                <div>
-                                    <button type="button" id="documentCancelBtn"
-                                        class="btn btn-outline-primary bg-white text-primary fw-medium d-none"
-                                        onclick="resetDocumentForm()">
-                                        <i class="fas fa-arrow-left btn-icon me-1"></i> Back to Add Document
+                            <div class="col-12 col-md-2 mt-auto">
+                                <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
+                                    <button type="submit" id="documentSubmitBtn"
+                                        class="btn btn-outline-primary btn-primary text-white fw-medium text-end">
+                                        Save Document <i class="fas fa-arrow-right btn-icon ms-1"></i>
                                     </button>
                                 </div>
-                                <button type="submit" id="documentSubmitBtn"
-                                    class="btn btn-outline-primary btn-primary text-white fw-medium text-end">
-                                    Save Document <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                                </button>
                             </div>
-                        </form>
-                    </div>
+                        </div>
+                    </form>
+                </div>
 
-                    <div class="tab-pane bg-light p-2 pt-3 fade" id="document-list-pane" role="tabpanel"
-                        aria-labelledby="document-list-tab">
-                        <div class="position-relative">
-                            <div class="card border-0 shadow-sm overflow-hidden">
-                                <div class="table-responsive">
-                                    <table class="table mainTable border align-middle mb-0">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th width="15%">Type</th>
-                                                <th width="40%">Document Title & Number</th>
-                                                <th width="25%">Document Date</th>
-                                                <th class="text-end" width="20%">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="documentTableBody">
-                                            <tr>
-                                                <td colspan="4" class="text-center py-4 text-muted bg-white">
-                                                    <i class="fas fa-file-alt text-muted mb-2 fs-2 opacity-50"></i>
-                                                    <p class="text-muted small mb-0">Select a client to view documents.
-                                                    </p>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                <!-- Document List -->
+                <div id="document-list-pane" class="position-relative bg-light p-2 rounded-3">
+                    <h6 class="fw-semibold text-dark mb-2 px-1">
+                        <span id="documentListTabLabel">Document List (0)</span>
+                    </h6>
+                    <div class="card border-0 overflow-hidden">
+                        <div class="table-responsive">
+                            <table class="table table-striped mainTable border align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="15%">Type</th>
+                                        <th width="35%">Title</th>
+                                        <th width="15%">Document Number</th>
+                                        <th width="15%">Document Date</th>
+                                        <th class="text-end" width="20%">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="documentTableBody">
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4 text-muted bg-white">
+                                            <i class="fas fa-file-alt text-muted mb-2 fs-2 opacity-50"></i>
+                                            <p class="text-muted small mb-0">Select a client to view documents.</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -759,30 +714,67 @@
 </div>
 
 <script>
+    document.getElementById('groupSameAsRegistered').addEventListener('change', function () {
+        if (!this.checked) return;
+
+        const regAddr = document.getElementById('groupRegisteredAddress');
+        const busAddr = document.getElementById('groupBusinessAddress');
+        if (regAddr && busAddr) { busAddr.value = regAddr.value; }
+
+        const regPostal = document.getElementById('groupPostalCode');
+        const busPostal = document.getElementById('groupBusinessPostalCode');
+        if (regPostal && busPostal) { busPostal.value = regPostal.value; }
+
+        const busCountryEl = document.getElementById('groupBusinessCountry');
+        const busStateEl = document.getElementById('groupBusinessState');
+        const busCityEl = document.getElementById('groupBusinessCity');
+        const regCountryEl = document.getElementById('groupCountry');
+        const regStateEl = document.getElementById('groupState');
+        const regCityEl = document.getElementById('groupCity');
+
+        busCountryEl.dataset.selected = regCountryEl.value;
+        busStateEl.dataset.selected = regStateEl.value;
+        busCityEl.dataset.selected = regCityEl.value;
+
+        LocationPicker.loadSelection(busCountryEl);
+    });
+
     function editGroup(btn) {
         const id = btn.dataset.id;
         const name = btn.dataset.name;
         const email = btn.dataset.email || '';
-        const addr1 = btn.dataset.address1 || '';
-        const addr2 = btn.dataset.address2 || '';
+        const regAddr = btn.dataset.registeredAddress || btn.dataset.address1 || '';
         const city = btn.dataset.city || '';
         const state = btn.dataset.state || '';
         const postal = btn.dataset.postal || '';
         const country = btn.dataset.country || '';
+
+        const busAddr = btn.dataset.businessAddress || '';
+        const busCity = btn.dataset.businessCity || '';
+        const busState = btn.dataset.businessState || '';
+        const busPostal = btn.dataset.businessPostal || '';
+        const busCountry = btn.dataset.businessCountry || 'India';
 
         const form = document.getElementById('groupForm');
         const submitBtn = document.getElementById('groupSubmitBtn');
         const cancelBtn = document.getElementById('groupCancelBtn');
         const methodField = document.getElementById('methodField');
 
+        // Always uncheck "same as registered" when editing
+        const sameAsCheckbox = document.getElementById('groupSameAsRegistered');
+        if (sameAsCheckbox) { sameAsCheckbox.checked = false; }
+
+
         form.action = 'groups/' + id;
         methodField.innerHTML = '<input type="hidden" name="_method" value="PUT">';
 
         document.getElementById('groupName').value = name;
         document.getElementById('groupEmail').value = email;
-        document.getElementById('groupAddress1').value = addr1;
-        document.getElementById('groupAddress2').value = addr2;
+        document.getElementById('groupRegisteredAddress').value = regAddr;
         document.getElementById('groupPostalCode').value = postal;
+
+        document.getElementById('groupBusinessAddress').value = busAddr;
+        document.getElementById('groupBusinessPostalCode').value = busPostal;
 
         const countryEl = document.getElementById('groupCountry');
         const stateEl = document.getElementById('groupState');
@@ -792,13 +784,22 @@
         stateEl.dataset.selected = state || '';
         cityEl.dataset.selected = city || '';
 
-        countryEl.dispatchEvent(new Event('change'));
-        setTimeout(() => {
-            stateEl.dispatchEvent(new Event('change'));
-        }, 300);
+        LocationPicker.loadSelection(countryEl);
 
-        submitBtn.innerHTML = 'Update Group <i class="fas fa-arrow-right btn-icon ms-1"></i>';
-        cancelBtn.classList.remove('d-none');
+        const busCountryEl = document.getElementById('groupBusinessCountry');
+        const busStateEl = document.getElementById('groupBusinessState');
+        const busCityEl = document.getElementById('groupBusinessCity');
+
+        busCountryEl.dataset.selected = busCountry || 'India';
+        busStateEl.dataset.selected = busState || '';
+        busCityEl.dataset.selected = busCity || '';
+
+        LocationPicker.loadSelection(busCountryEl);
+
+        submitBtn.innerHTML = 'Update Client Group <i class="fas fa-arrow-right btn-icon ms-1"></i>';
+        if (cancelBtn) {
+            cancelBtn.classList.remove('d-none');
+        }
 
         const addTabEl = document.getElementById('add-group-tab');
         if (addTabEl) {
@@ -821,12 +822,31 @@
         methodField.innerHTML = '';
         form.reset();
 
-        submitBtn.innerHTML = 'Save Group <i class="fas fa-arrow-right btn-icon ms-1"></i>';
-        cancelBtn.classList.add('d-none');
+        submitBtn.innerHTML = 'Save Client Group <i class="fas fa-arrow-right btn-icon ms-1"></i>';
+        if (cancelBtn) {
+            cancelBtn.classList.add('d-none');
+        }
 
         const addTabEl = document.getElementById('add-group-tab');
         if (addTabEl) {
             document.getElementById('groupTabTitle').innerText = 'Add Group';
+        }
+
+        const countryEl = document.getElementById('groupCountry');
+        const busCountryEl = document.getElementById('groupBusinessCountry');
+        const sameAsCheckbox = document.getElementById('groupSameAsRegistered');
+
+        if (sameAsCheckbox) {
+            sameAsCheckbox.checked = false;
+        }
+
+        if (countryEl) {
+            countryEl.dataset.selected = 'India';
+            countryEl.dispatchEvent(new Event('change'));
+        }
+        if (busCountryEl) {
+            busCountryEl.dataset.selected = 'India';
+            busCountryEl.dispatchEvent(new Event('change'));
         }
 
         document.querySelectorAll('#add-group-pane .text-danger.small.mt-1').forEach(function (el) {
@@ -846,6 +866,7 @@
         var initials = (group.group_name || '').substring(0, 2).toUpperCase();
         var email = group.email || '—';
         var address = [group.city, group.state, group.country, group.postal_code].filter(Boolean).join(', ') || '—';
+        var business_address = [group.business_city, group.business_state, group.business_country, group.business_postal_code].filter(Boolean).join(', ') || '—';
         var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         return '<tr>' +
             '<td>' +
@@ -860,20 +881,25 @@
             '</div>' +
             '</td>' +
             '<td>' + address + '</td>' +
+            '<td>' + business_address + '</td>' +
             '<td class="text-end">' +
             '<div class="tableActionButton d-inline-flex gap-1">' +
-            '<a href="' + clientsIndexUrl + '?groupid=' + group.groupid + '" class="bg04 color04 border-0" title="View clients in this group">View Clients</a>' +
+            '<a href="' + clientsIndexUrl + '?groupid=' + group.groupid + '" class="bg01 color01 border-0" title="View clients in this group">View Clients</a>' +
             '<button type="button" class="bg03 color03 border-0" onclick="editGroup(this)"' +
             ' data-id="' + group.groupid + '"' +
             ' data-name="' + (group.group_name || '').replace(/"/g, '&quot;') + '"' +
             ' data-email="' + (group.email || '').replace(/"/g, '&quot;') + '"' +
-            ' data-address1="' + (group.address_line_1 || '').replace(/"/g, '&quot;') + '"' +
-            ' data-address2="' + (group.address_line_2 || '').replace(/"/g, '&quot;') + '"' +
+            ' data-registered-address="' + (group.registered_address || '').replace(/"/g, '&quot;') + '"' +
             ' data-city="' + (group.city || '').replace(/"/g, '&quot;') + '"' +
             ' data-state="' + (group.state || '').replace(/"/g, '&quot;') + '"' +
             ' data-postal="' + (group.postal_code || '').replace(/"/g, '&quot;') + '"' +
-            ' data-country="' + (group.country || '').replace(/"/g, '&quot;') + '">Edit</button>' +
-            '<form method="POST" action="groups/' + group.groupid + '" class="d-inline group-delete-form">' +
+            ' data-country="' + (group.country || '').replace(/"/g, '&quot;') + '"' +
+            ' data-business-address="' + (group.business_address || '').replace(/"/g, '&quot;') + '"' +
+            ' data-business-city="' + (group.business_city || '').replace(/"/g, '&quot;') + '"' +
+            ' data-business-state="' + (group.business_state || '').replace(/"/g, '&quot;') + '"' +
+            ' data-business-postal="' + (group.business_postal_code || '').replace(/"/g, '&quot;') + '"' +
+            ' data-business-country="' + (group.business_country || '').replace(/"/g, '&quot;') + '">Edit</button>' +
+            '<form method="POST" action="groups/' + group.groupid + '" class="d-inline group-delete-form" data-group-name="' + (group.group_name || '').replace(/"/g, '&quot;') + '">' +
             '<input type="hidden" name="_token" value="' + csrf + '">' +
             '<input type="hidden" name="_method" value="DELETE">' +
             '<button type="submit" class="bg04 color04 border-0">Delete</button>' +
@@ -990,12 +1016,14 @@
             groupForm.addEventListener('submit', handleGroupFormSubmit);
         }
 
-        document.querySelector('#group-list-pane').addEventListener('submit', function (e) {
+        document.querySelector('#group-list-pane').addEventListener('submit', async function (e) {
             var deleteForm = e.target.closest('.group-delete-form');
             if (!deleteForm) return;
             e.preventDefault();
-            var name = deleteForm.closest('tr')?.querySelector('.fw-semibold')?.textContent || 'this group';
-            if (!confirm('Delete group ' + name + '?')) return;
+            var name = deleteForm.dataset.groupName || 'this group';
+
+            const confirmed = await appConfirm('Delete group ' + name + '?');
+            if (!confirmed) return;
 
             var formData = new FormData(deleteForm);
             var url = deleteForm.action;
@@ -1161,11 +1189,12 @@
             ? '<a href="' + doc.file_url + '" target="_blank" class="bg01 color01 text-decoration-none">View</a>'
             : '';
         var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-        var numberHtml = doc.document_number ? '<span class="d-block text-muted small fw-normal">#' + doc.document_number + '</span>' : '';
+        var numberHtml = doc.document_number ? doc.document_number : '';
         var titleHtml = '<span class="d-block fw-semibold text-dark">' + (doc.title || '—') + '</span>';
         return '<tr>' +
             '<td>' + typeBadge + '</td>' +
-            '<td>' + titleHtml + numberHtml + '</td>' +
+            '<td>' + titleHtml + '</td>' +
+            '<td>' + numberHtml + '</td>' +
             '<td>' + doc.document_date_display + '</td>' +
             '<td class="text-end">' +
             '<div class="tableActionButton d-inline-flex gap-1">' +
@@ -1208,7 +1237,9 @@
         document.getElementById('docDate').value = date;
 
         submitBtn.innerHTML = 'Update Document <i class="fas fa-arrow-right btn-icon ms-1"></i>';
-        cancelBtn.classList.remove('d-none');
+        if (cancelBtn) {
+            cancelBtn.classList.remove('d-none');
+        }
 
         document.getElementById('documentTabTitle').innerText = 'Edit Document';
         var addTabEl = document.getElementById('add-document-tab');
@@ -1257,7 +1288,9 @@
         if (window._resetDocUpload) window._resetDocUpload();
 
         submitBtn.innerHTML = 'Save Document <i class="fas fa-arrow-right btn-icon ms-1"></i>';
-        cancelBtn.classList.add('d-none');
+        if (cancelBtn) {
+            cancelBtn.classList.add('d-none');
+        }
         document.getElementById('documentTabTitle').innerText = 'Add Document';
 
         document.querySelectorAll('#add-document-pane .text-danger.small.mt-1').forEach(function (el) { el.remove(); });

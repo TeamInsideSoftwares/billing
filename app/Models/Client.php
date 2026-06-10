@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'groupid',
     'logo_path',
     'business_name',
-    'contact_name',
     'primary_email',
     'email',
     'type',
@@ -88,6 +87,36 @@ class Client extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(ClientDocument::class, 'clientid');
+    }
+
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(ClientContact::class, 'clientid', 'clientid');
+    }
+
+    public function primaryContact(): HasOne
+    {
+        return $this->hasOne(ClientContact::class, 'clientid', 'clientid')->where('is_primary', true);
+    }
+
+    public function getContactNameAttribute(): ?string
+    {
+        if ($this->relationLoaded('primaryContact')) {
+            if ($this->primaryContact) {
+                return $this->primaryContact->name;
+            }
+        }
+
+        $primary = $this->primaryContact;
+        if ($primary) {
+            return $primary->name;
+        }
+
+        if ($this->relationLoaded('contacts')) {
+            return $this->contacts->first()?->name;
+        }
+
+        return $this->contacts()->first()?->name;
     }
 
     public function orders(): HasMany

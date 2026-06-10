@@ -19,45 +19,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ asset('js/location-picker.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-
-    @if (request()->query('iframe') == 1 || request()->query('layout') === 'modal')
-    <style>
-        .app-shell {
-            background: #fff !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            height: auto !important;
-            min-height: unset !important;
-        }
-
-        .layout-grid {
-            display: block !important;
-            grid-template-columns: none !important;
-        }
-
-        .sidebar,
-        .topbar,
-        .sidebar-backdrop {
-            display: none !important;
-        }
-
-        .main-panel {
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-
-        .content-panel {
-            padding: 1rem !important;
-        }
-
-        .panel-card {
-            border: none !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-    </style>
-    @endif
 </head>
 
 <body class="app-shell">
@@ -312,7 +273,8 @@
                     <div id="notificationsList" class="notification-list"></div>
                 </div>
                 <div class="modal-footer bg-light border-top-0 d-flex justify-content-end pt-0 px-4 pb-4">
-                    <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium" data-bs-dismiss="modal">
+                    <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium"
+                        data-bs-dismiss="modal">
                         <i class="fas fa-times btn-icon me-1"></i> Close
                     </button>
                 </div>
@@ -463,6 +425,9 @@
                 const inlineSubmit = form.getAttribute('onsubmit') || '';
                 const match = inlineSubmit.match(/confirm\((['"`])([\s\S]*?)\1\)/);
                 if (!match) return;
+                if (match[2].includes('+') || match[2].includes('this.')) {
+                    form.dataset.swalConfirmExpression = match[1] + match[2] + match[1];
+                }
                 form.dataset.swalConfirmMessage = match[2];
                 form.removeAttribute('onsubmit');
             });
@@ -477,7 +442,16 @@
                 }
 
                 event.preventDefault();
-                const isConfirmed = await window.appConfirm(form.dataset.swalConfirmMessage, {
+                let message = form.dataset.swalConfirmMessage;
+                if (form.dataset.swalConfirmExpression) {
+                    try {
+                        const fn = new Function('return (' + form.dataset.swalConfirmExpression + ')');
+                        message = fn.call(form);
+                    } catch (e) {
+                        console.error('Failed to evaluate confirm expression:', e);
+                    }
+                }
+                const isConfirmed = await window.appConfirm(message, {
                     title: 'Please Confirm',
                     icon: 'question',
                     confirmButtonText: 'OK',

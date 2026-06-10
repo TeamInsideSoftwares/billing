@@ -79,6 +79,75 @@ class InvoiceItem extends Model
                 $item->status = 'active';
             }
         });
+
+        static::created(function (self $item): void {
+            if (! empty($item->orderid)) {
+                $invoiceNumber = $item->invoice?->invoice_number ?? $item->invoiceid;
+                $item->logOrderTimeline(
+                    orderId: $item->orderid,
+                    actionType: 'invoice_item_billed',
+                    description: "Billed on Invoice #{$invoiceNumber} (Amount: {$item->amount}, Qty: {$item->quantity}, Discount: {$item->discount_amount})"
+                );
+            }
+        });
+
+        static::updated(function (self $item): void {
+            $invoiceNumber = $item->invoice?->invoice_number ?? $item->invoiceid;
+
+            if ($item->wasChanged('orderid')) {
+                $newOrderId = $item->orderid;
+                if (! empty($newOrderId)) {
+                    $item->logOrderTimeline(
+                        orderId: $newOrderId,
+                        actionType: 'invoice_item_billed',
+                        description: "Billed on Invoice #{$invoiceNumber} (Amount: {$item->amount}, Qty: {$item->quantity}, Discount: {$item->discount_amount})"
+                    );
+                }
+            } elseif (! empty($item->orderid)) {
+                $financialFields = ['quantity', 'unit_price', 'discount_percent', 'discount_amount', 'amount'];
+                $changed = false;
+                foreach ($financialFields as $field) {
+                    if ($item->wasChanged($field)) {
+                        $changed = true;
+                        break;
+                    }
+                }
+
+                if ($changed) {
+                    $item->logOrderTimeline(
+                        orderId: $item->orderid,
+                        actionType: 'invoice_item_updated',
+                        description: "Invoice item details updated on Invoice #{$invoiceNumber} (Amount: {$item->amount}, Qty: {$item->quantity}, Discount: {$item->discount_amount})"
+                    );
+                }
+            }
+        });
+
+        static::deleted(function (self $item): void {
+            if (! empty($item->orderid)) {
+                $invoiceNumber = $item->invoice?->invoice_number ?? $item->invoiceid;
+                $item->logOrderTimeline(
+                    orderId: $item->orderid,
+                    actionType: 'invoice_item_deleted',
+                    description: "Billed item removed: {$item->item_name} on Invoice #{$invoiceNumber}"
+                );
+            }
+        });
+    }
+
+    public function logOrderTimeline(string $orderId, string $actionType, string $description): void
+    {
+        OrderTimeline::create([
+            'accountid' => $this->accountid ?: (Invoice::where('invoiceid', $this->invoiceid)->value('accountid') ?? 'SYSTEM'),
+            'clientid' => $this->clientid ?: (Invoice::where('invoiceid', $this->invoiceid)->value('clientid') ?? (Order::where('orderid', $orderId)->value('clientid') ?? 'SYSTEM')),
+            'orderid' => $orderId,
+            'action_type' => $actionType,
+            'field_name' => null,
+            'old_value' => null,
+            'new_value' => null,
+            'description' => $description,
+            'created_by' => (string) (auth()->user()?->userid ?? auth()->id() ?? 'SYSTEM'),
+        ]);
     }
 
     public function getLineTotalAttribute(): mixed

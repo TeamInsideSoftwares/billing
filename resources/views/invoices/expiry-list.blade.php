@@ -37,12 +37,32 @@
                         <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="expiry_client_filter">Client</label>
                         <select name="c" id="expiry_client_filter" class="form-select">
                             <option value="">All Clients</option>
-                            @foreach ($clients as $clientOption)
-                                <option value="{{ $clientOption->clientid }}"
-                                    {{ (string) $selectedClientId === (string) $clientOption->clientid ? 'selected' : '' }}>
-                                    {{ $clientOption->business_name ?? ($clientOption->contact_name ?? 'Client') }}
-                                </option>
-                            @endforeach
+                            @php
+                                $regularClients = $clients->filter(fn($c) => strtolower((string) ($c->type ?? '')) !== 'trial');
+                                $prospectClients = $clients->filter(fn($c) => strtolower((string) ($c->type ?? '')) === 'trial');
+                            @endphp
+
+                            @if ($regularClients->isNotEmpty())
+                                <optgroup label="Regular Clients">
+                                    @foreach ($regularClients as $clientOption)
+                                        <option value="{{ $clientOption->clientid }}"
+                                            {{ (string) $selectedClientId === (string) $clientOption->clientid ? 'selected' : '' }}>
+                                            {{ $clientOption->business_name ?? ($clientOption->contact_name ?? 'Client') }}
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                            @endif
+
+                            @if ($prospectClients->isNotEmpty())
+                                <optgroup label="Prospect Clients">
+                                    @foreach ($prospectClients as $clientOption)
+                                        <option value="{{ $clientOption->clientid }}"
+                                            {{ (string) $selectedClientId === (string) $clientOption->clientid ? 'selected' : '' }}>
+                                            {{ $clientOption->business_name ?? ($clientOption->contact_name ?? 'Client') }}
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                            @endif
                         </select>
                     </div>
 
@@ -96,7 +116,7 @@
                 <li class="nav-item">
                     <a class="nav-link rounded-0 {{ $currentTab === 'trial' ? 'active' : 'text-secondary' }} d-flex align-items-center gap-1 fw-medium"
                         href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'trial', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}">
-                        Trial <span class="badge rounded-pill {{ $currentTab === 'trial' ? 'bg-primary text-white' : 'bg-secondary text-white' }}">{{ ($trialItems ?? collect())->count() }}</span>
+                        Prospect Clients <span class="badge rounded-pill {{ $currentTab === 'trial' ? 'bg-primary text-white' : 'bg-secondary text-white' }}">{{ ($trialItems ?? collect())->count() }}</span>
                     </a>
                 </li>
             @endif
@@ -132,8 +152,8 @@
                     </div>
                 @elseif($currentTab === 'trial')
                     <div class="meta-info">
-                        <strong class="text-dark">Trial items</strong>
-                        <span class="text-muted small d-block">Orders belonging to trial-type clients.</span>
+                        <strong class="text-dark">Prospect Clients</strong>
+                        <span class="text-muted small d-block">Orders belonging to prospect-type clients.</span>
                     </div>
                 @else
                     <div class="meta-info">

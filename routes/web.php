@@ -44,6 +44,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/clients/trials', 'trialClients')->name('clients.trials');
         Route::get('/clients/create', 'clientsCreate')->name('clients.create');
         Route::post('/clients', 'clientsStore')->name('clients.store');
+        Route::post('/clients/ajax-save-info', 'clientsSaveInfoAjax')->name('clients.ajax-save-info');
+        Route::post('/clients/{client}/contacts/ajax-save', 'clientsContactSaveAjax')->name('clients.contacts.ajax-save');
+        Route::delete('/clients/{client}/contacts/{contact}/ajax-delete', 'clientsContactDeleteAjax')->name('clients.contacts.ajax-delete');
         Route::patch('/clients/{client}/convert-to-regular', 'convertTrialToRegular')->name('clients.convert-to-regular');
         Route::get('/clients/{client}/documents/create', 'clientsDocumentsCreate')->name('clients.documents.create');
         Route::get('/clients/{client}/documents', 'clientsDocumentsList')->name('clients.documents.list');
@@ -180,6 +183,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/orders/{order}/file/{type}', 'ordersFile')->name('orders.file');
         // Parameterized routes
         Route::get('/orders/{order}/json', 'getOrderJson')->name('orders.json');
+        Route::get('/orders/{order}/timeline', 'ordersTimelineAjax')->name('orders.timeline');
         Route::get('/orders/{order}/edit', 'ordersEdit')->name('orders.edit');
         Route::post('/orders', 'ordersStore')->name('orders.store');
         Route::put('/orders/{order}', 'ordersUpdate')->name('orders.update');

@@ -11,12 +11,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'accountid',
     'group_name',
     'email',
-    'address_line_1',
-    'address_line_2',
+    'registered_address',
     'city',
     'state',
     'postal_code',
     'country',
+    'business_address',
+    'business_city',
+    'business_state',
+    'business_postal_code',
+    'business_country',
 ])]
 class Group extends Model
 {

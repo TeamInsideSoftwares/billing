@@ -29,7 +29,7 @@
                             </div>
                         </div>
                         <div class="col-12 col-md-12">
-                            <select id="edit_itemid" class="form-select" required>
+                            <select id="edit_itemid" class="form-select" required disabled>
                                 <option value="">Select Items</option>
                                 @php
                                 $groupedServices = $services->groupBy(fn($service) => $service->category->name ?? 'No Category');
@@ -82,7 +82,7 @@
                         <div class="col-12 col-md-6">
                             <label class="form-label small lh-sm fw-semibold text-dark mb-1">Start Date</label>
                             <div class="input-group">
-                                <input type="date" id="edit_start_date" class="form-control" readonly>
+                                <input type="date" id="edit_start_date" class="form-control" disabled>
                                 <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
                             </div>
                         </div>
@@ -222,11 +222,15 @@
                 editToggleDurationField();
                 editScheduleDirty = true;
                 if (editEndDateInput && editStartDateInput && editFrequencyInput && editDurationInput) {
-                    editEndDateInput.value = editCalculateEndDate(
+                    const newEndDate = editCalculateEndDate(
                         editStartDateInput.value || todayStr,
                         editFrequencyInput.value || '',
                         editDurationInput.value || 1
                     );
+                    editEndDateInput.value = newEndDate;
+                    if (editEndDateInput._flatpickr) {
+                        editEndDateInput._flatpickr.setDate(newEndDate, false);
+                    }
                 }
             }
 
@@ -280,8 +284,22 @@
                     editOriginalEndDate = this.dataset.endDate || maxEndDate;
                     editScheduleDirty = false;
                     editStartDateInput.value = editOriginalStartDate;
+                    if (editStartDateInput._flatpickr) {
+                        editStartDateInput._flatpickr.setDate(editOriginalStartDate, false);
+                    }
                     editEndDateInput.value = editOriginalEndDate;
-                    editDeliveryDateInput.value = this.dataset.deliveryDate || '';
+                    if (editEndDateInput._flatpickr) {
+                        editEndDateInput._flatpickr.setDate(editOriginalEndDate, false);
+                    }
+                    const deliveryDate = this.dataset.deliveryDate || '';
+                    editDeliveryDateInput.value = deliveryDate;
+                    if (editDeliveryDateInput._flatpickr) {
+                        if (deliveryDate) {
+                            editDeliveryDateInput._flatpickr.setDate(deliveryDate, false);
+                        } else {
+                            editDeliveryDateInput._flatpickr.clear();
+                        }
+                    }
                     editPopulateDocuments(this.dataset.clientId || '', this.dataset.clientDocid || '');
                     editToggleUsersField();
                     editToggleDurationField();
@@ -306,9 +324,7 @@
                             ? Math.max(1, Math.round(Number(editNoOfUsersInput.value)))
                             : null,
                         start_date: editOriginalStartDate || editStartDateInput?.value || todayStr,
-                        end_date: editScheduleDirty
-                            ? (editEndDateInput?.value || maxEndDate)
-                            : (editOriginalEndDate || editEndDateInput?.value || maxEndDate),
+                        end_date: editEndDateInput?.value || maxEndDate,
                         delivery_date: editDeliveryDateInput?.value || '',
                     };
 

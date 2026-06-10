@@ -21,11 +21,8 @@
         <dt class="text-muted">GSTIN</dt>
         <dd>{{ $group->gstin ?: 'N/A' }}</dd>
 
-        <dt class="text-muted">Address Line 1</dt>
-        <dd>{{ $group->address_line_1 ?: 'N/A' }}</dd>
-
-        <dt class="text-muted">Address Line 2</dt>
-        <dd>{{ $group->address_line_2 ?: 'N/A' }}</dd>
+        <dt class="text-muted">Registered Address</dt>
+        <dd>{{ $group->registered_address ?: 'N/A' }}</dd>
 
         <dt class="text-muted">City</dt>
         <dd>{{ $group->city ?: 'N/A' }}</dd>
@@ -38,6 +35,21 @@
 
         <dt class="text-muted">Country</dt>
         <dd>{{ $group->country ?: 'India' }}</dd>
+
+        <dt class="text-muted">Business Address</dt>
+        <dd>{{ $group->business_address ?: 'N/A' }}</dd>
+
+        <dt class="text-muted">Business City</dt>
+        <dd>{{ $group->business_city ?: 'N/A' }}</dd>
+
+        <dt class="text-muted">Business State</dt>
+        <dd>{{ $group->business_state ?: 'N/A' }}</dd>
+
+        <dt class="text-muted">Business Postal Code</dt>
+        <dd>{{ $group->business_postal_code ?: 'N/A' }}</dd>
+
+        <dt class="text-muted">Business Country</dt>
+        <dd>{{ $group->business_country ?: 'India' }}</dd>
     </dl>
 </section>
 @endsection

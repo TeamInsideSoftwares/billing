@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('services', function (Blueprint $table) {
+            $table->dropIndex(['accountid', 'billing_type']);
             $table->dropColumn('billing_type');
             $table->decimal('cost_price', 12, 2)->default(0)->after('description');
             $table->decimal('selling_price', 12, 2)->default(0)->after('cost_price');

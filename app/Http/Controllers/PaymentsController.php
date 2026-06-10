@@ -311,7 +311,9 @@ class PaymentsController extends Controller
                 $q->where('reference_number', 'like', '%'.$searchTerm.'%')
                     ->orWhereHas('client', function ($cq) use ($searchTerm) {
                         $cq->where('business_name', 'like', '%'.$searchTerm.'%')
-                            ->orWhere('contact_name', 'like', '%'.$searchTerm.'%');
+                            ->orWhereHas('contacts', function ($cqContact) use ($searchTerm) {
+                                $cqContact->where('name', 'like', '%'.$searchTerm.'%');
+                            });
                     });
             });
         }
@@ -390,8 +392,9 @@ class PaymentsController extends Controller
         $clients = Client::query()
             ->where('accountid', $accountid)
             ->regular()
+            ->with('primaryContact')
             ->orderBy('business_name')
-            ->get(['clientid', 'business_name', 'contact_name']);
+            ->get();
         $selectedClient = $clientId !== '' && $clientId !== 'all'
             ? $clients->firstWhere('clientid', $clientId)
             : null;
@@ -408,7 +411,9 @@ class PaymentsController extends Controller
                         ->orWhere('description', 'like', '%'.$searchTerm.'%')
                         ->orWhereHas('client', function ($clientQuery) use ($searchTerm) {
                             $clientQuery->where('business_name', 'like', '%'.$searchTerm.'%')
-                                ->orWhere('contact_name', 'like', '%'.$searchTerm.'%');
+                                ->orWhereHas('contacts', function ($cqContact) use ($searchTerm) {
+                                    $cqContact->where('name', 'like', '%'.$searchTerm.'%');
+                                });
                         });
                 });
             })
@@ -847,19 +852,9 @@ class PaymentsController extends Controller
         $displayTitle = $primaryInvoice?->invoice_title
             ?? $primaryInvoice?->invoice_number
             ?? $payment->paymentid;
-        $previewOnly = $request->boolean('preview');
 
-        if ($previewOnly) {
-            return view('payments.show-preview', [
-                'title' => $displayTitle,
-                'payment' => $payment,
-                'displayTitle' => $displayTitle,
-            ]);
-        }
-
-        return view('payments.show', [
+        return view('payments.show-preview', [
             'title' => $displayTitle,
-            'subtitle' => 'Payment Details',
             'payment' => $payment,
             'displayTitle' => $displayTitle,
         ]);
