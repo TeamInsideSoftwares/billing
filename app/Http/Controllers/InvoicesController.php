@@ -806,7 +806,7 @@ class InvoicesController extends Controller
             return $paymentStatus;
         };
 
-        $selectedTab = in_array($selectedTab, ['invoices', 'outstanding', 'partly_paid', 'unpaid', 'draft', 'cancelled', 'proforma', 'tax'], true)
+        $selectedTab = in_array($selectedTab, ['invoices', 'outstanding', 'partly_paid', 'unpaid', 'draft', 'cancelled', 'proforma', 'tax', 'paid'], true)
             ? $selectedTab
             : 'invoices';
         $selectedType = in_array($selectedType, ['', 'pi', 'tax'], true) ? $selectedType : '';
@@ -851,13 +851,15 @@ class InvoicesController extends Controller
             ->filter(fn (Invoice $invoice) => in_array($resolvePaymentStatus($invoice), ['partly_paid', 'unpaid'], true))
             ->values();
 
-        $filteredInvoices = $paidInvoices;
+        $filteredInvoices = $typedInvoices;
         if ($selectedTab === 'draft') {
             $filteredInvoices = $draftInvoices;
         } elseif ($selectedTab === 'cancelled') {
             $filteredInvoices = $cancelledInvoices;
         } elseif ($selectedTab === 'outstanding') {
             $filteredInvoices = $outstandingInvoices;
+        } elseif ($selectedTab === 'paid') {
+            $filteredInvoices = $paidInvoices;
         }
 
         if (request()->wantsJson() || request()->ajax()) {
@@ -947,6 +949,7 @@ class InvoicesController extends Controller
             'outstandingInvoicesCount' => $outstandingInvoices->count(),
             'partlyPaidInvoicesCount' => $partlyPaidInvoices->count(),
             'unpaidInvoicesCount' => $unpaidInvoices->count(),
+            'allInvoicesCount' => $typedInvoices->count(),
         ]);
     }
 
@@ -984,6 +987,7 @@ class InvoicesController extends Controller
                 'client',
                 'invoices:invoiceid,invoice_title,pi_number,ti_number,status,created_at',
                 'item:itemid,name',
+                'invoiceItems',
             ]);
 
         if ($selectedClientId) {
@@ -1000,6 +1004,7 @@ class InvoicesController extends Controller
             $expiryDate = $order->end_date?->copy()->startOfDay();
             $daysLeft = $expiryDate ? $today->diffInDays($expiryDate, false) : null;
             $linkedInvoice = $this->resolveActiveInvoiceForOrder($order);
+            $latestInvoiceItem = $order->invoiceItems->sortByDesc('created_at')->sortByDesc('invoice_itemid')->first();
 
             return [
                 'orderid' => (string) $order->orderid,
@@ -1026,8 +1031,8 @@ class InvoicesController extends Controller
                 'currency' => (string) ($order->client?->currency ?? 'INR'),
                 'item_name' => (string) ($order->item_name ?: $order->item?->name ?: 'Item'),
                 'item_description' => (string) ($order->item_description ?? ''),
-                'frequency' => '',
-                'duration' => null,
+                'frequency' => (string) ($latestInvoiceItem?->frequency ?? ''),
+                'duration' => $latestInvoiceItem ? (int) $latestInvoiceItem->duration : null,
                 'status' => (string) ($order->status ?? 'active'),
                 'start_date' => $order->start_date?->copy()->startOfDay(),
                 'start_date_display' => $order->start_date?->format('d M Y') ?? '-',
@@ -1085,10 +1090,7 @@ class InvoicesController extends Controller
         }
 
         return view('invoices.expiry-list', [
-            'title' => 'Expiry List',
-            'subtitle' => $selectedClientId
-                ? 'Orders filtered by selected client.'
-                : 'Orders across all clients.',
+            'title' => 'Renew/View Expiry',
             'clients' => $clients,
             'selectedClientId' => $selectedClientId,
             'selectedTab' => $selectedTab,
@@ -1233,7 +1235,7 @@ class InvoicesController extends Controller
 
         return view('invoices.create', [
             'title' => 'Create Invoice',
-            'clients' => Client::where('accountid', $accountid)->regular()->orderBy('business_name')->get(),
+            'clients' => Client::where('accountid', $accountid)->regular()->active()->orderBy('business_name')->get(),
             'services' => Service::where('accountid', $accountid)->with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
             'nextInvoiceNumber' => $nextInvoiceNumber,
@@ -1587,6 +1589,54 @@ class InvoicesController extends Controller
         ]);
     }
 
+    /**
+     * Sync invoice items for an existing invoice using a proper upsert strategy:
+     * - UPDATE rows whose invoice_itemid is present in $preparedItems
+     * - INSERT new rows that have no invoice_itemid (fires created event → timeline log)
+     * - DELETE rows that are in the DB but absent from $preparedItems (fires deleted event → timeline log)
+     *
+     * @param  array<int, array<string, mixed>>  $preparedItems
+     */
+    private function syncInvoiceItems(Invoice $invoice, array $preparedItems): void
+    {
+        $incomingIds = array_values(array_filter(
+            array_map(fn ($d) => $d['invoice_itemid'] ?? null, $preparedItems)
+        ));
+
+        // Delete rows that were removed by the user (genuine removal → fires deleted event).
+        foreach ($invoice->items as $existing) {
+            if (! in_array($existing->invoice_itemid, $incomingIds, true)) {
+                $existing->delete();
+            }
+        }
+
+        // Update or create each submitted item.
+        foreach ($preparedItems as $index => $itemData) {
+            $itemData['invoiceid'] = $invoice->invoiceid;
+            $itemData['sequence'] = $index + 1;
+            $existingId = $itemData['invoice_itemid'] ?? null;
+            unset($itemData['invoice_itemid']);
+
+            if ($existingId) {
+                $existingItem = InvoiceItem::where('invoice_itemid', $existingId)
+                    ->where('invoiceid', $invoice->invoiceid)
+                    ->first();
+
+                if ($existingItem) {
+                    // Update in place — triggers updated event which logs specific changes.
+                    $existingItem->update($itemData);
+
+                    continue;
+                }
+            }
+
+            // No matching row — genuinely new item, fire created event → "Billed on Invoice" log.
+            $itemData['accountid'] = $invoice->accountid;
+            $itemData['clientid'] = $invoice->clientid;
+            InvoiceItem::create($itemData);
+        }
+    }
+
     private function calculateInvoiceItemAmounts(array $itemData, float $taxRate): array
     {
         $quantity = $this->wholeQuantity($itemData['quantity'] ?? 1);
@@ -1917,13 +1967,12 @@ class InvoicesController extends Controller
         $validated['ti_number'] = $validated['ti_number'] ?? '';
         unset($validated['items_data']);
 
-        // Check if we're updating an existing draft
+        // Check if we're updating an existing invoice (draft or active)
         $existingDraft = null;
         if (! empty($validated['invoiceid'])) {
-            $existingDraft = Invoice::where('status', 'draft')
-                ->find($validated['invoiceid']);
+            $existingDraft = Invoice::find($validated['invoiceid']);
             if ($existingDraft) {
-                // Use draft's existing PI number
+                // Use existing PI number
                 $validated['pi_number'] = $existingDraft->pi_number;
                 if (empty($existingDraft->fy_id) && ! empty($validated['fy_id'])) {
                     $existingDraft->fy_id = $validated['fy_id'];
@@ -1983,6 +2032,7 @@ class InvoicesController extends Controller
             $taxTotal += $amounts['tax_amount'];
 
             $preparedItems[] = [
+                'invoice_itemid' => $itemData['invoice_itemid'] ?? null,
                 'invoiceid' => null,
                 'orderid' => $itemData['orderid'] ?? ($validated['orderid'] ?? null),
                 'itemid' => $itemId,
@@ -2012,20 +2062,21 @@ class InvoicesController extends Controller
         try {
             DB::transaction(function () use ($validated, $preparedItems, &$invoice, $existingDraft, $grandTotal) {
                 if ($existingDraft) {
-                    // Update existing draft
+                    // Update existing draft/invoice
                     $existingDraft->update($validated);
                     $invoice = $existingDraft;
-
-                    // Delete existing items
-                    InvoiceItem::where('invoiceid', $invoice->invoiceid)->delete();
                 } else {
                     // Create new invoice
                     $invoice = Invoice::create($validated);
                 }
 
-                foreach ($preparedItems as $itemData) {
-                    $itemData['invoiceid'] = $invoice->invoiceid;
-                    InvoiceItem::create($itemData);
+                if ($existingDraft) {
+                    $this->syncInvoiceItems($invoice, $preparedItems);
+                } else {
+                    foreach ($preparedItems as $itemData) {
+                        $itemData['invoiceid'] = $invoice->invoiceid;
+                        InvoiceItem::create($itemData);
+                    }
                 }
 
                 $this->syncInvoiceLedgerEntry($invoice, $grandTotal);
@@ -2258,6 +2309,7 @@ class InvoicesController extends Controller
                 $calculatedTaxTotal += (float) $amounts['tax_amount'];
 
                 $draftItems[] = [
+                    'invoice_itemid' => $itemData['invoice_itemid'] ?? null,
                     'orderid' => $itemData['orderid'] ?? $orderId,
                     'itemid' => $itemData['itemid'] ?? null,
                     'item_name' => $itemName,
@@ -2278,10 +2330,7 @@ class InvoicesController extends Controller
                 ];
             }
 
-            $draft->items()->delete();
-            if (! empty($draftItems)) {
-                $draft->items()->createMany($draftItems);
-            }
+            $this->syncInvoiceItems($draft, $draftItems);
         }
 
         if ($rawItemsData !== null) {
@@ -2622,7 +2671,9 @@ class InvoicesController extends Controller
                     ->delete();
 
                 // Delete related invoice items
-                $invoice->items()->delete();
+                foreach ($invoice->items as $item) {
+                    $item->delete();
+                }
 
                 // Delete the invoice itself
                 $invoice->delete();

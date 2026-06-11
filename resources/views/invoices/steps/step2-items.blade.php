@@ -61,211 +61,214 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
     <input type="hidden" name="invoice_number" value="{{ $initialHeaderNumberStep2 }}">
     <input type="hidden" name="items_data" id="items_data" value="">
 
-    <div class="row g-3 align-items-stretch mb-3">
-        <!-- Invoice Details -->
-        <div class="col-12 col-lg-4">
-            <div class="bg-light p-4 rounded-3 border h-100">
-                <h5 class="fw-semibold text-black mb-3">Invoice Details</h5>
-                <div class="row g-2">
-                    <div class="col-12">
-                        <label for="invoice_title" class="form-label small lh-sm fw-semibold text-dark mb-1">Invoice
-                            Title</label>
-                        <input type="text" id="invoice_title" name="invoice_title" class="form-control"
-                            placeholder="e.g. Website Development - Monthly Subscription" required>
-                        <div id="invoiceTitleError" class="text-danger small mt-1 is-hidden">Invoice title is required.
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label for="issue_date" class="form-label small lh-sm fw-semibold text-dark mb-1">Issue
-                            Date</label>
-                        <input type="date" id="issue_date" name="issue_date" class="form-control" required
-                            min="{{ $invoiceDateBounds['min_date'] }}"
-                            max="{{ $invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date'] }}"
-                            value="{{ old('issue_date', request('d') && $invoice ? $invoice->issue_date?->format('Y-m-d') : ($invoiceDateBounds['default_issue_date'] ?? date('Y-m-d'))) }}">
-                    </div>
-                    <div class="col-6">
-                        <label for="due_date" class="form-label small lh-sm fw-semibold text-dark mb-1">Due Date</label>
-                        <input type="date" id="due_date" name="due_date" class="form-control" required
-                            min="{{ $invoiceDateBounds['min_date'] }}"
-                            max="{{ $invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date'] }}"
-                            value="{{ old('due_date', request('d') && $invoice ? $invoice->due_date?->format('Y-m-d') : ($invoiceDateBounds['default_due_date'] ?? date('Y-m-d', strtotime('+7 days')))) }}">
-                    </div>
-                    <div class="col-12">
-                        <label for="notes" class="form-label small lh-sm fw-semibold text-dark mb-1">Notes</label>
-                        <textarea id="notes" name="notes" rows="1" class="form-control"
-                            placeholder="Optional notes">{{ old('notes', request('d') && $invoice ? $invoice->notes : '') }}</textarea>
-                    </div>
-                </div>
+    <!-- Invoice Details (Full Width Card) -->
+    <div class="bg-light p-2 rounded-3 mb-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-5">
+                <label for="invoice_title" class="form-label small lh-sm fw-semibold text-dark mb-1">Invoice
+                    Title</label>
+                <input type="text" id="invoice_title" name="invoice_title" class="form-control"
+                    placeholder="e.g. Website Development - Monthly Subscription" required>
+                <div id="invoiceTitleError" class="text-danger small mt-1 d-none">Invoice title is required.</div>
+            </div>
+            <div class="col-6 col-md-2">
+                <label for="issue_date" class="form-label small lh-sm fw-semibold text-dark mb-1">Issue Date</label>
+                <input type="date" id="issue_date" name="issue_date" class="form-control" required
+                    min="{{ $invoiceDateBounds['min_date'] }}"
+                    max="{{ $invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date'] }}"
+                    value="{{ old('issue_date', request('d') && $invoice ? $invoice->issue_date?->format('Y-m-d') : ($invoiceDateBounds['default_issue_date'] ?? date('Y-m-d'))) }}">
+            </div>
+            <div class="col-6 col-md-2">
+                <label for="due_date" class="form-label small lh-sm fw-semibold text-dark mb-1">Due Date</label>
+                <input type="date" id="due_date" name="due_date" class="form-control" required
+                    min="{{ $invoiceDateBounds['min_date'] }}"
+                    max="{{ $invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date'] }}"
+                    value="{{ old('due_date', request('d') && $invoice ? $invoice->due_date?->format('Y-m-d') : ($invoiceDateBounds['default_due_date'] ?? date('Y-m-d', strtotime('+7 days')))) }}">
+            </div>
+            <div class="col-12 col-md-3">
+                <label for="notes" class="form-label small lh-sm fw-semibold text-dark mb-1">Notes</label>
+                <input type="text" id="notes" name="notes" class="form-control" placeholder="Optional notes"
+                    value="{{ old('notes', request('d') && $invoice ? $invoice->notes : '') }}">
             </div>
         </div>
+    </div>
 
-        <!-- Select Items -->
-        <div class="col-12 col-lg-8">
-            <div class="bg-light p-4 rounded-3 border h-100">
-                <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
-                    <div>
-                        <h5 class="fw-semibold text-black mb-0">Select Items</h5>
-                        <p class="text-muted small mb-0">Items are loaded from this client's orders.</p>
-                    </div>
-                    <button type="button" id="toggleAddItemFormBtn" class="btn btn-link text-decoration-none p-0">
-                        <i class="fas fa-plus"></i>
-                        <span>Add More Items</span>
-                    </button>
+    <div class="row g-2">
+        <!-- Left Column: col-12 col-lg-3 -->
+        <div class="col-12 col-lg-3">
+            <!-- Select/Add Items Form -->
+            <div class="bg-DarkLight p-2 rounded-3 h-100" id="addItemFormCard">
+                <div class="mb-1">
+                    <h5 class="fw-semibold small lh-sm text-primary mb-0" id="addItemFormTitle">Add Items</h5>
                 </div>
-
-                <div class="card bg-light border-0 p-3" id="addItemFormCard">
-                    <div class="row g-2">
-                        <div class="col-12 col-md-5">
-                            <label for="manual_item_itemid"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">Item</label>
-                            <div class="input-group">
-                                <select id="manual_item_itemid" class="form-select" style="flex: 1;">
-                                    <option value="">Select item</option>
-
-                                    @foreach ($orderItemsFlat as $orderItem)
-                                    <option value="{{ $orderItem['itemid'] }}"
-                                        data-orderid="{{ $orderItem['orderid'] }}"
-                                        data-selling-price="{{ $orderItem['unit_price'] ?? 0 }}"
-                                        data-tax-rate="{{ $orderItem['tax_rate'] ?? 0 }}"
-                                        data-user-wise="{{ (int) ($orderItem['requires_user_fields'] ?? 0) }}"
-                                        data-description="{{ $orderItem['item_description'] ?? '' }}"
-                                        data-item-name="{{ $orderItem['item_name'] ?? '' }}">
-                                        {{ $orderItem['display_order_number'] ?? $orderItem['order_number'] ??
-                                        $orderItem['orderid'] ?? 'Order' }} -
-                                        {{ $orderItem['item_name'] ?? 'Item' }}
-                                    </option>
-                                    @endforeach
-                                </select>
-                                <button type="button" id="openAddOrderModalBtn"
-                                    class="btn btn-outline-primary bg-white text-primary fw-medium"
-                                    title="Create new order">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="col-6 col-md-2">
-                            <label for="manual_item_quantity"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">Qty</label>
-                            <input type="number" id="manual_item_quantity" class="form-control" value="1" min="1"
-                                step="1">
-                        </div>
-                        <div class="col-6 col-md-2">
-                            <label for="manual_item_unit_price"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">Unit Price</label>
-                            <input type="number" id="manual_item_unit_price" class="form-control" min="0" step="0.01">
-                        </div>
-                        <div class="col-6 col-md-2">
-                            <label for="manual_item_discount"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">Disc %</label>
-                            <input type="number" id="manual_item_discount" class="form-control" min="0" max="100"
-                                step="0.01" value="0">
-                        </div>
-                        @if ($account->allow_multi_taxation)
-                        <div class="col-6 col-md-2">
-                            <label for="manual_item_tax_rate"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">Tax</label>
-                            <select id="manual_item_tax_rate" class="form-control">
-                                <option value="0">No Tax</option>
-                                @foreach ($taxes as $tax)
-                                <option value="{{ $tax->rate }}">{{ $tax->tax_name }}
-                                    ({{ number_format($tax->rate, 0) }}%)
+                <div class="row g-2">
+                    <div class="col-12">
+                        <label for="manual_item_itemid"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Item</label>
+                        <div class="input-group">
+                            <select id="manual_item_itemid" class="form-select" style="flex: 1;">
+                                <option value="">Select item</option>
+                                @foreach ($orderItemsFlat as $orderItem)
+                                <option value="{{ $orderItem['itemid'] }}" data-orderid="{{ $orderItem['orderid'] }}"
+                                    data-selling-price="{{ $orderItem['unit_price'] ?? 0 }}"
+                                    data-tax-rate="{{ $orderItem['tax_rate'] ?? 0 }}"
+                                    data-user-wise="{{ (int) ($orderItem['requires_user_fields'] ?? 0) }}"
+                                    data-description="{{ $orderItem['item_description'] ?? '' }}"
+                                    data-item-name="{{ $orderItem['item_name'] ?? '' }}">
+                                    {{ $orderItem['display_order_number'] ?? $orderItem['order_number'] ??
+                                    $orderItem['orderid'] ?? 'Order' }} -
+                                    {{ $orderItem['item_name'] ?? 'Item' }}
                                 </option>
                                 @endforeach
                             </select>
-                        </div>
-                        @else
-                        <input type="hidden" id="manual_item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
-                        @endif
-                        <div id="manual_item_users_wrap" class="col-6 col-md-1 is-hidden">
-                            <label for="manual_item_users"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">Users</label>
-                            <input type="number" id="manual_item_users" class="form-control" value="1" min="1" step="1">
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <label for="manual_item_frequency"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">Freq</label>
-                            <select id="manual_item_frequency" class="form-select">
-                                <option value="">None</option>
-                                <option value="One-Time">One-Time</option>
-                                <option value="Day(s)">Day(s)</option>
-                                <option value="Week(s)">Week(s)</option>
-                                <option value="Month(s)">Month(s)</option>
-                                <option value="Quarter(s)">Quarter(s)</option>
-                                <option value="Year(s)">Year(s)</option>
-                            </select>
-                        </div>
-                        <div id="manual_item_duration_wrap" class="col-6 col-md-3 is-hidden">
-                            <label for="manual_item_duration"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">Dur</label>
-                            <input type="number" id="manual_item_duration" class="form-control" min="0" step="1"
-                                placeholder="e.g. 12">
-                        </div>
-                        <div id="manual_item_start_date_wrap" class="col-6 col-md-3">
-                            <label for="manual_item_start_date"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">Start</label>
-                            <input type="date" id="manual_item_start_date" class="form-control">
-                        </div>
-                        <div id="manual_item_end_date_wrap" class="col-6 col-md-3">
-                            <label for="manual_item_end_date"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">End</label>
-                            <input type="date" id="manual_item_end_date" class="form-control">
+                            <button type="button" id="openAddOrderModalBtn"
+                                class="btn btn-outline-primary bg-white text-primary fw-medium"
+                                title="Create new order">
+                                <i class="fas fa-plus"></i>
+                            </button>
                         </div>
                     </div>
-                    <div class="d-flex align-items-start gap-2 mt-3">
-                        <textarea id="manual_item_description" class="form-control" rows="1"
-                            placeholder="Description (optional)" style="flex: 1;"></textarea>
+
+                    <div class="col-12">
+                        <label for="manual_item_description"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Description</label>
+                        <textarea id="manual_item_description" class="form-control" rows="3"
+                            placeholder="Description (optional)"></textarea>
+                    </div>
+
+                    <div class="col-4">
+                        <label for="manual_item_quantity"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Qty</label>
+                        <input type="number" id="manual_item_quantity" class="form-control" value="1" min="1" step="1">
+                    </div>
+                    <div class="col-4">
+                        <label for="manual_item_unit_price"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Price</label>
+                        <input type="number" id="manual_item_unit_price" class="form-control" min="0" step="0.01">
+                    </div>
+                    <div class="col-4">
+                        <label for="manual_item_discount" class="form-label small lh-sm fw-semibold text-dark mb-1">Disc
+                            %</label>
+                        <input type="number" id="manual_item_discount" class="form-control" min="0" max="100"
+                            step="0.01" value="0">
+                    </div>
+
+                    @if ($account->allow_multi_taxation)
+                    <div class="col-6">
+                        <label for="manual_item_tax_rate"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Tax</label>
+                        <select id="manual_item_tax_rate" class="form-select">
+                            <option value="0">No Tax</option>
+                            @foreach ($taxes as $tax)
+                            <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @else
+                    <input type="hidden" id="manual_item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
+                    @endif
+
+                    <div id="manual_item_users_wrap" class="col-6 d-none">
+                        <label for="manual_item_users"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Users</label>
+                        <input type="number" id="manual_item_users" class="form-control" value="1" min="1" step="1">
+                    </div>
+
+                    <div class="col-6">
+                        <label for="manual_item_frequency"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Freq</label>
+                        <select id="manual_item_frequency" class="form-select">
+                            <option value="">None</option>
+                            <option value="One-Time">One-Time</option>
+                            <option value="Day(s)">Day(s)</option>
+                            <option value="Week(s)">Week(s)</option>
+                            <option value="Month(s)">Month(s)</option>
+                            <option value="Quarter(s)">Quarter(s)</option>
+                            <option value="Year(s)">Year(s)</option>
+                        </select>
+                    </div>
+
+                    <div id="manual_item_duration_wrap" class="col-6 d-none">
+                        <label for="manual_item_duration"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Dur</label>
+                        <input type="number" id="manual_item_duration" class="form-control" min="0" step="1"
+                            placeholder="e.g. 12">
+                    </div>
+
+                    <div id="manual_item_start_date_wrap" class="col-6">
+                        <label for="manual_item_start_date"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Start</label>
+                        <input type="date" id="manual_item_start_date" class="form-control">
+                    </div>
+
+                    <div id="manual_item_end_date_wrap" class="col-6">
+                        <label for="manual_item_end_date"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">End</label>
+                        <input type="date" id="manual_item_end_date" class="form-control">
+                    </div>
+
+                    <div class="col-12 d-flex justify-content-end mt-2">
                         <button type="button" id="addManualItemBtn"
-                            class="btn btn-outline-primary btn-primary text-white fw-medium">Add</button>
+                            class="btn btn-outline-primary btn-primary text-white fw-medium w-100">
+                            Add Item <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Items Table -->
-    <div class="card border-0 shadow-sm overflow-hidden">
-        <div class="table-responsive">
-            <table class="table mainTable align-middle mb-0 is-hidden" id="manualItemsTable">
-                <thead class="table-light">
-                    <tr>
-                        <th>Item</th>
-                        <th class="text-center">Qty</th>
-                        <th class="text-center">Price ({{ $selectedClientCurrency }})</th>
-                        <th class="text-center">Disc %</th>
-                        @if ($account->allow_multi_taxation)
-                        <th class="text-center">Tax %</th>
-                        @endif
-                        <th id="manualUsersHeader" class="is-hidden text-center">Users</th>
-                        <th>Freq</th>
-                        <th id="manualDurationHeader" class="is-hidden text-center">Dur</th>
-                        <th id="manualStartHeader" class="is-hidden">Start</th>
-                        <th id="manualEndHeader" class="is-hidden">End</th>
-                        <th class="text-right">Total ({{ $selectedClientCurrency }})</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="manualItemsBody"></tbody>
-            </table>
+        <!-- Right Column: col-12 col-lg-9 -->
+        <div class="col-12 col-lg-9">
+            <div id="invoiceItemsTableWrap" class="order-create-table-wrap bg-DarkLight p-3 h-100 rounded-3 mt-0">
+                <div class="card overflow-hidden">
+                    <div class="table-responsive">
+                        <table class="table table-striped mainTable align-middle mb-0 d-none" id="manualItemsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Item</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-center">Price ({{ $selectedClientCurrency }})</th>
+                                    <th class="text-center">Disc %</th>
+                                    @if ($account->allow_multi_taxation)
+                                    <th class="text-center">Tax %</th>
+                                    @endif
+                                    <th id="manualUsersHeader" class="d-none text-center">Users</th>
+                                    <th>Freq</th>
+                                    <th id="manualDurationHeader" class="d-none text-center">Dur</th>
+                                    <th id="manualStartHeader" class="d-none">Start</th>
+                                    <th id="manualEndHeader" class="d-none">End</th>
+                                    <th class="text-right">Total ({{ $selectedClientCurrency }})</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manualItemsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="manualItemsEmpty" class="alert alert-light border mt-3 mb-0">No items added yet.</div>
+
+                <div id="manualOrderSummary" class="bg-light border rounded-3 p-3 d-none mt-3 ms-auto"
+                    style="max-width: 320px;">
+                    <div class="d-flex justify-content-between small mb-1 text-secondary"><span>Subtotal</span><strong
+                            id="manualSubtotal">0</strong></div>
+                    <div class="d-flex justify-content-between small mb-1 text-secondary"><span>Discount</span><strong
+                            id="manualDiscountTotal">0</strong></div>
+                    <div class="d-flex justify-content-between small mb-1 text-secondary"><span>Tax</span><strong
+                            id="manualTaxTotal">0</strong></div>
+                    <div class="d-flex justify-content-between small border-top pt-2 fw-bold text-dark">
+                        <span>Total</span><strong id="manualGrandTotal">0</strong></div>
+                </div>
+            </div>
         </div>
-    </div>
-    <div id="manualItemsEmpty" class="alert alert-light border mt-3 mb-0">No items added yet.</div>
-
-    <div id="manualOrderSummary" class="bg-light border rounded-3 p-3 is-hidden mt-3 ms-auto" style="max-width: 320px;">
-        <div class="d-flex justify-content-between small mb-1 text-secondary"><span>Subtotal</span><strong
-                id="manualSubtotal">0</strong></div>
-        <div class="d-flex justify-content-between small mb-1 text-secondary"><span>Discount</span><strong
-                id="manualDiscountTotal">0</strong></div>
-        <div class="d-flex justify-content-between small mb-1 text-secondary"><span>Tax</span><strong
-                id="manualTaxTotal">0</strong></div>
-        <div class="d-flex justify-content-between small border-top pt-2 fw-bold text-dark"><span>Total</span><strong
-                id="manualGrandTotal">0</strong></div>
     </div>
 
     <div class="d-flex align-items-center justify-content-between mt-3">
         <button type="button" id="btnBackToStep1" class="btn btn-outline-primary bg-white text-primary fw-medium">
             <i class="fas fa-times btn-icon me-1"></i> Back
         </button>
-        <button type="submit" id="btnNextToStep3" class="btn btn-outline-primary btn-primary text-white fw-medium">
+        <button type="button" id="btnNextToStep3" class="btn btn-outline-primary btn-primary text-white fw-medium">
             Save & Next <i class="fas fa-arrow-right btn-icon ms-1"></i>
         </button>
     </div>
@@ -300,7 +303,8 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
         const fallbackTiNumber = "{{ $nextTaxInvoiceNumber ?? $nextInvoiceNumber }}";
         const accountHasUsers = @json((bool)($account -> have_users ?? false));
         const ONE_TIME_MAX_END_DATE = '2099-12-31';
-        const orderItemsRouteTemplate = @json(route('invoices.order-items', ['orderid' => '__ORDERID__']));
+        const rawOrderItemsRoute = @json(route('invoices.order-items', ['orderid' => '__ORDERID__']));
+        const orderItemsRouteTemplate = rawOrderItemsRoute.startsWith('http') ? new URL(rawOrderItemsRoute).pathname : rawOrderItemsRoute;
         const TAX_READY_TOAST_KEY = 'invoice_tax_ready_toast';
         let draftPiNumber = '';
         let draftTiNumber = '';
@@ -503,12 +507,12 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             const usersInput = document.getElementById('manual_item_users');
             if (!wrap || !usersInput) return;
             if (!accountHasUsers) {
-                wrap.classList.add('is-hidden');
+                wrap.classList.add('d-none');
                 usersInput.value = 1;
                 return;
             }
             const show = isManualItemUserWise();
-            wrap.classList.toggle('is-hidden', !show);
+            wrap.classList.toggle('d-none', !show);
             if (!show) usersInput.value = 1;
         }
         toggleManualUsersField();
@@ -602,9 +606,9 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             if (!manualDurationWrap || !manualDurationInput || !manualStartWrap || !manualEndWrap || !
                 manualStartInput || !manualEndInput) return;
             const showRecurring = isRecurringFrequency(manualFrequencyInput?.value || '');
-            manualDurationWrap.classList.toggle('is-hidden', !showRecurring);
-            manualStartWrap.classList.remove('is-hidden');
-            manualEndWrap.classList.remove('is-hidden');
+            manualDurationWrap.classList.toggle('d-none', !showRecurring);
+            manualStartWrap.classList.remove('d-none');
+            manualEndWrap.classList.remove('d-none');
             if (showRecurring) {
                 const durationValue = Number(manualDurationInput.value || 0);
                 if (!manualDurationInput.value || durationValue <= 0) {
@@ -646,10 +650,10 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             const durationHeader = document.getElementById('manualDurationHeader');
             const startHeader = document.getElementById('manualStartHeader');
             const endHeader = document.getElementById('manualEndHeader');
-            if (usersHeader) usersHeader.classList.toggle('is-hidden', !showUserColumns);
-            if (durationHeader) durationHeader.classList.toggle('is-hidden', !showRecurringColumns);
-            if (startHeader) startHeader.classList.toggle('is-hidden', !showRecurringColumns);
-            if (endHeader) endHeader.classList.toggle('is-hidden', !showRecurringColumns);
+            if (usersHeader) usersHeader.classList.toggle('d-none', !showUserColumns);
+            if (durationHeader) durationHeader.classList.toggle('d-none', !showRecurringColumns);
+            if (startHeader) startHeader.classList.toggle('d-none', !showRecurringColumns);
+            if (endHeader) endHeader.classList.toggle('d-none', !showRecurringColumns);
 
             return {
                 showRecurringColumns,
@@ -660,7 +664,9 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
         function resetManualItemForm() {
             editingManualItemIndex = null;
             currentOrderDatePrefill = null;
-            addManualItemBtn.textContent = 'Add';
+            addManualItemBtn.innerHTML = 'Add Item <i class="fas fa-arrow-right btn-icon ms-1"></i>';
+            const formTitle = document.getElementById('addItemFormTitle');
+            if (formTitle) formTitle.textContent = 'Add Items';
             document.getElementById('manual_item_itemid').value = '';
             document.getElementById('manual_item_quantity').value = '1';
             document.getElementById('manual_item_unit_price').value = '';
@@ -678,7 +684,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
         function openAddItemForm() {
             if (addItemFormCard) {
-                addItemFormCard.classList.remove('is-hidden');
+                addItemFormCard.classList.remove('d-none');
             }
             if (toggleAddItemFormBtn) {
                 toggleAddItemFormBtn.innerHTML =
@@ -748,6 +754,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             };
 
             if (editingManualItemIndex !== null && manualItems[editingManualItemIndex]) {
+                newItem.invoice_itemid = manualItems[editingManualItemIndex].invoice_itemid || null;
                 manualItems[editingManualItemIndex] = newItem;
             } else {
                 manualItems.push(newItem);
@@ -759,17 +766,17 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
         function renderManualItems() {
             if (manualItems.length === 0) {
-                manualItemsTable.classList.add('is-hidden');
-                manualItemsEmpty.classList.remove('is-hidden');
-                manualSummary.classList.add('is-hidden');
+                manualItemsTable.classList.add('d-none');
+                manualItemsEmpty.classList.remove('d-none');
+                manualSummary.classList.add('d-none');
                 btnNextToStep3.disabled = true;
                 syncManualHeaders();
                 return;
             }
 
-            manualItemsTable.classList.remove('is-hidden');
-            manualItemsEmpty.classList.add('is-hidden');
-            manualSummary.classList.remove('is-hidden');
+            manualItemsTable.classList.remove('d-none');
+            manualItemsEmpty.classList.add('d-none');
+            manualSummary.classList.remove('d-none');
             btnNextToStep3.disabled = false;
             const headerState = syncManualHeaders();
             const showRecurringColumns = headerState.showRecurringColumns;
@@ -808,12 +815,12 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                 @if ($account->allow_multi_taxation)
                     <td class="text-center">${item.tax_rate}%</td>
                 @endif
-                <td class="text-center ${showUserColumns ? '' : 'is-hidden'}">${rowUsers ? Math.max(1, Number(item.no_of_users || 1)) : '-'}</td>
+                <td class="text-center ${showUserColumns ? '' : 'd-none'}">${rowUsers ? Math.max(1, Number(item.no_of_users || 1)) : '-'}</td>
                 <td>${item.frequency ? (frequencyLabels[item.frequency] || item.frequency) : '-'}</td>
-                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${rowRecurring ? (item.duration || '-') : '-'}</td>
-                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${(rowRecurring || rowHasDates) ? formatDateToDisplay(item.start_date) : '-'}</td>
-                <td class="text-center ${showRecurringColumns ? '' : 'is-hidden'}">${(rowRecurring || rowHasDates) ? formatDateToDisplay(item.end_date) : '-'}</td>
-                <td class="text-center">${formatCurrency(Math.max(0, Number(item.discount_amount || 0) || Number(item.line_total || 0)))}</td>
+                <td class="text-center ${showRecurringColumns ? '' : 'd-none'}">${rowRecurring ? (item.duration || '-') : '-'}</td>
+                <td class="text-center ${showRecurringColumns ? '' : 'd-none'}">${(rowRecurring || rowHasDates) ? formatDateToDisplay(item.start_date) : '-'}</td>
+                <td class="text-center ${showRecurringColumns ? '' : 'd-none'}">${(rowRecurring || rowHasDates) ? formatDateToDisplay(item.end_date) : '-'}</td>
+                <td class="text-center">${formatCurrency(item.discount_amount)}</td>
                 <td class="text-end">
                     <div class="tableActionButton d-inline-flex gap-1">
                         <button type="button" class="bg03 color03 border-0 edit-item-btn" data-index="${index}">Edit</button>
@@ -832,7 +839,9 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
                     openAddItemForm();
                     editingManualItemIndex = index;
-                    addManualItemBtn.textContent = 'Update';
+                    addManualItemBtn.innerHTML = 'Update Item <i class="fas fa-arrow-right btn-icon ms-1"></i>';
+                    const formTitle = document.getElementById('addItemFormTitle');
+                    if (formTitle) formTitle.textContent = 'Edit Item';
 
                     const itemSelect = document.getElementById('manual_item_itemid');
                     itemSelect.value = item.itemid || '';
@@ -911,7 +920,8 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             }
         }
 
-        btnNextToStep3.addEventListener('click', function () {
+        btnNextToStep3.addEventListener('click', function (e) {
+            e.preventDefault();
             if (manualItems.length === 0) {
                 alert('Please add at least one item.');
                 return;
@@ -925,12 +935,12 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
             const invoiceTitle = invoiceTitleInput.value;
             if (!invoiceTitle.trim()) {
-                invoiceTitleError.style.display = 'block';
+                invoiceTitleError.classList.remove('d-none');
                 invoiceTitleInput.focus();
                 return;
             }
 
-            invoiceTitleError.style.display = 'none';
+            invoiceTitleError.classList.add('d-none');
 
             // Save items to hidden input
             itemsDataInput.value = JSON.stringify(manualItems);
@@ -939,7 +949,9 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             const dueDateValue = document.getElementById('due_date')?.value || '';
             const notesValue = document.getElementById('notes')?.value || '';
 
-            fetch("{{ route('invoices.save-draft') }}", {
+            const saveRouteUrl = "{{ route('invoices.save-draft') }}";
+            const saveUrlPath = saveRouteUrl.startsWith('http') ? new URL(saveRouteUrl).pathname : saveRouteUrl;
+            fetch(saveUrlPath, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -997,7 +1009,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
         invoiceTitleInput.addEventListener('input', function () {
             if (this.value.trim()) {
-                invoiceTitleError.style.display = 'none';
+                invoiceTitleError.classList.add('d-none');
             }
         });
 
@@ -1005,8 +1017,9 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
         function loadItems() {
             if (!draftId) return;
 
-            const draftUrl = new URL("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace(
-                '__CLIENTID__', clientId), window.location.origin);
+            const routeUrl = "{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}";
+            const urlPath = routeUrl.startsWith('http') ? new URL(routeUrl).pathname : routeUrl;
+            const draftUrl = new URL(urlPath.replace('__CLIENTID__', clientId), window.location.origin);
             draftUrl.searchParams.set('d', draftId);
 
             fetch(draftUrl.toString())
@@ -1016,6 +1029,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                     if (data.draft) {
                         if (data.draft.items && data.draft.items.length > 0) {
                             manualItems = data.draft.items.map(item => ({
+                                invoice_itemid: item.invoice_itemid || null,
                                 orderid: item.orderid || null,
                                 itemid: item.itemid,
                                 item_name: item.item_name,
@@ -1040,6 +1054,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
                         if (data.draft.invoice_title) {
                             invoiceTitleInput.value = data.draft.invoice_title;
+                            invoiceTitleError.classList.add('d-none');
                         }
                         if (data.draft.orderid) {
                             const hiddenOrderIdInput = document.getElementById('orderid');
@@ -1071,10 +1086,10 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
         // Toggle form visibility
         function toggleAddItemForm() {
             if (addItemFormCard) {
-                addItemFormCard.classList.toggle('is-hidden');
+                addItemFormCard.classList.toggle('d-none');
             }
             if (toggleAddItemFormBtn) {
-                const isHidden = addItemFormCard ? addItemFormCard.classList.contains('is-hidden') : true;
+                const isHidden = addItemFormCard ? addItemFormCard.classList.contains('d-none') : true;
                 toggleAddItemFormBtn.innerHTML = isHidden ?
                     '<i class="fas fa-plus"></i> Add More Items' :
                     '<i class="fas fa-times"></i> Cancel';
@@ -1087,11 +1102,19 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
         // Initialize
         if (toggleAddItemFormBtn) {
-            toggleAddItemFormBtn.classList.add('is-hidden');
+            toggleAddItemFormBtn.classList.add('d-none');
         }
         if (addItemFormCard) {
-            addItemFormCard.classList.remove('is-hidden');
+            addItemFormCard.classList.remove('d-none');
         }
+
+        const invoiceForm = document.getElementById('invoiceForm');
+        if (invoiceForm) {
+            invoiceForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+            });
+        }
+
         loadItems();
         updateStep2HeaderNumber();
 
@@ -1103,29 +1126,132 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                     alert('Please select a client before continuing.');
                     return;
                 }
-                const iframe = document.getElementById('addOrderIframe');
-                if (iframe) {
-                    iframe.src = "{{ route('orders.create') }}?c=" + encodeURIComponent(clientId) +
-                        "&iframe=1";
+                const modalEl = document.getElementById('editOrderModal');
+                if (!modalEl) return;
+                
+                const editModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                const editForm = document.getElementById('editOrderForm');
+                const editClientidInput = document.getElementById('edit_clientid');
+                const editClientNameInput = document.getElementById('editClientName');
+                const editOrderNumberEl = document.getElementById('editOrderNumber');
+                const editItemSelect = document.getElementById('edit_itemid');
+                const editDescriptionInput = document.getElementById('edit_item_description');
+                const editQuantityInput = document.getElementById('edit_quantity');
+                const editNoOfUsersInput = document.getElementById('edit_no_of_users');
+                const editFrequencyInput = document.getElementById('edit_frequency');
+                const editDurationInput = document.getElementById('edit_duration');
+                const editStartDateInput = document.getElementById('edit_start_date');
+                const editEndDateInput = document.getElementById('edit_end_date');
+                const editDeliveryDateInput = document.getElementById('edit_delivery_date');
+                const editClientDocidSelect = document.getElementById('edit_client_docid');
+                const submitBtn = editForm ? editForm.querySelector('button[type="submit"]') : null;
+                const methodInput = editForm ? editForm.querySelector('input[name="_method"]') : null;
+                const modalTitle = document.getElementById('editOrderModalLabel');
+
+                // Set to Add Mode
+                if (editForm) {
+                    editForm.action = "{{ route('orders.store') }}";
                 }
-                const modalEl = document.getElementById('addOrderModal');
-                if (modalEl) {
-                    let modal = bootstrap.Modal.getInstance(modalEl);
-                    if (!modal) {
-                        modal = new bootstrap.Modal(modalEl);
+                if (methodInput) {
+                    methodInput.disabled = true; // disable PUT method input
+                }
+                
+                if (modalTitle) {
+                    modalTitle.innerHTML = 'Add Order';
+                }
+                if (editOrderNumberEl) {
+                    editOrderNumberEl.textContent = '';
+                }
+                if (submitBtn) {
+                    submitBtn.innerHTML = 'Add Order <i class="fas fa-arrow-right btn-icon ms-1"></i>';
+                }
+
+                // Prefill Client
+                if (editClientidInput) {
+                    editClientidInput.value = clientId;
+                }
+                if (editClientNameInput) {
+                    editClientNameInput.value = "{{ $selectedClientName }}";
+                }
+
+                // Reset/Enable fields
+                if (editItemSelect) {
+                    editItemSelect.disabled = false;
+                    editItemSelect.value = '';
+                }
+                if (editDescriptionInput) {
+                    editDescriptionInput.value = '';
+                }
+                if (editQuantityInput) {
+                    editQuantityInput.value = 1;
+                }
+                if (editNoOfUsersInput) {
+                    editNoOfUsersInput.value = '';
+                }
+                if (editFrequencyInput) {
+                    editFrequencyInput.value = 'One-Time';
+                    editFrequencyInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                if (editDurationInput) {
+                    editDurationInput.value = 1;
+                }
+
+                if (editStartDateInput) {
+                    editStartDateInput.disabled = false;
+                    editStartDateInput.value = "{{ date('Y-m-d') }}";
+                    if (editStartDateInput._flatpickr) {
+                        editStartDateInput._flatpickr.setDate("{{ date('Y-m-d') }}", false);
                     }
-                    modal.show();
                 }
+                if (editEndDateInput) {
+                    editEndDateInput.value = '2099-12-31';
+                    if (editEndDateInput._flatpickr) {
+                        editEndDateInput._flatpickr.setDate('2099-12-31', false);
+                    }
+                }
+                if (editDeliveryDateInput) {
+                    editDeliveryDateInput.value = '';
+                    if (editDeliveryDateInput._flatpickr) {
+                        editDeliveryDateInput._flatpickr.clear();
+                    }
+                }
+
+                // Populate client documents dynamically via AJAX
+                if (editClientDocidSelect) {
+                    editClientDocidSelect.innerHTML = '<option value="">Select</option>';
+                    const documentsRoute = "{{ route('clients.documents.list', ['client' => '__CLIENT__']) }}".replace('__CLIENT__', clientId);
+                    fetch(documentsRoute)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success && data.documents) {
+                                data.documents.forEach(doc => {
+                                    const option = document.createElement('option');
+                                    option.value = doc.client_docid;
+                                    option.textContent = doc.title || doc.document_number || ('Document #' + doc.client_docid);
+                                    editClientDocidSelect.appendChild(option);
+                                });
+                            }
+                        })
+                        .catch(err => console.error('Error fetching client documents:', err));
+                }
+
+                editModal.show();
             });
         }
 
         window.onOrderCreated = function (data) {
-            const modalEl = document.getElementById('addOrderModal');
+            const modalEl = document.getElementById('editOrderModal');
             if (modalEl) {
                 const modalInstance = bootstrap.Modal.getInstance(modalEl);
                 if (modalInstance) {
                     modalInstance.hide();
                 }
+            }
+            // Restore PUT method if it was disabled for Add Mode
+            const editForm = document.getElementById('editOrderForm');
+            const methodInput = editForm ? editForm.querySelector('input[name="_method"]') : null;
+            if (methodInput) {
+                methodInput.disabled = false;
             }
             fetchUpdatedOrderItems();
         };
@@ -1133,7 +1259,9 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
         function fetchUpdatedOrderItems() {
             if (!clientId) return;
 
-            const url = `{{ route('invoices.client-order-items') }}?clientid=${encodeURIComponent(clientId)}`;
+            const orderItemsRoute = "{{ route('invoices.client-order-items') }}";
+            const orderItemsPath = orderItemsRoute.startsWith('http') ? new URL(orderItemsRoute).pathname : orderItemsRoute;
+            const url = `${orderItemsPath}?clientid=${encodeURIComponent(clientId)}`;
 
             fetch(url, {
                 headers: {
@@ -1173,17 +1301,4 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
     })();
 </script>
 
-<!-- Modal for creating a new order -->
-<div class="modal fade" id="addOrderModal" tabindex="-1" aria-labelledby="addOrderModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 90%; width: 1000px;">
-        <div class="modal-content border-0 shadow-lg" style="overflow: hidden;">
-            <div class="modal-header bg-white border-bottom">
-                <h5 class="modal-title fw-semibold" id="addOrderModalLabel">Create New Order</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body bg-light p-0" style="height: 70vh;">
-                <iframe id="addOrderIframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
-            </div>
-        </div>
-    </div>
-</div>
+@include('orders.partials.edit-order-modal')

@@ -1,952 +1,1010 @@
 @extends('layouts.app')
 
 @section('header_actions')
-    <a href="{{ route('invoices.index') }}" class="secondary-button">
-        <i class="fas fa-arrow-left"></i> Back to Invoices
-    </a>
+<a href="{{ route('invoices.index', [], false) }}"
+    class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
+    <i class="fas fa-arrow-left"></i> Back to Invoices
+</a>
 @endsection
 
 @section('content')
-    @php
-        $clientName = $invoice->client->business_name ?? ($invoice->client->contact_name ?? 'Client');
-        $clientEmail = $invoice->client->primary_email ?? $invoice->client->email ?? '';
-        $invoicePrimaryOrderId = optional($invoice->invoiceItems)->pluck('orderid')->filter()->first();
-        $isAlreadySent = (string) ($composeEmail->status ?? '') === 'sent';
-        $isComposeLocked = $isAlreadySent && (string) ($prefillChannel ?? 'email') !== 'email';
-        $hasTiNumber = !empty(trim((string) $invoice->ti_number));
-        $displayDocNumber = $hasTiNumber
-            ? (trim((string) $invoice->ti_number) !== ''
-                ? $invoice->ti_number
-                : $invoice->invoice_number)
-            : (trim((string) $invoice->pi_number) !== ''
-                ? $invoice->pi_number
-                : $invoice->invoice_number);
-        $defaultSubjectNumber = $hasTiNumber ? $invoice->ti_number : $invoice->pi_number;
-    @endphp
+@php
+$clientName = $invoice->client->business_name ?? ($invoice->client->contact_name ?? 'Client');
+$clientEmail = $invoice->client->primary_email ?? $invoice->client->email ?? '';
+$invoicePrimaryOrderId = optional($invoice->invoiceItems)->pluck('orderid')->filter()->first();
+$isAlreadySent = (string) ($composeEmail->status ?? '') === 'sent';
+$isComposeLocked = $isAlreadySent && (string) ($prefillChannel ?? 'email') !== 'email';
+$hasTiNumber = !empty(trim((string) $invoice->ti_number));
+$displayDocNumber = $hasTiNumber
+? (trim((string) $invoice->ti_number) !== ''
+? $invoice->ti_number
+: $invoice->invoice_number)
+: (trim((string) $invoice->pi_number) !== ''
+? $invoice->pi_number
+: $invoice->invoice_number);
+$defaultSubjectNumber = $hasTiNumber ? $invoice->ti_number : $invoice->pi_number;
+@endphp
 
-    <section class="panel-card w-100 p-3 compose-mail-page">
-        <div class="bg-light border rounded p-3 mb-3">
-            <div class="d-flex align-items-center gap-2">
-                <a href="{{ route('invoices.create', ['step' => 3, 'c' => $invoice->clientid, 'd' => $invoice->invoiceid, 'o' => $invoicePrimaryOrderId]) }}"
-                    class="secondary-button">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <div class="vr"></div>
-                <div class="d-inline-flex align-items-center justify-content-center rounded"
-                    style="width:36px;height:36px;background:#e0e7ff;color:#4f46e5;">
-                    <i class="fas fa-user"></i>
+<section class="position-relative bg-white p-2 rounded-3 compose-mail-page">
+    <div class="bg-light p-2 rounded-3 mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('invoices.create', ['step' => 3, 'c' => $invoice->clientid, 'd' => $invoice->invoiceid, 'o' => $invoicePrimaryOrderId], false) }}"
+                class="btn btn-outline-primary btn-primary text-white fw-medium">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div class="vr"></div>
+            <div class="d-inline-flex align-items-center justify-content-center rounded"
+                style="width:36px;height:36px;background:#e0e7ff;color:#4f46e5;">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="grow">
+                <div class="fw-semibold text-dark">{{ $clientName }}</div>
+                @if ($clientEmail)
+                <div class="text-muted small">{{ $clientEmail }}</div>
+                @endif
+            </div>
+            <div class="text-end">
+                <span class="invoice-number-badge">{{ $displayDocNumber }}</span>
+                <div class="invoice-compact-steps invoice-compact-steps--right mt-1" aria-label="Step progress">
+                    <span class="invoice-compact-step">1</span>
+                    <span class="invoice-compact-step">2</span>
+                    <span class="invoice-compact-step">3</span>
+                    <span class="invoice-compact-step is-active">4</span>
                 </div>
-                <div class="grow">
-                    <div class="fw-semibold text-dark">{{ $clientName }}</div>
-                    @if ($clientEmail)
-                        <div class="text-muted small">{{ $clientEmail }}</div>
-                    @endif
-                </div>
-                <div class="text-end">
-                    <span class="invoice-number-badge">{{ $displayDocNumber }}</span>
-                    <div class="invoice-compact-steps invoice-compact-steps--right mt-1" aria-label="Step progress">
-                        <span class="invoice-compact-step">1</span>
-                        <span class="invoice-compact-step">2</span>
-                        <span class="invoice-compact-step">3</span>
-                        <span class="invoice-compact-step is-active">4</span>
-                    </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .compose-mail-page .channel-pill-btn,
+        .compose-mail-page .type-tab-btn {
+            border-top: 0 !important;
+            border-left: 0 !important;
+            border-right: 0 !important;
+            border-bottom: 2px solid transparent !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            font-weight: 500 !important;
+            font-size: 0.95rem !important;
+            padding: 0.5rem 1rem !important;
+            color: var(--bs-primary) !important;
+            opacity: 0.7;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            margin-bottom: -1px;
+        }
+
+        .compose-mail-page .channel-pill-btn.is-active,
+        .compose-mail-page .channel-pill-btn.active,
+        .compose-mail-page .type-tab-btn.is-active,
+        .compose-mail-page .type-tab-btn.active {
+            border-bottom: 2px solid var(--bs-primary) !important;
+            font-weight: 700 !important;
+            opacity: 1 !important;
+            color: var(--bs-primary) !important;
+            background: transparent !important;
+        }
+
+        .compose-mail-page .type-tab-btn.is-active::after,
+        .compose-mail-page .type-tab-btn.active::after {
+            display: none !important;
+        }
+    </style>
+
+    <div class="bg-light p-2 rounded-3 mb-3">
+
+        <!-- Type Tabs (PI, TI/DSI) -->
+        <div class="mb-3">
+            <div class="border-bottom w-100">
+                <div class="btn-group" role="group" aria-label="Document Type Tabs">
+                    <button type="button"
+                        class="type-tab-btn btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ old('attachment_type', $prefillAttachmentType ?? $defaultType) === 'pi' || !old('attachment_type', $prefillAttachmentType ?? $defaultType) ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold active' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }}"
+                        data-type="pi" {!! (old('attachment_type', $prefillAttachmentType ?? $defaultType)==='pi' ||
+                        !old('attachment_type', $prefillAttachmentType ?? $defaultType)) ? '' : 'style="opacity: 0.7;"'
+                        !!}>
+                        PI (Proforma Invoice)
+                    </button>
+                    <button type="button"
+                        class="type-tab-btn btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ old('attachment_type', $prefillAttachmentType ?? $defaultType) === 'ti' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold active' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }}"
+                        data-type="ti" {{ !$hasTiNumber ? 'disabled' : '' }} {!! old('attachment_type',
+                        $prefillAttachmentType ?? $defaultType)==='ti' ? '' : 'style="opacity: 0.7;"' !!}>
+                        TI/DSI (Tax Invoice)
+                    </button>
                 </div>
             </div>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <h4 class="mb-0">Message Compose</h4>
-            <span class="text-muted small">Select document type and channel before sending</span>
-        </div>
-
-        <div class="border rounded overflow-hidden mb-4" style="background:#fff;">
-            <div class="bg-light border-bottom px-3 py-2 small fw-semibold">Channel & Document Type</div>
-            <div class="p-3">
-                <!-- Type Tabs (PI, TI/DSI) -->
-                <div class="type-tabs-wrap border-bottom mb-3">
-                    <div class="type-tabs d-flex gap-4">
-                        <button type="button"
-                            class="type-tab-btn {{ old('attachment_type', $prefillAttachmentType ?? $defaultType) === 'pi' || !old('attachment_type', $prefillAttachmentType ?? $defaultType) ? 'is-active' : '' }}"
-                            data-type="pi">
-                            PI (Proforma Invoice)
-                        </button>
-                        <button type="button"
-                            class="type-tab-btn {{ old('attachment_type', $prefillAttachmentType ?? $defaultType) === 'ti' ? 'is-active' : '' }}"
-                            data-type="ti" {{ !$hasTiNumber ? 'disabled' : '' }}>
-                            TI/DSI (Tax Invoice)
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Channel Pills -->
-                <div class="channel-pills-wrap mb-0">
-                    <div class="d-flex gap-2">
-                        <button type="button" class="channel-pill-btn is-active" data-channel="email" id="channelBtnEmail">
-                            <i class="fas fa-envelope mr-1"></i> Email
-                        </button>
-                        <button type="button" class="channel-pill-btn" data-channel="whatsapp" id="channelBtnWhatsapp">
-                            <i class="fab fa-whatsapp mr-1"></i> WhatsApp
-                        </button>
-                        <button type="button" class="channel-pill-btn" data-channel="sms" id="channelBtnSms">
-                            <i class="fas fa-sms mr-1"></i> SMS
-                        </button>
-                    </div>
+        <!-- Channel Pills -->
+        <div class="channel-pills-wrap mb-0">
+            <div class="border-bottom w-100">
+                <div class="btn-group" role="group" aria-label="Channel Tabs">
+                    <button type="button"
+                        class="channel-pill-btn btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 text-primary bg-transparent border-primary border-bottom border-2 fw-bold active"
+                        data-channel="email" id="channelBtnEmail">
+                        <i class="fas fa-envelope me-1"></i> Email
+                    </button>
+                    <button type="button"
+                        class="channel-pill-btn btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent"
+                        data-channel="whatsapp" id="channelBtnWhatsapp" style="opacity: 0.7;">
+                        <i class="fab fa-whatsapp me-1"></i> WhatsApp
+                    </button>
+                    <button type="button"
+                        class="channel-pill-btn btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent"
+                        data-channel="sms" id="channelBtnSms" style="opacity: 0.7;">
+                        <i class="fas fa-sms me-1"></i> SMS
+                    </button>
                 </div>
             </div>
         </div>
+    </div>
 
-        @if ($errors->any())
-            <div class="alert warning mb-3">
-                <ul class="plain-list mb-0">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
+    @if ($errors->any())
+    <div class="alert warning mb-3">
+        <ul class="plain-list mb-0">
+            @foreach ($errors->all() as $error)
+            <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
 
-        <form method="POST" id="composeForm" action="{{ route('invoices.email-compose.store', $invoice->invoiceid) }}"
-            enctype="multipart/form-data">
-            @csrf
-            <input type="hidden" name="logid" value="{{ $composeEmail->logid ?? '' }}">
-            <input type="hidden" name="channel" id="selectedChannel"
-                value="{{ old('channel', $prefillChannel ?? 'email') }}">
-            <input type="hidden" name="attachment_type" id="selectedType"
-                value="{{ old('attachment_type', $prefillAttachmentType ?? $defaultType) }}">
+    <form method="POST" id="composeForm" class="mainForm"
+        action="{{ route('invoices.email-compose.store', $invoice->invoiceid) }}" enctype="multipart/form-data">
+        @csrf
+        <input type="hidden" name="logid" value="{{ $composeEmail->logid ?? '' }}">
+        <input type="hidden" name="channel" id="selectedChannel"
+            value="{{ old('channel', $prefillChannel ?? 'email') }}">
+        <input type="hidden" name="attachment_type" id="selectedType"
+            value="{{ old('attachment_type', $prefillAttachmentType ?? $defaultType) }}">
 
-            <div class="row g-3 align-items-start">
-                <div class="col-12 col-xl-7">
-                    <div class="border rounded overflow-hidden" style="background: #fff;">
-                        <div class="bg-light border-bottom px-3 py-2 small fw-semibold">Compose Form</div>
-                        <div class="p-3">
-                            <div class="email-fields">
-                                <div class="row g-2 mb-3">
-                                    <div class="col-12 col-md-6">
-                                        <label class="field-label">From</label>
-                                        <input type="email" name="from_email" value="{{ $fromEmail }}"
-                                            class="input-full" readonly>
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="field-label">To</label>
-                                        <input type="text" name="to_email" value="{{ old('to_email', $toEmail) }}"
-                                            class="input-full">
-                                    </div>
-                                </div>
-
-                                <div class="row g-2 mb-3">
-                                    <div class="col-12 col-md-6">
-                                        <label class="field-label">Subject</label>
-                                        <input type="text" name="subject" id="emailSubjectInput"
-                                            value="{{ old('subject', $prefillSubject ?? 'Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number)) }}"
-                                            class="input-full" {{ $isComposeLocked ? 'readonly' : '' }}>
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="field-label">CC</label>
-                                        <input type="text" name="cc_email" value="{{ old('cc_email', $ccEmail) }}"
-                                            class="input-full">
-                                    </div>
-                                </div>
+        <div class="row g-3 align-items-start">
+            <div class="col-12 col-xl-7">
+                <div class="bg-light p-2 rounded-3 mb-3">
+                    <div class="mb-2">
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Compose Form</h5>
+                    </div>
+                    <div class="email-fields">
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">From</label>
+                                <input type="email" name="from_email" value="{{ $fromEmail }}" class="form-control"
+                                    readonly>
                             </div>
-
-                            <div class="whatsapp-sms-fields" style="display: none;">
-                                <div class="row g-2 mb-3">
-                                    <div class="col-12 col-md-6">
-                                        <label class="field-label">Phone Number</label>
-                                        <input type="text" name="phone"
-                                            value="{{ old('phone', $prefillPhone ?? '') }}" class="input-full">
-                                    </div>
-                                    <div class="col-12 col-md-6"></div>
-                                </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">To</label>
+                                <input type="text" name="to_email" value="{{ old('to_email', $toEmail) }}"
+                                    class="form-control">
                             </div>
+                        </div>
 
-                            <div class="mb-3">
-                                <label class="field-label">Body</label>
-                                <textarea name="body" id="emailBodyInput" rows="8" class="input-full"
-                                    {{ $isComposeLocked ? 'readonly' : '' }}>{{ old('body', $prefillBody ?? $defaultBody) }}</textarea>
-                                <div id="attachmentBodyHint" class="text-secondary small mt-1"></div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Subject</label>
+                                <input type="text" name="subject" id="emailSubjectInput"
+                                    value="{{ old('subject', $prefillSubject ?? 'Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number)) }}"
+                                    class="form-control" {{ $isComposeLocked ? 'readonly' : '' }}>
                             </div>
-                            <div class="mb-3 email-fields">
-                                <label class="field-label">Extra Attachments (optional)</label>
-                                <input type="file" name="custom_attachments[]" id="customAttachmentInput" multiple
-                                    class="input-full" {{ $isComposeLocked ? 'disabled' : '' }}>
-                                <div id="currentCustomAttachment" class="mt-2"></div>
-                            </div>
-
-                            <div class="d-flex justify-content-end flex-wrap gap-2 mt-4 pt-3 border-top">
-                                <div class="email-actions" style="{{ $isComposeLocked ? 'display:none;' : '' }}">
-                                    <button type="submit" name="action" value="save" class="secondary-button">Save
-                                        Email</button>
-                                    <button type="submit" name="action" value="send" class="primary-button">Send to
-                                        Client</button>
-                                </div>
-                                <div class="whatsapp-actions"
-                                    style="{{ $isComposeLocked ? 'display:none;' : 'display: none;' }}">
-                                    <button type="submit" name="action" value="save" class="secondary-button">Save
-                                        WhatsApp Message</button>
-                                    <button type="submit" name="action" value="send" id="sendWhatsApp"
-                                        class="primary-button" style="background: #25d366; border-color: #25d366;">
-                                        <i class="fab fa-whatsapp mr-1"></i> Send via WhatsApp
-                                    </button>
-                                </div>
-                                <div class="sms-actions"
-                                    style="{{ $isComposeLocked ? 'display:none;' : 'display: none;' }}">
-                                    <button type="submit" name="action" value="save" class="secondary-button">Save
-                                        SMS</button>
-                                    <button type="submit" name="action" value="send" id="sendSms"
-                                        class="primary-button">Send
-                                        SMS</button>
-                                </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">CC</label>
+                                <input type="text" name="cc_email" value="{{ old('cc_email', $ccEmail) }}"
+                                    class="form-control">
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="col-12 col-xl-5">
-                    <div class="border rounded overflow-hidden position-sticky" style="top:.8rem; background: #fff;">
-                        <div class="bg-light border-bottom px-3 py-2 small fw-semibold">Raw Message</div>
-                        <div class="p-3">
-                            <pre id="previewRawBody" class="mb-0 mt-0 p-2 border rounded bg-light"
-                                style="min-height: 180px; white-space: pre-wrap; word-break: break-word;"></pre>
-                            <div class="mt-3">
-                                <div class="small fw-semibold text-muted mb-1">Attachments</div>
-                                <div id="previewAttachments" class="small text-break"></div>
+                    <div class="whatsapp-sms-fields" style="display: none;">
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Phone Number</label>
+                                <input type="text" name="phone" value="{{ old('phone', $prefillPhone ?? '') }}"
+                                    class="form-control">
                             </div>
+                            <div class="col-12 col-md-6"></div>
+                        </div>
+                    </div>
 
-                            @php
-                                $sendSuccessMeta = session('send_success_meta');
-                                $shouldShowPostSendActions = !empty($sendSuccessMeta) || $isAlreadySent;
-                                $resolvedAttachmentType =
-                                    (string) ($sendSuccessMeta['attachment_type'] ??
-                                        ($composeEmail->attachment_type ?? ($prefillAttachmentType ?? $defaultType)));
-                                $resolvedAttachmentType = in_array($resolvedAttachmentType, ['pi', 'ti'], true)
-                                    ? $resolvedAttachmentType
-                                    : $defaultType;
-                                $successPdfType = $resolvedAttachmentType === 'ti' ? 'tax_invoice' : 'pi';
-                                $resolvedChannel = strtoupper(
-                                    (string) ($sendSuccessMeta['channel'] ?? ($composeEmail->channel ?? 'email')),
-                                );
-                                $resolvedDocument =
-                                    $resolvedAttachmentType === 'ti' ? 'Tax Invoice (TI)' : 'Proforma Invoice (PI)';
-                                $resolvedSentAt = !empty($sendSuccessMeta['sent_at'])
-                                    ? (string) $sendSuccessMeta['sent_at']
-                                    : $composeEmail?->updated_at?->format('d M Y, h:i A') ?? $composeEmail?->created_at?->format('d M Y, h:i A') ?? null;
-                            @endphp
-                            @if ($shouldShowPostSendActions)
-                                <div class="mt-4 pt-3 border-top">
-                                    <div class="small text-success fw-semibold mb-2">
-                                        {{ $sendSuccessMeta['document'] ?? $resolvedDocument }} sent via
-                                        {{ $resolvedChannel }}
-                                        @if (!empty($resolvedSentAt))
-                                            on {{ $resolvedSentAt }}
-                                        @endif
-                                    </div>
-                                    <div class="d-flex flex-row flex-wrap gap-2">
-                                        <a href="{{ route('invoices.index', ['c' => $invoice->clientid]) }}"
-                                            class="primary-button small px-2 grow text-center"
-                                            style="font-size: 0.8rem;">View Invoices</a>
-                                        <a href="{{ route('payments.create', ['clientid' => $invoice->clientid, 'invoiceid' => $invoice->invoiceid]) }}"
-                                            class="primary-button small px-2 grow text-center"
-                                            style="font-size: 0.8rem;">Record Payment</a>
-                                        <a href="{{ route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => $successPdfType]) }}"
-                                            class="secondary-button small px-2 grow text-center"
-                                            style="font-size: 0.8rem;">Download PDF</a>
-                                        <a href="{{ route('invoices.index', ['c' => $invoice->clientid]) }}"
-                                            class="secondary-button small px-2 grow text-center"
-                                            style="font-size: 0.8rem;">Back to Invoices</a>
-                                    </div>
-                                </div>
+                    <div class="mb-3">
+                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Body</label>
+                        <textarea name="body" id="emailBodyInput" rows="8" class="form-control" {{ $isComposeLocked
+                            ? 'readonly' : '' }}>{{ old('body', $prefillBody ?? $defaultBody) }}</textarea>
+                        <div id="attachmentBodyHint" class="text-secondary small mt-1"></div>
+                    </div>
+                    <div class="mb-3 email-fields">
+                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Extra Attachments
+                            (optional)</label>
+                        <input type="file" name="custom_attachments[]" id="customAttachmentInput" multiple
+                            class="form-control" {{ $isComposeLocked ? 'disabled' : '' }}>
+                        <div id="currentCustomAttachment" class="mt-2"></div>
+                    </div>
+
+                    <div class="d-flex justify-content-end flex-wrap gap-2 mt-4 pt-3 border-top">
+                        <div class="email-actions" style="{{ $isComposeLocked ? 'display:none;' : '' }}">
+                            <button type="submit" name="action" value="save"
+                                class="btn btn-outline-primary bg-white text-primary fw-medium">Save
+                                Email</button>
+                            <button type="submit" name="action" value="send"
+                                class="btn btn-outline-primary btn-primary text-white fw-medium">Send to
+                                Client</button>
+                        </div>
+                        <div class="whatsapp-actions"
+                            style="{{ $isComposeLocked ? 'display:none;' : 'display: none;' }}">
+                            <button type="submit" name="action" value="save"
+                                class="btn btn-outline-primary bg-white text-primary fw-medium">Save
+                                WhatsApp Message</button>
+                            <button type="submit" name="action" value="send" id="sendWhatsApp"
+                                class="btn btn-outline-primary btn-primary text-white fw-medium"
+                                style="background: #25d366; border-color: #25d366;">
+                                <i class="fab fa-whatsapp mr-1"></i> Send via WhatsApp
+                            </button>
+                        </div>
+                        <div class="sms-actions" style="{{ $isComposeLocked ? 'display:none;' : 'display: none;' }}">
+                            <button type="submit" name="action" value="save"
+                                class="btn btn-outline-primary bg-white text-primary fw-medium">Save
+                                SMS</button>
+                            <button type="submit" name="action" value="send" id="sendSms"
+                                class="btn btn-outline-primary btn-primary text-white fw-medium">Send
+                                SMS</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-xl-5">
+                <div class="bg-light p-2 rounded-3 mb-3 position-sticky" style="top:.8rem;">
+                    <div class="mb-2">
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Raw Message</h5>
+                    </div>
+                    <pre id="previewRawBody" class="mb-0 mt-0 p-2 border bg-white rounded-3"
+                        style="min-height: 180px; white-space: pre-wrap; word-break: break-word;"></pre>
+                    <div class="mt-3">
+                        <div class="small fw-semibold text-muted mb-1">Attachments</div>
+                        <div id="previewAttachments" class="small text-break"></div>
+                    </div>
+
+                    @php
+                    $sendSuccessMeta = session('send_success_meta');
+                    $shouldShowPostSendActions = !empty($sendSuccessMeta) || $isAlreadySent;
+                    $resolvedAttachmentType =
+                    (string) ($sendSuccessMeta['attachment_type'] ??
+                    ($composeEmail->attachment_type ?? ($prefillAttachmentType ?? $defaultType)));
+                    $resolvedAttachmentType = in_array($resolvedAttachmentType, ['pi', 'ti'], true)
+                    ? $resolvedAttachmentType
+                    : $defaultType;
+                    $successPdfType = $resolvedAttachmentType === 'ti' ? 'tax_invoice' : 'pi';
+                    $resolvedChannel = strtoupper(
+                    (string) ($sendSuccessMeta['channel'] ?? ($composeEmail->channel ?? 'email')),
+                    );
+                    $resolvedDocument =
+                    $resolvedAttachmentType === 'ti' ? 'Tax Invoice (TI)' : 'Proforma Invoice (PI)';
+                    $resolvedSentAt = !empty($sendSuccessMeta['sent_at'])
+                    ? (string) $sendSuccessMeta['sent_at']
+                    : $composeEmail?->updated_at?->format('d M Y, h:i A') ?? $composeEmail?->created_at?->format('d M Y,
+                    h:i A') ?? null;
+                    @endphp
+                    @if ($shouldShowPostSendActions)
+                    <div class="mt-4 pt-3 border-top">
+                        <div class="small text-success fw-semibold mb-2">
+                            {{ $sendSuccessMeta['document'] ?? $resolvedDocument }} sent via
+                            {{ $resolvedChannel }}
+                            @if (!empty($resolvedSentAt))
+                            on {{ $resolvedSentAt }}
                             @endif
                         </div>
+                        <div class="d-flex flex-row flex-wrap gap-2">
+                            <a href="{{ route('invoices.index', ['c' => $invoice->clientid], false) }}"
+                                class="btn btn-outline-primary btn-primary text-white fw-medium btn-sm px-2 grow text-center"
+                                style="font-size: 0.8rem;">View Invoices</a>
+                            <a href="{{ route('payments.create', ['clientid' => $invoice->clientid, 'invoiceid' => $invoice->invoiceid], false) }}"
+                                class="btn btn-outline-primary btn-primary text-white fw-medium btn-sm px-2 grow text-center"
+                                style="font-size: 0.8rem;">Record Payment</a>
+                            <a href="{{ route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => $successPdfType], false) }}"
+                                class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm px-2 grow text-center"
+                                style="font-size: 0.8rem;">Download PDF</a>
+                            <a href="{{ route('invoices.index', ['c' => $invoice->clientid], false) }}"
+                                class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm px-2 grow text-center"
+                                style="font-size: 0.8rem;">Back to Invoices</a>
+                        </div>
                     </div>
+                    @endif
                 </div>
-
             </div>
-        </form>
-    </section>
 
-    <script>
-        (function() {
-            const hasTiNumber = @json($hasTiNumber);
-            const piPdfUrl = @json(route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']));
-            const tiPdfUrl = @json(route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice']));
+        </div>
+    </form>
+</section>
 
-            const typeBtns = Array.from(document.querySelectorAll('.type-tab-btn'));
-            const channelBtns = Array.from(document.querySelectorAll('.channel-pill-btn'));
+<script>
+    (function () {
+        const hasTiNumber = @json($hasTiNumber);
+        const piPdfUrl = @json(route('invoices.pdf', ['invoice' => $invoice -> invoiceid, 'type' => 'pi']));
+        const tiPdfUrl = @json(route('invoices.pdf', ['invoice' => $invoice -> invoiceid, 'type' => 'tax_invoice']));
 
-            const attachmentBodyHint = document.getElementById('attachmentBodyHint');
-            const customAttachmentInput = document.getElementById('customAttachmentInput');
-            const savedCustomAttachmentUrls = @json($customAttachmentUrls ?? []);
-            const emailSubjectInput = document.getElementById('emailSubjectInput');
-            const emailBodyInput = document.getElementById('emailBodyInput');
-            const previewRawBody = document.getElementById('previewRawBody');
-            const previewAttachments = document.getElementById('previewAttachments');
-            const currentCustomAttachment = document.getElementById('currentCustomAttachment');
-            const templatePicker = document.getElementById('templatePicker');
-            const templatePickerSmsWa = document.getElementById('templatePickerSmsWa');
+        const typeBtns = Array.from(document.querySelectorAll('.type-tab-btn'));
+        const channelBtns = Array.from(document.querySelectorAll('.channel-pill-btn'));
 
-            const templateCatalog = @json($templateCatalog ?? []);
-            const availableChannelsByType = @json($availableChannelsByType ?? []);
-            const fallbackTemplatesByType = @json($fallbackTemplatesByType ?? []);
-            const isAlreadySent = @json($isComposeLocked);
+        const attachmentBodyHint = document.getElementById('attachmentBodyHint');
+        const customAttachmentInput = document.getElementById('customAttachmentInput');
+        const savedCustomAttachmentUrls = @json($customAttachmentUrls ?? []);
+        const emailSubjectInput = document.getElementById('emailSubjectInput');
+        const emailBodyInput = document.getElementById('emailBodyInput');
+        const previewRawBody = document.getElementById('previewRawBody');
+        const previewAttachments = document.getElementById('previewAttachments');
+        const currentCustomAttachment = document.getElementById('currentCustomAttachment');
+        const templatePicker = document.getElementById('templatePicker');
+        const templatePickerSmsWa = document.getElementById('templatePickerSmsWa');
 
-            let currentChannel = document.getElementById('selectedChannel').value || 'email';
-            let currentType = document.getElementById('selectedType').value || 'pi';
-            let dscPreviewUrls = Array.isArray(savedCustomAttachmentUrls) ? [...savedCustomAttachmentUrls] : [];
-            let currentRawTemplateBody = '';
-            const hasExistingDraft = !!(document.querySelector('input[name="logid"]')?.value || '').trim();
-            const INVOICE_COMPOSE_READY_TOAST_KEY = 'invoice_compose_ready_toast';
+        const templateCatalog = @json($templateCatalog ?? []);
+        const availableChannelsByType = @json($availableChannelsByType ?? []);
+        const fallbackTemplatesByType = @json($fallbackTemplatesByType ?? []);
+        const isAlreadySent = @json($isComposeLocked);
 
-            function showSuccessToast(message) {
-                const text = String(message || '').trim();
-                if (!text) return;
-                let container = document.getElementById('app-toast-container');
-                if (!container) {
-                    container = document.createElement('div');
-                    container.id = 'app-toast-container';
-                    container.className = 'app-toast-container';
-                    document.body.appendChild(container);
-                }
-                const toast = document.createElement('div');
-                toast.className = 'app-toast app-toast-success';
-                toast.innerHTML = '<i class="fas fa-check-circle toast-icon"></i><span></span>';
-                const label = toast.querySelector('span');
-                if (label) label.textContent = text;
-                toast.addEventListener('click', () => toast.remove());
-                container.appendChild(toast);
-                window.setTimeout(() => {
-                    toast.classList.add('app-toast-leaving');
-                    window.setTimeout(() => toast.remove(), 220);
-                }, 4200);
+        let currentChannel = document.getElementById('selectedChannel').value || 'email';
+        let currentType = document.getElementById('selectedType').value || 'pi';
+        let dscPreviewUrls = Array.isArray(savedCustomAttachmentUrls) ? [...savedCustomAttachmentUrls] : [];
+        let currentRawTemplateBody = '';
+        const hasExistingDraft = !!(document.querySelector('input[name="logid"]')?.value || '').trim();
+        const INVOICE_COMPOSE_READY_TOAST_KEY = 'invoice_compose_ready_toast';
+
+        function showSuccessToast(message) {
+            const text = String(message || '').trim();
+            if (!text) return;
+            let container = document.getElementById('app-toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'app-toast-container';
+                container.className = 'app-toast-container';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = 'app-toast app-toast-success';
+            toast.innerHTML = '<i class="fas fa-check-circle toast-icon"></i><span></span>';
+            const label = toast.querySelector('span');
+            if (label) label.textContent = text;
+            toast.addEventListener('click', () => toast.remove());
+            container.appendChild(toast);
+            window.setTimeout(() => {
+                toast.classList.add('app-toast-leaving');
+                window.setTimeout(() => toast.remove(), 220);
+            }, 4200);
+        }
+
+        function consumeComposeReadyToast() {
+            try {
+                const message = window.localStorage.getItem(INVOICE_COMPOSE_READY_TOAST_KEY);
+                if (!message) return;
+                window.localStorage.removeItem(INVOICE_COMPOSE_READY_TOAST_KEY);
+                showSuccessToast(message);
+            } catch (e) {
+                console.warn('Unable to read compose-ready toast state', e);
+            }
+        }
+        consumeComposeReadyToast();
+
+        function buildPreviewAttachments() {
+            const files = [];
+            const selectedTemplate = getSelectedTemplateForCurrentSelection(currentType, currentChannel);
+            const selectedHeaderType = String(selectedTemplate?.header_type || '').toLowerCase();
+            const canAttachDocumentForWhatsapp = currentChannel !== 'whatsapp' ||
+                selectedHeaderType === 'document';
+
+            if (currentType === 'pi' && canAttachDocumentForWhatsapp) {
+                files.push({
+                    label: 'Proforma Invoice (PI).pdf',
+                    url: piPdfUrl
+                });
+            }
+            if (currentType === 'ti' && hasTiNumber && canAttachDocumentForWhatsapp) {
+                files.push({
+                    label: 'Tax Invoice (TI).pdf',
+                    url: tiPdfUrl
+                });
             }
 
-            function consumeComposeReadyToast() {
-                try {
-                    const message = window.localStorage.getItem(INVOICE_COMPOSE_READY_TOAST_KEY);
-                    if (!message) return;
-                    window.localStorage.removeItem(INVOICE_COMPOSE_READY_TOAST_KEY);
-                    showSuccessToast(message);
-                } catch (e) {
-                    console.warn('Unable to read compose-ready toast state', e);
-                }
-            }
-            consumeComposeReadyToast();
-
-            function buildPreviewAttachments() {
-                const files = [];
-                const selectedTemplate = getSelectedTemplateForCurrentSelection(currentType, currentChannel);
-                const selectedHeaderType = String(selectedTemplate?.header_type || '').toLowerCase();
-                const canAttachDocumentForWhatsapp = currentChannel !== 'whatsapp' ||
-                    selectedHeaderType === 'document';
-
-                if (currentType === 'pi' && canAttachDocumentForWhatsapp) {
-                    files.push({
-                        label: 'Proforma Invoice (PI).pdf',
-                        url: piPdfUrl
-                    });
-                }
-                if (currentType === 'ti' && hasTiNumber && canAttachDocumentForWhatsapp) {
-                    files.push({
-                        label: 'Tax Invoice (TI).pdf',
-                        url: tiPdfUrl
-                    });
-                }
-
-                const selectedFiles = Array.from(customAttachmentInput?.files || []);
-                const selectedAttachments = selectedFiles.map((file, index) => ({
+            const selectedFiles = Array.from(customAttachmentInput?.files || []);
+            const selectedAttachments = selectedFiles.map((file, index) => ({
+                label: 'Attachment ' + (index + 1),
+                url: dscPreviewUrls[index] || null
+            })).filter((item) => !!item.url);
+            const savedAttachments = selectedFiles.length === 0
+                ? (savedCustomAttachmentUrls || []).map((url, index) => ({
                     label: 'Attachment ' + (index + 1),
-                    url: dscPreviewUrls[index] || null
-                })).filter((item) => !!item.url);
-                const savedAttachments = selectedFiles.length === 0
-                    ? (savedCustomAttachmentUrls || []).map((url, index) => ({
-                        label: 'Attachment ' + (index + 1),
-                        url
-                    }))
-                    : [];
-                [...savedAttachments, ...selectedAttachments].forEach((item) => files.push(item));
+                    url
+                }))
+                : [];
+            [...savedAttachments, ...selectedAttachments].forEach((item) => files.push(item));
 
-                return files;
+            return files;
+        }
+
+        function refreshAttachmentPreview() {
+            if (!previewAttachments) return;
+            if (currentChannel === 'sms') {
+                previewAttachments.innerHTML = '<span class="text-muted">No attachments for SMS.</span>';
+                return;
             }
 
-            function refreshAttachmentPreview() {
-                if (!previewAttachments) return;
-                if (currentChannel === 'sms') {
-                    previewAttachments.innerHTML = '<span class="text-muted">No attachments for SMS.</span>';
-                    return;
-                }
-
-                const files = buildPreviewAttachments();
-                if (files.length === 0) {
-                    previewAttachments.innerHTML = '<span class="text-muted">No attachments selected.</span>';
-                    return;
-                }
-
-                const primaryPdf = files[0] || null;
-                const extraAttachments = files.slice(1);
-                let html = '';
-                if (primaryPdf) {
-                    html += '<div><a href="' + primaryPdf.url + '" target="_blank" rel="noopener noreferrer">' +
-                        String(primaryPdf.label || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
-                        '</a></div>';
-                }
-                if (extraAttachments.length > 0) {
-                    html += '<div class="mt-1">' + extraAttachments.map((file) => (
-                        '<a href="' + file.url + '" target="_blank" rel="noopener noreferrer">' +
-                        String(file.label || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
-                        '</a>'
-                    )).join(', ') + '</div>';
-                }
-                previewAttachments.innerHTML = html;
+            const files = buildPreviewAttachments();
+            if (files.length === 0) {
+                previewAttachments.innerHTML = '<span class="text-muted">No attachments selected.</span>';
+                return;
             }
 
-            function refreshEmailPreview() {
-                if (previewRawBody) {
-                    const rawPreview = getPlainTextFromHtml(currentRawTemplateBody || '').trim();
-                    previewRawBody.textContent = rawPreview || '(No raw template body)';
-                }
-                refreshAttachmentPreview();
+            const primaryPdf = files[0] || null;
+            const extraAttachments = files.slice(1);
+            let html = '';
+            if (primaryPdf) {
+                html += '<div><a href="' + primaryPdf.url + '" target="_blank" rel="noopener noreferrer">' +
+                    String(primaryPdf.label || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+                    '</a></div>';
             }
-
-            function normalizeHtmlForEditor(html) {
-                const value = (html || '').trim();
-                if (!value) return '';
-                if (!/<html[\s>]|<head[\s>]|<body[\s>]/i.test(value)) return value;
-
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(value, 'text/html');
-                const bodyHtml = doc.body ? doc.body.innerHTML : value;
-                const headStyles = Array.from(doc.querySelectorAll('head style'))
-                    .map((node) => node.outerHTML)
-                    .join('\n');
-
-                return (headStyles ? (headStyles + '\n') : '') + bodyHtml;
+            if (extraAttachments.length > 0) {
+                html += '<div class="mt-1">' + extraAttachments.map((file) => (
+                    '<a href="' + file.url + '" target="_blank" rel="noopener noreferrer">' +
+                    String(file.label || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+                    '</a>'
+                )).join(', ') + '</div>';
             }
+            previewAttachments.innerHTML = html;
+        }
 
-            function toEditorHtml(value) {
-                const normalizedBody = normalizeHtmlForEditor(value || '');
-                if (normalizedBody && !/<[a-z][\s\S]*>/i.test(normalizedBody)) {
-                    return normalizedBody.replace(/\r\n|\r|\n/g, '<br>');
-                }
-                return normalizedBody;
+        function refreshEmailPreview() {
+            if (previewRawBody) {
+                const rawPreview = getPlainTextFromHtml(currentRawTemplateBody || '').trim();
+                previewRawBody.textContent = rawPreview || '(No raw template body)';
             }
+            refreshAttachmentPreview();
+        }
 
-            function getPlainTextFromHtml(html) {
-                if (!html) return '';
-                let text = html;
+        function normalizeHtmlForEditor(html) {
+            const value = (html || '').trim();
+            if (!value) return '';
+            if (!/<html[\s>]|<head[\s>]|<body[\s>]/i.test(value)) return value;
 
-                // Handle basic WhatsApp markdown-like conversions
-                text = text.replace(/\\r\\n/g, '\n');
-                text = text.replace(/\\n/g, '\n');
-                text = text.replace(/<br\s*\/?>/gi, '\n');
-                text = text.replace(/<\/(div|li|h[1-6])>/gi, '\n');
-                text = text.replace(/<(ul|ol)[^>]*>/gi, '\n');
-                text = text.replace(/<\/p>/gi, '\n');
-                text = text.replace(/<p>/gi, '');
-                text = text.replace(/<strong>(.*?)<\/strong>/gi, '*$1*');
-                text = text.replace(/<b>(.*?)<\/b>/gi, '*$1*');
-                text = text.replace(/<em>(.*?)<\/em>/gi, '_$1_');
-                text = text.replace(/<i>(.*?)<\/i>/gi, '_$1_');
-                text = text.replace(/<strike>(.*?)<\/strike>/gi, '~$1~');
-                text = text.replace(/<s>(.*?)<\/s>/gi, '~$1~');
-                text = text.replace(/<del>(.*?)<\/del>/gi, '~$1~');
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(value, 'text/html');
+            const bodyHtml = doc.body ? doc.body.innerHTML : value;
+            const headStyles = Array.from(doc.querySelectorAll('head style'))
+                .map((node) => node.outerHTML)
+                .join('\n');
 
-                // Strip remaining HTML tags
-                const tmp = document.createElement('DIV');
-                tmp.innerHTML = text;
-                const out = tmp.textContent || tmp.innerText || '';
-                return out.replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n');
+            return (headStyles ? (headStyles + '\n') : '') + bodyHtml;
+        }
+
+        function toEditorHtml(value) {
+            const normalizedBody = normalizeHtmlForEditor(value || '');
+            if (normalizedBody && !/<[a-z][\s\S]*>/i.test(normalizedBody)) {
+                return normalizedBody.replace(/\r\n|\r|\n/g, '<br>');
             }
+            return normalizedBody;
+        }
 
-            function isImageAttachment(item) {
-                const fileType = String(item?.fileType || '').toLowerCase();
-                const url = String(item?.url || '');
-                return fileType.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(url);
-            }
+        function getPlainTextFromHtml(html) {
+            if (!html) return '';
+            let text = html;
 
-            function renderCurrentCustomAttachment() {
-                if (!currentCustomAttachment) return;
+            // Handle basic WhatsApp markdown-like conversions
+            text = text.replace(/\\r\\n/g, '\n');
+            text = text.replace(/\\n/g, '\n');
+            text = text.replace(/<br\s*\/?>/gi, '\n');
+            text = text.replace(/<\/(div|li|h[1-6])>/gi, '\n');
+            text = text.replace(/<(ul|ol)[^>]*>/gi, '\n');
+            text = text.replace(/<\/p>/gi, '\n');
+            text = text.replace(/<p>/gi, '');
+            text = text.replace(/<strong>(.*?)<\/strong>/gi, '*$1*');
+            text = text.replace(/<b>(.*?)<\/b>/gi, '*$1*');
+            text = text.replace(/<em>(.*?)<\/em>/gi, '_$1_');
+            text = text.replace(/<i>(.*?)<\/i>/gi, '_$1_');
+            text = text.replace(/<strike>(.*?)<\/strike>/gi, '~$1~');
+            text = text.replace(/<s>(.*?)<\/s>/gi, '~$1~');
+            text = text.replace(/<del>(.*?)<\/del>/gi, '~$1~');
 
-                const selectedFiles = Array.from(customAttachmentInput?.files || []);
-                const attachments = selectedFiles.length > 0
-                    ? selectedFiles.map((file, index) => ({
-                        name: 'Attachment ' + (index + 1),
-                        url: dscPreviewUrls[index] || null,
-                        fileType: file?.type || ''
-                    })).filter((item) => !!item.url)
-                    : (savedCustomAttachmentUrls || []).map((url, index) => ({
-                        name: 'Attachment ' + (index + 1),
-                        url,
-                        fileType: ''
-                    }));
+            // Strip remaining HTML tags
+            const tmp = document.createElement('DIV');
+            tmp.innerHTML = text;
+            const out = tmp.textContent || tmp.innerText || '';
+            return out.replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n');
+        }
 
-                if (attachments.length === 0) {
-                    currentCustomAttachment.innerHTML =
-                        '<span class="small text-muted">No extra attachment selected.</span>';
-                    return;
-                }
-                const imageRows = attachments.filter((item) => isImageAttachment(item));
-                const fileRows = attachments.filter((item) => !isImageAttachment(item));
-                const imageHtml = imageRows.length
-                    ? ('<div class="small text-muted mb-1 mt-2">Image preview:</div>' +
-                        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-                        imageRows.map((item) => (
-                            '<a href="' + item.url + '" target="_blank" class="text-decoration-none">' +
-                            '<img src="' + item.url + '" alt="' + String(item.name).replace(/"/g, '&quot;') + '"' +
-                            ' style="max-height:90px;max-width:120px;border:1px solid #e2e8f0;border-radius:8px;padding:2px;background:#fff;">' +
-                            '</a>'
-                        )).join('') +
-                        '</div>')
-                    : '';
+        function isImageAttachment(item) {
+            const fileType = String(item?.fileType || '').toLowerCase();
+            const url = String(item?.url || '');
+            return fileType.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(url);
+        }
+
+        function renderCurrentCustomAttachment() {
+            if (!currentCustomAttachment) return;
+
+            const selectedFiles = Array.from(customAttachmentInput?.files || []);
+            const attachments = selectedFiles.length > 0
+                ? selectedFiles.map((file, index) => ({
+                    name: 'Attachment ' + (index + 1),
+                    url: dscPreviewUrls[index] || null,
+                    fileType: file?.type || ''
+                })).filter((item) => !!item.url)
+                : (savedCustomAttachmentUrls || []).map((url, index) => ({
+                    name: 'Attachment ' + (index + 1),
+                    url,
+                    fileType: ''
+                }));
+
+            if (attachments.length === 0) {
                 currentCustomAttachment.innerHTML =
-                    '<div class="small text-muted mb-1">Current attachments:</div>' +
-                    '<div class="small">' + fileRows.concat(imageRows).map((item) => (
-                        '<a href="' + item.url + '" target="_blank">' + item.name + '</a>'
-                    )).join(', ') + '</div>' + imageHtml;
+                    '<span class="small text-muted">No extra attachment selected.</span>';
+                return;
+            }
+            const imageRows = attachments.filter((item) => isImageAttachment(item));
+            const fileRows = attachments.filter((item) => !isImageAttachment(item));
+            const imageHtml = imageRows.length
+                ? ('<div class="small text-muted mb-1 mt-2">Image preview:</div>' +
+                    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                    imageRows.map((item) => (
+                        '<a href="' + item.url + '" target="_blank" class="text-decoration-none">' +
+                        '<img src="' + item.url + '" alt="' + String(item.name).replace(/"/g, '&quot;') + '"' +
+                        ' style="max-height:90px;max-width:120px;border:1px solid #e2e8f0;border-radius:8px;padding:2px;background:#fff;">' +
+                        '</a>'
+                    )).join('') +
+                    '</div>')
+                : '';
+            currentCustomAttachment.innerHTML =
+                '<div class="small text-muted mb-1">Current attachments:</div>' +
+                '<div class="small">' + fileRows.concat(imageRows).map((item) => (
+                    '<a href="' + item.url + '" target="_blank">' + item.name + '</a>'
+                )).join(', ') + '</div>' + imageHtml;
+        }
+
+        function updateContextHints() {
+            const labels = [];
+            const selectedTemplate = getSelectedTemplateForCurrentSelection(currentType, currentChannel);
+            const selectedHeaderType = String(selectedTemplate?.header_type || '').toLowerCase();
+            const canAttachDocumentForWhatsapp = currentChannel !== 'whatsapp' || selectedHeaderType === 'document';
+            if (currentType === 'pi' && canAttachDocumentForWhatsapp) labels.push('PI PDF');
+            if (currentType === 'ti' && canAttachDocumentForWhatsapp) labels.push('TI PDF');
+            if ((dscPreviewUrls || []).length > 0) labels.push('Custom attachment');
+
+            if (!attachmentBodyHint) return;
+            const attachmentText = labels.length ? ('Attached: ' + labels.join(', ')) : 'No attachment selected.';
+            if (isAlreadySent) {
+                attachmentBodyHint.textContent = attachmentText +
+                    ' ';
+                return;
+            }
+            attachmentBodyHint.textContent = attachmentText;
+        }
+
+        function getTemplateKeyForSelection(type) {
+            return type; // pi, ti
+        }
+
+        function getAvailableChannelsForType(type) {
+            const channels = availableChannelsByType[type] || [];
+            if (!Array.isArray(channels) || channels.length === 0) {
+                return ['email'];
+            }
+            return channels;
+        }
+
+        function getTemplatesForSelection(type, channel) {
+            return ((templateCatalog[type] || {})[channel] || []);
+        }
+
+        function getRawTemplateBodyForCurrentSelection(type, channel) {
+            let payload = getSelectedTemplateForCurrentSelection(type, channel);
+
+            if (!payload) {
+                payload = fallbackTemplatesByType[type] || {
+                    raw_body: ''
+                };
             }
 
-            function updateContextHints() {
-                const labels = [];
-                const selectedTemplate = getSelectedTemplateForCurrentSelection(currentType, currentChannel);
-                const selectedHeaderType = String(selectedTemplate?.header_type || '').toLowerCase();
-                const canAttachDocumentForWhatsapp = currentChannel !== 'whatsapp' || selectedHeaderType === 'document';
-                if (currentType === 'pi' && canAttachDocumentForWhatsapp) labels.push('PI PDF');
-                if (currentType === 'ti' && canAttachDocumentForWhatsapp) labels.push('TI PDF');
-                if ((dscPreviewUrls || []).length > 0) labels.push('Custom attachment');
+            return String(payload?.raw_body || '');
+        }
 
-                if (!attachmentBodyHint) return;
-                const attachmentText = labels.length ? ('Attached: ' + labels.join(', ')) : 'No attachment selected.';
-                if (isAlreadySent) {
-                    attachmentBodyHint.textContent = attachmentText +
-                        ' ';
-                    return;
-                }
-                attachmentBodyHint.textContent = attachmentText;
+        function getSelectedTemplateForCurrentSelection(type, channel) {
+            const options = getTemplatesForSelection(type, channel);
+            const pickedTemplateId = (channel === 'email' ?
+                (templatePicker?.value || '') :
+                (templatePickerSmsWa?.value || templatePicker?.value || '')
+            );
+
+            if (pickedTemplateId) {
+                return options.find((tpl) => (tpl.templateid || '') === pickedTemplateId) || null;
             }
-
-            function getTemplateKeyForSelection(type) {
-                return type; // pi, ti
+            if (options.length > 0) {
+                return options[0];
             }
+            return null;
+        }
 
-            function getAvailableChannelsForType(type) {
-                const channels = availableChannelsByType[type] || [];
-                if (!Array.isArray(channels) || channels.length === 0) {
-                    return ['email'];
-                }
-                return channels;
+        function refreshChannelVisibilityForType(type) {
+            const allowed = getAvailableChannelsForType(type);
+            channelBtns.forEach((btn) => {
+                const show = allowed.includes(btn.dataset.channel);
+                btn.style.display = show ? '' : 'none';
+            });
+
+            if (!allowed.includes(currentChannel)) {
+                const fallback = allowed[0] || 'email';
+                currentChannel = fallback;
+                document.getElementById('selectedChannel').value = fallback;
             }
+        }
 
-            function getTemplatesForSelection(type, channel) {
-                return ((templateCatalog[type] || {})[channel] || []);
+        function populateTemplatePicker(type, channel) {
+            if (!templatePicker && !templatePickerSmsWa) return;
+            const items = getTemplatesForSelection(type, channel);
+            const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
+            if (templatePicker) templatePicker.innerHTML = '';
+            if (templatePickerSmsWa) templatePickerSmsWa.innerHTML = '';
+
+            const manual = document.createElement('option');
+            manual.value = '';
+            manual.textContent = 'Manual (no template)';
+            if (templatePicker) templatePicker.appendChild(manual.cloneNode(true));
+            if (templatePickerSmsWa) templatePickerSmsWa.appendChild(manual.cloneNode(true));
+
+            items.forEach((tpl) => {
+                const option = document.createElement('option');
+                option.value = tpl.templateid || '';
+                option.textContent = tpl.name || ('Template ' + (tpl.templateid || ''));
+                if (templatePicker) templatePicker.appendChild(option.cloneNode(true));
+                if (templatePickerSmsWa) templatePickerSmsWa.appendChild(option.cloneNode(true));
+            });
+
+            const firstValue = items.length > 0 ? (items[0].templateid || '') : '';
+            if (items.length > 0) {
+                if (templatePicker) templatePicker.value = firstValue;
+                if (templatePickerSmsWa) templatePickerSmsWa.value = firstValue;
+            } else {
+                if (templatePicker) templatePicker.value = '';
+                if (templatePickerSmsWa) templatePickerSmsWa.value = '';
             }
-
-            function getRawTemplateBodyForCurrentSelection(type, channel) {
-                let payload = getSelectedTemplateForCurrentSelection(type, channel);
-
-                if (!payload) {
-                    payload = fallbackTemplatesByType[type] || {
-                        raw_body: ''
-                    };
-                }
-
-                return String(payload?.raw_body || '');
+            if (selectedTemplateIdInput) {
+                selectedTemplateIdInput.value = firstValue || '';
             }
+        }
 
-            function getSelectedTemplateForCurrentSelection(type, channel) {
-                const options = getTemplatesForSelection(type, channel);
-                const pickedTemplateId = (channel === 'email' ?
-                    (templatePicker?.value || '') :
-                    (templatePickerSmsWa?.value || templatePicker?.value || '')
-                );
-
-                if (pickedTemplateId) {
-                    return options.find((tpl) => (tpl.templateid || '') === pickedTemplateId) || null;
-                }
-                if (options.length > 0) {
-                    return options[0];
-                }
-                return null;
-            }
-
-            function refreshChannelVisibilityForType(type) {
-                const allowed = getAvailableChannelsForType(type);
-                channelBtns.forEach((btn) => {
-                    const show = allowed.includes(btn.dataset.channel);
-                    btn.style.display = show ? '' : 'none';
-                });
-
-                if (!allowed.includes(currentChannel)) {
-                    const fallback = allowed[0] || 'email';
-                    currentChannel = fallback;
-                    document.getElementById('selectedChannel').value = fallback;
-                }
-            }
-
-            function populateTemplatePicker(type, channel) {
-                if (!templatePicker && !templatePickerSmsWa) return;
-                const items = getTemplatesForSelection(type, channel);
-                const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
-                if (templatePicker) templatePicker.innerHTML = '';
-                if (templatePickerSmsWa) templatePickerSmsWa.innerHTML = '';
-
-                const manual = document.createElement('option');
-                manual.value = '';
-                manual.textContent = 'Manual (no template)';
-                if (templatePicker) templatePicker.appendChild(manual.cloneNode(true));
-                if (templatePickerSmsWa) templatePickerSmsWa.appendChild(manual.cloneNode(true));
-
-                items.forEach((tpl) => {
-                    const option = document.createElement('option');
-                    option.value = tpl.templateid || '';
-                    option.textContent = tpl.name || ('Template ' + (tpl.templateid || ''));
-                    if (templatePicker) templatePicker.appendChild(option.cloneNode(true));
-                    if (templatePickerSmsWa) templatePickerSmsWa.appendChild(option.cloneNode(true));
-                });
-
-                const firstValue = items.length > 0 ? (items[0].templateid || '') : '';
-                if (items.length > 0) {
-                    if (templatePicker) templatePicker.value = firstValue;
-                    if (templatePickerSmsWa) templatePickerSmsWa.value = firstValue;
-                } else {
-                    if (templatePicker) templatePicker.value = '';
-                    if (templatePickerSmsWa) templatePickerSmsWa.value = '';
-                }
-                if (selectedTemplateIdInput) {
-                    selectedTemplateIdInput.value = firstValue || '';
-                }
-            }
-
-            function applyTemplate(preserveExisting = false) {
-                currentRawTemplateBody = getRawTemplateBodyForCurrentSelection(currentType, currentChannel);
-                if (isAlreadySent) {
-                    if (emailBodyInput && currentChannel !== 'email') {
-                        emailBodyInput.value = getPlainTextFromHtml(emailBodyInput.value || '');
-                    }
-                    refreshEmailPreview();
-                    return;
-                }
-                const templateKey = getTemplateKeyForSelection(currentType);
-                const pickedTemplateId = (currentChannel === 'email' ?
-                    (templatePicker?.value || '') :
-                    (templatePickerSmsWa?.value || templatePicker?.value || '')
-                );
-                const options = getTemplatesForSelection(templateKey, currentChannel);
-                let payload = null;
-                if (pickedTemplateId) {
-                    payload = options.find((tpl) => (tpl.templateid || '') === pickedTemplateId) || null;
-                } else if (options.length > 0) {
-                    payload = options[0];
-                }
-                if (!payload) {
-                    payload = fallbackTemplatesByType[templateKey] || {
-                        subject: '',
-                        body: ''
-                    };
-                }
-
-                const nextSubject = (payload.subject || '').trim();
-                const nextBody = payload.body || '';
-                const hasRawTemplateBody = typeof payload.raw_body === 'string' && payload.raw_body.trim() !== '';
-                currentRawTemplateBody = hasRawTemplateBody ?
-                    payload.raw_body :
-                    getPlainTextFromHtml(payload.body || nextBody || '');
-
-                if (preserveExisting) {
-                    if (currentChannel !== 'email' && emailBodyInput) {
-                        emailBodyInput.value = getPlainTextFromHtml(emailBodyInput.value || '');
-                    }
-                    refreshEmailPreview();
-                    return;
-                }
-
-                if (emailSubjectInput && currentChannel === 'email') {
-                    emailSubjectInput.value = nextSubject;
-                }
-
-                if (currentChannel !== 'email') {
-                    emailBodyInput.value = getPlainTextFromHtml(nextBody || '');
-                } else if (window.tinymce && tinymce.get('emailBodyInput')) {
-                    const editor = tinymce.get('emailBodyInput');
-                    editor.setContent(toEditorHtml(nextBody));
-                } else if (emailBodyInput) {
-                    emailBodyInput.value = normalizeHtmlForEditor(nextBody);
+        function applyTemplate(preserveExisting = false) {
+            currentRawTemplateBody = getRawTemplateBodyForCurrentSelection(currentType, currentChannel);
+            if (isAlreadySent) {
+                if (emailBodyInput && currentChannel !== 'email') {
+                    emailBodyInput.value = getPlainTextFromHtml(emailBodyInput.value || '');
                 }
                 refreshEmailPreview();
+                return;
+            }
+            const templateKey = getTemplateKeyForSelection(currentType);
+            const pickedTemplateId = (currentChannel === 'email' ?
+                (templatePicker?.value || '') :
+                (templatePickerSmsWa?.value || templatePicker?.value || '')
+            );
+            const options = getTemplatesForSelection(templateKey, currentChannel);
+            let payload = null;
+            if (pickedTemplateId) {
+                payload = options.find((tpl) => (tpl.templateid || '') === pickedTemplateId) || null;
+            } else if (options.length > 0) {
+                payload = options[0];
+            }
+            if (!payload) {
+                payload = fallbackTemplatesByType[templateKey] || {
+                    subject: '',
+                    body: ''
+                };
             }
 
-            function switchChannel(channel, preserveExisting = false) {
-                currentChannel = channel;
-                document.getElementById('selectedChannel').value = channel;
-                syncBodyEditorByChannel(channel);
+            const nextSubject = (payload.subject || '').trim();
+            const nextBody = payload.body || '';
+            const hasRawTemplateBody = typeof payload.raw_body === 'string' && payload.raw_body.trim() !== '';
+            currentRawTemplateBody = hasRawTemplateBody ?
+                payload.raw_body :
+                getPlainTextFromHtml(payload.body || nextBody || '');
 
-                channelBtns.forEach(btn => {
-                    btn.classList.toggle('is-active', btn.dataset.channel === channel);
-                });
-
-                document.querySelectorAll('.email-fields').forEach(el => el.style.display = channel === 'email' ? '' :
-                    'none');
-                document.querySelectorAll('.whatsapp-sms-fields').forEach(el => el.style.display = (channel ===
-                    'whatsapp' || channel === 'sms') ? '' : 'none');
-                document.querySelector('.email-actions').style.display = channel === 'email' ? '' : 'none';
-                document.querySelector('.whatsapp-actions').style.display = channel === 'whatsapp' ? '' : 'none';
-                document.querySelector('.sms-actions').style.display = channel === 'sms' ? '' : 'none';
-
-                populateTemplatePicker(currentType, currentChannel);
-                applyTemplate(preserveExisting);
+            if (preserveExisting) {
+                if (currentChannel !== 'email' && emailBodyInput) {
+                    emailBodyInput.value = getPlainTextFromHtml(emailBodyInput.value || '');
+                }
+                refreshEmailPreview();
+                return;
             }
 
-            function switchType(type, preserveExisting = false) {
-                currentType = type;
-                document.getElementById('selectedType').value = type;
-
-                typeBtns.forEach(btn => {
-                    btn.classList.toggle('is-active', btn.dataset.type === type);
-                });
-
-                refreshChannelVisibilityForType(type);
-                updateContextHints();
-                populateTemplatePicker(currentType, currentChannel);
-                applyTemplate(preserveExisting);
+            if (emailSubjectInput && currentChannel === 'email') {
+                emailSubjectInput.value = nextSubject;
             }
 
-            // Event Listeners
-            typeBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if (btn.disabled) return;
-                    const newType = btn.dataset.type;
-                    if (newType === currentType) return;
+            if (currentChannel !== 'email') {
+                emailBodyInput.value = getPlainTextFromHtml(nextBody || '');
+            } else if (window.tinymce && tinymce.get('emailBodyInput')) {
+                const editor = tinymce.get('emailBodyInput');
+                editor.setContent(toEditorHtml(nextBody));
+            } else if (emailBodyInput) {
+                emailBodyInput.value = normalizeHtmlForEditor(nextBody);
+            }
+            refreshEmailPreview();
+        }
 
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('channel', currentChannel);
-                    url.searchParams.set('attachment_type', newType);
-                    url.searchParams.delete('e');
-                    window.location.href = url.toString();
-                });
-            });
+        function switchChannel(channel, preserveExisting = false) {
+            currentChannel = channel;
+            document.getElementById('selectedChannel').value = channel;
+            syncBodyEditorByChannel(channel);
 
             channelBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if (btn.style.display === 'none') return;
-                    const newChannel = btn.dataset.channel;
-                    if (newChannel === currentChannel) return;
-
-                    // Store current form data in sessionStorage before switching
-                    if (emailSubjectInput?.value || emailBodyInput?.value) {
-                        sessionStorage.setItem('compose_subject', emailSubjectInput?.value || '');
-                        sessionStorage.setItem('compose_body', emailBodyInput?.value || '');
-                    }
-
-                    // Redirect to reload with new channel - controller will load correct saved message
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('channel', newChannel);
-                    url.searchParams.set('attachment_type', currentType);
-                    url.searchParams.delete('e');
-                    window.location.href = url.toString();
-                });
+                const isActive = btn.dataset.channel === channel;
+                btn.classList.toggle('active', isActive);
+                btn.classList.toggle('is-active', isActive);
             });
 
-            templatePicker?.addEventListener('change', () => {
-                const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
-                if (selectedTemplateIdInput) {
-                    selectedTemplateIdInput.value = templatePicker.value || '';
-                }
-                if (templatePickerSmsWa) {
-                    templatePickerSmsWa.value = templatePicker.value || '';
-                }
-                applyTemplate(false);
+            document.querySelectorAll('.email-fields').forEach(el => el.style.display = channel === 'email' ? '' :
+                'none');
+            document.querySelectorAll('.whatsapp-sms-fields').forEach(el => el.style.display = (channel ===
+                'whatsapp' || channel === 'sms') ? '' : 'none');
+            document.querySelector('.email-actions').style.display = channel === 'email' ? '' : 'none';
+            document.querySelector('.whatsapp-actions').style.display = channel === 'whatsapp' ? '' : 'none';
+            document.querySelector('.sms-actions').style.display = channel === 'sms' ? '' : 'none';
+
+            populateTemplatePicker(currentType, currentChannel);
+            applyTemplate(preserveExisting);
+        }
+
+        function switchType(type, preserveExisting = false) {
+            currentType = type;
+            document.getElementById('selectedType').value = type;
+
+            typeBtns.forEach(btn => {
+                const isActive = btn.dataset.type === type;
+                btn.classList.toggle('active', isActive);
+                btn.classList.toggle('is-active', isActive);
             });
 
-            templatePickerSmsWa?.addEventListener('change', () => {
-                const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
-                if (selectedTemplateIdInput) {
-                    selectedTemplateIdInput.value = templatePickerSmsWa.value || '';
-                }
-                if (templatePicker) {
-                    templatePicker.value = templatePickerSmsWa.value || '';
-                }
-                applyTemplate(false);
-            });
+            refreshChannelVisibilityForType(type);
+            updateContextHints();
+            populateTemplatePicker(currentType, currentChannel);
+            applyTemplate(preserveExisting);
+        }
 
-            customAttachmentInput?.addEventListener('change', function() {
-                if (@json($isComposeLocked)) return;
-                (dscPreviewUrls || []).forEach((url) => {
-                    if (url && !(savedCustomAttachmentUrls || []).includes(url)) {
-                        URL.revokeObjectURL(url);
-                    }
-                });
-                const selectedFiles = Array.from(customAttachmentInput.files || []);
-                dscPreviewUrls = selectedFiles.map((file) => URL.createObjectURL(file));
-                updateContextHints();
-                renderCurrentCustomAttachment();
-                refreshEmailPreview();
-            });
+        // Event Listeners
+        typeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.disabled) return;
+                const newType = btn.dataset.type;
+                if (newType === currentType) return;
 
-            function refillFromTemplateWhenBodyEmpty() {
-                if (isAlreadySent) return;
-                const plain = (getPlainTextFromHtml(getActiveMessageBody()) || '').trim();
-                if (plain !== '') return;
-                const options = getTemplatesForSelection(currentType, currentChannel);
-                if (!Array.isArray(options) || options.length === 0) return;
-                applyTemplate(false);
+                const url = new URL(window.location.href);
+                url.searchParams.set('channel', currentChannel);
+                url.searchParams.set('attachment_type', newType);
+                url.searchParams.delete('e');
+                window.location.href = url.toString();
+            });
+        });
+
+        channelBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.style.display === 'none') return;
+                const newChannel = btn.dataset.channel;
+                if (newChannel === currentChannel) return;
+
+                // Store current form data in sessionStorage before switching
+                if (emailSubjectInput?.value || emailBodyInput?.value) {
+                    sessionStorage.setItem('compose_subject', emailSubjectInput?.value || '');
+                    sessionStorage.setItem('compose_body', emailBodyInput?.value || '');
+                }
+
+                // Redirect to reload with new channel - controller will load correct saved message
+                const url = new URL(window.location.href);
+                url.searchParams.set('channel', newChannel);
+                url.searchParams.set('attachment_type', currentType);
+                url.searchParams.delete('e');
+                window.location.href = url.toString();
+            });
+        });
+
+        templatePicker?.addEventListener('change', () => {
+            const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
+            if (selectedTemplateIdInput) {
+                selectedTemplateIdInput.value = templatePicker.value || '';
             }
-
-            emailSubjectInput?.addEventListener('input', refreshEmailPreview);
-            emailBodyInput?.addEventListener('input', function() {
-                refreshEmailPreview();
-                refillFromTemplateWhenBodyEmpty();
-            });
-
-            function getActiveMessageBody() {
-                if (window.tinymce && tinymce.get('emailBodyInput')) {
-                    return tinymce.get('emailBodyInput').getContent();
-                }
-                return emailBodyInput.value;
+            if (templatePickerSmsWa) {
+                templatePickerSmsWa.value = templatePicker.value || '';
             }
+            applyTemplate(false);
+        });
 
-            function enableTinyMceForEmail() {
-                if (!window.tinymce || !emailBodyInput) return;
-                if (tinymce.get('emailBodyInput')) return;
+        templatePickerSmsWa?.addEventListener('change', () => {
+            const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
+            if (selectedTemplateIdInput) {
+                selectedTemplateIdInput.value = templatePickerSmsWa.value || '';
+            }
+            if (templatePicker) {
+                templatePicker.value = templatePickerSmsWa.value || '';
+            }
+            applyTemplate(false);
+        });
 
-                tinymce.init({
-                    license_key: 'gpl',
-                    selector: '#emailBodyInput',
-                    menubar: false,
-                    height: 340,
-                    readonly: !!isAlreadySent,
-                    plugins: 'lists link table code autoresize',
-                    toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
-                    valid_elements: '*[*]',
-                    extended_valid_elements: 'style[type|media],link[rel|href|type|media],meta[charset|name|content]',
-                    setup: function(editor) {
-                        editor.on('BeforeSetContent', function(e) {
-                            e.content = normalizeHtmlForEditor(e.content || '');
-                        });
-                        editor.on('init', function() {
-                            // Preserve plain-text line breaks on initial TinyMCE render.
-                            const initialBody = emailBodyInput?.value || '';
-                            editor.setContent(toEditorHtml(initialBody));
-                            if (isAlreadySent) {
-                                editor.mode.set('readonly');
-                            }
+        customAttachmentInput?.addEventListener('change', function () {
+            if (@json($isComposeLocked)) return;
+            (dscPreviewUrls || []).forEach((url) => {
+                if (url && !(savedCustomAttachmentUrls || []).includes(url)) {
+                    URL.revokeObjectURL(url);
+                }
+            });
+            const selectedFiles = Array.from(customAttachmentInput.files || []);
+            dscPreviewUrls = selectedFiles.map((file) => URL.createObjectURL(file));
+            updateContextHints();
+            renderCurrentCustomAttachment();
+            refreshEmailPreview();
+        });
+
+        function refillFromTemplateWhenBodyEmpty() {
+            if (isAlreadySent) return;
+            const plain = (getPlainTextFromHtml(getActiveMessageBody()) || '').trim();
+            if (plain !== '') return;
+            const options = getTemplatesForSelection(currentType, currentChannel);
+            if (!Array.isArray(options) || options.length === 0) return;
+            applyTemplate(false);
+        }
+
+        emailSubjectInput?.addEventListener('input', refreshEmailPreview);
+        emailBodyInput?.addEventListener('input', function () {
+            refreshEmailPreview();
+            refillFromTemplateWhenBodyEmpty();
+        });
+
+        function getActiveMessageBody() {
+            if (window.tinymce && tinymce.get('emailBodyInput')) {
+                return tinymce.get('emailBodyInput').getContent();
+            }
+            return emailBodyInput.value;
+        }
+
+        function enableTinyMceForEmail() {
+            if (!window.tinymce || !emailBodyInput) return;
+            if (tinymce.get('emailBodyInput')) return;
+
+            tinymce.init({
+                license_key: 'gpl',
+                selector: '#emailBodyInput',
+                menubar: false,
+                height: 340,
+                readonly: !!isAlreadySent,
+                plugins: 'lists link table code autoresize',
+                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
+                valid_elements: '*[*]',
+                extended_valid_elements: 'style[type|media],link[rel|href|type|media],meta[charset|name|content]',
+                setup: function (editor) {
+                    editor.on('BeforeSetContent', function (e) {
+                        e.content = normalizeHtmlForEditor(e.content || '');
+                    });
+                    editor.on('init', function () {
+                        // Preserve plain-text line breaks on initial TinyMCE render.
+                        const initialBody = emailBodyInput?.value || '';
+                        editor.setContent(toEditorHtml(initialBody));
+                        if (isAlreadySent) {
+                            editor.mode.set('readonly');
+                        }
+                        editor.save();
+                        refreshEmailPreview();
+                    });
+                    editor.on('input change keyup setcontent undo redo ExecCommand NodeChange',
+                        function () {
                             editor.save();
                             refreshEmailPreview();
+                            refillFromTemplateWhenBodyEmpty();
                         });
-                        editor.on('input change keyup setcontent undo redo ExecCommand NodeChange',
-                            function() {
-                                editor.save();
-                                refreshEmailPreview();
-                                refillFromTemplateWhenBodyEmpty();
-                            });
-                    }
-                });
-            }
-
-            function disableTinyMceForTextarea() {
-                if (!window.tinymce) return;
-                const editor = tinymce.get('emailBodyInput');
-                if (!editor) return;
-                editor.save();
-                editor.remove();
-            }
-
-            function syncBodyEditorByChannel(channel) {
-                if (channel === 'email') {
-                    enableTinyMceForEmail();
-                    return;
                 }
-                disableTinyMceForTextarea();
+            });
+        }
+
+        function disableTinyMceForTextarea() {
+            if (!window.tinymce) return;
+            const editor = tinymce.get('emailBodyInput');
+            if (!editor) return;
+            editor.save();
+            editor.remove();
+        }
+
+        function syncBodyEditorByChannel(channel) {
+            if (channel === 'email') {
+                enableTinyMceForEmail();
+                return;
             }
+            disableTinyMceForTextarea();
+        }
 
-            // Actions
-            document.getElementById('copyToClipboard')?.addEventListener('click', function() {
-                const htmlContent = getActiveMessageBody();
-                const message = getPlainTextFromHtml(htmlContent);
+        // Actions
+        document.getElementById('copyToClipboard')?.addEventListener('click', function () {
+            const htmlContent = getActiveMessageBody();
+            const message = getPlainTextFromHtml(htmlContent);
 
-                const dummy = document.createElement("textarea");
-                document.body.appendChild(dummy);
-                dummy.value = message;
-                dummy.select();
-                document.execCommand("copy");
-                document.body.removeChild(dummy);
-                alert('Message copied to clipboard!');
-            });
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = message;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+            alert('Message copied to clipboard!');
+        });
 
-            document.getElementById('copySmsToClipboard')?.addEventListener('click', function() {
-                const htmlContent = getActiveMessageBody();
-                const message = getPlainTextFromHtml(htmlContent);
+        document.getElementById('copySmsToClipboard')?.addEventListener('click', function () {
+            const htmlContent = getActiveMessageBody();
+            const message = getPlainTextFromHtml(htmlContent);
 
-                const dummy = document.createElement("textarea");
-                document.body.appendChild(dummy);
-                dummy.value = message;
-                dummy.select();
-                document.execCommand("copy");
-                document.body.removeChild(dummy);
-                alert('SMS copied to clipboard!');
-            });
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = message;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+            alert('SMS copied to clipboard!');
+        });
 
-            const composeForm = document.getElementById('composeForm');
-            const actionButtons = Array.from(composeForm?.querySelectorAll('button[type="submit"][name="action"]') ||
+        const composeForm = document.getElementById('composeForm');
+        const actionButtons = Array.from(composeForm?.querySelectorAll('button[type="submit"][name="action"]') ||
             []);
 
-            function syncEditorToTextarea() {
-                if (window.tinymce) {
-                    const editor = tinymce.get('emailBodyInput');
-                    if (editor) {
-                        editor.save();
-                    } else {
-                        tinymce.triggerSave();
-                    }
+        function syncEditorToTextarea() {
+            if (window.tinymce) {
+                const editor = tinymce.get('emailBodyInput');
+                if (editor) {
+                    editor.save();
+                } else {
+                    tinymce.triggerSave();
                 }
             }
+        }
 
-            actionButtons.forEach((btn) => {
-                btn.addEventListener('click', function() {
-                    syncEditorToTextarea();
-                });
-            });
-
-            composeForm?.addEventListener('submit', function() {
+        actionButtons.forEach((btn) => {
+            btn.addEventListener('click', function () {
                 syncEditorToTextarea();
-            }, true);
-
-            // Initial load
-            if (!hasTiNumber && currentType === 'ti') {
-                currentType = 'pi';
-            }
-
-            // Read channel from URL parameter and sync with controller-loaded message
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlChannel = urlParams.get('channel');
-            const urlType = urlParams.get('attachment_type');
-            if (urlType && ['pi', 'ti'].includes(urlType)) {
-                currentType = urlType;
-                document.getElementById('selectedType').value = urlType;
-            }
-            if (urlChannel && ['email', 'whatsapp', 'sms'].includes(urlChannel)) {
-                currentChannel = urlChannel;
-                document.getElementById('selectedChannel').value = urlChannel;
-            } else {
-                // Check for channel preserved after save
-                const preservedChannel = @json(session('preserve_channel'));
-                if (preservedChannel && ['email', 'whatsapp', 'sms'].includes(preservedChannel)) {
-                    // Redirect to URL with channel param to reload saved message
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('channel', preservedChannel);
-                    url.searchParams.set('attachment_type', currentType);
-                    url.searchParams.delete('e');
-                    window.location.href = url.toString();
-                    return;
-                }
-            }
-
-            // Update channel button state to match loaded message
-            channelBtns.forEach(btn => {
-                btn.classList.toggle('is-active', btn.dataset.channel === currentChannel);
             });
+        });
 
-            syncBodyEditorByChannel(currentChannel);
-            switchType(currentType, hasExistingDraft);
-            switchChannel(currentChannel, hasExistingDraft);
-            refreshEmailPreview();
-            renderCurrentCustomAttachment();
-        })();
-    </script>
+        composeForm?.addEventListener('submit', function () {
+            syncEditorToTextarea();
+        }, true);
+
+        // Initial load
+        if (!hasTiNumber && currentType === 'ti') {
+            currentType = 'pi';
+        }
+
+        // Read channel from URL parameter and sync with controller-loaded message
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlChannel = urlParams.get('channel');
+        const urlType = urlParams.get('attachment_type');
+        if (urlType && ['pi', 'ti'].includes(urlType)) {
+            currentType = urlType;
+            document.getElementById('selectedType').value = urlType;
+        }
+        if (urlChannel && ['email', 'whatsapp', 'sms'].includes(urlChannel)) {
+            currentChannel = urlChannel;
+            document.getElementById('selectedChannel').value = urlChannel;
+        } else {
+            // Check for channel preserved after save
+            const preservedChannel = @json(session('preserve_channel'));
+            if (preservedChannel && ['email', 'whatsapp', 'sms'].includes(preservedChannel)) {
+                // Redirect to URL with channel param to reload saved message
+                const url = new URL(window.location.href);
+                url.searchParams.set('channel', preservedChannel);
+                url.searchParams.set('attachment_type', currentType);
+                url.searchParams.delete('e');
+                window.location.href = url.toString();
+                return;
+            }
+        }
+
+        // Update channel button state to match loaded message
+        channelBtns.forEach(btn => {
+            const isActive = btn.dataset.channel === currentChannel;
+            btn.classList.toggle('active', isActive);
+            btn.classList.toggle('is-active', isActive);
+        });
+
+        syncBodyEditorByChannel(currentChannel);
+        switchType(currentType, hasExistingDraft);
+        switchChannel(currentChannel, hasExistingDraft);
+        refreshEmailPreview();
+        renderCurrentCustomAttachment();
+    })();
+</script>
 @endsection

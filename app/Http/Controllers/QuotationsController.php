@@ -185,7 +185,7 @@ class QuotationsController extends Controller
 
         $clientId = (string) request('c', request('clientid', ''));
         $selectedClient = $clientId !== ''
-            ? Client::query()->where('accountid', $accountid)->where('clientid', $clientId)->first()
+            ? Client::query()->where('accountid', $accountid)->active()->where('clientid', $clientId)->first()
             : null;
         $draftId = (string) request('d', '');
         $draftQuotation = $draftId !== ''
@@ -196,7 +196,7 @@ class QuotationsController extends Controller
                 ->first()
             : null;
 
-        $clients = Client::where('accountid', $accountid)->orderBy('business_name')->get();
+        $clients = Client::where('accountid', $accountid)->active()->orderBy('business_name')->get();
 
         return view('quotations.create', [
             'title' => 'Create New Quotation',
@@ -504,7 +504,7 @@ class QuotationsController extends Controller
         return view('quotations.form', [
             'title' => 'Edit '.($quotation->quo_number ?? 'Quotation'),
             'quotation' => $quotation,
-            'clients' => Client::where('accountid', $accountid)->get(),
+            'clients' => Client::where('accountid', $accountid)->active()->get(),
             'quotationDateBounds' => $quotationDateBounds,
         ]);
     }

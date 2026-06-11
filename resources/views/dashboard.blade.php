@@ -58,7 +58,31 @@
                     </div>
 
                     <p class="text-muted small mb-1">Total Revenue</p>
-                    <h3 class="fw-bold mb-0">Rs {{ number_format($totalRevenue, 0) }}</h3>
+                    <h3 class="fw-bold mb-0">{{ number_format($totalRevenue, 0) }}</h3>
+
+                </div>
+            </div>
+        </div>
+
+        {{-- Outstanding --}}
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="card shadow-sm border-0 h-100 position-relative">
+
+                <a href="{{ route('invoices.index', ['tab' => 'outstanding']) }}"
+                   class="position-absolute top-0 start-0 w-100 h-100"
+                   aria-label="Open Outstanding Invoices"></a>
+
+                <div class="card-body">
+
+                    <div class="mb-3">
+                        <div class="bg-danger bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center"
+                             style="width:50px;height:50px;">
+                            <i class="fas fa-hand-holding-usd text-danger"></i>
+                        </div>
+                    </div>
+
+                    <p class="text-muted small mb-1">Total Outstanding</p>
+                    <h3 class="fw-bold mb-0">{{ number_format($totalOutstanding, 0) }}</h3>
 
                 </div>
             </div>
@@ -93,11 +117,9 @@
     {{-- Main Content --}}
     <div class="row g-4">
 
-        {{-- Left Column --}}
-        <div class="col-lg-6">
-
-            {{-- Items Needing Attention --}}
-            <div class="card shadow-sm border-0 mb-4">
+        {{-- Items Needing Attention --}}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow-sm border-0 h-100" style="min-height: 380px;">
                 <div class="card-body">
 
                     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -173,9 +195,11 @@
 
                 </div>
             </div>
+        </div>
 
-            {{-- Recent Revenue --}}
-            <div class="card shadow-sm border-0">
+        {{-- Recent Revenue --}}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow-sm border-0 h-100" style="min-height: 380px;">
                 <div class="card-body">
 
                     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -225,94 +249,11 @@
 
                 </div>
             </div>
-
         </div>
 
-        {{-- Right Column --}}
-        <div class="col-lg-6">
-
-            {{-- Client Health --}}
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body">
-
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <div>
-                            <small class="text-muted text-uppercase">
-                                Client Health
-                            </small>
-
-                            <h5 class="fw-bold mb-0">
-                                Renewal Priority by Client
-                            </h5>
-                        </div>
-
-                        <a href="{{ route('clients.index') }}"
-                           class="btn btn-sm btn-outline-primary">
-                            Clients
-                        </a>
-                    </div>
-
-                    @forelse ($renewalClientPriorities as $client)
-
-                        <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
-
-                            <div>
-                                <div class="fw-semibold">
-                                    {{ $client['client_name'] }}
-                                </div>
-
-                                <small class="text-muted">
-
-                                    @if (($client['nearest_days_left'] ?? null) === null)
-                                        No timeline
-                                    @elseif($client['nearest_days_left'] < 0)
-                                        Nearest expiry was {{ abs($client['nearest_days_left']) }} day(s) ago
-                                    @elseif($client['nearest_days_left'] === 0)
-                                        Nearest expiry is today
-                                    @else
-                                        Nearest expiry in {{ $client['nearest_days_left'] }} day(s)
-                                    @endif
-
-                                </small>
-                            </div>
-
-                            <div class="text-end">
-
-                                @if (($client['expired_count'] ?? 0) > 0)
-                                    <span class="badge bg-danger">
-                                        {{ $client['expired_count'] }} expired
-                                    </span>
-                                @endif
-
-                                @if (($client['due_this_week_count'] ?? 0) > 0)
-                                    <span class="badge bg-warning text-dark">
-                                        {{ $client['due_this_week_count'] }} this week
-                                    </span>
-                                @endif
-
-                                @if (($client['due_this_month_count'] ?? 0) > 0)
-                                    <span class="badge bg-primary">
-                                        {{ $client['due_this_month_count'] }} this month
-                                    </span>
-                                @endif
-
-                            </div>
-
-                        </div>
-
-                    @empty
-
-                        <p class="text-muted mb-0">
-                            No client renewal priorities for the next 30 days.
-                        </p>
-
-                    @endforelse
-
-                </div>
-            </div>
-
-            {{-- Recently Expired --}}
-            <div class="card shadow-sm border-0">
+        {{-- Recently Expired --}}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow-sm border-0 h-100" style="min-height: 380px;">
                 <div class="card-body">
 
                     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -371,7 +312,61 @@
 
                 </div>
             </div>
+        </div>
 
+        {{-- Outstanding Invoices --}}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow-sm border-0 h-100" style="min-height: 380px;">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="fw-bold mb-0">Outstanding Invoices</h5>
+
+                        <a href="{{ route('invoices.index', ['tab' => 'outstanding']) }}"
+                           class="btn btn-sm btn-outline-danger">
+                            View All
+                        </a>
+                    </div>
+
+                    @forelse ($outstandingInvoices as $item)
+
+                        <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+
+                            <div class="d-flex align-items-center">
+
+                                <div class="me-3">
+                                    <i class="fas fa-file-invoice-dollar text-danger"></i>
+                                </div>
+
+                                <div>
+                                    <div class="fw-semibold">
+                                        {{ $item['invoice_number'] }}
+                                    </div>
+
+                                    <small class="text-muted">
+                                        {{ $item['client_name'] }}
+                                        • {{ $item['date'] }}
+                                    </small>
+                                </div>
+
+                            </div>
+
+                            <div class="fw-bold text-danger">
+                                {{ $item['balance_due'] }}
+                            </div>
+
+                        </div>
+
+                    @empty
+
+                        <p class="text-muted mb-0">
+                            No outstanding invoices.
+                        </p>
+
+                    @endforelse
+
+                </div>
+            </div>
         </div>
 
     </div>

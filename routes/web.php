@@ -60,6 +60,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/clients/{client}/edit', 'clientsEdit')->name('clients.edit');
         Route::put('/clients/{client}', 'clientsUpdate')->name('clients.update');
         Route::delete('/clients/{client}', 'clientsDestroy')->name('clients.destroy');
+        Route::patch('/clients/{client}/toggle-status', 'toggleClientStatus')->name('clients.toggle-status');
     });
 
     Route::controller(ServicesController::class)->group(function () {

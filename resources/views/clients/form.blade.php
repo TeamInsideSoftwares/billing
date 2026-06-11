@@ -8,6 +8,9 @@
 @endsection
 
 @section('content')
+@php
+$showDetails = isset($client) || old('business_name') !== null || $errors->any();
+@endphp
 <div class="position-relative bg-white p-2 rounded-3">
     <form method="POST" action="{{ isset($client) ? route('clients.update', $client) : route('clients.store') }}"
         class="mainForm" enctype="multipart/form-data">
@@ -54,7 +57,7 @@
                                 Client fall in a group?</label>
                             <div class="input-group">
                                 <select id="groupid" name="groupid" class="form-select">
-                                    <option value="">-- Without Group --</option>
+                                    <option value="">Not part of any Group</option>
                                     @foreach($groups as $group)
                                     <option value="{{ $group->groupid }}" {{ old('groupid', $client->groupid ?? '') ==
                                         $group->groupid ? 'selected' : '' }}>
@@ -162,18 +165,19 @@
                             <div class="text-danger small mt-1 ajax-error" id="ajax-error-logo"></div>
                         </div>
                         <div class="col-12 mt-2 text-end">
+                            @if(!isset($client))
                             <button type="button" id="btn-save-client-info"
                                 class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                <i class="fas fa-save me-1"></i> Save Client Info
+                                Save Client Info <i class="fas fa-arrow-right btn-icon ms-1"></i>
                             </button>
-                            <div id="ajax-save-client-success" class="text-success small mt-1 fw-semibold d-none"></div>
+                            @endif
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Column 2: Address & Contacts -->
-            <div class="col-12 col-lg-3">
+            <div class="col-12 col-lg-3 @if(!$showDetails) d-none @endif" id="address-contacts-column">
                 <div class="bg-light p-2 rounded-3 h-100 d-flex flex-column">
                     <div class="mb-2">
                         <h5 class="fw-semibold text-primary small lh-sm mb-0">Business Address</h5>
@@ -189,9 +193,8 @@
                             </select>
                         </div>
                         <div class="col-12 col-md-6">
-                            <label for="state" class="form-label small lh-sm fw-semibold text-dark mb-1">State<span
-                                    class="text-danger">*</span></label>
-                            <select id="state" name="state" required class="form-select state-select"
+                            <label for="state" class="form-label small lh-sm fw-semibold text-dark mb-1">State</label>
+                            <select id="state" name="state" class="form-select state-select"
                                 data-selected="{{ old('state', $client->state ?? '') }}">
                                 <option value="">Select</option>
                             </select>
@@ -254,12 +257,23 @@
             </div>
 
             <!-- Column 3: Billing Details -->
-            <div class="col-12 col-lg-6">
+            <div class="col-12 col-lg-6 @if(!$showDetails) d-none @endif" id="billing-details-column">
                 <div class="bg-light p-2 rounded-3 h-100">
                     <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
-                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Billing Details</h5>
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Billing Profile</h5>
                         <div class="d-flex align-items-center gap-1">
-                            <div class="mb-0 bg-white border rounded-1 px-2 py-1">
+                            <div class="mb-0 bg-white border rounded-1 px-2 py-1 ms-1">
+                                <div class="form-check mb-0 form-check-large">
+                                    <input class="form-check-input" type="checkbox" id="useExistingBilling"
+                                        style="cursor:pointer;" {{ old('existing_bd_id', $client->bd_id ?? '') !== '' ?
+                                    'checked' : '' }}>
+                                    <label class="form-check-label small lh-sm fw-normal text-dark"
+                                        style="cursor:pointer;" for="useExistingBilling">
+                                        Copy Billing Profile
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="mb-0 bg-white border rounded-1 px-2 py-1 ms-1">
                                 <div class="form-check mb-0 form-check-large">
                                     <input class="form-check-input" type="checkbox" id="billing_same_as_client"
                                         name="billing_same_as_client" value="1" {{ old('billing_same_as_client')
@@ -271,7 +285,7 @@
                                 </div>
                             </div>
                             <button type="button" id="new-billing-btn"
-                                class="btn btn-outline-primary btn-primary text-white ms-1 btn-icon-square h-auto py-2"
+                                class="btn btn-outline-primary btn-primary text-white btn-icon-square h-auto py-2 ms-1"
                                 title="Reload Billing Profile">
                                 <i class="fas fa-sync-alt"></i>
                             </button>
@@ -279,21 +293,12 @@
                     </div>
 
 
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" id="useExistingBilling" style="cursor:pointer;"
-                            {{ old('existing_bd_id', $client->bd_id ?? '') !== '' ? 'checked' : '' }}>
-                        <label class="form-check-label fw-normal text-dark" style="cursor:pointer;"
-                            for="useExistingBilling">
-                            Do you want to use the existing billing details for this client?
-                        </label>
-                    </div>
+
 
                     <div id="existingBillingWrap"
-                        class="position-relative mb-2 {{ old('existing_bd_id', $client->bd_id ?? '') !== '' ? '' : 'd-none' }}">
-                        <label for="existing_bd_id" class="form-label small lh-sm fw-semibold text-dark mb-1">Select
-                            Existing Billing Profile</label>
+                        class="position-relative  bg-secondary p-2 rounded-3 mb-4 {{ old('existing_bd_id', $client->bd_id ?? '') !== '' ? '' : 'd-none' }}">
                         <select id="existing_bd_id" name="existing_bd_id" class="form-select form-select-sm">
-                            <option value="">-- New billing profile --</option>
+                            <option value="">Copy Profile From</option>
                             @foreach($billingProfiles ?? [] as $profile)
                             <option value="{{ $profile->bd_id }}" {{ old('existing_bd_id', $client->bd_id ??
                                 '')
@@ -310,12 +315,13 @@
                         <div class="row g-2 form-grid">
                             <div class="col-12 col-md-12">
                                 <label for="billing_business_name"
-                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Billing Business Name<span
-                                        class="text-danger">*</span></label>
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Bill to
+                                    Name<span class="text-danger">*</span></label>
                                 <input type="text" id="billing_business_name" name="billing_business_name"
                                     class="form-control"
                                     value="{{ old('billing_business_name', isset($client) ? ($client->billingDetail->business_name ?? $client->business_name) : '') }}">
-                                @error('billing_business_name') <div class="text-danger small mt-1">{{ $message }}</div>
+                                @error('billing_business_name') <div class="text-danger small mt-1">{{ $message }}
+                                </div>
                                 @enderror
                             </div>
                             <div class="col-12 col-md-12">
@@ -387,25 +393,28 @@
                             </div>
                             <div class="col-12 col-md-12">
                                 <label for="billing_address_line_1"
-                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Billing Address</label>
+                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Billing
+                                    Address</label>
                                 <textarea id="billing_address_line_1" name="billing_address_line_1" rows="3"
                                     class="form-control">{{ old('billing_address_line_1', $client->billingDetail->address_line_1 ?? '') }}</textarea>
                                 @error('billing_address_line_1') <div class="text-danger small mt-1">{{ $message }}
                                 </div>
                                 @enderror
                             </div>
+                            <div class="col-12 col-md-12">
+                                <!-- Form Actions outside the columns -->
+                                <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
+                                    <button type="submit"
+                                        class="btn btn-outline-primary btn-primary text-white fw-medium">
+                                        Finalize Client
+                                        <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Form Actions outside the columns -->
-        <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
-            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                {{ isset($client) ? 'Update Client' : 'Add Client' }}
-                <i class="fas fa-arrow-right btn-icon ms-1"></i>
-            </button>
         </div>
     </form>
 
@@ -417,7 +426,7 @@
                     <h5 class="modal-title fw-semibold" id="groupsModalLabel">Add Client Group</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body bg-light p-3">
+                <div class="modal-body bg-DarkLight p-3">
                     <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="mainForm">
                         @csrf
                         <div id="groupMethodField"></div>
@@ -435,7 +444,7 @@
 
                             <!-- Registered Address (col-md-6) -->
                             <div class="col-12 col-md-6">
-                                <div class="p-2 rounded h-100 form-grid" style="background: #f3f3f3;">
+                                <div class="p-2 rounded bg-light h-100 form-grid">
                                     <h6 class="fw-semibold text-primary mb-2">Registered Address</h6>
                                     <div class="row g-2">
                                         <div class="col-12">
@@ -481,7 +490,7 @@
 
                             <!-- Business Address (col-md-6) -->
                             <div class="col-12 col-md-6">
-                                <div class="p-2 rounded h-100 form-grid" style="background: #f3f3f3;">
+                                <div class="p-2 rounded bg-light h-100 form-grid">
                                     <div class="d-flex align-items-center justify-content-between mb-2">
                                         <h6 class="fw-semibold text-primary mb-0 align-self-end">Business Address</h6>
                                         <div class="mb-0 bg-white border rounded-1 px-1 py-0">
@@ -558,7 +567,7 @@
                     <h5 class="modal-title fw-semibold" id="contactModalLabel">Add Client Contact</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body bg-light p-3">
+                <div class="modal-body bg-DarkLight p-3">
                     <div id="contact-form-errors" class="alert alert-danger d-none py-2 mb-3 small"></div>
                     <form id="contactForm" onsubmit="event.preventDefault();" class="mainForm">
                         <input type="hidden" id="contact_index" value="">
@@ -591,7 +600,7 @@
                                         style="cursor:pointer;">
                                     <label class="form-check-label fw-normal text-dark mb-0" style="cursor:pointer;"
                                         for="contact_is_primary_field">
-                                        Mark as Primary Contact
+                                        Set as Primary
                                     </label>
                                 </div>
                             </div>
@@ -641,7 +650,7 @@
         const clientCountry = document.getElementById('country');
         const billingProfiles = JSON.parse(document.getElementById('billing-profiles-data').textContent || '{}');
 
-        function loadSelectedBillingProfile() {
+        async function loadSelectedBillingProfile() {
             const bdId = existingSelect.value;
             if (!bdId || !billingProfiles[bdId]) return;
             const profile = billingProfiles[bdId];
@@ -653,8 +662,20 @@
             billingPostal.value = profile.postal_code || '';
 
             setSelectValueAndNotify(billingCountry, profile.country || 'India');
-            setSelectValueAndNotify(billingState, profile.state || '');
-            billingCity.value = profile.city || '';
+
+            if (profile.state) {
+                await waitForOption(billingState, profile.state);
+                setSelectValueAndNotify(billingState, profile.state);
+            } else {
+                setSelectValueAndNotify(billingState, '');
+            }
+
+            if (profile.city) {
+                await waitForOption(billingCity, profile.city);
+                setSelectValueAndNotify(billingCity, profile.city);
+            } else {
+                setSelectValueAndNotify(billingCity, '');
+            }
         }
 
         function clearBillingFields() {
@@ -805,15 +826,37 @@
         }
 
         const btnSaveClientInfo = document.getElementById('btn-save-client-info');
-        const successClientMsg = document.getElementById('ajax-save-client-success');
+
+        function showSuccessToast(message) {
+            let container = document.getElementById('app-toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'app-toast-container';
+                container.className = 'app-toast-container';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.className = 'app-toast app-toast-success';
+            toast.innerHTML = `<i class="fas fa-check-circle toast-icon"></i><span>${escapeHtml(message)}</span>`;
+            toast.onclick = function () { this.remove(); };
+            container.appendChild(toast);
+
+            setTimeout(function () {
+                if (toast.parentNode) {
+                    toast.classList.add('app-toast-leaving');
+                    setTimeout(() => {
+                        if (toast.parentNode) toast.remove();
+                    }, 300);
+                }
+            }, 3500);
+        }
 
         if (btnSaveClientInfo) {
             btnSaveClientInfo.addEventListener('click', async function (e) {
                 e.preventDefault();
 
                 document.querySelectorAll('.ajax-error').forEach(el => el.textContent = '');
-                successClientMsg.classList.add('d-none');
-                successClientMsg.textContent = '';
 
                 btnSaveClientInfo.disabled = true;
                 btnSaveClientInfo.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
@@ -837,6 +880,7 @@
                     formData.append('logo', logoInput.files[0]);
                 }
 
+                let savedSuccessfully = false;
                 try {
                     const response = await fetch("{{ route('clients.ajax-save-info') }}", {
                         method: 'POST',
@@ -863,15 +907,24 @@
                                 methodInput.value = 'PUT';
                                 form.appendChild(methodInput);
                             }
-
-                            const mainSubmitBtn = form.querySelector('button[type="submit"]');
-                            if (mainSubmitBtn) {
-                                mainSubmitBtn.innerHTML = 'Update Client <i class="fas fa-arrow-right btn-icon ms-1"></i>';
-                            }
                         }
 
-                        successClientMsg.textContent = result.message;
-                        successClientMsg.classList.remove('d-none');
+                        // Update browser URL to edit page without reloading to avoid losing state on refresh
+                        const editUrl = "{{ route('clients.edit', ':id') }}".replace(':id', clientId);
+                        window.history.replaceState(null, '', editUrl);
+
+                        showSuccessToast(result.message || 'Client saved successfully.');
+
+                        // Show Column 2 and Column 3
+                        const col2 = document.getElementById('address-contacts-column');
+                        const col3 = document.getElementById('billing-details-column');
+                        if (col2) {
+                            col2.classList.remove('d-none');
+                        }
+                        if (col3) {
+                            col3.classList.remove('d-none');
+                        }
+
                         renderContacts();
 
                         if (result.logo_path) {
@@ -880,6 +933,7 @@
                                 previewImg.src = result.logo_path;
                             }
                         }
+                        savedSuccessfully = true;
                     } else if (response.status === 422) {
                         const errData = await response.json();
                         for (const [field, messages] of Object.entries(errData.errors || {})) {
@@ -895,8 +949,12 @@
                     console.error('AJAX Client save error', error);
                     alert('An error occurred while saving.');
                 } finally {
-                    btnSaveClientInfo.disabled = false;
-                    btnSaveClientInfo.innerHTML = '<i class="fas fa-save me-1"></i> Save Client Info';
+                    if (savedSuccessfully) {
+                        btnSaveClientInfo.classList.add('d-none');
+                    } else {
+                        btnSaveClientInfo.disabled = false;
+                        btnSaveClientInfo.innerHTML = 'Save Client Info <i class="fas fa-arrow-right btn-icon ms-1"></i>';
+                    }
                 }
             });
         }
@@ -917,17 +975,15 @@
 
         function renderContacts() {
             if (!contactsTableBody) return;
-            contactsTableBody.innerHTML = '';
 
-            if (!clientId) {
-                contactsTableBody.innerHTML = `
-                    <tr>
-                        <td colspan="3" class="text-center text-muted py-3 small">Please save Client Info first to manage contacts.</td>
-                    </tr>
-                `;
-                contactsJsonInput.value = '';
-                return;
-            }
+            // Sort contacts so primary contact(s) come first
+            contactsList.sort((a, b) => {
+                const aPrimary = a.is_primary ? 1 : 0;
+                const bPrimary = b.is_primary ? 1 : 0;
+                return bPrimary - aPrimary;
+            });
+
+            contactsTableBody.innerHTML = '';
 
             if (contactsList.length === 0) {
                 contactsTableBody.innerHTML = `

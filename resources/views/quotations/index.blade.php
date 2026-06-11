@@ -10,14 +10,12 @@
 @endsection
 
 @section('content')
-<div class="position-relative bg-white p-3 rounded-3 shadow-sm">
+<div class="position-relative bg-white p-2 rounded-3">
     <!-- Filters Card -->
-    <div class="position-relative bg-light border p-3 rounded-3 mb-2">
+    <div class="position-relative bg-DarkLight p-2 rounded-3 mb-2">
         <form action="{{ route('quotations.index') }}" method="GET" class="mainForm">
             <div class="row g-2">
                 <div class="col-12 col-md-2">
-                    <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                        for="quotation_client_filter">Client</label>
                     <select name="c" id="quotation_client_filter" class="form-select">
                         <option value="">All Clients</option>
                         @php $groupedClients = $clients->groupBy(fn ($c) => $c->type === 'trial' ? 'trial' : 'regular')
@@ -39,10 +37,10 @@
                 <div class="col-12 col-md-2 mt-auto d-flex gap-2">
                     <a href="{{ route('quotations.index') }}"
                         class="btn btn-outline-primary bg-white text-primary fw-medium">
-                        <i class="fas fa-sync-alt btn-icon me-1"></i> Reset
+                        <i class="fas fa-sync-alt btn-icon me-1"></i> Clear
                     </a>
                     <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                        Apply <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                        <i class="fas fa-filter btn-icon me-1"></i> Filter
                     </button>
                 </div>
             </div>

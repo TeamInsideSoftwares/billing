@@ -22,24 +22,26 @@
 @endsection
 
 @section('content')
-<div class="position-relative bg-white p-3 rounded-3 shadow-sm">
+<div class="position-relative bg-white p-2 rounded-3">
     @if(!isset($client))
     @if(collect($clients)->isNotEmpty())
     {{-- Choose Client State --}}
     <div
         class="search-landing-container py-5 d-flex justify-content-center align-items-center client-dashboard-empty-shell">
-        <div class="card p-4 border shadow-sm client-dashboard-empty-card">
-            <div class="d-flex align-items-center gap-3">
-                <span class="text-muted fw-bold"></span>
-                <select class="form-select border shadow-sm client-dashboard-picker client-dashboard-picker--large"
-                    onchange="if(this.value) window.location.href='{{ url('/client-dashboard') }}/' + this.value;">
-                    <option value="" selected disabled>-- Choose Client --</option>
-                    @foreach($clients as $c)
-                    <option value="{{ $c->clientid }}">
-                        {{ $c->business_name ?? $c->contact_name }}
-                    </option>
-                    @endforeach
-                </select>
+        <div class="card border-0 bg-DarkLight p-1 rounded-3 client-dashboard-empty-card">
+            <div class="card-body bg-white rounded-3 p-4">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-muted fw-bold"></span>
+                    <select class="form-select border shadow-sm client-dashboard-picker client-dashboard-picker--large"
+                        onchange="if(this.value) window.location.href='{{ url('/client-dashboard') }}/' + this.value;">
+                        <option value="" selected disabled>-- Choose Client --</option>
+                        @foreach($clients as $c)
+                        <option value="{{ $c->clientid }}">
+                            {{ $c->business_name ?? $c->contact_name }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
         </div>
     </div>
@@ -66,8 +68,8 @@
 
     {{-- Profile Header Card --}}
     {{-- Client Header --}}
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-body">
+<div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-4">
+    <div class="card-body bg-white rounded-3 p-3">
 
         <div class="row align-items-center g-3">
 
@@ -198,8 +200,8 @@
 
     {{-- Outstanding --}}
     <div class="col-6 col-lg-3">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-body d-flex align-items-center">
+        <div class="card border-0 bg-DarkLight p-1 rounded-3 h-100">
+            <div class="card-body bg-white rounded-3 p-3 d-flex align-items-center">
 
                 <div class="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center me-3"
                      style="width:50px;height:50px;">
@@ -222,8 +224,8 @@
 
     {{-- Total Invoiced --}}
     <div class="col-6 col-lg-3">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-body d-flex align-items-center">
+        <div class="card border-0 bg-DarkLight p-1 rounded-3 h-100">
+            <div class="card-body bg-white rounded-3 p-3 d-flex align-items-center">
 
                 <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3"
                      style="width:50px;height:50px;">
@@ -246,8 +248,8 @@
 
     {{-- Total Paid --}}
     <div class="col-6 col-lg-3">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-body d-flex align-items-center">
+        <div class="card border-0 bg-DarkLight p-1 rounded-3 h-100">
+            <div class="card-body bg-white rounded-3 p-3 d-flex align-items-center">
 
                 <div class="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center me-3"
                      style="width:50px;height:50px;">
@@ -270,8 +272,8 @@
 
     {{-- Active Orders --}}
     <div class="col-6 col-lg-3">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-body d-flex align-items-center">
+        <div class="card border-0 bg-DarkLight p-1 rounded-3 h-100">
+            <div class="card-body bg-white rounded-3 p-3 d-flex align-items-center">
 
                 <div class="bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center me-3"
                      style="width:50px;height:50px;">
@@ -294,8 +296,9 @@
 </div>
 
     {{-- Tabs Content Area --}}
-    <div class="card shadow-sm p-4 border-0 mb-4">
-        <div class="row g-4">
+    <div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-4">
+        <div class="card-body bg-white rounded-3 p-4">
+            <div class="row g-4">
             {{-- Vertical Tabs Header Navigation --}}
             <div class="col-12 col-md-2 border-end pe-md-3">
                 <div class="nav flex-column nav-pills text-start dashboard-tabs-stack" id="dashboardTabs"
@@ -358,7 +361,7 @@
                     <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
                         <div class="row g-4">
                             <div class="col-md-6 text-start">
-                                <div class="card border border-light rounded-3 p-3 h-100">
+                                <div class="card border-0 bg-light rounded-3 p-3 h-100">
                                     <h5 class="fw-bold text-dark mb-3"><i
                                             class="fas fa-building text-muted-light me-1"></i> Business Details</h5>
                                     <div class="d-flex flex-column gap-2 text-start">
@@ -407,7 +410,7 @@
                                 </div>
                             </div>
                             <div class="col-md-6 text-start">
-                                <div class="card border border-light rounded-3 p-3 h-100">
+                                <div class="card border-0 bg-light rounded-3 p-3 h-100">
                                     <h5 class="fw-bold text-dark mb-3"><i
                                             class="fas fa-file-invoice text-muted-light me-1"></i> Billing Details</h5>
                                     <div class="d-flex flex-column gap-2 text-start">
@@ -449,7 +452,7 @@
 
                             {{-- Contact Persons Card --}}
                             <div class="col-12 text-start">
-                                <div class="card border border-light rounded-3 p-3">
+                                <div class="card border-0 bg-light rounded-3 p-3">
                                     <h5 class="fw-bold text-dark mb-3"><i
                                             class="fas fa-address-book text-muted-light me-1"></i> Contact Persons</h5>
                                     @forelse($client->contacts->sortByDesc('is_primary') as $loop_index => $contact)
@@ -493,7 +496,7 @@
 
                             @if(!empty($client->notes))
                             <div class="col-12 text-start mt-3">
-                                <div class="card border border-light rounded-3 p-3 bg-light-soft">
+                                <div class="card border-0 bg-light-soft rounded-3 p-3">
                                     <h5 class="fw-bold text-dark mb-2"><i
                                             class="fas fa-sticky-note text-muted-light me-1"></i> Notes & Special
                                         Instructions</h5>
@@ -507,7 +510,7 @@
                     {{-- 2. Orders Tab --}}
                     <div class="tab-pane fade" id="orders" role="tabpanel" aria-labelledby="orders-tab">
                         <div class="table-responsive text-start">
-                            <table class="table mainTable border align-middle mb-0">
+                            <table class="table table-striped mainTable align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Order #</th>
@@ -562,7 +565,7 @@
                     {{-- 3. Invoices Tab --}}
                     <div class="tab-pane fade" id="invoices" role="tabpanel" aria-labelledby="invoices-tab">
                         <div class="table-responsive text-start">
-                            <table class="table mainTable border align-middle mb-0">
+                            <table class="table table-striped mainTable align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Invoice #</th>
@@ -611,7 +614,7 @@
                     {{-- 4. Quotations Tab --}}
                     <div class="tab-pane fade" id="quotations" role="tabpanel" aria-labelledby="quotations-tab">
                         <div class="table-responsive text-start">
-                            <table class="table mainTable border align-middle mb-0">
+                            <table class="table table-striped mainTable align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Quotation #</th>
@@ -661,7 +664,7 @@
                     {{-- 5. Payments Tab --}}
                     <div class="tab-pane fade" id="payments" role="tabpanel" aria-labelledby="payments-tab">
                         <div class="table-responsive text-start">
-                            <table class="table mainTable border align-middle mb-0">
+                            <table class="table table-striped mainTable align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Payment ID</th>
@@ -710,7 +713,7 @@
                     {{-- 6. Ledger Tab --}}
                     <div class="tab-pane fade" id="ledger" role="tabpanel" aria-labelledby="ledger-tab">
                         <div class="table-responsive text-start">
-                            <table class="table mainTable border align-middle mb-0">
+                            <table class="table table-striped mainTable align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Date</th>
@@ -765,7 +768,7 @@
                     {{-- 7. Documents Tab --}}
                     <div class="tab-pane fade" id="documents" role="tabpanel" aria-labelledby="documents-tab">
                         <div class="table-responsive text-start">
-                            <table class="table mainTable border align-middle mb-0">
+                            <table class="table table-striped mainTable align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Type</th>
@@ -816,7 +819,7 @@
                     {{-- 8. Communication Log Tab --}}
                     <div class="tab-pane fade" id="comms" role="tabpanel" aria-labelledby="comms-tab">
                         <div class="table-responsive text-start">
-                            <table class="table mainTable border align-middle mb-0">
+                            <table class="table table-striped mainTable align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Sent Date</th>
@@ -863,6 +866,7 @@
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     </div>

@@ -8,7 +8,7 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body bg-light p-3">
+            <div class="modal-body bg-DarkLight p-3">
                 <form id="editOrderForm" method="POST" class="mainForm">
                     @csrf
                     @method('PUT')
@@ -32,7 +32,8 @@
                             <select id="edit_itemid" class="form-select" required disabled>
                                 <option value="">Select Items</option>
                                 @php
-                                $groupedServices = $services->groupBy(fn($service) => $service->category->name ?? 'No Category');
+                                $groupedServices = $services->groupBy(fn($service) => $service->category->name ?? 'No
+                                Category');
                                 @endphp
                                 @foreach($groupedServices as $categoryName => $categoryServices)
                                 <optgroup label="{{ $categoryName }}">
@@ -353,7 +354,11 @@
                         .then(({ ok, data }) => {
                             if (ok && data.success) {
                                 editModal.hide();
-                                window.location.reload();
+                                if (typeof window.onOrderCreated === 'function') {
+                                    window.onOrderCreated(data);
+                                } else {
+                                    window.location.reload();
+                                }
                             } else {
                                 let msg = data.message || 'Failed to update order.';
                                 if (data.errors) {

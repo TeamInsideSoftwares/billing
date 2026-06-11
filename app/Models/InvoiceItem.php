@@ -62,6 +62,36 @@ class InvoiceItem extends Model
 
     protected static function booted(): void
     {
+        $formatValue = function ($val) {
+            $val = (float) $val;
+            if ($val == (int) $val) {
+                return number_format($val, 0);
+            }
+
+            return rtrim(rtrim(number_format($val, 2), '0'), '.');
+        };
+
+        /**
+         * Calculate the true billed amount using the same rounding as the invoice totals:
+         * - discount value floors down  (matches JS roundDiscountDown / PHP roundDiscountDown)
+         * - tax amount ceilings up      (matches JS roundTaxUp        / PHP roundTaxUp)
+         *
+         * amount           = raw line total (pre-discount, pre-tax): qty × unit_price × users × duration
+         * discount_percent = percentage discount
+         * tax_rate         = tax percentage applied on the post-discount total
+         */
+        $billedAmount = function (self $item): float {
+            $lineTotal = (float) $item->amount;
+            $discountPercent = (float) ($item->discount_percent ?? 0);
+            $taxRate = (float) ($item->tax_rate ?? 0);
+
+            $discountValue = floor($lineTotal * $discountPercent / 100);
+            $discounted = max(0, $lineTotal - $discountValue);
+            $tax = ceil($discounted * $taxRate / 100);
+
+            return $discounted + $tax;
+        };
+
         static::creating(function (self $item): void {
             if (empty($item->accountid) || empty($item->clientid)) {
                 $invoice = Invoice::query()
@@ -80,44 +110,85 @@ class InvoiceItem extends Model
             }
         });
 
-        static::created(function (self $item): void {
+        static::created(function (self $item) use ($formatValue, $billedAmount): void {
             if (! empty($item->orderid)) {
                 $invoiceNumber = $item->invoice?->invoice_number ?? $item->invoiceid;
+                $amount = $formatValue($billedAmount($item));
+                $qty = $formatValue($item->quantity);
                 $item->logOrderTimeline(
                     orderId: $item->orderid,
                     actionType: 'invoice_item_billed',
-                    description: "Billed on Invoice #{$invoiceNumber} (Amount: {$item->amount}, Qty: {$item->quantity}, Discount: {$item->discount_amount})"
+                    description: "Billed on Invoice #{$invoiceNumber} (Amount: {$amount}, Qty: {$qty})"
                 );
             }
         });
 
-        static::updated(function (self $item): void {
+        static::updated(function (self $item) use ($formatValue, $billedAmount): void {
             $invoiceNumber = $item->invoice?->invoice_number ?? $item->invoiceid;
 
             if ($item->wasChanged('orderid')) {
                 $newOrderId = $item->orderid;
                 if (! empty($newOrderId)) {
+                    $amount = $formatValue($billedAmount($item));
+                    $qty = $formatValue($item->quantity);
                     $item->logOrderTimeline(
                         orderId: $newOrderId,
                         actionType: 'invoice_item_billed',
-                        description: "Billed on Invoice #{$invoiceNumber} (Amount: {$item->amount}, Qty: {$item->quantity}, Discount: {$item->discount_amount})"
+                        description: "Billed on Invoice #{$invoiceNumber} (Amount: {$amount}, Qty: {$qty})"
                     );
                 }
             } elseif (! empty($item->orderid)) {
-                $financialFields = ['quantity', 'unit_price', 'discount_percent', 'discount_amount', 'amount'];
-                $changed = false;
+                $changes = [];
+
+                // Financial changes — show the new billed amount and qty
+                $financialFields = ['quantity', 'unit_price', 'discount_percent', 'discount_amount', 'amount', 'tax_rate', 'no_of_users'];
+                $financialChanged = false;
                 foreach ($financialFields as $field) {
                     if ($item->wasChanged($field)) {
-                        $changed = true;
+                        $financialChanged = true;
                         break;
                     }
                 }
+                if ($financialChanged) {
+                    $amount = $formatValue($billedAmount($item));
+                    $qty = $formatValue($item->quantity);
+                    $changes[] = "Amount: {$amount}, Qty: {$qty}";
+                }
 
-                if ($changed) {
+                // Frequency change
+                if ($item->wasChanged('frequency')) {
+                    $old = $item->getOriginal('frequency') ?: 'None';
+                    $new = $item->frequency ?: 'None';
+                    $changes[] = "Frequency: {$old} → {$new}";
+                }
+
+                // Duration change
+                if ($item->wasChanged('duration')) {
+                    $old = $formatValue($item->getOriginal('duration') ?? 0);
+                    $new = $formatValue($item->duration ?? 0);
+                    $changes[] = "Duration: {$old} → {$new}";
+                }
+
+                // Date range changes
+                $dateChanged = $item->wasChanged('start_date') || $item->wasChanged('end_date');
+                if ($dateChanged) {
+                    $startDate = $item->start_date?->format('d M Y') ?? '-';
+                    $endDate = $item->end_date?->format('d M Y') ?? '-';
+                    $changes[] = "Period: {$startDate} to {$endDate}";
+                }
+
+                // Description change
+                if ($item->wasChanged('item_description')) {
+                    $newDesc = trim($item->item_description ?? '');
+                    $changes[] = 'Description updated'.($newDesc !== '' ? ": {$newDesc}" : ' (cleared)');
+                }
+
+                if ($changes !== []) {
+                    $detail = implode(', ', $changes);
                     $item->logOrderTimeline(
                         orderId: $item->orderid,
                         actionType: 'invoice_item_updated',
-                        description: "Invoice item details updated on Invoice #{$invoiceNumber} (Amount: {$item->amount}, Qty: {$item->quantity}, Discount: {$item->discount_amount})"
+                        description: "Invoice item updated on Invoice #{$invoiceNumber} ({$detail})"
                     );
                 }
             }

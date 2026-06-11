@@ -49,6 +49,7 @@
     ['label' => 'Orders', 'route' => 'orders.index'],
     ['label' => 'Quotations', 'route' => 'quotations.index'],
     ['label' => 'Invoices', 'route' => 'invoices.index'],
+    ['label' => 'Expiry List', 'route' => 'invoices.expiry-list'],
     ['label' => 'Payments', 'route' => 'payments.index'],
     ['label' => 'GST Report', 'route' => 'gst-report.index'],
     ['label' => 'Items', 'route' => 'services.index'],
@@ -82,6 +83,7 @@
                 'orders' => 'fa-shopping-cart',
                 'quotations' => 'fa-file-alt',
                 'invoices' => 'fa-file-invoice-dollar',
+                'invoices.expiry-list' => 'fa-calendar-times',
                 'payments' => 'fa-money-bill-wave',
                 'gst-report' => 'fa-receipt',
                 // 'users' => 'fa-user-tie',
@@ -94,13 +96,15 @@
                 $baseRoute = explode('.', $item['route'])[0];
                 // Highlight the whole module for nested routes like create/show/edit/pdf.
                 if ($item['route'] === 'clients.dashboard') {
-                $isActive = request()->routeIs('clients.dashboard');
+                    $isActive = request()->routeIs('clients.dashboard');
                 } elseif ($item['route'] === 'clients.index') {
-                $isActive =
-                (request()->routeIs('clients.*') || request()->routeIs($item['route'])) &&
-                !request()->routeIs('clients.dashboard');
+                    $isActive = (request()->routeIs('clients.*') || request()->routeIs($item['route'])) && !request()->routeIs('clients.dashboard');
+                } elseif ($item['route'] === 'invoices.expiry-list') {
+                    $isActive = request()->routeIs('invoices.expiry-list');
+                } elseif ($item['route'] === 'invoices.index') {
+                    $isActive = (request()->routeIs('invoices.*') || request()->routeIs($item['route'])) && !request()->routeIs('invoices.expiry-list');
                 } else {
-                $isActive = request()->routeIs($baseRoute . '.*') || request()->routeIs($item['route']);
+                    $isActive = request()->routeIs($baseRoute . '.*') || request()->routeIs($item['route']);
                 }
 
                 $icon = $navIcons[$item['route']] ?? ($navIcons[$baseRoute] ?? 'fa-circle');

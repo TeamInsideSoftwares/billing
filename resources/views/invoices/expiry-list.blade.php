@@ -26,15 +26,14 @@
         };
     @endphp
 
-    <div class="position-relative bg-white p-3 rounded-3 shadow-sm">
+    <div class="position-relative bg-white p-2 rounded-3">
         <!-- Filters Card -->
-        <div class="position-relative bg-light border p-3 rounded-3 mb-2">
+        <div class="position-relative bg-DarkLight p-2 rounded-3 mb-2">
             <form action="{{ route('invoices.expiry-list') }}" method="GET" class="mainForm">
                 <input type="hidden" name="tab" value="{{ $selectedTab ?? 'expired' }}">
 
                 <div class="row g-2">
                     <div class="col-12 col-md-2">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="expiry_client_filter">Client</label>
                         <select name="c" id="expiry_client_filter" class="form-select">
                             <option value="">All Clients</option>
                             @php
@@ -67,13 +66,11 @@
                     </div>
 
                     <div class="col-12 col-md-2">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="expiry_from_filter">From</label>
                         <input type="date" name="from" id="expiry_from_filter" class="form-control"
                             value="{{ $fromDate ?? '' }}">
                     </div>
 
                     <div class="col-12 col-md-2">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="expiry_to_filter">To</label>
                         <input type="date" name="to" id="expiry_to_filter" class="form-control"
                             value="{{ $toDate ?? '' }}" min="{{ $fromDate ?? '' }}">
                     </div>
@@ -86,41 +83,39 @@
                             <i class="fas fa-sync-alt btn-icon me-1"></i> Clear
                         </a>
                         <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                            Apply <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                            <i class="fas fa-filter btn-icon me-1"></i> Filter
                         </button>
                     </div>
                 </div>
             </form>
         </div>
 
-        <ul class="nav nav-underline mb-3">
-            <li class="nav-item">
-                <a class="nav-link rounded-0 {{ $currentTab === 'upcoming' ? 'active' : 'text-secondary' }} d-flex align-items-center gap-1 fw-medium"
-                    href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'upcoming', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}">
-                    Upcoming <span class="badge rounded-pill {{ $currentTab === 'upcoming' ? 'bg-primary text-white' : 'bg-secondary text-white' }}">{{ $upcomingItems->count() }}</span>
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2 px-1">
+            <div class="btn-group" role="group" aria-label="Expiry Tabs">
+                <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'upcoming' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
+                    href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'upcoming', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}"
+                    {!! $currentTab==='upcoming' ? '' : 'style="opacity: 0.7;"' !!}>
+                    Upcoming <span class="badge rounded-pill {{ $currentTab === 'upcoming' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{ $upcomingItems->count() }}</span>
                 </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link rounded-0 {{ $currentTab === 'expired' ? 'active' : 'text-secondary' }} d-flex align-items-center gap-1 fw-medium"
-                    href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'expired', 'from' => $fromDate ?? '', 'to' => $toDate ?? ''])) }}">
-                    Expired <span class="badge rounded-pill {{ $currentTab === 'expired' ? 'bg-primary text-white' : 'bg-secondary text-white' }}">{{ $expiredItems->count() }}</span>
+                <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'expired' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
+                    href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'expired', 'from' => $fromDate ?? '', 'to' => $toDate ?? ''])) }}"
+                    {!! $currentTab==='expired' ? '' : 'style="opacity: 0.7;"' !!}>
+                    Expired <span class="badge rounded-pill {{ $currentTab === 'expired' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{ $expiredItems->count() }}</span>
                 </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link rounded-0 {{ $currentTab === 'suspended' ? 'active' : 'text-secondary' }} d-flex align-items-center gap-1 fw-medium"
-                    href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'suspended', 'from' => $fromDate ?? '', 'to' => $toDate ?? ''])) }}">
-                    Suspended <span class="badge rounded-pill {{ $currentTab === 'suspended' ? 'bg-primary text-white' : 'bg-secondary text-white' }}">{{ $suspendedItems->count() }}</span>
+                <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'suspended' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
+                    href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'suspended', 'from' => $fromDate ?? '', 'to' => $toDate ?? ''])) }}"
+                    {!! $currentTab==='suspended' ? '' : 'style="opacity: 0.7;"' !!}>
+                    Suspended <span class="badge rounded-pill {{ $currentTab === 'suspended' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{ $suspendedItems->count() }}</span>
                 </a>
-            </li>
-            @if(!empty($hasTrialClients))
-                <li class="nav-item">
-                    <a class="nav-link rounded-0 {{ $currentTab === 'trial' ? 'active' : 'text-secondary' }} d-flex align-items-center gap-1 fw-medium"
-                        href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'trial', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}">
-                        Prospect Clients <span class="badge rounded-pill {{ $currentTab === 'trial' ? 'bg-primary text-white' : 'bg-secondary text-white' }}">{{ ($trialItems ?? collect())->count() }}</span>
+                @if(!empty($hasTrialClients))
+                    <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'trial' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
+                        href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'trial', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}"
+                        {!! $currentTab==='trial' ? '' : 'style="opacity: 0.7;"' !!}>
+                        Prospect Clients <span class="badge rounded-pill {{ $currentTab === 'trial' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{ ($trialItems ?? collect())->count() }}</span>
                     </a>
-                </li>
-            @endif
-        </ul>
+                @endif
+            </div>
+        </div>
 
         <section class="invoice-group">
             <div class="invoice-list-meta px-1 mb-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -164,16 +159,16 @@
             </div>
 
             @if (collect($tabRows)->isEmpty())
-                <div class="card border-0 shadow-sm py-5 text-center text-muted mb-3">
-                    <div class="card-body">
+                <div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-3">
+                    <div class="card-body bg-white rounded-3 py-5 text-center text-muted">
                         <i class="fas fa-check-circle mb-3 text-secondary fs-1 opacity-50"></i>
                         <p class="fw-semibold text-dark mb-1">No records found for this tab.</p>
                     </div>
                 </div>
             @else
-                <div class="card border-0 shadow-sm overflow-hidden mb-3">
+                <div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-3">
                     <div class="table-responsive">
-                        <table class="table mainTable border align-middle mb-0">
+                        <table class="table table-striped mainTable align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th>Client</th>

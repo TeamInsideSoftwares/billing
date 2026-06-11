@@ -9,12 +9,12 @@ use App\Models\InvoiceItem;
 use App\Models\Order;
 use App\Models\OrderTimeline;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class OrderTimelineTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected Account $account;
 

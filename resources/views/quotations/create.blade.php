@@ -87,7 +87,9 @@
         const client = document.getElementById('clientid');
         btn?.addEventListener('click', function () {
             if (!client.value) return alert('Please select a client.');
-            let target = "{{ route('quotations.create') }}?step=2&c=" + encodeURIComponent(client.value);
+            const createRoute = "{{ route('quotations.create') }}";
+            const createPath = createRoute.startsWith('http') ? new URL(createRoute).pathname : createRoute;
+            let target = createPath + "?step=2&c=" + encodeURIComponent(client.value);
             if (draftIdParam) {
                 target += "&d=" + encodeURIComponent(draftIdParam);
             }
@@ -459,7 +461,9 @@
                 items_data: JSON.stringify(items),
             };
 
-            fetch("{{ route('quotations.step2-draft') }}", {
+            const saveDraftRoute = "{{ route('quotations.step2-draft') }}";
+            const saveDraftPath = saveDraftRoute.startsWith('http') ? new URL(saveDraftRoute).pathname : saveDraftRoute;
+            fetch(saveDraftPath, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -553,13 +557,15 @@
         function renderStep3Preview() {
             if (!previewFrame) return;
             const draftId = quotationIdHidden?.value || '';
+            const baseRoute = "{{ url('quotations') }}";
+            const basePath = baseRoute.startsWith('http') ? new URL(baseRoute).pathname : baseRoute;
             if (btnDownloadQuotationPdf) {
                 btnDownloadQuotationPdf.href = draftId
-                    ? `{{ url('quotations') }}/${encodeURIComponent(draftId)}/pdf`
+                    ? `${basePath}/${encodeURIComponent(draftId)}/pdf`
                     : '#';
             }
             if (draftId) {
-                previewFrame.src = `{{ url('quotations') }}/${encodeURIComponent(draftId)}/pdf?preview=1&_t=${Date.now()}`;
+                previewFrame.src = `${basePath}/${encodeURIComponent(draftId)}/pdf?preview=1&_t=${Date.now()}`;
                 return;
             }
             if (!items.length) {
@@ -648,7 +654,9 @@
 
             btnApplyTC.disabled = true;
             btnApplyTC.textContent = 'Applying...';
-            fetch(`{{ url('quotations') }}/${encodeURIComponent(draftId)}/terms`, {
+            const applyTermsRoute = `{{ url('quotations') }}/${encodeURIComponent(draftId)}/terms`;
+            const applyTermsPath = applyTermsRoute.startsWith('http') ? new URL(applyTermsRoute).pathname : applyTermsRoute;
+            fetch(applyTermsPath, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -676,7 +684,9 @@
 
         btnEditPreview?.addEventListener('click', function () {
             const draftId = quotationIdHidden?.value || '';
-            let target = `{{ route('quotations.create') }}?step=2&c=${encodeURIComponent(clientId)}`;
+            const createRoute = "{{ route('quotations.create') }}";
+            const createPath = createRoute.startsWith('http') ? new URL(createRoute).pathname : createRoute;
+            let target = `${createPath}?step=2&c=${encodeURIComponent(clientId)}`;
             if (draftId) target += `&d=${encodeURIComponent(draftId)}`;
             window.location.href = target;
         });
@@ -712,7 +722,9 @@
                 return;
             }
 
-            fetch("{{ route('invoices.terms.billing.store') }}", {
+            const storeTermRoute = "{{ route('invoices.terms.billing.store') }}";
+            const storeTermPath = storeTermRoute.startsWith('http') ? new URL(storeTermRoute).pathname : storeTermRoute;
+            fetch(storeTermPath, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

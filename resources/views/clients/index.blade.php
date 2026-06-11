@@ -18,7 +18,7 @@
 
 <div class="position-relative bg-white p-2 rounded-3">
     <!-- Filters Card -->
-    <div class="position-relative bg-light p-2 rounded-3 mb-2">
+    <div class="position-relative bg-DarkLight p-2 rounded-3 mb-2">
         <form action="{{ route('clients.index') }}" method="GET" class="mainForm">
             @if ($selectedGroup)
             <input type="hidden" name="groupid" value="{{ $selectedGroup }}">
@@ -98,9 +98,6 @@
                 <span class="status-dot legend-dot active"></span> Active
             </div>
             <div class="d-flex align-items-center">
-                <span class="status-dot legend-dot review"></span> Review
-            </div>
-            <div class="d-flex align-items-center">
                 <span class="status-dot legend-dot inactive"></span> Inactive
             </div>
         </div>
@@ -123,16 +120,15 @@
     </div>
 
     <!-- Clients List View (Table View) -->
-    <div id="clients-list-view" class="card overflow-hidden">
+    <div id="clients-list-view" class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3">
         <div class="table-responsive">
             <table class="table table-striped mainTable align-middle mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>Client</th>
-                        <th>Contact</th>
+                        <th>Contact Person</th>
                         <th>State</th>
-                        <th class="text-center">Outstanding</th>
-                        <th class="text-center">Invoices</th>
+                        <th class="text-end">Outstanding</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -146,7 +142,8 @@
                                     <span class="d-block position-absolute">{{ strtoupper(substr($client['name'], 0, 2))
                                         }}</span>
                                     <div class="status-dot {{ strtolower($client['status']) }}"
-                                        title="{{ ucfirst($client['status']) }}"></div>
+                                        title="{{ ucfirst($client['status']) }}"
+                                        id="status-dot-{{ $client['record_id'] }}"></div>
                                 </div>
                                 <div>
                                     <span class="d-block fw-semibold">{!! $searchTerm
@@ -166,23 +163,26 @@
                             @endif
                         </td>
                         <td>{{ $client['state'] ?? '—' }}</td>
-                        <td class="text-center">
+                        <td class="text-end">
                             @php
                             $rawVal = (float) str_replace([$client['currency'], ' ', ','], '', $client['balance']);
                             $balanceClass = $rawVal < 0 ? 'text-danger' : ($rawVal> 0 ? 'text-success' : 'text-dark');
                                 @endphp
-                                <span class="fw-semibold {{ $balanceClass }}">
-                                    <span class="currency-code-small text-muted">{{ $client['currency'] }}</span> {{
+                                <span class="fw-semibold {{ $balanceClass }}"> {{
                                     substr($client['balance'], strlen($client['currency']) + 1) }}
+                                    <span class="currency-code-small text-muted d-block">{{ $client['currency']
+                                        }}</span>
                                 </span>
                         </td>
-                        <td class="text-center">
-                            <span class="text-primary fw-semibold">
-                                {{ $client['invoice_count'] }}
-                            </span>
-                        </td>
                         <td class="text-end">
-                            <div class="tableActionButton d-inline-flex gap-1">
+                            <div class="tableActionButton d-inline-flex gap-1 align-items-center">
+                                <div class="form-check form-switch mb-0 d-inline-flex align-items-center me-1"
+                                    style="padding-left: 2.5em; min-height: auto;">
+                                    <input class="form-check-input client-status-toggle" type="checkbox" role="switch"
+                                        data-id="{{ $client['record_id'] }}" {{ strtolower($client['status'])==='active'
+                                        ? 'checked' : '' }} style="cursor: pointer; height: 1.15em; width: 2.1em;"
+                                        title="Toggle Status">
+                                </div>
                                 <a href="{{ route('clients.dashboard', $client['record_id']) }}"
                                     data-client-id="{{ $client['record_id'] }}" class="bg01 color01">View</a>
                                 <a href="#" class="bg02 color02 open-documents-modal" data-bs-toggle="modal"
@@ -203,7 +203,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="text-center py-5 text-muted">
+                        <td colspan="5" class="text-center py-5 text-muted">
                             <i class="fas fa-users mb-3 text-secondary fs-1 opacity-50"></i>
                             <p class="fw-semibold text-dark mb-1">No clients found</p>
                             <p class="small text-muted mb-0">Get started by adding your first client.</p>
@@ -217,23 +217,24 @@
 
     <!-- Clients Grid View (5 blocks in one row on desktop) -->
     <div id="clients-grid-view"
-        class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 p-1 mt-2 bg-light rounded-end-3 d-none">
+        class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 p-1 pb-3 mt-2 bg-DarkLight rounded-3 d-none">
         @forelse ($clients as $client)
         <div class="col">
             <div class="card h-100 border-0 overflow-hidden">
                 <div class="card-body p-3 d-flex flex-column justify-content-between">
                     <div>
                         <!-- Flex Avatar, Info -->
-                        <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="d-flex align-items-center gap-2">
                             <div
                                 class="tablePrifix position-relative align-self-center bg-primary-subtle text-primary rounded-circle fw-semibold flex-shrink-0">
                                 <span class="d-block position-absolute">{{ strtoupper(substr($client['name'], 0, 2))
                                     }}</span>
                                 <div class="status-dot {{ strtolower($client['status']) }}"
-                                    title="{{ ucfirst($client['status']) }}"></div>
+                                    title="{{ ucfirst($client['status']) }}"
+                                    id="status-dot-grid-{{ $client['record_id'] }}"></div>
                             </div>
                             <div class="flex-grow-1 min-w-0 ps-2">
-                                <h6 class="fw-bold text-dark mb-1 text-truncate lh-sm" title="{{ $client['name'] }}">
+                                <h6 class="fw-bold text-dark mb-0 text-truncate lh-sm" title="{{ $client['name'] }}">
                                     {!! $searchTerm
                                     ? str_ireplace($searchTerm, '<mark class="bg-warning-subtle p-0">' . $searchTerm .
                                         '</mark>', $client['name'])
@@ -247,7 +248,7 @@
 
 
                         <!-- Contact info -->
-                        <div class="mb-3 border-top pt-3 grid-text-medium text-muted">
+                        <div class="mb-3 border-top pt-3 mt-3 grid-text-medium text-muted">
                             @if ($client['contact'])
                             <div class="text-dark fw-semibold lh-sm text-truncate mb-1"
                                 title="{{ $client['contact'] }}">
@@ -276,20 +277,24 @@
                             $balanceClassGrid = $rawValGrid < 0 ? 'text-danger' : ($rawValGrid> 0 ? 'text-success' :
                                 'text-dark');
                                 @endphp
-                                <strong class="{{ $balanceClassGrid }} fw-semibold grid-value-large">
-                                    <span class="currency-code-grid text-muted">{{ $client['currency'] }}</span> {{
+                                <strong class="{{ $balanceClassGrid }} fw-semibold grid-value-large text-end"> {{
                                     substr($client['balance'], strlen($client['currency']) + 1) }}
+                                    <span class="currency-code-grid text-muted small lh-sm d-block">{{
+                                        $client['currency']
+                                        }}</span>
                                 </strong>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted">Invoices</span>
-                            <strong class="text-primary fw-semibold grid-value-large">{{ $client['invoice_count']
-                                }}</strong>
                         </div>
                     </div>
 
                     <!-- Action Buttons -->
                     <div class="tableActionButton d-flex flex-wrap gap-1 mt-2">
+                        <div class="form-check form-switch mb-0 d-inline-flex align-items-center justify-content-center flex-grow-1"
+                            style="padding-left: 2.5em; min-height: 30px;">
+                            <input class="form-check-input client-status-toggle" type="checkbox" role="switch"
+                                data-id="{{ $client['record_id'] }}" {{ strtolower($client['status'])==='active'
+                                ? 'checked' : '' }} style="cursor: pointer; height: 1.15em; width: 2.1em;"
+                                title="Toggle Status">
+                        </div>
                         <a href="{{ route('clients.dashboard', $client['record_id']) }}"
                             class="bg01 color01 flex-grow-1 text-center">View</a>
                         <a href="#" class="bg02 color02 flex-grow-1 text-center open-documents-modal"
@@ -354,16 +359,13 @@
     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0">
-            <div class="modal-header bg-light py-2 border-0">
+            <div class="modal-header bg-DarkLight py-2 border-0">
                 <h5 class="modal-title fw-semibold" id="manageGroupsModalLabel">Client Groups</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body bg-white p-2">
                 <!-- Group Form -->
-                <div id="add-group-pane" class="bg-light p-2 rounded-3 mb-3">
-                    <h6 class="fw-semibold text-dark mb-2 px-1">
-                        <span id="groupTabTitle">Add Client Group</span>
-                    </h6>
+                <div id="add-group-pane" class="bg-DarkLight p-2 rounded-3 mb-3">
                     <form id="groupForm" method="POST" action="{{ route('groups.store') }}" class="mainForm">
                         @csrf
                         <input type="hidden" id="groupId" name="_group_id" value="">
@@ -383,7 +385,7 @@
                             </div>
                             <!-- Registered Address (col-6) -->
                             <div class="col-12 col-md-6">
-                                <div class="p-2 rounded-3 border h-100 form-grid">
+                                <div class="p-2 rounded-3 h-100 form-grid bg-light">
                                     <h6 class="fw-semibold text-primary mb-2">Registered Address</h6>
                                     <div class="row g-2">
                                         <div class="col-12">
@@ -428,7 +430,7 @@
 
                             <!-- Business Address (col-6) -->
                             <div class="col-12 col-md-6">
-                                <div class="p-2 rounded-3 h-100 form-grid" style="background: #f3f3f3;">
+                                <div class="p-2 rounded-3 h-100 form-grid bg-light">
                                     <div class="d-flex align-items-center justify-content-between mb-2">
                                         <h6 class="fw-semibold text-primary mb-0">Business Address</h6>
                                         <div class="mb-0 bg-white border rounded-1 px-1 py-0">
@@ -484,7 +486,7 @@
                             </div>
                         </div>
 
-                        <div class="d-flex align-items-center justify-content-end mt-3">
+                        <div class="d-flex align-items-center justify-content-end mt-2">
                             <button type="submit" id="groupSubmitBtn"
                                 class="btn btn-outline-primary btn-primary text-white fw-medium text-end">
                                 Save Client Group <i class="fas fa-arrow-right btn-icon ms-1"></i>
@@ -494,7 +496,7 @@
                 </div>
 
                 <!-- Groups List -->
-                <div id="group-list-pane" class="position-relative bg-light p-2 rounded-3">
+                <div id="group-list-pane" class="position-relative bg-DarkLight p-2 rounded-3">
                     <h6 class="fw-semibold text-dark mb-2 px-1">
                         <span id="group-list-tab">Client Group List ({{ $groups->count()}})</span>
                     </h6>
@@ -584,13 +586,13 @@
 <div class="modal fade" id="documentsModal" tabindex="-1" aria-labelledby="documentsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0">
-            <div class="modal-header bg-light py-2 border-0">
+            <div class="modal-header bg-DarkLight py-2 border-0">
                 <h5 class="modal-title fw-semibold" id="documentsModalLabel"></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body bg-white p-2">
                 <!-- Document Form -->
-                <div id="add-document-pane" class="bg-light p-2 rounded-3 mb-3">
+                <div id="add-document-pane" class="bg-DarkLight p-2 rounded-3 mb-3">
                     <h6 class="fw-semibold text-dark mb-2 px-1">
                         <span id="documentTabTitle">Add Document</span>
                     </h6>
@@ -623,7 +625,6 @@
                                 </div>
                             </div>
                             <div class="col-12 col-md-10">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Upload File</label>
                                 <div class="logo-drag-drop-zone border border-dashed rounded-3 text-center bg-white position-relative py-2"
                                     style="cursor:pointer;" id="docUploadDropZone">
                                     <input type="file" id="docFile" name="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
@@ -663,7 +664,7 @@
                 </div>
 
                 <!-- Document List -->
-                <div id="document-list-pane" class="position-relative bg-light p-2 rounded-3">
+                <div id="document-list-pane" class="position-relative bg-DarkLight p-2 rounded-3">
                     <h6 class="fw-semibold text-dark mb-2 px-1">
                         <span id="documentListTabLabel">Document List (0)</span>
                     </h6>
@@ -959,14 +960,14 @@
                 if (data.success) {
                     refreshGroupsTable(data.groups, 'list');
                     resetGroupForm();
-                    showGroupToast(data.message);
+                    showToast(data.message);
                 }
             })
             .catch(function (err) {
                 if (err && err.errors) {
                     showGroupFormErrors(err.errors);
                 } else {
-                    showGroupToast('Something went wrong. Please try again.', 'danger');
+                    showToast('Something went wrong. Please try again.', 'danger');
                 }
             })
             .finally(function () {
@@ -990,21 +991,39 @@
         });
     }
 
-    function showGroupToast(message, type) {
+    function showToast(message, type) {
         type = type || 'success';
-        var container = document.getElementById('groupToastContainer');
+        var container = document.getElementById('app-toast-container');
         if (!container) {
             container = document.createElement('div');
-            container.id = 'groupToastContainer';
-            container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999';
+            container.id = 'app-toast-container';
+            container.className = 'app-toast-container';
             document.body.appendChild(container);
         }
         var toast = document.createElement('div');
-        toast.className = 'app-toast app-toast-' + type;
-        toast.innerHTML = '<span>' + message + '</span>';
+        toast.className = 'app-toast app-toast-' + (type === 'danger' ? 'error' : type);
+
+        var iconClass = 'fa-check-circle';
+        if (type === 'error' || type === 'danger') {
+            iconClass = 'fa-times-circle';
+        } else if (type === 'warning') {
+            iconClass = 'fa-exclamation-circle';
+        } else if (type === 'info') {
+            iconClass = 'fa-info-circle';
+        }
+
+        toast.innerHTML = '<i class="fas ' + iconClass + ' toast-icon"></i><span>' + message + '</span>';
         toast.onclick = function () { this.remove(); };
         container.appendChild(toast);
-        setTimeout(function () { if (toast.parentNode) toast.remove(); }, 4000);
+
+        setTimeout(function () {
+            if (toast.parentNode) {
+                toast.classList.add('app-toast-leaving');
+                setTimeout(function () {
+                    if (toast.parentNode) toast.remove();
+                }, 300);
+            }
+        }, 3500);
     }
 
     document.getElementById('manageGroupsModal').addEventListener('hidden.bs.modal', resetGroupForm);
@@ -1043,11 +1062,11 @@
                 .then(function (data) {
                     if (data.success) {
                         refreshGroupsTable(data.groups, 'list');
-                        showGroupToast(data.message);
+                        showToast(data.message);
                     }
                 })
                 .catch(function () {
-                    showGroupToast('Something went wrong. Please try again.', 'danger');
+                    showToast('Something went wrong. Please try again.', 'danger');
                 });
         });
     });
@@ -1263,11 +1282,11 @@
             .then(function (data) {
                 if (data.success) {
                     refreshDocumentsTable(data.documents);
-                    showDocToast(data.message);
+                    showToast(data.message);
                 }
             })
             .catch(function () {
-                showDocToast('Something went wrong. Please try again.', 'danger');
+                showToast('Something went wrong. Please try again.', 'danger');
             });
     }
 
@@ -1329,7 +1348,7 @@
                 if (data.success) {
                     refreshDocumentsTable(data.documents);
                     resetDocumentForm();
-                    showDocToast(data.message);
+                    showToast(data.message);
                     var listTabEl = document.getElementById('document-list-tab');
                     if (listTabEl) listTabEl.click();
                 }
@@ -1338,7 +1357,7 @@
                 if (err && err.errors) {
                     showDocFormErrors(err.errors);
                 } else {
-                    showDocToast('Something went wrong. Please try again.', 'danger');
+                    showToast('Something went wrong. Please try again.', 'danger');
                 }
             })
             .finally(function () {
@@ -1362,22 +1381,7 @@
         });
     }
 
-    function showDocToast(message, type) {
-        type = type || 'success';
-        var container = document.getElementById('docToastContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'docToastContainer';
-            container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999';
-            document.body.appendChild(container);
-        }
-        var toast = document.createElement('div');
-        toast.className = 'app-toast app-toast-' + type;
-        toast.innerHTML = '<span>' + message + '</span>';
-        toast.onclick = function () { this.remove(); };
-        container.appendChild(toast);
-        setTimeout(function () { if (toast.parentNode) toast.remove(); }, 4000);
-    }
+
 
     // Document Upload Drag & Drop
     (function () {
@@ -1507,6 +1511,64 @@
                 setView('list');
             }
         }
+
+
+
+        document.querySelectorAll('.client-status-toggle').forEach(checkbox => {
+            checkbox.addEventListener('change', async function () {
+                const clientId = this.getAttribute('data-id');
+                const isChecked = this.checked;
+                const newStatus = isChecked ? 'active' : 'inactive';
+
+                // Sync other toggle switches for the same client (grid and list views)
+                document.querySelectorAll(`.client-status-toggle[data-id="${clientId}"]`).forEach(cb => {
+                    if (cb !== this) cb.checked = isChecked;
+                });
+
+                // Disable switches during AJAX request
+                const toggles = document.querySelectorAll(`.client-status-toggle[data-id="${clientId}"]`);
+                toggles.forEach(cb => cb.disabled = true);
+
+                try {
+                    const response = await fetch(clientsBaseUrl + '/clients/' + clientId + '/toggle-status', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({ status: newStatus })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        // Update status dots
+                        const dots = [
+                            document.getElementById(`status-dot-${clientId}`),
+                            document.getElementById(`status-dot-grid-${clientId}`)
+                        ];
+                        dots.forEach(dot => {
+                            if (dot) {
+                                dot.className = `status-dot ${newStatus}`;
+                                dot.setAttribute('title', newStatus.charAt(0).toUpperCase() + newStatus.slice(1));
+                            }
+                        });
+
+                        showToast(result.message || 'Status updated successfully.');
+                    } else {
+                        toggles.forEach(cb => cb.checked = !isChecked);
+                        alert('Failed to update status.');
+                    }
+                } catch (error) {
+                    console.error('Failed to toggle status', error);
+                    toggles.forEach(cb => cb.checked = !isChecked);
+                    alert('An error occurred while updating status.');
+                } finally {
+                    toggles.forEach(cb => cb.disabled = false);
+                }
+            });
+        });
     });
 </script>
 @endsection

@@ -459,19 +459,10 @@ class PaymentsController extends Controller
             return $invoiceStatuses->isEmpty() || $invoiceStatuses->contains(fn ($status) => $status !== 'cancelled');
         })->values();
 
-        if ($selectedFyId !== 'all') {
-            $entries = $entries->filter(function (Ledger $entry) use ($selectedFyId, $invoiceMap, $paymentMap) {
-                if ($entry->type === 'dr') {
-                    return (string) ($invoiceMap->get($entry->invoiceid_paymentid)?->fy_id ?? '') === $selectedFyId;
-                }
-
-                return (string) ($paymentMap->get($entry->invoiceid_paymentid)?->fy_id ?? '') === $selectedFyId;
-            })->values();
-        }
-
         $runningBalance = 0;
+        $openingBalance = 0;
 
-        $ledgerEntries = $entries->map(function (Ledger $entry) use (&$runningBalance, $invoiceMap, $paymentMap) {
+        $allMappedEntries = $entries->map(function (Ledger $entry) use (&$runningBalance, $invoiceMap, $paymentMap) {
             $amount = (float) ($entry->amount ?? 0);
             $isInvoice = $entry->type === 'dr';
             $debit = 0;
@@ -524,6 +515,8 @@ class PaymentsController extends Controller
                 }
             }
 
+            $fy_id = $isInvoice ? ($invoiceMap->get($entry->invoiceid_paymentid)?->fy_id ?? '') : ($paymentMap->get($entry->invoiceid_paymentid)?->fy_id ?? '');
+
             return [
                 'ledgerid' => $entry->ledgerid,
                 'date' => $entry->date?->format('d M Y') ?? '-',
@@ -542,18 +535,38 @@ class PaymentsController extends Controller
                 'debit' => $debit,
                 'credit' => $credit,
                 'balance' => $runningBalance,
+                'fy_id' => $fy_id,
             ];
         });
+
+        if ($selectedFyId !== 'all') {
+            $selectedFy = $financialYears->firstWhere('fy_id', $selectedFyId);
+            $selectedFyName = $selectedFy ? $selectedFy->financial_year : '';
+
+            foreach ($allMappedEntries as $entry) {
+                $entryFy = $financialYears->firstWhere('fy_id', $entry['fy_id']);
+                $entryFyName = $entryFy ? $entryFy->financial_year : '';
+
+                if ($entryFyName !== '' && $selectedFyName !== '' && $entryFyName < $selectedFyName) {
+                    $openingBalance += ($entry['debit'] - $entry['credit']);
+                }
+            }
+
+            $ledgerEntries = $allMappedEntries->filter(function ($entry) use ($selectedFyId) {
+                return (string) $entry['fy_id'] === $selectedFyId;
+            })->values();
+        } else {
+            $ledgerEntries = $allMappedEntries;
+        }
 
         $invoiceTotal = (float) $ledgerEntries->sum('debit');
         $creditTotal = (float) $ledgerEntries->sum('credit');
         $tdsTotal = (float) $ledgerEntries->where('entry_kind', 'tds')->sum('credit');
         $paymentTotal = (float) $ledgerEntries->where('entry_kind', 'payment')->sum('credit');
-        $closingBalance = $runningBalance;
+        $closingBalance = $openingBalance + $invoiceTotal - $creditTotal;
 
         return view('payments.ledger', [
             'title' => 'Ledger',
-            'subtitle' => 'Statement-style view of invoices, payments, and TDS entries.',
             'ledgerEntries' => $ledgerEntries,
             'clients' => $clients,
             'selectedClientId' => $clientId,
@@ -565,6 +578,7 @@ class PaymentsController extends Controller
             'paymentTotal' => $paymentTotal,
             'tdsTotal' => $tdsTotal,
             'closingBalance' => $closingBalance,
+            'openingBalance' => $openingBalance,
         ]);
     }
 
@@ -648,7 +662,6 @@ class PaymentsController extends Controller
 
         return view('payments.gst-report', [
             'title' => 'GST Report',
-            'subtitle' => 'Month-wise tax invoice summary.',
             'rows' => $rows,
             'selectedMonth' => $selectedMonth,
             'selectedYear' => $selectedYear,
@@ -682,7 +695,7 @@ class PaymentsController extends Controller
 
         return view('payments.form', [
             'title' => 'Record New Payment',
-            'clients' => Client::query()->where('accountid', $accountId)->regular()->get(),
+            'clients' => Client::query()->where('accountid', $accountId)->regular()->active()->get(),
             'invoices' => $this->filterDueInvoices(
                 Invoice::query()->where('accountid', $accountId)->with(['client', 'invoiceItems'])
                     ->where('status', '!=', 'cancelled')
@@ -878,7 +891,7 @@ class PaymentsController extends Controller
         return view('payments.form', [
             'title' => 'Edit '.$displayTitle,
             'payment' => $payment,
-            'clients' => Client::query()->where('accountid', $payment->accountid)->regular()->get(),
+            'clients' => Client::query()->where('accountid', $payment->accountid)->regular()->active()->get(),
             'invoices' => $this->filterDueInvoices(
                 Invoice::query()->where('accountid', $payment->accountid)->with(['client', 'invoiceItems'])
                     ->get(),

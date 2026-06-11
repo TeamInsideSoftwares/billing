@@ -70,7 +70,7 @@ $subtitle = null;
 @else
 <div class="position-relative bg-white p-2 rounded-3">
     <!-- Filters Card -->
-    <div class="position-relative bg-light p-2 rounded-3 mb-3">
+    <div class="position-relative bg-DarkLight p-2 rounded-3 mb-3">
         <form action="{{ route('orders.index') }}" method="GET" class="mainForm">
             <div class="row g-2 align-items-center">
                 <div class="col-12 col-md-2">
@@ -119,19 +119,20 @@ $subtitle = null;
                 <div class="col-12 col-md-6 d-flex justify-content-end align-items-center gap-2 mt-auto">
                     @if(empty($showClientPicker))
                     <a href="{{ route('clients.trials') }}"
-                        class="btn btn-sm btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium h-auto">
+                        class="btn btn-sm btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium h-auto"
+                        style="font-size:0.875rem;">
                         <i class="fas fa-user-clock btn-icon"></i> Prospect Orders
                     </a>
                     @endif
                     <div class="btn-group shadow-sm" role="group" aria-label="View Toggle">
                         <button type="button"
                             class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
-                            id="btn-grid-view">
+                            style="font-size:0.875rem;" id="btn-grid-view">
                             <i class="fas fa-th-large toggle-icon"></i> Grid
                         </button>
                         <button type="button"
                             class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
-                            id="btn-list-view">
+                            style="font-size:0.875rem;" id="btn-list-view">
                             <i class="fas fa-list toggle-icon"></i> List
                         </button>
                     </div>
@@ -151,12 +152,12 @@ $subtitle = null;
                 @endif
             </div>
         </div>
-        <div class="table-responsive orders-list-view">
+        <div class="table-responsive orders-list-view p-2 border-0 bg-DarkLight rounded-3">
             <table class="table table-striped border mainTable align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th width="10%">Order</th>
-                        <th width="40%">Item</th>
+                        <th width="6%">Order</th>
+                        <th width="40%">Item Details</th>
                         <th class="text-center" width="15%">Create Date</th>
                         <th class="text-center" width="15%">Expiry</th>
                         <th class="text-end" width="20%">Actions</th>
@@ -173,7 +174,7 @@ $subtitle = null;
                                 <button type="button"
                                     class="btn p-0 border-0 bg-transparent btn-desc-toggle d-inline-flex align-items-center"
                                     style="outline: none; box-shadow: none;">
-                                    <i class="fas fa-arrow-right text-primary ms-2 desc-toggle-icon"
+                                    <i class="fas fa-arrow-up text-primary ms-2 desc-toggle-icon"
                                         style="transition: transform 0.2s ease; font-size: 0.8rem;"></i>
                                 </button>
                                 @endif
@@ -183,7 +184,7 @@ $subtitle = null;
                                 $order['items'][0]['item_description'] }}</div>
                             @endif
                             <div class="d-flex flex-wrap text-black mt-2">
-                                <div class="border border-dark-subtle rounded-pill small lh-sm px-2 py-1 me-2 my-1">
+                                <div class="border-end border-dark-subtle rounded-pill small lh-sm px-2 py-1 me-2 my-1">
                                     <small>Qty:</small>
                                     <span class="fw-semibold">{{
                                         rtrim(rtrim(number_format((float) ($order['items'][0]['quantity']
@@ -191,13 +192,13 @@ $subtitle = null;
                                         ''), '0'), '.') }}</span>
                                 </div>
                                 @if(!empty($order['items'][0]['no_of_users']))
-                                <div class="border border-dark-subtle rounded-pill small lh-sm px-2 py-1 me-2 my-1">
+                                <div class="border-end border-dark-subtle rounded-pill small lh-sm px-2 py-1 me-2 my-1">
                                     <small>Users:</small>
                                     <span class="fw-semibold">{{ $order['items'][0]['no_of_users'] }}</span>
                                 </div>
                                 @endif
                                 @if(!empty($order['items'][0]['delivery_date']))
-                                <div class="border border-dark-subtle rounded-pill small lh-sm px-2 py-1 me-2 my-1">
+                                <div class="border-end border-dark-subtle rounded-pill small lh-sm px-2 py-1 me-2 my-1">
                                     <small>Delivery Date:</small> <span class="fw-semibold">{{
                                         \Carbon\Carbon::parse($order['items'][0]['delivery_date'])->format('d M Y')
                                         }}</span>
@@ -205,7 +206,8 @@ $subtitle = null;
                                 @endif
                             </div>
                         </td>
-                        <td class="text-center">{{ !empty($order['items'][0]['start_date']) ? \Carbon\Carbon::parse($order['items'][0]['start_date'])->format('d M Y') : '-' }}</td>
+                        <td class="text-center">{{ !empty($order['items'][0]['start_date']) ?
+                            \Carbon\Carbon::parse($order['items'][0]['start_date'])->format('d M Y') : '-' }}</td>
                         <td class=" text-center">
                             @php
                             $orderEndDate = $order['items'][0]['end_date'] ?? null;
@@ -303,14 +305,14 @@ $subtitle = null;
         </div>
 
         <div
-            class="orders-grid-view row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 p-1 bg-light rounded-bottom-3 d-none mt-1">
+            class="orders-grid-view row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 p-1 pb-3 mt-2 bg-DarkLight rounded-3 d-none mt-1">
             @foreach($clientOrders as $order)
             <div class="col">
                 <div class="card h-100 border-0 overflow-hidden">
                     <div class="card-body p-3 d-flex flex-column justify-content-between"
                         style="background-color: #fff; border-radius: 8px;">
                         <div>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
                                 <span class="text-muted small fw-semibold text-truncate" style="max-width: 120px;">#{{
                                     $order['number'] }}</span>
                                 @if(($order['status'] ?? '') === 'cancelled')
@@ -328,7 +330,7 @@ $subtitle = null;
                                 <button type="button"
                                     class="btn p-0 border-0 bg-transparent btn-desc-toggle d-inline-flex align-items-center"
                                     style="outline: none; box-shadow: none;">
-                                    <i class="fas fa-arrow-right text-primary desc-toggle-icon"
+                                    <i class="fas fa-arrow-up text-primary desc-toggle-icon"
                                         style="transition: transform 0.2s ease; font-size: 0.8rem;"></i>
                                 </button>
                                 @endif
@@ -358,17 +360,24 @@ $subtitle = null;
                                 @if(!empty($order['items'][0]['delivery_date']))
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="text-muted small">Delivery Date</span>
-                                    <strong class="text-dark fw-semibold">{{ \Carbon\Carbon::parse($order['items'][0]['delivery_date'])->format('d M Y') }}</strong>
+                                    <strong class="text-dark fw-semibold">{{
+                                        \Carbon\Carbon::parse($order['items'][0]['delivery_date'])->format('d M Y')
+                                        }}</strong>
                                 </div>
                                 @endif
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="text-muted small">Create Date</span>
-                                    <strong class="text-dark fw-semibold">{{ !empty($order['items'][0]['start_date']) ? \Carbon\Carbon::parse($order['items'][0]['start_date'])->format('d M Y') : '-' }}</strong>
+                                    <strong class="text-dark fw-semibold">{{ !empty($order['items'][0]['start_date']) ?
+                                        \Carbon\Carbon::parse($order['items'][0]['start_date'])->format('d M Y') : '-'
+                                        }}</strong>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="text-muted small">Expiry</span>
                                     <div class="text-end">
-                                        <strong class="text-dark fw-semibold d-block">{{ !empty($order['items'][0]['end_date']) ? \Carbon\Carbon::parse($order['items'][0]['end_date'])->format('d M Y') : '-' }}</strong>
+                                        <strong class="text-dark fw-semibold d-block">{{
+                                            !empty($order['items'][0]['end_date']) ?
+                                            \Carbon\Carbon::parse($order['items'][0]['end_date'])->format('d M Y') : '-'
+                                            }}</strong>
                                         @php
                                         $orderEndDate = $order['items'][0]['end_date'] ?? null;
                                         $showDays = $orderEndDate && !in_array($orderEndDate, ['9999-12-31',
@@ -396,7 +405,7 @@ $subtitle = null;
 
                         <div class="tableActionButton d-flex flex-wrap gap-1 mt-2">
                             <button type="button"
-                                class="bg-timeline color-timeline border-0 text-center js-view-timeline-btn flex-grow-1"
+                                class="bg01 color01 border-0 text-center js-view-timeline-btn flex-grow-1"
                                 data-order-id="{{ $order['record_id'] }}" data-order-number="{{ $order['number'] }}">
                                 Timeline
                             </button>

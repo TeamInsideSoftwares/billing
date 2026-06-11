@@ -122,7 +122,7 @@ $initialOrderItems = [[
                             @endif
                         </div>
                     </div>
-                    <div class="bg-light p-2 rounded-3">
+                    <div class="bg-DarkLight p-2 rounded-3">
                         <div class="row g-2">
                             <div class="col-12 col-md-12">
                                 <div class="mb-1">
@@ -256,9 +256,9 @@ $initialOrderItems = [[
 
             @if(!$isEditMode)
             <div class="col-12 col-lg-9">
-                <div id="orderItemsTableWrap" class="order-create-table-wrap bg-light p-3 h-100 rounded-3 mt-0">
+                <div id="orderItemsTableWrap" class="order-create-table-wrap bg-DarkLight p-3 h-100 rounded-3 mt-0">
                     <div
-                        class="d-flex justify-content-end align-items-center align-self-end gap-3 small text-dark mb-2">
+                        class="d-flex justify-content-end align-items-center align-self-end gap-2 small text-dark mb-2">
                         <div class="btn-group shadow-sm" role="group" aria-label="View Toggle">
                             <button type="button"
                                 class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
@@ -292,7 +292,13 @@ $initialOrderItems = [[
                         </div>
                     </div>
 
-                    <div id="order-items-grid-view" class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-2 d-none">
+                    <div id="order-items-grid-view" class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-2  d-none">
+                    </div>
+                    <div id="orderSubmitBar" class="d-block w-100 mt-2 text-end" style="display: none;">
+                        <button type="submit"
+                            class="btn btn-sm btn-outline-primary btn-primary text-white fw-medium d-inline-flex align-items-center gap-1 h-auto">
+                            Save Orders <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -301,14 +307,7 @@ $initialOrderItems = [[
 
         <input type="hidden" name="items_data" id="items_data">
 
-        @if(!$isEditMode)
-        <div id="orderSubmitBar" class="d-flex align-items-center justify-content-end gap-2 mt-2"
-            style="display: none;">
-            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                Save Orders <i class="fas fa-arrow-right btn-icon ms-1"></i>
-            </button>
-        </div>
-        @else
+        @if($isEditMode)
         <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
             <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
                 Update Order <i class="fas fa-arrow-right btn-icon ms-1"></i>

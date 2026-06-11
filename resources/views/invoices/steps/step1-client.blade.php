@@ -73,7 +73,9 @@
             }
 
             const clientToken = encodeURIComponent(selectedClientId);
-            window.location.href = "{{ route('invoices.create') }}?step=2&c=" + clientToken;
+            const createRoute = "{{ route('invoices.create') }}";
+            const createPath = createRoute.startsWith('http') ? new URL(createRoute).pathname : createRoute;
+            window.location.href = createPath + "?step=2&c=" + clientToken;
         });
     })();
 </script>

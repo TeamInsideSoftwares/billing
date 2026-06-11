@@ -6,7 +6,7 @@
 @section('content')
 <div class="position-relative bg-white p-2 rounded-3">
     <!-- Filters Card -->
-    <div class="position-relative bg-light p-2 rounded-3 mb-2">
+    <div class="position-relative bg-DarkLight p-2 rounded-3 mb-2">
         <form action="{{ route('clients.trials') }}" method="GET" class="mainForm">
             <div class="row g-2">
 
@@ -63,13 +63,14 @@
                 <span class="status-dot legend-dot active"></span> Active
             </div>
             <div class="d-flex align-items-center">
-                <span class="status-dot legend-dot review"></span> Review
-            </div>
-            <div class="d-flex align-items-center">
                 <span class="status-dot legend-dot inactive"></span> Inactive
             </div>
         </div>
         <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('orders.index', ['c' => 'all']) }}"
+                class="btn btn-sm btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
+                <i class="fas fa-shopping-cart btn-icon"></i> Regular Orders
+            </a>
             <a href="{{ route('clients.index') }}"
                 class="btn btn-sm btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
                 <i class="fas fa-users btn-icon"></i> Regular Clients
@@ -88,16 +89,14 @@
     </div>
 
     <!-- Table View (List View) -->
-    <div id="clients-list-view" class="card overflow-hidden">
+    <div id="clients-list-view" class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3">
         <div class="table-responsive">
             <table class="table table-striped mainTable align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th width="20%">Client Name & Email</th>
-                        <th width="15%">Phone Number</th>
-                        <th width="30%">Item Details with Expiry Date</th>
-                        <th class="text-center" width="10%">Registered Date</th>
-                        <th class="text-end" width="25%">Actions</th>
+                        <th width="20%">Client Name & Contact Details</th>
+                        <th>Item Details</th>
+                        <th class="text-end" width="35%">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -117,47 +116,66 @@
                                         ? str_ireplace($searchTerm, '<mark class="bg-warning-subtle p-0">' . $searchTerm
                                             . '</mark>', $client['name'])
                                         : $client['name'] !!}</span>
-                                    <span class="d-block text-muted small">{{ $client['email'] }}</span>
+                                    <span class="d-block text-dark small">{{ $client['email'] }}</span>
+                                    <span class="d-block text-dark small">{{ $client['phone'] }}</span>
                                 </div>
                             </div>
                         </td>
                         <td>
-                            @if ($client['phone'])
-                            <div class="fw-medium text-dark">{{ $client['phone'] }}</div>
-                            @else
-                            <span class="text-muted small">&#8212;</span>
-                            @endif
-                        </td>
-                        <td>
                             @if ($client['item_name'])
                             <span
-                                class="bg-light rounded-2 small lh-sm p-2 d-inline-flex align-items-center gap-0 flex-wrap">
-                                <span>{{ $client['item_name'] }}</span>
-                                @if ($client['item_order_id'])
-                                <div class="input-group input-group-sm ms-2"
-                                    style="width: 130px; display: inline-flex; height: 24px; min-height: 24px;">
-                                    <input type="date"
-                                        class="form-control form-control-sm trial-expiry-input text-danger fw-semibold py-0 px-1.5 rounded-start-1 rounded-end-0"
-                                        style="height: 24px; font-size: 0.75rem; min-height: 24px;"
-                                        value="{{ $client['item_end_date'] ? \Carbon\Carbon::parse($client['item_end_date'])->format('Y-m-d') : '' }}"
-                                        data-order-id="{{ $client['item_order_id'] }}" title="Edit trial expiry date">
-                                    <span class="input-group-text bg-white px-1.5 py-0 rounded-end-1 rounded-start-0"><i
-                                            class="far fa-calendar-alt text-secondary"
-                                            style="font-size: 0.7rem;"></i></span>
+                                class="bg-DarkLight rounded-2 p-2 d-flex align-items-center gap-0 flex-wrap justify-content-between my-1">
+                                <span class="fw-semibold">{{ $client['item_name'] }}</span>
+
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <div class="input-group input-group-sm"
+                                            style="width: 130px; display: inline-flex; height: 24px; min-height: 24px;">
+                                            <input type="date"
+                                                class="form-control form-control-sm text-dark fw-semibold py-0 px-1.5 rounded-start-1 rounded-end-0"
+                                                style="height: 24px; font-size: 0.75rem; min-height: 24px;"
+                                                value="{{ $client['created_at'] ? \Carbon\Carbon::parse($client['created_at'])->format('Y-m-d') : '' }}"
+                                                disabled title="Registration Date">
+                                            <span
+                                                class="input-group-text bg-white px-1.5 py-0 rounded-end-1 rounded-start-0"><i
+                                                    class="far fa-calendar-alt text-secondary"
+                                                    style="font-size: 0.7rem;"></i></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="align-self-end mb-1">
+                                        <span class="text-muted small">-</span>
+                                    </div>
+
+                                    <div class="d-flex flex-column align-items-center">
+                                        @if ($client['item_order_id'])
+                                        <div class="input-group input-group-sm"
+                                            style="width: 130px; display: inline-flex; height: 24px; min-height: 24px;">
+                                            <input type="date"
+                                                class="form-control form-control-sm trial-expiry-input text-danger fw-semibold py-0 px-1.5 rounded-start-1 rounded-end-0"
+                                                style="height: 24px; font-size: 0.75rem; min-height: 24px;"
+                                                value="{{ $client['item_end_date'] ? \Carbon\Carbon::parse($client['item_end_date'])->format('Y-m-d') : '' }}"
+                                                data-order-id="{{ $client['item_order_id'] }}"
+                                                title="Edit trial expiry date">
+                                            <span
+                                                class="input-group-text bg-white px-1.5 py-0 rounded-end-1 rounded-start-0"><i
+                                                    class="far fa-calendar-alt text-secondary"
+                                                    style="font-size: 0.7rem;"></i></span>
+                                        </div>
+                                        @else
+                                        @if ($client['item_end_date'])
+                                        <span class="text-danger fw-semibold small lh-sm mt-1">({{
+                                            \Carbon\Carbon::parse($client['item_end_date'])->format('d M Y') }})</span>
+                                        @else
+                                        <span class="text-muted small mt-1">&#8212;</span>
+                                        @endif
+                                        @endif
+                                    </div>
                                 </div>
-                                @else
-                                @if ($client['item_end_date'])
-                                <span class="text-danger fw-semibold small lh-sm">({{
-                                    \Carbon\Carbon::parse($client['item_end_date'])->format('d M Y') }})</span>
-                                @endif
-                                @endif
                             </span>
                             @else
                             <span class="text-muted">&#8212;</span>
                             @endif
-                        </td>
-                        <td class="text-center">{{ $client['created_at'] ?
-                            \Carbon\Carbon::parse($client['created_at'])->format('d M Y') : '&#8212;' }}
                         </td>
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1">
@@ -172,14 +190,14 @@
                                     onsubmit="return confirm('Convert ' + this.dataset.name + ' to regular client?')">
                                     @csrf
                                     @method('PATCH')
-                                    <button type="submit" class="bg02 color02">Trial to Regular</button>
+                                    <button type="submit" class="bg02 color02">Prospect to Regular</button>
                                 </form>
                             </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="text-center py-5 text-muted">
+                        <td colspan="3" class="text-center py-5 text-muted">
                             <i class="fas fa-user-clock mb-3 text-secondary fs-1 opacity-50"></i>
                             <p class="fw-semibold text-dark mb-1">No trial clients found</p>
                             <p class="small text-muted mb-0">There are currently no active trial clients.</p>
@@ -193,7 +211,7 @@
 
     <!-- Grid View -->
     <div id="clients-grid-view"
-        class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 rounded-3 p-1 mt-2 bg-light d-none">
+        class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 p-1 pb-3 mt-2 bg-DarkLight rounded-3 d-none">
         @forelse ($clients as $client)
         <div class="col">
             <div class="card h-100 border-0 overflow-hidden">
@@ -202,7 +220,7 @@
                         <!-- Flex Avatar, Info -->
                         <div class="d-flex align-items-center gap-2 mb-3">
                             <div
-                                class="tablePrifix position-relative align-self-center bg-primary-subtle text-primary rounded-circle fw-semibold shrink-0">
+                                class="tablePrifix position-relative align-self-start bg-primary-subtle text-primary rounded-circle fw-semibold shrink-0">
                                 <span class="d-block position-absolute">{{ strtoupper(substr($client['name'], 0, 2))
                                     }}</span>
                                 <div class="status-dot {{ strtolower($client['status']) }}"
@@ -215,44 +233,68 @@
                                         '</mark>', $client['name'])
                                     : $client['name'] !!}
                                 </h6>
-                                <span class="d-block text-muted lh-sm text-break grid-text-medium"
+                                <span class="d-block text-muted lh-sm text-break grid-text-medium mt-1"
                                     title="{{ $client['email'] }}">{{ $client['email'] }}</span>
+                                <span class="d-block text-muted lh-sm text-break grid-text-medium mt-1"
+                                    title="{{ $client['phone'] ?? '—' }}">{{ $client['phone'] ?? '—' }}</span>
                             </div>
                         </div>
 
                         <!-- Item & Date & Contact details -->
                         <div class="mb-2 border-top pt-2 grid-text-medium">
-                            <!-- Phone Number -->
-                            <div class="text-dark lh-sm mb-2" title="{{ $client['phone'] ?? '—' }}">
-                                <i class="fas fa-phone contact-icon me-2 text-muted"></i>{{ $client['phone'] ?? '—' }}
-                            </div>
-
                             <!-- Item Details -->
                             <div class="mb-2">
                                 @if ($client['item_name'])
                                 <span
-                                    class="bg-light rounded-2 small lh-sm p-2 d-inline-flex align-items-center gap-1 flex-wrap">
-                                    <span>{{ $client['item_name'] }}</span>
-                                    @if ($client['item_order_id'])
-                                    <div class="input-group input-group-sm"
-                                        style="width: 130px; display: inline-flex; height: 24px; min-height: 24px;">
-                                        <input type="date"
-                                            class="form-control form-control-sm trial-expiry-input text-danger fw-semibold py-0 px-1.5 rounded-start-1 rounded-end-0"
-                                            style="height: 24px; font-size: 0.75rem; min-height: 24px;"
-                                            value="{{ $client['item_end_date'] ? \Carbon\Carbon::parse($client['item_end_date'])->format('Y-m-d') : '' }}"
-                                            data-order-id="{{ $client['item_order_id'] }}"
-                                            title="Edit trial expiry date">
-                                        <span
-                                            class="input-group-text bg-white px-1.5 py-0 rounded-end-1 rounded-start-0"><i
-                                                class="far fa-calendar-alt text-secondary"
-                                                style="font-size: 0.7rem;"></i></span>
+                                    class="bg-light rounded-2 p-2 d-flex align-items-center gap-0 flex-wrap justify-content-between my-1">
+                                    <span class="fw-semibold">{{ $client['item_name'] }}</span>
+
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="d-flex flex-column align-items-center">
+                                            <div class="input-group input-group-sm"
+                                                style="width: 130px; display: inline-flex; height: 24px; min-height: 24px;">
+                                                <input type="date"
+                                                    class="form-control form-control-sm text-dark fw-semibold py-0 px-1.5 rounded-start-1 rounded-end-0"
+                                                    style="height: 24px; font-size: 0.75rem; min-height: 24px;"
+                                                    value="{{ $client['created_at'] ? \Carbon\Carbon::parse($client['created_at'])->format('Y-m-d') : '' }}"
+                                                    disabled title="Registration Date">
+                                                <span
+                                                    class="input-group-text bg-white px-1.5 py-0 rounded-end-1 rounded-start-0"><i
+                                                        class="far fa-calendar-alt text-secondary"
+                                                        style="font-size: 0.7rem;"></i></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="align-self-end mb-1">
+                                            <span class="text-muted small">-</span>
+                                        </div>
+
+                                        <div class="d-flex flex-column align-items-center">
+                                            @if ($client['item_order_id'])
+                                            <div class="input-group input-group-sm"
+                                                style="width: 130px; display: inline-flex; height: 24px; min-height: 24px;">
+                                                <input type="date"
+                                                    class="form-control form-control-sm trial-expiry-input text-danger fw-semibold py-0 px-1.5 rounded-start-1 rounded-end-0"
+                                                    style="height: 24px; font-size: 0.75rem; min-height: 24px;"
+                                                    value="{{ $client['item_end_date'] ? \Carbon\Carbon::parse($client['item_end_date'])->format('Y-m-d') : '' }}"
+                                                    data-order-id="{{ $client['item_order_id'] }}"
+                                                    title="Edit trial expiry date">
+                                                <span
+                                                    class="input-group-text bg-white px-1.5 py-0 rounded-end-1 rounded-start-0"><i
+                                                        class="far fa-calendar-alt text-secondary"
+                                                        style="font-size: 0.7rem;"></i></span>
+                                            </div>
+                                            @else
+                                            @if ($client['item_end_date'])
+                                            <span class="text-danger fw-semibold small lh-sm mt-1">({{
+                                                \Carbon\Carbon::parse($client['item_end_date'])->format('d M Y')
+                                                }})</span>
+                                            @else
+                                            <span class="text-muted small mt-1">&#8212;</span>
+                                            @endif
+                                            @endif
+                                        </div>
                                     </div>
-                                    @else
-                                    @if ($client['item_end_date'])
-                                    <span class="text-danger fw-semibold small lh-sm">({{
-                                        \Carbon\Carbon::parse($client['item_end_date'])->format('d M Y') }})</span>
-                                    @endif
-                                    @endif
                                 </span>
                                 @else
                                 <span class="text-muted small">&#8212;</span>
@@ -274,12 +316,6 @@
                             @method('PATCH')
                             <button type="submit" class="bg02 color02 text-center">Convert to Regular</button>
                         </form>
-                    </div>
-
-                    <!-- Registered Date -->
-                    <div class="text-muted fw-normal text-end mt-3 pt-1 border-top" title="Registered Date">
-                        <small class="small lh-sm">Reg. Date - {{ $client['created_at'] ?
-                            \Carbon\Carbon::parse($client['created_at'])->format('d M Y') : '&#8212;' }}</small>
                     </div>
                 </div>
             </div>

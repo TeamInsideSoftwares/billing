@@ -145,23 +145,10 @@
                                         *</label>
                                     <select id="clientid" name="clientid" class="form-select" required>
                                         <option value="">Select Client</option>
-                                        @php
-                                        $clientsByType = collect($clients ?? [])->groupBy(function ($client) {
-                                        return strtolower((string) ($client->type ?? 'regular')) === 'trial'
-                                        ? 'trial'
-                                        : 'regular';
-                                        });
-                                        @endphp
-                                        @foreach (['regular' => 'Regular Clients', 'trial' => 'Trial Clients'] as $typeKey => $typeLabel)
-                                        @if (($clientsByType[$typeKey] ?? collect())->isNotEmpty())
-                                        <optgroup label="{{ $typeLabel }}">
-                                            @foreach ($clientsByType[$typeKey] as $client)
-                                            <option value="{{ $client->clientid }}" {{ $defaultClientId == $client->clientid ? 'selected' : '' }}>
-                                                {{ $client->business_name ?? $client->contact_name }}
-                                            </option>
-                                            @endforeach
-                                        </optgroup>
-                                        @endif
+                                        @foreach ($clients ?? [] as $client)
+                                        <option value="{{ $client->clientid }}" {{ $defaultClientId == $client->clientid ? 'selected' : '' }}>
+                                            {{ $client->business_name ?? $client->contact_name }}
+                                        </option>
                                         @endforeach
                                     </select>
                                     @else

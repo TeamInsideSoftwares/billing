@@ -158,4 +158,9 @@ class Client extends Model
     {
         return $query->where('type', 'trial');
     }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('status', 'active');
+    }
 }

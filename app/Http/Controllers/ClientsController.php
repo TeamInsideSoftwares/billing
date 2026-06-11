@@ -356,7 +356,6 @@ class ClientsController extends Controller
                 'status' => $client->status ?? 'Active',
                 'balance' => $client->currency.' '.number_format($outstanding, 0),
                 'created_at' => $client->created_at,
-                'invoice_count' => $client->invoices->count(),
             ];
         });
 
@@ -461,7 +460,6 @@ class ClientsController extends Controller
                 'phone' => $client->phone,
                 'currency' => $client->currency,
                 'balance' => $client->currency.' '.number_format($outstanding, 0),
-                'invoice_count' => $client->invoices->count(),
                 'status' => $client->status ?? 'active',
                 'created_at' => $client->created_at,
                 'item_name' => $itemName,
@@ -558,7 +556,7 @@ class ClientsController extends Controller
             'status' => 'in:active,review,inactive',
             'currency' => 'required|string|size:3|exists:currency,iso',
             'country' => 'nullable|string',
-            'state' => 'required|string',
+            'state' => 'nullable|string',
             'city' => 'nullable|string',
             'postal_code' => 'nullable|string|max:20',
             'address_line_1' => 'nullable|string',
@@ -1045,7 +1043,7 @@ class ClientsController extends Controller
             'status' => 'in:active,review,inactive',
             'currency' => 'required|string|size:3|exists:currency,iso',
             'country' => 'nullable|string',
-            'state' => 'required|string',
+            'state' => 'nullable|string',
             'city' => 'nullable|string',
             'postal_code' => 'nullable|string|max:20',
             'address_line_1' => 'nullable|string',
@@ -1233,6 +1231,30 @@ class ClientsController extends Controller
         });
 
         return redirect()->route('clients.trials')->with('success', 'Client converted to regular successfully.');
+    }
+
+    public function toggleClientStatus(Request $request, Client $client): JsonResponse
+    {
+        if ((string) $client->accountid !== $this->resolveAccountId()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|in:active,inactive',
+        ]);
+
+        $client->update([
+            'status' => $validated['status'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Client status updated successfully.',
+            'status' => $client->status,
+        ]);
     }
 
     private function normalizeClientEmails(string $rawEmails, bool $required = true, string $field = 'email'): ?string

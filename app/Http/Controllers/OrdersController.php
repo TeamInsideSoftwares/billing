@@ -58,7 +58,7 @@ class OrdersController extends Controller
         $query = Order::query()
             ->where('accountid', $accountId)
             ->regular()
-            ->with(['client', 'item', 'invoices']);
+            ->with(['client', 'item', 'invoices', 'invoiceItems']);
 
         if ($clientId !== '') {
             $query->where('clientid', $clientId);
@@ -74,6 +74,7 @@ class OrdersController extends Controller
         $records = $query->orderByDesc('start_date')->orderByDesc('created_at')->take(100)->get();
         $orders = $records->map(function (Order $order) {
             $linkedInvoice = $order->invoices->sortByDesc('created_at')->first();
+            $latestInvoiceItem = $order->invoiceItems->sortByDesc('created_at')->sortByDesc('invoice_itemid')->first();
 
             return [
                 'record_id' => $order->orderid,
@@ -98,6 +99,8 @@ class OrdersController extends Controller
                     'start_date' => $order->start_date?->format('Y-m-d'),
                     'end_date' => $order->end_date?->format('Y-m-d'),
                     'delivery_date' => $order->delivery_date?->format('Y-m-d'),
+                    'frequency' => $latestInvoiceItem?->frequency ?? '',
+                    'duration' => $latestInvoiceItem?->duration ?? 1,
                 ]],
                 'has_pi' => $order->invoices->isNotEmpty(),
                 'linked_invoice_id' => $linkedInvoice?->invoiceid,
@@ -318,7 +321,7 @@ class OrdersController extends Controller
 
         return view('orders.create', [
             'title' => 'Create Orders',
-            'clients' => Client::where('accountid', $accountId)->regular()->with('primaryContact')->orderBy('business_name')->get(),
+            'clients' => Client::where('accountid', $accountId)->regular()->active()->with('primaryContact')->orderBy('business_name')->get(),
             'services' => Service::where('accountid', $accountId)->with('costings', 'category')->orderBy('name')->get(),
             'preSelectedClientId' => $preSelectedClientId,
             'clientDocuments' => $documents->values(),
@@ -509,7 +512,7 @@ class OrdersController extends Controller
             'title' => 'Edit Order',
             'subtitle' => 'Edit this item-based order.',
             'order' => $order,
-            'clients' => Client::where('accountid', $accountId)->regular()->with('primaryContact')->orderBy('business_name')->get(),
+            'clients' => Client::where('accountid', $accountId)->regular()->active()->with('primaryContact')->orderBy('business_name')->get(),
             'services' => Service::where('accountid', $accountId)->with('costings', 'category')->orderBy('name')->get(),
             'preSelectedClientId' => $order->clientid,
             'clientDocuments' => $documents->values(),

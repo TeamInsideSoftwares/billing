@@ -202,6 +202,11 @@ class Order extends Model
         )->distinct();
     }
 
+    public function invoiceItems(): HasMany
+    {
+        return $this->hasMany(InvoiceItem::class, 'orderid', 'orderid');
+    }
+
     public function getSubtotalAttribute(): float
     {
         return 0.0;

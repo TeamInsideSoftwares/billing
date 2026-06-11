@@ -51,6 +51,10 @@
     color: #121212 !important;
 }
 
+.bg-DarkLight {
+    background-color: #f3f3f3 !important;
+}
+
 .swal2-container .app-swal-popup {
     border-radius: 14px;
     padding: 0.9rem 0.9rem 0.85rem;
@@ -283,20 +287,20 @@
     flex-direction: column;
     min-height: 100vh;
     min-width: 0;
-    background: linear-gradient(180deg, #f8fbff 0%, #f4f7fb 42%, #f4f7fb 100%);
+    background: #f9f9f9;
 }
 
 .topbar {
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(255, 255, 255, 0.92);
+    background: #f3f3f3;
     backdrop-filter: blur(10px);
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem 1.25rem;
-    margin-bottom: 10px;
+    margin-bottom: 0;
 }
 
 .content-panel {
@@ -484,7 +488,7 @@
 }
 
 .desc-toggle-icon.rotated {
-    transform: rotate(90deg);
+    transform: rotate(180deg);
 }
 
 /* Flatpickr custom styling to match project design */
@@ -912,7 +916,7 @@
 
 /* Topbar Styles */
 .topbar {
-    background: var(--bg);
+    background: #f3f3f3;
     padding: .8rem 1rem;
     display: flex;
     align-items: center;
@@ -9332,85 +9336,3 @@ label {
 #existing-logo-wrap img {
     max-height: 80px;
 }
-
-/* Order Timeine Css Starts */
-.timeline-wrapper {
-    position: relative;
-    padding-left: 24px;
-    border-left: 2px solid #dee2e6;
-    margin-left: 15px;
-}
-
-.timeline-item {
-    position: relative;
-    margin-bottom: 24px;
-}
-
-.timeline-item:last-child {
-    margin-bottom: 0;
-}
-
-.timeline-marker {
-    position: absolute;
-    left: -32px;
-    top: 2px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #6c757d;
-    border: 3px solid #fff;
-    box-shadow: 0 0 0 2px #dee2e6;
-}
-
-/* Action specific marker colors */
-.timeline-marker.order_created {
-    background-color: #10b981 !important;
-    box-shadow: 0 0 0 2px #d1fae5;
-}
-
-.timeline-marker.status_changed {
-    background-color: #3b82f6 !important;
-    box-shadow: 0 0 0 2px #dbeafe;
-}
-
-.timeline-marker.expiry_date_changed {
-    background-color: #f59e0b !important;
-    box-shadow: 0 0 0 2px #fef3c7;
-}
-
-.timeline-marker.delivery_date_changed {
-    background-color: #8b5cf6 !important;
-    box-shadow: 0 0 0 2px #ede9fe;
-}
-
-.timeline-marker.users_changed {
-    background-color: #ec4899 !important;
-    box-shadow: 0 0 0 2px #fce7f3;
-}
-
-.timeline-marker.quantity_changed {
-    background-color: #06b6d4 !important;
-    box-shadow: 0 0 0 2px #ecfeff;
-}
-
-.timeline-marker.description_changed {
-    background-color: #6b7280 !important;
-    box-shadow: 0 0 0 2px #f3f4f6;
-}
-
-.timeline-marker.invoice_item_billed {
-    background-color: #10b981 !important;
-    box-shadow: 0 0 0 2px #d1fae5;
-}
-
-.timeline-marker.invoice_item_updated {
-    background-color: #eab308 !important;
-    box-shadow: 0 0 0 2px #fef3c7;
-}
-
-.timeline-marker.invoice_item_deleted {
-    background-color: #ef4444 !important;
-    box-shadow: 0 0 0 2px #fee2e2;
-}
-
-/* Order Timeine Css Ends */

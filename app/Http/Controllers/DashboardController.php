@@ -79,7 +79,7 @@ class DashboardController extends Controller
         $renewalsNeedAttention = $renewalItems
             ->filter(fn (array $item): bool => ($item['days_left'] ?? 0) > 0 && ($item['days_left'] ?? 0) <= 30)
             ->sortBy('days_left')
-            ->take(8)
+            ->take(5)
             ->values();
 
         $renewalClientPriorities = $renewalItems
@@ -130,14 +130,6 @@ class DashboardController extends Controller
                 'tone' => 'danger',
                 'url' => route('invoices.expiry-list', ['tab' => 'expired']),
             ],
-            [
-                'label' => 'Renewals Due This Week',
-                'value' => $renewalsDueThisWeek->count(),
-                'change' => '',
-                'icon' => 'fa-bolt',
-                'tone' => 'brand',
-                'url' => route('invoices.expiry-list', ['tab' => 'upcoming']),
-            ],
         ];
 
         $recentRevenue = Payment::where('accountid', $accountid)
@@ -159,6 +151,35 @@ class DashboardController extends Controller
 
         $attentionCount = $renewalsDue30Days->count();
 
+        $totalOutstanding = (float) Invoice::query()
+            ->where('accountid', $accountid)
+            ->where('status', '!=', 'cancelled')
+            ->get()
+            ->sum(function ($invoice) {
+                return max(0.0, (float) (($invoice->grand_total ?? 0) - ($invoice->amount_paid ?? 0)));
+            });
+
+        $outstandingInvoices = Invoice::query()
+            ->where('accountid', $accountid)
+            ->whereNotIn('status', ['cancelled', 'draft'])
+            ->with(['client', 'paymentDetails.payment', 'invoiceItems'])
+            ->get()
+            ->filter(function ($invoice) {
+                return $invoice->balance_due > 0;
+            })
+            ->sortByDesc('created_at')
+            ->take(5)
+            ->map(function ($invoice) {
+                return [
+                    'invoiceid' => $invoice->invoiceid,
+                    'invoice_number' => $invoice->invoice_number,
+                    'client_name' => $invoice->client->business_name ?? $invoice->client->contact_name ?? 'Client',
+                    'balance_due' => number_format($invoice->balance_due, 0),
+                    'date' => optional($invoice->issue_date ?? $invoice->created_at)->format('d M, Y'),
+                ];
+            })
+            ->values();
+
         return view('dashboard', [
             'title' => 'Dashboard',
             'subtitle' => $attentionCount > 0
@@ -167,10 +188,12 @@ class DashboardController extends Controller
             'stats' => $stats,
             'totalRevenue' => $totalRevenue,
             'totalInvoices' => Invoice::where('accountid', $accountid)->count(),
+            'totalOutstanding' => $totalOutstanding,
             'renewalsNeedAttention' => $renewalsNeedAttention,
             'renewalClientPriorities' => $renewalClientPriorities,
             'expiredRenewals' => $expiredRenewals->take(5)->values(),
             'recentRevenue' => $recentRevenue,
+            'outstandingInvoices' => $outstandingInvoices,
         ]);
     }
 }

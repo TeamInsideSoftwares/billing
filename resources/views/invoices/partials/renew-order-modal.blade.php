@@ -1,12 +1,12 @@
 <div class="modal fade" id="renewOrderModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
+    <div class="modal-dialog modal-md modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-0 bg-white py-2">
                 <h5 class="modal-title fw-semibold">Renew Order <span id="renewOrderNumber"
                         class="text-primary small"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body bg-light p-3">
+            <div class="modal-body bg-DarkLight p-3">
                 <form id="renewOrderForm" method="POST" action="" class="mainForm">
                     @csrf
                     @method('PATCH')

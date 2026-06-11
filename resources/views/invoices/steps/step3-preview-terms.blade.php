@@ -71,7 +71,7 @@
                     <h5 class="fw-semibold text-black mb-0">{{ $isTaxInvoiceStep3 ? 'Tax T&C' : 'Proforma T&C' }}</h5>
                     <div class="d-flex gap-2 align-items-center">
                         <button type="button" id="btnApplyTC"
-                            class="btn btn-outline-primary btn-primary text-white fw-medium btn-sm is-hidden">Apply</button>
+                            class="btn btn-outline-primary btn-primary text-white fw-medium btn-sm d-none">Apply</button>
                         <button type="button" id="btnAddTC" class="btn btn-link text-decoration-none p-0 small fw-semibold">+ Add</button>
                     </div>
                 </div>
@@ -140,7 +140,7 @@
                             Live Preview
                         </span>
                         <a id="btnDownloadPI" href="#" target="_blank"
-                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 is-hidden">
+                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 d-none">
                             Download PI
                         </a>
                         <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1" id="digitalSignBtn"
@@ -148,11 +148,11 @@
                             Download Signed
                         </button>
                         <button type="button" id="createTaxInvoiceBtn"
-                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 is-hidden">
+                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 d-none">
                             Convert to Tax Invoice
                         </button>
                         <button type="button" id="btnDownloadTaxInvoice"
-                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 is-hidden">
+                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 d-none">
                             Download Tax Invoice
                         </button>
                         <button type="button" id="btnEditPreview"
@@ -405,7 +405,7 @@
         }
 
         function openTermModal() {
-            addTermError.classList.add('is-hidden');
+            addTermError.classList.add('d-none');
             addTermError.textContent = '';
             newTermContent.value = '';
             if (addTermBootstrapModal) {
@@ -453,8 +453,9 @@
 
         // Load items
         function loadItems() {
-            const draftUrl = new URL("{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}".replace(
-                '__CLIENTID__', clientId), window.location.origin);
+            const routeUrl = "{{ route('invoices.get-draft', ['clientid' => '__CLIENTID__']) }}";
+            const urlPath = routeUrl.startsWith('http') ? new URL(routeUrl).pathname : routeUrl;
+            const draftUrl = new URL(urlPath.replace('__CLIENTID__', clientId), window.location.origin);
             if (hasOrderId) {
                 draftUrl.searchParams.set('o', orderId);
             }
@@ -502,7 +503,7 @@
 
                         invoiceNumberInput.value = draftInvoiceNumber;
                         invoiceidInput.value = data.draft.invoiceid || '';
-                        if (btnApplyTC && data.draft.invoiceid) btnApplyTC.classList.remove('is-hidden');
+                        if (btnApplyTC && data.draft.invoiceid) btnApplyTC.classList.remove('d-none');
 
                         updateHeaderNumberBadge();
                         syncRenewedItemIdsInput();
@@ -548,10 +549,12 @@
 
         function updateDownloadButtons(invoiceid) {
             if (!invoiceid) return;
-            const base = "{{ url('invoices') }}/" + invoiceid + "/pdf";
+            const baseRoute = "{{ url('invoices') }}";
+            const basePath = baseRoute.startsWith('http') ? new URL(baseRoute).pathname : baseRoute;
+            const base = basePath + "/" + invoiceid + "/pdf";
             if (btnDownloadPI) {
                 btnDownloadPI.href = base + '?type=pi';
-                btnDownloadPI.classList.remove('is-hidden');
+                btnDownloadPI.classList.remove('d-none');
             }
             syncTaxInvoiceButtons(invoiceid);
             if (digitalSignBtn) {
@@ -564,21 +567,23 @@
         function syncTaxInvoiceButtons(invoiceid) {
             if (!createTaxInvoiceBtn || !btnDownloadTaxInvoice) return;
             if (!invoiceid) {
-                createTaxInvoiceBtn.classList.add('is-hidden');
-                btnDownloadTaxInvoice.classList.add('is-hidden');
+                createTaxInvoiceBtn.classList.add('d-none');
+                btnDownloadTaxInvoice.classList.add('d-none');
                 return;
             }
 
-            const base = "{{ url('invoices') }}/" + invoiceid + "/pdf";
+            const baseRoute = "{{ url('invoices') }}";
+            const basePath = baseRoute.startsWith('http') ? new URL(baseRoute).pathname : baseRoute;
+            const base = basePath + "/" + invoiceid + "/pdf";
             if (draftTiNumber) {
-                createTaxInvoiceBtn.classList.add('is-hidden');
-                btnDownloadTaxInvoice.classList.remove('is-hidden');
+                createTaxInvoiceBtn.classList.add('d-none');
+                btnDownloadTaxInvoice.classList.remove('d-none');
                 btnDownloadTaxInvoice.onclick = function() {
                     window.open(base + '?type=tax_invoice', '_blank');
                 };
             } else {
-                btnDownloadTaxInvoice.classList.add('is-hidden');
-                createTaxInvoiceBtn.classList.remove('is-hidden');
+                btnDownloadTaxInvoice.classList.add('d-none');
+                createTaxInvoiceBtn.classList.remove('d-none');
                 createTaxInvoiceBtn.disabled = false;
             }
         }
@@ -621,7 +626,9 @@
             }
 
             const type = (draftTiNumber || isTaxInvoice) ? 'tax_invoice' : 'pi';
-            const base = "{{ url('invoices') }}/" + encodeURIComponent(invoiceid) + "/pdf";
+            const baseRoute = "{{ url('invoices') }}";
+            const basePath = baseRoute.startsWith('http') ? new URL(baseRoute).pathname : baseRoute;
+            const base = basePath + "/" + encodeURIComponent(invoiceid) + "/pdf";
             previewFrame.src = `${base}?type=${type}&preview=1&_t=${Date.now()}`;
         }
 
@@ -630,7 +637,7 @@
             if (e.target.matches('[data-term]')) {
                 const allCheckboxes = document.querySelectorAll('[data-term]');
                 if (createTaxInvoiceBtn) createTaxInvoiceBtn.disabled = !invoiceidInput.value;
-                if (btnApplyTC) btnApplyTC.classList.toggle('is-hidden', !invoiceidInput.value);
+                if (btnApplyTC) btnApplyTC.classList.toggle('d-none', !invoiceidInput.value);
             }
         });
 
@@ -649,7 +656,9 @@
                 btnApplyTC.disabled = true;
                 btnApplyTC.textContent = 'Applying...';
 
-                fetch(`{{ url('invoices') }}/${invoiceid}/terms`, {
+                const applyTermsRoute = `{{ url('invoices') }}/${invoiceid}/terms`;
+                const applyTermsPath = applyTermsRoute.startsWith('http') ? new URL(applyTermsRoute).pathname : applyTermsRoute;
+                fetch(applyTermsPath, {
                         method: 'PATCH',
                         headers: {
                             'Content-Type': 'application/json',
@@ -704,14 +713,16 @@
 
                 if (!content) {
                     addTermError.textContent = 'Please enter the term content.';
-                    addTermError.classList.remove('is-hidden');
+                    addTermError.classList.remove('d-none');
                     return;
                 }
 
-                addTermError.classList.add('is-hidden');
+                addTermError.classList.add('d-none');
                 addTermError.textContent = '';
 
-                fetch("{{ route('invoices.terms.billing.store') }}", {
+                const storeTermRoute = "{{ route('invoices.terms.billing.store') }}";
+                const storeTermPath = storeTermRoute.startsWith('http') ? new URL(storeTermRoute).pathname : storeTermRoute;
+                fetch(storeTermPath, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -762,7 +773,7 @@
                     })
                     .catch(error => {
                         addTermError.textContent = error.message || 'Unable to save term.';
-                        addTermError.classList.remove('is-hidden');
+                        addTermError.classList.remove('d-none');
                     });
             });
         }
@@ -772,7 +783,9 @@
             const currentDraftId = invoiceidInput.value || draftId;
             const prevStep = 2;
             const clientToken = encodeURIComponent(clientId);
-            let prevUrl = "{{ route('invoices.create') }}?step=" + prevStep + "&c=" + clientToken;
+            const createRoute = "{{ route('invoices.create') }}";
+            const createPath = createRoute.startsWith('http') ? new URL(createRoute).pathname : createRoute;
+            let prevUrl = createPath + "?step=" + prevStep + "&c=" + clientToken;
             if (hasOrderId) {
                 const orderToken = encodeURIComponent(orderId);
                 prevUrl += "&o=" + orderToken;
@@ -791,7 +804,9 @@
             const currentInvoiceId = invoiceidInput.value || draftId;
             const clientToken = encodeURIComponent(clientId);
             const editStep = 2;
-            let editUrl = "{{ route('invoices.create') }}?step=" + editStep + "&c=" + clientToken;
+            const createRoute = "{{ route('invoices.create') }}";
+            const createPath = createRoute.startsWith('http') ? new URL(createRoute).pathname : createRoute;
+            let editUrl = createPath + "?step=" + editStep + "&c=" + clientToken;
             if (hasOrderId) {
                 const orderToken = encodeURIComponent(orderId);
                 editUrl += "&o=" + orderToken;
@@ -813,8 +828,9 @@
                 return;
             }
 
-            const composeUrl = new URL("{{ url('/invoices') }}/" + invoiceid + "/email-compose", window
-                .location.origin);
+            const composeRoute = "{{ url('/invoices') }}";
+            const composePath = composeRoute.startsWith('http') ? new URL(composeRoute).pathname : composeRoute;
+            const composeUrl = new URL(composePath + "/" + invoiceid + "/email-compose", window.location.origin);
             if (justCreated) {
                 try {
                     window.localStorage.setItem(INVOICE_COMPOSE_READY_TOAST_KEY,
@@ -833,7 +849,9 @@
         digitalSignBtn?.addEventListener('click', function() {
             const invoiceid = invoiceidInput.value;
             if (!invoiceid) return;
-            const base = "{{ url('invoices') }}/" + invoiceid + "/pdf";
+            const baseRoute = "{{ url('invoices') }}";
+            const basePath = baseRoute.startsWith('http') ? new URL(baseRoute).pathname : baseRoute;
+            const base = basePath + "/" + invoiceid + "/pdf";
             window.open(base + '?type=pi&signed=1', '_blank');
         });
 
@@ -854,18 +872,18 @@
             if (!confirmed) {
                 return;
             }
-
-            fetch("{{ route('invoices.create-tax-invoice') }}", {
+            const createTaxRoute = "{{ route('invoices.create-tax-invoice') }}";
+            const createTaxPath = createTaxRoute.startsWith('http') ? new URL(createTaxRoute).pathname : createTaxRoute;
+            fetch(createTaxPath, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': csrfToken
+                        'X-CSRF-TOKEN': csrfToken,
                     },
                     body: JSON.stringify({
-                        invoiceid: invoiceidInput.value
-                    })
+                        invoiceid: invoiceidInput.value,
+                    }),
                 })
                 .then(async (response) => {
                     // Controller returns JSON only when wantsJson()/ajax(). We enforce that via headers above,
@@ -905,7 +923,9 @@
                         }
                         const fallbackClient = encodeURIComponent(clientId || '');
                         const fallbackDraft = encodeURIComponent(invoiceidInput.value || '');
-                        window.location.href = "{{ route('invoices.create') }}?step=2&tax_invoice=1&c=" +
+                        const createRoute = "{{ route('invoices.create') }}";
+                        const createPath = createRoute.startsWith('http') ? new URL(createRoute).pathname : createRoute;
+                        window.location.href = createPath + "?step=2&tax_invoice=1&c=" +
                             fallbackClient + "&d=" + fallbackDraft;
                         return;
                     }
@@ -920,7 +940,9 @@
                         }
                         const fallbackClient = encodeURIComponent(clientId || '');
                         const fallbackDraft = encodeURIComponent(invoiceidInput.value || '');
-                        window.location.href = "{{ route('invoices.create') }}?step=2&tax_invoice=1&c=" +
+                        const createRoute = "{{ route('invoices.create') }}";
+                        const createPath = createRoute.startsWith('http') ? new URL(createRoute).pathname : createRoute;
+                        window.location.href = createPath + "?step=2&tax_invoice=1&c=" +
                             fallbackClient + "&d=" + fallbackDraft;
                         return;
                     }
@@ -938,7 +960,7 @@
 
         if (draftId) {
             updateDownloadButtons(draftId);
-            if (btnApplyTC) btnApplyTC.classList.remove('is-hidden');
+            if (btnApplyTC) btnApplyTC.classList.remove('d-none');
         }
         syncTaxInvoiceButtons(invoiceidInput.value || draftId);
         syncRenewedItemIdsInput();
