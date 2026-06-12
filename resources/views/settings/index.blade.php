@@ -29,11 +29,11 @@ $errors->any() &&
 $activeSettingsTab = 'personal';
 
 if ($isFinancialYearValidation) {
-    $activeSettingsTab = 'financial-year';
+$activeSettingsTab = 'financial-year';
 } elseif ($isMessageTemplateValidation) {
-    $activeSettingsTab = 'config';
+$activeSettingsTab = 'message-templates';
 } elseif ($isBillingDetailsValidation) {
-    $activeSettingsTab = 'billing-details';
+$activeSettingsTab = 'billing-details';
 }
 @endphp
 
@@ -70,73 +70,90 @@ if ($isFinancialYearValidation) {
     <!-- Tabs Wrapper -->
     <ul class="nav nav-underline mb-3 settings-tab-group" role="tablist">
         <li class="nav-item">
-            <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'personal' ? 'active' : '' }}" data-bs-toggle="tab"
-                data-bs-target="#personal" role="tab" aria-controls="personal" aria-selected="true">
+            <button type="button"
+                class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'personal' ? 'active' : '' }}"
+                data-bs-toggle="tab" data-bs-target="#personal" role="tab" aria-controls="personal"
+                aria-selected="true">
                 Business
             </button>
         </li>
         <li class="nav-item">
-            <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'financial-year' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
-                data-bs-target="#financial-year" role="tab" aria-controls="financial-year" aria-selected="false">
+            <button type="button"
+                class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'financial-year' ? 'active' : 'text-secondary' }}"
+                data-bs-toggle="tab" data-bs-target="#financial-year" role="tab" aria-controls="financial-year"
+                aria-selected="false">
                 Financial
             </button>
         </li>
         <li class="nav-item">
-            <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'config' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
-                data-bs-target="#config" role="tab" aria-controls="config" aria-selected="false">
-                Config &amp; Templates
+            <button type="button"
+                class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'config' ? 'active' : 'text-secondary' }}"
+                data-bs-toggle="tab" data-bs-target="#config" role="tab" aria-controls="config" aria-selected="false">
+                Configuration Keys
+            </button>
+        </li>
+        <li class="nav-item">
+            <button type="button"
+                class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'message-templates' ? 'active' : 'text-secondary' }}"
+                data-bs-toggle="tab" data-bs-target="#message-templates" role="tab" aria-controls="message-templates"
+                aria-selected="false">
+                Manage Templates
             </button>
         </li>
         @if ($account->allow_multi_taxation)
-            <li class="nav-item">
-                <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'billing-details' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
-                    data-bs-target="#billing-details" role="tab" aria-controls="billing-details" aria-selected="false">
-                    Billing Details
-                </button>
-            </li>
-            <li class="nav-item">
-                <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'terms-conditions' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
-                    data-bs-target="#terms-conditions" role="tab" aria-controls="terms-conditions" aria-selected="false">
-                    Terms &amp; Conditions
-                </button>
-            </li>
-            <li class="nav-item">
-                <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'taxes' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
-                    data-bs-target="#taxes" role="tab" aria-controls="taxes" aria-selected="false">
-                    Taxes
-                </button>
-            </li>
+        <li class="nav-item">
+            <button type="button"
+                class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'billing-details' ? 'active' : 'text-secondary' }}"
+                data-bs-toggle="tab" data-bs-target="#billing-details" role="tab" aria-controls="billing-details"
+                aria-selected="false">
+                Billing Details
+            </button>
+        </li>
+        <li class="nav-item">
+            <button type="button"
+                class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'terms-conditions' ? 'active' : 'text-secondary' }}"
+                data-bs-toggle="tab" data-bs-target="#terms-conditions" role="tab" aria-controls="terms-conditions"
+                aria-selected="false">
+                Terms &amp; Conditions
+            </button>
+        </li>
+        <li class="nav-item">
+            <button type="button"
+                class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'taxes' ? 'active' : 'text-secondary' }}"
+                data-bs-toggle="tab" data-bs-target="#taxes" role="tab" aria-controls="taxes" aria-selected="false">
+                Taxes
+            </button>
+        </li>
         @else
-            <li class="nav-item">
-                <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'billing-details' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
-                    data-bs-target="#billing-details" role="tab" aria-controls="billing-details" aria-selected="false">
-                    Billing Details
-                </button>
-            </li>
-            <li class="nav-item">
-                <button type="button" class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'terms-conditions' ? 'active' : 'text-secondary' }}" data-bs-toggle="tab"
-                    data-bs-target="#terms-conditions" role="tab" aria-controls="terms-conditions" aria-selected="false">
-                    Terms &amp; Conditions
-                </button>
-            </li>
+        <li class="nav-item">
+            <button type="button"
+                class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'billing-details' ? 'active' : 'text-secondary' }}"
+                data-bs-toggle="tab" data-bs-target="#billing-details" role="tab" aria-controls="billing-details"
+                aria-selected="false">
+                Billing Details
+            </button>
+        </li>
+        <li class="nav-item">
+            <button type="button"
+                class="nav-link rounded-0 settings-tab-btn {{ $activeSettingsTab === 'terms-conditions' ? 'active' : 'text-secondary' }}"
+                data-bs-toggle="tab" data-bs-target="#terms-conditions" role="tab" aria-controls="terms-conditions"
+                aria-selected="false">
+                Terms &amp; Conditions
+            </button>
+        </li>
         @endif
     </ul>
 
 
 
     <div class="tab-content settings-tab-content">
-    <!-- PERSONAL TAB -->
-    <div id="personal" class="tab-pane fade {{ $activeSettingsTab === 'personal' ? 'show active' : '' }}" role="tabpanel">
-        <section class="py-3 px-1">
-            <div class="d-flex align-items-center gap-2 mb-4">
-                <div class="fs-4 text-primary"><i class="fas fa-building"></i></div>
-                <div>
-                    <h5 class="fw-semibold text-dark mb-0">Business Information</h5>
-                    <p class="small text-muted mb-0">Manage your public profile and billing details</p>
-                </div>
-            </div>
+        <!-- PERSONAL TAB -->
+        <div id="personal" class="tab-pane fade {{ $activeSettingsTab === 'personal' ? 'show active' : '' }}"
+            role="tabpanel">
+            <section class="py-3 px-1">
+                <h5 class="fw-semibold text-dark mb-4">Business Information</h5>
 
-            @if ($errors->any() && $isBusinessInfoValidation)
+                @if ($errors->any() && $isBusinessInfoValidation)
                 <div class="alert alert-danger mb-4">
                     <div class="d-flex align-items-center gap-2 mb-2 text-danger fw-bold">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -149,461 +166,483 @@ if ($isFinancialYearValidation) {
                     </div>
                     <ul class="mb-0 ps-3">
                         @foreach ($errors->all() as $error)
-                            <li class="small text-danger">{{ $error }}</li>
+                        <li class="small text-danger">{{ $error }}</li>
                         @endforeach
                     </ul>
                 </div>
-            @endif
+                @endif
 
-            <div class="bg-light p-4 rounded-3 border">
-                <form method="POST" action="{{ route('account.update') }}" enctype="multipart/form-data"
-                    class="mainForm row g-3">
-                    @csrf
-                    @method('PUT')
+                <div class="bg-light p-4 rounded-3 border">
+                    <form method="POST" action="{{ route('account.update') }}" enctype="multipart/form-data"
+                        class="mainForm row g-3">
+                        @csrf
+                        @method('PUT')
 
-                    <!-- Logo Upload -->
-                    <div class="col-12 col-md-3">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Company Logo</label>
-                        @php
+                        <!-- Logo Upload -->
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Company Logo</label>
+                            @php
                             $hasLogo = !empty($account->logo_path);
-                        @endphp
-                        <div class="logo-drag-drop-zone border border-dashed rounded-3 text-center bg-white position-relative py-2"
-                            style="cursor:pointer;" id="logo-drop-zone">
-                            <input type="file" id="logo-upload" name="logo" accept="image/*"
-                                class="position-absolute top-0 start-0 w-100 h-100 opacity-0" onchange="previewLogo(this)">
+                            @endphp
+                            <div class="logo-drag-drop-zone border border-dashed rounded-3 text-center bg-white position-relative py-2"
+                                style="cursor:pointer;" id="logo-drop-zone">
+                                <input type="file" id="logo-upload" name="logo" accept="image/*"
+                                    class="position-absolute top-0 start-0 w-100 h-100 opacity-0"
+                                    onchange="previewLogo(this)">
 
-                            <div class="drop-zone-prompt {{ $hasLogo ? 'd-none' : 'd-flex' }} align-items-center justify-content-center"
-                                id="drop-zone-prompt">
-                                <i class="far fa-file text-secondary mb-2 fs-4"></i>
-                                <span class="small text-muted fw-medium ms-2">Drag and drop or <span
-                                        class="text-primary fw-semibold">browse files</span></span>
+                                <div class="drop-zone-prompt {{ $hasLogo ? 'd-none' : 'd-flex' }} align-items-center justify-content-center"
+                                    id="drop-zone-prompt">
+                                    <i class="far fa-file text-secondary mb-2 fs-4"></i>
+                                    <span class="small text-muted fw-medium ms-2">Drag and drop or <span
+                                            class="text-primary fw-semibold">browse files</span></span>
+                                </div>
+
+                                <div class="drop-zone-preview {{ $hasLogo ? '' : 'd-none' }} align-items-center justify-content-between w-100"
+                                    id="drop-zone-preview">
+                                    <img id="logo-preview"
+                                        src="{{ $hasLogo ? (str_starts_with($account->logo_path, 'http') ? $account->logo_path : asset($account->logo_path)) : '#' }}"
+                                        alt="Logo Preview" class="img-fluid rounded mb-0 shadow-sm" width="50px">
+                                    <button type="button" id="remove-logo-btn"
+                                        class="btn btn-sm btn-danger rounded-circle p-0 bg-transparent text-dark border-0"
+                                        title="Remove Image">
+                                        <i class="fas fa-upload fs-6 lh-sm"></i>
+                                    </button>
+                                </div>
                             </div>
+                            <small class="text-muted small d-block mt-1">Square recommended. 5MB max.</small>
+                        </div>
 
-                            <div class="drop-zone-preview {{ $hasLogo ? '' : 'd-none' }} align-items-center justify-content-between w-100"
-                                id="drop-zone-preview">
-                                <img id="logo-preview" src="{{ $hasLogo ? (str_starts_with($account->logo_path, 'http') ? $account->logo_path : asset($account->logo_path)) : '#' }}" alt="Logo Preview"
-                                    class="img-fluid rounded mb-0 shadow-sm" width="50px">
-                                <button type="button" id="remove-logo-btn"
-                                    class="btn btn-sm btn-danger rounded-circle p-0 bg-transparent text-dark border-0"
-                                    title="Remove Image">
-                                    <i class="fas fa-upload fs-6 lh-sm"></i>
-                                </button>
+                        <!-- Business Info Fields -->
+                        <div class="col-12 col-md-9">
+                            <div class="row g-3">
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Business Name <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" name="name" value="{{ old('name', $account->name ?? '') }}"
+                                        required class="form-control">
+                                </div>
+
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Legal Entity
+                                        Name</label>
+                                    <input type="text" name="legal_name"
+                                        value="{{ old('legal_name', $account->legal_name ?? '') }}"
+                                        class="form-control">
+                                </div>
+
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Website</label>
+                                    <input type="text" name="website"
+                                        value="{{ old('website', $account->website ?? '') }}" class="form-control">
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Email <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" name="email" value="{{ old('email', $account->email ?? '') }}"
+                                        required class="form-control"
+                                        placeholder="name@company.com, accounts@company.com">
+                                    <div class="form-text text-muted small mt-1">Use comma to add multiple emails</div>
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Phone</label>
+                                    <input type="text" name="phone" value="{{ old('phone', $account->phone ?? '') }}"
+                                        class="form-control" placeholder="+91..., +1...">
+                                    <div class="form-text text-muted small mt-1">Use comma to add multiple phone numbers
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <small class="text-muted small d-block mt-1">Square recommended. 5MB max.</small>
-                    </div>
 
-                    <!-- Business Info Fields -->
-                    <div class="col-12 col-md-9">
-                        <div class="row g-3">
-                            <div class="col-12 col-md-4">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Business Name <span class="text-danger">*</span></label>
-                                <input type="text" name="name" value="{{ old('name', $account->name ?? '') }}" required
-                                    class="form-control">
-                            </div>
-
-                            <div class="col-12 col-md-4">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Legal Entity Name</label>
-                                <input type="text" name="legal_name" value="{{ old('legal_name', $account->legal_name ?? '') }}"
-                                    class="form-control">
-                            </div>
-
-                            <div class="col-12 col-md-4">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Website</label>
-                                <input type="text" name="website" value="{{ old('website', $account->website ?? '') }}"
-                                    class="form-control">
-                            </div>
-
-                            <div class="col-12 col-md-6">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Email <span class="text-danger">*</span></label>
-                                <input type="text" name="email" value="{{ old('email', $account->email ?? '') }}" required
-                                    class="form-control" placeholder="name@company.com, accounts@company.com">
-                                <div class="form-text text-muted small mt-1">Use comma to add multiple emails</div>
-                            </div>
-
-                            <div class="col-12 col-md-6">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Phone</label>
-                                <input type="text" name="phone" value="{{ old('phone', $account->phone ?? '') }}"
-                                    class="form-control" placeholder="+91..., +1...">
-                                <div class="form-text text-muted small mt-1">Use comma to add multiple phone numbers</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- More Fields -->
-                    <div class="col-12 col-md-3">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Currency</label>
-                        <select name="currency_code" class="form-select">
-                            @foreach ($currencies as $currency)
-                                <option value="{{ $currency->iso }}"
-                                    {{ old('currency_code', $account->currency_code ?? 'INR') == $currency->iso ? 'selected' : '' }}>
+                        <!-- More Fields -->
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Currency</label>
+                            <select name="currency_code" class="form-select">
+                                @foreach ($currencies as $currency)
+                                <option value="{{ $currency->iso }}" {{ old('currency_code', $account->currency_code ??
+                                    'INR') == $currency->iso ? 'selected' : '' }}>
                                     {{ $currency->iso }} - {{ $currency->name }}
                                 </option>
-                            @endforeach
-                        </select>
-                    </div>
+                                @endforeach
+                            </select>
+                        </div>
 
-                    <div class="col-12 col-md-3">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Timezone</label>
-                        <input type="text" name="timezone"
-                            value="{{ old('timezone', $account->timezone ?? 'Asia/Kolkata') }}"
-                            class="form-control">
-                    </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Timezone</label>
+                            <input type="text" name="timezone"
+                                value="{{ old('timezone', $account->timezone ?? 'Asia/Kolkata') }}"
+                                class="form-control">
+                        </div>
 
-                    <div class="col-12 col-md-6">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Address</label>
-                        <input type="text" name="address_line_1"
-                            value="{{ old('address_line_1', $account->address_line_1 ?? '') }}"
-                            class="form-control">
-                    </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Address</label>
+                            <input type="text" name="address_line_1"
+                                value="{{ old('address_line_1', $account->address_line_1 ?? '') }}"
+                                class="form-control">
+                        </div>
 
-                    <div class="col-12 col-md-3">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
-                        <select name="country" class="country-select form-select"
-                            data-selected="{{ old('country', $account->country ?? '') }}">
-                            <option value="">Select Country</option>
-                        </select>
-                    </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
+                            <select name="country" class="country-select form-select"
+                                data-selected="{{ old('country', $account->country ?? '') }}">
+                                <option value="">Select Country</option>
+                            </select>
+                        </div>
 
-                    <div class="col-12 col-md-3">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">State <span class="text-danger">*</span></label>
-                        <select name="state" required class="state-select form-select"
-                            data-selected="{{ old('state', $account->state ?? '') }}">
-                            <option value="">Select State</option>
-                        </select>
-                        @error('state')
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">State <span
+                                    class="text-danger">*</span></label>
+                            <select name="state" required class="state-select form-select"
+                                data-selected="{{ old('state', $account->state ?? '') }}">
+                                <option value="">Select State</option>
+                            </select>
+                            @error('state')
                             <div class="text-danger small mt-1">{{ $message }}</div>
-                        @enderror
-                    </div>
+                            @enderror
+                        </div>
 
-                    <div class="col-12 col-md-3">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
-                        <select name="city" class="city-select form-select"
-                            data-selected="{{ old('city', $account->city ?? '') }}">
-                            <option value="">Select City</option>
-                        </select>
-                    </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
+                            <select name="city" class="city-select form-select"
+                                data-selected="{{ old('city', $account->city ?? '') }}">
+                                <option value="">Select City</option>
+                            </select>
+                        </div>
 
-                    <div class="col-12 col-md-3">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Postal Code</label>
-                        <input type="text" name="postal_code"
-                            value="{{ old('postal_code', $account->postal_code ?? '') }}" class="form-control">
-                    </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Postal Code</label>
+                            <input type="text" name="postal_code"
+                                value="{{ old('postal_code', $account->postal_code ?? '') }}" class="form-control">
+                        </div>
 
-                    <div class="col-12 col-md-3">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">FY Start (Day & Month)</label>
-                        <div class="d-flex gap-2">
-                            @php
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">FY Start (Day &
+                                Month)</label>
+                            <div class="d-flex gap-2">
+                                @php
                                 $currentFy = old('fy_startdate', $account->fy_startdate ?? '04-01');
                                 $parts = explode('-', $currentFy);
                                 $curMonth = $parts[0] ?? '04';
                                 $curDay = $parts[1] ?? '01';
-                            @endphp
-                            <select name="fy_day" class="fy-day-select form-select" style="width: auto;">
-                                @for ($i = 1; $i <= 31; $i++)
-                                    <option value="{{ sprintf('%02d', $i) }}"
-                                        {{ $curDay == sprintf('%02d', $i) ? 'selected' : '' }}>{{ $i }}
-                                    </option>
-                                @endfor
-                            </select>
-                            <select name="fy_month" class="fy-month-select form-select">
-                                @foreach (['01' => 'January', '02' => 'February', '03' => 'March', '04' => 'April', '05' => 'May', '06' => 'June', '07' => 'July', '08' => 'August', '09' => 'September', '10' => 'October', '11' => 'November', '12' => 'December'] as $mVal => $mName)
-                                    <option value="{{ $mVal }}" {{ $curMonth == $mVal ? 'selected' : '' }}>
+                                @endphp
+                                <select name="fy_day" class="fy-day-select form-select" style="width: auto;">
+                                    @for ($i = 1; $i <= 31; $i++) <option value="{{ sprintf('%02d', $i) }}" {{
+                                        $curDay==sprintf('%02d', $i) ? 'selected' : '' }}>{{ $i }}
+                                        </option>
+                                        @endfor
+                                </select>
+                                <select name="fy_month" class="fy-month-select form-select">
+                                    @foreach (['01' => 'January', '02' => 'February', '03' => 'March', '04' => 'April',
+                                    '05' => 'May', '06' => 'June', '07' => 'July', '08' => 'August', '09' =>
+                                    'September', '10' => 'October', '11' => 'November', '12' => 'December'] as $mVal =>
+                                    $mName)
+                                    <option value="{{ $mVal }}" {{ $curMonth==$mVal ? 'selected' : '' }}>
                                         {{ $mName }}</option>
-                                @endforeach
-                            </select>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Toggle Controls -->
-                    <div class="col-12 col-md-9">
-                        <div class="row g-3">
-                            <!-- Tax Settings Toggle -->
-                            <div class="col-12 col-md-6">
-                                <div class="bg-white p-3 rounded-3 border h-100">
-                                    <p class="small text-muted fw-bold text-uppercase mb-2">Tax Settings</p>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="mb-0 fw-semibold text-dark">Allow Multi-Taxation</h6>
-                                            <p class="small text-muted mb-0">Use different tax rates</p>
-                                        </div>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <span class="badge {{ $account->allow_multi_taxation ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }} px-2 py-1">
-                                                {{ $account->allow_multi_taxation ? 'Yes' : 'No' }}
-                                            </span>
-                                            <div class="form-check form-switch fs-4 mb-0">
-                                                <input type="checkbox" name="allow_multi_taxation" value="1"
-                                                    {{ old('allow_multi_taxation', $account->allow_multi_taxation ?? false) ? 'checked' : '' }}
-                                                    class="form-check-input" role="switch">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div id="fixed-tax-section" class="border-top mt-2 pt-2 {{ $account->allow_multi_taxation ? 'is-hidden' : '' }}">
+                        <!-- Toggle Controls -->
+                        <div class="col-12 col-md-9">
+                            <div class="row g-3">
+                                <!-- Tax Settings Toggle -->
+                                <div class="col-12 col-md-6">
+                                    <div class="bg-white p-3 rounded-3 border h-100">
+                                        <p class="small text-muted fw-bold text-uppercase mb-2">Tax Settings</p>
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div>
-                                                <h6 class="mb-0 fw-semibold text-dark">Fixed Tax Rate</h6>
+                                                <h6 class="mb-0 fw-semibold text-dark">Allow Multi-Taxation</h6>
+                                                <p class="small text-muted mb-0">Use different tax rates</p>
                                             </div>
                                             <div class="d-flex align-items-center gap-2">
-                                                @if (!$account->allow_multi_taxation)
-                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                                                <span
+                                                    class="badge {{ $account->allow_multi_taxation ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }} px-2 py-1">
+                                                    {{ $account->allow_multi_taxation ? 'Yes' : 'No' }}
+                                                </span>
+                                                <div class="form-check form-switch fs-4 mb-0">
+                                                    <input type="checkbox" name="allow_multi_taxation" value="1" {{
+                                                        old('allow_multi_taxation', $account->allow_multi_taxation ??
+                                                    false) ? 'checked' : '' }}
+                                                    class="form-check-input" role="switch">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div id="fixed-tax-section"
+                                            class="border-top mt-2 pt-2 {{ $account->allow_multi_taxation ? 'is-hidden' : '' }}">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <h6 class="mb-0 fw-semibold text-dark">Fixed Tax Rate</h6>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    @if (!$account->allow_multi_taxation)
+                                                    <span
+                                                        class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
                                                         {{ $account->fixed_tax_type ?? 'GST' }}
                                                         {{ number_format($account->fixed_tax_rate ?? 0, 2) }}%
                                                     </span>
-                                                    <button type="button" id="open-fixed-tax-modal" class="btn btn-sm btn-outline-primary bg-white text-primary">
-                                                        {{ ($account->fixed_tax_rate ?? 0) > 0 ? 'Edit Tax' : 'Add Tax' }}
+                                                    <button type="button" id="open-fixed-tax-modal"
+                                                        class="btn btn-sm btn-outline-primary bg-white text-primary">
+                                                        {{ ($account->fixed_tax_rate ?? 0) > 0 ? 'Edit Tax' : 'Add Tax'
+                                                        }}
                                                     </button>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- User Settings Toggle -->
-                            <div class="col-12 col-md-6">
-                                <div class="bg-white p-3 rounded-3 border h-100">
-                                    <p class="small text-muted fw-bold text-uppercase mb-2">User Settings</p>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="mb-0 fw-semibold text-dark">Does your Products/Services are with the No. of Users?</h6>
-                                        </div>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <span class="badge {{ $account->have_users ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }} px-2 py-1">
-                                                {{ $account->have_users ? 'Yes' : 'No' }}
-                                            </span>
-                                            <div class="form-check form-switch fs-4 mb-0">
-                                                <input type="checkbox" name="have_users" value="1"
-                                                    {{ old('have_users', $account->have_users ?? false) ? 'checked' : '' }}
-                                                    class="form-check-input" role="switch">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Update Profile button wrapper -->
-                    <div class="col-12 d-flex align-items-center justify-content-end gap-2 mt-3 pt-3 border-top">
-                        <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                            Update Profile <i class="fas fa-save btn-icon ms-1"></i>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </section>
-    </div>
-
-    <!-- FINANCIAL YEAR -->
-    <div id="financial-year" class="tab-pane fade {{ $activeSettingsTab === 'financial-year' ? 'show active' : '' }}" role="tabpanel">
-        <section class="bg-white border-0 shadow-sm rounded-3 overflow-hidden">
-            <div class="border-0 bg-white py-2 px-3 d-flex align-items-center gap-2">
-                <div class="fs-4 text-primary"><i class="fas fa-calendar-alt"></i></div>
-                <div>
-                    <h5 class="fw-semibold text-dark mb-0">Financial Year</h5>
-                    <p class="small text-muted mb-0">Configure your financial year and serial numbers</p>
-                </div>
-            </div>
-            <div class="bg-white p-2 pt-0">
-
-            @if ($errors->any() && $isFinancialYearValidation)
-                <div class="alert alert-danger mb-4">
-                    <ul class="mb-0 ps-3">
-                        @foreach ($errors->all() as $error)
-                            <li class="small text-danger">{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            <div class="row g-2">
-                <!-- FY Form -->
-                <div class="col-12 col-md-5">
-                    <div class="bg-light p-2 rounded-3 h-100">
-                        <div class="mb-2">
-                            <h6 class="fw-semibold text-primary small lh-sm mb-0">Add Financial Year</h6>
-                        </div>
-                        <form method="POST" action="{{ route('financial-year.update') }}">
-                            @csrf
-                            <div class="row g-2 align-items-end">
-                                <div class="col">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Start Year</label>
-                                    <select name="year_start" id="fy_year_start" required class="form-select">
-                                        @php $currentYear = date('Y'); @endphp
-                                        @for ($y = $currentYear - 1; $y <= $currentYear + 1; $y++)
-                                            <option value="{{ $y }}"
-                                                {{ $y == $currentYear ? 'selected' : '' }}>{{ $y }}</option>
-                                        @endfor
-                                    </select>
-                                </div>
-                                <div class="col-auto pb-2 text-muted fw-bold">-</div>
-                                <div class="col">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">End Year</label>
-                                    <select name="year_end" id="fy_year_end" required class="form-select">
-                                        @for ($y = $currentYear; $y <= $currentYear + 2; $y++)
-                                            <option value="{{ $y }}"
-                                                {{ $y == $currentYear + 1 ? 'selected' : '' }}>{{ $y }}
-                                            </option>
-                                        @endfor
-                                    </select>
-                                </div>
-                                <div class="col-auto">
-                                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                        <i class="fas fa-plus btn-icon me-1"></i> Add
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- FY List -->
-                <div class="col-12 col-md-7">
-                    <div class="bg-light p-2 rounded-3 h-100">
-                        <div class="mb-2">
-                            <h6 class="fw-semibold text-primary small lh-sm mb-0">Recorded Financial Years</h6>
-                        </div>
-                        <div class="card border-0 shadow-sm overflow-hidden">
-                            <div class="table-responsive">
-                                <table class="table mainTable border align-middle mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th style="width: 50px;">#</th>
-                                            <th>Financial Year</th>
-                                            <th>Status</th>
-                                            <th class="text-end pe-3">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse ($financialYears as $index => $fy)
-                                            <tr>
-                                                <td class="text-muted small ps-3">{{ $index + 1 }}</td>
-                                                <td><span class="fw-semibold text-dark">{{ $fy->financial_year }}</span></td>
-                                                <td>
-                                                    @if ($fy->default)
-                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Default</span>
-                                                    @else
-                                                        <span class="text-muted small">—</span>
                                                     @endif
-                                                </td>
-                                                <td class="text-end pe-3">
-                                                    @if (!$fy->default)
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- User Settings Toggle -->
+                                <div class="col-12 col-md-6">
+                                    <div class="bg-white p-3 rounded-3 border h-100">
+                                        <p class="small text-muted fw-bold text-uppercase mb-2">User Settings</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-0 fw-semibold text-dark">Does your Products/Services are
+                                                    with the No. of Users?</h6>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span
+                                                    class="badge {{ $account->have_users ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }} px-2 py-1">
+                                                    {{ $account->have_users ? 'Yes' : 'No' }}
+                                                </span>
+                                                <div class="form-check form-switch fs-4 mb-0">
+                                                    <input type="checkbox" name="have_users" value="1" {{
+                                                        old('have_users', $account->have_users ?? false) ? 'checked' :
+                                                    '' }}
+                                                    class="form-check-input" role="switch">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Update Profile button wrapper -->
+                        <div class="col-12 d-flex align-items-center justify-content-end gap-2 mt-3 pt-3 border-top">
+                            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
+                                Update Profile <i class="fas fa-save btn-icon ms-1"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </div>
+
+        <!-- FINANCIAL YEAR -->
+        <div id="financial-year"
+            class="tab-pane fade {{ $activeSettingsTab === 'financial-year' ? 'show active' : '' }}" role="tabpanel">
+            <section class="bg-white border-0 shadow-sm rounded-3 overflow-hidden">
+                <div class="border-0 bg-white py-2 px-3">
+                    <h5 class="fw-semibold text-dark mb-0">Financial Year</h5>
+                </div>
+                <div class="bg-white p-2 pt-0">
+
+                    @if ($errors->any() && $isFinancialYearValidation)
+                    <div class="alert alert-danger mb-4">
+                        <ul class="mb-0 ps-3">
+                            @foreach ($errors->all() as $error)
+                            <li class="small text-danger">{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    @endif
+
+                    <div class="row g-2">
+                        <!-- FY Form -->
+                        <div class="col-12 col-md-5">
+                            <div class="bg-light p-2 rounded-3 h-100">
+                                <div class="mb-2">
+                                    <h6 class="fw-semibold text-primary small lh-sm mb-0">Add Financial Year</h6>
+                                </div>
+                                <form method="POST" action="{{ route('financial-year.update') }}" class="mainForm">
+                                    @csrf
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col">
+                                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Start
+                                                Year</label>
+                                            <select name="year_start" id="fy_year_start" required class="form-select">
+                                                @php $currentYear = date('Y'); @endphp
+                                                @for ($y = $currentYear - 1; $y <= $currentYear + 1; $y++) <option
+                                                    value="{{ $y }}" {{ $y==$currentYear ? 'selected' : '' }}>{{ $y }}
+                                                    </option>
+                                                    @endfor
+                                            </select>
+                                        </div>
+                                        <div class="col-auto pb-2 text-muted fw-bold">-</div>
+                                        <div class="col">
+                                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">End
+                                                Year</label>
+                                            <select name="year_end" id="fy_year_end" required class="form-select">
+                                                @for ($y = $currentYear; $y <= $currentYear + 2; $y++) <option
+                                                    value="{{ $y }}" {{ $y==$currentYear + 1 ? 'selected' : '' }}>{{ $y
+                                                    }}
+                                                    </option>
+                                                    @endfor
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
+                                            <button type="submit"
+                                                class="btn btn-outline-primary btn-primary text-white fw-medium">
+                                                <i class="fas fa-plus btn-icon me-1"></i> Add
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- FY List -->
+                        <div class="col-12 col-md-7">
+                            <div class="bg-light p-2 rounded-3 h-100">
+                                <div class="mb-2">
+                                    <h6 class="fw-semibold text-primary small lh-sm mb-0">Recorded Financial Years</h6>
+                                </div>
+                                <div class="card border-0 shadow-sm overflow-hidden">
+                                    <div class="table-responsive">
+                                        <table class="table mainTable border align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th style="width: 50px;">#</th>
+                                                    <th>Financial Year</th>
+                                                    <th>Status</th>
+                                                    <th class="text-end pe-3">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @forelse ($financialYears as $index => $fy)
+                                                <tr>
+                                                    <td class="text-muted small ps-3">{{ $index + 1 }}</td>
+                                                    <td><span class="fw-semibold text-dark">{{ $fy->financial_year
+                                                            }}</span></td>
+                                                    <td>
+                                                        @if ($fy->default)
+                                                        <span
+                                                            class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Default</span>
+                                                        @else
+                                                        <span class="text-muted small">—</span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="text-end pe-3">
+                                                        @if (!$fy->default)
                                                         <form method="POST"
                                                             action="{{ route('financial-year.default', $fy->fy_id) }}"
                                                             class="d-inline">
                                                             @csrf
                                                             @method('PUT')
                                                             <button type="submit"
-                                                                class="btn btn-sm btn-outline-primary bg-white text-primary">Set Default</button>
+                                                                class="btn btn-sm btn-outline-primary bg-white text-primary">Set
+                                                                Default</button>
                                                         </form>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="4" class="text-center py-4 text-muted">No financial years yet.</td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                                @empty
+                                                <tr>
+                                                    <td colspan="4" class="text-center py-4 text-muted">No financial
+                                                        years yet.</td>
+                                                </tr>
+                                                @endforelse
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Serial Configuration -->
+                    <div class="border-top mt-3 pt-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="fs-5 text-secondary"><i class="fas fa-hashtag"></i></div>
+                            <h6 class="fw-semibold text-dark mb-0">Serial Number Configuration</h6>
+                        </div>
+                        <p class="small text-muted mb-3">Configure how invoice and quotation numbers are generated.</p>
+                        @include('settings.serial-config')
+                    </div>
                 </div>
-            </div>
+            </section>
+        </div>
 
-            <!-- Serial Configuration -->
-            <div class="border-top mt-3 pt-3">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <div class="fs-5 text-secondary"><i class="fas fa-hashtag"></i></div>
-                    <h6 class="fw-semibold text-dark mb-0">Serial Number Configuration</h6>
-                </div>
-                <p class="small text-muted mb-3">Configure how invoice and quotation numbers are generated.</p>
-                @include('settings.serial-config')
-            </div>
-            </div>
-        </section>
-    </div>
+        <!-- CONFIG -->
+        <div id="config" class="tab-pane fade {{ $activeSettingsTab === 'config' ? 'show active' : '' }}"
+            role="tabpanel">
+            <section class="py-3 px-1">
+                <h5 class="fw-semibold text-dark mb-4">Configuration Keys</h5>
 
-    <!-- CONFIG -->
-    <div id="config" class="tab-pane fade {{ $activeSettingsTab === 'config' ? 'show active' : '' }}" role="tabpanel">
-        <section class="py-3 px-1">
-            <div class="d-flex align-items-center gap-2 mb-4">
-                <div class="fs-4 text-primary"><i class="fas fa-cog"></i></div>
-                <div>
-                    <h5 class="fw-semibold text-dark mb-0">Configuration Keys</h5>
-                    <p class="small text-muted mb-0">Manage system-wide configuration keys</p>
-                </div>
-            </div>
+                <div class="position-relative bg-light border p-3 rounded-3 mb-4">
+                    <h6 class="fw-semibold text-dark mb-3">
+                        {{ $editingSetting ? 'Edit Configuration Key' : 'Add New Configuration Key' }}
+                    </h6>
 
-            <div class="position-relative bg-light border p-3 rounded-3 mb-4">
-                <h6 class="fw-semibold text-dark mb-3">
-                    {{ $editingSetting ? 'Edit Configuration Key' : 'Add New Configuration Key' }}
-                </h6>
-
-                <form method="POST"
-                    action="{{ $editingSetting ? route('settings.update', $editingSetting->settingid) : route('settings.store') }}">
-                    @csrf
-                    @if ($editingSetting)
+                    <form method="POST"
+                        action="{{ $editingSetting ? route('settings.update', $editingSetting->settingid) : route('settings.store') }}"
+                        class="mainForm">
+                        @csrf
+                        @if ($editingSetting)
                         @method('PUT')
-                    @endif
+                        @endif
 
-                    <div class="row g-3 align-items-end">
-                        <div class="col-12 col-md-5">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Key Name <span class="text-danger">*</span></label>
-                            <select id="config-key-select" name="key" required class="form-select">
-                                <option value="">-- Select Key --</option>
-                                @php
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-md-5">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Key Name <span
+                                        class="text-danger">*</span></label>
+                                <select id="config-key-select" name="key" required class="form-select">
+                                    <option value="">-- Select Key --</option>
+                                    @php
                                     $currentKey = old('key', $editingSetting->setting_key ?? '');
-                                @endphp
-                                @foreach ($suggestedKeys as $group => $keys)
+                                    @endphp
+                                    @foreach ($suggestedKeys as $group => $keys)
                                     <optgroup label="{{ $group }}">
                                         @foreach ($keys as $key => $label)
-                                            <option value="{{ $key }}"
-                                                {{ $currentKey == $key ? 'selected' : '' }}>{{ $key }}
-                                                ({{ $label }})</option>
+                                        <option value="{{ $key }}" {{ $currentKey==$key ? 'selected' : '' }}>{{ $key }}
+                                            ({{ $label }})</option>
                                         @endforeach
                                     </optgroup>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-12 col-md-4">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Value <span class="text-danger">*</span></label>
-                            <input type="text" name="value"
-                                value="{{ old('value', $editingSetting->setting_value ?? '') }}"
-                                placeholder="Enter value" required class="form-control">
-                        </div>
-                        <div class="col-12 col-md-3 d-flex gap-2">
-                            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                {{ $editingSetting ? 'Update Key' : 'Add Key' }}
-                            </button>
-                            @if ($editingSetting)
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Value <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" name="value"
+                                    value="{{ old('value', $editingSetting->setting_value ?? '') }}"
+                                    placeholder="Enter value" required class="form-control">
+                            </div>
+                            <div class="col-12 col-md-3 d-flex gap-2">
+                                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
+                                    {{ $editingSetting ? 'Update Key' : 'Add Key' }}
+                                </button>
+                                @if ($editingSetting)
                                 <a href="{{ route('settings.index') }}#config"
                                     class="btn btn-outline-secondary">Cancel</a>
-                            @endif
+                                @endif
+                            </div>
                         </div>
-                    </div>
-                </form>
-            </div>
+                    </form>
+                </div>
 
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-semibold text-dark mb-0">System Settings</h6>
-            </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-semibold text-dark mb-0">System Settings</h6>
+                </div>
 
-            <div class="card border-0 shadow-sm overflow-hidden">
-                <div class="table-responsive">
-                    <table class="table mainTable border align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width: 50px;">#</th>
-                                <th>Key</th>
-                                <th>Value</th>
-                                <th class="text-end pe-3">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($settings as $index => $setting)
+                <div class="card border-0 shadow-sm overflow-hidden">
+                    <div class="table-responsive">
+                        <table class="table mainTable border align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 50px;">#</th>
+                                    <th>Key</th>
+                                    <th>Value</th>
+                                    <th class="text-end pe-3">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($settings as $index => $setting)
                                 <tr>
                                     <td class="text-muted small ps-3">{{ $index + 1 }}</td>
                                     <td><code>{{ $setting['key'] }}</code></td>
@@ -616,8 +655,7 @@ if ($isFinancialYearValidation) {
                                             </a>
                                             <form method="POST"
                                                 action="{{ route('settings.destroy', $setting['record_id']) }}"
-                                                class="d-inline"
-                                                onsubmit="return confirm('Delete this setting?')">
+                                                class="d-inline" onsubmit="return confirm('Delete this setting?')">
                                                 @csrf @method('DELETE')
                                                 <button type="submit" class="bg04 color04" title="Delete">
                                                     Delete
@@ -626,830 +664,929 @@ if ($isFinancialYearValidation) {
                                         </div>
                                     </td>
                                 </tr>
-                            @empty
+                                @empty
                                 <tr>
                                     <td colspan="4" class="text-center py-4 text-muted">No settings found</td>
                                 </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
-        </section>
-    </div>    <!-- MESSAGE TEMPLATES -->
-    <div id="message-templates" class="tab-pane fade {{ $activeSettingsTab === 'message-templates' ? 'show active' : '' }}" role="tabpanel">
-        <section class="py-3 px-1">
-            <div class="d-flex align-items-center gap-2 mb-4">
-                <div class="fs-4 text-primary"><i class="fas fa-envelope-open-text"></i></div>
-                <div>
-                    <h5 class="fw-semibold text-dark mb-0">Manage Templates</h5>
-                    <p class="small text-muted mb-0">For Email, WhatsApp, and SMS</p>
-                </div>
-            </div>
+            </section>
+        </div> <!-- MESSAGE TEMPLATES -->
+        <div id="message-templates"
+            class="tab-pane fade {{ $activeSettingsTab === 'message-templates' ? 'show active' : '' }}" role="tabpanel">
+            <section class="py-3 px-1">
+                <h5 class="fw-semibold text-dark mb-4">Manage Templates</h5>
 
-            <!-- Document Type Tabs (Top Level) -->
-            <div class="mt-main-tabs-wrap border-bottom mt-3">
-                <div class="mt-main-tabs d-flex gap-4">
+                <!-- Document Type Tabs (Top Level) -->
+                <ul class="nav nav-underline mb-3 settings-tab-group mt-3" role="tablist">
                     @foreach ($messageTemplateTypes as $typeKey => $typeLabel)
-                    <button type="button" class="mt-type-tab-btn {{ $loop->first ? 'is-active' : '' }}"
-                        data-type="{{ $typeKey }}">
-                        {{ $typeLabel }}
-                    </button>
+                    <li class="nav-item">
+                        <button type="button"
+                            class="nav-link rounded-0 settings-tab-btn mt-type-tab-btn {{ $loop->first ? 'is-active active' : 'text-secondary' }}"
+                            data-type="{{ $typeKey }}">
+                            {{ $typeLabel }}
+                        </button>
+                    </li>
                     @endforeach
-                </div>
-            </div>
+                </ul>
 
-            <div class="bg-light p-4 rounded-3 border mt-3">
+                <div class="position-relative mt-3">
+                    @php
+                    // Flatten all templates into a single collection for the right-side list
+                    $defaultTypeKey = array_key_first($messageTemplateTypes);
+                    $templateContextMap = [];
+                    $allTemplates = collect();
+                    foreach ($messageTemplatesByType as $t) {
+                    $allTemplates = $allTemplates->concat($t);
+                    }
+                    foreach ($allTemplates as $tpl) {
+                    $ctxKey = ($tpl->template_type ?? '') . '|' . ($tpl->channel ?? '');
+                    if ($ctxKey !== '|') {
+                    $templateContextMap[$ctxKey] = [
+                    'templateid' => (string) ($tpl->templateid ?? ''),
+                    'template_type' => (string) ($tpl->template_type ?? ''),
+                    'channel' => (string) ($tpl->channel ?? ''),
+                    'name' => (string) ($tpl->name ?? ''),
+                    'subject' => (string) ($tpl->subject ?? ''),
+                    'body' => (string) ($tpl->body ?? ''),
+                    'template_id' => (string) ($tpl->template_id ?? ''),
+                    'sender_id' => (string) ($tpl->sender_id ?? ''),
+                    ];
+                    }
+                    }
+                    @endphp
+
+                    <div class="row align-items-stretch g-2">
+                        <!-- Email Column -->
+                        <div class="col-12 col-lg-4">
+                            <form method="POST" action="{{ route('message-templates.store') }}"
+                                class="mainForm message-template-form d-flex flex-column h-100" data-channel="email"
+                                data-store-action="{{ route('message-templates.store') }}"
+                                data-update-base="{{ url('settings/message-templates') }}">
+                                @csrf
+                                <input type="hidden" name="template_type" value="{{ $defaultTypeKey }}">
+                                <input type="hidden" name="templateid" class="template-id-input" value="">
+                                <input type="hidden" name="channel" class="template-channel-input" value="email">
+
+                                <div class="bg-light p-3 rounded-3 h-100 d-flex flex-column">
+                                    <div class="mb-3 border-bottom pb-2">
+                                        <h5 class="fw-semibold text-primary small lh-sm mb-0"><i
+                                                class="fas fa-envelope me-1"></i> Email Template</h5>
+                                        <small class="text-xs text-muted template-editor-note-email">One template per
+                                            type.</small>
+                                    </div>
+                                    <div class="d-flex flex-column grow">
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6 form-group">
+                                                <label
+                                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Template
+                                                    Name <span class="template-name-required-mark">*</span></label>
+                                                <input type="text" name="name" class="form-control template-name-input"
+                                                    placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} Email Template"
+                                                    required>
+                                            </div>
+
+                                            <div class="col-6 form-group template-subject-group">
+                                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Subject
+                                                    (optional)</label>
+                                                <input type="text" name="subject"
+                                                    class="form-control template-subject-input"
+                                                    placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} update for @{{ client_name }}"
+                                                    autocomplete="off">
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group mb-2 grow d-flex flex-column">
+                                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Message
+                                                Body <span class="template-body-required-mark">*</span></label>
+                                            <textarea name="body" id="templateBodyInput-email" rows="5"
+                                                class="form-control template-body-input grow"
+                                                placeholder="Hi @{{ client_name }},\nPlease find the details below."></textarea>
+                                        </div>
+
+                                        <div
+                                            class="d-flex align-items-center justify-content-end pt-2 border-top mt-auto">
+                                            <button type="submit"
+                                                class="btn btn-outline-primary btn-primary text-white btn-sm fw-medium px-3 py-1.5 template-submit-btn">
+                                                Save Email Template
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- WhatsApp Column -->
+                        <div class="col-12 col-lg-4">
+                            <form method="POST" action="{{ route('message-templates.store') }}"
+                                class="mainForm message-template-form d-flex flex-column h-100" data-channel="whatsapp"
+                                data-store-action="{{ route('message-templates.store') }}"
+                                data-update-base="{{ url('settings/message-templates') }}">
+                                @csrf
+                                <input type="hidden" name="template_type" value="{{ $defaultTypeKey }}">
+                                <input type="hidden" name="templateid" class="template-id-input" value="">
+                                <input type="hidden" name="channel" class="template-channel-input" value="whatsapp">
+
+                                <div class="bg-light p-3 rounded-3 h-100 d-flex flex-column">
+                                    <div class="mb-3 border-bottom pb-2">
+                                        <h5 class="fw-semibold text-success small lh-sm mb-0"><i
+                                                class="fab fa-whatsapp me-1"></i> WhatsApp Template</h5>
+                                        <small class="text-xs text-muted template-editor-note-whatsapp">One template per
+                                            type.</small>
+                                    </div>
+                                    <div class="d-flex flex-column grow">
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6 form-group">
+                                                <label
+                                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Template
+                                                    Name (optional)</label>
+                                                <input type="text" name="name" class="form-control template-name-input"
+                                                    placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} WhatsApp Template">
+                                            </div>
+
+                                            <div class="col-6 form-group template-wa-template-id-group">
+                                                <label
+                                                    class="form-label small lh-sm fw-semibold text-dark mb-1">WhatsApp
+                                                    Template ID <span class="text-danger">*</span></label>
+                                                <input type="text" name="template_id"
+                                                    class="form-control template-wa-template-id-input template-external-id-input"
+                                                    placeholder="wa_template_42" autocomplete="off" required>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group mb-2 grow d-flex flex-column">
+                                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Message
+                                                Body</label>
+                                            <textarea name="body" id="templateBodyInput-whatsapp" rows="5"
+                                                class="form-control template-body-input grow"
+                                                placeholder="Hi @{{ client_name }},\nPlease find the details below."></textarea>
+                                            <p class="text-xs text-muted mt-2 mb-0">
+                                                Message text is fixed by the provider template. Only keep/update dynamic
+                                                variables here.
+                                            </p>
+                                        </div>
+
+                                        <div
+                                            class="d-flex align-items-center justify-content-end pt-2 border-top mt-auto">
+                                            <button type="submit"
+                                                class="btn btn-outline-success btn-success text-white btn-sm fw-medium px-3 py-1.5 template-submit-btn">
+                                                Save WhatsApp Template
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- SMS Column -->
+                        <div class="col-12 col-lg-4">
+                            <form method="POST" action="{{ route('message-templates.store') }}"
+                                class="mainForm message-template-form d-flex flex-column h-100" data-channel="sms"
+                                data-store-action="{{ route('message-templates.store') }}"
+                                data-update-base="{{ url('settings/message-templates') }}">
+                                @csrf
+                                <input type="hidden" name="template_type" value="{{ $defaultTypeKey }}">
+                                <input type="hidden" name="templateid" class="template-id-input" value="">
+                                <input type="hidden" name="channel" class="template-channel-input" value="sms">
+
+                                <div class="bg-light p-3 rounded-3 h-100 d-flex flex-column">
+                                    <div class="mb-3 border-bottom pb-2">
+                                        <h5 class="fw-semibold text-info small lh-sm mb-0"><i
+                                                class="fas fa-sms me-1"></i> SMS Template</h5>
+                                        <small class="text-xs text-muted template-editor-note-sms">One template per
+                                            type.</small>
+                                    </div>
+                                    <div class="d-flex flex-column grow">
+                                        <div class="form-group mb-2">
+                                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Template
+                                                Name (optional)</label>
+                                            <input type="text" name="name" class="form-control template-name-input"
+                                                placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} SMS Template">
+                                        </div>
+
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6 form-group">
+                                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">SMS
+                                                    Template ID <span class="text-danger">*</span></label>
+                                                <input type="text" name="template_id"
+                                                    class="form-control template-external-id-input"
+                                                    placeholder="sms_template_15" autocomplete="off" required>
+                                            </div>
+
+                                            <div class="col-6 form-group">
+                                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">SMS
+                                                    Sender ID (optional)</label>
+                                                <input type="text" name="sender_id"
+                                                    class="form-control template-sender-id-input" placeholder=""
+                                                    autocomplete="off">
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group mb-2 grow d-flex flex-column">
+                                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Message
+                                                Body</label>
+                                            <textarea name="body" id="templateBodyInput-sms" rows="5"
+                                                class="form-control template-body-input grow"
+                                                placeholder="Hi @{{ client_name }},\nPlease find the details below."></textarea>
+                                            <p class="text-xs text-muted mt-2 mb-0">
+                                                Message text is fixed by the provider template. Only keep/update dynamic
+                                                variables here.
+                                            </p>
+                                        </div>
+
+                                        <div
+                                            class="d-flex align-items-center justify-content-end pt-2 border-top mt-auto">
+                                            <button type="submit"
+                                                class="btn btn-outline-info btn-info text-white btn-sm fw-medium px-3 py-1.5 template-submit-btn">
+                                                Save SMS Template
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Template Variables Helper Box at the bottom of the row -->
+                    <div class="bg-light p-3 border rounded-3 mt-3">
+                        <div class="small fw-semibold text-muted mb-2">Available Template Variables:</div>
+                        <div class="d-flex flex-wrap gap-2 template-variable-badges"></div>
+                        <div class="text-xs text-muted mt-2 template-variable-help">
+                            Showing common tags and tags relevant to the selected template type.
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- BILLING DETAILS TAB -->
+        <div id="billing-details"
+            class="tab-pane fade {{ $activeSettingsTab === 'billing-details' ? 'show active' : '' }}" role="tabpanel">
+            <section class="py-3 px-1">
+                <h5 class="fw-semibold text-dark mb-4">Billing Details</h5>
+
+                @if ($errors->any() && $isBillingDetailsValidation)
+                <div class="alert alert-danger mb-4">
+                    <ul class="mb-0 ps-3">
+                        @foreach ($errors->all() as $error)
+                        <li class="small">{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+                @endif
+
+                {{-- DEBUG: Check if editingBillingDetail exists --}}
                 @php
-                // Flatten all templates into a single collection for the right-side list
-                $defaultTypeKey = array_key_first($messageTemplateTypes);
-                $templateContextMap = [];
-                $allTemplates = collect();
-                foreach ($messageTemplatesByType as $t) {
-                $allTemplates = $allTemplates->concat($t);
-                }
-                foreach ($allTemplates as $tpl) {
-                $ctxKey = ($tpl->template_type ?? '') . '|' . ($tpl->channel ?? '');
-                if ($ctxKey !== '|') {
-                $templateContextMap[$ctxKey] = [
-                'templateid' => (string) ($tpl->templateid ?? ''),
-                'template_type' => (string) ($tpl->template_type ?? ''),
-                'channel' => (string) ($tpl->channel ?? ''),
-                'name' => (string) ($tpl->name ?? ''),
-                'subject' => (string) ($tpl->subject ?? ''),
-                'body' => (string) ($tpl->body ?? ''),
-                'template_id' => (string) ($tpl->template_id ?? ''),
-                'sender_id' => (string) ($tpl->sender_id ?? ''),
-                ];
-                }
-                }
+                echo '<!-- DEBUG: editingBillingDetail = ' .
+                        (isset($editingBillingDetail) ? 'SET' : 'NOT SET') .
+                        ' -->';
                 @endphp
 
-                <div class="row align-items-stretch h-100">
-                    <div class="col-12 col-md-12 mt-editor-col d-flex h-100">
-                        <form method="POST" action="{{ route('message-templates.store') }}"
-                            class="message-template-form d-flex flex-column w-100 h-100"
-                            data-template-form="{{ $defaultTypeKey }}"
-                            data-store-action="{{ route('message-templates.store') }}"
-                            data-update-base="{{ url('settings/message-templates') }}">
-                            @csrf
-                            <input type="hidden" name="template_type" value="{{ $defaultTypeKey }}">
-                            <input type="hidden" name="templateid" class="template-id-input" value="">
-                            <input type="hidden" name="channel" class="template-channel-input" value="email">
+                <div class="bg-light p-4 rounded-3 border">
+                    <form method="POST" action="{{ route('account.billing.update') }}" enctype="multipart/form-data"
+                        class="mainForm row g-3">
+                        @csrf
+                        @if (isset($editingBillingDetail))
+                        <input type="hidden" name="account_bdid" value="{{ $editingBillingDetail->account_bdid }}">
+                        @endif
+                        <input type="hidden" name="accountid" value="{{ $account->accountid }}">
 
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div>
-                                    <strong class="template-editor-title">Create template</strong>
-                                    <p class="text-sm text-muted mb-0 template-editor-note">Fill the form to add a new
-                                        template.</p>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Business Billing Name<span
+                                    class="text-danger">*</span></label>
+                            <input type="text" name="billing_name" class="form-control"
+                                value="{{ old('billing_name', $editingBillingDetail->billing_name ?? ($account->name ?? '')) }}"
+                                required>
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Billing From Email</label>
+                            <input type="text" name="billing_from_email" class="form-control"
+                                value="{{ old('billing_from_email', $editingBillingDetail->billing_from_email ?? '') }}"
+                                placeholder="billing@company.com, finance@company.com">
+                            <div class="form-text text-muted small mt-1">Use comma to add multiple emails</div>
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Authorize Signatory</label>
+                            <input type="text" name="authorize_signatory" class="form-control"
+                                value="{{ old('authorize_signatory', $editingBillingDetail->authorize_signatory ?? '') }}">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Address</label>
+                            <textarea name="address" rows="2"
+                                class="form-control">{{ old('address', $editingBillingDetail->address ?? '') }}</textarea>
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
+                            <select name="billing_country" class="country-select form-select"
+                                data-selected="{{ old('billing_country', $editingBillingDetail->country ?? 'India') }}">
+                                <option value="">Select Country</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">State<span
+                                    class="text-danger">*</span></label>
+                            <select name="billing_state" required class="state-select form-select"
+                                data-selected="{{ old('billing_state', $editingBillingDetail->state ?? '') }}">
+                                <option value="">Select State</option>
+                            </select>
+                            @error('billing_state')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
+                            <select name="billing_city" class="city-select form-select"
+                                data-selected="{{ old('billing_city', $editingBillingDetail->city ?? '') }}">
+                                <option value="">Select City</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Postal Code</label>
+                            <input type="text" name="billing_postal_code" class="form-control"
+                                value="{{ old('billing_postal_code', $editingBillingDetail->postal_code ?? '') }}">
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">GSTIN</label>
+                            <input type="text" name="gstin" class="form-control"
+                                value="{{ old('gstin', $editingBillingDetail->gstin ?? '') }}" maxlength="15"
+                                minlength="15" pattern="[A-Z0-9]{15}" title="GSTIN must be exactly 15 characters"
+                                oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
+                                onblur="if(this.value && this.value.length!==15){this.setCustomValidity('GSTIN must be exactly 15 characters');this.reportValidity();}else{this.setCustomValidity('');}">
+                            <div class="form-text text-muted small mt-1">Exactly 15 characters required</div>
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">TIN</label>
+                            <input type="text" name="tin" class="form-control"
+                                value="{{ old('tin', $editingBillingDetail->tin ?? '') }}">
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Signature Upload</label>
+                            @php
+                            $hasSignature = !empty($editingBillingDetail->signature_upload);
+                            @endphp
+                            <div class="logo-drag-drop-zone border border-dashed rounded-3 text-center bg-white position-relative py-2"
+                                style="cursor:pointer;" id="sig-drop-zone">
+                                <input type="file" id="billing-signature-upload" name="signature_upload"
+                                    accept="image/*" class="position-absolute top-0 start-0 w-100 h-100 opacity-0"
+                                    onchange="previewSignature(this)">
+
+                                <div class="drop-zone-prompt {{ $hasSignature ? 'd-none' : 'd-flex' }} align-items-center justify-content-center"
+                                    id="sig-drop-zone-prompt">
+                                    <i class="far fa-file text-secondary mb-2 fs-4"></i>
+                                    <span class="small text-muted fw-medium ms-2">Drag and drop or <span
+                                            class="text-primary fw-semibold">browse files</span></span>
                                 </div>
-                            </div>
 
-                            <div class="mt-channel-pills d-flex gap-2 mb-4">
-                                <button type="button" class="mt-channel-pill-btn is-active"
-                                    data-type="{{ $defaultTypeKey }}" data-channel="email">
-                                    <i class="fas fa-envelope mr-1"></i> Email
-                                </button>
-                                <button type="button" class="mt-channel-pill-btn" data-type="{{ $defaultTypeKey }}"
-                                    data-channel="whatsapp">
-                                    <i class="fab fa-whatsapp mr-1"></i> WhatsApp
-                                </button>
-                                <button type="button" class="mt-channel-pill-btn" data-type="{{ $defaultTypeKey }}"
-                                    data-channel="sms">
-                                    <i class="fas fa-sms mr-1"></i> SMS
-                                </button>
-                            </div>
-
-                            <div class="template-form-grid d-flex flex-column grow">
-                                <div class="row g-3">
-                                    <div class="col-12 col-md-6 form-group mb-3">
-                                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Template Name <span
-                                                class="template-name-required-mark">*</span></label>
-                                        <input type="text" name="name" class="form-control template-name-input"
-                                            placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} Email Template">
-                                    </div>
-
-                                    <div class="col-12 col-md-6 form-group mb-3 template-subject-group">
-                                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Subject (optional)</label>
-                                        <input type="text" name="subject" class="form-control template-subject-input"
-                                            placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} update for @{{ client_name }}"
-                                            autocomplete="off">
-                                    </div>
-
-                                    <div
-                                        class="col-12 col-md-6 form-group mb-3 template-wa-template-id-group settings-template-wa-group is-hidden">
-                                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">WhatsApp Template ID *</label>
-                                        <input type="text" class="form-control template-wa-template-id-input"
-                                            placeholder="wa_template_42" autocomplete="off">
-                                    </div>
-                                </div>
-
-                                <div class="row g-3 template-sms-config-row settings-template-sms-row is-hidden">
-                                    <div class="col-12 col-md-6 form-group mb-3 template-external-id-group">
-                                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">SMS Template ID *</label>
-                                        <input type="text" name="template_id"
-                                            class="form-control template-external-id-input"
-                                            placeholder="sms_template_15" autocomplete="off">
-                                    </div>
-
-                                    <div class="col-12 col-md-6 form-group mb-3 template-sender-id-group">
-                                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">SMS Sender ID (optional)</label>
-                                        <input type="text" name="sender_id"
-                                            class="form-control template-sender-id-input" placeholder=""
-                                            autocomplete="off">
-                                    </div>
-                                </div>
-
-                                <div class="form-group mb-3 col-span-2 grow">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Message Body <span
-                                            class="template-body-required-mark">*</span></label>
-                                    <textarea name="body" id="templateBodyInput-{{ $defaultTypeKey }}" rows="6"
-                                        class="form-control template-body-input h-100"
-                                        placeholder="Hi @{{ client_name }},\nPlease find the details below."></textarea>
-                                    <p
-                                        class="text-sm text-muted mt-2 mb-1 template-variable-only-note settings-template-variable-note is-hidden">
-                                        For WhatsApp/SMS, message text is fixed by the provider template. Only
-                                        keep/update dynamic variables here.
-                                    </p>
-                                    <div class="mt-2 d-flex flex-wrap gap-2 template-variable-badges"></div>
-                                    <div class="text-xs text-muted mt-2 template-variable-help">
-                                        Showing common tags and tags relevant to the selected template type.
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="d-flex align-items-center justify-content-end col-span-2 mt-3 pt-3 border-top mt-auto">
-                                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium px-4 py-2 template-submit-btn">
-                                        Save Template
+                                <div class="drop-zone-preview {{ $hasSignature ? '' : 'd-none' }} align-items-center justify-content-between w-100"
+                                    id="sig-drop-zone-preview">
+                                    <img id="signature-preview-img"
+                                        src="{{ $hasSignature ? $editingBillingDetail->signature_upload : '#' }}"
+                                        alt="Signature Preview" class="img-fluid rounded mb-0 shadow-sm" width="50px">
+                                    <button type="button" id="remove-signature-btn"
+                                        class="btn btn-sm btn-danger rounded-circle p-0 bg-transparent text-dark border-0"
+                                        title="Remove Image">
+                                        <i class="fas fa-upload fs-6 lh-sm"></i>
                                     </button>
                                 </div>
                             </div>
-                        </form>
-                    </div>
-
-                </div>
-            </div>
-        </section>
-    </div>
-
-    <!-- BILLING DETAILS TAB -->
-    <div id="billing-details" class="tab-pane fade {{ $activeSettingsTab === 'billing-details' ? 'show active' : '' }}" role="tabpanel">
-        <section class="py-3 px-1">
-            <div class="d-flex align-items-center gap-2 mb-4">
-                <div class="fs-4 text-primary"><i class="fas fa-file-invoice-dollar"></i></div>
-                <div>
-                    <h5 class="fw-semibold text-dark mb-0">Billing Details</h5>
-                    <p class="small text-muted mb-0">Configure billing information that appears on invoices</p>
-                </div>
-            </div>
-
-            @if ($errors->any() && $isBillingDetailsValidation)
-            <div class="alert alert-danger mb-4">
-                <ul class="mb-0 ps-3">
-                    @foreach ($errors->all() as $error)
-                    <li class="small">{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-            @endif
-
-            {{-- DEBUG: Check if editingBillingDetail exists --}}
-            @php
-            echo '<!-- DEBUG: editingBillingDetail = ' .
-                        (isset($editingBillingDetail) ? 'SET' : 'NOT SET') .
-                        ' -->';
-            @endphp
-
-            <div class="bg-light p-4 rounded-3 border">
-                <form method="POST" action="{{ route('account.billing.update') }}" enctype="multipart/form-data"
-                    class="mainForm row g-3">
-                    @csrf
-                    @if (isset($editingBillingDetail))
-                    <input type="hidden" name="account_bdid" value="{{ $editingBillingDetail->account_bdid }}">
-                    @endif
-                    <input type="hidden" name="accountid" value="{{ $account->accountid }}">
-
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Business Billing Name<span
-                                class="text-danger">*</span></label>
-                        <input type="text" name="billing_name" class="form-control"
-                            value="{{ old('billing_name', $editingBillingDetail->billing_name ?? ($account->name ?? '')) }}"
-                            required>
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Billing From Email</label>
-                        <input type="text" name="billing_from_email" class="form-control"
-                            value="{{ old('billing_from_email', $editingBillingDetail->billing_from_email ?? '') }}"
-                            placeholder="billing@company.com, finance@company.com">
-                        <div class="form-text text-muted small mt-1">Use comma to add multiple emails</div>
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Authorize Signatory</label>
-                        <input type="text" name="authorize_signatory" class="form-control"
-                            value="{{ old('authorize_signatory', $editingBillingDetail->authorize_signatory ?? '') }}">
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Address</label>
-                        <textarea name="address" rows="2"
-                            class="form-control">{{ old('address', $editingBillingDetail->address ?? '') }}</textarea>
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
-                        <select name="billing_country" class="country-select form-select"
-                            data-selected="{{ old('billing_country', $editingBillingDetail->country ?? 'India') }}">
-                            <option value="">Select Country</option>
-                        </select>
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">State<span
-                                class="text-danger">*</span></label>
-                        <select name="billing_state" required class="state-select form-select"
-                            data-selected="{{ old('billing_state', $editingBillingDetail->state ?? '') }}">
-                            <option value="">Select State</option>
-                        </select>
-                        @error('billing_state')
-                        <div class="text-danger small mt-1">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
-                        <select name="billing_city" class="city-select form-select"
-                            data-selected="{{ old('billing_city', $editingBillingDetail->city ?? '') }}">
-                            <option value="">Select City</option>
-                        </select>
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Postal Code</label>
-                        <input type="text" name="billing_postal_code" class="form-control"
-                            value="{{ old('billing_postal_code', $editingBillingDetail->postal_code ?? '') }}">
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">GSTIN</label>
-                        <input type="text" name="gstin" class="form-control"
-                            value="{{ old('gstin', $editingBillingDetail->gstin ?? '') }}" maxlength="15" minlength="15"
-                            pattern="[A-Z0-9]{15}" title="GSTIN must be exactly 15 characters"
-                            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
-                            onblur="if(this.value && this.value.length!==15){this.setCustomValidity('GSTIN must be exactly 15 characters');this.reportValidity();}else{this.setCustomValidity('');}">
-                        <div class="form-text text-muted small mt-1">Exactly 15 characters required</div>
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">TIN</label>
-                        <input type="text" name="tin" class="form-control"
-                            value="{{ old('tin', $editingBillingDetail->tin ?? '') }}">
-                    </div>
-
-                    <div class="col-12 col-md-6">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Signature Upload</label>
-                        @php
-                            $hasSignature = !empty($editingBillingDetail->signature_upload);
-                        @endphp
-                        <div class="logo-drag-drop-zone border border-dashed rounded-3 text-center bg-white position-relative py-2"
-                            style="cursor:pointer;" id="sig-drop-zone">
-                            <input type="file" id="billing-signature-upload" name="signature_upload" accept="image/*"
-                                class="position-absolute top-0 start-0 w-100 h-100 opacity-0" onchange="previewSignature(this)">
-
-                            <div class="drop-zone-prompt {{ $hasSignature ? 'd-none' : 'd-flex' }} align-items-center justify-content-center"
-                                id="sig-drop-zone-prompt">
-                                <i class="far fa-file text-secondary mb-2 fs-4"></i>
-                                <span class="small text-muted fw-medium ms-2">Drag and drop or <span
-                                        class="text-primary fw-semibold">browse files</span></span>
-                            </div>
-
-                            <div class="drop-zone-preview {{ $hasSignature ? '' : 'd-none' }} align-items-center justify-content-between w-100"
-                                id="sig-drop-zone-preview">
-                                <img id="signature-preview-img" src="{{ $hasSignature ? $editingBillingDetail->signature_upload : '#' }}" alt="Signature Preview"
-                                    class="img-fluid rounded mb-0 shadow-sm" width="50px">
-                                <button type="button" id="remove-signature-btn"
-                                    class="btn btn-sm btn-danger rounded-circle p-0 bg-transparent text-dark border-0"
-                                    title="Remove Image">
-                                    <i class="fas fa-upload fs-6 lh-sm"></i>
-                                </button>
-                            </div>
+                            <div class="form-text text-muted small mt-1">Max file size: 5MB. Supported formats: JPG,
+                                PNG, GIF, SVG</div>
                         </div>
-                        <div class="form-text text-muted small mt-1">Max file size: 5MB. Supported formats: JPG, PNG, GIF, SVG</div>
-                    </div>
 
-                    <div class="col-12 d-flex align-items-center justify-content-end gap-2 mt-3">
-                        @if (isset($editingBillingDetail) && request('edit_bd'))
-                        <a href="{{ route('settings.index') }}#billing-details"
-                            class="btn btn-outline-primary bg-white text-primary fw-medium">
-                            <i class="fas fa-times btn-icon me-1"></i> Cancel
-                        </a>
-                        @endif
-                        <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                            Save Billing Detail <i class="fas fa-save btn-icon ms-1"></i>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </section>
-    </div>
-
-
-
-    <!-- TERMS & CONDITIONS TAB -->
-    <div id="terms-conditions" class="tab-pane fade {{ $activeSettingsTab === 'terms-conditions' ? 'show active' : '' }}" role="tabpanel">
-        <section class="py-3 px-1">
-            <div class="d-flex align-items-center gap-2 mb-4">
-                <div class="fs-4 text-primary"><i class="fas fa-shield-alt"></i></div>
-                <div>
-                    <h5 class="fw-semibold text-dark mb-0">Terms & Conditions</h5>
-                    <p class="small text-muted mb-0">Manage reusable terms for documents</p>
-                </div>
-            </div>
-
-            {{-- Add / Edit Form --}}
-            <div class="position-relative bg-light border p-3 rounded-3 mb-4">
-                <h6 class="fw-semibold text-dark mb-3">
-                    {{ $editingTerm ? 'Edit Term' : 'Add New Term' }}
-                </h6>
-                <form method="POST" action="{{ route('terms-conditions.store') }}">
-                    @csrf
-                    @if ($editingTerm)
-                    <input type="hidden" name="tc_id" value="{{ $editingTerm->tc_id }}">
-                    @endif
-
-                    <div class="row g-3">
-                        <div class="col-12 col-md-4">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                                for="settings_term_type">Type<span class="text-danger">*</span></label>
-                            <select id="settings_term_type" name="type" required class="form-select">
-                                <option value="billing" {{ old('type', $editingTerm->type ?? '') == 'billing' ?
-                                    'selected' : '' }}>Billing
-                                </option>
-                                <option value="quotation" {{ old('type', $editingTerm->type ?? '') == 'quotation' ?
-                                    'selected' : '' }}>
-                                    Quotation</option>
-                                <option value="proforma" {{ old('type', $editingTerm->type ?? '') == 'proforma' ?
-                                    'selected' : '' }}>
-                                    Proforma</option>
-                            </select>
-                        </div>
-                        <div class="col-12 col-md-4 d-flex align-items-end">
-                            <div class="form-check mb-2">
-                                <input type="hidden" name="is_default" value="0">
-                                <input type="checkbox" name="is_default" value="1" class="form-check-input"
-                                    id="settings_tc_default" {{ old('is_default', (int) ($editingTerm->is_default ?? 0))
-                                ? 'checked' : '' }}>
-                                <label class="form-check-label small text-dark" for="settings_tc_default">
-                                    Set as default
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                                for="settings_tc_content">Terms and Condition<span class="text-danger">*</span></label>
-                            <textarea id="settings_tc_content" name="content" rows="3"
-                                placeholder="Enter terms and condition"
-                                class="form-control">{{ old('content', $editingTerm->content ?? '') }}</textarea>
-                        </div>
                         <div class="col-12 d-flex align-items-center justify-content-end gap-2 mt-3">
-                            @if ($editingTerm)
-                            <a href="{{ route('settings.index', ['t' => request('t', $editingTerm->type ?? 'billing')]) }}#terms-conditions"
+                            @if (isset($editingBillingDetail) && request('edit_bd'))
+                            <a href="{{ route('settings.index') }}#billing-details"
                                 class="btn btn-outline-primary bg-white text-primary fw-medium">
                                 <i class="fas fa-times btn-icon me-1"></i> Cancel
                             </a>
                             @endif
                             <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                {{ $editingTerm ? 'Update' : 'Add' }} <i
-                                    class="fas {{ $editingTerm ? 'fa-save' : 'fa-plus' }} btn-icon ms-1"></i>
+                                Save Billing Detail <i class="fas fa-save btn-icon ms-1"></i>
                             </button>
                         </div>
-                    </div>
-                </form>
-            </div>
+                    </form>
+                </div>
+            </section>
+        </div>
 
-            <ul class="nav nav-underline mb-3" id="tcTypeTabs" role="tablist">
-                <li class="nav-item">
-                    <button type="button" class="nav-link rounded-0 tc-type-tab active" data-bs-toggle="tab" data-bs-target="#billing-tc" role="tab" aria-controls="billing-tc" aria-selected="true">
-                        Billing
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button type="button" class="nav-link rounded-0 tc-type-tab text-secondary" data-bs-toggle="tab" data-bs-target="#quotation-tc" role="tab" aria-controls="quotation-tc" aria-selected="false">
-                        Quotation
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button type="button" class="nav-link rounded-0 tc-type-tab text-secondary" data-bs-toggle="tab" data-bs-target="#proforma-tc" role="tab" aria-controls="proforma-tc" aria-selected="false">
-                        Proforma
-                    </button>
-                </li>
-            </ul>
 
-            <div class="tab-content tc-grid">
-                {{-- Billing Terms List --}}
-                <div class="tab-pane fade show active tc-type-pane" id="billing-tc" data-tc-type="billing" role="tabpanel">
-                    <div class="mb-2">
-                        <h6 class="fw-semibold text-dark mb-0">Billing T&C</h6>
-                    </div>
-                    <div class="card border-0 shadow-sm overflow-hidden mb-4">
-                        <div class="table-responsive">
-                            <table class="table mainTable border align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 80px;">Seq</th>
-                                        <th class="ps-3">Terms and Condition</th>
-                                        <th style="width: 100px;">Default</th>
-                                        <th style="width: 120px;">Status</th>
-                                        <th style="width: 140px;" class="text-end pe-3">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($billingTerms as $index => $term)
-                                    <tr>
-                                        <td>
-                                            <form method="POST"
-                                                action="{{ route('terms-conditions.update-sequence', $term) }}"
-                                                class="settings-sequence-form">
-                                                @csrf @method('PATCH')
-                                                <select name="sequence" onchange="this.form.submit()"
-                                                    class="form-select form-select-sm" style="width: 70px;">
-                                                    @for ($i = 1; $i <= $billingTerms->count(); $i++)
-                                                        <option value="{{ $i }}" {{ ($term->sequence ?? $index + 1) ==
-                                                            $i ? 'selected' : '' }}>
-                                                            {{ $i }}</option>
-                                                        @endfor
-                                                </select>
-                                            </form>
-                                        </td>
-                                        <td class="ps-3 text-wrap" style="max-width: 400px;">{!! $term->content !!}</td>
-                                        <td>
-                                            @if ($term->is_default)
-                                            <span
-                                                class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Default</span>
-                                            @else
-                                            <span class="text-muted">-</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <span
-                                                class="js-term-status-badge badge cursor-pointer px-2 py-1 {{ $term->is_active ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle' }}"
-                                                data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
-                                                data-is-active="{{ $term->is_active ? '1' : '0' }}" role="button"
-                                                tabindex="0"
-                                                title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}"
-                                                style="cursor: pointer;">{{ $term->is_active ? 'Active' : 'Inactive'
-                                                }}</span>
-                                        </td>
-                                        <td class="text-end pe-3">
-                                            <div class="tableActionButton d-inline-flex gap-1">
-                                                <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'billing']) }}#terms-conditions"
-                                                    class="bg03 color03" title="Edit">Edit</a>
+
+        <!-- TERMS & CONDITIONS TAB -->
+        <div id="terms-conditions"
+            class="tab-pane fade {{ $activeSettingsTab === 'terms-conditions' ? 'show active' : '' }}" role="tabpanel">
+            <section class="py-3 px-1">
+                <h5 class="fw-semibold text-dark mb-4">Terms & Conditions</h5>
+
+                {{-- Add / Edit Form --}}
+                <div class="position-relative bg-light p-2 rounded-3 mb-3">
+                    <form method="POST" action="{{ route('terms-conditions.store') }}" class="mainForm">
+                        @csrf
+                        @if ($editingTerm)
+                        <input type="hidden" name="tc_id" value="{{ $editingTerm->tc_id }}">
+                        @endif
+
+                        <div class="row g-2">
+                            {{-- Left: Type + checkbox + submit --}}
+                            <div class="col-12 col-lg-4 d-flex flex-column gap-2">
+                                <div>
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1"
+                                        for="settings_term_type">Type<span class="text-danger">*</span></label>
+                                    <select id="settings_term_type" name="type" required class="form-select">
+                                        <option value="billing" {{ old('type', $editingTerm->type ?? '') == 'billing' ?
+                                            'selected' : '' }}>Billing</option>
+                                        <option value="quotation" {{ old('type', $editingTerm->type ?? '') ==
+                                            'quotation' ? 'selected' : '' }}>Quotation</option>
+                                        <option value="proforma" {{ old('type', $editingTerm->type ?? '') == 'proforma'
+                                            ? 'selected' : '' }}>Proforma</option>
+                                    </select>
+                                </div>
+                                <div class="mb-0 bg-white border rounded-1 px-2 py-1 ms-1">
+                                    <div class="form-check mb-0 form-check-large">
+                                        <input type="hidden" name="is_default" value="0">
+                                        <input type="checkbox" name="is_default" value="1" class="form-check-input"
+                                            id="settings_tc_default" {{ old('is_default', (int)
+                                            ($editingTerm->is_default ?? 0)) ? 'checked' : '' }}>
+                                        <label class="form-check-label small lh-sm fw-normal text-dark"
+                                            for="settings_tc_default">
+                                            Set as default
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 mt-auto">
+                                    @if ($editingTerm)
+                                    <a href="{{ route('settings.index', ['t' => request('t', $editingTerm->type ?? 'billing')]) }}#terms-conditions"
+                                        class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm">
+                                        <i class="fas fa-times btn-icon me-1"></i> Cancel
+                                    </a>
+                                    @endif
+                                    <button type="submit"
+                                        class="btn btn-outline-primary btn-primary text-white fw-medium btn-sm">
+                                        {{ $editingTerm ? 'Update' : 'Add' }} <i
+                                            class="fas {{ $editingTerm ? 'fa-save' : 'fa-plus' }} btn-icon ms-1"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Right: Textarea --}}
+                            <div class="col-12 col-lg-8">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1"
+                                    for="settings_tc_content">Terms and Condition<span
+                                        class="text-danger">*</span></label>
+                                <textarea id="settings_tc_content" name="content" rows="6"
+                                    placeholder="Enter terms and condition"
+                                    class="form-control w-100">{{ old('content', $editingTerm->content ?? '') }}</textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <ul class="nav nav-underline mb-3" id="tcTypeTabs" role="tablist">
+                    <li class="nav-item">
+                        <button type="button" class="nav-link rounded-0 tc-type-tab active" data-bs-toggle="tab"
+                            data-bs-target="#billing-tc" role="tab" aria-controls="billing-tc" aria-selected="true">
+                            Billing
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button type="button" class="nav-link rounded-0 tc-type-tab text-secondary" data-bs-toggle="tab"
+                            data-bs-target="#quotation-tc" role="tab" aria-controls="quotation-tc"
+                            aria-selected="false">
+                            Quotation
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button type="button" class="nav-link rounded-0 tc-type-tab text-secondary" data-bs-toggle="tab"
+                            data-bs-target="#proforma-tc" role="tab" aria-controls="proforma-tc" aria-selected="false">
+                            Proforma
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content tc-grid">
+                    {{-- Billing Terms List --}}
+                    <div class="tab-pane fade show active tc-type-pane" id="billing-tc" data-tc-type="billing"
+                        role="tabpanel">
+                        <div class="mb-2">
+                            <h6 class="fw-semibold text-dark mb-0">Billing T&C</h6>
+                        </div>
+                        <div class="card border-0 shadow-sm overflow-hidden mb-4">
+                            <div class="table-responsive">
+                                <table class="table mainTable border align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 80px;">Seq</th>
+                                            <th class="ps-3">Terms and Condition</th>
+                                            <th style="width: 100px;">Default</th>
+                                            <th style="width: 120px;">Status</th>
+                                            <th style="width: 140px;" class="text-end pe-3">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($billingTerms as $index => $term)
+                                        <tr>
+                                            <td>
                                                 <form method="POST"
-                                                    action="{{ route('terms-conditions.destroy', $term) }}"
-                                                    class="d-inline" onsubmit="return confirm('Delete this term?')">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="bg04 color04"
-                                                        title="Delete">Delete</button>
+                                                    action="{{ route('terms-conditions.update-sequence', $term) }}"
+                                                    class="settings-sequence-form">
+                                                    @csrf @method('PATCH')
+                                                    <select name="sequence" onchange="this.form.submit()"
+                                                        class="form-select form-select-sm" style="width: 70px;">
+                                                        @for ($i = 1; $i <= $billingTerms->count(); $i++)
+                                                            <option value="{{ $i }}" {{ ($term->sequence ?? $index + 1)
+                                                                ==
+                                                                $i ? 'selected' : '' }}>
+                                                                {{ $i }}</option>
+                                                            @endfor
+                                                    </select>
                                                 </form>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center py-4 text-muted">No billing T&C added yet.
-                                        </td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
+                                            </td>
+                                            <td class="ps-3 text-wrap" style="max-width: 400px;">{!! $term->content !!}
+                                            </td>
+                                            <td>
+                                                @if ($term->is_default)
+                                                <span
+                                                    class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Default</span>
+                                                @else
+                                                <span class="text-muted">-</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <span
+                                                    class="js-term-status-badge badge cursor-pointer px-2 py-1 {{ $term->is_active ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle' }}"
+                                                    data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
+                                                    data-is-active="{{ $term->is_active ? '1' : '0' }}" role="button"
+                                                    tabindex="0"
+                                                    title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}"
+                                                    style="cursor: pointer;">{{ $term->is_active ? 'Active' : 'Inactive'
+                                                    }}</span>
+                                            </td>
+                                            <td class="text-end pe-3">
+                                                <div class="tableActionButton d-inline-flex gap-1">
+                                                    <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'billing']) }}#terms-conditions"
+                                                        class="bg03 color03" title="Edit">Edit</a>
+                                                    <form method="POST"
+                                                        action="{{ route('terms-conditions.destroy', $term) }}"
+                                                        class="d-inline" onsubmit="return confirm('Delete this term?')">
+                                                        @csrf @method('DELETE')
+                                                        <button type="submit" class="bg04 color04"
+                                                            title="Delete">Delete</button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4 text-muted">No billing T&C added
+                                                yet.
+                                            </td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {{-- Quotation Terms List --}}
-                <div class="tab-pane fade tc-type-pane" id="quotation-tc" data-tc-type="quotation" role="tabpanel">
-                    <div class="mb-2">
-                        <h6 class="fw-semibold text-dark mb-0">Quotation T&C</h6>
-                    </div>
-                    <div class="card border-0 shadow-sm overflow-hidden mb-4">
-                        <div class="table-responsive">
-                            <table class="table mainTable border align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 80px;">Seq</th>
-                                        <th class="ps-3">Terms and Condition</th>
-                                        <th style="width: 100px;">Default</th>
-                                        <th style="width: 120px;">Status</th>
-                                        <th style="width: 140px;" class="text-end pe-3">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($quotationTerms as $index => $term)
-                                    <tr>
-                                        <td>
-                                            <form method="POST"
-                                                action="{{ route('terms-conditions.update-sequence', $term) }}"
-                                                class="settings-sequence-form">
-                                                @csrf @method('PATCH')
-                                                <select name="sequence" onchange="this.form.submit()"
-                                                    class="form-select form-select-sm" style="width: 70px;">
-                                                    @for ($i = 1; $i <= $quotationTerms->count(); $i++)
-                                                        <option value="{{ $i }}" {{ ($term->sequence ?? $index + 1) ==
-                                                            $i ? 'selected' : '' }}>
-                                                            {{ $i }}</option>
-                                                        @endfor
-                                                </select>
-                                            </form>
-                                        </td>
-                                        <td class="ps-3 text-wrap" style="max-width: 400px;">{!! $term->content !!}</td>
-                                        <td>
-                                            @if ($term->is_default)
-                                            <span
-                                                class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Default</span>
-                                            @else
-                                            <span class="text-muted">-</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <span
-                                                class="js-term-status-badge badge cursor-pointer px-2 py-1 {{ $term->is_active ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle' }}"
-                                                data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
-                                                data-is-active="{{ $term->is_active ? '1' : '0' }}" role="button"
-                                                tabindex="0"
-                                                title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}"
-                                                style="cursor: pointer;">{{ $term->is_active ? 'Active' : 'Inactive'
-                                                }}</span>
-                                        </td>
-                                        <td class="text-end pe-3">
-                                            <div class="tableActionButton d-inline-flex gap-1">
-                                                <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'quotation']) }}#terms-conditions"
-                                                    class="bg03 color03" title="Edit">Edit</a>
+                    {{-- Quotation Terms List --}}
+                    <div class="tab-pane fade tc-type-pane" id="quotation-tc" data-tc-type="quotation" role="tabpanel">
+                        <div class="mb-2">
+                            <h6 class="fw-semibold text-dark mb-0">Quotation T&C</h6>
+                        </div>
+                        <div class="card border-0 shadow-sm overflow-hidden mb-4">
+                            <div class="table-responsive">
+                                <table class="table mainTable border align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 80px;">Seq</th>
+                                            <th class="ps-3">Terms and Condition</th>
+                                            <th style="width: 100px;">Default</th>
+                                            <th style="width: 120px;">Status</th>
+                                            <th style="width: 140px;" class="text-end pe-3">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($quotationTerms as $index => $term)
+                                        <tr>
+                                            <td>
                                                 <form method="POST"
-                                                    action="{{ route('terms-conditions.destroy', $term) }}"
-                                                    class="d-inline" onsubmit="return confirm('Delete this term?')">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="bg04 color04"
-                                                        title="Delete">Delete</button>
+                                                    action="{{ route('terms-conditions.update-sequence', $term) }}"
+                                                    class="settings-sequence-form">
+                                                    @csrf @method('PATCH')
+                                                    <select name="sequence" onchange="this.form.submit()"
+                                                        class="form-select form-select-sm" style="width: 70px;">
+                                                        @for ($i = 1; $i <= $quotationTerms->count(); $i++)
+                                                            <option value="{{ $i }}" {{ ($term->sequence ?? $index + 1)
+                                                                ==
+                                                                $i ? 'selected' : '' }}>
+                                                                {{ $i }}</option>
+                                                            @endfor
+                                                    </select>
                                                 </form>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center py-4 text-muted">No quotation T&C added yet.
-                                        </td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
+                                            </td>
+                                            <td class="ps-3 text-wrap" style="max-width: 400px;">{!! $term->content !!}
+                                            </td>
+                                            <td>
+                                                @if ($term->is_default)
+                                                <span
+                                                    class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Default</span>
+                                                @else
+                                                <span class="text-muted">-</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <span
+                                                    class="js-term-status-badge badge cursor-pointer px-2 py-1 {{ $term->is_active ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle' }}"
+                                                    data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
+                                                    data-is-active="{{ $term->is_active ? '1' : '0' }}" role="button"
+                                                    tabindex="0"
+                                                    title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}"
+                                                    style="cursor: pointer;">{{ $term->is_active ? 'Active' : 'Inactive'
+                                                    }}</span>
+                                            </td>
+                                            <td class="text-end pe-3">
+                                                <div class="tableActionButton d-inline-flex gap-1">
+                                                    <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'quotation']) }}#terms-conditions"
+                                                        class="bg03 color03" title="Edit">Edit</a>
+                                                    <form method="POST"
+                                                        action="{{ route('terms-conditions.destroy', $term) }}"
+                                                        class="d-inline" onsubmit="return confirm('Delete this term?')">
+                                                        @csrf @method('DELETE')
+                                                        <button type="submit" class="bg04 color04"
+                                                            title="Delete">Delete</button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4 text-muted">No quotation T&C added
+                                                yet.
+                                            </td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {{-- Proforma Terms List --}}
-                <div class="tab-pane fade tc-type-pane" id="proforma-tc" data-tc-type="proforma" role="tabpanel">
-                    <div class="mb-2">
-                        <h6 class="fw-semibold text-dark mb-0">Proforma T&C</h6>
-                    </div>
-                    <div class="card border-0 shadow-sm overflow-hidden mb-4">
-                        <div class="table-responsive">
-                            <table class="table mainTable border align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 80px;">Seq</th>
-                                        <th class="ps-3">Terms and Condition</th>
-                                        <th style="width: 100px;">Default</th>
-                                        <th style="width: 120px;">Status</th>
-                                        <th style="width: 140px;" class="text-end pe-3">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($proformaTerms as $index => $term)
-                                    <tr>
-                                        <td>
-                                            <form method="POST"
-                                                action="{{ route('terms-conditions.update-sequence', $term) }}"
-                                                class="settings-sequence-form">
-                                                @csrf @method('PATCH')
-                                                <select name="sequence" onchange="this.form.submit()"
-                                                    class="form-select form-select-sm" style="width: 70px;">
-                                                    @for ($i = 1; $i <= $proformaTerms->count(); $i++)
-                                                        <option value="{{ $i }}" {{ ($term->sequence ?? $index + 1) ==
-                                                            $i ? 'selected' : '' }}>
-                                                            {{ $i }}</option>
-                                                        @endfor
-                                                </select>
-                                            </form>
-                                        </td>
-                                        <td class="ps-3 text-wrap" style="max-width: 400px;">{!! $term->content !!}</td>
-                                        <td>
-                                            @if ($term->is_default)
-                                            <span
-                                                class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Default</span>
-                                            @else
-                                            <span class="text-muted">-</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <span
-                                                class="js-term-status-badge badge cursor-pointer px-2 py-1 {{ $term->is_active ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle' }}"
-                                                data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
-                                                data-is-active="{{ $term->is_active ? '1' : '0' }}" role="button"
-                                                tabindex="0"
-                                                title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}"
-                                                style="cursor: pointer;">{{ $term->is_active ? 'Active' : 'Inactive'
-                                                }}</span>
-                                        </td>
-                                        <td class="text-end pe-3">
-                                            <div class="tableActionButton d-inline-flex gap-1">
-                                                <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'proforma']) }}#terms-conditions"
-                                                    class="bg03 color03" title="Edit">Edit</a>
+                    {{-- Proforma Terms List --}}
+                    <div class="tab-pane fade tc-type-pane" id="proforma-tc" data-tc-type="proforma" role="tabpanel">
+                        <div class="mb-2">
+                            <h6 class="fw-semibold text-dark mb-0">Proforma T&C</h6>
+                        </div>
+                        <div class="card border-0 shadow-sm overflow-hidden mb-4">
+                            <div class="table-responsive">
+                                <table class="table mainTable border align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 80px;">Seq</th>
+                                            <th class="ps-3">Terms and Condition</th>
+                                            <th style="width: 100px;">Default</th>
+                                            <th style="width: 120px;">Status</th>
+                                            <th style="width: 140px;" class="text-end pe-3">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($proformaTerms as $index => $term)
+                                        <tr>
+                                            <td>
                                                 <form method="POST"
-                                                    action="{{ route('terms-conditions.destroy', $term) }}"
-                                                    class="d-inline" onsubmit="return confirm('Delete this term?')">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="bg04 color04"
-                                                        title="Delete">Delete</button>
+                                                    action="{{ route('terms-conditions.update-sequence', $term) }}"
+                                                    class="settings-sequence-form">
+                                                    @csrf @method('PATCH')
+                                                    <select name="sequence" onchange="this.form.submit()"
+                                                        class="form-select form-select-sm" style="width: 70px;">
+                                                        @for ($i = 1; $i <= $proformaTerms->count(); $i++)
+                                                            <option value="{{ $i }}" {{ ($term->sequence ?? $index + 1)
+                                                                ==
+                                                                $i ? 'selected' : '' }}>
+                                                                {{ $i }}</option>
+                                                            @endfor
+                                                    </select>
                                                 </form>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center py-4 text-muted">No proforma T&C added yet.
-                                        </td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
+                                            </td>
+                                            <td class="ps-3 text-wrap" style="max-width: 400px;">{!! $term->content !!}
+                                            </td>
+                                            <td>
+                                                @if ($term->is_default)
+                                                <span
+                                                    class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Default</span>
+                                                @else
+                                                <span class="text-muted">-</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <span
+                                                    class="js-term-status-badge badge cursor-pointer px-2 py-1 {{ $term->is_active ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle' }}"
+                                                    data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
+                                                    data-is-active="{{ $term->is_active ? '1' : '0' }}" role="button"
+                                                    tabindex="0"
+                                                    title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}"
+                                                    style="cursor: pointer;">{{ $term->is_active ? 'Active' : 'Inactive'
+                                                    }}</span>
+                                            </td>
+                                            <td class="text-end pe-3">
+                                                <div class="tableActionButton d-inline-flex gap-1">
+                                                    <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'proforma']) }}#terms-conditions"
+                                                        class="bg03 color03" title="Edit">Edit</a>
+                                                    <form method="POST"
+                                                        action="{{ route('terms-conditions.destroy', $term) }}"
+                                                        class="d-inline" onsubmit="return confirm('Delete this term?')">
+                                                        @csrf @method('DELETE')
+                                                        <button type="submit" class="bg04 color04"
+                                                            title="Delete">Delete</button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4 text-muted">No proforma T&C added
+                                                yet.
+                                            </td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
-    </div>
+            </section>
+        </div>
 
-    <!-- TAXES TAB -->
-    <div id="taxes" class="tab-pane fade {{ $activeSettingsTab === 'taxes' ? 'show active' : '' }}" role="tabpanel">
-        <section class="py-3 px-1">
-            <div class="d-flex align-items-center gap-2 mb-4">
-                <div class="fs-4 text-primary"><i class="fas fa-percent"></i></div>
-                <div>
-                    <h5 class="fw-semibold text-dark mb-0">Tax Management</h5>
-                    <p class="small text-muted mb-0">Manage tax rates for invoices and quotations</p>
-                </div>
-            </div>
+        <!-- TAXES TAB -->
+        <div id="taxes" class="tab-pane fade {{ $activeSettingsTab === 'taxes' ? 'show active' : '' }}" role="tabpanel">
+            <section class="py-3 px-1">
+                <h5 class="fw-semibold text-dark mb-4">Tax Management</h5>
 
-            {{-- Tax Form (add / edit inline) --}}
-            <div id="tax-form-card" class="position-relative bg-light border p-3 rounded-3 mb-4">
-                <h6 id="tax-form-title" class="fw-semibold text-dark mb-3">Add New Tax</h6>
-                <form method="POST" id="tax-form" action="{{ route('taxes.store') }}">
-                    @csrf
-                    <div class="row g-3">
-                        <div class="col-12 col-md-4">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Rate (%)<span
-                                    class="text-danger">*</span></label>
-                            <input type="number" name="rate" id="tax-rate-input" value="{{ old('rate') }}"
-                                placeholder="e.g., 18" step="0.01" min="0" max="100" required class="form-control">
-                        </div>
-                        <div class="col-12 col-md-4">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Type<span
-                                    class="text-danger">*</span></label>
-                            <select name="type" id="tax-type-select" required class="form-select">
-                                @foreach (['GST' => 'GST', 'VAT' => 'VAT'] as $val => $label)
-                                <option value="{{ $val }}" {{ old('type')==$val ? 'selected' : '' }}>
-                                    {{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-12 d-flex align-items-end gap-2 mt-3">
-                            <button type="submit" id="tax-form-btn"
-                                class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                Add Tax <i class="fas fa-plus btn-icon ms-1"></i>
-                            </button>
-                            <button type="button" id="tax-form-cancel"
-                                class="btn btn-outline-primary bg-white text-primary fw-medium d-none"
-                                onclick="cancelEditTax()"><i class="fas fa-times btn-icon me-1"></i> Cancel</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-
-            {{-- Taxes Grouped by Type --}}
-            @php
-            $taxTypes = ['GST', 'VAT', 'Sales Tax', 'Service Tax', 'Other'];
-            $groupedTaxes = $taxes->groupBy('type');
-            @endphp
-            <div class="tax-list-grid">
-                @foreach ($taxTypes as $taxType)
-                @php
-                $group = $groupedTaxes->get($taxType, collect());
-                @endphp
-                @if ($group->count() > 0)
-                <div class="field-gap mb-4">
-                    <div class="mb-2">
-                        <h6 class="fw-semibold text-dark mb-0">
-                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">{{
-                                $taxType }}</span>
-                            — <span class="text-muted small">{{ $group->count() }}
-                                tax{{ $group->count() > 1 ? 'es' : '' }}</span>
-                        </h6>
-                    </div>
-                    <div class="card border-0 shadow-sm overflow-hidden mb-3">
-                        <div class="table-responsive">
-                            <table class="table mainTable border align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 80px;">#</th>
-                                        <th>Rate</th>
-                                        <th style="width: 150px;">Status</th>
-                                        <th style="width: 150px;" class="text-end pe-3">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($group as $index => $tax)
-                                    <tr>
-                                        <td>{{ $index + 1 }}</td>
-                                        <td>{{ $tax->rate }}%</td>
-                                        <td>
-                                            <span
-                                                class="badge px-2 py-1 {{ $tax->is_active ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle' }}">
-                                                {{ $tax->is_active ? 'Active' : 'Inactive' }}
-                                            </span>
-                                        </td>
-                                        <td class="text-end pe-3">
-                                            <div class="tableActionButton d-inline-flex gap-1">
-                                                <a href="javascript:void(0)" class="bg03 color03"
-                                                    data-id="{{ $tax->taxid }}" data-rate="{{ $tax->rate }}"
-                                                    data-type="{{ $tax->type }}" data-name="{{ $tax->tax_name }}"
-                                                    onclick="startEditTax(this)">Edit</a>
-                                                <form method="POST" action="{{ route('taxes.destroy', $tax) }}"
-                                                    class="d-inline" onsubmit="return confirm('Delete this tax?')">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="bg04 color04">Delete</button>
-                                                </form>
-                                            </div>
-                                        </td>
-                                    </tr>
+                {{-- Tax Form (add / edit inline) --}}
+                <div id="tax-form-card" class="position-relative bg-light border p-3 rounded-3 mb-4">
+                    <h6 id="tax-form-title" class="fw-semibold text-dark mb-3">Add New Tax</h6>
+                    <form method="POST" id="tax-form" action="{{ route('taxes.store') }}" class="mainForm">
+                        @csrf
+                        <div class="row g-3">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Rate (%)<span
+                                        class="text-danger">*</span></label>
+                                <input type="number" name="rate" id="tax-rate-input" value="{{ old('rate') }}"
+                                    placeholder="e.g., 18" step="0.01" min="0" max="100" required class="form-control">
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Type<span
+                                        class="text-danger">*</span></label>
+                                <select name="type" id="tax-type-select" required class="form-select">
+                                    @foreach (['GST' => 'GST', 'VAT' => 'VAT'] as $val => $label)
+                                    <option value="{{ $val }}" {{ old('type')==$val ? 'selected' : '' }}>
+                                        {{ $label }}</option>
                                     @endforeach
-                                </tbody>
-                            </table>
+                                </select>
+                            </div>
+                            <div class="col-12 d-flex align-items-end gap-2 mt-3">
+                                <button type="submit" id="tax-form-btn"
+                                    class="btn btn-outline-primary btn-primary text-white fw-medium">
+                                    Add Tax <i class="fas fa-plus btn-icon ms-1"></i>
+                                </button>
+                                <button type="button" id="tax-form-cancel"
+                                    class="btn btn-outline-primary bg-white text-primary fw-medium d-none"
+                                    onclick="cancelEditTax()"><i class="fas fa-times btn-icon me-1"></i> Cancel</button>
+                            </div>
                         </div>
-                    </div>
+                    </form>
                 </div>
-                @endif
-                @endforeach
-            </div>
-            @if ($taxes->isEmpty())
-            <p class="text-center py-5 text-muted">No taxes configured yet.</p>
-            @endif
-        </section>
-    </div>
 
-    {{-- Fixed Tax Rate Modal --}}
-    <div class="modal fade" id="fixedTaxRateModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-white border-bottom">
-                    <h5 class="modal-title fw-semibold" id="fixedTaxRateModalLabel">Add Tax</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form method="POST" action="{{ route('account.fixed-tax.update') }}" id="fixed-tax-form" class="mainForm">
-                    @csrf
-                    <div class="modal-body bg-light p-4">
-                        <div class="mb-3">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="fixed_tax_rate">Rate (%)<span
-                                    class="text-danger">*</span></label>
-                            <input type="number" id="fixed_tax_rate" name="fixed_tax_rate" placeholder="18" step="0.01" min="0" max="100"
-                                value="{{ old('fixed_tax_rate', $account->fixed_tax_rate ?? 0) }}" required
-                                class="form-control">
+                {{-- Taxes Grouped by Type --}}
+                @php
+                $taxTypes = ['GST', 'VAT', 'Sales Tax', 'Service Tax', 'Other'];
+                $groupedTaxes = $taxes->groupBy('type');
+                @endphp
+                <div class="tax-list-grid">
+                    @foreach ($taxTypes as $taxType)
+                    @php
+                    $group = $groupedTaxes->get($taxType, collect());
+                    @endphp
+                    @if ($group->count() > 0)
+                    <div class="field-gap mb-4">
+                        <div class="mb-2">
+                            <h6 class="fw-semibold text-dark mb-0">
+                                <span
+                                    class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">{{
+                                    $taxType }}</span>
+                                — <span class="text-muted small">{{ $group->count() }}
+                                    tax{{ $group->count() > 1 ? 'es' : '' }}</span>
+                            </h6>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="fixed_tax_type">Type<span
-                                    class="text-danger">*</span></label>
-                            <select id="fixed_tax_type" name="fixed_tax_type" required class="form-select">
-                                @foreach (['GST' => 'GST', 'VAT' => 'VAT'] as $v => $l)
-                                <option value="{{ $v }}" {{ old('fixed_tax_type', $account->fixed_tax_type ?? 'GST') ==
-                                    $v ? 'selected' : '' }}>
-                                    {{ $l }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="d-flex align-items-center justify-content-between mt-3">
-                            <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium"
-                                data-bs-dismiss="modal">
-                                <i class="fas fa-times btn-icon me-1"></i> Cancel
-                            </button>
-                            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                Save <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                            </button>
+                        <div class="card border-0 shadow-sm overflow-hidden mb-3">
+                            <div class="table-responsive">
+                                <table class="table mainTable border align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 80px;">#</th>
+                                            <th>Rate</th>
+                                            <th style="width: 150px;">Status</th>
+                                            <th style="width: 150px;" class="text-end pe-3">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($group as $index => $tax)
+                                        <tr>
+                                            <td>{{ $index + 1 }}</td>
+                                            <td>{{ $tax->rate }}%</td>
+                                            <td>
+                                                <span
+                                                    class="badge px-2 py-1 {{ $tax->is_active ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle' }}">
+                                                    {{ $tax->is_active ? 'Active' : 'Inactive' }}
+                                                </span>
+                                            </td>
+                                            <td class="text-end pe-3">
+                                                <div class="tableActionButton d-inline-flex gap-1">
+                                                    <a href="javascript:void(0)" class="bg03 color03"
+                                                        data-id="{{ $tax->taxid }}" data-rate="{{ $tax->rate }}"
+                                                        data-type="{{ $tax->type }}" data-name="{{ $tax->tax_name }}"
+                                                        onclick="startEditTax(this)">Edit</a>
+                                                    <form method="POST" action="{{ route('taxes.destroy', $tax) }}"
+                                                        class="d-inline" onsubmit="return confirm('Delete this tax?')">
+                                                        @csrf @method('DELETE')
+                                                        <button type="submit" class="bg04 color04">Delete</button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                </form>
+                    @endif
+                    @endforeach
+                </div>
+                @if ($taxes->isEmpty())
+                <p class="text-center py-5 text-muted">No taxes configured yet.</p>
+                @endif
+            </section>
+        </div>
+
+        {{-- Fixed Tax Rate Modal --}}
+        <div class="modal fade" id="fixedTaxRateModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-white border-bottom">
+                        <h5 class="modal-title fw-semibold" id="fixedTaxRateModalLabel">Add Tax</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="POST" action="{{ route('account.fixed-tax.update') }}" id="fixed-tax-form"
+                        class="mainForm">
+                        @csrf
+                        <div class="modal-body bg-light p-4">
+                            <div class="mb-3">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1"
+                                    for="fixed_tax_rate">Rate (%)<span class="text-danger">*</span></label>
+                                <input type="number" id="fixed_tax_rate" name="fixed_tax_rate" placeholder="18"
+                                    step="0.01" min="0" max="100"
+                                    value="{{ old('fixed_tax_rate', $account->fixed_tax_rate ?? 0) }}" required
+                                    class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1"
+                                    for="fixed_tax_type">Type<span class="text-danger">*</span></label>
+                                <select id="fixed_tax_type" name="fixed_tax_type" required class="form-select">
+                                    @foreach (['GST' => 'GST', 'VAT' => 'VAT'] as $v => $l)
+                                    <option value="{{ $v }}" {{ old('fixed_tax_type', $account->fixed_tax_type ?? 'GST')
+                                        ==
+                                        $v ? 'selected' : '' }}>
+                                        {{ $l }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mt-3">
+                                <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium"
+                                    data-bs-dismiss="modal">
+                                    <i class="fas fa-times btn-icon me-1"></i> Cancel
+                                </button>
+                                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
+                                    Save <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
-    </div>
 
     </div>
 
@@ -1532,6 +1669,9 @@ if ($isFinancialYearValidation) {
                     } catch (error) {
                         // Ignore storage failures in private mode or restricted browsers.
                     }
+                    document.dispatchEvent(new CustomEvent('settings:tab-activated', {
+                        detail: { tabId: targetId }
+                    }));
                 });
             });
 
@@ -2158,23 +2298,23 @@ if ($isFinancialYearValidation) {
             };
 
             function renderTemplateVariableBadges(type) {
-                const badgeContainer = form?.querySelector('.template-variable-badges');
-                if (!badgeContainer) return;
+                const badgeContainers = document.querySelectorAll('.template-variable-badges');
+                if (!badgeContainers.length) return;
 
                 const common = templateVariableMap.common || [];
                 const specific = templateVariableMap[type] || [];
                 const tags = [...common, ...specific];
                 const seen = new Set();
 
-                badgeContainer.innerHTML = '';
+                const badgeHtmlArray = [];
                 tags.forEach((tag) => {
                     if (!tag?.key || seen.has(tag.key)) return;
                     seen.add(tag.key);
-                    const span = document.createElement('span');
-                    span.className = 'badge bg-light text-muted border px-2 py-1';
-                    span.textContent = `@{{ $ {
-    tag.key }}}` + (tag.label ? ` (${tag.label})` : '');
-                    badgeContainer.appendChild(span);
+                    badgeHtmlArray.push(`<span class="badge bg-light text-muted border px-2 py-1">@{{ ${tag.key} }}${tag.label ? ` (${tag.label})` : ''}</span>`);
+                });
+
+                badgeContainers.forEach(container => {
+                    container.innerHTML = badgeHtmlArray.join(' ');
                 });
             }
 
@@ -2241,8 +2381,6 @@ if ($isFinancialYearValidation) {
                     nameInput.setAttribute('aria-required', isEmail ? 'true' : 'false');
                     nameInput.setCustomValidity('');
                 }
-                // TinyMCE hides the textarea, so native required validation causes
-                // "invalid form control is not focusable". Validate message body manually on submit.
                 bodyInput.required = false;
                 bodyInput.removeAttribute('required');
                 bodyInput.setAttribute('aria-required', 'false');
@@ -2282,18 +2420,17 @@ if ($isFinancialYearValidation) {
                 bodyInput.value = htmlToPlainText(bodyInput.value);
             }
 
-            function ensureTemplateEditorReady(form, tries = 12) {
-                if (!form) return;
-                const channel = form.querySelector('.template-channel-input')?.value || 'email';
-                if (channel !== 'email') return;
+            function ensureTemplateEditorReady(tries = 12) {
+                const emailForm = document.querySelector('.message-template-form[data-channel="email"]');
+                if (!emailForm) return;
 
                 if (window.tinymce) {
-                    toggleTemplateBodyEditor(form, 'email');
+                    toggleTemplateBodyEditor(emailForm, 'email');
                     return;
                 }
 
                 if (tries <= 0) return;
-                setTimeout(() => ensureTemplateEditorReady(form, tries - 1), 150);
+                setTimeout(() => ensureTemplateEditorReady(tries - 1), 150);
             }
 
             function decodeTemplateBody(encodedBody) {
@@ -2307,318 +2444,134 @@ if ($isFinancialYearValidation) {
                 }
             }
 
-            function resetTemplateForm(form, type, channel) {
-                if (!form) return;
-
-                const channelInput = form.querySelector('.template-channel-input');
-                const typeInput = form.querySelector('input[name="template_type"]');
-                const templateIdInput = form.querySelector('.template-id-input');
-                const nameInput = form.querySelector('.template-name-input');
-                const subjectInput = form.querySelector('.template-subject-input');
-                const subjectGroup = form.querySelector('.template-subject-group');
-                const waTemplateIdInput = form.querySelector('.template-wa-template-id-input');
-                const waTemplateIdGroup = form.querySelector('.template-wa-template-id-group');
-                const externalIdInput = form.querySelector('.template-external-id-input');
-                const externalIdGroup = form.querySelector('.template-external-id-group');
-                const smsConfigRow = form.querySelector('.template-sms-config-row');
-                const senderIdInput = form.querySelector('.template-sender-id-input');
-                const senderIdGroup = form.querySelector('.template-sender-id-group');
-                const bodyInput = form.querySelector('.template-body-input');
-                const submitBtn = form.querySelector('.template-submit-btn');
-                const editorTitle = form.querySelector('.template-editor-title');
-                const editorNote = form.querySelector('.template-editor-note');
-                const methodInput = form.querySelector('input[name="_method"]');
-
-                const currentType = type || typeInput?.value || defaultTemplateType;
-                const currentChannel = channel || channelInput?.value || 'email';
-                const typeLabel = templateTypeLabels[currentType] || currentType.replace(/_/g, ' ').toUpperCase();
-                const channelLabel = currentChannel.charAt(0).toUpperCase() + currentChannel.slice(1);
+            function resetAllTemplateForms(type) {
+                const currentType = type || defaultTemplateType;
                 renderTemplateVariableBadges(currentType);
 
-                if (typeInput) typeInput.value = currentType;
-                if (channelInput) channelInput.value = currentChannel;
-                if (templateIdInput) templateIdInput.value = '';
-                if (methodInput) methodInput.remove();
-                if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Template';
-                if (editorTitle) editorTitle.textContent = 'Template';
-                if (editorNote) editorNote.textContent = 'One template per type and channel.';
-                if (nameInput) {
-                    nameInput.value = '';
-                    nameInput.placeholder = typeLabel + ' ' + channelLabel + ' Template';
-                }
-                if (subjectGroup) subjectGroup.classList.toggle('is-hidden', currentChannel !== 'email');
-                if (waTemplateIdGroup) waTemplateIdGroup.classList.toggle('is-hidden', currentChannel !==
-                    'whatsapp');
-                if (smsConfigRow) smsConfigRow.classList.toggle('is-hidden', currentChannel !== 'sms');
-                if (externalIdGroup) externalIdGroup.classList.toggle('is-hidden', currentChannel !== 'sms');
-                if (senderIdGroup) senderIdGroup.classList.toggle('is-hidden', currentChannel !== 'sms');
-                if (subjectInput) {
-                    subjectInput.value = '';
-                    subjectInput.placeholder = typeLabel + ' update for @{{ client_name }}';
-                }
-                if (externalIdInput) externalIdInput.value = '';
-                if (waTemplateIdInput) waTemplateIdInput.value = '';
-                if (senderIdInput) senderIdInput.value = '';
-                if (bodyInput) {
-                    bodyInput.placeholder = 'Hi @{{ client_name }},\nPlease find the details below.';
-                    setTinyContent(bodyInput.id, '');
-                }
-                const contextKey = currentType + '|' + currentChannel;
-                const contextTemplate = templateContextMap[contextKey] || null;
-                if (contextTemplate) {
-                    if (nameInput) nameInput.value = contextTemplate.name || '';
-                    if (subjectInput) subjectInput.value = contextTemplate.subject || '';
-                    if (externalIdInput) externalIdInput.value = contextTemplate.template_id || '';
-                    if (waTemplateIdInput) waTemplateIdInput.value = contextTemplate.template_id || '';
-                    if (senderIdInput) senderIdInput.value = contextTemplate.sender_id || '';
-                    if (bodyInput) setTinyContent(bodyInput.id, contextTemplate.body || '');
-                    if (editorNote) editorNote.textContent = 'Editing existing template for this type/channel.';
-                }
-                toggleTemplateBodyEditor(form, currentChannel);
+                templateForms.forEach((form) => {
+                    const channel = form.dataset.channel;
+                    const channelInput = form.querySelector('.template-channel-input');
+                    const typeInput = form.querySelector('input[name="template_type"]');
+                    const templateIdInput = form.querySelector('.template-id-input');
+                    const nameInput = form.querySelector('.template-name-input');
+                    const subjectInput = form.querySelector('.template-subject-input');
+                    const waTemplateIdInput = form.querySelector('.template-wa-template-id-input');
+                    const externalIdInput = form.querySelector('.template-external-id-input');
+                    const senderIdInput = form.querySelector('.template-sender-id-input');
+                    const bodyInput = form.querySelector('.template-body-input');
+                    const submitBtn = form.querySelector('.template-submit-btn');
+                    const editorNote = form.querySelector('.template-editor-note-' + channel);
+                    const methodInput = form.querySelector('input[name="_method"]');
 
-                saveMtState(currentType, currentChannel);
-            }
+                    const typeLabel = templateTypeLabels[currentType] || currentType.replace(/_/g, ' ').toUpperCase();
+                    const channelLabel = channel.charAt(0).toUpperCase() + channel.slice(1);
 
-            function enterEditMode(form, template, type) {
-                if (!form || !template) return;
+                    if (typeInput) typeInput.value = currentType;
+                    if (channelInput) channelInput.value = channel;
+                    if (templateIdInput) templateIdInput.value = '';
+                    if (methodInput) methodInput.remove();
+                    if (submitBtn) {
+                        submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Template';
+                        if (channel === 'email') submitBtn.className = 'btn btn-primary btn-sm text-white fw-medium px-3 py-2 template-submit-btn';
+                        else if (channel === 'whatsapp') submitBtn.className = 'btn btn-success btn-sm text-white fw-medium px-3 py-2 template-submit-btn';
+                        else if (channel === 'sms') submitBtn.className = 'btn btn-info btn-sm text-white fw-medium px-3 py-2 template-submit-btn';
+                    }
+                    if (editorNote) editorNote.textContent = 'One template per type.';
+                    if (nameInput) {
+                        nameInput.value = '';
+                        nameInput.placeholder = typeLabel + ' ' + channelLabel + ' Template';
+                    }
+                    if (subjectInput) {
+                        subjectInput.value = '';
+                        subjectInput.placeholder = typeLabel + ' update for @{{ client_name }}';
+                    }
+                    if (externalIdInput) externalIdInput.value = '';
+                    if (waTemplateIdInput) waTemplateIdInput.value = '';
+                    if (senderIdInput) senderIdInput.value = '';
+                    if (bodyInput) {
+                        bodyInput.placeholder = 'Hi @{{ client_name }},\nPlease find the details below.';
+                        setTinyContent(bodyInput.id, '');
+                    }
 
-                const channelInput = form.querySelector('.template-channel-input');
-                const typeInput = form.querySelector('input[name="template_type"]');
-                const templateIdInput = form.querySelector('.template-id-input');
-                const nameInput = form.querySelector('.template-name-input');
-                const subjectInput = form.querySelector('.template-subject-input');
-                const subjectGroup = form.querySelector('.template-subject-group');
-                const waTemplateIdInput = form.querySelector('.template-wa-template-id-input');
-                const waTemplateIdGroup = form.querySelector('.template-wa-template-id-group');
-                const externalIdInput = form.querySelector('.template-external-id-input');
-                const externalIdGroup = form.querySelector('.template-external-id-group');
-                const smsConfigRow = form.querySelector('.template-sms-config-row');
-                const senderIdInput = form.querySelector('.template-sender-id-input');
-                const senderIdGroup = form.querySelector('.template-sender-id-group');
-                const bodyInput = form.querySelector('.template-body-input');
-                const submitBtn = form.querySelector('.template-submit-btn');
-                const editorTitle = form.querySelector('.template-editor-title');
-                const editorNote = form.querySelector('.template-editor-note');
-                const storeAction = form.dataset.storeAction;
-                const updateBase = form.dataset.updateBase;
-                const methodInput = form.querySelector('input[name="_method"]') || document.createElement('input');
+                    const contextKey = currentType + '|' + channel;
+                    const contextTemplate = templateContextMap[contextKey] || null;
+                    if (contextTemplate) {
+                        form.action = form.dataset.updateBase + '/' + encodeURIComponent(contextTemplate.templateid);
+                        const newMethodInput = document.createElement('input');
+                        newMethodInput.type = 'hidden';
+                        newMethodInput.name = '_method';
+                        newMethodInput.value = 'PATCH';
+                        form.appendChild(newMethodInput);
 
-                const typeKey = type || template.template_type || typeInput?.value || defaultTemplateType;
-                const channel = template.channel || channelInput?.value || 'email';
-                renderTemplateVariableBadges(typeKey);
+                        if (templateIdInput) templateIdInput.value = contextTemplate.templateid || '';
+                        if (nameInput) nameInput.value = contextTemplate.name || '';
+                        if (subjectInput) subjectInput.value = contextTemplate.subject || '';
+                        if (externalIdInput) externalIdInput.value = contextTemplate.template_id || '';
+                        if (waTemplateIdInput) waTemplateIdInput.value = contextTemplate.template_id || '';
+                        if (senderIdInput) senderIdInput.value = contextTemplate.sender_id || '';
+                        if (bodyInput) setTinyContent(bodyInput.id, contextTemplate.body || '');
+                        if (editorNote) editorNote.textContent = 'Editing existing template.';
+                        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Update Template';
+                    } else {
+                        form.action = form.dataset.storeAction;
+                    }
 
-                form.action = updateBase + '/' + encodeURIComponent(template.templateid);
-                if (!methodInput.name) {
-                    methodInput.type = 'hidden';
-                    methodInput.name = '_method';
-                    form.appendChild(methodInput);
-                }
-                methodInput.value = 'PATCH';
+                    toggleTemplateBodyEditor(form, channel);
+                });
 
-                if (typeInput) typeInput.value = typeKey;
-                if (templateIdInput) templateIdInput.value = template.templateid || '';
-                if (channelInput) channelInput.value = channel;
-                if (nameInput) nameInput.value = template.name || '';
-                if (subjectGroup) subjectGroup.classList.toggle('is-hidden', channel !== 'email');
-                if (waTemplateIdGroup) waTemplateIdGroup.classList.toggle('is-hidden', channel !== 'whatsapp');
-                if (smsConfigRow) smsConfigRow.classList.toggle('is-hidden', channel !== 'sms');
-                if (externalIdGroup) externalIdGroup.classList.toggle('is-hidden', channel !== 'sms');
-                if (senderIdGroup) senderIdGroup.classList.toggle('is-hidden', channel !== 'sms');
-                if (subjectInput) subjectInput.value = template.subject || '';
-                if (externalIdInput) externalIdInput.value = template.template_id || '';
-                if (waTemplateIdInput) waTemplateIdInput.value = template.template_id || '';
-                if (senderIdInput) senderIdInput.value = template.sender_id || '';
-                if (bodyInput) setTinyContent(bodyInput.id, template.body || '');
-                toggleTemplateBodyEditor(form, channel);
-                if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Update Template';
-                if (editorTitle) editorTitle.textContent = 'Editing template';
-                if (editorNote) editorNote.textContent = template.name || '';
-                saveMtState(typeKey, channel);
+                saveMtState(currentType);
             }
 
             function setActiveTab(tabs, matchAttr, value) {
                 tabs.forEach((tab) => {
                     const active = tab.dataset[matchAttr] === value;
                     tab.classList.toggle('is-active', active);
+                    tab.classList.toggle('active', active);
+                    tab.classList.toggle('text-secondary', !active);
                 });
             }
 
             function getCurrentTemplateType() {
                 const activeTypeTab = document.querySelector('.mt-type-tab-btn.is-active');
-                return activeTypeTab?.dataset.type || form?.querySelector('input[name="template_type"]')?.value ||
-                    defaultTemplateType;
+                return activeTypeTab?.dataset.type || defaultTemplateType;
             }
-
-            function setActiveChannelPill(channel) {
-                document.querySelectorAll('.mt-channel-pill-btn').forEach((btn) => {
-                    btn.classList.toggle('is-active', btn.dataset.channel === channel);
-                });
-            }
-
-            document.querySelectorAll('.mt-channel-pill-btn').forEach((tab) => {
-                tab.addEventListener('click', function () {
-                    const type = getCurrentTemplateType();
-                    const channel = this.dataset.channel;
-                    // single pill group: switch by channel only
-                    setActiveChannelPill(channel);
-                    resetTemplateForm(form, type, channel);
-                    saveMtState(type, channel);
-                });
-            });
-
-            async function toggleTemplateStatus(btnEl) {
-                const url = btnEl?.dataset?.toggleUrl;
-                if (!url) return;
-
-                btnEl.disabled = true;
-                try {
-                    const response = await fetch(url, {
-                        method: 'PATCH',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                ?.content || '',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json',
-                        },
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Failed to update template status.');
-                    }
-
-                    const contentType = response.headers.get('content-type') || '';
-                    if (contentType.includes('application/json')) {
-                        const data = await response.json();
-                        const item = btnEl.closest('.mt-template-item');
-                        if (item) {
-                            const statusPill = item.querySelector('.js-template-status-badge');
-                            if (statusPill) {
-                                statusPill.classList.toggle('bg-success-subtle', data.is_active);
-                                statusPill.classList.toggle('text-success', data.is_active);
-                                statusPill.classList.toggle('border-success-subtle', data.is_active);
-                                statusPill.classList.toggle('bg-secondary-subtle', !data.is_active);
-                                statusPill.classList.toggle('text-secondary', !data.is_active);
-                                statusPill.classList.toggle('border-secondary-subtle', !data.is_active);
-                                statusPill.textContent = data.is_active ? 'Active' : 'Deactive';
-                                statusPill.setAttribute('title', data.is_active ? 'Click to Deactivate' :
-                                    'Click to Activate');
-                            }
-
-                            // Update toggle button text
-                            btnEl.textContent = data.is_active ? 'Deactivate' : 'Activate';
-                        }
-
-                        // use existing toast if available, otherwise create an app-toast (styled like other toasts)
-                        try {
-                            const messageText = data.message || 'Updated';
-                            if (typeof showToast === 'function') {
-                                showToastDedup('success', messageText);
-                            } else {
-                                const container = document.getElementById('app-toast-container') || (
-                                    function () {
-                                        const el = document.createElement('div');
-                                        el.id = 'app-toast-container';
-                                        el.className = 'app-toast-container';
-                                        document.body.appendChild(el);
-                                        return el;
-                                    })();
-
-                                const toast = document.createElement('div');
-                                toast.className = 'app-toast app-toast-success';
-                                toast.innerHTML =
-                                    `<i class="fas fa-check-circle toast-icon"></i><span>${messageText}</span>`;
-                                container.appendChild(toast);
-                                setTimeout(() => {
-                                    if (toast.parentNode) {
-                                        toast.classList.add('app-toast-leaving');
-                                        setTimeout(() => {
-                                            if (toast.parentNode) toast.remove();
-                                        }, 300);
-                                    }
-                                }, 3500);
-                            }
-                        } catch (e) { }
-                    } else {
-                        window.location.reload();
-                    }
-                } finally {
-                    btnEl.disabled = false;
-                }
-            }
-
-            document.querySelectorAll('.template-toggle-btn').forEach((btn) => {
-                btn.addEventListener('click', async function () {
-                    await toggleTemplateStatus(this);
-                });
-            });
-
-            document.querySelectorAll('.js-template-status-badge').forEach((badge) => {
-                badge.addEventListener('click', async function () {
-                    const item = this.closest('.mt-template-item');
-                    const btn = item?.querySelector('.template-toggle-btn');
-                    if (!btn) return;
-                    await toggleTemplateStatus(btn);
-                });
-                badge.addEventListener('keydown', async function (event) {
-                    if (event.key !== 'Enter' && event.key !== ' ') return;
-                    event.preventDefault();
-                    const item = this.closest('.mt-template-item');
-                    const btn = item?.querySelector('.template-toggle-btn');
-                    if (!btn) return;
-                    await toggleTemplateStatus(btn);
-                });
-            });
 
             typeTabs.forEach((tab) => {
                 tab.addEventListener('click', function () {
                     setActiveTab(typeTabs, 'type', this.dataset.type);
-                    // update form type and reset
-                    if (form) {
-                        form.querySelector('input[name="template_type"]').value = this.dataset.type;
-                        // reset channel pills to email
-                        setActiveChannelPill('email');
-                        resetTemplateForm(form, this.dataset.type, 'email');
-                        saveMtState(this.dataset.type, 'email');
-                    }
+                    resetAllTemplateForms(this.dataset.type);
                 });
             });
 
-            // initial state (preserve user selection on validation errors)
             const persistedMtState = loadMtState();
             const initialTemplateType = (oldTemplateType && templateTypeLabels[oldTemplateType]) ?
                 oldTemplateType :
                 ((persistedMtState?.type && templateTypeLabels[persistedMtState.type]) ? persistedMtState.type :
                     defaultTemplateType);
-            const initialTemplateChannel = ['email', 'whatsapp', 'sms'].includes(oldTemplateChannel) ?
-                oldTemplateChannel :
-                (['email', 'whatsapp', 'sms'].includes(persistedMtState?.channel) ? persistedMtState.channel :
-                    'email');
             setActiveTab(typeTabs, 'type', initialTemplateType);
-            setActiveChannelPill(initialTemplateChannel);
-            if (form) resetTemplateForm(form, initialTemplateType, initialTemplateChannel);
+            resetAllTemplateForms(initialTemplateType);
 
             document.addEventListener('settings:tab-activated', function (event) {
-                if (event.detail?.tabId !== 'message-templates' || !form) return;
-                const currentChannel = form.querySelector('.template-channel-input')?.value || 'email';
+                if (event.detail?.tabId !== 'message-templates') return;
+                const emailForm = document.querySelector('.message-template-form[data-channel="email"]');
+                if (!emailForm) return;
                 requestAnimationFrame(() => {
-                    toggleTemplateBodyEditor(form, currentChannel);
+                    toggleTemplateBodyEditor(emailForm, 'email');
                 });
             });
 
-            if (window.tinymce && document.querySelector('.template-body-input') && form) {
-                const currentChannel = form.querySelector('.template-channel-input')?.value || 'email';
-                toggleTemplateBodyEditor(form, currentChannel);
+            const emailForm = document.querySelector('.message-template-form[data-channel="email"]');
+            if (window.tinymce && document.querySelector('.template-body-input') && emailForm) {
+                toggleTemplateBodyEditor(emailForm, 'email');
             }
 
-            // final initial sync
             setActiveTab(typeTabs, 'type', initialTemplateType);
-            setActiveChannelPill(initialTemplateChannel);
-            if (form) resetTemplateForm(form, initialTemplateType, initialTemplateChannel);
-            ensureTemplateEditorReady(form);
+            resetAllTemplateForms(initialTemplateType);
+            ensureTemplateEditorReady();
 
             templateForms.forEach((form) => {
                 form.addEventListener('submit', function (event) {
-                    const channel = form.querySelector('.template-channel-input')?.value || '';
+                    const channel = form.dataset.channel;
                     const waTemplateIdInput = form.querySelector('.template-wa-template-id-input');
                     const templateIdInput = form.querySelector('.template-external-id-input');
                     const bodyInput = form.querySelector('.template-body-input');

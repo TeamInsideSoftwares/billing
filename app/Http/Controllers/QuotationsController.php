@@ -615,6 +615,7 @@ class QuotationsController extends Controller
     public function quotationEmailCompose(Quotation $quotation): View
     {
         $quotation->load('client.billingDetail');
+        $clientName = $quotation->client->business_name ?? ($quotation->client->contact_name ?? 'Client');
         $user = Auth::user();
         $accountid = $this->resolveAccountId();
         $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
@@ -681,82 +682,103 @@ class QuotationsController extends Controller
             $availableChannels = ['email'];
         }
 
-        $draftForChannel = CommunicationLog::query()
+        $emailDraft = CommunicationLog::query()
             ->where('quotationid', $quotation->quotationid)
             ->where('accountid', $accountid)
-            ->where('channel', $prefillChannel)
+            ->where('channel', 'email')
             ->latest('created_at')
             ->first();
-        $draft = $draftForChannel;
 
-        $channelTemplates = $templateCatalog[$prefillChannel] ?? [];
-        $defaultTemplate = $channelTemplates[0] ?? null;
-        $preferTemplateForMessagingChannel = in_array($prefillChannel, ['whatsapp', 'sms'], true)
-            && ((string) ($draft?->status ?? '')) !== 'sent';
-        $basePrefillSubject = $preferTemplateForMessagingChannel
-            ? ($defaultTemplate['subject'] ?? ($draft?->subject ?? ('Quotation '.($quotation->quo_number ?? $quotation->quotationid))))
-            : ($draft?->subject ?? ($defaultTemplate['subject'] ?? ('Quotation '.($quotation->quo_number ?? $quotation->quotationid))));
-        $basePrefillBody = $preferTemplateForMessagingChannel
-            ? ($defaultTemplate['body'] ?? ($draft?->body ?? $defaultBody))
-            : ($draft?->body ?? ($defaultTemplate['body'] ?? $defaultBody));
+        $whatsappDraft = CommunicationLog::query()
+            ->where('quotationid', $quotation->quotationid)
+            ->where('accountid', $accountid)
+            ->where('channel', 'whatsapp')
+            ->latest('created_at')
+            ->first();
 
-        $oldChannel = trim((string) old('channel', ''));
-        $reuseOldForSameChannel = $oldChannel !== '' && $oldChannel === $prefillChannel;
-        $prefillSubject = $reuseOldForSameChannel ? old('subject', $basePrefillSubject) : $basePrefillSubject;
-        $prefillBody = $reuseOldForSameChannel ? old('body', $basePrefillBody) : $basePrefillBody;
-        if (in_array($prefillChannel, ['whatsapp', 'sms'], true)) {
-            $prefillBody = $this->normalizeChannelBodyForStorage((string) $prefillBody, $prefillChannel);
-        }
-        $prefillTemplateId = old(
-            'selected_templateid',
-            trim((string) ($draft?->selected_templateid ?? '')) !== ''
-                ? (string) $draft->selected_templateid
-                : ($defaultTemplate['templateid'] ?? '')
-        );
+        $smsDraft = CommunicationLog::query()
+            ->where('quotationid', $quotation->quotationid)
+            ->where('accountid', $accountid)
+            ->where('channel', 'sms')
+            ->latest('created_at')
+            ->first();
+
+        $isEmailSent = (string) ($emailDraft->status ?? '') === 'sent';
+        $isWhatsappSent = (string) ($whatsappDraft->status ?? '') === 'sent';
+        $isSmsSent = (string) ($smsDraft->status ?? '') === 'sent';
+
+        // Email prefill
+        $emailTemplate = $templateCatalog['email'][0] ?? null;
+        $emailSubject = $emailDraft?->subject ?? $emailTemplate['subject'] ?? ('Quotation '.($quotation->quo_number ?? $quotation->quotationid));
+        $emailBody = $emailDraft?->body ?? $emailTemplate['body'] ?? $defaultBody;
+
+        // WhatsApp prefill
+        $whatsappTemplate = $templateCatalog['whatsapp'][0] ?? null;
+        $whatsappBody = $whatsappDraft?->body ?? $whatsappTemplate['body'] ?? $defaultBody;
+        $whatsappBody = $this->normalizeChannelBodyForStorage((string) $whatsappBody, 'whatsapp');
+        $whatsappPhone = old('phone_number', trim((string) (
+            $whatsappDraft?->phone_number
+            ?? $quotation->client?->billingDetail?->billing_phone
+            ?? $quotation->client?->whatsapp_number
+            ?? $quotation->client?->phone
+            ?? ''
+        )));
+
+        // SMS prefill
+        $smsTemplate = $templateCatalog['sms'][0] ?? null;
+        $smsBody = $smsDraft?->body ?? $smsTemplate['body'] ?? $defaultBody;
+        $smsBody = $this->normalizeChannelBodyForStorage((string) $smsBody, 'sms');
+        $smsPhone = old('phone_number', trim((string) (
+            $smsDraft?->phone_number
+            ?? $quotation->client?->billingDetail?->billing_phone
+            ?? $quotation->client?->whatsapp_number
+            ?? $quotation->client?->phone
+            ?? ''
+        )));
+
+        $emailCustomAttachmentPaths = collect(explode(',', (string) ($emailDraft?->custom_attachment_path ?? '')))
+            ->map(fn ($path) => trim((string) $path))
+            ->filter();
+        $emailCustomAttachmentUrls = $emailCustomAttachmentPaths
+            ->map(fn ($path) => $this->buildPublicAttachmentUrl($path))
+            ->values()
+            ->all();
+        $emailCustomAttachmentNames = $emailCustomAttachmentPaths
+            ->map(fn ($path) => basename((string) parse_url($this->buildPublicAttachmentUrl($path), PHP_URL_PATH) ?: 'Attachment'))
+            ->values()
+            ->all();
 
         return view('quotations.email-compose', [
-            'title' => 'Create New Quotation',
-            'subtitle' => null,
+            'title' => 'Compose Quotation Communications',
+            'subtitle' => "Client: {$clientName} • Quotation: ".($quotation->quo_number ?? $quotation->quotationid),
             'quotation' => $quotation,
-            'composeEmail' => $draft,
+            'emailDraft' => $emailDraft,
+            'whatsappDraft' => $whatsappDraft,
+            'smsDraft' => $smsDraft,
+            'isEmailSent' => $isEmailSent,
+            'isWhatsappSent' => $isWhatsappSent,
+            'isSmsSent' => $isSmsSent,
             'fromEmail' => $user?->email ?? '',
-            'toEmail' => old('to_email', $draft?->to_email ?? $quotation->client?->billing_email ?? $quotation->client?->primary_email ?? $quotation->client?->email ?? ''),
-            'ccEmail' => old('cc_email', $draft?->cc_email ?? ''),
-            'phone' => old('phone_number', trim((string) (
-                $draft?->phone_number
-                ?? $quotation->client?->billingDetail?->billing_phone
-                ?? $quotation->client?->whatsapp_number
-                ?? $quotation->client?->phone
-                ?? ''
-            ))),
-            'subject' => $prefillSubject,
-            'body' => $prefillBody,
-            'prefillChannel' => $prefillChannel,
+            'emailTo' => old('to_email', $emailDraft?->to_email ?? $quotation->client?->billing_email ?? $quotation->client?->primary_email ?? $quotation->client?->email ?? ''),
+            'emailCc' => old('cc_email', $emailDraft?->cc_email ?? ''),
+            'emailSubject' => $emailSubject,
+            'emailBody' => $emailBody,
+            'whatsappPhone' => $whatsappPhone,
+            'whatsappBody' => $whatsappBody,
+            'smsPhone' => $smsPhone,
+            'smsBody' => $smsBody,
             'templateCatalog' => $templateCatalog,
             'availableChannels' => $availableChannels,
-            'prefillTemplateId' => $prefillTemplateId,
-            'customAttachmentUrls' => collect(explode(',', (string) ($draft?->custom_attachment_path ?? '')))
-                ->map(fn ($path) => trim((string) $path))
-                ->filter()
-                ->map(fn ($path) => $this->buildPublicAttachmentUrl($path))
-                ->values()
-                ->all(),
-            'customAttachmentNames' => collect(explode(',', (string) ($draft?->custom_attachment_path ?? '')))
-                ->map(fn ($path) => trim((string) $path))
-                ->filter()
-                ->map(function ($path) {
-                    $url = $this->buildPublicAttachmentUrl($path);
-
-                    return basename((string) parse_url($url, PHP_URL_PATH) ?: 'Attachment');
-                })
-                ->values()
-                ->all(),
+            'emailCustomAttachmentUrls' => $emailCustomAttachmentUrls,
+            'emailCustomAttachmentNames' => $emailCustomAttachmentNames,
+            'defaultBody' => $defaultBody,
         ]);
     }
 
     public function quotationEmailComposeStore(Request $request, Quotation $quotation)
     {
         $validated = $request->validate([
+            'logid' => 'nullable|string|exists:communication_logs,logid',
             'channel' => 'required|in:email,whatsapp,sms',
             'selected_templateid' => 'nullable|string|max:20',
             'to_email' => 'nullable|string|max:255',
@@ -796,7 +818,16 @@ class QuotationsController extends Controller
         $isEmailChannel = ($channel === 'email');
         $normalizedBody = $this->normalizeChannelBodyForStorage((string) ($validated['body'] ?? ''), $channel);
 
-        $email = CommunicationLog::create([
+        $logid = $request->input('logid');
+        $email = null;
+        if (! empty($logid)) {
+            $email = CommunicationLog::query()
+                ->where('logid', $logid)
+                ->where('accountid', $accountid)
+                ->first();
+        }
+
+        $logData = [
             'accountid' => $accountid,
             'quotationid' => $quotation->quotationid,
             'clientid' => $quotation->clientid,
@@ -811,14 +842,26 @@ class QuotationsController extends Controller
             'custom_attachment_path' => $isEmailChannel ? $finalCustomAttachmentPath : null,
             'status' => $validated['action'] === 'send' ? 'sent' : 'draft',
             'channel' => $channel,
-            'created_by' => (string) ($user?->userid ?? $user?->id ?? ''),
-        ]);
+        ];
+
+        if ($email) {
+            $email->update($logData);
+        } else {
+            $email = CommunicationLog::create($logData + [
+                'created_by' => (string) ($user?->userid ?? $user?->id ?? ''),
+            ]);
+        }
 
         if ($validated['action'] === 'send') {
             if ($channel === 'email') {
                 $toEmailValue = trim((string) ($validated['to_email'] ?? ''));
                 if ($toEmailValue === '') {
-                    return back()->withErrors(['to_email' => 'To Email is required for email channel.'])->withInput();
+                    $msg = 'To Email is required for email channel.';
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => $msg], 422);
+                    }
+
+                    return back()->withErrors(['to_email' => $msg])->withInput();
                 }
 
                 $quotationPdfUrl = $this->resolveCampioQuotationPdfUrl($quotation);
@@ -853,7 +896,12 @@ class QuotationsController extends Controller
                     $recipientRecords[] = $this->buildCampioQuotationRecipientRecord($quotation, 'email', $mail, (string) ($validated['phone_number'] ?? ''));
                 }
                 if (empty($recipientRecords)) {
-                    return back()->withErrors(['to_email' => 'Please provide at least one valid recipient email.'])->withInput();
+                    $msg = 'Please provide at least one valid recipient email.';
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => $msg], 422);
+                    }
+
+                    return back()->withErrors(['to_email' => $msg])->withInput();
                 }
 
                 $payload = [
@@ -877,6 +925,10 @@ class QuotationsController extends Controller
 
                 $campioResult = $this->sendViaCampio('email', $payload);
                 if (! $campioResult['ok']) {
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => $campioResult['message']], 422);
+                    }
+
                     return back()->withErrors(['general' => $campioResult['message']])->withInput();
                 }
             } else {
@@ -888,7 +940,12 @@ class QuotationsController extends Controller
                     ?? ''
                 ));
                 if ($phone === '') {
-                    return back()->withErrors(['phone_number' => 'Phone number is required for this channel.'])->withInput();
+                    $msg = 'Phone number is required for this channel.';
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => $msg], 422);
+                    }
+
+                    return back()->withErrors(['phone_number' => $msg])->withInput();
                 }
 
                 $selectedTemplateId = trim((string) ($validated['selected_templateid'] ?? ''));
@@ -902,8 +959,13 @@ class QuotationsController extends Controller
                 }
                 $channelTemplateConfig = $channelTemplateQuery->first();
                 if ($selectedTemplateId !== '' && ! $channelTemplateConfig) {
+                    $msg = 'Selected template is invalid for this channel.';
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => $msg], 422);
+                    }
+
                     return back()->withErrors([
-                        'selected_templateid' => 'Selected template is invalid for this channel.',
+                        'selected_templateid' => $msg,
                     ])->withInput();
                 }
 
@@ -952,14 +1014,40 @@ class QuotationsController extends Controller
 
                 $campioResult = $this->sendViaCampio($channel, $payload);
                 if (! $campioResult['ok']) {
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => $campioResult['message']], 422);
+                    }
+
                     return back()->withErrors(['general' => $campioResult['message']])->withInput();
                 }
             }
 
             $quotation->update(['status' => 'active']);
 
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Quotation sent successfully via '.strtoupper($email->channel).'.',
+                    'logid' => $email->logid,
+                    'sent_at' => now()->format('d M Y, h:i A'),
+                ]);
+            }
+
             return redirect()->route('quotations.email-compose', $quotation->quotationid)
                 ->with('success', 'Quotation sent successfully via '.strtoupper($email->channel).'.');
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Draft saved successfully.',
+                'logid' => $email->logid,
+                'customAttachmentUrls' => collect(explode(',', (string) ($email->custom_attachment_path ?? '')))
+                    ->map(fn ($path) => trim((string) $path))
+                    ->filter()
+                    ->values()
+                    ->all(),
+            ]);
         }
 
         return redirect()->route('quotations.email-compose', $quotation->quotationid)

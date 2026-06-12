@@ -83,7 +83,8 @@
                         <div class="col-12 col-md-6">
                             <label class="form-label small lh-sm fw-semibold text-dark mb-1">Start Date</label>
                             <div class="input-group">
-                                <input type="date" id="edit_start_date" class="form-control" disabled>
+                                <input type="date" id="edit_start_date" class="form-control">
+                                <!-- <input type="date" id="edit_start_date" class="form-control" disabled> -->
                                 <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
                             </div>
                         </div>
@@ -269,6 +270,7 @@
                     if (!orderId) return;
 
                     editForm.action = "{{ route('orders.update', ['order' => '__ORDER__']) }}".replace('__ORDER__', orderId);
+                    editForm.setAttribute('data-mode', 'edit');
                     editOrderNumberEl.textContent = '#' + (this.dataset.orderNumber || orderId);
                     editClientidInput.value = this.dataset.clientId || '';
                     editClientNameInput.value = this.dataset.clientName || '';
@@ -317,6 +319,8 @@
                         return;
                     }
 
+                    const mode = editForm.getAttribute('data-mode') || 'edit';
+
                     const payload = {
                         itemid: editItemSelect.value,
                         item_description: editDescriptionInput?.value || '',
@@ -324,7 +328,7 @@
                         no_of_users: editNoOfUsersInput && !editNoOfUsersInput.disabled && String(editNoOfUsersInput.value || '').trim() !== ''
                             ? Math.max(1, Math.round(Number(editNoOfUsersInput.value)))
                             : null,
-                        start_date: editOriginalStartDate || editStartDateInput?.value || todayStr,
+                        start_date: mode === 'add' ? (editStartDateInput?.value || todayStr) : (editOriginalStartDate || editStartDateInput?.value || todayStr),
                         end_date: editEndDateInput?.value || maxEndDate,
                         delivery_date: editDeliveryDateInput?.value || '',
                     };
@@ -332,6 +336,9 @@
                     document.getElementById('edit_items_data').value = JSON.stringify([payload]);
 
                     const formData = new FormData(editForm);
+                    if (mode === 'add') {
+                        formData.delete('_method');
+                    }
                     if (editClientDocidSelect?.value) {
                         formData.set('client_docid', editClientDocidSelect.value);
                     }
@@ -339,7 +346,9 @@
                     const originalText = submitBtn?.innerHTML;
                     if (submitBtn) {
                         submitBtn.disabled = true;
-                        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin btn-icon"></i> Updating...';
+                        submitBtn.innerHTML = mode === 'add'
+                            ? '<i class="fas fa-spinner fa-spin btn-icon"></i> Adding...'
+                            : '<i class="fas fa-spinner fa-spin btn-icon"></i> Updating...';
                     }
 
                     fetch(editForm.action, {
@@ -360,7 +369,7 @@
                                     window.location.reload();
                                 }
                             } else {
-                                let msg = data.message || 'Failed to update order.';
+                                let msg = data.message || (mode === 'add' ? 'Failed to create order.' : 'Failed to update order.');
                                 if (data.errors) {
                                     msg += '\n' + Object.values(data.errors).flat().join('\n');
                                 }
@@ -368,7 +377,7 @@
                             }
                         })
                         .catch(() => {
-                            alert('An error occurred while updating the order.');
+                            alert(mode === 'add' ? 'An error occurred while creating the order.' : 'An error occurred while updating the order.');
                         })
                         .finally(() => {
                             if (submitBtn) {

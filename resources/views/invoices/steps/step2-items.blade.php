@@ -24,87 +24,72 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 @endphp
 <!-- Step 2: Select Items -->
 <div id="step2">
-    {{-- Client Info Header with Back Button --}}
-    <div class="d-flex align-items-center bg-light p-3 rounded-3 border mb-3 gap-3">
-        <button type="button" id="btnBackToStep1" class="btn btn-outline-primary bg-white text-primary fw-medium">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <div class="vr"></div>
-        <div
-            class="d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-2 p-2 flex-shrink-0">
-            <i class="fas fa-user"></i>
-        </div>
-        <div class="flex-grow-1 min-w-0">
-            <div class="fw-semibold text-dark">{{ $selectedClientName }}</div>
-            @if ($selectedClientEmail)
-            <div class="small text-secondary-emphasis">{{ $selectedClientEmail }}</div>
-            @endif
-        </div>
-        <div class="d-flex align-items-center gap-3 flex-shrink-0 text-end">
-            <span id="piNumberBadge"
-                class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 fw-bold rounded-1 px-3 py-2">
-                {{ $initialHeaderNumberStep2 }}
-            </span>
-            <div class="d-flex align-items-center gap-1" aria-label="Step progress">
-                @foreach ([1, 2, 3, 4] as $s)
-                <span @class([ 'd-inline-flex align-items-center justify-content-center rounded-circle fw-bold'
-                    , 'bg-primary text-white border-0'=> $s === 2,
-                    'bg-white text-secondary border' => $s !== 2,
-                    ]) style="width:1.5rem;height:1.5rem;font-size:0.74rem;">{{ $s }}</span>
-                @endforeach
-            </div>
-        </div>
-    </div>
-
     <input type="hidden" name="clientid" value="{{ request('c', request('clientid')) }}">
     <input type="hidden" name="orderid" id="orderid" value="">
     <input type="hidden" name="invoice_number" value="{{ $initialHeaderNumberStep2 }}">
     <input type="hidden" name="items_data" id="items_data" value="">
 
-    <!-- Invoice Details (Full Width Card) -->
-    <div class="bg-light p-2 rounded-3 mb-3">
-        <div class="row g-2 align-items-end">
-            <div class="col-12 col-md-5">
-                <label for="invoice_title" class="form-label small lh-sm fw-semibold text-dark mb-1">Invoice
-                    Title</label>
-                <input type="text" id="invoice_title" name="invoice_title" class="form-control"
-                    placeholder="e.g. Website Development - Monthly Subscription" required>
-                <div id="invoiceTitleError" class="text-danger small mt-1 d-none">Invoice title is required.</div>
-            </div>
-            <div class="col-6 col-md-2">
-                <label for="issue_date" class="form-label small lh-sm fw-semibold text-dark mb-1">Issue Date</label>
-                <input type="date" id="issue_date" name="issue_date" class="form-control" required
-                    min="{{ $invoiceDateBounds['min_date'] }}"
-                    max="{{ $invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date'] }}"
-                    value="{{ old('issue_date', request('d') && $invoice ? $invoice->issue_date?->format('Y-m-d') : ($invoiceDateBounds['default_issue_date'] ?? date('Y-m-d'))) }}">
-            </div>
-            <div class="col-6 col-md-2">
-                <label for="due_date" class="form-label small lh-sm fw-semibold text-dark mb-1">Due Date</label>
-                <input type="date" id="due_date" name="due_date" class="form-control" required
-                    min="{{ $invoiceDateBounds['min_date'] }}"
-                    max="{{ $invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date'] }}"
-                    value="{{ old('due_date', request('d') && $invoice ? $invoice->due_date?->format('Y-m-d') : ($invoiceDateBounds['default_due_date'] ?? date('Y-m-d', strtotime('+7 days')))) }}">
-            </div>
-            <div class="col-12 col-md-3">
-                <label for="notes" class="form-label small lh-sm fw-semibold text-dark mb-1">Notes</label>
-                <input type="text" id="notes" name="notes" class="form-control" placeholder="Optional notes"
-                    value="{{ old('notes', request('d') && $invoice ? $invoice->notes : '') }}">
-            </div>
-        </div>
-    </div>
-
     <div class="row g-2">
         <!-- Left Column: col-12 col-lg-3 -->
         <div class="col-12 col-lg-3">
-            <!-- Select/Add Items Form -->
-            <div class="bg-DarkLight p-2 rounded-3 h-100" id="addItemFormCard">
-                <div class="mb-1">
-                    <h5 class="fw-semibold small lh-sm text-primary mb-0" id="addItemFormTitle">Add Items</h5>
+            <!-- Invoice Details (Full Width Card) -->
+            <div class="bg-secondary p-2 rounded-3 mb-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-12">
+                        <select id="clientid" class="form-select" required>
+                            <option value="">Choose client</option>
+                            @foreach($clients as $client)
+                            <option value="{{ $client->clientid }}" {{ (string)request('c',
+                                request('clientid'))===(string)$client->clientid ? 'selected' : '' }}>
+                                {{ $client->business_name ?? $client->contact_name }}
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-12">
+                        <input type="text" id="invoice_title" name="invoice_title" class="form-control"
+                            placeholder="e.g. Website Development - Monthly Subscription" required>
+                        <div id="invoiceTitleError" class="text-danger small mt-1 d-none">Invoice title is required.
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label for="issue_date" class="form-label small lh-sm fw-normal text-white mb-1">Issue
+                            Date</label>
+                        <div class="input-group">
+                            <input type="date" id="issue_date" name="issue_date" class="form-control" required readonly
+                                min="{{ $invoiceDateBounds['min_date'] }}"
+                                max="{{ $invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date'] }}"
+                                value="{{ old('issue_date', request('d') && $invoice ? $invoice->issue_date?->format('Y-m-d') : ($invoiceDateBounds['default_issue_date'] ?? date('Y-m-d'))) }}">
+                            <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label for="due_date" class="form-label small lh-sm fw-normal text-white mb-1">Due
+                            Date</label>
+                        <div class="input-group">
+                            <input type="date" id="due_date" name="due_date" class="form-control" required readonly
+                                min="{{ $invoiceDateBounds['min_date'] }}"
+                                max="{{ $invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date'] }}"
+                                value="{{ old('due_date', request('d') && $invoice ? $invoice->due_date?->format('Y-m-d') : ($invoiceDateBounds['default_due_date'] ?? date('Y-m-d', strtotime('+7 days')))) }}">
+                            <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-12">
+                        <input type="text" id="notes" name="notes" class="form-control" placeholder="Notes (Optional)"
+                            value="{{ old('notes', request('d') && $invoice ? $invoice->notes : '') }}">
+                    </div>
                 </div>
+            </div>
+            <!-- Select/Add Items Form -->
+            <div class="bg-DarkLight p-2 rounded-3" id="addItemFormCard">
+
                 <div class="row g-2">
-                    <div class="col-12">
-                        <label for="manual_item_itemid"
-                            class="form-label small lh-sm fw-semibold text-dark mb-1">Item</label>
+                    <div class="col-12 col-md-12">
+                        <div class="mb-1">
+                            <h5 class="fw-semibold small lh-sm text-primary mb-0" id="addItemFormTitle">Add Items</h5>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-12">
                         <div class="input-group">
                             <select id="manual_item_itemid" class="form-select" style="flex: 1;">
                                 <option value="">Select item</option>
@@ -122,39 +107,79 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                                 @endforeach
                             </select>
                             <button type="button" id="openAddOrderModalBtn"
-                                class="btn btn-outline-primary bg-white text-primary fw-medium"
+                                class="btn btn-outline-primary bg-primary text-white fw-medium"
                                 title="Create new order">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
                     </div>
 
-                    <div class="col-12">
-                        <label for="manual_item_description"
-                            class="form-label small lh-sm fw-semibold text-dark mb-1">Description</label>
-                        <textarea id="manual_item_description" class="form-control" rows="3"
-                            placeholder="Description (optional)"></textarea>
+                    <div class="col-12 col-md-12">
+                        <textarea id="manual_item_description" class="form-control"
+                            placeholder="Description (Optional)"></textarea>
                     </div>
 
-                    <div class="col-4">
+                    <div class="col-3 col-md-3">
                         <label for="manual_item_quantity"
                             class="form-label small lh-sm fw-semibold text-dark mb-1">Qty</label>
                         <input type="number" id="manual_item_quantity" class="form-control" value="1" min="1" step="1">
                     </div>
-                    <div class="col-4">
+                    <div id="manual_item_users_wrap" class="col-12 col-md-2">
+                        <label for="manual_item_users"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">User</label>
+                        <input type="number" id="manual_item_users" class="form-control" value="1" min="1" step="1"
+                            disabled>
+                    </div>
+                    <div class="col-12 col-md-5">
+                        <label for="manual_item_frequency"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Frequency</label>
+                        <select id="manual_item_frequency" class="form-select">
+                            <option value="One-Time">One-Time</option>
+                            <option value="Day(s)">Day(s)</option>
+                            <option value="Week(s)">Week(s)</option>
+                            <option value="Month(s)">Month(s)</option>
+                            <option value="Quarter(s)">Quarter(s)</option>
+                            <option value="Year(s)">Year(s)</option>
+                        </select>
+                    </div>
+
+                    <div id="manual_item_duration_wrap" class="col-12 col-md-2">
+                        <label for="manual_item_duration"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Dur</label>
+                        <input type="number" id="manual_item_duration" class="form-control" min="0" step="1"
+                            placeholder="e.g. 12" disabled>
+                    </div>
+                    <div id="manual_item_start_date_wrap" class="col-6 col-md-6">
+                        <label for="manual_item_start_date"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Start Date</label>
+                        <div class="input-group">
+                            <input type="date" id="manual_item_start_date" class="form-control" readonly>
+                            <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
+                        </div>
+                    </div>
+
+                    <div id="manual_item_end_date_wrap" class="col-6 col-md-6">
+                        <label for="manual_item_end_date"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Expiry</label>
+                        <div class="input-group">
+                            <input type="date" id="manual_item_end_date" class="form-control" readonly>
+                            <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-4 col-md-4">
                         <label for="manual_item_unit_price"
                             class="form-label small lh-sm fw-semibold text-dark mb-1">Price</label>
                         <input type="number" id="manual_item_unit_price" class="form-control" min="0" step="0.01">
                     </div>
-                    <div class="col-4">
-                        <label for="manual_item_discount" class="form-label small lh-sm fw-semibold text-dark mb-1">Disc
-                            %</label>
+                    <div class="col-4 col-md-4">
+                        <label for="manual_item_discount"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Discount (%)</label>
                         <input type="number" id="manual_item_discount" class="form-control" min="0" max="100"
                             step="0.01" value="0">
                     </div>
 
                     @if ($account->allow_multi_taxation)
-                    <div class="col-6">
+                    <div class="col-4 col-md-4">
                         <label for="manual_item_tax_rate"
                             class="form-label small lh-sm fw-semibold text-dark mb-1">Tax</label>
                         <select id="manual_item_tax_rate" class="form-select">
@@ -169,48 +194,9 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                     <input type="hidden" id="manual_item_tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
                     @endif
 
-                    <div id="manual_item_users_wrap" class="col-6 d-none">
-                        <label for="manual_item_users"
-                            class="form-label small lh-sm fw-semibold text-dark mb-1">Users</label>
-                        <input type="number" id="manual_item_users" class="form-control" value="1" min="1" step="1">
-                    </div>
-
-                    <div class="col-6">
-                        <label for="manual_item_frequency"
-                            class="form-label small lh-sm fw-semibold text-dark mb-1">Freq</label>
-                        <select id="manual_item_frequency" class="form-select">
-                            <option value="">None</option>
-                            <option value="One-Time">One-Time</option>
-                            <option value="Day(s)">Day(s)</option>
-                            <option value="Week(s)">Week(s)</option>
-                            <option value="Month(s)">Month(s)</option>
-                            <option value="Quarter(s)">Quarter(s)</option>
-                            <option value="Year(s)">Year(s)</option>
-                        </select>
-                    </div>
-
-                    <div id="manual_item_duration_wrap" class="col-6 d-none">
-                        <label for="manual_item_duration"
-                            class="form-label small lh-sm fw-semibold text-dark mb-1">Dur</label>
-                        <input type="number" id="manual_item_duration" class="form-control" min="0" step="1"
-                            placeholder="e.g. 12">
-                    </div>
-
-                    <div id="manual_item_start_date_wrap" class="col-6">
-                        <label for="manual_item_start_date"
-                            class="form-label small lh-sm fw-semibold text-dark mb-1">Start</label>
-                        <input type="date" id="manual_item_start_date" class="form-control">
-                    </div>
-
-                    <div id="manual_item_end_date_wrap" class="col-6">
-                        <label for="manual_item_end_date"
-                            class="form-label small lh-sm fw-semibold text-dark mb-1">End</label>
-                        <input type="date" id="manual_item_end_date" class="form-control">
-                    </div>
-
-                    <div class="col-12 d-flex justify-content-end mt-2">
+                    <div class="col-4 colmd-4 d-flex justify-content-end mt-auto ms-auto pt-2">
                         <button type="button" id="addManualItemBtn"
-                            class="btn btn-outline-primary btn-primary text-white fw-medium w-100">
+                            class="btn btn-outline-primary btn-primary text-white fw-medium">
                             Add Item <i class="fas fa-arrow-right btn-icon ms-1"></i>
                         </button>
                     </div>
@@ -220,57 +206,86 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
         <!-- Right Column: col-12 col-lg-9 -->
         <div class="col-12 col-lg-9">
-            <div id="invoiceItemsTableWrap" class="order-create-table-wrap bg-DarkLight p-3 h-100 rounded-3 mt-0">
-                <div class="card overflow-hidden">
-                    <div class="table-responsive">
-                        <table class="table table-striped mainTable align-middle mb-0 d-none" id="manualItemsTable">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Item</th>
-                                    <th class="text-center">Qty</th>
-                                    <th class="text-center">Price ({{ $selectedClientCurrency }})</th>
-                                    <th class="text-center">Disc %</th>
-                                    @if ($account->allow_multi_taxation)
-                                    <th class="text-center">Tax %</th>
-                                    @endif
-                                    <th id="manualUsersHeader" class="d-none text-center">Users</th>
-                                    <th>Freq</th>
-                                    <th id="manualDurationHeader" class="d-none text-center">Dur</th>
-                                    <th id="manualStartHeader" class="d-none">Start</th>
-                                    <th id="manualEndHeader" class="d-none">End</th>
-                                    <th class="text-right">Total ({{ $selectedClientCurrency }})</th>
-                                    <th class="text-end">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="manualItemsBody"></tbody>
-                        </table>
+            <div id="invoiceItemsTableWrap"
+                class="order-create-table-wrap bg-DarkLight p-2 h-100 d-flex flex-column justify-content-between rounded-3 mt-0">
+                <div>
+                    <div class="card overflow-hidden">
+                        <div class="table-responsive">
+                            <table class="table table-striped mainTable align-middle mb-0" id="manualItemsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="25%">Item</th>
+                                        <th class="text-center" width="10%">Qty</th>
+                                        @if ($account->allow_multi_taxation)
+                                        <th class="text-center">Tax %</th>
+                                        @endif
+                                        <th id="manualUsersHeader" class="d-none text-center" width="10%">Users</th>
+                                        <th id="manualFreqDurationHeader" class="d-none text-center" width="10%">
+                                            Freq & Dur</th>
+                                        <th id="manualStartEndHeader" class="d-none text-center" width="15%">Start & End
+                                            Date
+                                        </th>
+                                        <th class="text-end" width="10%">Price (Disc)</th>
+                                        <th class="text-end" width="10%">Total Price</th>
+                                        <th class="text-end" width="10%">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="manualItemsBody">
+
+                                </tbody>
+                                <thead id="manualOrderSummary">
+                                    <tr>
+                                        <td class="bg-light fw-semibold text-dark text-end" colspan="5">Subtotal</td>
+                                        <td id="manualSubtotal" class="bg-light fw-semibold text-end">0</td>
+                                        <td class="bg-light" colspan="2"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="bg-light fw-semibold text-dark text-end" colspan="5">Discount</td>
+                                        <td id="manualDiscountTotal" class="bg-light fw-semibold text-success text-end">
+                                            - 0
+                                        </td>
+                                        <td class="bg-light" colspan="2"></td>
+                                    </tr>
+
+                                    <tr>
+                                        <td class="bg-light fw-semibold text-dark text-end" colspan="5">Tax</td>
+                                        <td id="manualTaxTotal" class="bg-light fw-semibold text-end">0</td>
+                                        <td class="bg-light" colspan="2"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="bg-DarkLight fw-semibold text-dark text-end" colspan="5">Grand Total
+                                        </td>
+                                        <td id="manualGrandTotal" class="bg-DarkLight fw-semibold fs-6 lh-sm text-end">0
+                                        </td>
+                                        <td class="bg-DarkLight" colspan="2"></td>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
                     </div>
+
+                    <!--<div class="bg-white rounded-3 p-3 d-none mt-3 ms-auto" style="max-width: 320px;">
+                        <div class="d-flex justify-content-between small mb-1 text-secondary">
+                            <span>Subtotal</span><strong id="manualSubtotal">0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between small mb-1 text-secondary">
+                            <span>Discount</span><strong id="manualDiscountTotal">0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between small mb-1 text-secondary"><span>Tax</span><strong
+                                id="manualTaxTotal">0</strong></div>
+                        <div class="d-flex justify-content-between small border-top pt-2 fw-bold text-dark">
+                            <span>Total</span><strong id="manualGrandTotal">0</strong>
+                        </div>
+                    </div>-->
                 </div>
-
-                <div id="manualItemsEmpty" class="alert alert-light border mt-3 mb-0">No items added yet.</div>
-
-                <div id="manualOrderSummary" class="bg-light border rounded-3 p-3 d-none mt-3 ms-auto"
-                    style="max-width: 320px;">
-                    <div class="d-flex justify-content-between small mb-1 text-secondary"><span>Subtotal</span><strong
-                            id="manualSubtotal">0</strong></div>
-                    <div class="d-flex justify-content-between small mb-1 text-secondary"><span>Discount</span><strong
-                            id="manualDiscountTotal">0</strong></div>
-                    <div class="d-flex justify-content-between small mb-1 text-secondary"><span>Tax</span><strong
-                            id="manualTaxTotal">0</strong></div>
-                    <div class="d-flex justify-content-between small border-top pt-2 fw-bold text-dark">
-                        <span>Total</span><strong id="manualGrandTotal">0</strong></div>
+                <div class="d-flex align-items-center justify-content-end mt-3">
+                    <button type="button" id="btnNextToStep3"
+                        class="btn btn-outline-primary bg-primary text-white fw-medium">
+                        Save & Continue <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                    </button>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="d-flex align-items-center justify-content-between mt-3">
-        <button type="button" id="btnBackToStep1" class="btn btn-outline-primary bg-white text-primary fw-medium">
-            <i class="fas fa-times btn-icon me-1"></i> Back
-        </button>
-        <button type="button" id="btnNextToStep3" class="btn btn-outline-primary btn-primary text-white fw-medium">
-            Save & Next <i class="fas fa-arrow-right btn-icon ms-1"></i>
-        </button>
     </div>
 </div>
 
@@ -279,12 +294,10 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
         const addManualItemBtn = document.getElementById('addManualItemBtn');
         const manualItemsBody = document.getElementById('manualItemsBody');
         const manualItemsTable = document.getElementById('manualItemsTable');
-        const manualItemsEmpty = document.getElementById('manualItemsEmpty');
         const manualSummary = document.getElementById('manualOrderSummary');
         const btnNextToStep3 = document.getElementById('btnNextToStep3');
         const toggleAddItemFormBtn = document.getElementById('toggleAddItemFormBtn');
         const addItemFormCard = document.getElementById('addItemFormCard');
-        const btnBackToStep1 = document.getElementById('btnBackToStep1');
         const itemsDataInput = document.getElementById('items_data');
         const invoiceTitleInput = document.getElementById('invoice_title');
         const invoiceTitleError = document.getElementById('invoiceTitleError');
@@ -296,14 +309,15 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
         const manualStartInput = document.getElementById('manual_item_start_date');
         const manualEndInput = document.getElementById('manual_item_end_date');
         const piNumberBadge = document.getElementById('piNumberBadge');
-        const isTaxInvoice = @json($isTaxInvoiceStep2);
+        const clientSelect = document.getElementById('clientid');
+        const isTaxInvoice = "{{ $isTaxInvoiceStep2 ? '1' : '' }}" === "1";
         const draftId = "{{ request('d', '') }}";
         const clientId = "{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}";
         const fallbackPiNumber = "{{ $nextInvoiceNumber }}";
         const fallbackTiNumber = "{{ $nextTaxInvoiceNumber ?? $nextInvoiceNumber }}";
-        const accountHasUsers = @json((bool)($account -> have_users ?? false));
+        const accountHasUsers = "{{ ($account->have_users ?? false) ? '1' : '' }}" === "1";
         const ONE_TIME_MAX_END_DATE = '2099-12-31';
-        const rawOrderItemsRoute = @json(route('invoices.order-items', ['orderid' => '__ORDERID__']));
+        const rawOrderItemsRoute = "{{ route('invoices.order-items', ['orderid' => '__ORDERID__']) }}";
         const orderItemsRouteTemplate = rawOrderItemsRoute.startsWith('http') ? new URL(rawOrderItemsRoute).pathname : rawOrderItemsRoute;
         const TAX_READY_TOAST_KEY = 'invoice_tax_ready_toast';
         let draftPiNumber = '';
@@ -413,9 +427,9 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             const name = escapeHtml(item.item_name || 'Item');
             const description = escapeHtml(item.item_description || '').trim();
             return description ? `
-            <div class="fw-semibold text-dark">${name}</div>
-            <div class="small text-secondary-emphasis">${description}</div>
-        ` : `<div class="fw-semibold text-dark">${name}</div>`;
+            <div class="fw-semibold">${name}</div>
+            <div class="small-text">${description}</div>
+        ` : `<div class="fw-semibold">${name}</div>`;
         }
 
         async function fetchOrderDatePrefill(orderId) {
@@ -507,12 +521,12 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             const usersInput = document.getElementById('manual_item_users');
             if (!wrap || !usersInput) return;
             if (!accountHasUsers) {
-                wrap.classList.add('d-none');
+                usersInput.disabled = true;
                 usersInput.value = 1;
                 return;
             }
             const show = isManualItemUserWise();
-            wrap.classList.toggle('d-none', !show);
+            usersInput.disabled = !show;
             if (!show) usersInput.value = 1;
         }
         toggleManualUsersField();
@@ -606,7 +620,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             if (!manualDurationWrap || !manualDurationInput || !manualStartWrap || !manualEndWrap || !
                 manualStartInput || !manualEndInput) return;
             const showRecurring = isRecurringFrequency(manualFrequencyInput?.value || '');
-            manualDurationWrap.classList.toggle('d-none', !showRecurring);
+            manualDurationInput.disabled = !showRecurring;
             manualStartWrap.classList.remove('d-none');
             manualEndWrap.classList.remove('d-none');
             if (showRecurring) {
@@ -615,7 +629,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                     manualDurationInput.value = '1';
                 }
             } else {
-                manualDurationInput.value = '';
+                manualDurationInput.value = '1';
             }
         }
 
@@ -647,13 +661,11 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             const showRecurringColumns = manualItems.some(item => itemIsRecurring(item) || itemHasDates(item));
             const showUserColumns = manualItems.some(itemHasUsers);
             const usersHeader = document.getElementById('manualUsersHeader');
-            const durationHeader = document.getElementById('manualDurationHeader');
-            const startHeader = document.getElementById('manualStartHeader');
-            const endHeader = document.getElementById('manualEndHeader');
+            const freqDurationHeader = document.getElementById('manualFreqDurationHeader');
+            const startEndHeader = document.getElementById('manualStartEndHeader');
             if (usersHeader) usersHeader.classList.toggle('d-none', !showUserColumns);
-            if (durationHeader) durationHeader.classList.toggle('d-none', !showRecurringColumns);
-            if (startHeader) startHeader.classList.toggle('d-none', !showRecurringColumns);
-            if (endHeader) endHeader.classList.toggle('d-none', !showRecurringColumns);
+            if (freqDurationHeader) freqDurationHeader.classList.toggle('d-none', !showRecurringColumns);
+            if (startEndHeader) startEndHeader.classList.toggle('d-none', !showRecurringColumns);
 
             return {
                 showRecurringColumns,
@@ -766,8 +778,14 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
         function renderManualItems() {
             if (manualItems.length === 0) {
-                manualItemsTable.classList.add('d-none');
-                manualItemsEmpty.classList.remove('d-none');
+                manualItemsTable.classList.remove('d-none');
+                manualItemsBody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">
+                            No items added yet. Select an item or add one manually.
+                        </td>
+                    </tr>
+                `;
                 manualSummary.classList.add('d-none');
                 btnNextToStep3.disabled = true;
                 syncManualHeaders();
@@ -775,7 +793,6 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             }
 
             manualItemsTable.classList.remove('d-none');
-            manualItemsEmpty.classList.add('d-none');
             manualSummary.classList.remove('d-none');
             btnNextToStep3.disabled = false;
             const headerState = syncManualHeaders();
@@ -810,17 +827,22 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                 row.innerHTML = `
                 <td>${renderItemCell(item)}</td>
                 <td class="text-center">${Math.round(Number(item.quantity) || 0)}</td>
-                <td class="text-center">${formatCurrency(item.unit_price)}</td>
-                <td class="text-center">${Number(item.discount_percent || 0).toFixed(0)}%</td>
                 @if ($account->allow_multi_taxation)
                     <td class="text-center">${item.tax_rate}%</td>
                 @endif
                 <td class="text-center ${showUserColumns ? '' : 'd-none'}">${rowUsers ? Math.max(1, Number(item.no_of_users || 1)) : '-'}</td>
-                <td>${item.frequency ? (frequencyLabels[item.frequency] || item.frequency) : '-'}</td>
-                <td class="text-center ${showRecurringColumns ? '' : 'd-none'}">${rowRecurring ? (item.duration || '-') : '-'}</td>
-                <td class="text-center ${showRecurringColumns ? '' : 'd-none'}">${(rowRecurring || rowHasDates) ? formatDateToDisplay(item.start_date) : '-'}</td>
-                <td class="text-center ${showRecurringColumns ? '' : 'd-none'}">${(rowRecurring || rowHasDates) ? formatDateToDisplay(item.end_date) : '-'}</td>
-                <td class="text-center">${formatCurrency(item.discount_amount)}</td>
+                <td class="text-center ${showRecurringColumns ? '' : 'd-none'}">
+                    <div>${rowRecurring ? `<span class="text-dark">${item.duration || '-'}</span> ` : ''}${item.frequency ? (frequencyLabels[item.frequency] || item.frequency) : '-'}</div>
+                </td>
+                <td class="text-center ${showRecurringColumns ? '' : 'd-none'}">
+                    <div>${(rowRecurring || rowHasDates) ? formatDateToDisplay(item.start_date) : '-'}</div>
+                    <div class="text-dark">${(rowRecurring || rowHasDates) ? formatDateToDisplay(item.end_date) : '-'}</div>
+                </td>
+                <td class="text-end">
+                    <div>${formatCurrency(item.unit_price)}</div>
+                    <small class="d-block small lh-sm fw-semibold text-success text-uppercase">(${Number(item.discount_percent || 0).toFixed(0)}% Off)</small>
+                </td>
+                <td class="text-end">${formatCurrency(item.discount_amount)}</td>
                 <td class="text-end">
                     <div class="tableActionButton d-inline-flex gap-1">
                         <button type="button" class="bg03 color03 border-0 edit-item-btn" data-index="${index}">Edit</button>
@@ -908,7 +930,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             const roundedTaxTotal = roundTaxUp(taxTotal);
 
             document.getElementById('manualSubtotal').textContent = formatCurrency(subtotal);
-            document.getElementById('manualDiscountTotal').textContent = formatCurrency(roundedDiscountTotal);
+            document.getElementById('manualDiscountTotal').textContent = '- ' + formatCurrency(roundedDiscountTotal);
             document.getElementById('manualTaxTotal').textContent = formatCurrency(roundedTaxTotal);
             document.getElementById('manualGrandTotal').textContent = formatCurrency(subtotal -
                 roundedDiscountTotal + roundedTaxTotal);
@@ -927,7 +949,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                 return;
             }
 
-            const clientId = "{{ request('c', request('clientid')) }}";
+            const clientId = clientSelect?.value || "{{ request('c', request('clientid')) }}";
             if (!clientId) {
                 alert('Please select a client before continuing.');
                 return;
@@ -997,15 +1019,22 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                 });
         });
 
-        btnBackToStep1.addEventListener('click', function () {
-            const clientId = "{{ request('c', request('clientid')) }}";
-            const clientToken = encodeURIComponent(clientId);
-            let backUrl = "{{ route('invoices.create') }}?step=1&c=" + clientToken;
-            if (isTaxInvoice) {
-                backUrl += "&tax_invoice=1";
-            }
-            window.location.href = backUrl;
-        });
+
+        if (clientSelect) {
+            clientSelect.addEventListener('change', function () {
+                if (!this.value) return;
+                const createRoute = "{{ route('invoices.create') }}";
+                const createPath = createRoute.startsWith('http') ? new URL(createRoute).pathname : createRoute;
+                let target = createPath + "?step=2&c=" + encodeURIComponent(this.value);
+                if (isTaxInvoice) {
+                    target += "&tax_invoice=1";
+                }
+                if (draftId) {
+                    target += "&d=" + encodeURIComponent(draftId);
+                }
+                window.location.href = target;
+            });
+        }
 
         invoiceTitleInput.addEventListener('input', function () {
             if (this.value.trim()) {
@@ -1116,19 +1145,21 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
         }
 
         loadItems();
+        renderManualItems();
         updateStep2HeaderNumber();
 
         // Modal & AJAX Order Creation integration
         const openAddOrderModalBtn = document.getElementById('openAddOrderModalBtn');
         if (openAddOrderModalBtn) {
             openAddOrderModalBtn.addEventListener('click', function () {
-                if (!clientId) {
+                const currentClientId = clientSelect?.value || clientId;
+                if (!currentClientId) {
                     alert('Please select a client before continuing.');
                     return;
                 }
                 const modalEl = document.getElementById('editOrderModal');
                 if (!modalEl) return;
-                
+
                 const editModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
                 const editForm = document.getElementById('editOrderForm');
                 const editClientidInput = document.getElementById('edit_clientid');
@@ -1151,11 +1182,12 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                 // Set to Add Mode
                 if (editForm) {
                     editForm.action = "{{ route('orders.store') }}";
+                    editForm.setAttribute('data-mode', 'add');
                 }
                 if (methodInput) {
                     methodInput.disabled = true; // disable PUT method input
                 }
-                
+
                 if (modalTitle) {
                     modalTitle.innerHTML = 'Add Order';
                 }
@@ -1168,10 +1200,15 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
                 // Prefill Client
                 if (editClientidInput) {
-                    editClientidInput.value = clientId;
+                    editClientidInput.value = currentClientId;
                 }
                 if (editClientNameInput) {
-                    editClientNameInput.value = "{{ $selectedClientName }}";
+                    if (clientSelect && clientSelect.selectedIndex >= 0) {
+                        const selectedOption = clientSelect.options[clientSelect.selectedIndex];
+                        editClientNameInput.value = selectedOption && selectedOption.value ? selectedOption.text.trim() : "{{ $selectedClientName }}";
+                    } else {
+                        editClientNameInput.value = "{{ $selectedClientName }}";
+                    }
                 }
 
                 // Reset/Enable fields
@@ -1219,7 +1256,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                 // Populate client documents dynamically via AJAX
                 if (editClientDocidSelect) {
                     editClientDocidSelect.innerHTML = '<option value="">Select</option>';
-                    const documentsRoute = "{{ route('clients.documents.list', ['client' => '__CLIENT__']) }}".replace('__CLIENT__', clientId);
+                    const documentsRoute = "{{ route('clients.documents.list', ['client' => '__CLIENT__']) }}".replace('__CLIENT__', currentClientId);
                     fetch(documentsRoute)
                         .then(response => response.json())
                         .then(data => {
@@ -1257,11 +1294,12 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
         };
 
         function fetchUpdatedOrderItems() {
-            if (!clientId) return;
+            const currentClientId = clientSelect?.value || clientId;
+            if (!currentClientId) return;
 
             const orderItemsRoute = "{{ route('invoices.client-order-items') }}";
             const orderItemsPath = orderItemsRoute.startsWith('http') ? new URL(orderItemsRoute).pathname : orderItemsRoute;
-            const url = `${orderItemsPath}?clientid=${encodeURIComponent(clientId)}`;
+            const url = `${orderItemsPath}?clientid=${encodeURIComponent(currentClientId)}`;
 
             fetch(url, {
                 headers: {
@@ -1300,5 +1338,3 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
         }
     })();
 </script>
-
-@include('orders.partials.edit-order-modal')

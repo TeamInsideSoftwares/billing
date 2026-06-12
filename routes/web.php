@@ -190,6 +190,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/orders/{order}', 'ordersUpdate')->name('orders.update');
         Route::patch('/orders/{order}/restore', 'ordersRestore')->name('orders.restore');
         Route::delete('/orders/{order}', 'ordersDestroy')->name('orders.destroy');
+        Route::delete('/orders/{order}/force-delete', 'ordersForceDelete')->name('orders.force-delete');
     });
 
     Route::controller(SettingsController::class)->group(function () {

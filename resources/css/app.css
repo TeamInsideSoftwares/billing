@@ -481,7 +481,37 @@
     gap: 0.4rem;
 }
 
+.btn-close:focus {
+    box-shadow: none;
+}
 
+.termsListBlock p {
+    margin-bottom: 0;
+    margin-top: 4px;
+}
+
+.termsListBlock::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.termsListBlock::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.termsListBlock::-webkit-scrollbar-thumb {
+    background: rgba(37, 99, 235, 0.25); /* primary light */
+    border-radius: 3px;
+}
+
+.termsListBlock::-webkit-scrollbar-thumb:hover {
+    background: rgba(37, 99, 235, 0.45);
+}
+
+.termsListBlock {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(37, 99, 235, 0.25) transparent;
+}
 
 .desc-toggle-icon {
     transition: transform 0.2s ease;

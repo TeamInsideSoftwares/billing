@@ -170,6 +170,13 @@ $subtitle = null;
                         <td>
                             <div class="d-flex align-items-center flex-wrap gap-1">
                                 <span class="fw-bold text-dark">{{ $order['items'][0]['item_name'] ?? 'Item' }}</span>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    @if(($order['status'] ?? '') === 'cancelled')
+                                    <span
+                                        class="status-pill rounded-pill border border-danger text-danger bg-light is-cancelled py-0 px-2 small"
+                                        style="font-size: 11px;">Cancelled</span>
+                                    @endif
+                                </div>
                                 @if(!empty($order['items'][0]['item_description']))
                                 <button type="button"
                                     class="btn p-0 border-0 bg-transparent btn-desc-toggle d-inline-flex align-items-center"
@@ -225,7 +232,11 @@ $subtitle = null;
                             }
                             @endphp
 
+                            @if(in_array($orderEndDate, ['9999-12-31', '2099-12-31']))
+                            No Expiry
+                            @else
                             {{ $orderEndDate ? \Carbon\Carbon::parse($orderEndDate)->format('d M Y') : '-' }}
+                            @endif
 
                             @if($showDays)
                             <br>
@@ -296,6 +307,13 @@ $subtitle = null;
                                     <button type="submit" class="bg01 color01">Restore</button>
                                 </form>
                                 @endif
+                                <form method="POST"
+                                    action="{{ route('orders.force-delete', ['order' => $order['record_id']]) }}"
+                                    class="d-inline" onsubmit="return confirm('Permanently delete this order?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="bg04 color04">Delete</button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -310,7 +328,7 @@ $subtitle = null;
             <div class="col">
                 <div class="card h-100 border-0 overflow-hidden">
                     <div class="card-body p-3 d-flex flex-column justify-content-between"
-                        style="background-color: #fff; border-radius: 8px;">
+                        style="background-color: {{ ($order['status'] ?? '') === 'cancelled' ? '#fff5f5' : '#fff' }}; border-radius: 8px; {{ ($order['status'] ?? '') === 'cancelled' ? 'border: 1px solid #f5c2c7 !important;' : '' }}">
                         <div>
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <span class="text-muted small fw-semibold text-truncate" style="max-width: 120px;">#{{
@@ -374,10 +392,6 @@ $subtitle = null;
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="text-muted small">Expiry</span>
                                     <div class="text-end">
-                                        <strong class="text-dark fw-semibold d-block">{{
-                                            !empty($order['items'][0]['end_date']) ?
-                                            \Carbon\Carbon::parse($order['items'][0]['end_date'])->format('d M Y') : '-'
-                                            }}</strong>
                                         @php
                                         $orderEndDate = $order['items'][0]['end_date'] ?? null;
                                         $showDays = $orderEndDate && !in_array($orderEndDate, ['9999-12-31',
@@ -389,6 +403,14 @@ $subtitle = null;
                                         false);
                                         }
                                         @endphp
+                                        <strong class="text-dark fw-semibold d-block">
+                                            @if(in_array($orderEndDate, ['9999-12-31', '2099-12-31']))
+                                            No Expiry
+                                            @else
+                                            {{ $orderEndDate ? \Carbon\Carbon::parse($orderEndDate)->format('d M Y') :
+                                            '-' }}
+                                            @endif
+                                        </strong>
                                         @if($showDays)
                                         @if($daysLeft >= 0)
                                         <small class="text-success small lh-sm fw-semibold">{{ $daysLeft }}
@@ -458,6 +480,12 @@ $subtitle = null;
                                 <button type="submit" class="bg02 color02 text-center w-100">Restore</button>
                             </form>
                             @endif
+                            <form method="POST" action="{{ route('orders.force-delete', ['order' => $order['record_id']]) }}"
+                                class="d-inline flex-grow-1" onsubmit="return confirm('Permanently delete this order?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="bg04 color04 text-center w-100">Delete</button>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -644,7 +672,17 @@ $subtitle = null;
                 setText(itemDescription, this.dataset.itemDescription || '-');
                 setText(startDateDisplay, this.dataset.startDate || '-');
                 setText(currentEndDateDisplay, this.dataset.endDateDisplay || '-');
-                setText(statusDisplay, this.dataset.status || '-');
+                const statusVal = this.dataset.status || '-';
+                setText(statusDisplay, statusVal);
+                if (statusDisplay) {
+                    if (statusVal.toLowerCase() === 'active') {
+                        statusDisplay.classList.remove('text-danger');
+                        statusDisplay.classList.add('text-success');
+                    } else {
+                        statusDisplay.classList.remove('text-success');
+                        statusDisplay.classList.add('text-danger');
+                    }
+                }
                 setText(daysLeftDisplay, daysLeft);
                 setText(todayDisplay, new Date().toLocaleDateString());
                 applyRenewEndDate(this.dataset.endDate || '');

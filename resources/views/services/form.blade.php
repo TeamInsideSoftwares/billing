@@ -53,11 +53,11 @@
         }
         @endphp
 
-        <div class="row g-3 align-items-stretch">
+        <div class="row g-2 align-items-stretch">
             <div class="col-12 col-lg-4">
-                <div class="bg-light p-4 rounded-3 border h-100">
-                    <div class="mb-3">
-                        <h5 class="fw-semibold text-black mb-0">Item Details</h5>
+                <div class="bg-light p-2 rounded-3 h-100">
+                    <div class="mb-2">
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Item Details</h5>
                     </div>
 
                     <div class="row g-2">
@@ -112,9 +112,9 @@
             </div>
 
             <div class="col-12 col-lg-4">
-                <div class="bg-light p-4 rounded-3 border h-100">
-                    <div class="mb-3">
-                        <h5 class="fw-semibold text-black mb-0">Description & Settings</h5>
+                <div class="bg-light p-2 rounded-3 h-100">
+                    <div class="mb-2">
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Description & Settings</h5>
                     </div>
 
                     <div class="row g-2">
@@ -160,9 +160,9 @@
             </div>
 
             <div class="col-12 col-lg-4">
-                <div class="bg-light p-4 rounded-3 border h-100">
-                    <div class="mb-3">
-                        <h5 class="fw-semibold text-black mb-0">Parent Items</h5>
+                <div class="bg-light p-2 rounded-3 h-100">
+                    <div class="mb-2">
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Parent Items</h5>
                         <p class="small text-muted mb-0">This item belongs under which parent item(s)?</p>
                     </div>
 
@@ -195,10 +195,10 @@
             </div>
         </div>
 
-        <div class="bg-light p-4 rounded-3 border mt-3">
-            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
+        <div class="bg-light p-2 rounded-3 mt-2">
+            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
                 <div>
-                    <h5 class="fw-semibold text-black mb-0">Item Costings</h5>
+                    <h5 class="fw-semibold text-primary small lh-sm mb-0">Item Costings</h5>
                     <p class="small text-muted mb-0">Add pricing per currency</p>
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">

@@ -46,9 +46,11 @@
                         </div>
                         <div class="col-12 col-md-12">
                             <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                                for="renew_order_end_date">New
-                                Expiry</label>
-                            <input type="date" name="end_date" id="renew_order_end_date" class="form-control" required>
+                                for="renew_order_end_date">New Expiry</label>
+                            <div class="input-group">
+                                <input type="date" name="end_date" id="renew_order_end_date" class="form-control" required readonly>
+                                <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
+                            </div>
                         </div>
                         <div class="col-12 col-md-12">
                             <div class="d-flex align-items-center justify-content-end mt-2">

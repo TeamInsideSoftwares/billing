@@ -16,6 +16,7 @@ return new class extends Migration
         });
 
         Schema::table('financial_year', function (Blueprint $table) {
+            $table->dropIndex(['start_date', 'duration_months']);
             $table->dropColumn(['duration_months', 'start_date', 'end_date']);
         });
     }
@@ -29,6 +30,7 @@ return new class extends Migration
             $table->unsignedInteger('duration_months')->default(12);
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
+            $table->index(['start_date', 'duration_months']);
         });
 
         Schema::table('accounts', function (Blueprint $table) {

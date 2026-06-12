@@ -524,6 +524,7 @@ class ClientsController extends Controller
         $accountId = $this->resolveAccountId();
         $billingProfiles = ClientBillingDetail::query()
             ->where('accountid', $accountId)
+            ->with('clients:clientid,bd_id,business_name')
             ->orderBy('business_name')
             ->get();
         $currencies = DB::table('currency')
@@ -1011,6 +1012,7 @@ class ClientsController extends Controller
         $accountId = $client->accountid ?: $this->resolveAccountId();
         $billingProfiles = ClientBillingDetail::query()
             ->where('accountid', $accountId)
+            ->with('clients:clientid,bd_id,business_name')
             ->orderBy('business_name')
             ->get();
         $currencies = DB::table('currency')

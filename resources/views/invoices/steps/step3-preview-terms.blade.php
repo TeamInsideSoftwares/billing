@@ -1,53 +1,86 @@
 @php
-    $invoiceDateBounds = $invoiceDateBounds ?? [
-        'default_issue_date' => '',
-        'default_due_date' => '',
-    ];
-    $selectedInvoiceClient = $clients->firstWhere('clientid', request('c', request('clientid')));
-    $selectedClientCurrency = optional($selectedInvoiceClient)->currency ?? 'INR';
-    $selectedClientName = $selectedInvoiceClient
-        ? $selectedInvoiceClient->business_name ?? ($selectedInvoiceClient->contact_name ?? 'Unknown Client')
-        : 'No Client Selected';
-    $selectedClientEmail = optional($selectedInvoiceClient)->email ?? '';
-    $isTaxInvoiceStep3 = request('tax_invoice', 0) == 1 || !empty($invoice?->ti_number);
-    $initialHeaderNumber = $isTaxInvoiceStep3
-        ? ($invoice?->ti_number ?:
-        $nextTaxInvoiceNumber ?? $nextInvoiceNumber)
-        : ($invoice?->pi_number ?:
-        $nextInvoiceNumber);
+$invoiceDateBounds = $invoiceDateBounds ?? [
+'default_issue_date' => '',
+'default_due_date' => '',
+];
+$selectedInvoiceClient = $clients->firstWhere('clientid', request('c', request('clientid')));
+$selectedClientCurrency = optional($selectedInvoiceClient)->currency ?? 'INR';
+$selectedClientName = $selectedInvoiceClient
+? $selectedInvoiceClient->business_name ?? ($selectedInvoiceClient->contact_name ?? 'Unknown Client')
+: 'No Client Selected';
+$selectedClientEmail = optional($selectedInvoiceClient)->email ?? '';
+$isTaxInvoiceStep3 = request('tax_invoice', 0) == 1 || !empty($invoice?->ti_number);
+$initialHeaderNumber = $isTaxInvoiceStep3
+? ($invoice?->ti_number ?: $nextTaxInvoiceNumber ?? $nextInvoiceNumber)
+: ($invoice?->pi_number ?: $nextInvoiceNumber);
+
+$signatureUploadPath = optional($accountBillingDetail)->signature_upload;
+$signatureUploadUrl = null;
+if (!empty($signatureUploadPath)) {
+if (str_starts_with($signatureUploadPath, 'http://') || str_starts_with($signatureUploadPath, 'https://')) {
+$signatureUploadUrl = $signatureUploadPath;
+} else {
+$signatureUploadUrl = asset(str_starts_with($signatureUploadPath, 'storage/') ? $signatureUploadPath : 'storage/' .
+ltrim($signatureUploadPath, '/'));
+}
+}
+
+$accountDataArr = [
+'name' => optional($account)->name,
+'logo' => $account && $account->logo_path ? (str_starts_with($account->logo_path, 'http') ? $account->logo_path :
+asset($account->logo_path)) : null,
+'billing' => [
+'name' => optional($accountBillingDetail)->billing_name ?? optional($account)->name,
+'address' => optional($accountBillingDetail)->address ?? '',
+'city' => optional($accountBillingDetail)->city ?? '',
+'state' => optional($accountBillingDetail)->state ?? '',
+'postal_code' => optional($accountBillingDetail)->postal_code ?? '',
+'country' => optional($accountBillingDetail)->country ?? '',
+'gstin' => optional($accountBillingDetail)->gstin ?? '',
+'signatory' => optional($accountBillingDetail)->authorize_signatory ?? '',
+'signature' => $signatureUploadUrl,
+],
+];
+
+$clientBilling = optional($selectedInvoiceClient)->billingDetail;
+$clientDataArr = [
+'name' => optional($selectedInvoiceClient)->business_name ?? (optional($selectedInvoiceClient)->contact_name ??
+'Client'),
+'contact_name' => optional($selectedInvoiceClient)->contact_name ?? '',
+'email' => optional($selectedInvoiceClient)->email ?? '',
+'phone' => optional($selectedInvoiceClient)->phone ?? '',
+'billing' => [
+'name' => optional($clientBilling)->business_name ?? (optional($selectedInvoiceClient)->business_name ?? ''),
+'address_line_1' => optional($clientBilling)->address_line_1 ?? '',
+'city' => optional($clientBilling)->city ?? '',
+'state' => optional($clientBilling)->state ?? '',
+'postal_code' => optional($clientBilling)->postal_code ?? '',
+'country' => optional($clientBilling)->country ?? '',
+'gstin' => optional($clientBilling)->gstin ?? '',
+],
+];
+
+$termsByType = [
+'proforma' => ($proformaTerms ?? collect())->map(function ($term) {
+return [
+'id' => $term->tc_id,
+'content' => $term->content,
+'is_default' => (int) ($term->is_default ?? 0),
+];
+})->values()->all(),
+'billing' => ($billingTerms ?? collect())->map(function ($term) {
+return [
+'id' => $term->tc_id,
+'content' => $term->content,
+'is_default' => (int) ($term->is_default ?? 0),
+];
+})->values()->all(),
+];
 @endphp
 <!-- Step 3: Preview & Terms (For Orders & Renewal, and Without Orders Step 3) -->
-<div id="step3">
-    {{-- Client Info Header with Back Button --}}
-    <div class="d-flex align-items-center bg-light p-3 rounded-3 border mb-3 gap-3">
-        <button type="button" id="btnBackToPrev" class="btn btn-outline-primary bg-white text-primary fw-medium">
-            <i class="fas fa-arrow-left small"></i>
-        </button>
-        <div class="vr"></div>
-        <div class="d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-2 p-2 flex-shrink-0">
-            <i class="fas fa-user"></i>
-        </div>
-        <div class="flex-grow-1 min-w-0">
-            <div class="fw-semibold text-dark">{{ $selectedClientName }}</div>
-            @if ($selectedClientEmail)
-                <div class="small text-secondary-emphasis">{{ $selectedClientEmail }}</div>
-            @endif
-        </div>
-        <div class="d-flex align-items-center gap-3 flex-shrink-0 text-nowrap">
-            <span id="piNumberBadge" class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 fw-bold rounded-1 px-3 py-2">
-                {{ $initialHeaderNumber }}
-            </span>
-            <div class="d-flex align-items-center gap-1" aria-label="Step progress">
-                @foreach ([1, 2, 3, 4] as $s)
-                    <span @class([
-                        'd-inline-flex align-items-center justify-content-center rounded-circle fw-bold',
-                        'bg-primary text-white border-0' => $s === 3,
-                        'bg-white text-secondary border' => $s !== 3,
-                    ]) style="width:1.5rem;height:1.5rem;font-size:0.74rem;">{{ $s }}</span>
-                @endforeach
-            </div>
-        </div>
-    </div>
+<div id="step3" data-account-data="{{ json_encode($accountDataArr) }}"
+    data-client-data="{{ json_encode($clientDataArr) }}" data-is-tax-invoice="{{ $isTaxInvoiceStep3 ? '1' : '0' }}"
+    data-terms-by-type="{{ json_encode($termsByType) }}">
 
     <input type="hidden" name="clientid" value="{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}">
     <input type="hidden" name="orderid"
@@ -58,133 +91,163 @@
         value="{{ $isTaxInvoiceStep3 ? ($invoice?->ti_number ?: $nextTaxInvoiceNumber ?? $nextInvoiceNumber) : $invoice?->pi_number ?? $nextInvoiceNumber }}">
     <input type="hidden" name="issue_date" id="step3_issue_date"
         value="{{ $invoiceDateBounds['default_issue_date'] ?? '' }}">
-    <input type="hidden" name="due_date" id="step3_due_date"
-        value="{{ $invoiceDateBounds['default_due_date'] ?? '' }}">
+    <input type="hidden" name="due_date" id="step3_due_date" value="{{ $invoiceDateBounds['default_due_date'] ?? '' }}">
     <input type="hidden" name="items_data" id="step3_items_data" value="">
     <input type="hidden" name="currency_code" id="step3_currency_code" value="{{ $selectedClientCurrency }}">
     <input type="hidden" name="notes" id="step3_notes" value="">
 
-    <div class="row g-3 align-items-stretch">
-        <div class="col-12 col-md-3 min-w-0">
-            <div class="bg-light p-4 rounded-3 border h-100">
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
-                    <h5 class="fw-semibold text-black mb-0">{{ $isTaxInvoiceStep3 ? 'Tax T&C' : 'Proforma T&C' }}</h5>
+    <div class="row g-2 align-items-stretch">
+        <div class="col-12 col-md-3 min-w-0 d-flex flex-column gap-2">
+            <!-- Client Info Card -->
+            <div class="bg-secondary p-2 rounded-3 text-white">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="col-12 col-md-12">
+                        <select id="clientid" class="form-select" disabled>
+                            <option value="">Choose client</option>
+                            @foreach($clients as $client)
+                            <option value="{{ $client->clientid }}" {{ (string)request('c',
+                                request('clientid'))===(string)$client->clientid ? 'selected' : '' }}>
+                                {{ $client->business_name ?? $client->contact_name }}
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- T&C Box -->
+            <div class="bg-DarkLight p-2 rounded-3 flex-grow-1">
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-2 px-1 pt-1">
+                    <h5 class="fw-semibold small lh-sm text-primary align-self-end mb-0">{{ $isTaxInvoiceStep3 ? 'Tax
+                        Terms & Conditions' : 'Proforma
+                        Terms & Conditions' }}</h5>
                     <div class="d-flex gap-2 align-items-center">
-                        <button type="button" id="btnApplyTC"
-                            class="btn btn-outline-primary btn-primary text-white fw-medium btn-sm d-none">Apply</button>
-                        <button type="button" id="btnAddTC" class="btn btn-link text-decoration-none p-0 small fw-semibold">+ Add</button>
+                        <button type="button" id="btnAddTC"
+                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 h-auto">
+                            <i class="fas fa-plus"></i> Add T&C
+                        </button>
                     </div>
                 </div>
                 <div class="modal fade" id="addTermModal" tabindex="-1">
-                    <div class="modal-dialog modal-dialog-centered" style="max-width:600px">
+                    <div class="modal-dialog modal-md modal-dialog-centered" style="max-width:600px">
                         <div class="modal-content border-0 shadow-lg">
-                            <div class="modal-header bg-white border-bottom">
-                                <h5 class="modal-title fw-semibold">Add Terms & Conditions</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <div class="modal-header border-0 bg-white py-2">
+                                <h5 class="modal-title fw-semibold">Terms & Conditions</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
                             </div>
-                            <div class="modal-body bg-light p-4">
+                            <div class="modal-body bg-DarkLight p-3">
                                 @csrf
-                                <div class="mb-3">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Terms & Conditions</label>
-                                    <textarea id="newTermContent" name="content" rows="5" placeholder="Enter the term text" required
-                                        class="form-control"></textarea>
+                                <div class="row g-2">
+                                    <div class="col-12 col-md-12">
+                                        <textarea id="newTermContent" name="content" placeholder="Enter the term text"
+                                            row="5" required class="form-control"></textarea>
+                                    </div>
                                 </div>
                                 <div id="addTermError" class="text-danger small mt-2 d-none"></div>
-                                <div class="d-flex align-items-center justify-content-between mt-3">
-                                    <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium" id="btnCancelTermModal" data-bs-dismiss="modal">
-                                        <i class="fas fa-times me-1"></i> Cancel
-                                    </button>
-                                    <button type="button" id="saveTermBtn" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                        Save Term <i class="fas fa-arrow-right ms-1"></i>
+                                <div class="d-flex align-items-center justify-content-end mt-2">
+                                    <button type="button" id="saveTermBtn"
+                                        class="btn btn-outline-primary bg-primary text-white fw-medium">
+                                        Add T&C <i class="fas fa-arrow-right ms-1"></i>
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div id="termsList" style="max-height:520px;overflow-y:auto;padding-right:0.2rem;">
+                <div id="termsList" class="termsListBlock p-3 bg-white rounded-3"
+                    style="max-height:420px;overflow-y:auto;padding-right:0.2rem;">
                     @php
-                        $initialTermsForStep3 = $isTaxInvoiceStep3
-                            ? $billingTerms ?? collect()
-                            : $proformaTerms ?? collect();
+                    $initialTermsForStep3 = $isTaxInvoiceStep3
+                    ? $billingTerms ?? collect()
+                    : $proformaTerms ?? collect();
                     @endphp
                     @foreach ($initialTermsForStep3 as $term)
-                        <div class="mb-2">
-                            <label class="d-flex align-items-start gap-2" style="cursor:pointer;">
-                                <input type="checkbox" class="form-check-input mt-1 flex-shrink-0"
-                                    data-tc-id="{{ $term->tc_id }}"
-                                    data-is-default="{{ (int) ($term->is_default ?? 0) }}"
-                                    data-content="{{ e($term->content) }}" value="{{ e($term->content) }}"
-                                    {{ !empty($term->is_default) ? 'checked' : '' }}>
-                                <div class="small text-secondary lh-sm" style="word-break:break-word;overflow-wrap:anywhere;">
-                                    {!! $term->content !!}
-                                </div>
-                            </label>
-                        </div>
+                    <div class="mb-2">
+                        <label class="d-flex align-items-start gap-2" style="cursor:pointer;">
+                            <input type="checkbox" class="form-check-input mt-1 flex-shrink-0"
+                                data-tc-id="{{ $term->tc_id }}" data-is-default="{{ (int) ($term->is_default ?? 0) }}"
+                                data-content="{{ e($term->content) }}" value="{{ e($term->content) }}" {{
+                                !empty($term->is_default) ? 'checked' : '' }}>
+                            <div style="word-break:break-word;overflow-wrap:anywhere;">
+                                {!! $term->content !!}
+                            </div>
+                        </label>
+                    </div>
                     @endforeach
+                </div>
+                <div class="d-flex justify-content-end mt-2 px-1">
+                    <button type="button" id="btnApplyTC"
+                        class="btn btn-outline-primary bg-primary text-white fw-medium btn-sm d-none">
+                        Apply Now <i class="fas fa-arrow-right ms-1"></i>
+                    </button>
                 </div>
             </div>
         </div>
 
         <div class="col-12 col-md-9 min-w-0">
             <!-- Invoice Preview -->
-            <div class="bg-light p-4 rounded-3 border h-100">
-                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                    <h5 class="fw-semibold text-black mb-0 d-flex align-items-center gap-2">
-                        <i class="fas fa-file-pdf"></i>
-                        {{ $isTaxInvoiceStep3 ? 'Tax Invoice Preview' : 'Invoice Preview' }}
+            <div class="bg-DarkLight p-2 rounded-3 h-100">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <h5 class="fw-semibold text-dark mb-0 align-items-center gap-2">
+                        {{ $isTaxInvoiceStep3 ? 'Tax Invoice Preview' : 'Invoice Preview' }} <br /> <span
+                            id="piNumberBadge" class="text-muted small lh-sm">{{
+                            $initialHeaderNumber }}</span>
                     </h5>
-                    <div class="d-flex gap-2 align-items-center flex-wrap justify-content-end">
-                        <span class="small text-secondary fw-medium">
+                    <div class=" d-flex gap-2 align-items-center align-self-end flex-wrap justify-content-end">
+                        <span class="small text-muted fw-medium">
                             <i class="fas fa-circle text-success small me-1"></i>
                             Live Preview
                         </span>
                         <a id="btnDownloadPI" href="#" target="_blank"
-                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 d-none">
+                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 d-none h-auto">
                             Download PI
                         </a>
-                        <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1" id="digitalSignBtn"
-                            disabled>
+                        <button type="button"
+                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 h-auto"
+                            id="digitalSignBtn" disabled>
                             Download Signed
                         </button>
                         <button type="button" id="createTaxInvoiceBtn"
-                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 d-none">
+                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 d-none h-auto">
                             Convert to Tax Invoice
                         </button>
                         <button type="button" id="btnDownloadTaxInvoice"
-                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 d-none">
+                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 d-none h-auto">
                             Download Tax Invoice
                         </button>
                         <button type="button" id="btnEditPreview"
-                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1">
+                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-inline-flex align-items-center gap-1 h-auto">
                             Edit
+                        </button>
+                        <button type="button"
+                            class="btn btn-outline-primary bg-primary text-white fw-medium btn-sm d-inline-flex align-items-center gap-1 h-auto"
+                            id="btnSendEmail">
+                            Save &amp; Go To Email Compose <i class="fas fa-arrow-right ms-1"></i>
                         </button>
                     </div>
                 </div>
-                <div id="invoicePreviewContainer" class="p-3 bg-light bg-opacity-75 rounded-bottom">
-                    <div id="previewContent" class="bg-white border rounded overflow-hidden" style="min-height:640px;">
+                <div id="invoicePreviewContainer" class="card overflow-hidden">
+                    <div id="previewContent" class="bg-white" style="min-height:650px;">
                         <iframe id="invoicePdfPreviewFrame" title="Invoice PDF Preview" src="about:blank"
-                            class="w-100 border-0" style="min-height:640px;"></iframe>
+                            class="w-100 border-0" style="min-height:650px;"></iframe>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mt-3">
-        <button type="button" class="btn btn-outline-primary btn-primary text-white fw-medium" id="btnSendEmail">
-            <i class="fas fa-envelope me-2"></i>Save &amp; Go To Email Compose
-        </button>
-    </div>
+
 </div>
 
 <script>
-    (function() {
+    (function () {
+        const step3El = document.getElementById('step3');
         const clientId = "{{ request('c', request('clientid', $invoice?->clientid ?? '')) }}";
         const orderId = "{{ request('o', request('orderid', '')) }}";
         const draftId = "{{ request('d', '') }}";
         const justCreated = "{{ request('just_created', '') }}" === '1';
-        const isTaxInvoice = @json($isTaxInvoiceStep3);
+        const isTaxInvoice = step3El.getAttribute('data-is-tax-invoice') === '1';
         const hasOrderId = orderId && orderId !== '0';
         const btnBackToPrev = document.getElementById('btnBackToPrev');
         const createTaxInvoiceBtn = document.getElementById('createTaxInvoiceBtn');
@@ -208,54 +271,9 @@
         const currencyCodeInput = document.getElementById('step3_currency_code');
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-        @php
-            $signatureUploadPath = optional($accountBillingDetail)->signature_upload;
-            $signatureUploadUrl = null;
-            if (!empty($signatureUploadPath)) {
-                if (str_starts_with($signatureUploadPath, 'http://') || str_starts_with($signatureUploadPath, 'https://')) {
-                    $signatureUploadUrl = $signatureUploadPath;
-                } else {
-                    $signatureUploadUrl = asset(str_starts_with($signatureUploadPath, 'storage/') ? $signatureUploadPath : 'storage/' . ltrim($signatureUploadPath, '/'));
-                }
-            }
-
-            $accountDataArr = [
-                'name' => optional($account)->name,
-                'logo' => $account && $account->logo_path ? (str_starts_with($account->logo_path, 'http') ? $account->logo_path : asset($account->logo_path)) : null,
-                'billing' => [
-                    'name' => optional($accountBillingDetail)->billing_name ?? optional($account)->name,
-                    'address' => optional($accountBillingDetail)->address ?? '',
-                    'city' => optional($accountBillingDetail)->city ?? '',
-                    'state' => optional($accountBillingDetail)->state ?? '',
-                    'postal_code' => optional($accountBillingDetail)->postal_code ?? '',
-                    'country' => optional($accountBillingDetail)->country ?? '',
-                    'gstin' => optional($accountBillingDetail)->gstin ?? '',
-                    'signatory' => optional($accountBillingDetail)->authorize_signatory ?? '',
-                    'signature' => $signatureUploadUrl,
-                ],
-            ];
-        @endphp
-        const accountData = {!! json_encode($accountDataArr) !!};
-
-        @php
-            $clientBilling = optional($selectedInvoiceClient)->billingDetail;
-            $clientDataArr = [
-                'name' => optional($selectedInvoiceClient)->business_name ?? (optional($selectedInvoiceClient)->contact_name ?? 'Client'),
-                'contact_name' => optional($selectedInvoiceClient)->contact_name ?? '',
-                'email' => optional($selectedInvoiceClient)->email ?? '',
-                'phone' => optional($selectedInvoiceClient)->phone ?? '',
-                'billing' => [
-                    'name' => optional($clientBilling)->business_name ?? (optional($selectedInvoiceClient)->business_name ?? ''),
-                    'address_line_1' => optional($clientBilling)->address_line_1 ?? '',
-                    'city' => optional($clientBilling)->city ?? '',
-                    'state' => optional($clientBilling)->state ?? '',
-                    'postal_code' => optional($clientBilling)->postal_code ?? '',
-                    'country' => optional($clientBilling)->country ?? '',
-                    'gstin' => optional($clientBilling)->gstin ?? '',
-                ],
-            ];
-        @endphp
-        const clientData = {!! json_encode($clientDataArr) !!};
+        const accountData = JSON.parse(step3El.getAttribute('data-account-data') || '{}');
+        const clientData = JSON.parse(step3El.getAttribute('data-client-data') || '{}');
+        const termsByType = JSON.parse(step3El.getAttribute('data-terms-by-type') || '{}');
 
         let invoiceItems = [];
         let draftInvoiceTitle = '';
@@ -267,27 +285,7 @@
         let draftNotes = '';
         let appliedTerms = [];
         let currentTermType = isTaxInvoice ? 'billing' : 'proforma';
-        @php
-            $proformaTermsJson = ($proformaTerms ?? collect())->map(function ($term) {
-                return [
-                    'id' => $term->tc_id,
-                    'content' => $term->content,
-                    'is_default' => (int) ($term->is_default ?? 0),
-                ];
-            })->values();
 
-            $billingTermsJson = ($billingTerms ?? collect())->map(function ($term) {
-                return [
-                    'id' => $term->tc_id,
-                    'content' => $term->content,
-                    'is_default' => (int) ($term->is_default ?? 0),
-                ];
-            })->values();
-        @endphp
-        const termsByType = {
-            proforma: @json($proformaTermsJson),
-            billing: @json($billingTermsJson),
-        };
         const defaultTerms = Array.from(document.querySelectorAll('[data-term]'))
             .filter(cb => cb.dataset.isDefault === '1')
             .map(cb => cb.value.trim())
@@ -357,7 +355,7 @@
                 row.innerHTML = `
                 <label class="d-flex align-items-start gap-2" style="cursor:pointer;">
                     <input type="checkbox" class="form-check-input mt-1 flex-shrink-0" data-term="true" data-tc-id="${term.id}" data-is-default="${Number(term.is_default || 0)}" data-content="${escapedContent}" value="${escapedContent}" ${checked ? 'checked' : ''}>
-                    <div class="small text-secondary lh-sm" style="word-break:break-word;overflow-wrap:anywhere;">${safeContent}</div>
+                    <div class="text-dark" style="word-break:break-word;overflow-wrap:anywhere;">${safeContent}</div>
                 </label>
             `;
                 termsList.appendChild(row);
@@ -421,15 +419,15 @@
                         license_key: 'gpl',
                         selector: '#newTermContent',
                         menubar: false,
-                        height: 200,
+                        height: 500,
                         plugins: 'lists link table code autoresize',
                         toolbar: 'undo redo | blocks | bold italic underline | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist | removeformat code',
-                        setup: function(editor) {
-                            editor.on('change', function() {
+                        setup: function (editor) {
+                            editor.on('change', function () {
                                 editor.save();
                             });
                         },
-                        init_instance_callback: function(editor) {
+                        init_instance_callback: function (editor) {
                             setTimeout(() => editor.focus(), 100);
                         }
                     });
@@ -578,7 +576,7 @@
             if (draftTiNumber) {
                 createTaxInvoiceBtn.classList.add('d-none');
                 btnDownloadTaxInvoice.classList.remove('d-none');
-                btnDownloadTaxInvoice.onclick = function() {
+                btnDownloadTaxInvoice.onclick = function () {
                     window.open(base + '?type=tax_invoice', '_blank');
                 };
             } else {
@@ -642,7 +640,7 @@
         });
 
         if (btnApplyTC) {
-            btnApplyTC.addEventListener('click', function() {
+            btnApplyTC.addEventListener('click', function () {
                 const invoiceid = invoiceidInput.value;
                 if (!invoiceid) {
                     alert('Save the invoice first before applying terms.');
@@ -654,32 +652,32 @@
                     .filter(Boolean);
 
                 btnApplyTC.disabled = true;
-                btnApplyTC.textContent = 'Applying...';
+                btnApplyTC.innerHTML = 'Applying... <i class="fas fa-spinner fa-spin ms-1"></i>';
 
                 const applyTermsRoute = `{{ url('invoices') }}/${invoiceid}/terms`;
                 const applyTermsPath = applyTermsRoute.startsWith('http') ? new URL(applyTermsRoute).pathname : applyTermsRoute;
                 fetch(applyTermsPath, {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'Accept': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            terms: selectedTerms,
-                            renewed_item_ids: renewedItemIdsInput?.value || '[]',
-                        }),
-                    })
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        terms: selectedTerms,
+                        renewed_item_ids: renewedItemIdsInput?.value || '[]',
+                    }),
+                })
                     .then(r => r.json())
                     .then(data => {
                         if (data.ok) {
                             appliedTerms = selectedTerms;
                             updateInvoicePreview();
-                            btnApplyTC.textContent = 'Applied ✓';
+                            btnApplyTC.innerHTML = 'Applied ✓';
                             btnApplyTC.style.background = '#d1fae5';
                             btnApplyTC.style.color = '#065f46';
                             setTimeout(() => {
-                                btnApplyTC.textContent = 'Apply';
+                                btnApplyTC.innerHTML = 'Apply Now <i class="fas fa-arrow-right ms-1"></i>';
                                 btnApplyTC.style.background = '';
                                 btnApplyTC.style.color = '';
                                 btnApplyTC.disabled = false;
@@ -689,7 +687,7 @@
                         }
                     })
                     .catch(() => {
-                        btnApplyTC.textContent = 'Apply';
+                        btnApplyTC.innerHTML = 'Apply <i class="fas fa-arrow-right ms-1"></i>';
                         btnApplyTC.disabled = false;
                         alert('Failed to apply terms. Please try again.');
                     });
@@ -705,7 +703,7 @@
         }
 
         if (saveTermBtn) {
-            saveTermBtn.addEventListener('click', function() {
+            saveTermBtn.addEventListener('click', function () {
                 if (window.tinymce) {
                     tinymce.triggerSave();
                 }
@@ -723,17 +721,17 @@
                 const storeTermRoute = "{{ route('invoices.terms.billing.store') }}";
                 const storeTermPath = storeTermRoute.startsWith('http') ? new URL(storeTermRoute).pathname : storeTermRoute;
                 fetch(storeTermPath, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                        },
-                        body: JSON.stringify({
-                            content,
-                            type: currentTermType
-                        }),
-                    })
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        content,
+                        type: currentTermType
+                    }),
+                })
                     .then(response => response.json().then(data => ({
                         ok: response.ok,
                         data
@@ -779,7 +777,7 @@
         }
 
         // Back button
-        btnBackToPrev.addEventListener('click', function() {
+        btnBackToPrev?.addEventListener('click', function () {
             const currentDraftId = invoiceidInput.value || draftId;
             const prevStep = 2;
             const clientToken = encodeURIComponent(clientId);
@@ -800,7 +798,7 @@
         });
 
         // Edit button
-        document.getElementById('btnEditPreview')?.addEventListener('click', function() {
+        document.getElementById('btnEditPreview')?.addEventListener('click', function () {
             const currentInvoiceId = invoiceidInput.value || draftId;
             const clientToken = encodeURIComponent(clientId);
             const editStep = 2;
@@ -821,7 +819,7 @@
         });
 
         // Send Email button
-        document.getElementById('btnSendEmail')?.addEventListener('click', function() {
+        document.getElementById('btnSendEmail')?.addEventListener('click', function () {
             const invoiceid = invoiceidInput.value;
             if (!invoiceid) {
                 alert('Please save the invoice first.');
@@ -846,7 +844,7 @@
         });
 
         // Digital Signed button
-        digitalSignBtn?.addEventListener('click', function() {
+        digitalSignBtn?.addEventListener('click', function () {
             const invoiceid = invoiceidInput.value;
             if (!invoiceid) return;
             const baseRoute = "{{ url('invoices') }}";
@@ -864,27 +862,27 @@
 
             const confirmed = await window.appConfirm(
                 'This will generate a Tax Invoice number and mark this invoice as a Tax Invoice. Continue?', {
-                    title: 'Create Tax Invoice?',
-                    icon: 'warning',
-                    confirmButtonText: 'Continue',
-                    cancelButtonText: 'Cancel',
-                });
+                title: 'Create Tax Invoice?',
+                icon: 'warning',
+                confirmButtonText: 'Continue',
+                cancelButtonText: 'Cancel',
+            });
             if (!confirmed) {
                 return;
             }
             const createTaxRoute = "{{ route('invoices.create-tax-invoice') }}";
             const createTaxPath = createTaxRoute.startsWith('http') ? new URL(createTaxRoute).pathname : createTaxRoute;
             fetch(createTaxPath, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                    },
-                    body: JSON.stringify({
-                        invoiceid: invoiceidInput.value,
-                    }),
-                })
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({
+                    invoiceid: invoiceidInput.value,
+                }),
+            })
                 .then(async (response) => {
                     // Controller returns JSON only when wantsJson()/ajax(). We enforce that via headers above,
                     // but keep a safe fallback to avoid false "Failed" while conversion actually succeeds.

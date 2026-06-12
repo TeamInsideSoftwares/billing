@@ -127,99 +127,103 @@
                 </div>
                 @endif
 
-                <div class="row g-3 align-items-stretch">
+                <div class="row g-2 align-items-stretch">
                     <div class="col-12 col-lg-3">
-                        <div class="bg-light p-4 rounded-3 border h-100">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <h5 class="fw-semibold text-black mb-0">Payment Details</h5>
-                                @if ($displayReceiptNumber !== '')
-                                <span class="badge text-bg-secondary">{{ $displayReceiptNumber }}</span>
-                                @endif
+                        <div class="d-flex flex-column gap-2">
+                            {{-- Client selector — matches orders/create style --}}
+                            <div class="bg-secondary p-2 rounded-3">
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        @if (!$isEditingPayment)
+                                        <select id="clientid" name="clientid" class="form-select" required>
+                                            <option value="">Select Client</option>
+                                            @foreach ($clients ?? [] as $client)
+                                            <option value="{{ $client->clientid }}" {{ (string)$defaultClientId === (string)$client->clientid ? 'selected' : '' }}>
+                                                {{ $client->business_name ?? $client->contact_name }}
+                                            </option>
+                                            @endforeach
+                                        </select>
+                                        @else
+                                        <input type="hidden" name="clientid" value="{{ $defaultClientId }}">
+                                        <div class="fw-semibold text-dark">{{ $selectedClientName }}</div>
+                                        @if ($selectedClientEmail)
+                                        <div class="small text-muted">{{ $selectedClientEmail }}</div>
+                                        @endif
+                                        @endif
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="row g-2">
-                                <div class="col-12">
-                                    @if (!$isEditingPayment)
-                                    <label for="clientid"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Select Client
-                                        *</label>
-                                    <select id="clientid" name="clientid" class="form-select" required>
-                                        <option value="">Select Client</option>
-                                        @foreach ($clients ?? [] as $client)
-                                        <option value="{{ $client->clientid }}" {{ $defaultClientId == $client->clientid ? 'selected' : '' }}>
-                                            {{ $client->business_name ?? $client->contact_name }}
-                                        </option>
-                                        @endforeach
-                                    </select>
-                                    @else
-                                    <input type="hidden" id="clientid" name="clientid" value="{{ $defaultClientId }}">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Client</label>
-                                    <div class="form-control bg-white" id="selectedClientName" style="cursor: default;">
-                                        {{ $selectedClientName }}</div>
-                                    <div class="small text-muted mt-1 {{ $selectedClientEmail ? '' : 'd-none' }}"
-                                        id="selectedClientEmail">{{ $selectedClientEmail }}</div>
+                            {{-- Payment Details card --}}
+                            <div class="bg-light p-2 rounded-3">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <h5 class="fw-semibold text-primary small lh-sm mb-0">Payment Details</h5>
+                                    @if ($displayReceiptNumber !== '')
+                                    <span class="badge text-bg-secondary">{{ $displayReceiptNumber }}</span>
                                     @endif
                                 </div>
-                                <div class="col-12">
-                                    <label for="payment_flow"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Payment Type *</label>
-                                    <select id="payment_flow" name="payment_flow" class="form-select">
-                                        <option value="standard" {{ $defaultPaymentFlow==='standard' ? 'selected' : ''
-                                            }}>
-                                            Invoice Payment</option>
-                                        <option value="tds" {{ $defaultPaymentFlow==='tds' ? 'selected' : '' }}>TDS
-                                            Deduction</option>
-                                    </select>
-                                </div>
-                                <div id="received-amount-wrap" class="col-12">
-                                    <label for="received_amount"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Amount * (<span
-                                            id="currencyLabel">{{ $defaultCurrency }}</span>)</label>
-                                    @php
-                                    $receivedAmountDisplay = old(
-                                    'received_amount',
-                                    isset($payment) ? $payment->received_amount : '',
-                                    );
-                                    if ($receivedAmountDisplay !== '' && is_numeric($receivedAmountDisplay)) {
-                                    $receivedAmountDisplay = (float) $receivedAmountDisplay;
-                                    if (
-                                    abs($receivedAmountDisplay - round($receivedAmountDisplay)) < 0.000001 ) {
-                                        $receivedAmountDisplay=(string) (int) round($receivedAmountDisplay); } } @endphp
-                                        <input type="text" id="received_amount" name="received_amount"
-                                        value="{{ $receivedAmountDisplay }}" class="form-control" required>
-                                        @error('received_amount')
+
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <label for="payment_flow"
+                                            class="form-label small lh-sm fw-semibold text-dark mb-1">Payment Type *</label>
+                                        <select id="payment_flow" name="payment_flow" class="form-select">
+                                            <option value="standard" {{ $defaultPaymentFlow==='standard' ? 'selected' : '' }}>
+                                                Invoice Payment</option>
+                                            <option value="tds" {{ $defaultPaymentFlow==='tds' ? 'selected' : '' }}>TDS
+                                                Deduction</option>
+                                        </select>
+                                    </div>
+                                    <div id="received-amount-wrap" class="col-12">
+                                        <label for="received_amount"
+                                            class="form-label small lh-sm fw-semibold text-dark mb-1">Amount * (<span
+                                                id="currencyLabel">{{ $defaultCurrency }}</span>)</label>
+                                        @php
+                                        $receivedAmountDisplay = old(
+                                        'received_amount',
+                                        isset($payment) ? $payment->received_amount : '',
+                                        );
+                                        if ($receivedAmountDisplay !== '' && is_numeric($receivedAmountDisplay)) {
+                                        $receivedAmountDisplay = (float) $receivedAmountDisplay;
+                                        if (
+                                        abs($receivedAmountDisplay - round($receivedAmountDisplay)) < 0.000001 ) {
+                                            $receivedAmountDisplay=(string) (int) round($receivedAmountDisplay); } } @endphp
+                                            <input type="text" id="received_amount" name="received_amount"
+                                            value="{{ $receivedAmountDisplay }}" class="form-control" required>
+                                            @error('received_amount')
+                                            <div class="text-danger small mt-1">{{ $message }}</div>
+                                            @enderror
+                                    </div>
+                                    <div id="tds-amount-wrap" class="col-12">
+                                        <label for="tds_amount"
+                                            class="form-label small lh-sm fw-semibold text-dark mb-1">TDS Amount (<span
+                                                id="currencyLabelTds">{{ $defaultCurrency }}</span>)</label>
+                                        <div class="input-group">
+                                            <select id="tds_input_type" name="tds_input_type" class="form-select"
+                                                style="max-width: 90px;">
+                                                <option value="percent" {{ $defaultTdsInputType==='percent' ? 'selected'
+                                                    : '' }}>%</option>
+                                                <option value="amount" {{ $defaultTdsInputType==='amount' ? 'selected' : ''
+                                                    }}>Amount</option>
+                                            </select>
+                                            <input type="text" id="tds_amount" class="form-control"
+                                                value="{{ $defaultTdsDisplayValue }}">
+                                        </div>
+                                        <input type="hidden" id="tds_amount_hidden" name="tds_amount"
+                                            value="{{ old('tds_amount', $existingTdsTotal > 0 ? $existingTdsTotal : '') }}">
+                                        @error('tds_amount')
                                         <div class="text-danger small mt-1">{{ $message }}</div>
                                         @enderror
-                                </div>
-                                <div id="tds-amount-wrap" class="col-12">
-                                    <label for="tds_amount"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">TDS Amount (<span
-                                            id="currencyLabelTds">{{ $defaultCurrency }}</span>)</label>
-                                    <div class="input-group">
-                                        <select id="tds_input_type" name="tds_input_type" class="form-select"
-                                            style="max-width: 90px;">
-                                            <option value="percent" {{ $defaultTdsInputType==='percent' ? 'selected'
-                                                : '' }}>%</option>
-                                            <option value="amount" {{ $defaultTdsInputType==='amount' ? 'selected' : ''
-                                                }}>Amount</option>
-                                        </select>
-                                        <input type="text" id="tds_amount" class="form-control"
-                                            value="{{ $defaultTdsDisplayValue }}">
                                     </div>
-                                    <input type="hidden" id="tds_amount_hidden" name="tds_amount"
-                                        value="{{ old('tds_amount', $existingTdsTotal > 0 ? $existingTdsTotal : '') }}">
-                                    @error('tds_amount')
-                                    <div class="text-danger small mt-1">{{ $message }}</div>
-                                    @enderror
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="col-12 col-lg-6">
-                        <div class="bg-light p-4 rounded-3 border h-100">
-                            <div class="mb-3">
-                                <h5 class="fw-semibold text-black mb-0">Invoices</h5>
+                        <div class="bg-light p-2 rounded-3 h-100">
+                            <div class="mb-2">
+                                <h5 class="fw-semibold text-primary small lh-sm mb-0">Invoices</h5>
                             </div>
 
                             <div id="invoice-list-wrap" class="payments-invoice-list-wrap">
@@ -229,9 +233,9 @@
                     </div>
 
                     <div class="col-12 col-lg-3">
-                        <div class="bg-light p-4 rounded-3 border h-100">
-                            <div class="mb-3">
-                                <h5 class="fw-semibold text-black mb-0">Other Details</h5>
+                        <div class="bg-light p-2 rounded-3 h-100">
+                            <div class="mb-2">
+                                <h5 class="fw-semibold text-primary small lh-sm mb-0">Other Details</h5>
                             </div>
 
                             <div class="row g-2">

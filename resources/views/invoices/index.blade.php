@@ -58,7 +58,7 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
         </form>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2 px-1">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 px-1">
         <div class="btn-group" role="group" aria-label="Invoice Tabs">
             <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'invoices' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
                 href="{{ route('invoices.index', array_filter(['tab' => 'invoices', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}"
@@ -112,31 +112,27 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
     </div>
 
     @if ($currentTab === 'draft')
-    <div class="invoice-list-meta px-1 mb-2">
+    <div class="invoice-list-meta ps-2 mb-2">
         <div class="meta-info">
-            <strong class="text-dark">Draft invoices</strong>
-            <span class="text-muted small d-block">Invoices that are not finalized yet.</span>
+            <strong class="fw-bold fs-5 lh-sm">Draft invoices</strong>
         </div>
     </div>
     @elseif ($currentTab === 'paid')
-    <div class="invoice-list-meta px-1 mb-2">
+    <div class="invoice-list-meta ps-2 mb-2">
         <div class="meta-info">
-            <strong class="text-dark">Paid invoices</strong>
-            <span class="text-muted small d-block">Invoices that have been fully paid.</span>
+            <strong class="fw-bold fs-5 lh-sm">Paid invoices</strong>
         </div>
     </div>
     @elseif ($currentTab === 'outstanding')
-    <div class="invoice-list-meta px-1 mb-2">
+    <div class="invoice-list-meta ps-2 mb-2">
         <div class="meta-info">
-            <strong class="text-dark">Outstanding invoices</strong>
-            <span class="text-muted small d-block">Invoices that are unpaid or partially paid.</span>
+            <strong class="fw-bold fs-5 lh-sm">Outstanding invoices</strong>
         </div>
     </div>
     @elseif ($currentTab === 'cancelled')
-    <div class="invoice-list-meta px-1 mb-2">
+    <div class="invoice-list-meta ps-2 mb-2">
         <div class="meta-info">
-            <strong class="text-dark">Cancelled invoices</strong>
-            <span class="text-muted small d-block">All invoices that have been cancelled.</span>
+            <strong class="fw-bold fs-5 lh-sm">Cancelled invoices</strong>
         </div>
     </div>
     @endif
@@ -159,7 +155,11 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                         <th style="width: 10%;">Due Date</th>
                         <th style="width: 25%;">Client</th>
                         <th style="width: 15%;">Invoice</th>
-                        <th style="width: 20%;" class="text-end">Total Amt - Receive Amt = Balance Amt{{
+                        <th style="width: 10%;" class="text-end">Invoice Amount{{
+                            $selectedClientCurrency ? ' (' .
+                            $selectedClientCurrency . ')'
+                            : '' }}</th>
+                        <th style="width: 10%;" class="text-end">Balance{{
                             $selectedClientCurrency ? ' (' .
                             $selectedClientCurrency . ')'
                             : '' }}</th>
@@ -249,12 +249,18 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                                 </div>
                             </td>
                             <td class="text-end text-dark">
-                                <span>{{ number_format($invoiceAmount, 0) }} - {{ number_format($amountPaid, 0)
+                                <span>{{ number_format($invoiceAmount, 0) }}</span>
+                                @if($invoice->client)
+                                <span class="currency-code-small d-block text-muted">{{ $invoice->client->currency
                                     }}</span>
-                                = <span class="text-danger fs-6 lh-sm fw-semibold">{{ number_format($balanceDue, 0)
+                                @endif
+                            </td>
+                            <td class="text-end text-dark">
+                                <span class="text-danger fs-6 lh-sm fw-semibold">{{ number_format($balanceDue, 0)
                                     }}</span>
                                 @if($invoice->client)
-                                <span class="currency-code-small text-muted">{{ $invoice->client->currency }}</span>
+                                <span class="currency-code-small d-block text-muted">{{ $invoice->client->currency
+                                    }}</span>
                                 @endif
                             </td>
                             <td class="text-end">

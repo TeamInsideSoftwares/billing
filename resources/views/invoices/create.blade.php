@@ -3,12 +3,13 @@
 @section('header_actions')
 <a href="{{ route('invoices.index') }}"
     class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-    <i class="fas fa-arrow-left btn-icon"></i> Back to Invoices
+    <i class="fas fa-list btn-icon"></i> Invoice List
 </a>
 @endsection
 
 @section('content')
 @php
+$title = 'Manage Invoices';
 $selectedClientId = request('c', request('clientid'));
 $currentStep = (int) request('step', 1);
 
@@ -22,7 +23,7 @@ if($currentStep < 1 || $currentStep> 3) $currentStep = 1;
     $totalSteps = 3;
     @endphp
 
-    <section class="position-relative bg-white p-3 rounded-3">
+    <section class="position-relative {{ $currentStep !== 1 ? 'bg-white p-2' : '' }} rounded-3">
         @if ($errors->any())
         <div class="alert alert-danger mb-4">
             <ul class="mb-0 ps-3">
@@ -51,4 +52,7 @@ if($currentStep < 1 || $currentStep> 3) $currentStep = 1;
             @endif
         </form>
     </section>
+    @if($currentStep == 2)
+        @include('orders.partials.edit-order-modal')
+    @endif
     @endsection

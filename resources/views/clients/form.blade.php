@@ -32,7 +32,7 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
         <input type="hidden" name="accountid"
             value="{{ isset($client) ? ($client->accountid ?? auth()->user()->accountid ?? 'ACC0000001') : (auth()->user()->accountid ?? 'ACC0000001') }}">
         <input type="hidden" name="clientid_hidden" id="clientid_hidden"
-            value="{{ isset($client) ? $client->clientid : '' }}">
+            value="{{ isset($client) ? $client->clientid : '' }}" data-initial-bd-id="{{ $client->bd_id ?? '' }}">
 
         <div class="row g-2 align-items-stretch">
             <!-- Column 1: Client Information -->
@@ -284,11 +284,11 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
                                     </label>
                                 </div>
                             </div>
-                            <button type="button" id="new-billing-btn"
+                            <!--<button type="button" id="new-billing-btn"
                                 class="btn btn-outline-primary btn-primary text-white btn-icon-square h-auto py-2 ms-1"
                                 title="Reload Billing Profile">
                                 <i class="fas fa-sync-alt"></i>
-                            </button>
+                            </button>-->
                         </div>
                     </div>
 
@@ -296,7 +296,7 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
 
 
                     <div id="existingBillingWrap"
-                        class="position-relative  bg-secondary p-2 rounded-3 mb-4 {{ old('existing_bd_id', $client->bd_id ?? '') !== '' ? '' : 'd-none' }}">
+                        class="position-relative  bg-secondary p-2 rounded-3 mb-2 {{ old('existing_bd_id', $client->bd_id ?? '') !== '' ? '' : 'd-none' }}">
                         <select id="existing_bd_id" name="existing_bd_id" class="form-select form-select-sm">
                             <option value="">Copy Profile From</option>
                             @foreach($billingProfiles ?? [] as $profile)
@@ -310,6 +310,8 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
                         </select>
                         @error('existing_bd_id') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
+                    <div id="billing-profile-usage-info" class="mb-4 text-muted small fw-medium d-none"
+                        style="font-size: 0.85rem; padding: 0 4px;"></div>
 
                     <div id="new-billing-fields">
                         <div class="row g-2 form-grid">
@@ -650,8 +652,41 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
         const clientCountry = document.getElementById('country');
         const billingProfiles = JSON.parse(document.getElementById('billing-profiles-data').textContent || '{}');
 
+        function updateBillingProfileUsage() {
+            const usageInfo = document.getElementById('billing-profile-usage-info');
+            if (!usageInfo) return;
+            const bdId = existingSelect.value;
+            if (!bdId || !billingProfiles[bdId]) {
+                usageInfo.classList.add('d-none');
+                usageInfo.innerHTML = '';
+                return;
+            }
+
+            const profile = billingProfiles[bdId];
+            const clients = profile.clients || [];
+
+            const initialBdId = document.getElementById('clientid_hidden')?.dataset.initialBdId || '';
+
+            const otherClients = clients.filter(c => {
+                if (clientId && initialBdId === bdId) {
+                    return c.clientid !== clientId;
+                }
+                return true;
+            });
+
+            if (otherClients.length > 0) {
+                const names = otherClients.map(c => c.business_name || 'Unnamed Client').join(', ');
+                usageInfo.innerHTML = `<i class="fas fa-info-circle me-1"></i> Shared with: <strong class="text-dark">${names}</strong>`;
+                usageInfo.classList.remove('d-none');
+            } else {
+                usageInfo.classList.add('d-none');
+                usageInfo.innerHTML = '';
+            }
+        }
+
         async function loadSelectedBillingProfile() {
             const bdId = existingSelect.value;
+            updateBillingProfileUsage();
             if (!bdId || !billingProfiles[bdId]) return;
             const profile = billingProfiles[bdId];
             billingName.value = profile.business_name || '';
@@ -749,15 +784,23 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
         useExistingCheckbox.addEventListener('change', function () {
             if (this.checked) {
                 existingBillingWrap.classList.remove('d-none');
+                updateBillingProfileUsage();
             } else {
                 existingBillingWrap.classList.add('d-none');
                 existingSelect.value = '';
                 clearBillingFields();
+                updateBillingProfileUsage();
             }
         });
 
         existingSelect.addEventListener('change', loadSelectedBillingProfile);
-        newBillingBtn.addEventListener('click', function () { existingSelect.value = ''; clearBillingFields(); });
+        if (newBillingBtn) {
+            newBillingBtn.addEventListener('click', function () {
+                existingSelect.value = '';
+                clearBillingFields();
+                updateBillingProfileUsage();
+            });
+        }
         sameAsClientCheckbox.addEventListener('change', function () { if (this.checked) copyClientDetailsToBilling(); });
         [clientBusinessName, clientPrimaryEmail, clientSecondaryEmails, clientPhone, clientAddress, clientPostal].forEach(function (el) {
             el.addEventListener('input', function () { if (sameAsClientCheckbox.checked) copyClientDetailsToBilling(); });

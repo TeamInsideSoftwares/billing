@@ -60,8 +60,8 @@
 
     <!-- Table View -->
     @if($ledgerEntries->isEmpty() && ($openingBalance ?? 0) == 0)
-    <div class="card border-0 shadow-sm py-5 text-center text-muted mb-3">
-        <div class="card-body">
+    <div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-3">
+        <div class="card-body bg-white rounded-3 py-5 text-center text-muted">
             <i class="fas fa-book mb-3 text-secondary fs-1 opacity-50"></i>
             <p class="fw-semibold text-dark mb-1">No ledger entries found</p>
             <p class="small text-muted mb-0">Try widening the filters or record invoices and payments first.</p>
@@ -70,20 +70,20 @@
     @else
 
     <!-- Table Card -->
-    <div class="card border-0 shadow-sm overflow-hidden mb-3">
-        <div class="table-responsive p-3 bg-white">
-            <div class="d-flex justify-content-end mb-2">
-                <div class="bg-white border rounded-1 px-2 py-1">
-                    <div class="form-check mb-0 form-check-large">
-                        <input class="form-check-input" type="checkbox" id="toggleBalanceCol" style="cursor: pointer;">
-                        <label class="form-check-label small fw-semibold text-dark" for="toggleBalanceCol"
-                            style="cursor: pointer; user-select: none;">
-                            Show Balance Column
-                        </label>
-                    </div>
+    <div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-3">
+        <div class="table-responsive p-2 bg-white rounded-3">
+            <div id="balanceToggleContainer" class="d-inline-flex align-items-center me-3 d-none">
+                <div class="form-check form-switch mb-0 d-inline-flex align-items-center me-1"
+                    style="padding-left: 2.5em; min-height: auto;">
+                    <input class="form-check-input" type="checkbox" role="switch" id="toggleBalanceCol"
+                        style="cursor: pointer; height: 1.15em; width: 2.1em;">
+                    <label class="form-check-label small fw-semibold text-dark ms-2 align-self-center"
+                        for="toggleBalanceCol" style="cursor: pointer; user-select: none;">
+                        Show Row Balance
+                    </label>
                 </div>
             </div>
-            <table id="ledgerDataTable" class="table mainTable border align-middle mb-0">
+            <table id="ledgerDataTable" class="table table-striped mainTable align-middle mb-0">
                 <thead class="table-light">
                     <tr>
                         <th scope="col" width="10%">Date</th>
@@ -147,8 +147,10 @@
                     </tr>
                     @endif
                     <tr>
-                        <td colspan="2" class="text-end fw-semibold text-muted label-cell">Closing Balance</td>
-                        <td class="text-end fw-bold text-primary val-cell">{{ number_format($closingBalance, 0, '.',
+                        <td colspan="2" class="text-end fw-semibold small lh-sm text-dark label-cell">Closing Balance
+                        </td>
+                        <td class="text-end fw-bold fs-6 lh-sm text-dark val-cell">{{ number_format($closingBalance, 0,
+                            '.',
                             ',') }}</td>
                         <td colspan="2" class="empty-cell"></td>
                     </tr>
@@ -185,11 +187,11 @@
     document.addEventListener('DOMContentLoaded', function () {
         if (window.jQuery && jQuery.fn.DataTable && document.getElementById('ledgerDataTable')) {
             const table = jQuery('#ledgerDataTable').DataTable({
-                pageLength: 25,
+                paging: false,
+                info: false,
                 order: [[0, 'asc']],
                 dom: "<'row align-items-center g-2 mb-2'<'col-md-7'B><'col-md-5'f>>" +
-                    "<'row'<'col-12'tr>>" +
-                    "<'row mt-2'<'col-md-5'i><'col-md-7'p>>",
+                    "<'row'<'col-12'tr>>",
                 buttons: [
                     { extend: 'excelHtml5', text: 'Excel' },
                     {
@@ -233,6 +235,14 @@
                     { visible: false, targets: 3 }
                 ]
             });
+
+            // Move toggle container to DataTable filter area before the search input
+            const toggleContainer = jQuery('#balanceToggleContainer');
+            if (toggleContainer.length) {
+                jQuery('#ledgerDataTable_filter')
+                    .addClass('d-flex align-items-center justify-content-md-end flex-wrap')
+                    .prepend(toggleContainer.removeClass('d-none'));
+            }
 
             function updateFooterLayout(isChecked) {
                 if (isChecked) {

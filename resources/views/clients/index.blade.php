@@ -191,13 +191,6 @@
                                     Agreement</a>
                                 <a href="{{ route('clients.edit', $client['record_id']) }}"
                                     class="bg03 color03">Edit</a>
-                                <form method="POST" action="{{ route('clients.destroy', $client['record_id']) }}"
-                                    class="d-inline" data-name="{{ $client['name'] }}"
-                                    onsubmit="return confirm('Delete ' + this.dataset.name + '?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="bg04 color04">Delete</button>
-                                </form>
                             </div>
                         </td>
                     </tr>
@@ -303,13 +296,6 @@
                             Agreement</a>
                         <a href="{{ route('clients.edit', $client['record_id']) }}"
                             class="bg03 color03 flex-grow-1 text-center">Edit</a>
-                        <form method="POST" action="{{ route('clients.destroy', $client['record_id']) }}"
-                            class="d-inline flex-grow-1" data-name="{{ $client['name'] }}"
-                            onsubmit="return confirm('Delete ' + this.dataset.name + '?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="bg04 color04 text-center">Delete</button>
-                        </form>
                     </div>
                 </div>
             </div>
@@ -1519,6 +1505,25 @@
                 const clientId = this.getAttribute('data-id');
                 const isChecked = this.checked;
                 const newStatus = isChecked ? 'active' : 'inactive';
+
+                // Confirm action
+                const msg = isChecked
+                    ? "Are you sure? All login details will also be activated."
+                    : "Are you sure? All login details will also be deactivated.";
+                
+                const isConfirmed = await window.appConfirm(msg, {
+                    title: 'Please Confirm',
+                    icon: 'warning',
+                    confirmButtonText: 'Yes',
+                    cancelButtonText: 'Cancel'
+                });
+
+                if (!isConfirmed) {
+                    document.querySelectorAll(`.client-status-toggle[data-id="${clientId}"]`).forEach(cb => {
+                        cb.checked = !isChecked;
+                    });
+                    return;
+                }
 
                 // Sync other toggle switches for the same client (grid and list views)
                 document.querySelectorAll(`.client-status-toggle[data-id="${clientId}"]`).forEach(cb => {

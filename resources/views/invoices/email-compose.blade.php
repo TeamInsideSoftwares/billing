@@ -1,351 +1,331 @@
-@extends('layouts.app')
-
-@section('header_actions')
-<a href="{{ route('invoices.index', [], false) }}"
-    class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-    <i class="fas fa-arrow-left"></i> Back to Invoices
-</a>
-@endsection
-
-@section('content')
 @php
 $clientName = $invoice->client->business_name ?? ($invoice->client->contact_name ?? 'Client');
 $clientEmail = $invoice->client->primary_email ?? $invoice->client->email ?? '';
 $invoicePrimaryOrderId = optional($invoice->invoiceItems)->pluck('orderid')->filter()->first();
-$isAlreadySent = (string) ($composeEmail->status ?? '') === 'sent';
-$isComposeLocked = $isAlreadySent && (string) ($prefillChannel ?? 'email') !== 'email';
+
 $hasTiNumber = !empty(trim((string) $invoice->ti_number));
 $displayDocNumber = $hasTiNumber
-? (trim((string) $invoice->ti_number) !== ''
-? $invoice->ti_number
-: $invoice->invoice_number)
-: (trim((string) $invoice->pi_number) !== ''
-? $invoice->pi_number
-: $invoice->invoice_number);
+? (trim((string) $invoice->ti_number) !== '' ? $invoice->ti_number : $invoice->invoice_number)
+: (trim((string) $invoice->pi_number) !== '' ? $invoice->pi_number : $invoice->invoice_number);
 $defaultSubjectNumber = $hasTiNumber ? $invoice->ti_number : $invoice->pi_number;
+
+$isEmailSent = (string) ($emailDraft->status ?? '') === 'sent';
+$isWhatsappSent = (string) ($whatsappDraft->status ?? '') === 'sent';
+$isSmsSent = (string) ($smsDraft->status ?? '') === 'sent';
+
+$title = 'Compose Invoice Communications';
+$subtitle = "Client: {$clientName}" . ($invoice->pi_number ? " • PI: {$invoice->pi_number}" : "") . ($invoice->ti_number
+? " • TI: {$invoice->ti_number}" : "");
+
+$hasEmailTemplate = true;
+$hasWhatsappTemplate = !empty($templateCatalog['pi']['whatsapp'] ?? []) || !empty($templateCatalog['ti']['whatsapp'] ??
+[]);
+$hasSmsTemplate = !empty($templateCatalog['pi']['sms'] ?? []) || !empty($templateCatalog['ti']['sms'] ?? []);
 @endphp
 
-<section class="position-relative bg-white p-2 rounded-3 compose-mail-page">
-    <div class="bg-light p-2 rounded-3 mb-3">
-        <div class="d-flex align-items-center gap-2">
-            <a href="{{ route('invoices.create', ['step' => 3, 'c' => $invoice->clientid, 'd' => $invoice->invoiceid, 'o' => $invoicePrimaryOrderId], false) }}"
-                class="btn btn-outline-primary btn-primary text-white fw-medium">
-                <i class="fas fa-arrow-left"></i>
-            </a>
-            <div class="vr"></div>
-            <div class="d-inline-flex align-items-center justify-content-center rounded"
-                style="width:36px;height:36px;background:#e0e7ff;color:#4f46e5;">
-                <i class="fas fa-user"></i>
-            </div>
-            <div class="grow">
-                <div class="fw-semibold text-dark">{{ $clientName }}</div>
-                @if ($clientEmail)
-                <div class="text-muted small">{{ $clientEmail }}</div>
-                @endif
-            </div>
-            <div class="text-end">
-                <span class="invoice-number-badge">{{ $displayDocNumber }}</span>
-                <div class="invoice-compact-steps invoice-compact-steps--right mt-1" aria-label="Step progress">
-                    <span class="invoice-compact-step">1</span>
-                    <span class="invoice-compact-step">2</span>
-                    <span class="invoice-compact-step">3</span>
-                    <span class="invoice-compact-step is-active">4</span>
-                </div>
+@extends('layouts.app')
+
+@section('header_actions')
+<a href="{{ route('invoices.create', ['step' => 3, 'c' => $invoice->clientid, 'd' => $invoice->invoiceid, 'o' => $invoicePrimaryOrderId], false) }}"
+    class="btn btn-outline-secondary d-inline-flex align-items-center gap-1 fw-medium me-1">
+    <i class="fas fa-arrow-left"></i> Edit Invoice
+</a>
+<a href="{{ route('invoices.index', [], false) }}"
+    class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
+    <i class="fas fa-list btn-icon"></i> Invoice List
+</a>
+@endsection
+
+@section('content')
+<section class="position-relative bg-white p-3 rounded-3 compose-mail-page">
+
+    <!-- Type Tabs (PI, TI/DSI) -->
+    <div class="mb-3">
+        <div class="w-100">
+            <div class="btn-group" role="group" aria-label="Document Type Tabs">
+                <button type="button"
+                    class="type-tab-btn btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $defaultType === 'pi' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold active' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }}"
+                    data-type="pi" style="opacity: {{ $defaultType === 'pi' ? '1' : '0.7' }};">
+                    PI (Proforma Invoice)
+                </button>
+                <button type="button"
+                    class="type-tab-btn btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $defaultType === 'ti' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold active' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }}"
+                    data-type="ti" {{ !$hasTiNumber ? 'disabled' : '' }}
+                    style="opacity: {{ $defaultType === 'ti' ? '1' : '0.7' }};">
+                    TI/DSI (Tax Invoice)
+                </button>
             </div>
         </div>
     </div>
 
-    <style>
-        .compose-mail-page .channel-pill-btn,
-        .compose-mail-page .type-tab-btn {
-            border-top: 0 !important;
-            border-left: 0 !important;
-            border-right: 0 !important;
-            border-bottom: 2px solid transparent !important;
-            border-radius: 0 !important;
-            background: transparent !important;
-            box-shadow: none !important;
-            font-weight: 500 !important;
-            font-size: 0.95rem !important;
-            padding: 0.5rem 1rem !important;
-            color: var(--bs-primary) !important;
-            opacity: 0.7;
-            display: inline-flex !important;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-            margin-bottom: -1px;
-        }
-
-        .compose-mail-page .channel-pill-btn.is-active,
-        .compose-mail-page .channel-pill-btn.active,
-        .compose-mail-page .type-tab-btn.is-active,
-        .compose-mail-page .type-tab-btn.active {
-            border-bottom: 2px solid var(--bs-primary) !important;
-            font-weight: 700 !important;
-            opacity: 1 !important;
-            color: var(--bs-primary) !important;
-            background: transparent !important;
-        }
-
-        .compose-mail-page .type-tab-btn.is-active::after,
-        .compose-mail-page .type-tab-btn.active::after {
-            display: none !important;
-        }
-    </style>
-
-    <div class="bg-light p-2 rounded-3 mb-3">
-
-        <!-- Type Tabs (PI, TI/DSI) -->
-        <div class="mb-3">
-            <div class="border-bottom w-100">
-                <div class="btn-group" role="group" aria-label="Document Type Tabs">
-                    <button type="button"
-                        class="type-tab-btn btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ old('attachment_type', $prefillAttachmentType ?? $defaultType) === 'pi' || !old('attachment_type', $prefillAttachmentType ?? $defaultType) ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold active' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }}"
-                        data-type="pi" {!! (old('attachment_type', $prefillAttachmentType ?? $defaultType)==='pi' ||
-                        !old('attachment_type', $prefillAttachmentType ?? $defaultType)) ? '' : 'style="opacity: 0.7;"'
-                        !!}>
-                        PI (Proforma Invoice)
-                    </button>
-                    <button type="button"
-                        class="type-tab-btn btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ old('attachment_type', $prefillAttachmentType ?? $defaultType) === 'ti' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold active' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }}"
-                        data-type="ti" {{ !$hasTiNumber ? 'disabled' : '' }} {!! old('attachment_type',
-                        $prefillAttachmentType ?? $defaultType)==='ti' ? '' : 'style="opacity: 0.7;"' !!}>
-                        TI/DSI (Tax Invoice)
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Channel Pills -->
-        <div class="channel-pills-wrap mb-0">
-            <div class="border-bottom w-100">
-                <div class="btn-group" role="group" aria-label="Channel Tabs">
-                    <button type="button"
-                        class="channel-pill-btn btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 text-primary bg-transparent border-primary border-bottom border-2 fw-bold active"
-                        data-channel="email" id="channelBtnEmail">
+    <!-- Channels Row -->
+    <div class="row g-2 align-items-stretch">
+        <!-- Email Column -->
+        <div class="col-12 col-lg-6">
+            <div class="bg-DarkLight p-2 rounded-3 h-100 {{ !$hasEmailTemplate ? 'opacity-50' : '' }}">
+                <div class="bg-white p-2 d-flex align-items-center justify-content-between mb-2">
+                    <h5 class="fw-semibold text-primary small lh-sm mb-0">
                         <i class="fas fa-envelope me-1"></i> Email
-                    </button>
-                    <button type="button"
-                        class="channel-pill-btn btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent"
-                        data-channel="whatsapp" id="channelBtnWhatsapp" style="opacity: 0.7;">
-                        <i class="fab fa-whatsapp me-1"></i> WhatsApp
-                    </button>
-                    <button type="button"
-                        class="channel-pill-btn btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent"
-                        data-channel="sms" id="channelBtnSms" style="opacity: 0.7;">
-                        <i class="fas fa-sms me-1"></i> SMS
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    @if ($errors->any())
-    <div class="alert warning mb-3">
-        <ul class="plain-list mb-0">
-            @foreach ($errors->all() as $error)
-            <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-    @endif
-
-    <form method="POST" id="composeForm" class="mainForm"
-        action="{{ route('invoices.email-compose.store', $invoice->invoiceid) }}" enctype="multipart/form-data">
-        @csrf
-        <input type="hidden" name="logid" value="{{ $composeEmail->logid ?? '' }}">
-        <input type="hidden" name="channel" id="selectedChannel"
-            value="{{ old('channel', $prefillChannel ?? 'email') }}">
-        <input type="hidden" name="attachment_type" id="selectedType"
-            value="{{ old('attachment_type', $prefillAttachmentType ?? $defaultType) }}">
-
-        <div class="row g-3 align-items-start">
-            <div class="col-12 col-xl-7">
-                <div class="bg-light p-2 rounded-3 mb-3">
-                    <div class="mb-2">
-                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Compose Form</h5>
+                        @if(!$hasEmailTemplate)
+                        <span class="text-danger ms-1" style="font-size: 0.75rem;">(No Template)</span>
+                        @endif
+                    </h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="border-0 p-0 bg-transparent fw-semibold text-dark small lh-sm"
+                            data-channel="email" {{ !$hasEmailTemplate ? 'disabled' : '' }}>Raw Message
+                        </button>
+                        @if($isEmailSent)
+                        <span class="badge bg-success small"><i class="fas fa-check-circle me-1"></i> Sent</span>
+                        @endif
+                        <div class="form-check form-switch bg-light rounded-pill mb-0">
+                            <input class="form-check-input channel-select-checkbox" type="checkbox" id="send_email"
+                                data-channel="email" {{ $hasEmailTemplate ? 'checked' : 'disabled' }}>
+                            <label class="form-check-label small fw-semibold text-muted"
+                                for="send_email">Include</label>
+                        </div>
                     </div>
-                    <div class="email-fields">
-                        <div class="row g-2 mb-3">
-                            <div class="col-12 col-md-6">
+                </div>
+                <div>
+                    <form id="emailForm" class="mainForm" data-channel="email" enctype="multipart/form-data">
+                        <input type="hidden" name="logid" value="{{ $emailDraft->logid ?? '' }}">
+                        <input type="hidden" name="channel" value="email">
+
+                        <div class="row g-2">
+                            <div class="col-4">
                                 <label class="form-label small lh-sm fw-semibold text-dark mb-1">From</label>
                                 <input type="email" name="from_email" value="{{ $fromEmail }}" class="form-control"
-                                    readonly>
+                                    readonly {{ !$hasEmailTemplate ? 'disabled' : '' }}>
                             </div>
-                            <div class="col-12 col-md-6">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">To</label>
-                                <input type="text" name="to_email" value="{{ old('to_email', $toEmail) }}"
-                                    class="form-control">
-                            </div>
-                        </div>
 
-                        <div class="row g-2 mb-3">
-                            <div class="col-12 col-md-6">
+                            <div class="col-4">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">To</label>
+                                <input type="text" name="to_email" value="{{ old('to_email', $emailTo) }}"
+                                    class="form-control" {{ !$hasEmailTemplate ? 'disabled' : '' }}>
+                            </div>
+
+                            <div class="col-4">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">CC</label>
+                                <input type="text" name="cc_email" value="{{ old('cc_email', $emailCc) }}"
+                                    class="form-control" {{ !$hasEmailTemplate ? 'disabled' : '' }}>
+                            </div>
+
+                            <div class="col-12">
                                 <label class="form-label small lh-sm fw-semibold text-dark mb-1">Subject</label>
                                 <input type="text" name="subject" id="emailSubjectInput"
-                                    value="{{ old('subject', $prefillSubject ?? 'Invoice ' . ($defaultSubjectNumber ?: $invoice->invoice_number)) }}"
-                                    class="form-control" {{ $isComposeLocked ? 'readonly' : '' }}>
+                                    value="{{ old('subject', $emailSubject) }}" class="form-control" {{
+                                    !$hasEmailTemplate ? 'disabled' : '' }}>
                             </div>
-                            <div class="col-12 col-md-6">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">CC</label>
-                                <input type="text" name="cc_email" value="{{ old('cc_email', $ccEmail) }}"
-                                    class="form-control">
+
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Body</label>
+                                <textarea name="body" id="emailBodyInput" rows="10" class="form-control" {{
+                                    !$hasEmailTemplate ? 'disabled' : '' }}>{{ old('body', $emailBody) }}</textarea>
+                                <div id="attachmentBodyHint" class="text-secondary small mt-1"></div>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Extra Attachments
+                                    (optional)</label>
+                                <input type="file" name="custom_attachments[]" id="customAttachmentInput" multiple
+                                    class="form-control" {{ !$hasEmailTemplate ? 'disabled' : '' }}>
+                                <div id="currentCustomAttachment" class="mt-2"></div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="whatsapp-sms-fields" style="display: none;">
-                        <div class="row g-2 mb-3">
-                            <div class="col-12 col-md-6">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Phone Number</label>
-                                <input type="text" name="phone" value="{{ old('phone', $prefillPhone ?? '') }}"
-                                    class="form-control">
-                            </div>
-                            <div class="col-12 col-md-6"></div>
+                        <div class="d-flex align-items-center justify-content-between mt-2">
+                            <span class="auto-save-status small text-muted" data-channel="email"
+                                style="min-height:1.4em;"></span>
                         </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Body</label>
-                        <textarea name="body" id="emailBodyInput" rows="8" class="form-control" {{ $isComposeLocked
-                            ? 'readonly' : '' }}>{{ old('body', $prefillBody ?? $defaultBody) }}</textarea>
-                        <div id="attachmentBodyHint" class="text-secondary small mt-1"></div>
-                    </div>
-                    <div class="mb-3 email-fields">
-                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Extra Attachments
-                            (optional)</label>
-                        <input type="file" name="custom_attachments[]" id="customAttachmentInput" multiple
-                            class="form-control" {{ $isComposeLocked ? 'disabled' : '' }}>
-                        <div id="currentCustomAttachment" class="mt-2"></div>
-                    </div>
-
-                    <div class="d-flex justify-content-end flex-wrap gap-2 mt-4 pt-3 border-top">
-                        <div class="email-actions" style="{{ $isComposeLocked ? 'display:none;' : '' }}">
-                            <button type="submit" name="action" value="save"
-                                class="btn btn-outline-primary bg-white text-primary fw-medium">Save
-                                Email</button>
-                            <button type="submit" name="action" value="send"
-                                class="btn btn-outline-primary btn-primary text-white fw-medium">Send to
-                                Client</button>
-                        </div>
-                        <div class="whatsapp-actions"
-                            style="{{ $isComposeLocked ? 'display:none;' : 'display: none;' }}">
-                            <button type="submit" name="action" value="save"
-                                class="btn btn-outline-primary bg-white text-primary fw-medium">Save
-                                WhatsApp Message</button>
-                            <button type="submit" name="action" value="send" id="sendWhatsApp"
-                                class="btn btn-outline-primary btn-primary text-white fw-medium"
-                                style="background: #25d366; border-color: #25d366;">
-                                <i class="fab fa-whatsapp mr-1"></i> Send via WhatsApp
-                            </button>
-                        </div>
-                        <div class="sms-actions" style="{{ $isComposeLocked ? 'display:none;' : 'display: none;' }}">
-                            <button type="submit" name="action" value="save"
-                                class="btn btn-outline-primary bg-white text-primary fw-medium">Save
-                                SMS</button>
-                            <button type="submit" name="action" value="send" id="sendSms"
-                                class="btn btn-outline-primary btn-primary text-white fw-medium">Send
-                                SMS</button>
-                        </div>
-                    </div>
+                    </form>
                 </div>
             </div>
-
-            <div class="col-12 col-xl-5">
-                <div class="bg-light p-2 rounded-3 mb-3 position-sticky" style="top:.8rem;">
-                    <div class="mb-2">
-                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Raw Message</h5>
-                    </div>
-                    <pre id="previewRawBody" class="mb-0 mt-0 p-2 border bg-white rounded-3"
-                        style="min-height: 180px; white-space: pre-wrap; word-break: break-word;"></pre>
-                    <div class="mt-3">
-                        <div class="small fw-semibold text-muted mb-1">Attachments</div>
-                        <div id="previewAttachments" class="small text-break"></div>
-                    </div>
-
-                    @php
-                    $sendSuccessMeta = session('send_success_meta');
-                    $shouldShowPostSendActions = !empty($sendSuccessMeta) || $isAlreadySent;
-                    $resolvedAttachmentType =
-                    (string) ($sendSuccessMeta['attachment_type'] ??
-                    ($composeEmail->attachment_type ?? ($prefillAttachmentType ?? $defaultType)));
-                    $resolvedAttachmentType = in_array($resolvedAttachmentType, ['pi', 'ti'], true)
-                    ? $resolvedAttachmentType
-                    : $defaultType;
-                    $successPdfType = $resolvedAttachmentType === 'ti' ? 'tax_invoice' : 'pi';
-                    $resolvedChannel = strtoupper(
-                    (string) ($sendSuccessMeta['channel'] ?? ($composeEmail->channel ?? 'email')),
-                    );
-                    $resolvedDocument =
-                    $resolvedAttachmentType === 'ti' ? 'Tax Invoice (TI)' : 'Proforma Invoice (PI)';
-                    $resolvedSentAt = !empty($sendSuccessMeta['sent_at'])
-                    ? (string) $sendSuccessMeta['sent_at']
-                    : $composeEmail?->updated_at?->format('d M Y, h:i A') ?? $composeEmail?->created_at?->format('d M Y,
-                    h:i A') ?? null;
-                    @endphp
-                    @if ($shouldShowPostSendActions)
-                    <div class="mt-4 pt-3 border-top">
-                        <div class="small text-success fw-semibold mb-2">
-                            {{ $sendSuccessMeta['document'] ?? $resolvedDocument }} sent via
-                            {{ $resolvedChannel }}
-                            @if (!empty($resolvedSentAt))
-                            on {{ $resolvedSentAt }}
-                            @endif
-                        </div>
-                        <div class="d-flex flex-row flex-wrap gap-2">
-                            <a href="{{ route('invoices.index', ['c' => $invoice->clientid], false) }}"
-                                class="btn btn-outline-primary btn-primary text-white fw-medium btn-sm px-2 grow text-center"
-                                style="font-size: 0.8rem;">View Invoices</a>
-                            <a href="{{ route('payments.create', ['clientid' => $invoice->clientid, 'invoiceid' => $invoice->invoiceid], false) }}"
-                                class="btn btn-outline-primary btn-primary text-white fw-medium btn-sm px-2 grow text-center"
-                                style="font-size: 0.8rem;">Record Payment</a>
-                            <a href="{{ route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => $successPdfType], false) }}"
-                                class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm px-2 grow text-center"
-                                style="font-size: 0.8rem;">Download PDF</a>
-                            <a href="{{ route('invoices.index', ['c' => $invoice->clientid], false) }}"
-                                class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm px-2 grow text-center"
-                                style="font-size: 0.8rem;">Back to Invoices</a>
-                        </div>
-                    </div>
-                    @endif
-                </div>
-            </div>
-
         </div>
-    </form>
+
+        <!-- WhatsApp Column -->
+        <div class="col-12 col-lg-3">
+            <div class="bg-DarkLight p-2 rounded-3 h-100 {{ !$hasWhatsappTemplate ? 'opacity-50' : '' }}">
+                <div class="bg-white d-flex align-items-center justify-content-between mb-2">
+                    <h5 class="fw-semibold text-primary small lh-sm mb-0">
+                        <i class="fab fa-whatsapp me-1"></i> WhatsApp
+                        @if(!$hasWhatsappTemplate)
+                        <span class="text-danger ms-1" style="font-size: 0.75rem;">(No Template)</span>
+                        @endif
+                    </h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="border-0 p-0 bg-transparent fw-semibold text-dark small lh-sm"
+                            data-channel="whatsapp" {{ !$hasWhatsappTemplate ? 'disabled' : '' }}> Raw Message
+                        </button>
+                        @if($isWhatsappSent)
+                        <span class="badge bg-success small"><i class="fas fa-check-circle me-1"></i> Sent</span>
+                        @endif
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input channel-select-checkbox" type="checkbox" id="send_whatsapp"
+                                data-channel="whatsapp" {{ ($whatsappDraft && $hasWhatsappTemplate) ? 'checked' : '' }}
+                                {{ !$hasWhatsappTemplate ? 'disabled' : '' }}>
+                            <label class="form-check-label small fw-semibold text-muted"
+                                for="send_whatsapp">Include</label>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <form id="whatsappForm" class="mainForm" data-channel="whatsapp">
+                        <input type="hidden" name="logid" value="{{ $whatsappDraft->logid ?? '' }}">
+                        <input type="hidden" name="channel" value="whatsapp">
+
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Phone Number</label>
+                                <input type="text" name="phone" value="{{ old('phone', $whatsappPhone) }}"
+                                    class="form-control" {{ !$hasWhatsappTemplate ? 'readonly' : '' }}>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Message Body</label>
+                                <textarea name="body" id="whatsappBodyInput" rows="12" class="form-control" {{
+                                    !$hasWhatsappTemplate ? 'readonly' : ''
+                                    }}>{{ old('body', $whatsappBody) }}</textarea>
+
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center justify-content-between mt-2">
+                            <span class="auto-save-status small text-muted" data-channel="whatsapp"
+                                style="min-height:1.4em;"></span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- SMS Column -->
+        <div class="col-12 col-lg-3">
+            <div class="bg-DarkLight p-2 rounded-3 h-100 {{ !$hasSmsTemplate ? 'opacity-50' : '' }}">
+                <div class="bg-white d-flex align-items-center justify-content-between mb-2">
+                    <h5 class="fw-semibold text-primary small lh-sm mb-0">
+                        <i class="fas fa-sms me-1"></i> SMS
+                        @if(!$hasSmsTemplate)
+                        <span class="text-danger ms-1" style="font-size: 0.75rem;">(No Template)</span>
+                        @endif
+                    </h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="border-0 p-0 bg-transparent fw-semibold text-dark small lh-sm"
+                            data-channel="sms" {{ !$hasSmsTemplate ? 'disabled' : '' }}> Raw Message
+                        </button>
+                        @if($isSmsSent)
+                        <span class="badge bg-success small"><i class="fas fa-check-circle me-1"></i> Sent</span>
+                        @endif
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input channel-select-checkbox" type="checkbox" id="send_sms"
+                                data-channel="sms" {{ ($smsDraft && $hasSmsTemplate) ? 'checked' : '' }} {{
+                                !$hasSmsTemplate ? 'disabled' : '' }}>
+                            <label class="form-check-label small fw-semibold text-muted" for="send_sms">Include</label>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <form id="smsForm" class="mainForm" data-channel="sms">
+                        <input type="hidden" name="logid" value="{{ $smsDraft->logid ?? '' }}">
+                        <input type="hidden" name="channel" value="sms">
+
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Phone Number</label>
+                                <input type="text" name="phone" value="{{ old('phone', $smsPhone) }}"
+                                    class="form-control" {{ !$hasSmsTemplate ? 'readonly' : '' }}>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Message Body</label>
+                                <textarea name="body" id="smsBodyInput" rows="12" class="form-control" {{
+                                    !$hasSmsTemplate ? 'readonly' : '' }}>{{ old('body', $smsBody) }}</textarea>
+
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center justify-content-between mt-2">
+                            <span class="auto-save-status small text-muted" data-channel="sms"
+                                style="min-height:1.4em;"></span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="d-flex justify-content-end mt-2">
+        <button type="button" id="globalSendBtn" class="btn btn-primary text-white fw-medium">
+            Send to Client <i class="fas fa-arrow-right btn-icon ms-1"></i>
+        </button>
+    </div>
 </section>
+
+<!-- Raw Message Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white py-2">
+                <h5 class="modal-title fw-semibold" id="previewModalLabel">Raw Message Preview</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-light p-3">
+                <div id="modalPreviewSubjectArea" class="mb-3" style="display: none;">
+                    <div class="small fw-semibold text-muted mb-1">Subject</div>
+                    <div id="modalPreviewSubject" class="p-2 bg-white rounded border fw-semibold text-dark"></div>
+                </div>
+                <div class="mb-3">
+                    <div class="small fw-semibold text-muted mb-1">Message Content</div>
+                    <pre id="modalPreviewBody" class="p-3 bg-white rounded border mb-0 text-dark"
+                        style="white-space: pre-wrap; word-break: break-word; min-height: 120px; font-family: inherit; font-size: 0.92rem;"></pre>
+                </div>
+                <div id="modalPreviewAttachmentsArea" class="mb-0" style="display: none;">
+                    <div class="small fw-semibold text-muted mb-1">Attachments</div>
+                    <div id="modalPreviewAttachments" class="small text-break"></div>
+                </div>
+            </div>
+            <div class="modal-footer bg-white py-2 border-top-0">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script type="application/json" id="template-catalog-data">{!! json_encode($templateCatalog ?? []) !!}</script>
+<script type="application/json"
+    id="fallback-templates-data">{!! json_encode($fallbackTemplatesByType ?? []) !!}</script>
+<script type="application/json"
+    id="saved-custom-attachments-data">{!! json_encode($emailCustomAttachmentUrls ?? []) !!}</script>
+<script type="application/json" id="channel-availability-data">{!! json_encode([
+    'email' => $hasEmailTemplate,
+    'whatsapp' => $hasWhatsappTemplate,
+    'sms' => $hasSmsTemplate
+]) !!}</script>
 
 <script>
     (function () {
-        const hasTiNumber = @json($hasTiNumber);
-        const piPdfUrl = @json(route('invoices.pdf', ['invoice' => $invoice -> invoiceid, 'type' => 'pi']));
-        const tiPdfUrl = @json(route('invoices.pdf', ['invoice' => $invoice -> invoiceid, 'type' => 'tax_invoice']));
+        const hasTiNumber = "{{ $hasTiNumber ? '1' : '' }}" === "1";
+        const piPdfUrl = "{{ route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'pi']) }}";
+        const tiPdfUrl = "{{ route('invoices.pdf', ['invoice' => $invoice->invoiceid, 'type' => 'tax_invoice']) }}";
 
         const typeBtns = Array.from(document.querySelectorAll('.type-tab-btn'));
-        const channelBtns = Array.from(document.querySelectorAll('.channel-pill-btn'));
-
         const attachmentBodyHint = document.getElementById('attachmentBodyHint');
         const customAttachmentInput = document.getElementById('customAttachmentInput');
-        const savedCustomAttachmentUrls = @json($customAttachmentUrls ?? []);
+        let savedCustomAttachmentUrls = JSON.parse(document.getElementById('saved-custom-attachments-data').textContent || '[]');
+
         const emailSubjectInput = document.getElementById('emailSubjectInput');
         const emailBodyInput = document.getElementById('emailBodyInput');
-        const previewRawBody = document.getElementById('previewRawBody');
-        const previewAttachments = document.getElementById('previewAttachments');
         const currentCustomAttachment = document.getElementById('currentCustomAttachment');
-        const templatePicker = document.getElementById('templatePicker');
-        const templatePickerSmsWa = document.getElementById('templatePickerSmsWa');
 
-        const templateCatalog = @json($templateCatalog ?? []);
-        const availableChannelsByType = @json($availableChannelsByType ?? []);
-        const fallbackTemplatesByType = @json($fallbackTemplatesByType ?? []);
-        const isAlreadySent = @json($isComposeLocked);
+        const templateCatalog = JSON.parse(document.getElementById('template-catalog-data').textContent || '{}');
+        const fallbackTemplatesByType = JSON.parse(document.getElementById('fallback-templates-data').textContent || '{}');
+        const channelAvailability = JSON.parse(document.getElementById('channel-availability-data').textContent || '{}');
 
-        let currentChannel = document.getElementById('selectedChannel').value || 'email';
-        let currentType = document.getElementById('selectedType').value || 'pi';
-        let dscPreviewUrls = Array.isArray(savedCustomAttachmentUrls) ? [...savedCustomAttachmentUrls] : [];
-        let currentRawTemplateBody = '';
-        const hasExistingDraft = !!(document.querySelector('input[name="logid"]')?.value || '').trim();
+        const storeUrl = "{{ route('invoices.email-compose.store', $invoice->invoiceid) }}";
+        const redirectUrl = "{{ route('invoices.index', ['c' => $invoice->clientid]) }}";
+
+        let currentType = "{{ $defaultType }}";
+        let dscPreviewUrls = [];
+
         const INVOICE_COMPOSE_READY_TOAST_KEY = 'invoice_compose_ready_toast';
 
         function showSuccessToast(message) {
@@ -385,18 +365,16 @@ $defaultSubjectNumber = $hasTiNumber ? $invoice->ti_number : $invoice->pi_number
 
         function buildPreviewAttachments() {
             const files = [];
-            const selectedTemplate = getSelectedTemplateForCurrentSelection(currentType, currentChannel);
+            const selectedTemplate = getSelectedTemplateForCurrentSelection(currentType, 'email');
             const selectedHeaderType = String(selectedTemplate?.header_type || '').toLowerCase();
-            const canAttachDocumentForWhatsapp = currentChannel !== 'whatsapp' ||
-                selectedHeaderType === 'document';
 
-            if (currentType === 'pi' && canAttachDocumentForWhatsapp) {
+            if (currentType === 'pi') {
                 files.push({
                     label: 'Proforma Invoice (PI).pdf',
                     url: piPdfUrl
                 });
             }
-            if (currentType === 'ti' && hasTiNumber && canAttachDocumentForWhatsapp) {
+            if (currentType === 'ti' && hasTiNumber) {
                 files.push({
                     label: 'Tax Invoice (TI).pdf',
                     url: tiPdfUrl
@@ -420,42 +398,14 @@ $defaultSubjectNumber = $hasTiNumber ? $invoice->ti_number : $invoice->pi_number
         }
 
         function refreshAttachmentPreview() {
-            if (!previewAttachments) return;
-            if (currentChannel === 'sms') {
-                previewAttachments.innerHTML = '<span class="text-muted">No attachments for SMS.</span>';
-                return;
-            }
+            const labels = [];
+            if (currentType === 'pi') labels.push('PI PDF');
+            if (currentType === 'ti') labels.push('TI PDF');
 
-            const files = buildPreviewAttachments();
-            if (files.length === 0) {
-                previewAttachments.innerHTML = '<span class="text-muted">No attachments selected.</span>';
-                return;
+            const totalAttachments = labels.length + (savedCustomAttachmentUrls || []).length + (customAttachmentInput?.files || []).length;
+            if (attachmentBodyHint) {
+                attachmentBodyHint.textContent = totalAttachments > 0 ? ('Attached: ' + labels.join(', ') + ' (' + totalAttachments + ' total file(s))') : 'No attachments selected.';
             }
-
-            const primaryPdf = files[0] || null;
-            const extraAttachments = files.slice(1);
-            let html = '';
-            if (primaryPdf) {
-                html += '<div><a href="' + primaryPdf.url + '" target="_blank" rel="noopener noreferrer">' +
-                    String(primaryPdf.label || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
-                    '</a></div>';
-            }
-            if (extraAttachments.length > 0) {
-                html += '<div class="mt-1">' + extraAttachments.map((file) => (
-                    '<a href="' + file.url + '" target="_blank" rel="noopener noreferrer">' +
-                    String(file.label || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
-                    '</a>'
-                )).join(', ') + '</div>';
-            }
-            previewAttachments.innerHTML = html;
-        }
-
-        function refreshEmailPreview() {
-            if (previewRawBody) {
-                const rawPreview = getPlainTextFromHtml(currentRawTemplateBody || '').trim();
-                previewRawBody.textContent = rawPreview || '(No raw template body)';
-            }
-            refreshAttachmentPreview();
         }
 
         function normalizeHtmlForEditor(html) {
@@ -485,7 +435,6 @@ $defaultSubjectNumber = $hasTiNumber ? $invoice->ti_number : $invoice->pi_number
             if (!html) return '';
             let text = html;
 
-            // Handle basic WhatsApp markdown-like conversions
             text = text.replace(/\\r\\n/g, '\n');
             text = text.replace(/\\n/g, '\n');
             text = text.replace(/<br\s*\/?>/gi, '\n');
@@ -501,17 +450,14 @@ $defaultSubjectNumber = $hasTiNumber ? $invoice->ti_number : $invoice->pi_number
             text = text.replace(/<s>(.*?)<\/s>/gi, '~$1~');
             text = text.replace(/<del>(.*?)<\/del>/gi, '~$1~');
 
-            // Strip remaining HTML tags
             const tmp = document.createElement('DIV');
             tmp.innerHTML = text;
             const out = tmp.textContent || tmp.innerText || '';
             return out.replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n');
         }
 
-        function isImageAttachment(item) {
-            const fileType = String(item?.fileType || '').toLowerCase();
-            const url = String(item?.url || '');
-            return fileType.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(url);
+        function isImageAttachment(url) {
+            return /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(String(url || ''));
         }
 
         function renderCurrentCustomAttachment() {
@@ -531,12 +477,12 @@ $defaultSubjectNumber = $hasTiNumber ? $invoice->ti_number : $invoice->pi_number
                 }));
 
             if (attachments.length === 0) {
-                currentCustomAttachment.innerHTML =
-                    '<span class="small text-muted">No extra attachment selected.</span>';
+                currentCustomAttachment.innerHTML = '<span class="small text-muted">No extra attachment selected.</span>';
                 return;
             }
-            const imageRows = attachments.filter((item) => isImageAttachment(item));
-            const fileRows = attachments.filter((item) => !isImageAttachment(item));
+            const imageRows = attachments.filter((item) => isImageAttachment(item.url));
+            const fileRows = attachments.filter((item) => !isImageAttachment(item.url));
+
             const imageHtml = imageRows.length
                 ? ('<div class="small text-muted mb-1 mt-2">Image preview:</div>' +
                     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
@@ -555,140 +501,27 @@ $defaultSubjectNumber = $hasTiNumber ? $invoice->ti_number : $invoice->pi_number
                 )).join(', ') + '</div>' + imageHtml;
         }
 
-        function updateContextHints() {
-            const labels = [];
-            const selectedTemplate = getSelectedTemplateForCurrentSelection(currentType, currentChannel);
-            const selectedHeaderType = String(selectedTemplate?.header_type || '').toLowerCase();
-            const canAttachDocumentForWhatsapp = currentChannel !== 'whatsapp' || selectedHeaderType === 'document';
-            if (currentType === 'pi' && canAttachDocumentForWhatsapp) labels.push('PI PDF');
-            if (currentType === 'ti' && canAttachDocumentForWhatsapp) labels.push('TI PDF');
-            if ((dscPreviewUrls || []).length > 0) labels.push('Custom attachment');
-
-            if (!attachmentBodyHint) return;
-            const attachmentText = labels.length ? ('Attached: ' + labels.join(', ')) : 'No attachment selected.';
-            if (isAlreadySent) {
-                attachmentBodyHint.textContent = attachmentText +
-                    ' ';
-                return;
-            }
-            attachmentBodyHint.textContent = attachmentText;
-        }
-
-        function getTemplateKeyForSelection(type) {
-            return type; // pi, ti
-        }
-
-        function getAvailableChannelsForType(type) {
-            const channels = availableChannelsByType[type] || [];
-            if (!Array.isArray(channels) || channels.length === 0) {
-                return ['email'];
-            }
-            return channels;
-        }
-
         function getTemplatesForSelection(type, channel) {
             return ((templateCatalog[type] || {})[channel] || []);
         }
 
-        function getRawTemplateBodyForCurrentSelection(type, channel) {
-            let payload = getSelectedTemplateForCurrentSelection(type, channel);
-
-            if (!payload) {
-                payload = fallbackTemplatesByType[type] || {
-                    raw_body: ''
-                };
-            }
-
-            return String(payload?.raw_body || '');
-        }
-
         function getSelectedTemplateForCurrentSelection(type, channel) {
             const options = getTemplatesForSelection(type, channel);
-            const pickedTemplateId = (channel === 'email' ?
-                (templatePicker?.value || '') :
-                (templatePickerSmsWa?.value || templatePicker?.value || '')
-            );
-
-            if (pickedTemplateId) {
-                return options.find((tpl) => (tpl.templateid || '') === pickedTemplateId) || null;
-            }
             if (options.length > 0) {
                 return options[0];
             }
             return null;
         }
 
-        function refreshChannelVisibilityForType(type) {
-            const allowed = getAvailableChannelsForType(type);
-            channelBtns.forEach((btn) => {
-                const show = allowed.includes(btn.dataset.channel);
-                btn.style.display = show ? '' : 'none';
-            });
-
-            if (!allowed.includes(currentChannel)) {
-                const fallback = allowed[0] || 'email';
-                currentChannel = fallback;
-                document.getElementById('selectedChannel').value = fallback;
-            }
-        }
-
-        function populateTemplatePicker(type, channel) {
-            if (!templatePicker && !templatePickerSmsWa) return;
-            const items = getTemplatesForSelection(type, channel);
-            const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
-            if (templatePicker) templatePicker.innerHTML = '';
-            if (templatePickerSmsWa) templatePickerSmsWa.innerHTML = '';
-
-            const manual = document.createElement('option');
-            manual.value = '';
-            manual.textContent = 'Manual (no template)';
-            if (templatePicker) templatePicker.appendChild(manual.cloneNode(true));
-            if (templatePickerSmsWa) templatePickerSmsWa.appendChild(manual.cloneNode(true));
-
-            items.forEach((tpl) => {
-                const option = document.createElement('option');
-                option.value = tpl.templateid || '';
-                option.textContent = tpl.name || ('Template ' + (tpl.templateid || ''));
-                if (templatePicker) templatePicker.appendChild(option.cloneNode(true));
-                if (templatePickerSmsWa) templatePickerSmsWa.appendChild(option.cloneNode(true));
-            });
-
-            const firstValue = items.length > 0 ? (items[0].templateid || '') : '';
-            if (items.length > 0) {
-                if (templatePicker) templatePicker.value = firstValue;
-                if (templatePickerSmsWa) templatePickerSmsWa.value = firstValue;
-            } else {
-                if (templatePicker) templatePicker.value = '';
-                if (templatePickerSmsWa) templatePickerSmsWa.value = '';
-            }
-            if (selectedTemplateIdInput) {
-                selectedTemplateIdInput.value = firstValue || '';
-            }
-        }
-
-        function applyTemplate(preserveExisting = false) {
-            currentRawTemplateBody = getRawTemplateBodyForCurrentSelection(currentType, currentChannel);
-            if (isAlreadySent) {
-                if (emailBodyInput && currentChannel !== 'email') {
-                    emailBodyInput.value = getPlainTextFromHtml(emailBodyInput.value || '');
-                }
-                refreshEmailPreview();
-                return;
-            }
-            const templateKey = getTemplateKeyForSelection(currentType);
-            const pickedTemplateId = (currentChannel === 'email' ?
-                (templatePicker?.value || '') :
-                (templatePickerSmsWa?.value || templatePicker?.value || '')
-            );
-            const options = getTemplatesForSelection(templateKey, currentChannel);
+        function applyTemplate(channel, preserveExisting = false) {
+            const options = getTemplatesForSelection(currentType, channel);
             let payload = null;
-            if (pickedTemplateId) {
-                payload = options.find((tpl) => (tpl.templateid || '') === pickedTemplateId) || null;
-            } else if (options.length > 0) {
+            if (options.length > 0) {
                 payload = options[0];
             }
+
             if (!payload) {
-                payload = fallbackTemplatesByType[templateKey] || {
+                payload = fallbackTemplatesByType[currentType] || {
                     subject: '',
                     body: ''
                 };
@@ -696,179 +529,45 @@ $defaultSubjectNumber = $hasTiNumber ? $invoice->ti_number : $invoice->pi_number
 
             const nextSubject = (payload.subject || '').trim();
             const nextBody = payload.body || '';
-            const hasRawTemplateBody = typeof payload.raw_body === 'string' && payload.raw_body.trim() !== '';
-            currentRawTemplateBody = hasRawTemplateBody ?
-                payload.raw_body :
-                getPlainTextFromHtml(payload.body || nextBody || '');
 
             if (preserveExisting) {
-                if (currentChannel !== 'email' && emailBodyInput) {
-                    emailBodyInput.value = getPlainTextFromHtml(emailBodyInput.value || '');
-                }
-                refreshEmailPreview();
                 return;
             }
 
-            if (emailSubjectInput && currentChannel === 'email') {
-                emailSubjectInput.value = nextSubject;
-            }
-
-            if (currentChannel !== 'email') {
-                emailBodyInput.value = getPlainTextFromHtml(nextBody || '');
-            } else if (window.tinymce && tinymce.get('emailBodyInput')) {
-                const editor = tinymce.get('emailBodyInput');
-                editor.setContent(toEditorHtml(nextBody));
-            } else if (emailBodyInput) {
-                emailBodyInput.value = normalizeHtmlForEditor(nextBody);
-            }
-            refreshEmailPreview();
-        }
-
-        function switchChannel(channel, preserveExisting = false) {
-            currentChannel = channel;
-            document.getElementById('selectedChannel').value = channel;
-            syncBodyEditorByChannel(channel);
-
-            channelBtns.forEach(btn => {
-                const isActive = btn.dataset.channel === channel;
-                btn.classList.toggle('active', isActive);
-                btn.classList.toggle('is-active', isActive);
-            });
-
-            document.querySelectorAll('.email-fields').forEach(el => el.style.display = channel === 'email' ? '' :
-                'none');
-            document.querySelectorAll('.whatsapp-sms-fields').forEach(el => el.style.display = (channel ===
-                'whatsapp' || channel === 'sms') ? '' : 'none');
-            document.querySelector('.email-actions').style.display = channel === 'email' ? '' : 'none';
-            document.querySelector('.whatsapp-actions').style.display = channel === 'whatsapp' ? '' : 'none';
-            document.querySelector('.sms-actions').style.display = channel === 'sms' ? '' : 'none';
-
-            populateTemplatePicker(currentType, currentChannel);
-            applyTemplate(preserveExisting);
-        }
-
-        function switchType(type, preserveExisting = false) {
-            currentType = type;
-            document.getElementById('selectedType').value = type;
-
-            typeBtns.forEach(btn => {
-                const isActive = btn.dataset.type === type;
-                btn.classList.toggle('active', isActive);
-                btn.classList.toggle('is-active', isActive);
-            });
-
-            refreshChannelVisibilityForType(type);
-            updateContextHints();
-            populateTemplatePicker(currentType, currentChannel);
-            applyTemplate(preserveExisting);
-        }
-
-        // Event Listeners
-        typeBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (btn.disabled) return;
-                const newType = btn.dataset.type;
-                if (newType === currentType) return;
-
-                const url = new URL(window.location.href);
-                url.searchParams.set('channel', currentChannel);
-                url.searchParams.set('attachment_type', newType);
-                url.searchParams.delete('e');
-                window.location.href = url.toString();
-            });
-        });
-
-        channelBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (btn.style.display === 'none') return;
-                const newChannel = btn.dataset.channel;
-                if (newChannel === currentChannel) return;
-
-                // Store current form data in sessionStorage before switching
-                if (emailSubjectInput?.value || emailBodyInput?.value) {
-                    sessionStorage.setItem('compose_subject', emailSubjectInput?.value || '');
-                    sessionStorage.setItem('compose_body', emailBodyInput?.value || '');
+            if (channel === 'email') {
+                if (emailSubjectInput) {
+                    emailSubjectInput.value = nextSubject;
                 }
-
-                // Redirect to reload with new channel - controller will load correct saved message
-                const url = new URL(window.location.href);
-                url.searchParams.set('channel', newChannel);
-                url.searchParams.set('attachment_type', currentType);
-                url.searchParams.delete('e');
-                window.location.href = url.toString();
-            });
-        });
-
-        templatePicker?.addEventListener('change', () => {
-            const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
-            if (selectedTemplateIdInput) {
-                selectedTemplateIdInput.value = templatePicker.value || '';
-            }
-            if (templatePickerSmsWa) {
-                templatePickerSmsWa.value = templatePicker.value || '';
-            }
-            applyTemplate(false);
-        });
-
-        templatePickerSmsWa?.addEventListener('change', () => {
-            const selectedTemplateIdInput = document.getElementById('selectedTemplateId');
-            if (selectedTemplateIdInput) {
-                selectedTemplateIdInput.value = templatePickerSmsWa.value || '';
-            }
-            if (templatePicker) {
-                templatePicker.value = templatePickerSmsWa.value || '';
-            }
-            applyTemplate(false);
-        });
-
-        customAttachmentInput?.addEventListener('change', function () {
-            if (@json($isComposeLocked)) return;
-            (dscPreviewUrls || []).forEach((url) => {
-                if (url && !(savedCustomAttachmentUrls || []).includes(url)) {
-                    URL.revokeObjectURL(url);
+                if (window.tinymce && tinymce.get('emailBodyInput')) {
+                    const editor = tinymce.get('emailBodyInput');
+                    editor.setContent(toEditorHtml(nextBody));
+                    editor.save();
+                } else if (emailBodyInput) {
+                    emailBodyInput.value = normalizeHtmlForEditor(nextBody);
                 }
-            });
-            const selectedFiles = Array.from(customAttachmentInput.files || []);
-            dscPreviewUrls = selectedFiles.map((file) => URL.createObjectURL(file));
-            updateContextHints();
-            renderCurrentCustomAttachment();
-            refreshEmailPreview();
-        });
-
-        function refillFromTemplateWhenBodyEmpty() {
-            if (isAlreadySent) return;
-            const plain = (getPlainTextFromHtml(getActiveMessageBody()) || '').trim();
-            if (plain !== '') return;
-            const options = getTemplatesForSelection(currentType, currentChannel);
-            if (!Array.isArray(options) || options.length === 0) return;
-            applyTemplate(false);
-        }
-
-        emailSubjectInput?.addEventListener('input', refreshEmailPreview);
-        emailBodyInput?.addEventListener('input', function () {
-            refreshEmailPreview();
-            refillFromTemplateWhenBodyEmpty();
-        });
-
-        function getActiveMessageBody() {
-            if (window.tinymce && tinymce.get('emailBodyInput')) {
-                return tinymce.get('emailBodyInput').getContent();
+            } else {
+                const bodyInput = document.getElementById(channel + 'BodyInput');
+                if (bodyInput) {
+                    bodyInput.value = getPlainTextFromHtml(nextBody || '');
+                }
             }
-            return emailBodyInput.value;
         }
 
+        // Initialize TinyMCE for Email Body
         function enableTinyMceForEmail() {
             if (!window.tinymce || !emailBodyInput) return;
             if (tinymce.get('emailBodyInput')) return;
 
+            const hasEmailTemplate = channelAvailability.email;
+
             tinymce.init({
                 license_key: 'gpl',
                 selector: '#emailBodyInput',
+                readonly: !hasEmailTemplate,
                 menubar: false,
-                height: 340,
-                readonly: !!isAlreadySent,
+                height: 240,
                 plugins: 'lists link table code autoresize',
-                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
+                toolbar: hasEmailTemplate ? 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code' : false,
                 valid_elements: '*[*]',
                 extended_valid_elements: 'style[type|media],link[rel|href|type|media],meta[charset|name|content]',
                 setup: function (editor) {
@@ -876,134 +575,329 @@ $defaultSubjectNumber = $hasTiNumber ? $invoice->ti_number : $invoice->pi_number
                         e.content = normalizeHtmlForEditor(e.content || '');
                     });
                     editor.on('init', function () {
-                        // Preserve plain-text line breaks on initial TinyMCE render.
                         const initialBody = emailBodyInput?.value || '';
                         editor.setContent(toEditorHtml(initialBody));
-                        if (isAlreadySent) {
-                            editor.mode.set('readonly');
-                        }
                         editor.save();
-                        refreshEmailPreview();
                     });
                     editor.on('input change keyup setcontent undo redo ExecCommand NodeChange',
                         function () {
                             editor.save();
-                            refreshEmailPreview();
-                            refillFromTemplateWhenBodyEmpty();
                         });
                 }
             });
         }
+        enableTinyMceForEmail();
 
-        function disableTinyMceForTextarea() {
-            if (!window.tinymce) return;
-            const editor = tinymce.get('emailBodyInput');
-            if (!editor) return;
-            editor.save();
-            editor.remove();
-        }
-
-        function syncBodyEditorByChannel(channel) {
-            if (channel === 'email') {
-                enableTinyMceForEmail();
-                return;
-            }
-            disableTinyMceForTextarea();
-        }
-
-        // Actions
-        document.getElementById('copyToClipboard')?.addEventListener('click', function () {
-            const htmlContent = getActiveMessageBody();
-            const message = getPlainTextFromHtml(htmlContent);
-
-            const dummy = document.createElement("textarea");
-            document.body.appendChild(dummy);
-            dummy.value = message;
-            dummy.select();
-            document.execCommand("copy");
-            document.body.removeChild(dummy);
-            alert('Message copied to clipboard!');
-        });
-
-        document.getElementById('copySmsToClipboard')?.addEventListener('click', function () {
-            const htmlContent = getActiveMessageBody();
-            const message = getPlainTextFromHtml(htmlContent);
-
-            const dummy = document.createElement("textarea");
-            document.body.appendChild(dummy);
-            dummy.value = message;
-            dummy.select();
-            document.execCommand("copy");
-            document.body.removeChild(dummy);
-            alert('SMS copied to clipboard!');
-        });
-
-        const composeForm = document.getElementById('composeForm');
-        const actionButtons = Array.from(composeForm?.querySelectorAll('button[type="submit"][name="action"]') ||
-            []);
-
-        function syncEditorToTextarea() {
-            if (window.tinymce) {
-                const editor = tinymce.get('emailBodyInput');
-                if (editor) {
-                    editor.save();
-                } else {
-                    tinymce.triggerSave();
+        // Attachments change listener
+        customAttachmentInput?.addEventListener('change', function () {
+            (dscPreviewUrls || []).forEach((url) => {
+                if (url && !(savedCustomAttachmentUrls || []).includes(url)) {
+                    URL.revokeObjectURL(url);
                 }
-            }
-        }
+            });
+            const selectedFiles = Array.from(customAttachmentInput.files || []);
+            dscPreviewUrls = selectedFiles.map((file) => URL.createObjectURL(file));
+            refreshAttachmentPreview();
+            renderCurrentCustomAttachment();
+        });
 
-        actionButtons.forEach((btn) => {
-            btn.addEventListener('click', function () {
-                syncEditorToTextarea();
+        // Initialize templates
+        const channels = ['email', 'whatsapp', 'sms'];
+        channels.forEach(channel => {
+            const draftInput = document.querySelector(`#${channel}Form input[name="logid"]`);
+            const draftExists = !!(draftInput?.value || '').trim();
+
+            applyTemplate(channel, draftExists);
+        });
+
+        // Type tabs listeners (reloads with updated attachment_type context)
+        typeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.disabled) return;
+                const newType = btn.dataset.type;
+                if (newType === currentType) return;
+
+                const url = new URL(window.location.href);
+                url.searchParams.set('attachment_type', newType);
+                url.searchParams.delete('e');
+                window.location.href = url.toString();
             });
         });
 
-        composeForm?.addEventListener('submit', function () {
-            syncEditorToTextarea();
-        }, true);
+        // ── Auto-save ──────────────────────────────────────────────────────────
+        const autoSaveTimers = {};
+        const AUTO_SAVE_DELAY = 1200; // ms debounce
 
-        // Initial load
-        if (!hasTiNumber && currentType === 'ti') {
-            currentType = 'pi';
-        }
-
-        // Read channel from URL parameter and sync with controller-loaded message
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlChannel = urlParams.get('channel');
-        const urlType = urlParams.get('attachment_type');
-        if (urlType && ['pi', 'ti'].includes(urlType)) {
-            currentType = urlType;
-            document.getElementById('selectedType').value = urlType;
-        }
-        if (urlChannel && ['email', 'whatsapp', 'sms'].includes(urlChannel)) {
-            currentChannel = urlChannel;
-            document.getElementById('selectedChannel').value = urlChannel;
-        } else {
-            // Check for channel preserved after save
-            const preservedChannel = @json(session('preserve_channel'));
-            if (preservedChannel && ['email', 'whatsapp', 'sms'].includes(preservedChannel)) {
-                // Redirect to URL with channel param to reload saved message
-                const url = new URL(window.location.href);
-                url.searchParams.set('channel', preservedChannel);
-                url.searchParams.set('attachment_type', currentType);
-                url.searchParams.delete('e');
-                window.location.href = url.toString();
-                return;
+        function setAutoSaveStatus(channel, state) {
+            const el = document.querySelector('.auto-save-status[data-channel="' + channel + '"]');
+            if (!el) return;
+            if (state === 'saving') {
+                el.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving…';
+                el.className = 'auto-save-status small text-muted';
+            } else if (state === 'saved') {
+                el.innerHTML = '<i class="fas fa-check-circle me-1 text-success"></i> <span class="text-success">Saved</span>';
+            } else if (state === 'error') {
+                el.innerHTML = '<i class="fas fa-exclamation-circle me-1 text-danger"></i> <span class="text-danger">Save failed</span>';
+            } else {
+                el.innerHTML = '';
             }
         }
 
-        // Update channel button state to match loaded message
-        channelBtns.forEach(btn => {
-            const isActive = btn.dataset.channel === currentChannel;
-            btn.classList.toggle('active', isActive);
-            btn.classList.toggle('is-active', isActive);
+        async function doAutoSave(channel) {
+            const form = document.getElementById(channel + 'Form');
+            if (!form) return;
+
+            if (channel === 'email' && window.tinymce && tinymce.get('emailBodyInput')) {
+                tinymce.get('emailBodyInput').save();
+            }
+
+            const formData = new FormData(form);
+            formData.append('_token', '{{ csrf_token() }}');
+            formData.append('action', 'save');
+            formData.append('channel', channel);
+            formData.append('attachment_type', currentType);
+
+            setAutoSaveStatus(channel, 'saving');
+
+            try {
+                const response = await fetch(storeUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    const logidInput = form.querySelector('input[name="logid"]');
+                    if (logidInput && data.logid) {
+                        logidInput.value = data.logid;
+                    }
+                    if (channel === 'email' && data.customAttachmentUrls) {
+                        savedCustomAttachmentUrls = data.customAttachmentUrls;
+                        renderCurrentCustomAttachment();
+                        refreshAttachmentPreview();
+                    }
+                    setAutoSaveStatus(channel, 'saved');
+                } else {
+                    setAutoSaveStatus(channel, 'error');
+                    console.warn('[auto-save] Failed for', channel, data.message);
+                }
+            } catch (error) {
+                setAutoSaveStatus(channel, 'error');
+                console.error('[auto-save] Error for', channel, error);
+            }
+        }
+
+        function scheduleAutoSave(channel) {
+            clearTimeout(autoSaveTimers[channel]);
+            setAutoSaveStatus(channel, null); // clear previous status while typing
+            autoSaveTimers[channel] = setTimeout(() => doAutoSave(channel), AUTO_SAVE_DELAY);
+        }
+
+        // Wire up input/change listeners for plain inputs in each form
+        ['email', 'whatsapp', 'sms'].forEach(channel => {
+            const form = document.getElementById(channel + 'Form');
+            if (!form) return;
+            form.addEventListener('input', () => scheduleAutoSave(channel));
+            form.addEventListener('change', (e) => {
+                // skip file inputs – attachments need explicit save
+                if (e.target && e.target.type === 'file') return;
+                scheduleAutoSave(channel);
+            });
         });
 
-        syncBodyEditorByChannel(currentChannel);
-        switchType(currentType, hasExistingDraft);
-        switchChannel(currentChannel, hasExistingDraft);
-        refreshEmailPreview();
+        // Wire TinyMCE editor changes for email auto-save
+        (function wireEmailEditorAutoSave() {
+            const check = () => {
+                if (window.tinymce && tinymce.get('emailBodyInput')) {
+                    tinymce.get('emailBodyInput').on('input keyup change setcontent undo redo ExecCommand', () => {
+                        scheduleAutoSave('email');
+                    });
+                } else {
+                    setTimeout(check, 300);
+                }
+            };
+            check();
+        })();
+
+        // Preview raw message handler
+        document.querySelectorAll('.preview-channel-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const channel = this.dataset.channel;
+                const modalTitle = document.getElementById('previewModalLabel');
+                const modalSubjectArea = document.getElementById('modalPreviewSubjectArea');
+                const modalSubject = document.getElementById('modalPreviewSubject');
+                const modalBody = document.getElementById('modalPreviewBody');
+                const modalAttachmentsArea = document.getElementById('modalPreviewAttachmentsArea');
+                const modalAttachments = document.getElementById('modalPreviewAttachments');
+
+                modalTitle.textContent = 'Preview Message - ' + channel.toUpperCase();
+
+                const selectedTemplate = getSelectedTemplateForCurrentSelection(currentType, channel);
+                const hasRawTemplateBody = typeof selectedTemplate?.raw_body === 'string' && selectedTemplate.raw_body.trim() !== '';
+                const rawTemplateBody = hasRawTemplateBody ? selectedTemplate.raw_body : '';
+
+                let activeBody = '';
+                if (channel === 'email') {
+                    if (window.tinymce && tinymce.get('emailBodyInput')) {
+                        activeBody = tinymce.get('emailBodyInput').getContent();
+                    } else {
+                        activeBody = emailBodyInput.value;
+                    }
+                } else {
+                    activeBody = document.getElementById(channel + 'BodyInput').value;
+                }
+
+                if (channel === 'email') {
+                    modalBody.innerHTML = rawTemplateBody || activeBody || '(No content)';
+                } else {
+                    modalBody.textContent = rawTemplateBody || activeBody || '(No content)';
+                }
+
+                if (channel === 'email') {
+                    modalSubjectArea.style.display = 'block';
+                    modalSubject.textContent = emailSubjectInput.value || '(No Subject)';
+
+                    modalAttachmentsArea.style.display = 'block';
+                    const files = buildPreviewAttachments();
+                    if (files.length === 0) {
+                        modalAttachments.innerHTML = '<span class="text-muted">No attachments.</span>';
+                    } else {
+                        modalAttachments.innerHTML = files.map(f => `<a href="${f.url}" target="_blank" class="d-block mt-1"><i class="fas fa-file-pdf text-danger me-1"></i> ${f.label}</a>`).join('');
+                    }
+                } else if (channel === 'whatsapp') {
+                    modalSubjectArea.style.display = 'none';
+                    const selectedHeaderType = String(selectedTemplate?.header_type || '').toLowerCase();
+                    const canAttach = selectedHeaderType === 'document';
+                    if (canAttach) {
+                        modalAttachmentsArea.style.display = 'block';
+                        const files = [];
+                        if (currentType === 'pi') files.push({ label: 'Proforma Invoice (PI).pdf', url: piPdfUrl });
+                        if (currentType === 'ti' && hasTiNumber) files.push({ label: 'Tax Invoice (TI).pdf', url: tiPdfUrl });
+                        modalAttachments.innerHTML = files.map(f => `<a href="${f.url}" target="_blank" class="d-block mt-1"><i class="fas fa-file-pdf text-danger me-1"></i> ${f.label}</a>`).join('');
+                    } else {
+                        modalAttachmentsArea.style.display = 'none';
+                    }
+                } else {
+                    modalSubjectArea.style.display = 'none';
+                    modalAttachmentsArea.style.display = 'none';
+                }
+
+                const modalInstance = new bootstrap.Modal(document.getElementById('previewModal'));
+                modalInstance.show();
+            });
+        });
+
+        // Global Send to Client handler
+        document.getElementById('globalSendBtn')?.addEventListener('click', async function () {
+            const selectedCheckboxes = Array.from(document.querySelectorAll('.channel-select-checkbox:checked'));
+            if (selectedCheckboxes.length === 0) {
+                Swal.fire('No Channel Selected', 'Please select at least one channel to send.', 'warning');
+                return;
+            }
+
+            const channelsToSend = selectedCheckboxes.map(cb => cb.dataset.channel);
+
+            const confirmMessage = 'Are you sure you want to send the invoice via: ' + channelsToSend.map(c => c.toUpperCase()).join(', ') + '?';
+            const confirmed = await window.appConfirm(confirmMessage, {
+                title: 'Confirm Sending',
+                icon: 'question',
+                confirmButtonText: 'Yes, Send'
+            });
+
+            if (!confirmed) return;
+
+            Swal.fire({
+                title: 'Sending communications...',
+                text: 'Please wait...',
+                allowOutsideClick: false,
+                width: 340,
+                buttonsStyling: false,
+                customClass: {
+                    popup: 'app-swal-popup',
+                    title: 'app-swal-title',
+                    htmlContainer: 'app-swal-text',
+                    confirmButton: 'app-swal-btn app-swal-btn-confirm',
+                    cancelButton: 'app-swal-btn app-swal-btn-cancel',
+                    icon: 'app-swal-icon',
+                },
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            for (const channel of channelsToSend) {
+                const form = document.getElementById(channel + 'Form');
+                if (!form) continue;
+
+                if (channel === 'email' && window.tinymce && tinymce.get('emailBodyInput')) {
+                    tinymce.get('emailBodyInput').save();
+                }
+
+                const formData = new FormData(form);
+                formData.append('_token', '{{ csrf_token() }}');
+                formData.append('action', 'send');
+                formData.append('channel', channel);
+                formData.append('attachment_type', currentType);
+
+                try {
+                    const response = await fetch(storeUrl, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok || !data.success) {
+                        window.appAlert(`Failed to send via ${channel.toUpperCase()}: ${data.message || 'Unknown error'}`, { title: 'Sending Failed', icon: 'error' });
+                        return;
+                    }
+
+                    const logidInput = form.querySelector('input[name="logid"]');
+                    if (logidInput && data.logid) {
+                        logidInput.value = data.logid;
+                    }
+                } catch (error) {
+                    console.error(error);
+                    window.appAlert(`An unexpected error occurred while sending via ${channel.toUpperCase()}.`, { title: 'Error', icon: 'error' });
+                    return;
+                }
+            }
+
+            Swal.fire({
+                title: 'Sent Successfully!',
+                text: 'The invoice communications have been sent to the client.',
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'View Invoices',
+                cancelButtonText: 'OK',
+                width: 360,
+                buttonsStyling: false,
+                customClass: {
+                    popup: 'app-swal-popup',
+                    title: 'app-swal-title',
+                    htmlContainer: 'app-swal-text',
+                    confirmButton: 'app-swal-btn app-swal-btn-confirm',
+                    cancelButton: 'app-swal-btn app-swal-btn-cancel',
+                    icon: 'app-swal-icon',
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = redirectUrl;
+                } else {
+                    window.location.reload();
+                }
+            });
+        });
+
+        // Initialize attachment renders on page load
+        refreshAttachmentPreview();
         renderCurrentCustomAttachment();
     })();
 </script>

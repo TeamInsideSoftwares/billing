@@ -13,6 +13,7 @@ use App\Models\Service;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -108,9 +109,11 @@ class OrdersController extends Controller
             ];
         });
 
-        $groupedOrders = $clientId !== ''
-            ? [($selectedClient?->business_name ?? $selectedClient?->contact_name ?? 'Client') => $orders]
-            : $orders->groupBy('client')->sortKeys();
+        $groupedOrders = $orders->isEmpty()
+            ? collect()
+            : ($clientId !== ''
+                ? [($selectedClient?->business_name ?? $selectedClient?->contact_name ?? 'Client') => $orders]
+                : $orders->groupBy('client')->sortKeys());
 
         $services = Service::query()
             ->where('accountid', $accountId)
@@ -632,6 +635,22 @@ class OrdersController extends Controller
         }
 
         return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order restored successfully.');
+    }
+
+    // have to commented later on
+    public function ordersForceDelete(Order $order)
+    {
+        if ((string) $order->accountid !== $this->resolveAccountId()) {
+            abort(404);
+        }
+
+        DB::transaction(function () use ($order) {
+            $order->timeline()->delete();
+            $order->invoiceItems()->delete();
+            $order->delete();
+        });
+
+        return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order deleted permanently.');
     }
 
     protected function generateOrderNumber(string $accountId): string

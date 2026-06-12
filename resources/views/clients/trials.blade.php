@@ -125,15 +125,15 @@
                             @if ($client['item_name'])
                             <span
                                 class="bg-DarkLight rounded-2 p-2 d-flex align-items-center gap-0 flex-wrap justify-content-between my-1">
-                                <span class="fw-semibold">{{ $client['item_name'] }}</span>
+                                <span class="fw-semibold d-block align-self-center">{{ $client['item_name'] }}</span>
 
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="d-flex flex-column align-items-center">
                                         <div class="input-group input-group-sm"
-                                            style="width: 130px; display: inline-flex; height: 24px; min-height: 24px;">
+                                            style="width: 130px; display: inline-flex; height: 30px; min-height: 30px;">
                                             <input type="date"
                                                 class="form-control form-control-sm text-dark fw-semibold py-0 px-1.5 rounded-start-1 rounded-end-0"
-                                                style="height: 24px; font-size: 0.75rem; min-height: 24px;"
+                                                style="height: 30px; font-size: 0.8rem; min-height: 30px;"
                                                 value="{{ $client['created_at'] ? \Carbon\Carbon::parse($client['created_at'])->format('Y-m-d') : '' }}"
                                                 disabled title="Registration Date">
                                             <span
@@ -153,8 +153,9 @@
                                             style="width: 130px; display: inline-flex; height: 24px; min-height: 24px;">
                                             <input type="date"
                                                 class="form-control form-control-sm trial-expiry-input text-danger fw-semibold py-0 px-1.5 rounded-start-1 rounded-end-0"
-                                                style="height: 24px; font-size: 0.75rem; min-height: 24px;"
+                                                style="height: 30px; font-size: 0.8rem; min-height: 30px;"
                                                 value="{{ $client['item_end_date'] ? \Carbon\Carbon::parse($client['item_end_date'])->format('Y-m-d') : '' }}"
+                                                min="{{ $client['created_at'] ? \Carbon\Carbon::parse($client['created_at'])->format('Y-m-d') : '' }}"
                                                 data-order-id="{{ $client['item_order_id'] }}"
                                                 title="Edit trial expiry date">
                                             <span
@@ -255,7 +256,7 @@
                                                 style="width: 130px; display: inline-flex; height: 24px; min-height: 24px;">
                                                 <input type="date"
                                                     class="form-control form-control-sm text-dark fw-semibold py-0 px-1.5 rounded-start-1 rounded-end-0"
-                                                    style="height: 24px; font-size: 0.75rem; min-height: 24px;"
+                                                    style="height: 30px; font-size: 0.8rem; min-height: 30px;"
                                                     value="{{ $client['created_at'] ? \Carbon\Carbon::parse($client['created_at'])->format('Y-m-d') : '' }}"
                                                     disabled title="Registration Date">
                                                 <span
@@ -275,8 +276,9 @@
                                                 style="width: 130px; display: inline-flex; height: 24px; min-height: 24px;">
                                                 <input type="date"
                                                     class="form-control form-control-sm trial-expiry-input text-danger fw-semibold py-0 px-1.5 rounded-start-1 rounded-end-0"
-                                                    style="height: 24px; font-size: 0.75rem; min-height: 24px;"
+                                                    style="height: 30px; font-size: 0.8rem; min-height: 30px;"
                                                     value="{{ $client['item_end_date'] ? \Carbon\Carbon::parse($client['item_end_date'])->format('Y-m-d') : '' }}"
+                                                    min="{{ $client['created_at'] ? \Carbon\Carbon::parse($client['created_at'])->format('Y-m-d') : '' }}"
                                                     data-order-id="{{ $client['item_order_id'] }}"
                                                     title="Edit trial expiry date">
                                                 <span
@@ -530,6 +532,13 @@
 
                 if (!newDate) {
                     alert('Please select a valid date.');
+                    this.value = originalValue;
+                    return;
+                }
+
+                const minDate = this.getAttribute('min');
+                if (minDate && newDate < minDate) {
+                    alert('Expiry date cannot be before registration date (' + formatDateToDisplay(minDate) + ').');
                     this.value = originalValue;
                     return;
                 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ClientBillingDetail extends Model
 {
@@ -31,6 +32,11 @@ class ClientBillingDetail extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class, 'bd_id', 'bd_id');
+    }
+
+    public function clients(): HasMany
+    {
+        return $this->hasMany(Client::class, 'bd_id', 'bd_id');
     }
 
     public function account(): BelongsTo

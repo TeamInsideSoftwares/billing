@@ -1234,7 +1234,7 @@ class InvoicesController extends Controller
             ->first();
 
         return view('invoices.create', [
-            'title' => 'Create Invoice',
+            'title' => 'Manage Invoices',
             'clients' => Client::where('accountid', $accountid)->regular()->active()->orderBy('business_name')->get(),
             'services' => Service::where('accountid', $accountid)->with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),
             'taxes' => ($account && $account->allow_multi_taxation) ? Tax::where('accountid', $accountid)->where('is_active', true)->orderByRaw('COALESCE(sequence, 999999), created_at DESC')->get() : collect(),
@@ -3253,105 +3253,149 @@ class InvoicesController extends Controller
             ],
         ];
 
-        // Get default channel from request or default to email
-        $defaultChannel = trim((string) request('channel', 'email'));
-        if (! in_array($defaultChannel, ['email', 'whatsapp', 'sms'], true)) {
-            $defaultChannel = 'email';
-        }
-
-        // Keep the user-requested channel even if no template exists for it.
-        // In that case we use fallback template content.
-
-        $channelTemplate = $firstTemplateByContext[$defaultType][$defaultChannel] ?? null;
-        $channelTemplateSubject = trim((string) ($channelTemplate['subject'] ?? '')) ?: null;
-        $channelTemplateBody = trim((string) ($channelTemplate['body'] ?? '')) ?: null;
-
+        // Retrieve requested draft ID if any
         $requestedEmailId = trim((string) request('e', ''));
 
-        $latestEmail = null;
+        $emailDraft = null;
+        $whatsappDraft = null;
+        $smsDraft = null;
 
-        // 1. If specific email ID requested, load that first
         if ($requestedEmailId !== '') {
-            $candidateEmail = CommunicationLog::query()
+            $candidateDraft = CommunicationLog::query()
                 ->where('logid', $requestedEmailId)
                 ->where('invoiceid', $invoice->invoiceid)
                 ->where('accountid', $currentAccountId)
                 ->first();
-            if (
-                $candidateEmail
-                && (string) $candidateEmail->channel === $defaultChannel
-                && (string) $candidateEmail->attachment_type === $defaultType
-            ) {
-                $latestEmail = $candidateEmail;
+            if ($candidateDraft && (string) $candidateDraft->attachment_type === $defaultType) {
+                $candidateChannel = (string) $candidateDraft->channel;
+                if ($candidateChannel === 'email') {
+                    $emailDraft = $candidateDraft;
+                } elseif ($candidateChannel === 'whatsapp') {
+                    $whatsappDraft = $candidateDraft;
+                } elseif ($candidateChannel === 'sms') {
+                    $smsDraft = $candidateDraft;
+                }
             }
         }
 
-        // 2. If no specific email, load by document type + channel
-        if (! $latestEmail) {
-            $latestEmail = CommunicationLog::query()
+        // Query standard drafts for all three channels if not loaded yet
+        if (! $emailDraft) {
+            $emailDraft = CommunicationLog::query()
                 ->where('invoiceid', $invoice->invoiceid)
                 ->where('accountid', $currentAccountId)
                 ->where('attachment_type', $defaultType)
-                ->where('channel', $defaultChannel)
+                ->where('channel', 'email')
+                ->first();
+        }
+        if (! $whatsappDraft) {
+            $whatsappDraft = CommunicationLog::query()
+                ->where('invoiceid', $invoice->invoiceid)
+                ->where('accountid', $currentAccountId)
+                ->where('attachment_type', $defaultType)
+                ->where('channel', 'whatsapp')
+                ->first();
+        }
+        if (! $smsDraft) {
+            $smsDraft = CommunicationLog::query()
+                ->where('invoiceid', $invoice->invoiceid)
+                ->where('accountid', $currentAccountId)
+                ->where('attachment_type', $defaultType)
+                ->where('channel', 'sms')
                 ->first();
         }
 
-        if ($latestEmail && ! empty(trim((string) $latestEmail->to_email))) {
-            $toEmail = (string) $latestEmail->to_email;
-        }
+        // Email Prefill
+        $emailTemplate = $firstTemplateByContext[$defaultType]['email'] ?? null;
+        $emailTemplateSubject = trim((string) ($emailTemplate['subject'] ?? '')) ?: null;
+        $emailTemplateBody = trim((string) ($emailTemplate['body'] ?? '')) ?: null;
 
-        $ccEmail = '';
-        if ($latestEmail && ! empty(trim((string) $latestEmail->cc_email))) {
-            $ccEmail = (string) $latestEmail->cc_email;
-        }
-
-        $prefillSubject = $latestEmail?->subject;
-        if ($prefillSubject === null || trim((string) $prefillSubject) === '') {
-            $prefillSubject = trim((string) ($invoice->invoice_title ?? '')) !== ''
-                ? ($channelTemplateSubject ?? trim((string) $invoice->invoice_title))
+        $emailSubject = $emailDraft?->subject;
+        if ($emailSubject === null || trim((string) $emailSubject) === '') {
+            $emailSubject = trim((string) ($invoice->invoice_title ?? '')) !== ''
+                ? ($emailTemplateSubject ?? trim((string) $invoice->invoice_title))
                 : ('Invoice '.($defaultSubjectNumber ?: $invoice->invoice_number));
         }
 
-        $prefillBody = $latestEmail?->body;
-        if ($prefillBody === null || trim((string) $prefillBody) === '') {
-            $prefillBody = $channelTemplateBody ?? $defaultBody;
+        $emailBody = $emailDraft?->body;
+        if ($emailBody === null || trim((string) $emailBody) === '') {
+            $emailBody = $emailTemplateBody ?? $defaultBody;
         }
-        $prefillBody = $this->sanitizeComposedMessageBody((string) $prefillBody);
+        $emailBody = $this->sanitizeComposedMessageBody((string) $emailBody);
 
-        $prefillAttachmentTypes = [];
-        if (! empty($latestEmail?->attachment_type)) {
-            $prefillAttachmentTypes = collect(explode(',', (string) $latestEmail->attachment_type))
-                ->map(fn ($type) => trim($type))
-                ->filter()
-                ->values()
-                ->all();
-        }
-        if (empty($prefillAttachmentTypes)) {
-            $prefillAttachmentTypes = [$defaultType];
-        }
-        $prefillAttachmentType = $prefillAttachmentTypes[0] ?? $defaultType;
-        if (! in_array($prefillAttachmentType, ['pi', 'ti'], true)) {
-            $prefillAttachmentType = $defaultType;
-        }
+        $emailTo = (string) ($emailDraft?->to_email ?? $toEmail);
+        $emailCc = (string) ($emailDraft?->cc_email ?? '');
 
-        $prefillChannel = (string) ($latestEmail?->channel ?? 'email');
-        if (! in_array($prefillChannel, ['email', 'whatsapp', 'sms'], true)) {
-            $prefillChannel = 'email';
+        $emailCustomAttachmentUrls = collect(explode(',', (string) ($emailDraft?->custom_attachment_path ?? '')))
+            ->map(fn ($path) => trim((string) $path))
+            ->filter()
+            ->map(fn ($path) => $this->buildPublicAttachmentUrl($path))
+            ->values()
+            ->all();
+
+        $emailCustomAttachmentNames = collect(explode(',', (string) ($emailDraft?->custom_attachment_path ?? '')))
+            ->map(fn ($path) => trim((string) $path))
+            ->filter()
+            ->map(function ($path) {
+                $url = $this->buildPublicAttachmentUrl($path);
+
+                return basename((string) parse_url($url, PHP_URL_PATH) ?: 'Attachment');
+            })
+            ->values()
+            ->all();
+
+        // WhatsApp Prefill
+        $whatsappTemplate = $firstTemplateByContext[$defaultType]['whatsapp'] ?? null;
+        $whatsappTemplateBody = trim((string) ($whatsappTemplate['body'] ?? '')) ?: null;
+
+        $whatsappBody = $whatsappDraft?->body;
+        if ($whatsappBody === null || trim((string) $whatsappBody) === '') {
+            $whatsappBody = $whatsappTemplateBody ?? $defaultBody;
         }
-        $prefillPhone = trim((string) (
-            $invoice->client?->billingDetail?->billing_phone
-            ?? $latestEmail?->phone_number
+        $whatsappBody = $this->sanitizeComposedMessageBody((string) $whatsappBody);
+
+        $whatsappPhone = trim((string) (
+            $whatsappDraft?->phone_number
+            ?? $invoice->client?->billingDetail?->billing_phone
             ?? $invoice->client?->whatsapp_number
             ?? $invoice->client?->phone
             ?? ''
         ));
 
+        // SMS Prefill
+        $smsTemplate = $firstTemplateByContext[$defaultType]['sms'] ?? null;
+        $smsTemplateBody = trim((string) ($smsTemplate['body'] ?? '')) ?: null;
+
+        $smsBody = $smsDraft?->body;
+        if ($smsBody === null || trim((string) $smsBody) === '') {
+            $smsBody = $smsTemplateBody ?? $defaultBody;
+        }
+        $smsBody = $this->sanitizeComposedMessageBody((string) $smsBody);
+
+        $smsPhone = trim((string) (
+            $smsDraft?->phone_number
+            ?? $invoice->client?->billingDetail?->billing_phone
+            ?? $invoice->client?->whatsapp_number
+            ?? $invoice->client?->phone
+            ?? ''
+        ));
+
+        // Keep fallback support for older variables if needed by templates
+        $prefillSubject = $emailSubject;
+        $prefillBody = $emailBody;
+        $prefillChannel = trim((string) request('channel', 'email'));
+        if (! in_array($prefillChannel, ['email', 'whatsapp', 'sms'], true)) {
+            $prefillChannel = 'email';
+        }
+        $prefillAttachmentType = $defaultType;
+        $prefillAttachmentTypes = [$defaultType];
+        $prefillPhone = $prefillChannel === 'whatsapp' ? $whatsappPhone : ($prefillChannel === 'sms' ? $smsPhone : '');
+
         return view('invoices.email-compose', [
-            'title' => 'Compose Invoice Email',
+            'title' => 'Compose Invoice Communications',
             'invoice' => $invoice,
             'fromEmail' => $fromEmail,
             'toEmail' => $toEmail,
-            'ccEmail' => $ccEmail,
+            'ccEmail' => $emailCc,
             'defaultType' => $defaultType,
             'defaultBody' => $defaultBody,
             'prefillSubject' => $prefillSubject,
@@ -3363,23 +3407,26 @@ class InvoicesController extends Controller
             'templateCatalog' => $templateCatalog,
             'availableChannelsByType' => $availableChannelsByType,
             'fallbackTemplatesByType' => $fallbackTemplatesByType,
-            'composeEmail' => $latestEmail,
-            'customAttachmentUrls' => collect(explode(',', (string) ($latestEmail?->custom_attachment_path ?? '')))
-                ->map(fn ($path) => trim((string) $path))
-                ->filter()
-                ->map(fn ($path) => $this->buildPublicAttachmentUrl($path))
-                ->values()
-                ->all(),
-            'customAttachmentNames' => collect(explode(',', (string) ($latestEmail?->custom_attachment_path ?? '')))
-                ->map(fn ($path) => trim((string) $path))
-                ->filter()
-                ->map(function ($path) {
-                    $url = $this->buildPublicAttachmentUrl($path);
+            'composeEmail' => $emailDraft ?: $whatsappDraft ?: $smsDraft,
+            'customAttachmentUrls' => $emailCustomAttachmentUrls,
+            'customAttachmentNames' => $emailCustomAttachmentNames,
 
-                    return basename((string) parse_url($url, PHP_URL_PATH) ?: 'Attachment');
-                })
-                ->values()
-                ->all(),
+            // Channel-specific drafts & fields
+            'emailDraft' => $emailDraft,
+            'emailSubject' => $emailSubject,
+            'emailBody' => $emailBody,
+            'emailTo' => $emailTo,
+            'emailCc' => $emailCc,
+            'emailCustomAttachmentUrls' => $emailCustomAttachmentUrls,
+            'emailCustomAttachmentNames' => $emailCustomAttachmentNames,
+
+            'whatsappDraft' => $whatsappDraft,
+            'whatsappPhone' => $whatsappPhone,
+            'whatsappBody' => $whatsappBody,
+
+            'smsDraft' => $smsDraft,
+            'smsPhone' => $smsPhone,
+            'smsBody' => $smsBody,
         ]);
     }
 
@@ -3458,10 +3505,20 @@ class InvoicesController extends Controller
 
         if ($channel === 'email') {
             if ($forcedFromEmail === '') {
-                return back()->withErrors(['from_email' => 'Set Billing From Email in Account Billing Details first.'])->withInput();
+                $msg = 'Set Billing From Email in Account Billing Details first.';
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+
+                return back()->withErrors(['from_email' => $msg])->withInput();
             }
             if ($toEmailValue === '') {
-                return back()->withErrors(['to_email' => 'Set Client Billing Email first.'])->withInput();
+                $msg = 'Set Client Billing Email first.';
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+
+                return back()->withErrors(['to_email' => $msg])->withInput();
             }
         }
         $user = Auth::user();
@@ -3477,7 +3534,6 @@ class InvoicesController extends Controller
         }
 
         // Keep a dedicated draft for each invoice + document type + channel.
-        // This prevents cross-channel overwrites and supports up to 6 rows (pi/ti x 3 channels).
         $emailDraft = CommunicationLog::query()
             ->where('invoiceid', $invoice->invoiceid)
             ->where('accountid', $currentAccountId)
@@ -3522,7 +3578,12 @@ class InvoicesController extends Controller
         }
         if (in_array('ti', $selectedTypes, true)) {
             if (empty(trim((string) $invoice->ti_number))) {
-                return back()->withErrors(['attachment_type' => 'Tax Invoice is not available yet.'])->withInput();
+                $msg = 'Tax Invoice is not available yet.';
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+
+                return back()->withErrors(['attachment_type' => $msg])->withInput();
             }
             $attachmentPaths[] = $this->resolveCampioInvoicePdfUrl($invoice, true);
         }
@@ -3571,6 +3632,20 @@ class InvoicesController extends Controller
         if (! $isSendAction) {
             $emailDraft->update($updatePayload + ['status' => 'draft']);
 
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Message draft saved successfully.',
+                    'logid' => $emailDraft->logid,
+                    'customAttachmentUrls' => collect(explode(',', (string) ($emailDraft->custom_attachment_path ?? '')))
+                        ->map(fn ($path) => trim((string) $path))
+                        ->filter()
+                        ->map(fn ($path) => $this->buildPublicAttachmentUrl($path))
+                        ->values()
+                        ->all(),
+                ]);
+            }
+
             return redirect()
                 ->route('invoices.email-compose', [
                     'invoice' => $invoice->invoiceid,
@@ -3584,7 +3659,12 @@ class InvoicesController extends Controller
 
         if ($channel === 'whatsapp' || $channel === 'sms') {
             if ($phone === '') {
-                return back()->withErrors(['phone' => 'Client phone/whatsapp number is required for this channel.'])->withInput();
+                $msg = 'Client phone/whatsapp number is required for this channel.';
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+
+                return back()->withErrors(['phone' => $msg])->withInput();
             }
 
             $selectedTemplateId = trim((string) ($validated['selected_templateid'] ?? ''));
@@ -3601,8 +3681,13 @@ class InvoicesController extends Controller
             $channelTemplateConfig = $channelTemplateQuery->first();
 
             if ($selectedTemplateId !== '' && ! $channelTemplateConfig) {
+                $msg = 'Selected template is invalid for this channel/type.';
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+
                 return back()->withErrors([
-                    'selected_templateid' => 'Selected template is invalid for this channel/type.',
+                    'selected_templateid' => $msg,
                 ])->withInput();
             }
 
@@ -3649,7 +3734,7 @@ class InvoicesController extends Controller
             $plainBody = $this->sanitizeForCampioText($plainBody);
             $plainBody = str_replace("\n", "\r\n", $plainBody);
 
-            // Build payload - for WhatsApp with template, don't include message body
+            // Build payload
             $payload = [
                 'account_id' => $currentAccountId,
                 'campaign_name' => '',
@@ -3680,7 +3765,6 @@ class InvoicesController extends Controller
                     $payload['dynamic_context'] = [
                         'fields' => collect($templateVariables)->values()->map(
                             fn ($value, $index) => [
-                                // Campio scheduler resolves WhatsApp template vars only for Body_/Header_/Button_ prefixes.
                                 'key' => 'Body_'.((int) $index + 1),
                                 'type' => 'custom',
                                 'value' => (string) $value,
@@ -3692,30 +3776,46 @@ class InvoicesController extends Controller
             if ($channel === 'whatsapp' && ! empty($documentLinks) && $canUseWhatsappDocumentHeader) {
                 $payload['media_url'] = (string) ($documentLinks[0]['url'] ?? '');
                 if ($payload['media_url'] !== '' && ! str_starts_with(strtolower($payload['media_url']), 'https://')) {
+                    $msg = 'WhatsApp media delivery requires a public HTTPS document URL. Current PDF URL is HTTP. Please enable SSL/HTTPS for this domain, then try again.';
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => $msg], 422);
+                    }
+
                     return back()->withErrors([
-                        'general' => 'WhatsApp media delivery requires a public HTTPS document URL. Current PDF URL is HTTP. Please enable SSL/HTTPS for this domain, then try again.',
+                        'general' => $msg,
                     ])->withInput();
                 }
                 if ($payload['media_url'] !== '') {
                     if (! isset($payload['dynamic_context']) || ! is_array($payload['dynamic_context'])) {
                         $payload['dynamic_context'] = [];
                     }
-                    // Campio WhatsApp job reads media_url from dynamic_context for header media templates.
                     $payload['dynamic_context']['media_url'] = $payload['media_url'];
                 }
             }
 
             $campioResult = $this->sendViaCampio($channel, $payload);
             if (! $campioResult['ok']) {
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $campioResult['message']], 422);
+                }
+
                 return back()->withErrors(['general' => $campioResult['message']])->withInput();
             }
 
-            // Keep rich/original body in DB so compose view formatting is preserved.
             $updatePayload['body'] = $finalBody;
             $emailDraft->update($updatePayload + ['status' => 'sent']);
             if (($invoice->status ?? '') === 'draft') {
                 $invoice->update(['status' => 'active']);
                 $this->finalizeRenewedSourceItems($invoice);
+            }
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $successTitle,
+                    'logid' => $emailDraft->logid,
+                    'sent_at' => $sentAt->format('d M Y, h:i A'),
+                ]);
             }
 
             return redirect()
@@ -3809,6 +3909,10 @@ class InvoicesController extends Controller
 
         $campioResult = $this->sendViaCampio('email', $payload);
         if (! $campioResult['ok']) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $campioResult['message']], 422);
+            }
+
             return back()->withErrors(['general' => $campioResult['message']])->withInput();
         }
 
@@ -3817,6 +3921,15 @@ class InvoicesController extends Controller
         if (($invoice->status ?? '') === 'draft') {
             $invoice->update(['status' => 'active']);
             $this->finalizeRenewedSourceItems($invoice);
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $successTitle,
+                'logid' => $emailDraft->logid,
+                'sent_at' => $sentAt->format('d M Y, h:i A'),
+            ]);
         }
 
         return redirect()

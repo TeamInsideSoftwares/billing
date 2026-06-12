@@ -256,39 +256,42 @@ $initialOrderItems = [[
 
             @if(!$isEditMode)
             <div class="col-12 col-lg-9">
-                <div id="orderItemsTableWrap" class="order-create-table-wrap bg-DarkLight p-3 h-100 rounded-3 mt-0">
-                    <div
-                        class="d-flex justify-content-end align-items-center align-self-end gap-2 small text-dark mb-2">
-                        <div class="btn-group shadow-sm" role="group" aria-label="View Toggle">
-                            <button type="button"
-                                class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
-                                id="btn-grid-view">
-                                <i class="fas fa-th-large toggle-icon"></i> Grid
-                            </button>
-                            <button type="button"
-                                class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
-                                id="btn-list-view">
-                                <i class="fas fa-list toggle-icon"></i> List
-                            </button>
+                <div id="orderItemsTableWrap"
+                    class="order-create-table-wrap bg-DarkLight p-2 h-100 d-flex flex-column justify-content-between rounded-3 mt-0">
+                    <div>
+                        <div
+                            class="d-flex justify-content-end align-items-center align-self-end gap-2 small text-dark mb-2">
+                            <div class="btn-group shadow-sm" role="group" aria-label="View Toggle">
+                                <button type="button"
+                                    class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
+                                    id="btn-grid-view">
+                                    <i class="fas fa-th-large toggle-icon"></i> Grid
+                                </button>
+                                <button type="button"
+                                    class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
+                                    id="btn-list-view">
+                                    <i class="fas fa-list toggle-icon"></i> List
+                                </button>
+                            </div>
                         </div>
-                    </div>
 
-                    <div id="order-items-list-view" class="card overflow-hidden">
-                        <div class="table-responsive">
-                            <table class="table table-striped mainTable align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th width="30%">Item</th>
-                                        <th class="text-center" width="10%">Qty</th>
-                                        <th class="text-center" width="10%">User</th>
-                                        <th class="text-center">Start Date</th>
-                                        <th class="text-center">Expiry</th>
-                                        <th class="text-center">Delivery Date</th>
-                                        <th class="text-end" width="12%">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="orderItemsBody"></tbody>
-                            </table>
+                        <div id="order-items-list-view" class="card overflow-hidden">
+                            <div class="table-responsive">
+                                <table class="table table-striped mainTable align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="30%">Item</th>
+                                            <th class="text-center" width="10%">Qty</th>
+                                            <th class="text-center" width="10%">User</th>
+                                            <th class="text-center">Start Date</th>
+                                            <th class="text-center">Expiry</th>
+                                            <th class="text-center">Delivery Date</th>
+                                            <th class="text-end" width="12%">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="orderItemsBody"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
@@ -296,7 +299,7 @@ $initialOrderItems = [[
                     </div>
                     <div id="orderSubmitBar" class="d-block w-100 mt-2 text-end" style="display: none;">
                         <button type="submit"
-                            class="btn btn-sm btn-outline-primary btn-primary text-white fw-medium d-inline-flex align-items-center gap-1 h-auto">
+                            class="btn btn-sm btn-outline-primary btn-primary text-white fw-medium d-inline-flex align-items-center gap-1">
                             Save Orders <i class="fas fa-arrow-right btn-icon ms-1"></i>
                         </button>
                     </div>
