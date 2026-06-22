@@ -54,6 +54,8 @@ class GroupsController extends Controller
 
         $userAccountId = $this->resolveAccountId();
         $validated['accountid'] = $userAccountId;
+        $validated['country'] = $validated['country'] ?? 'India';
+        $validated['business_country'] = $validated['business_country'] ?? 'India';
 
         Group::create($validated);
 
@@ -83,6 +85,9 @@ class GroupsController extends Controller
             'business_postal_code' => 'nullable|string',
             'business_country' => 'nullable|string',
         ]);
+
+        $validated['country'] = $validated['country'] ?? 'India';
+        $validated['business_country'] = $validated['business_country'] ?? 'India';
 
         $group->update($validated);
 

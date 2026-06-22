@@ -126,7 +126,7 @@ $initialOrderItems = [[
 
                             <div class="col-12 col-md-12">
                                 <select id="item_itemid" class="form-select" {{ ($isEditMode &&
-                                    !empty($isItemLockedByInvoice)) ? 'disabled' : '' }} required>
+                                    !empty($isItemLockedByInvoice)) ? 'disabled' : '' }}>
                                     <option value="">Select Item</option>
                                     @php
                                     $groupedServices = $services->groupBy(fn($service) => $service->category->name
@@ -154,7 +154,7 @@ $initialOrderItems = [[
                             </div>
                             <div class="col-12 col-md-3">
                                 <label class="form-label small lh-sm fw-semibold text-dark mb-1">Qty</label>
-                                <input type="number" id="item_quantity" class="form-control" min="1" step="1" value="1" required>
+                                <input type="number" id="item_quantity" class="form-control" min="1" step="1" value="1">
                             </div>
 
                             {{-- @if($account?->have_users) --}}
@@ -327,27 +327,9 @@ $initialOrderItems = [[
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         function showToast(type, message) {
-            const text = String(message || '').trim();
-            if (!text) return;
-            let container = document.getElementById('app-toast-container');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'app-toast-container';
-                container.className = 'app-toast-container';
-                document.body.appendChild(container);
+            if (typeof window.showToast === 'function') {
+                window.showToast(type, message);
             }
-            const toast = document.createElement('div');
-            toast.className = `app-toast app-toast-${type}`;
-            const icon = type === 'success' ? 'fa-check-circle' : 'fa-times-circle';
-            toast.innerHTML = `<i class="fas ${icon} toast-icon"></i><span></span>`;
-            const label = toast.querySelector('span');
-            if (label) label.textContent = text;
-            toast.addEventListener('click', () => toast.remove());
-            container.appendChild(toast);
-            window.setTimeout(() => {
-                toast.classList.add('app-toast-leaving');
-                window.setTimeout(() => toast.remove(), 220);
-            }, 4200);
         }
 
         const pageData = JSON.parse(document.getElementById('order-page-data').textContent || '{}');
@@ -914,12 +896,15 @@ $initialOrderItems = [[
 
         if (addItemBtn && !isEditMode) {
             addItemBtn.addEventListener('click', async function () {
-                if (itemSelect && !itemSelect.checkValidity()) {
-                    itemSelect.reportValidity();
+                const itemId = itemSelect?.value || '';
+                if (!itemId) {
+                    showToast('error', 'Please select an item.');
                     return;
                 }
-                if (quantityInput && !quantityInput.checkValidity()) {
-                    quantityInput.reportValidity();
+
+                const quantityInputVal = Number(quantityInput?.value || 0);
+                if (quantityInputVal <= 0) {
+                    showToast('error', 'Quantity must be greater than 0.');
                     return;
                 }
 
@@ -948,14 +933,17 @@ $initialOrderItems = [[
 
         orderForm.addEventListener('submit', async function (event) {
             if (isEditMode) {
-                if (itemSelect && !itemSelect.checkValidity()) {
+                const itemId = itemSelect?.value || '';
+                if (!itemId) {
                     event.preventDefault();
-                    itemSelect.reportValidity();
+                    showToast('error', 'Please select an item.');
                     return;
                 }
-                if (quantityInput && !quantityInput.checkValidity()) {
+
+                const quantityInputVal = Number(quantityInput?.value || 0);
+                if (quantityInputVal <= 0) {
                     event.preventDefault();
-                    quantityInput.reportValidity();
+                    showToast('error', 'Quantity must be greater than 0.');
                     return;
                 }
                 const payload = currentItemPayload();

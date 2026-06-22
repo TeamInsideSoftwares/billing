@@ -824,14 +824,14 @@
                 if (data.success) {
                     refreshGroupsTable(data.groups, 'list');
                     resetGroupForm();
-                    showToast(data.message);
+                    showGroupToast(data.message);
                 }
             })
             .catch(function (err) {
                 if (err && err.errors) {
                     showGroupFormErrors(err.errors);
                 } else {
-                    showToast('Something went wrong. Please try again.', 'danger');
+                    showGroupToast('Something went wrong. Please try again.', 'danger');
                 }
             })
             .finally(function () {
@@ -855,39 +855,10 @@
         });
     }
 
-    function showToast(message, type) {
-        type = type || 'success';
-        var container = document.getElementById('app-toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'app-toast-container';
-            container.className = 'app-toast-container';
-            document.body.appendChild(container);
+    function showGroupToast(message, type) {
+        if (typeof window.showToast === 'function') {
+            window.showToast(type || 'success', message);
         }
-        var toast = document.createElement('div');
-        toast.className = 'app-toast app-toast-' + (type === 'danger' ? 'error' : type);
-
-        var iconClass = 'fa-check-circle';
-        if (type === 'error' || type === 'danger') {
-            iconClass = 'fa-times-circle';
-        } else if (type === 'warning') {
-            iconClass = 'fa-exclamation-circle';
-        } else if (type === 'info') {
-            iconClass = 'fa-info-circle';
-        }
-
-        toast.innerHTML = '<i class="fas ' + iconClass + ' toast-icon"></i><span>' + message + '</span>';
-        toast.onclick = function () { this.remove(); };
-        container.appendChild(toast);
-
-        setTimeout(function () {
-            if (toast.parentNode) {
-                toast.classList.add('app-toast-leaving');
-                setTimeout(function () {
-                    if (toast.parentNode) toast.remove();
-                }, 300);
-            }
-        }, 3500);
     }
 
     document.getElementById('manageGroupsModal').addEventListener('hidden.bs.modal', resetGroupForm);
@@ -905,7 +876,7 @@
             e.preventDefault();
             var name = deleteForm.dataset.groupName || 'this group';
 
-            const confirmed = await appConfirm('Delete group ' + name + '?');
+            const confirmed = await window.appConfirm('Delete group ' + name + '?');
             if (!confirmed) return;
 
             var formData = new FormData(deleteForm);
@@ -926,11 +897,11 @@
                 .then(function (data) {
                     if (data.success) {
                         refreshGroupsTable(data.groups, 'list');
-                        showToast(data.message);
+                        showGroupToast(data.message);
                     }
                 })
                 .catch(function () {
-                    showToast('Something went wrong. Please try again.', 'danger');
+                    showGroupToast('Something went wrong. Please try again.', 'danger');
                 });
         });
     });
@@ -1038,7 +1009,7 @@
                             }
                         });
 
-                        showToast(result.message || 'Status updated successfully.');
+                        showGroupToast(result.message || 'Status updated successfully.');
                     } else {
                         toggles.forEach(cb => cb.checked = !isChecked);
                         alert('Failed to update status.');

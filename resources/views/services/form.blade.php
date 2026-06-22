@@ -8,7 +8,6 @@
 @endsection
 
 @section('content')
-<div id="app-toast-container" class="app-toast-container"></div>
 
 <section class="position-relative bg-white p-2 rounded-3">
     <form method="POST" action="{{ isset($service) ? route('services.update', $service) : route('services.store') }}"
@@ -459,23 +458,9 @@ return $group->map(fn($t) => [
 
 <script>
     function showToast(type, message) {
-        const container = document.getElementById('app-toast-container');
-        const toast = document.createElement('div');
-        toast.className = `app-toast app-toast-${type}`;
-
-        const icon = type === 'success' ? 'fa-check-circle' : 'fa-times-circle';
-        toast.innerHTML = `<i class="fas ${icon} toast-icon"></i><span>${message}</span>`;
-
-        container.appendChild(toast);
-
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.classList.add('app-toast-leaving');
-                setTimeout(() => {
-                    if (toast.parentNode) toast.remove();
-                }, 300);
-            }
-        }, 3500);
+        if (typeof window.showToast === 'function') {
+            window.showToast(type, message);
+        }
     }
 
     (function () {

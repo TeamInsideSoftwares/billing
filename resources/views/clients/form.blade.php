@@ -863,28 +863,11 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
         const btnSaveClientInfo = document.getElementById('btn-save-client-info');
 
         function showSuccessToast(message) {
-            let container = document.getElementById('app-toast-container');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'app-toast-container';
-                container.className = 'app-toast-container';
-                document.body.appendChild(container);
+            if (typeof showToast === 'function') {
+                showToast('success', message);
+            } else if (typeof window.showToast === 'function') {
+                window.showToast('success', message);
             }
-
-            const toast = document.createElement('div');
-            toast.className = 'app-toast app-toast-success';
-            toast.innerHTML = `<i class="fas fa-check-circle toast-icon"></i><span>${escapeHtml(message)}</span>`;
-            toast.onclick = function () { this.remove(); };
-            container.appendChild(toast);
-
-            setTimeout(function () {
-                if (toast.parentNode) {
-                    toast.classList.add('app-toast-leaving');
-                    setTimeout(() => {
-                        if (toast.parentNode) toast.remove();
-                    }, 300);
-                }
-            }, 3500);
         }
 
         if (btnSaveClientInfo) {

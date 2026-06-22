@@ -115,41 +115,10 @@
 
 @push('scripts')
 <script>
-    if (typeof window.showToast !== 'function') {
-        window.showToast = function(message, type) {
-            type = type || 'success';
-            var container = document.getElementById('app-toast-container');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'app-toast-container';
-                container.className = 'app-toast-container';
-                document.body.appendChild(container);
-            }
-            var toast = document.createElement('div');
-            toast.className = 'app-toast app-toast-' + (type === 'danger' ? 'error' : type);
-
-            var iconClass = 'fa-check-circle';
-            if (type === 'error' || type === 'danger') {
-                iconClass = 'fa-times-circle';
-            } else if (type === 'warning') {
-                iconClass = 'fa-exclamation-circle';
-            } else if (type === 'info') {
-                iconClass = 'fa-info-circle';
-            }
-
-            toast.innerHTML = '<i class="fas ' + iconClass + ' toast-icon"></i><span>' + message + '</span>';
-            toast.onclick = function () { this.remove(); };
-            container.appendChild(toast);
-
-            setTimeout(function () {
-                if (toast.parentNode) {
-                    toast.classList.add('app-toast-leaving');
-                    setTimeout(function () {
-                        if (toast.parentNode) toast.remove();
-                    }, 300);
-                }
-            }, 3500);
-        };
+    function showDocToast(message, type) {
+        if (typeof window.showToast === 'function') {
+            window.showToast(type || 'success', message);
+        }
     }
 
     // === Documents Modal Logic ===
@@ -314,11 +283,11 @@
                 if (data.success) {
                     docChanged = true;
                     refreshDocumentsTable(data.documents);
-                    window.showToast(data.message);
+                    showDocToast(data.message);
                 }
             })
             .catch(function () {
-                window.showToast('Something went wrong. Please try again.', 'danger');
+                showDocToast('Something went wrong. Please try again.', 'danger');
             });
     }
 
@@ -381,14 +350,14 @@
                     docChanged = true;
                     refreshDocumentsTable(data.documents);
                     resetDocumentForm();
-                    window.showToast(data.message);
+                    showDocToast(data.message);
                 }
             })
             .catch(function (err) {
                 if (err && err.errors) {
                     showDocFormErrors(err.errors);
                 } else {
-                    window.showToast('Something went wrong. Please try again.', 'danger');
+                    showDocToast('Something went wrong. Please try again.', 'danger');
                 }
             })
             .finally(function () {

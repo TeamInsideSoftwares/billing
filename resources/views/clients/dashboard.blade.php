@@ -1283,7 +1283,6 @@ $title = 'Client Dashboard';
     };
 </script>
 
-@push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         // Maintain active tab state on reload if needed

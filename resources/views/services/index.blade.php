@@ -511,20 +511,9 @@
     }
 
     function showCatToast(message, type) {
-        type = type || 'success';
-        var container = document.getElementById('catToastContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'catToastContainer';
-            container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999';
-            document.body.appendChild(container);
+        if (typeof window.showToast === 'function') {
+            window.showToast(type || 'success', message);
         }
-        var toast = document.createElement('div');
-        toast.className = 'app-toast app-toast-' + type;
-        toast.innerHTML = '<span>' + message + '</span>';
-        toast.onclick = function () { this.remove(); };
-        container.appendChild(toast);
-        setTimeout(function () { if (toast.parentNode) toast.remove(); }, 4000);
     }
 
     const catModalEl = document.getElementById('productCategoriesModal');

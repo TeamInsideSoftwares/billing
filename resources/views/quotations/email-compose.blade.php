@@ -295,26 +295,9 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
         const QUOTATION_COMPOSE_READY_TOAST_KEY = 'quotation_compose_ready_toast';
 
         function showSuccessToast(message) {
-            const text = String(message || '').trim();
-            if (!text) return;
-            let container = document.getElementById('app-toast-container');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'app-toast-container';
-                container.className = 'app-toast-container';
-                document.body.appendChild(container);
+            if (typeof window.showToast === 'function') {
+                window.showToast('success', message);
             }
-            const toast = document.createElement('div');
-            toast.className = 'app-toast app-toast-success';
-            toast.innerHTML = '<i class="fas fa-check-circle toast-icon"></i><span></span>';
-            const label = toast.querySelector('span');
-            if (label) label.textContent = text;
-            toast.addEventListener('click', () => toast.remove());
-            container.appendChild(toast);
-            window.setTimeout(() => {
-                toast.classList.add('app-toast-leaving');
-                window.setTimeout(() => toast.remove(), 220);
-            }, 4200);
         }
 
         function consumeComposeReadyToast() {

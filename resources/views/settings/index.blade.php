@@ -2622,30 +2622,10 @@ $activeSettingsTab = 'billing-details';
             if (mtErrorToast) {
                 try {
                     const messageText = String(mtErrorToast);
-                    if (typeof showToast === 'function') {
+                    if (typeof showToastDedup === 'function') {
                         showToastDedup('error', messageText, 2000);
-                    } else {
-                        const container = document.getElementById('app-toast-container') || (function () {
-                            const el = document.createElement('div');
-                            el.id = 'app-toast-container';
-                            el.className = 'app-toast-container';
-                            document.body.appendChild(el);
-                            return el;
-                        })();
-
-                        const toast = document.createElement('div');
-                        toast.className = 'app-toast app-toast-error';
-                        toast.innerHTML =
-                            `<i class="fas fa-exclamation-circle toast-icon"></i><span class="settings-toast-message">${messageText}</span>`;
-                        container.appendChild(toast);
-                        setTimeout(() => {
-                            if (toast.parentNode) {
-                                toast.classList.add('app-toast-leaving');
-                                setTimeout(() => {
-                                    if (toast.parentNode) toast.remove();
-                                }, 300);
-                            }
-                        }, 5000);
+                    } else if (typeof window.showToast === 'function') {
+                        window.showToast('error', messageText);
                     }
                 } catch (e) { }
             }

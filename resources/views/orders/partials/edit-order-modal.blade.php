@@ -29,7 +29,7 @@
                             </div>
                         </div>
                         <div class="col-12 col-md-12">
-                            <select id="edit_itemid" class="form-select" required disabled>
+                            <select id="edit_itemid" class="form-select" disabled>
                                 <option value="">Select Items</option>
                                 @php
                                 $groupedServices = $services->groupBy(fn($service) => $service->category->name ?? 'No
@@ -92,7 +92,7 @@
                         <div class="col-12 col-md-6">
                             <label class="form-label small lh-sm fw-semibold text-dark mb-1">Expiry</label>
                             <div class="input-group">
-                                <input type="date" id="edit_end_date" class="form-control" required>
+                                <input type="date" id="edit_end_date" class="form-control">
                                 <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
                             </div>
                         </div>
@@ -315,7 +315,7 @@
                     event.preventDefault();
 
                     if (!editItemSelect || !editItemSelect.value) {
-                        alert('Select an item first.');
+                        window.showToast('error', 'Please select an item first.');
                         return;
                     }
 
@@ -370,14 +370,11 @@
                                 }
                             } else {
                                 let msg = data.message || (mode === 'add' ? 'Failed to create order.' : 'Failed to update order.');
-                                if (data.errors) {
-                                    msg += '\n' + Object.values(data.errors).flat().join('\n');
-                                }
-                                alert(msg);
+                                window.showToast('error', msg);
                             }
                         })
                         .catch(() => {
-                            alert(mode === 'add' ? 'An error occurred while creating the order.' : 'An error occurred while updating the order.');
+                            window.showToast('error', mode === 'add' ? 'An error occurred while creating the order.' : 'An error occurred while updating the order.');
                         })
                         .finally(() => {
                             if (submitBtn) {

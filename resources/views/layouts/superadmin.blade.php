@@ -52,21 +52,30 @@
 </head>
 
 <body class="superadmin-shell">
-    @if (session('success') || session('error'))
-        <div id="app-toast-container" class="app-toast-container">
-            @if (session('success'))
-                <div class="app-toast app-toast-success" onclick="this.remove()">
-                    <i class="fas fa-check-circle toast-icon"></i>
-                    <span>{{ session('success') }}</span>
-                </div>
-            @endif
-            @if (session('error'))
-                <div class="app-toast app-toast-error" onclick="this.remove()">
-                    <i class="fas fa-times-circle toast-icon"></i>
-                    <span>{{ session('error') }}</span>
-                </div>
-            @endif
+    @if (session('success') || session('error') || (isset($errors) && $errors->any()))
+    <div id="app-toast-container" class="app-toast-container" style="pointer-events: auto;">
+        @if (session('success'))
+        <div class="alert alert-success alert-dismissible fade show text-center rounded-0 border-0 fs-6 lh-sm" onclick="this.remove()" role="alert" style="cursor: pointer;"> 
+            <strong>{{ session('success') }}</strong>
+        </div>  
+        @endif
+        @if (session('error'))
+        <div class="alert alert-danger alert-dismissible fade show text-center rounded-0 border-0 fs-6 lh-sm" onclick="this.remove()" role="alert" style="cursor: pointer;"> 
+            <strong>{{ session('error') }}</strong>
+        </div> 
+        @endif
+        @if (isset($errors) && $errors->any())
+        <div class="alert alert-danger alert-dismissible fade show rounded-0 border-0 fs-6 lh-sm validation-errors" onclick="this.remove()" role="alert" style="cursor: pointer;">
+           <strong>
+                <ul class="mb-0 ps-3">
+                    @foreach ($errors->all() as $error)
+                    <li class="small fw-bold">{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </strong>
         </div>
+        @endif
+    </div>
     @endif
 
     <header class="superadmin-topbar">
@@ -86,6 +95,25 @@
     <main class="superadmin-content">
         @yield('content')
     </main>
+
+    {{-- Auto-dismiss toasts --}}
+    @if (session('success') || session('error') || (isset($errors) && $errors->any()))
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.app-toast, #app-toast-container .alert:not(.validation-errors)').forEach(function (toast) {
+                setTimeout(function () {
+                    if (toast.parentNode) {
+                        toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        toast.classList.add('app-toast-leaving');
+                        setTimeout(function () {
+                            if (toast.parentNode) toast.remove();
+                        }, 300);
+                    }
+                }, 3500);
+            });
+        });
+    </script>
+    @endif
 </body>
 
 </html>
