@@ -3,49 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Group;
-use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class GroupsController extends Controller
 {
-    public function groups(): View
-    {
-        $userAccountId = $this->resolveAccountId();
-        $query = Group::where('accountid', $userAccountId);
-        $searchTerm = request('search', '');
-        if ($searchTerm) {
-            $query->where('group_name', 'like', '%'.$searchTerm.'%');
-        }
-        $resultCount = $query->count();
-        $groups = $query->latest()->take(20)->get()->map(function ($g) {
-            return [
-                'record_id' => $g->groupid,
-                'group_name' => $g->group_name,
-                'email' => $g->email ?? '-',
-                'city' => $g->city ?? '-',
-                'state' => $g->state ?? '-',
-                'registered_address' => $g->registered_address ?? '',
-                'postal_code' => $g->postal_code ?? '',
-                'country' => $g->country ?? 'India',
-                'gstin' => $g->gstin ?? '',
-                'business_address' => $g->business_address ?? '',
-                'business_city' => $g->business_city ?? '',
-                'business_state' => $g->business_state ?? '',
-                'business_postal_code' => $g->business_postal_code ?? '',
-                'business_country' => $g->business_country ?? 'India',
-            ];
-        });
-
-        return view('groups.index', [
-            'title' => 'Client Groups',
-            'subtitle' => $searchTerm ? 'Search results for "'.$searchTerm.'"' : null,
-            'groups' => $groups,
-            'searchTerm' => $searchTerm,
-            'resultCount' => $resultCount,
-        ]);
-    }
-
     private function groupsJsonResponse(string $accountId, string $message): JsonResponse
     {
         $groups = Group::where('accountid', $accountId)->orderBy('group_name')->get();
@@ -71,11 +33,6 @@ class GroupsController extends Controller
                 ];
             }),
         ]);
-    }
-
-    public function groupsCreate(): View
-    {
-        return view('groups.form', ['title' => 'Add New Group']);
     }
 
     public function groupsStore(Request $request)
@@ -105,28 +62,6 @@ class GroupsController extends Controller
         }
 
         return redirect()->back()->with('success', 'Group created successfully.')->with('open_group_modal', true);
-    }
-
-    public function groupsShow(Group $group): View
-    {
-        if ($group->accountid !== $this->resolveAccountId()) {
-            abort(403);
-        }
-
-        return view('groups.show', [
-            'title' => $group->group_name ?? 'Group',
-            'subtitle' => 'Group Details',
-            'group' => $group,
-        ]);
-    }
-
-    public function groupsEdit(Group $group): View
-    {
-        if ($group->accountid !== $this->resolveAccountId()) {
-            abort(403);
-        }
-
-        return view('groups.form', ['title' => 'Edit '.($group->group_name ?? 'Group'), 'group' => $group]);
     }
 
     public function groupsUpdate(Request $request, $id)

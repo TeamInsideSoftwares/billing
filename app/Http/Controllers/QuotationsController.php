@@ -487,31 +487,6 @@ class QuotationsController extends Controller
         return response()->json(['ok' => true, 'count' => count($terms)]);
     }
 
-    public function quotationsShow(Quotation $quotation): View
-    {
-        $quotation->load(['client', 'items']);
-
-        return view('quotations.show', [
-            'title' => $quotation->quo_number ?? 'Quotation',
-            'subtitle' => 'Quotation Details',
-            'quotation' => $quotation,
-            'pdfVersions' => $this->listStoredQuotationPdfVersions($quotation),
-        ]);
-    }
-
-    public function quotationsEdit(Quotation $quotation): View
-    {
-        $accountid = $this->resolveAccountId();
-        $quotationDateBounds = $this->resolveFinancialYearDateBounds($accountid);
-
-        return view('quotations.form', [
-            'title' => 'Edit '.($quotation->quo_number ?? 'Quotation'),
-            'quotation' => $quotation,
-            'clients' => Client::where('accountid', $accountid)->active()->get(),
-            'quotationDateBounds' => $quotationDateBounds,
-        ]);
-    }
-
     public function quotationsCopy(Request $request, Quotation $quotation)
     {
         $accountid = $this->resolveAccountId();
@@ -581,31 +556,6 @@ class QuotationsController extends Controller
         return redirect()
             ->route('quotations.create', ['step' => 2, 'c' => $newQuotation->clientid, 'd' => $newQuotation->quotationid])
             ->with('success', 'Quotation copied successfully.');
-    }
-
-    public function quotationsUpdate(Request $request, Quotation $quotation)
-    {
-        $accountid = $this->resolveAccountId();
-        $quotationDateBounds = $this->resolveFinancialYearDateBounds($accountid);
-        $validated = $request->validate([
-            'clientid' => 'required|exists:clients,clientid',
-            'quo_number' => 'required|string|unique:quotations,quo_number,'.$quotation->getKey().',quotationid',
-            'issue_date' => 'required|date|after_or_equal:'.$quotationDateBounds['min_date'].'|before_or_equal:'.($quotationDateBounds['issue_max_date'] ?? $quotationDateBounds['max_date']),
-            'due_date' => 'nullable|date|after_or_equal:issue_date|before_or_equal:'.($quotationDateBounds['due_max_date'] ?? $quotationDateBounds['max_date']),
-            'status' => 'required|in:draft,active,cancelled',
-        ]);
-
-        if (
-            strtolower(trim((string) ($quotation->status ?? ''))) === 'active'
-            && strtolower(trim((string) ($validated['status'] ?? ''))) === 'draft'
-        ) {
-            $validated['status'] = 'active';
-        }
-
-        $quotation->update($validated);
-        $this->persistQuotationPdfVersion($quotation);
-
-        return redirect()->route('quotations.index')->with('success', 'Quotation updated successfully.');
     }
 
     public function quotationsDestroy(Quotation $quotation)

@@ -117,15 +117,7 @@
                 @endisset
                 @csrf
 
-                @if ($errors->any())
-                <div class="alert alert-danger mb-4">
-                    <ul class="mb-0 ps-3">
-                        @foreach ($errors->all() as $error)
-                        <li class="small">{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-                @endif
+
 
                 <div class="row g-2 align-items-stretch">
                     <div class="col-12 col-lg-3">
@@ -157,9 +149,6 @@
                                             </option>
                                             @endforeach
                                         </select>
-                                        @if ($selectedClientEmail)
-                                        <div class="small lh-sm text-white mt-2 ms-1">{{ $selectedClientEmail }}</div>
-                                        @endif
                                         @endif
                                     </div>
                                 </div>

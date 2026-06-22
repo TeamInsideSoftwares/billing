@@ -27,7 +27,6 @@ Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.store')->middleware('guest');
 
 // AJAX routes without auth
-Route::get('/invoices/ajax-list', [InvoicesController::class, 'ajaxList'])->name('invoices.ajax-list');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/', function () {
@@ -56,19 +55,22 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/clients/{client}/documents/{document}/cancel', 'clientsDocumentsCancel')->name('clients.documents.cancel');
         Route::patch('/clients/{client}/documents/{document}/restore', 'clientsDocumentsRestore')->name('clients.documents.restore');
         Route::get('/clients/{client}/documents/{document}/file', 'clientsDocumentsFile')->name('clients.documents.file');
-        Route::get('/clients/{client}', 'clientsShow')->name('clients.show');
         Route::get('/clients/{client}/edit', 'clientsEdit')->name('clients.edit');
         Route::put('/clients/{client}', 'clientsUpdate')->name('clients.update');
         Route::delete('/clients/{client}', 'clientsDestroy')->name('clients.destroy');
         Route::patch('/clients/{client}/toggle-status', 'toggleClientStatus')->name('clients.toggle-status');
     });
 
+    Route::controller(GroupsController::class)->group(function () {
+        Route::post('/groups', 'groupsStore')->name('groups.store');
+        Route::put('/groups/{group}', 'groupsUpdate')->name('groups.update');
+        Route::delete('/groups/{group}', 'groupsDestroy')->name('groups.destroy');
+    });
     Route::controller(ServicesController::class)->group(function () {
         Route::get('/services', 'services')->name('services.index');
         Route::get('/services/create', 'servicesCreate')->name('services.create');
         Route::post('/services', 'servicesStore')->name('services.store');
         Route::post('/services/reorder', 'servicesReorder')->name('services.reorder');
-        Route::get('/services/{service}', 'servicesShow')->name('services.show');
         Route::get('/services/{service}/edit', 'servicesEdit')->name('services.edit');
         Route::put('/services/{service}', 'servicesUpdate')->name('services.update');
         Route::delete('/services/{service}', 'servicesDestroy')->name('services.destroy');
@@ -78,7 +80,6 @@ Route::middleware(['auth'])->group(function () {
     Route::controller(InvoicesController::class)->group(function () {
         Route::get('/invoices', 'invoices')->name('invoices.index');
         Route::get('/invoices/create', 'invoicesCreate')->name('invoices.create');
-        Route::get('/invoices/ajax-list', 'ajaxList')->name('invoices.ajax-list');
         Route::post('/invoices/client-orders', 'getClientOrders')->name('invoices.client-orders');
         Route::get('/invoices/client-order-items', 'getClientOrderItems')->name('invoices.client-order-items');
         Route::post('/invoices/renewal-invoices', 'getRenewalInvoices')->name('invoices.renewal-invoices');
@@ -104,7 +105,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/invoices/expiry-list', 'invoicesExpiryList')->name('invoices.expiry-list');
         Route::get('/invoices/{invoice}/pdf-versions', 'pdfVersions')->name('invoices.pdf-versions');
         Route::get('/invoices/{invoice}/pdf', 'downloadPdf')->name('invoices.pdf');
-        Route::get('/invoices/{invoice}', 'invoicesShow')->name('invoices.show');
         Route::get('/invoices/{invoice}/edit', 'invoicesEdit')->name('invoices.edit');
         Route::patch('/invoices/{invoice}/items/{item}', 'invoicesUpdateItem')->name('invoices.items.update');
         Route::put('/invoices/{invoice}', 'invoicesUpdate')->name('invoices.update');
@@ -115,7 +115,7 @@ Route::middleware(['auth'])->group(function () {
     Route::controller(PaymentsController::class)->group(function () {
         Route::get('/payments', 'payments')->name('payments.index');
         Route::get('/payments/ledger', 'paymentsLedger')->name('payments.ledger');
-        Route::get('/payments/gst-report', 'paymentsGstReport')->name('payments.gst-report');
+        Route::get('/gst-report', 'paymentsGstReport')->name('gst-report.index');
         Route::get('/payments/create', 'paymentsCreate')->name('payments.create');
         Route::post('/payments', 'paymentsStore')->name('payments.store');
         Route::get('/payments/{payment}', 'paymentsShow')->name('payments.show');
@@ -123,10 +123,6 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/payments/{payment}', 'paymentsUpdate')->name('payments.update');
         Route::patch('/payments/{payment}/restore', 'paymentsRestore')->name('payments.restore');
         Route::delete('/payments/{payment}', 'paymentsDestroy')->name('payments.destroy');
-    });
-
-    Route::controller(PaymentsController::class)->group(function () {
-        Route::get('/gst-report', 'paymentsGstReport')->name('gst-report.index');
     });
 
     Route::controller(QuotationsController::class)->group(function () {
@@ -139,31 +135,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/quotations/{quotation}/pdf-versions', 'quotationPdfVersions')->name('quotations.pdf-versions');
         Route::get('/quotations/{quotation}/email-compose', 'quotationEmailCompose')->name('quotations.email-compose');
         Route::post('/quotations/{quotation}/email-compose', 'quotationEmailComposeStore')->name('quotations.email-compose.store');
-        Route::get('/quotations/{quotation}', 'quotationsShow')->name('quotations.show');
         Route::post('/quotations/{quotation}/copy', 'quotationsCopy')->name('quotations.copy');
-        Route::get('/quotations/{quotation}/edit', 'quotationsEdit')->name('quotations.edit');
-        Route::put('/quotations/{quotation}', 'quotationsUpdate')->name('quotations.update');
         Route::delete('/quotations/{quotation}', 'quotationsDestroy')->name('quotations.destroy');
     });
 
     Route::controller(ProductCategoriesController::class)->group(function () {
-        Route::get('/product-categories', 'productCategories')->name('product-categories.index');
-        Route::get('/product-categories/create', 'productCategoriesCreate')->name('product-categories.create');
         Route::post('/product-categories', 'productCategoriesStore')->name('product-categories.store');
-        Route::get('/product-categories/{productCategory}', 'productCategoriesShow')->name('product-categories.show');
-        Route::get('/product-categories/{productCategory}/edit', 'productCategoriesEdit')->name('product-categories.edit');
         Route::put('/product-categories/{productCategory}', 'productCategoriesUpdate')->name('product-categories.update');
         Route::delete('/product-categories/{productCategory}', 'productCategoriesDestroy')->name('product-categories.destroy');
-    });
-
-    Route::controller(GroupsController::class)->group(function () {
-        Route::get('/groups', 'groups')->name('groups.index');
-        Route::get('/groups/create', 'groupsCreate')->name('groups.create');
-        Route::post('/groups', 'groupsStore')->name('groups.store');
-        Route::get('/groups/{group}', 'groupsShow')->name('groups.show');
-        Route::get('/groups/{group}/edit', 'groupsEdit')->name('groups.edit');
-        Route::put('/groups/{group}', 'groupsUpdate')->name('groups.update');
-        Route::delete('/groups/{group}', 'groupsDestroy')->name('groups.destroy');
     });
 
     Route::controller(UsersController::class)->group(function () {
@@ -178,7 +157,6 @@ Route::middleware(['auth'])->group(function () {
     Route::controller(OrdersController::class)->group(function () {
         // Specific routes first
         Route::get('/orders/json', 'getOrderJsonByNumber')->name('orders.json-by-number');
-        Route::get('/orders/trials', 'trialOrders')->name('orders.trials');
         Route::get('/orders', 'orders')->name('orders.index');
         Route::get('/orders/create', 'ordersCreate')->name('orders.create');
         Route::get('/orders/{order}/file/{type}', 'ordersFile')->name('orders.file');
@@ -203,7 +181,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/settings/billing-details', 'accountBillingUpdate')->name('account.billing.update');
         Route::get('/settings/create', 'settingsCreate')->name('settings.create');
         Route::post('/settings', 'settingsStore')->name('settings.store');
-        Route::get('/settings/{setting}', 'settingsShow')->name('settings.show');
         Route::get('/settings/{setting}/edit', 'settingsEdit')->name('settings.edit');
         Route::put('/settings/{setting}', 'settingsUpdate')->name('settings.update');
         Route::delete('/settings/{setting}', 'settingsDestroy')->name('settings.destroy');

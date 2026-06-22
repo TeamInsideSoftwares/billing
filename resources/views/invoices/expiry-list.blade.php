@@ -34,7 +34,7 @@ default => collect(),
 
             <div class="row g-2">
                 <div class="col-12 col-md-2">
-                    <select name="c" id="expiry_client_filter" class="form-select">
+                    <select name="c" id="expiry_client_filter" class="form-select" onchange="this.form.submit()">
                         <option value="">All Clients</option>
                         @php
                         $regularClients = $clients->filter(fn($c) => strtolower((string) ($c->type ?? '')) !== 'trial');
@@ -69,7 +69,7 @@ default => collect(),
                 <div class="col-12 col-md-2">
                     <div class="input-group">
                         <input type="date" name="from" id="expiry_from_filter" class="form-control"
-                            placeholder="Start Date" value="{{ $fromDate ?? '' }}" readonly>
+                            placeholder="Start Date" value="{{ $fromDate ?? '' }}" readonly onchange="this.form.submit()">
                         <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
                     </div>
                 </div>
@@ -77,20 +77,9 @@ default => collect(),
                 <div class="col-12 col-md-2">
                     <div class="input-group">
                         <input type="date" name="to" id="expiry_to_filter" class="form-control" placeholder="End Date"
-                            value="{{ $toDate ?? '' }}" min="{{ $fromDate ?? '' }}" readonly>
+                            value="{{ $toDate ?? '' }}" min="{{ $fromDate ?? '' }}" readonly onchange="this.form.submit()">
                         <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
                     </div>
-                </div>
-
-                <div class="col-12 col-md-2 mt-auto d-flex gap-2">
-                    <a href="{{ route('invoices.expiry-list', array_filter([
-                            'tab' => $selectedTab ?? 'expired',
-                        ])) }}" class="btn btn-outline-primary bg-white text-primary fw-medium">
-                        <i class="fas fa-sync-alt btn-icon me-1"></i> Clear
-                    </a>
-                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                        <i class="fas fa-filter btn-icon me-1"></i> Filter
-                    </button>
                 </div>
             </div>
         </form>

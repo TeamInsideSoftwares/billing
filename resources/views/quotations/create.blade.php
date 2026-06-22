@@ -24,15 +24,7 @@ $quotationDateBounds = $quotationDateBounds ?? [
 @endphp
 
 <div class="position-relative {{ $step !== 1 ? 'bg-white p-2' : '' }} rounded-3">
-    @if ($errors->any())
-    <div class="alert alert-danger mb-4">
-        <ul class="mb-0 ps-3">
-            @foreach ($errors->all() as $error)
-            <li class="small">{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-    @endif
+
     @if($step === 1)
     @include('quotations.steps.step1-client')
     @elseif($step === 2)
@@ -78,6 +70,8 @@ return [
 
 <script>
     (function () {
+
+
         const serverDraft = @json($serverDraftPayload);
 
         const step = @json($step);
@@ -88,7 +82,10 @@ return [
         const btn = document.getElementById('toStep2');
         const client = document.getElementById('clientid');
         btn?.addEventListener('click', function () {
-            if (!client.value) return alert('Please select a client.');
+            if (!client.checkValidity()) {
+                client.reportValidity();
+                return;
+            }
             const createRoute = "{{ route('quotations.create') }}";
             const createPath = createRoute.startsWith('http') ? new URL(createRoute).pathname : createRoute;
             let target = createPath + "?step=2&c=" + encodeURIComponent(client.value);
@@ -494,8 +491,16 @@ return [
         syncUsersField();
 
         addBtn?.addEventListener('click', function () {
+            if (!itemSelect.value) {
+                showToast('error', 'Select item first.');
+                return;
+            }
+            const quantityInputVal = Number(qty.value || 0);
+            if (quantityInputVal <= 0) {
+                showToast('error', 'Quantity must be greater than 0.');
+                return;
+            }
             const opt = itemSelect.options[itemSelect.selectedIndex];
-            if (!itemSelect.value) return alert('Select item first.');
             const q = Math.max(1, Number(qty.value || 1));
             const p = Math.max(0, Number(unitPrice.value || 0));
             const d = Math.max(0, Math.min(100, Number(discount.value || 0)));
@@ -549,14 +554,28 @@ return [
         });
 
         toStep3?.addEventListener('click', function () {
-            if (!items.length) return alert('Add at least one item.');
-            if (!quoTitleInput.value.trim()) {
-                const errorEl = document.getElementById('quoTitleError');
-                if (errorEl) errorEl.classList.remove('d-none');
-                quoTitleInput.focus();
+            // First check visible HTML5 required validation inside step 2 form
+            const form = document.getElementById('step2');
+            if (form) {
+                const requiredFields = form.querySelectorAll('[required]');
+                let allValid = true;
+                for (const field of requiredFields) {
+                    if (field.disabled) continue;
+                    if (!field.checkValidity()) {
+                        field.reportValidity();
+                        allValid = false;
+                        break;
+                    }
+                }
+                if (!allValid) {
+                    return;
+                }
+            }
+
+            if (!items.length) {
+                showToast('error', 'Add at least one item.');
                 return;
             }
-            if (!issueDateInput.value) return alert('Please enter issue date.');
 
             const payload = {
                 quotationid: meta.draft_id || '',
@@ -588,7 +607,7 @@ return [
                     window.location.href = data.redirect_url;
                 })
                 .catch((err) => {
-                    alert(err.message || 'Unable to save draft.');
+                    showToast('error', err.message || 'Unable to save draft.');
                 });
         });
 

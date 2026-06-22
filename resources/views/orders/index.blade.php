@@ -74,7 +74,7 @@ $subtitle = null;
         <form action="{{ route('orders.index') }}" method="GET" class="mainForm">
             <div class="row g-2 align-items-center">
                 <div class="col-12 col-md-2">
-                    <select name="c" id="orders_client_filter" class="form-select">
+                    <select name="c" id="orders_client_filter" class="form-select" onchange="this.form.submit()">
                         <option value="all" {{ empty($clientId) ? 'selected' : '' }}>All Clients</option>
                         @foreach($allClients ?? [] as $client)
                         <option value="{{ $client->clientid }}" {{ (string) $clientId===(string) $client->clientid ?
@@ -86,7 +86,7 @@ $subtitle = null;
                 </div>
 
                 <div class="col-12 col-md-2">
-                    <select name="itemid" id="orders_item_filter" class="form-select">
+                    <select name="itemid" id="orders_item_filter" class="form-select" onchange="this.form.submit()">
                         <option value="">All Products</option>
                         @php
                         $servicesByCategory = collect($services ?? [])->groupBy(function ($service) {
@@ -106,17 +106,7 @@ $subtitle = null;
                     </select>
                 </div>
 
-                <div class="col-12 col-md-2 d-flex gap-2">
-                    <a href="{{ route('orders.index', ['c' => empty($clientId) ? 'all' : $clientId]) }}"
-                        class="btn btn-outline-primary bg-white text-primary fw-medium text-center justify-content-center">
-                        <i class="fas fa-sync-alt btn-icon me-1"></i> Clear
-                    </a>
-                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                        <i class="fas fa-filter btn-icon me-1"></i> Filter
-                    </button>
-                </div>
-
-                <div class="col-12 col-md-6 d-flex justify-content-end align-items-center gap-2 mt-auto">
+                <div class="col-12 col-md-8 d-flex justify-content-end align-items-center gap-2 mt-auto">
                     @if(empty($showClientPicker))
                     <a href="{{ route('clients.trials') }}"
                         class="btn btn-sm btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium h-auto"

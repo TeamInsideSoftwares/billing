@@ -329,7 +329,7 @@ class SettingsController extends Controller
             SerialConfiguration::create($validated);
         }
 
-        return redirect()->to(route('settings.index').'#financial-year')
+        return redirect()->to(route('settings.index').'#serial-number-configuration')
             ->with('success', ucfirst(str_replace('_', ' ', $validated['document_type'])).' serial configuration saved.');
     }
 
@@ -590,20 +590,6 @@ class SettingsController extends Controller
         ]);
 
         return redirect()->to(route('settings.index').'#config')->with('success', 'Setting created successfully.');
-    }
-
-    public function settingsShow(Setting $setting): View
-    {
-        $accountid = $this->resolveAccountId();
-        if ($setting->accountid !== $accountid) {
-            abort(403, 'Unauthorized');
-        }
-
-        return view('settings.show', [
-            'title' => $setting->setting_key ?? $setting->key ?? 'Setting',
-            'subtitle' => 'Setting Details',
-            'setting' => $setting,
-        ]);
     }
 
     public function settingsEdit(Setting $setting)

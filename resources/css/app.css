@@ -614,7 +614,7 @@
 .toast-leaving,
 .app-toast-leaving {
     opacity: 0;
-    transform: translateX(24px);
+    transform: translateY(-50px);
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
 

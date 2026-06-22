@@ -32,7 +32,7 @@ return (float) ($paymentRow['tds_amount'] ?? 0);
         <form action="{{ route('payments.index') }}" method="GET" class="mainForm">
             <div class="row g-2">
                 <div class="col-12 col-md-2">
-                    <select name="c" id="payments_client_filter" class="form-select">
+                    <select name="c" id="payments_client_filter" class="form-select" onchange="this.form.submit()">
                         <option value="all" {{ !$clientId || (string) $clientId==='all' ? 'selected' : '' }}>All Clients
                         </option>
                         @foreach ($clients as $client)
@@ -50,21 +50,11 @@ return (float) ($paymentRow['tds_amount'] ?? 0);
                             style="left: 14px; top: 50%; transform: translateY(-50%); font-size: 15px;"></i>
                         <input type="text" name="search" id="payments_search_filter" class="form-control"
                             value="{{ $searchTerm ?? '' }}" placeholder="Search Receipt, Ref or Client Name"
-                            style="padding-left: 38px;">
+                            style="padding-left: 38px;" onchange="this.form.submit()">
                     </div>
                 </div>
 
-                <div class="col-12 col-md-2 mt-auto d-flex gap-2">
-                    <a href="{{ route('payments.index') }}"
-                        class="btn btn-outline-primary bg-white text-primary fw-medium text-center justify-content-center">
-                        <i class="fas fa-sync-alt btn-icon me-1"></i> Clear
-                    </a>
-                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                        <i class="fas fa-filter btn-icon me-1"></i> Filter
-                    </button>
-                </div>
-
-                <div class="col-12 col-md-5 d-flex justify-content-end align-items-center gap-2 mt-auto">
+                <div class="col-12 col-md-7 d-flex justify-content-end align-items-center gap-2 mt-auto">
                     <div class="btn-group shadow-sm" role="group" aria-label="View Toggle">
                         <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
                             style="font-size:0.875rem;" id="btn-grid-view">

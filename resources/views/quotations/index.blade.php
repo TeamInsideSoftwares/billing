@@ -16,7 +16,7 @@
         <form action="{{ route('quotations.index') }}" method="GET" class="mainForm">
             <div class="row g-2 align-items-center">
                 <div class="col-12 col-md-2">
-                    <select name="c" id="quotation_client_filter" class="form-select">
+                    <select name="c" id="quotation_client_filter" class="form-select" onchange="this.form.submit()">
                         <option value="">All Clients</option>
                         @php $groupedClients = $clients->groupBy(fn ($c) => $c->type === 'trial' ? 'trial' : 'regular')
                         @endphp
@@ -34,16 +34,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 col-md-2 d-flex gap-2">
-                    <a href="{{ route('quotations.index') }}"
-                        class="btn btn-outline-primary bg-white text-primary fw-medium text-center justify-content-center">
-                        <i class="fas fa-sync-alt btn-icon me-1"></i> Clear
-                    </a>
-                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                        <i class="fas fa-filter btn-icon me-1"></i> Filter
-                    </button>
-                </div>
-                <div class="col-12 col-md-8 d-flex justify-content-end align-items-center gap-2 mt-auto">
+                <div class="col-12 col-md-10 d-flex justify-content-end align-items-center gap-2 mt-auto">
                     <div class="btn-group shadow-sm" role="group" aria-label="View Toggle">
                         <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
                             style="font-size:0.875rem;" id="btn-grid-view">

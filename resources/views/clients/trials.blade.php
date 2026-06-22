@@ -11,7 +11,7 @@
             <div class="row g-2">
 
                 <div class="col-12 col-md-2">
-                    <select name="client" id="trials_client_filter" class="form-select">
+                    <select name="client" id="trials_client_filter" class="form-select" onchange="this.form.submit()">
                         <option value="">All Clients</option>
                         @foreach ($clientOptions as $option)
                         <option value="{{ $option->clientid }}" {{ isset($selectedClient) && $selectedClient===$option->
@@ -23,7 +23,7 @@
                 </div>
 
                 <div class="col-12 col-md-2">
-                    <select name="item" id="trials_item_filter" class="form-select">
+                    <select name="item" id="trials_item_filter" class="form-select" onchange="this.form.submit()">
                         <option value="">All Items</option>
                         @foreach ($itemOptions as $item)
                         <option value="{{ $item }}" {{ isset($selectedItem) && $selectedItem===$item ? 'selected' : ''
@@ -40,17 +40,8 @@
                             style="left: 14px; top: 50%; transform: translateY(-50%); font-size: 15px;"></i>
                         <input type="text" name="search" id="trials_search_filter" class="form-control"
                             value="{{ $searchTerm ?? '' }}" placeholder="Business name or contact person"
-                            style="padding-left: 38px;">
+                            style="padding-left: 38px;" onchange="this.form.submit()">
                     </div>
-                </div>
-
-                <div class="col-12 col-md-2 mt-auto d-flex gap-2">
-                    <a href="{{ route('clients.trials') }}"
-                        class="btn btn-outline-primary bg-white text-primary fw-medium text-center justify-content-center"><i
-                            class="fas fa-sync-alt btn-icon me-1"></i> Clear</a>
-                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium"><i
-                            class="fas fa-filter btn-icon me-1"></i> Filter
-                    </button>
                 </div>
             </div>
         </form>
@@ -182,7 +173,7 @@
                             <div class="tableActionButton d-inline-flex gap-1">
                                 <button type="button" class="bg01 color01 border-0 js-view-orders-btn"
                                     data-client-record-id="{{ $client['record_id'] }}">View Orders</button>
-                                <a href="{{ route('quotations.create', ['c' => $client['record_id']]) }}"
+                                <a href="{{ route('quotations.create', ['step' => 2, 'c' => $client['record_id']]) }}"
                                     class="bg03 color03">Create
                                     Quotation</a>
                                 <form method="POST"
@@ -309,7 +300,7 @@
                     <div class="tableActionButton d-flex flex-wrap gap-1 mt-2">
                         <button type="button" class="bg01 color01 text-center border-0 js-view-orders-btn"
                             data-client-record-id="{{ $client['record_id'] }}">View Orders</button>
-                        <a href="{{ route('quotations.create', ['c' => $client['record_id']]) }}"
+                        <a href="{{ route('quotations.create', ['step' => 2, 'c' => $client['record_id']]) }}"
                             class="bg03 color03 text-center">Create Quotation</a>
                         <form method="POST" action="{{ route('clients.convert-to-regular', $client['record_id']) }}"
                             class="d-inline" data-name="{{ $client['name'] }}"

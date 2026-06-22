@@ -19,15 +19,7 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
         @endisset
         @csrf
 
-        @if ($errors->any())
-        <div class="alert alert-danger mb-4">
-            <ul class="mb-0 ps-3">
-                @foreach ($errors->all() as $error)
-                <li class="small">{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-        @endif
+
 
         <input type="hidden" name="accountid"
             value="{{ isset($client) ? ($client->accountid ?? auth()->user()->accountid ?? 'ACC0000001') : (auth()->user()->accountid ?? 'ACC0000001') }}">
@@ -897,6 +889,21 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
 
         if (btnSaveClientInfo) {
             btnSaveClientInfo.addEventListener('click', async function (e) {
+                const clientInfoContainer = btnSaveClientInfo.closest('.bg-light');
+                if (clientInfoContainer) {
+                    const requiredFields = clientInfoContainer.querySelectorAll('[required]');
+                    let allValid = true;
+                    for (const field of requiredFields) {
+                        if (!field.checkValidity()) {
+                            field.reportValidity();
+                            allValid = false;
+                            break;
+                        }
+                    }
+                    if (!allValid) {
+                        return;
+                    }
+                }
                 e.preventDefault();
 
                 document.querySelectorAll('.ajax-error').forEach(el => el.textContent = '');
@@ -1143,6 +1150,11 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
 
         if (saveContactBtn) {
             saveContactBtn.addEventListener('click', function (e) {
+                const form = saveContactBtn.closest('form');
+                if (form && !form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
                 e.preventDefault();
                 const name = contactNameInput.value.trim();
                 const designation = contactDesignationInput.value.trim();

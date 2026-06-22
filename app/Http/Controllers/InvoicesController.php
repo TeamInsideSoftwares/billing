@@ -2426,26 +2426,6 @@ class InvoicesController extends Controller
         ]);
     }
 
-    public function invoicesShow(string $invoice): View
-    {
-        $invoice = $this->resolveInvoiceDocument($invoice);
-        $invoice->loadMissing(['client', 'invoiceItems.service', 'paymentDetails.payment']);
-
-        // Load account billing details for preview
-        $accountid = $this->resolveAccountId();
-        $account = Account::where('accountid', $accountid)->first();
-        $accountBillingDetail = AccountBillingDetail::where('accountid', $accountid)->first();
-
-        return view('invoices.show', [
-            'title' => 'Invoice '.($invoice->invoice_number ?? 'Details'),
-            'subtitle' => 'Invoice Details',
-            'invoice' => $invoice,
-            'account' => $account,
-            'accountBillingDetail' => $accountBillingDetail,
-            'pdfVersions' => $this->listStoredInvoicePdfVersions($invoice),
-        ]);
-    }
-
     public function invoicesEdit(string $invoice)
     {
         $invoice = $this->resolveInvoiceDocument($invoice);

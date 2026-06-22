@@ -145,118 +145,6 @@ class OrdersController extends Controller
         ]);
     }
 
-    public function trialOrders(): View
-    {
-        $accountId = $this->resolveAccountId();
-        $searchTerm = trim((string) request('search', ''));
-        $selectedClient = trim((string) request('client', ''));
-        $selectedItem = trim((string) request('item', ''));
-
-        $query = Order::query()
-            ->where('accountid', $accountId)
-            ->trial()
-            ->with(['client']);
-
-        if ($searchTerm !== '') {
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('item_name', 'like', '%'.$searchTerm.'%')
-                    ->orWhereHas('client', function ($cq) use ($searchTerm) {
-                        $cq->where('business_name', 'like', '%'.$searchTerm.'%')
-                            ->orWhereHas('contacts', function ($cqContact) use ($searchTerm) {
-                                $cqContact->where('name', 'like', '%'.$searchTerm.'%');
-                            });
-                    });
-            });
-        }
-
-        if ($selectedClient !== '') {
-            $query->where('clientid', $selectedClient);
-        }
-
-        if ($selectedItem !== '') {
-            $query->where('item_name', $selectedItem);
-        }
-
-        $resultCount = $query->count();
-
-        $orders = $query->orderByDesc('created_at')->take(100)->get()->map(function (Order $order) {
-            $endDate = $order->end_date;
-            $isExpired = $endDate && $endDate->lt(now()->startOfDay());
-
-            return [
-                'record_id' => $order->orderid,
-                'number' => $order->order_number,
-                'client' => $order->client?->business_name ?? $order->client?->contact_name ?? 'Client',
-                'clientid' => $order->clientid,
-                'client_email' => $order->client?->primary_email ?? $order->client?->email,
-                'client_phone' => $order->client?->phone,
-                'client_status' => strtolower((string) ($order->client?->status ?? 'active')),
-                'item_name' => $order->item_name ?: ($order->item?->name ?? 'Item'),
-                'itemid' => $order->itemid,
-                'item_description' => $order->item_description,
-                'quantity' => (float) ($order->quantity ?? 1),
-                'no_of_users' => $order->no_of_users,
-                'start_date' => $order->start_date?->format('d M Y'),
-                'start_date_raw' => $order->start_date?->format('Y-m-d'),
-                'end_date' => $endDate?->format('d M Y'),
-                'end_date_raw' => $endDate?->format('Y-m-d'),
-                'delivery_date' => $order->delivery_date?->format('Y-m-d'),
-                'client_docid' => $order->client_docid,
-                'status' => (string) ($order->status ?? 'active'),
-                'is_expired' => $isExpired,
-                'order_date' => $order->created_at?->format('d M Y'),
-            ];
-        });
-
-        // Item name options from trial orders
-        $trialClientIds = Client::query()->where('accountid', $accountId)->trial()->pluck('clientid');
-        $itemOptions = Order::query()
-            ->whereIn('clientid', $trialClientIds)
-            ->whereNotNull('item_name')
-            ->where('item_name', '!=', '')
-            ->select('item_name')
-            ->distinct()
-            ->orderBy('item_name')
-            ->pluck('item_name');
-
-        // Trial client options for dropdown
-        $clientOptions = Client::query()
-            ->where('accountid', $accountId)
-            ->trial()
-            ->with('primaryContact')
-            ->orderBy('business_name')
-            ->get();
-
-        $services = Service::query()
-            ->where('accountid', $accountId)
-            ->with('category')
-            ->orderBy('name')
-            ->get(['itemid', 'name', 'description', 'ps_catid', 'user_wise']);
-
-        $clientDocuments = ClientDocument::query()
-            ->where('accountid', $accountId)
-            ->where('type', 'po')
-            ->where('status', 'active')
-            ->orderByDesc('document_date')
-            ->orderByDesc('created_at')
-            ->get()
-            ->groupBy('clientid');
-
-        return view('orders.trials', [
-            'title' => 'Trial Orders',
-            'subtitle' => $searchTerm ? 'Found '.$resultCount.' result(s) for "'.$searchTerm.'"' : null,
-            'orders' => $orders,
-            'searchTerm' => $searchTerm,
-            'resultCount' => $resultCount,
-            'selectedClient' => $selectedClient,
-            'selectedItem' => $selectedItem,
-            'itemOptions' => $itemOptions,
-            'clientOptions' => $clientOptions,
-            'services' => $services,
-            'clientDocuments' => $clientDocuments,
-        ]);
-    }
-
     public function ordersCreate(): View
     {
         $accountId = $this->resolveAccountId();
@@ -372,7 +260,7 @@ class OrdersController extends Controller
                 'item_description' => $itemData['item_description'] ?? null,
                 'quantity' => $this->wholeQuantity($itemData['quantity'] ?? 1),
                 'no_of_users' => $itemData['no_of_users'] ?? null,
-                'start_date' => now()->toDateString(),
+                'start_date' => ! empty($itemData['start_date']) ? $itemData['start_date'] : now()->toDateString(),
                 'end_date' => $itemData['end_date'] ?? '2099-12-31',
                 'delivery_date' => ! empty($itemData['delivery_date']) ? $itemData['delivery_date'] : null,
             ]);
@@ -560,7 +448,7 @@ class OrdersController extends Controller
             'item_description' => $itemData['item_description'] ?? null,
             'quantity' => $this->wholeQuantity($itemData['quantity'] ?? 1),
             'no_of_users' => $itemData['no_of_users'] ?? null,
-            'start_date' => now()->toDateString(),
+            'start_date' => ! empty($itemData['start_date']) ? $itemData['start_date'] : now()->toDateString(),
             'end_date' => $itemData['end_date'] ?? '2099-12-31',
             'delivery_date' => ! empty($itemData['delivery_date']) ? $itemData['delivery_date'] : null,
         ]);
@@ -582,7 +470,7 @@ class OrdersController extends Controller
         }
 
         if ($request->query('return_to') === 'trials') {
-            return redirect()->route('orders.trials')->with('success', 'Order updated successfully.');
+            return redirect()->route('clients.trials')->with('success', 'Order updated successfully.');
         }
 
         return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order updated successfully.');
@@ -614,7 +502,7 @@ class OrdersController extends Controller
         }
 
         if (request()->query('return_to') === 'trials') {
-            return redirect()->route('orders.trials')->with('success', 'Order cancelled successfully.');
+            return redirect()->route('clients.trials')->with('success', 'Order cancelled successfully.');
         }
 
         return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order cancelled successfully.');
@@ -631,7 +519,7 @@ class OrdersController extends Controller
         ]);
 
         if (request()->query('return_to') === 'trials') {
-            return redirect()->route('orders.trials')->with('success', 'Order restored successfully.');
+            return redirect()->route('clients.trials')->with('success', 'Order restored successfully.');
         }
 
         return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order restored successfully.');

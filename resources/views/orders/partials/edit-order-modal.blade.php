@@ -328,7 +328,7 @@
                         no_of_users: editNoOfUsersInput && !editNoOfUsersInput.disabled && String(editNoOfUsersInput.value || '').trim() !== ''
                             ? Math.max(1, Math.round(Number(editNoOfUsersInput.value)))
                             : null,
-                        start_date: mode === 'add' ? (editStartDateInput?.value || todayStr) : (editOriginalStartDate || editStartDateInput?.value || todayStr),
+                        start_date: editStartDateInput?.value || todayStr,
                         end_date: editEndDateInput?.value || maxEndDate,
                         delivery_date: editDeliveryDateInput?.value || '',
                     };

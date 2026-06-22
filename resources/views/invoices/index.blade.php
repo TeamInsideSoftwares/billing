@@ -32,7 +32,7 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
 
             <div class="row g-2">
                 <div class="col-12 col-md-2">
-                    <select name="c" id="invoice_client_filter" class="form-select">
+                    <select name="c" id="invoice_client_filter" class="form-select" onchange="this.form.submit()">
                         <option value="">All Clients</option>
                         @foreach ($clients as $clientOption)
                         <option value="{{ $clientOption->clientid }}" {{ (string) $selectedClientId===(string)
@@ -41,18 +41,6 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                         </option>
                         @endforeach
                     </select>
-                </div>
-
-                <div class="col-12 col-md-2 mt-auto d-flex gap-2">
-                    <a href="{{ route('invoices.index', array_filter([
-                            'tab' => $selectedTab ?? 'invoices',
-                            'type' => $selectedType ?? '',
-                        ])) }}" class="btn btn-outline-primary bg-white text-primary fw-medium">
-                        <i class="fas fa-sync-alt btn-icon me-1"></i> Clear
-                    </a>
-                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                        <i class="fas fa-filter btn-icon me-1"></i> Filter
-                    </button>
                 </div>
             </div>
         </form>

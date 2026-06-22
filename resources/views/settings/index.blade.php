@@ -123,26 +123,7 @@ $activeSettingsTab = 'billing-details';
                             <strong class="fw-bold fs-5 lh-sm">Business Information</strong>
                         </div>
                     </div>
-                    @if ($errors->any() && $isBusinessInfoValidation)
-                    <div class="col-12 col-md-12">
-                        <div class="alert alert-danger mb-4">
-                            <div class="d-flex align-items-center gap-2 mb-2 text-danger fw-bold">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <line x1="12" y1="8" x2="12" y2="12" />
-                                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                                </svg>
-                                <span>Please fix the following errors:</span>
-                            </div>
-                            <ul class="mb-0 ps-3">
-                                @foreach ($errors->all() as $error)
-                                <li class="small text-danger">{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    </div>
-                    @endif
+
                     <div class="col-12 col-lg-4">                    
                         <div class="bg-light p-2 rounded-3 h-100">
                             <div class="mb-2">
@@ -400,24 +381,7 @@ $activeSettingsTab = 'billing-details';
         <div id="billing-details"
             class="tab-pane fade {{ $activeSettingsTab === 'billing-details' ? 'show active' : '' }}" role="tabpanel">
 
-            @if ($errors->any() && $isBillingDetailsValidation)
-            <div class="alert alert-danger mb-4">
-                <div class="d-flex align-items-center gap-2 mb-2 text-danger fw-bold">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="12" />
-                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                    <span>Please fix the following errors:</span>
-                </div>
-                <ul class="mb-0 ps-3">
-                    @foreach ($errors->all() as $error)
-                    <li class="small text-danger">{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-            @endif
+
 
             {{-- DEBUG: Check if editingBillingDetail exists --}}
             @php
@@ -602,17 +566,7 @@ $activeSettingsTab = 'billing-details';
                         <strong class="fw-bold fs-5 lh-sm">Financial Year (FY)</strong>
                     </div>
                 </div>
-                @if ($errors->any() && $isFinancialYearValidation)
-                <div class="col-12 col-md-12">
-                    <div class="alert alert-danger mb-4">
-                        <ul class="mb-0 ps-3">
-                            @foreach ($errors->all() as $error)
-                            <li class="small text-danger">{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </div>
-                @endif
+
                 <div class="col-12 col-md-4">
                     <div class="bg-light p-2 rounded-3 h-100">
                         <div class="mb-2">

@@ -24,20 +24,7 @@ if($currentStep < 1 || $currentStep> 3) $currentStep = 1;
     @endphp
 
     <section class="position-relative {{ $currentStep !== 1 ? 'bg-white p-2' : '' }} rounded-3">
-        @if ($errors->any())
-        <div class="alert alert-danger mb-4">
-            <ul class="mb-0 ps-3">
-                @if($errors->has('general'))
-                <li class="small">{{ $errors->first('general') }}</li>
-                @else
-                <li class="small">Fix these issues before creating the invoice:</li>
-                @foreach ($errors->all() as $error)
-                <li class="small">{{ $error }}</li>
-                @endforeach
-                @endif
-            </ul>
-        </div>
-        @endif
+
 
         <form method="POST" action="{{ route('invoices.store') }}" id="invoiceForm" class="mainForm">
             @csrf

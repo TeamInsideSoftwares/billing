@@ -239,28 +239,6 @@ class ServicesController extends Controller
         return redirect()->route('services.index')->with('success', 'Item created successfully.');
     }
 
-    public function servicesShow(Service $service): View
-    {
-        $service->load(['subscriptions', 'category', 'costings']);
-
-        $addonItems = Service::query()
-            ->where('accountid', $service->accountid)
-            ->select(['itemid', 'name', 'type', 'addons'])
-            ->get()
-            ->filter(function (Service $candidate) use ($service) {
-                return in_array($service->itemid, collect($candidate->addons ?? [])->filter()->all(), true);
-            })
-            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
-            ->values();
-
-        return view('services.show', [
-            'title' => $service->name ?? 'Item',
-            'subtitle' => 'Item Details',
-            'service' => $service,
-            'addonItems' => $addonItems,
-        ]);
-    }
-
     public function servicesEdit(Service $service): View
     {
         $accountid = $service->accountid;

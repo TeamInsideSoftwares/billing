@@ -64,13 +64,12 @@
         });
 
         btnNext.addEventListener('click', function () {
-            const selectedClientId = clientSelect.value;
-            if (!selectedClientId) {
-                alert('Please select a client first.');
-                clientSelect.focus();
+            if (!clientSelect.checkValidity()) {
+                clientSelect.reportValidity();
                 return;
             }
 
+            const selectedClientId = clientSelect.value;
             const clientToken = encodeURIComponent(selectedClientId);
             const createRoute = "{{ route('invoices.create') }}";
             const createPath = createRoute.startsWith('http') ? new URL(createRoute).pathname : createRoute;

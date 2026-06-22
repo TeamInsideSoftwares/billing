@@ -36,7 +36,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             <div class="bg-secondary p-2 rounded-3 mb-3">
                 <div class="row g-2 align-items-end">
                     <div class="col-12 col-md-12">
-                        <select id="clientid" class="form-select" required>
+                        <select id="clientid" class="form-select" @if(request('d')) disabled @endif required>
                             <option value="">Choose client</option>
                             @foreach($clients as $client)
                             <option value="{{ $client->clientid }}" {{ (string)request('c',
@@ -330,35 +330,14 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
         const orderDatePrefillCache = {};
         let currentOrderDatePrefill = null;
 
-        function showSuccessToast(message) {
-            const text = String(message || '').trim();
-            if (!text) return;
-            let container = document.getElementById('app-toast-container');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'app-toast-container';
-                container.className = 'app-toast-container';
-                document.body.appendChild(container);
-            }
-            const toast = document.createElement('div');
-            toast.className = 'app-toast app-toast-success';
-            toast.innerHTML = '<i class="fas fa-check-circle toast-icon"></i><span></span>';
-            const label = toast.querySelector('span');
-            if (label) label.textContent = text;
-            toast.addEventListener('click', () => toast.remove());
-            container.appendChild(toast);
-            window.setTimeout(() => {
-                toast.classList.add('app-toast-leaving');
-                window.setTimeout(() => toast.remove(), 220);
-            }, 4200);
-        }
+
 
         function consumeTaxReadyToast() {
             try {
                 const message = window.localStorage.getItem(TAX_READY_TOAST_KEY);
                 if (!message) return;
                 window.localStorage.removeItem(TAX_READY_TOAST_KEY);
-                showSuccessToast(message);
+                showToast('success', message);
             } catch (e) {
                 console.warn('Unable to read tax-ready toast state', e);
             }
@@ -459,13 +438,15 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             }
         }
 
-        function applyOrderDatePrefill(prefill) {
+        function applyOrderDatePrefill(prefill, forceApply = false) {
             if (!prefill || editingManualItemIndex !== null) return;
             if (!manualStartInput || !manualEndInput) return;
 
-            const hasManualStart = Boolean((manualStartInput.value || '').trim());
-            const hasManualEnd = Boolean((manualEndInput.value || '').trim());
-            if (hasManualStart || hasManualEnd) return;
+            if (!forceApply) {
+                const hasManualStart = Boolean((manualStartInput.value || '').trim());
+                const hasManualEnd = Boolean((manualEndInput.value || '').trim());
+                if (hasManualStart || hasManualEnd) return;
+            }
 
             const source = String(prefill.source || '');
             const suggestedStartDate = prefill.suggested_start_date || '';
@@ -512,7 +493,11 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
             const prefill = await fetchOrderDatePrefill(orderId);
             currentOrderDatePrefill = prefill;
-            applyOrderDatePrefill(prefill);
+            // forceApply=true: bypass the 'already has values' guard because we just
+            // explicitly cleared the dates above. Without this, a race between the async
+            // fetch and scheduleManualEndDateSync can write 2099-12-31 into the end-date
+            // input before the response arrives, causing the guard to bail early.
+            applyOrderDatePrefill(prefill, true);
         });
 
         function isManualItemUserWise() {
@@ -704,7 +689,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             document.getElementById('manual_item_quantity').value = '1';
             document.getElementById('manual_item_unit_price').value = '';
             document.getElementById('manual_item_discount').value = '0';
-            document.getElementById('manual_item_frequency').value = '';
+            document.getElementById('manual_item_frequency').value = 'One-Time';
             document.getElementById('manual_item_duration').value = '';
             document.getElementById('manual_item_description').value = '';
             setDateInputValue(manualStartInput, '');
@@ -727,6 +712,16 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
         addManualItemBtn.addEventListener('click', function () {
             const itemId = document.getElementById('manual_item_itemid').value;
+            if (!itemId) {
+                showToast('error', 'Please select an item.');
+                return;
+            }
+
+            const quantityInputVal = Number(document.getElementById('manual_item_quantity').value || 0);
+            if (quantityInputVal <= 0) {
+                showToast('error', 'Quantity must be greater than 0.');
+                return;
+            }
             const selectedOption = document.getElementById('manual_item_itemid').options[document
                 .getElementById('manual_item_itemid').selectedIndex];
             const selectedOrderId = selectedOption?.dataset?.orderid || '';
@@ -748,16 +743,6 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                 null;
             const startDate = manualStartInput?.value || null;
             const endDate = manualEndInput?.value || null;
-
-            if (!itemId) {
-                alert('Please select an item.');
-                return;
-            }
-
-            if (quantity <= 0) {
-                alert('Quantity must be greater than 0.');
-                return;
-            }
 
             const durationMultiplier = (isRecurringFrequency(frequency) && Number(duration || 0) > 0) ?
                 Number(duration) : 1;
@@ -965,24 +950,34 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
 
         btnNextToStep3.addEventListener('click', function (e) {
             e.preventDefault();
+
+            // First check visible HTML5 required validation inside step 2
+            const requiredFields = document.querySelectorAll('#step2 [required]');
+            let allValid = true;
+            for (const field of requiredFields) {
+                if (field.disabled) continue;
+                if (!field.checkValidity()) {
+                    field.reportValidity();
+                    allValid = false;
+                    break;
+                }
+            }
+            if (!allValid) {
+                return;
+            }
+
             if (manualItems.length === 0) {
-                alert('Please add at least one item.');
+                showToast('error', 'Please add at least one item.');
                 return;
             }
 
             const clientId = clientSelect?.value || "{{ request('c', request('clientid')) }}";
             if (!clientId) {
-                alert('Please select a client before continuing.');
+                showToast('error', 'Please select a client before continuing.');
                 return;
             }
 
             const invoiceTitle = invoiceTitleInput.value;
-            if (!invoiceTitle.trim()) {
-                invoiceTitleError.classList.remove('d-none');
-                invoiceTitleInput.focus();
-                return;
-            }
-
             invoiceTitleError.classList.add('d-none');
 
             // Save items to hidden input
@@ -1036,7 +1031,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                 })
                 .catch((error) => {
                     console.error('Error updating invoice:', error);
-                    alert('Unable to update invoice right now. Please try again.');
+                    showToast('error', 'Unable to update invoice right now. Please try again.');
                 });
         });
 
@@ -1175,7 +1170,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             openAddOrderModalBtn.addEventListener('click', function () {
                 const currentClientId = clientSelect?.value || clientId;
                 if (!currentClientId) {
-                    alert('Please select a client before continuing.');
+                    showToast('error', 'Please select a client before continuing.');
                     return;
                 }
                 const modalEl = document.getElementById('editOrderModal');

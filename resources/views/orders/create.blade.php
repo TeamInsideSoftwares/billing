@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('header_actions')
-<a href="{{ request()->query('return_to') === 'trials' ? route('orders.trials') : route('orders.index', ['c' => $preSelectedClientId ?? ($order->clientid ?? request('c'))]) }}"
+<a href="{{ request()->query('return_to') === 'trials' ? route('clients.trials') : route('orders.index', ['c' => $preSelectedClientId ?? ($order->clientid ?? request('c'))]) }}"
     class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
     <i class="fas fa-list btn-icon"></i> Order List
 </a>
@@ -62,15 +62,7 @@ $initialOrderItems = [[
         @method('PUT')
         @endif
 
-        @if ($errors->any())
-        <div class="alert alert-danger mb-4">
-            <ul class="mb-0 ps-3">
-                @foreach ($errors->all() as $error)
-                <li class="small">{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-        @endif
+
 
         <div class="row g-2">
             <div class="{{ $isEditMode ? 'col-12 col-lg-3' : 'col-12 col-lg-3' }}">
@@ -134,7 +126,7 @@ $initialOrderItems = [[
 
                             <div class="col-12 col-md-12">
                                 <select id="item_itemid" class="form-select" {{ ($isEditMode &&
-                                    !empty($isItemLockedByInvoice)) ? 'disabled' : '' }}>
+                                    !empty($isItemLockedByInvoice)) ? 'disabled' : '' }} required>
                                     <option value="">Select Item</option>
                                     @php
                                     $groupedServices = $services->groupBy(fn($service) => $service->category->name
@@ -162,7 +154,7 @@ $initialOrderItems = [[
                             </div>
                             <div class="col-12 col-md-3">
                                 <label class="form-label small lh-sm fw-semibold text-dark mb-1">Qty</label>
-                                <input type="number" id="item_quantity" class="form-control" min="1" step="1" value="1">
+                                <input type="number" id="item_quantity" class="form-control" min="1" step="1" value="1" required>
                             </div>
 
                             {{-- @if($account?->have_users) --}}
@@ -334,6 +326,30 @@ $initialOrderItems = [[
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        function showToast(type, message) {
+            const text = String(message || '').trim();
+            if (!text) return;
+            let container = document.getElementById('app-toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'app-toast-container';
+                container.className = 'app-toast-container';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = `app-toast app-toast-${type}`;
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-times-circle';
+            toast.innerHTML = `<i class="fas ${icon} toast-icon"></i><span></span>`;
+            const label = toast.querySelector('span');
+            if (label) label.textContent = text;
+            toast.addEventListener('click', () => toast.remove());
+            container.appendChild(toast);
+            window.setTimeout(() => {
+                toast.classList.add('app-toast-leaving');
+                window.setTimeout(() => toast.remove(), 220);
+            }, 4200);
+        }
+
         const pageData = JSON.parse(document.getElementById('order-page-data').textContent || '{}');
         const isEditMode = pageData.isEditMode;
         const isIframe = window.self !== window.top;
@@ -898,8 +914,12 @@ $initialOrderItems = [[
 
         if (addItemBtn && !isEditMode) {
             addItemBtn.addEventListener('click', async function () {
-                if (!itemSelect || !itemSelect.value) {
-                    alert('Select an item first.');
+                if (itemSelect && !itemSelect.checkValidity()) {
+                    itemSelect.reportValidity();
+                    return;
+                }
+                if (quantityInput && !quantityInput.checkValidity()) {
+                    quantityInput.reportValidity();
                     return;
                 }
 
@@ -910,7 +930,7 @@ $initialOrderItems = [[
                 refreshEndDate();
                 const payload = currentItemPayload();
                 if (!payload.end_date) {
-                    alert('End date is required.');
+                    showToast('error', 'End date is required.');
                     return;
                 }
 
@@ -928,15 +948,20 @@ $initialOrderItems = [[
 
         orderForm.addEventListener('submit', async function (event) {
             if (isEditMode) {
-                if (!itemSelect || !itemSelect.value) {
+                if (itemSelect && !itemSelect.checkValidity()) {
                     event.preventDefault();
-                    alert('Select an item first.');
+                    itemSelect.reportValidity();
+                    return;
+                }
+                if (quantityInput && !quantityInput.checkValidity()) {
+                    event.preventDefault();
+                    quantityInput.reportValidity();
                     return;
                 }
                 const payload = currentItemPayload();
                 if (!payload.end_date) {
                     event.preventDefault();
-                    alert('End date is required.');
+                    showToast('error', 'End date is required.');
                     return;
                 }
                 items = [payload];
@@ -944,7 +969,7 @@ $initialOrderItems = [[
             } else {
                 if (!items.length) {
                     event.preventDefault();
-                    alert('Add at least one item before saving.');
+                    showToast('error', 'Add at least one item before saving.');
                     return;
                 }
                 syncItemsInput();
@@ -974,11 +999,11 @@ $initialOrderItems = [[
                         if (errData.errors) {
                             errMsg += '\n' + Object.values(errData.errors).flat().join('\n');
                         }
-                        alert(errMsg);
+                        showToast('error', errMsg);
                     }
                 } catch (err) {
                     console.error(err);
-                    alert('An error occurred while creating the order.');
+                    showToast('error', 'An error occurred while creating the order.');
                 }
             }
         });

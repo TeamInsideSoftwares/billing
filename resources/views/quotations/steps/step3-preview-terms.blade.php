@@ -96,8 +96,7 @@ $clientDataArr = [
                                 <div class="modal-body bg-DarkLight p-3">
                                     <div class="row g-2">
                                         <div class="col-12 col-md-12">
-                                            <textarea id="newTermContent" placeholder="Enter the term text"
-                                                row="5" required class="form-control"></textarea>
+                                            <textarea id="newTermContent" name="newTermContent" placeholder="Enter the term text" rows="5" class="form-control"></textarea>
                                         </div>
                                     </div>
                                     <div id="addTermError" class="text-danger small mt-2 d-none"></div>
@@ -204,7 +203,7 @@ $clientDataArr = [
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
         const termsByType = JSON.parse(step3El.getAttribute('data-terms-by-type') || '{}');
-        const serverDraft = @json($serverDraftPayload);
+        const serverDraft = @json($draftQuotation);
 
         const quotationItems = serverDraft && Array.isArray(serverDraft.items) ? serverDraft.items : [];
         if (itemsDataInput) {
@@ -535,11 +534,11 @@ $clientDataArr = [
 
         const form = document.getElementById('quotationForm');
         form?.addEventListener('submit', function (e) {
-            if (!quotationItems.length) {
-                e.preventDefault();
-                alert('No items found. Go back and add items.');
-                return;
-            }
+            // if (!quotationItems.length) {
+            //     e.preventDefault();
+            //     alert('No items found. Go back and add items.');
+            //     return;
+            // }
             const titleHidden = document.getElementById('step3_quo_title');
             if (titleHidden && !titleHidden.value.trim()) {
                 titleHidden.value = serverDraft ? serverDraft.quo_title : 'Quotation';

@@ -7,18 +7,14 @@ $title = 'Client Dashboard';
 @endphp
 
 @section('header_actions')
-@if(collect($clients)->isNotEmpty())
+@if(isset($client) && collect($clients)->isNotEmpty())
 <div class="d-flex align-items-center gap-2 flex-wrap">
 
     <select class="form-select border-0 shadow-sm client-dashboard-picker"
         onchange="if(this.value) window.location.href='{{ url('/client-dashboard') }}/' + this.value;">
-        @if(!isset($client))
-        <option value="" selected disabled>-- Choose Client --</option>
-        @else
         <option value="" disabled>-- Choose Client --</option>
-        @endif
         @foreach($clients as $c)
-        <option value="{{ $c->clientid }}" {{ isset($client) && $client->clientid === $c->clientid ? 'selected' : '' }}>
+        <option value="{{ $c->clientid }}" {{ $client->clientid === $c->clientid ? 'selected' : '' }}>
             {{ $c->business_name ?? $c->contact_name }}
         </option>
         @endforeach
@@ -192,13 +188,13 @@ $title = 'Client Dashboard';
                             Add Order
                         </a>
 
-                        <a href="{{ route('quotations.create', ['c' => $client->clientid]) }}"
+                        <a href="{{ route('quotations.create', ['c' => $client->clientid, 'step' => 2]) }}"
                             class="btn btn-outline-primary">
 
                             Add Quotation
                         </a>
 
-                        <a href="{{ route('invoices.create', ['clientid' => $client->clientid]) }}"
+                        <a href="{{ route('invoices.create', ['c' => $client->clientid, 'step' => 2]) }}"
                             class="btn btn-outline-primary">
 
                             Add Invoice
@@ -210,7 +206,7 @@ $title = 'Client Dashboard';
                             Add Payment
                         </a>
 
-                        <a href="{{ route('clients.index') }}" class="btn btn-outline-primary">Add PO</a>
+                        <a href="#" class="btn btn-outline-primary open-documents-modal" data-bs-toggle="modal" data-bs-target="#documentsModal" data-client-id="{{ $client->clientid }}" data-client-name="{{ $client->business_name ?? $client->contact_name }}">Add PO</a>
 
                         <a href="{{ route('clients.edit', $client) }}" class="btn btn-primary ">
                             Edit Profile <i class="fas fa-arrow-right btn-icon ms-1"></i>
@@ -639,8 +635,22 @@ $title = 'Client Dashboard';
                                             </td>
                                             <td class="text-end">
                                                 <div class="tableActionButton d-inline-flex gap-1">
-                                                    <a href="{{ route('orders.edit', $order->orderid) }}"
-                                                        class="bg03 color03">Edit</a>
+                                                     <button type="button" class="bg03 color03 border-0 js-edit-order-btn"
+                                                        data-order-id="{{ $order->orderid }}"
+                                                        data-order-number="{{ $order->order_number }}"
+                                                        data-client-id="{{ $order->clientid }}"
+                                                        data-client-name="{{ $client->business_name ?? $client->contact_name }}"
+                                                        data-item-id="{{ $order->itemid ?? '' }}"
+                                                        data-item-name="{{ $order->item_name ?: ($order->item?->name ?? 'Item') }}"
+                                                        data-item-description="{{ $order->item_description ?? '' }}"
+                                                        data-quantity="{{ $order->quantity ?? 1 }}"
+                                                        data-no-of-users="{{ $order->no_of_users ?? '' }}"
+                                                        data-start-date="{{ $order->start_date ? $order->start_date->format('Y-m-d') : '' }}"
+                                                        data-end-date="{{ $order->end_date ? $order->end_date->format('Y-m-d') : '' }}"
+                                                        data-delivery-date="{{ $order->delivery_date ? $order->delivery_date->format('Y-m-d') : '' }}"
+                                                        data-client-docid="{{ $order->client_docid ?? '' }}">
+                                                        Edit
+                                                     </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -852,8 +862,8 @@ $title = 'Client Dashboard';
                                                             data-pdf-url="{{ route('quotations.pdf', $quotation->quotationid) }}">
                                                             View
                                                         </button>
-                                                        <a href="{{ route('quotations.edit', $quotation->quotationid) }}"
-                                                            class="bg03 color03">Edit</a>
+                                                         <a href="{{ route('quotations.create', ['step' => 2, 'c' => $client->clientid, 'd' => $quotation->quotationid]) }}"
+                                                             class="bg03 color03">Edit</a>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -1258,7 +1268,20 @@ $title = 'Client Dashboard';
     </div>
 </div>
 
+@include('clients.partials.documents-modal')
+@include('orders.partials.edit-order-modal')
+
 @endsection
+
+@push('scripts')
+<script>
+    window.__editModalConfig = {
+        clientDocuments: @json($clientDocuments ?? []),
+        todayStr: '{{ now()->format('Y-m-d') }}',
+        renewRouteTemplate: '{{ route('invoices.orders.renew', ['order' => '__ORDER__']) }}',
+        selectedClientId: '{{ $client->clientid ?? '' }}',
+    };
+</script>
 
 @push('scripts')
 <script>

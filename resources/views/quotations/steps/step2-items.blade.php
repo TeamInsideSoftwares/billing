@@ -22,7 +22,7 @@ $accountHasUsers = (bool) ($account->have_users ?? false);
             <div class="bg-secondary p-2 rounded-3 mb-3">
                 <div class="row g-2 align-items-end">
                     <div class="col-12 col-md-12">
-                        <select id="clientid" class="form-select" required>
+                        <select id="clientid" class="form-select" @if(request('d')) disabled @endif required>
                             <option value="">Choose client</option>
                             @php
                             $groupedClients = $clients->groupBy(

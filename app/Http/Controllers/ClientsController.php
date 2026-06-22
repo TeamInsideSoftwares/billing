@@ -742,6 +742,21 @@ class ClientsController extends Controller
             $activeOrdersCount = $client->orders->where('status', 'active')->count();
         }
 
+        $services = Service::query()
+            ->where('accountid', $accountId)
+            ->with('category')
+            ->orderBy('name')
+            ->get(['itemid', 'name', 'ps_catid', 'user_wise']);
+
+        $clientDocuments = ClientDocument::query()
+            ->where('accountid', $accountId)
+            ->where('type', 'po')
+            ->where('status', 'active')
+            ->orderByDesc('document_date')
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy('clientid');
+
         return view('clients.dashboard', [
             'title' => $client ? ($client->business_name ?? $client->contact_name).' - Dashboard' : 'Client Dashboard',
             'subtitle' => null,
@@ -758,35 +773,8 @@ class ClientsController extends Controller
             'documents' => $documents ?? collect(),
             'ledger' => $ledger ?? collect(),
             'communicationLogs' => $communicationLogs ?? collect(),
-        ]);
-    }
-
-    public function clientsShow(Request $request, Client $client): View|JsonResponse
-    {
-        $client->load(['invoices', 'payments', 'billingDetail', 'documents', 'group']);
-        $paidTotal = (float) $client->payments->sum(function ($payment) {
-            return (float) ($payment->received_amount ?? 0);
-        });
-        $outstanding = ($client->invoices->sum('grand_total') ?? 0) - $paidTotal;
-        $allInvoices = $client->invoices->sortByDesc('created_at')->values();
-
-        if ($request->ajax() || $request->header('X-Modal-View') === 'client-show') {
-            return response()->json([
-                'success' => true,
-                'html' => view('clients.partials.show-content', [
-                    'client' => $client,
-                    'outstanding' => $outstanding,
-                    'allInvoices' => $allInvoices,
-                ])->render(),
-            ]);
-        }
-
-        return view('clients.show', [
-            'title' => $client->business_name ?? $client->contact_name ?? 'Client',
-            'subtitle' => 'Client Details',
-            'client' => $client,
-            'outstanding' => $outstanding,
-            'allInvoices' => $allInvoices,
+            'services' => $services,
+            'clientDocuments' => $clientDocuments,
         ]);
     }
 

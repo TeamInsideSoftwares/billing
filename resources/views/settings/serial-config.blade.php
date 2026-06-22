@@ -26,7 +26,7 @@
             </div>
             <form method="POST" action="{{ route('serial.config.update') }}" id="proforma-serial-form">
                 @csrf
-                <input type="hidden" name="from_tab" value="financial-year">
+                <input type="hidden" name="from_tab" value="serial-number-configuration">
                 <input type="hidden" name="document_type" value="proforma_invoice">
                 @if (isset($proformaSerialConfig))
                     <input type="hidden" name="serial_configid" value="{{ $proformaSerialConfig->serial_configid }}">
@@ -161,7 +161,7 @@
             </div>
             <form method="POST" action="{{ route('serial.config.update') }}" id="billing-serial-form">
                 @csrf
-                <input type="hidden" name="from_tab" value="financial-year">
+                <input type="hidden" name="from_tab" value="serial-number-configuration">
                 <input type="hidden" name="document_type" value="tax_invoice">
                 @if (isset($taxInvoiceSerialConfig))
                     <input type="hidden" name="serial_configid"
@@ -300,7 +300,7 @@
             </div>
             <form method="POST" action="{{ route('serial.config.update') }}" id="quotation-serial-form">
                 @csrf
-                <input type="hidden" name="from_tab" value="financial-year">
+                <input type="hidden" name="from_tab" value="serial-number-configuration">
                 <input type="hidden" name="document_type" value="quotation">
                 @if (isset($quotationSerialConfig))
                     <input type="hidden" name="serial_configid"
@@ -439,7 +439,7 @@
             </div>
             <form method="POST" action="{{ route('serial.config.update') }}" id="order-serial-form">
                 @csrf
-                <input type="hidden" name="from_tab" value="financial-year">
+                <input type="hidden" name="from_tab" value="serial-number-configuration">
                 <input type="hidden" name="document_type" value="order">
                 @if (isset($orderSerialConfig))
                     <input type="hidden" name="serial_configid" value="{{ $orderSerialConfig->serial_configid }}">
@@ -576,7 +576,7 @@
             </div>
             <form method="POST" action="{{ route('serial.config.update') }}" id="payment-receipt-serial-form">
                 @csrf
-                <input type="hidden" name="from_tab" value="financial-year">
+                <input type="hidden" name="from_tab" value="serial-number-configuration">
                 <input type="hidden" name="document_type" value="payment_receipt">
                 @if (isset($paymentReceiptSerialConfig))
                     <input type="hidden" name="serial_configid"

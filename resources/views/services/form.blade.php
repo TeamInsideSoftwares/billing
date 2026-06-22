@@ -733,6 +733,12 @@ return $group->map(fn($t) => [
 
         if (saveItemStayBtn) {
             saveItemStayBtn.addEventListener('click', async function () {
+                const form = document.getElementById('item-form');
+                if (form && !form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+
                 const addonsArray = Array.from(savedAddons.keys());
 
                 const payload = {
@@ -746,14 +752,8 @@ return $group->map(fn($t) => [
                     costings: collectCostingsFromRows()
                 };
 
-                if (!payload.name) {
-                    alert('Item name is required.');
-                    document.getElementById('name').focus();
-                    return;
-                }
-
                 if (!payload.costings.length) {
-                    alert('At least one costing row is required.');
+                    showToast('error', 'At least one costing row is required.');
                     return;
                 }
 

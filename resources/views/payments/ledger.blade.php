@@ -33,7 +33,7 @@
         <form method="GET" action="{{ route('payments.ledger') }}" class="mainForm">
             <div class="row g-2">
                 <div class="col-12 col-md-2">
-                    <select name="c" id="ledger_client_filter" class="form-select">
+                    <select name="c" id="ledger_client_filter" class="form-select" onchange="this.form.submit()">
                         <option value="all" {{ $selectedClientId==='' || $selectedClientId==='all' ? 'selected' : '' }}>
                             All Clients</option>
                         @foreach($clients as $client)
@@ -45,7 +45,7 @@
                     </select>
                 </div>
                 <div class="col-12 col-md-2">
-                    <select name="fy" id="ledger_fy_filter" class="form-select">
+                    <select name="fy" id="ledger_fy_filter" class="form-select" onchange="this.form.submit()">
                         <option value="all" {{ $selectedFyId==='all' ? 'selected' : '' }}>All</option>
                         @foreach($financialYears as $fy)
                         <option value="{{ $fy->fy_id }}" {{ (string) $selectedFyId===(string) $fy->fy_id ? 'selected' :
@@ -54,15 +54,6 @@
                         </option>
                         @endforeach
                     </select>
-                </div>
-                <div class="col-12 col-md-2 mt-auto d-flex gap-2">
-                    <a href="{{ route('payments.ledger') }}"
-                        class="btn btn-outline-primary bg-white text-primary fw-medium">
-                        <i class="fas fa-sync-alt btn-icon me-1"></i> Clear
-                    </a>
-                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                        <i class="fas fa-filter btn-icon me-1"></i> Filter
-                    </button>
                 </div>
             </div>
         </form>

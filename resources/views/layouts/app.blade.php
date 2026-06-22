@@ -23,27 +23,28 @@
 
 <body class="app-shell">
     {{-- Toast Container (outside layout-grid to avoid clipping) --}}
-    @if (session('success') || session('error'))
-    <div id="app-toast-container" class="app-toast-container">
+    @if (session('success') || session('error') || (isset($errors) && $errors->any()))
+    <div id="app-toast-container" class="app-toast-container" style="pointer-events: auto;">
         @if (session('success'))
-        {{-- <div class="app-toast app-toast-success" >
-            <i class="fas fa-check-circle toast-icon"></i>
-            <span>{{ session('success') }}</span>
-        </div> --}}
-        <div class="alert alert-success alert-dismissible fade show text-center rounded-0 border-0 fs-6 lh-sm" onclick="this.remove()" role="alert"> 
+        <div class="alert alert-success alert-dismissible fade show text-center rounded-0 border-0 fs-6 lh-sm" onclick="this.remove()" role="alert" style="cursor: pointer;"> 
             <strong>{{ session('success') }}</strong>
-            <!--<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>-->
         </div>  
         @endif
         @if (session('error'))
-        {{-- <div class="app-toast app-toast-error">
-            <i class="fas fa-times-circle toast-icon"></i>
-            <span>{{ session('error') }}</span>
-        </div> --}}
-        <div class="alert alert-danger alert-dismissible fade show text-center rounded-0 border-0 fs-6 lh-sm" onclick="this.remove()" role="alert"> 
+        <div class="alert alert-danger alert-dismissible fade show text-center rounded-0 border-0 fs-6 lh-sm" onclick="this.remove()" role="alert" style="cursor: pointer;"> 
             <strong>{{ session('error') }}</strong>
-            <!--<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>-->
         </div> 
+        @endif
+        @if (isset($errors) && $errors->any())
+        <div class="alert alert-danger alert-dismissible fade show rounded-0 border-0 fs-6 lh-sm validation-errors" onclick="this.remove()" role="alert" style="cursor: pointer;">
+           <strong>
+                <ul class="mb-0 ps-3">
+                    @foreach ($errors->all() as $error)
+                    <li class="small fw-bold">{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </strong>
+        </div>
         @endif
     </div>
     @endif
@@ -289,6 +290,39 @@
             </div>
         </div>
     </div>
+
+    <script>
+        window.showToast = function (type, message) {
+            const text = String(message || '').trim();
+            if (!text) return;
+            let container = document.getElementById('app-toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'app-toast-container';
+                container.className = 'app-toast-container';
+                container.style.pointerEvents = 'auto';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            const alertType = (type === 'error' || type === 'danger') ? 'danger' : 'success';
+            toast.className = `alert alert-${alertType} alert-dismissible fade show text-center rounded-0 border-0 fs-6 lh-sm`;
+            toast.style.cursor = 'pointer';
+            toast.innerHTML = '<strong></strong>';
+            const label = toast.querySelector('strong');
+            if (label) label.textContent = text;
+            toast.addEventListener('click', () => toast.remove());
+            // Remove any previously shown JS toasts (non-session ones) to prevent stacking
+            container.querySelectorAll('div:not([role="alert"])').forEach(function (el) {
+                el.remove();
+            });
+            container.appendChild(toast);
+            window.setTimeout(() => {
+                toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                toast.classList.add('app-toast-leaving');
+                window.setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        };
+    </script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -571,12 +605,13 @@
     </script>
 
     {{-- Auto-dismiss toasts --}}
-    @if (session('success') || session('error'))
+    @if (session('success') || session('error') || (isset($errors) && $errors->any()))
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.app-toast').forEach(function (toast) {
+            document.querySelectorAll('.app-toast, #app-toast-container .alert:not(.validation-errors)').forEach(function (toast) {
                 setTimeout(function () {
                     if (toast.parentNode) {
+                        toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
                         toast.classList.add('app-toast-leaving');
                         setTimeout(function () {
                             if (toast.parentNode) toast.remove();
