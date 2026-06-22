@@ -1,62 +1,63 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SkoolReady Billing
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+SkoolReady Billing is a simple, all-in-one web application for managing your business billing cycle — from the first quote you send a customer to the final payment you record.
 
-## About Laravel
+It is built for business owners, finance teams, and account managers who want a clear view of clients, quotations, invoices, payments, and tax compliance in one place.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## What you can do
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Run your business profile
+- Set up your company or account profile, billing address, GSTIN, and logo.
+- Define financial years and switch between them easily.
+- Configure invoice/quotation serial numbers, tax rates, terms & conditions, and email/WhatsApp message templates.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Manage clients
+- Add and manage client records with contact details, billing addresses, and GST information.
+- Store multiple contacts per client and mark primary contacts.
+- Group clients for easier organization and reporting.
+- Upload and manage client documents in one place.
+- Track trial clients and convert them to regular clients when they are ready.
 
-## Learning Laravel
+### Build your product and service catalog
+- Create a catalog of products and services grouped by categories.
+- Set pricing, tax rates, SAC codes, and cost details.
+- Manage add-ons and order your service list the way you work.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Send quotations
+- Create professional quotations for clients.
+- Add line items, discounts, taxes, and terms.
+- Generate PDFs and email them directly to customers.
+- Copy existing quotations to create new ones quickly.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Raise invoices
+- Create proforma invoices and tax invoices from orders or quotations.
+- Add one-time or renewable line items with start/end dates.
+- Apply custom terms, discounts, and taxes per invoice.
+- Download invoices as PDFs or email them to clients.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+### Handle renewals and expiry
+- Track renewable services and generate renewal invoices.
+- See which orders or items are expiring soon.
+- Send renewal reminders and suspend/unsuspend services as needed.
 
-## Agentic Development
+### Record payments
+- Record payments received against invoices.
+- Track TDS and split payments across multiple invoices.
+- View a client ledger to see all debits, credits, and outstanding balances.
+- Keep payment history clean with soft delete and restore options.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### Stay tax ready
+- Generate GST reports to help with tax filing.
+- Apply multiple tax rates or a fixed tax setup based on your business needs.
 
-```bash
-composer require laravel/boost --dev
+### Collaborate safely
+- Add multiple users to your account.
+- Give users the access they need through roles and permissions.
+- Secure login with password reset and change-password options.
 
-php artisan boost:install
-```
+### Multi-account management
+- A superadmin area lets platform administrators create and manage accounts, making it suitable for businesses that operate multiple billing entities.
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Built with
 
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-
-
-
-{php artisan tinker --execute="DB::statement('SET FOREIGN_KEY_CHECKS=0'); Schema::dropIfExists('ti_items'); Schema::dropIfExists('pi_items'); Schema::dropIfExists('tax_invoices'); Schema::dropIfExists('proforma_invoices'); DB::statement('SET FOREIGN_KEY_CHECKS=1'); echo 'Tables dropped successfully';"}
+SkoolReady Billing is powered by [Laravel](https://laravel.com), styled with [Tailwind CSS](https://tailwindcss.com), and uses [Vite](https://vitejs.dev) for frontend tooling.

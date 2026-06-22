@@ -153,6 +153,9 @@ class QuotationsController extends Controller
                 'number' => $quotation->quo_number ?: ('QUO-'.$quotation->quotationid),
                 'title' => $quotation->quo_title ?: ($quotation->quo_number ?: ('QUO-'.$quotation->quotationid)),
                 'client' => $quotation->client->business_name ?? $quotation->client->contact_name ?? 'Client',
+                'client_email' => $quotation->client->email ?? $quotation->client->primary_email ?? '',
+                'client_phone' => $quotation->client->phone ?? '',
+                'currency' => $quotation->client->currency ?? 'INR',
                 'issue_date' => $quotation->issue_date?->format('d M Y') ?? '-',
                 'amount' => number_format($quotation->grand_total ?? 0),
                 'due' => $quotation->due_date?->format('d M Y') ?? 'N/A',
@@ -199,7 +202,7 @@ class QuotationsController extends Controller
         $clients = Client::where('accountid', $accountid)->active()->orderBy('business_name')->get();
 
         return view('quotations.create', [
-            'title' => 'Create New Quotation',
+            'title' => 'Manage Quotation',
             'currentStep' => $currentStep,
             'clients' => $clients,
             'services' => Service::where('accountid', $accountid)->with(['category', 'costings'])->orderBy('sequence')->orderBy('name')->get(),

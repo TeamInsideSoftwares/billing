@@ -257,7 +257,7 @@ $initialOrderItems = [[
             @if(!$isEditMode)
             <div class="col-12 col-lg-9">
                 <div id="orderItemsTableWrap"
-                    class="order-create-table-wrap bg-DarkLight p-2 h-100 d-flex flex-column justify-content-between rounded-3 mt-0">
+                    class="order-create-table-wrap bg-DarkLight p-2 h-100 rounded-3 mt-0">
                     <div>
                         <div
                             class="d-flex justify-content-end align-items-center align-self-end gap-2 small text-dark mb-2">
@@ -293,9 +293,9 @@ $initialOrderItems = [[
                                 </table>
                             </div>
                         </div>
-                    </div>
 
-                    <div id="order-items-grid-view" class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-2  d-none">
+                        <div id="order-items-grid-view" class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-2  d-none">
+                        </div>
                     </div>
                     <div id="orderSubmitBar" class="d-block w-100 mt-2 text-end" style="display: none;">
                         <button type="submit"

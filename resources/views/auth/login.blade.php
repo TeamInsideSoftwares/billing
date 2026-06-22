@@ -27,23 +27,20 @@
     <div class="container">
         <div class="row min-vh-100 justify-content-center align-items-center">
 
-            <div class="col-md-6 col-lg-4">
-
-                <div class="card border-0 shadow-lg">
-
-                    <div class="card-body p-4 p-lg-5">
-
-                        <div class="text-center mb-4">
+            <div class="col-md-6 col-lg-4 mx-auto">
+                <div class="card border-0">
+                    <div class="card-body p-3">
+                        <div class="text-start mb-3">
 
                             <p class="text-primary fw-semibold text-uppercase small mb-2">
-                                SkoolReady
-                            </p>
+                                <small>SkoolReady</small>
+                            </p> 
 
-                            <h2 class="fw-bold mb-2">
-                                Sign In
-                            </h2>
+                            <h3 class="fw-bold text-dark mb-2">
+                                Login
+                            </h3>
 
-                            <p class="text-muted mb-0">
+                            <p class="text-dark mb-0">
                                 Enter your credentials to access your account
                             </p>
 
@@ -78,13 +75,13 @@
 
                         <form action="{{ route('login.post') }}"
                               method="POST"
-                              id="loginForm">
+                              id="loginForm" class="mainForm">
 
                             @csrf
 
                             <div class="mb-3">
-                                <label for="email" class="form-label">
-                                    Email Address
+                                <label for="email" class="form-label small lh-sm fw-semibold text-dark mb-1">
+                                    Email Address<span class="text-danger">*</span>
                                 </label>
 
                                 <input type="email"
@@ -97,8 +94,8 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="password" class="form-label">
-                                    Password
+                                <label for="password" class="form-label small lh-sm fw-semibold text-dark mb-1">
+                                    Password<span class="text-danger">*</span>
                                 </label>
 
                                 <input type="password"
@@ -115,29 +112,24 @@
                                        name="remember"
                                        id="remember">
 
-                                <label class="form-check-label"
-                                       for="remember">
+                                <label class="form-label small lh-sm fw-normal text-dark" for="remember">
                                     Remember for 30 days
                                 </label>
 
                             </div>
-
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-
-                                <a href="{{ route('password.request') }}"
-                                   class="text-decoration-none">
+                            <div class="d-flex justify-content-between text-end">
+                                 <a href="{{ route('password.request') }}"
+                                   class="text-decoration-none fw-semibold btn btn-outline-primary bg-white text-primary fw-medium text-center justify-content-center">
                                     Forgot Password?
                                 </a>
+                                <button type="submit"
+                                        class="btn btn-outline-primary btn-primary text-white fw-medium"
+                                        id="loginBtn">
 
+                                    Sign In <i class="fas fa-arrow-right btn-icon ms-1"></i>
+
+                                </button>
                             </div>
-
-                            <button type="submit"
-                                    class="btn btn-primary w-100"
-                                    id="loginBtn">
-
-                                Sign In
-
-                            </button>
 
                         </form>
 

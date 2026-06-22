@@ -207,7 +207,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
         <!-- Right Column: col-12 col-lg-9 -->
         <div class="col-12 col-lg-9">
             <div id="invoiceItemsTableWrap"
-                class="order-create-table-wrap bg-DarkLight p-2 h-100 d-flex flex-column justify-content-between rounded-3 mt-0">
+                class="order-create-table-wrap bg-DarkLight p-2 h-100 rounded-3 mt-0">
                 <div>
                     <div class="card overflow-hidden">
                         <div class="table-responsive">
@@ -235,29 +235,34 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                                 </tbody>
                                 <thead id="manualOrderSummary">
                                     <tr>
-                                        <td class="bg-light fw-semibold text-dark text-end" colspan="5">Subtotal</td>
-                                        <td id="manualSubtotal" class="bg-light fw-semibold text-end">0</td>
-                                        <td class="bg-light" colspan="2"></td>
+                                        <td class="bg-light fw-semibold text-dark text-end py-1" colspan="6">Subtotal
+                                        </td>
+                                        <td id="manualSubtotal" class="bg-light fw-semibold text-end py-1">0</td>
+                                        <td class="bg-light py-1"></td>
                                     </tr>
                                     <tr>
-                                        <td class="bg-light fw-semibold text-dark text-end" colspan="5">Discount</td>
-                                        <td id="manualDiscountTotal" class="bg-light fw-semibold text-success text-end">
+                                        <td class="bg-light fw-semibold text-dark text-end py-1" colspan="6">Discount
+                                        </td>
+                                        <td id="manualDiscountTotal"
+                                            class="bg-light fw-semibold text-success text-end py-1">
                                             - 0
                                         </td>
-                                        <td class="bg-light" colspan="2"></td>
+                                        <td class="bg-light py-1"></td>
                                     </tr>
 
                                     <tr>
-                                        <td class="bg-light fw-semibold text-dark text-end" colspan="5">Tax</td>
-                                        <td id="manualTaxTotal" class="bg-light fw-semibold text-end">0</td>
-                                        <td class="bg-light" colspan="2"></td>
+                                        <td class="bg-light fw-semibold text-dark text-end py-1" colspan="6">Tax</td>
+                                        <td id="manualTaxTotal" class="bg-light fw-semibold text-end py-1">0</td>
+                                        <td class="bg-light py-1"></td>
                                     </tr>
                                     <tr>
-                                        <td class="bg-DarkLight fw-semibold text-dark text-end" colspan="5">Grand Total
+                                        <td class="bg-DarkLight fw-semibold text-dark text-end py-1" colspan="6">Grand
+                                            Total
                                         </td>
-                                        <td id="manualGrandTotal" class="bg-DarkLight fw-semibold fs-6 lh-sm text-end">0
+                                        <td id="manualGrandTotal"
+                                            class="bg-DarkLight fw-semibold fs-6 lh-sm text-end py-1">0
                                         </td>
-                                        <td class="bg-DarkLight" colspan="2"></td>
+                                        <td class="bg-DarkLight py-1"></td>
                                     </tr>
                                 </thead>
                             </table>
@@ -278,7 +283,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                         </div>
                     </div>-->
                 </div>
-                <div class="d-flex align-items-center justify-content-end mt-3">
+                <div class="d-flex align-items-center justify-content-end mt-2">
                     <button type="button" id="btnNextToStep3"
                         class="btn btn-outline-primary bg-primary text-white fw-medium">
                         Save & Continue <i class="fas fa-arrow-right btn-icon ms-1"></i>
@@ -666,6 +671,22 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             if (usersHeader) usersHeader.classList.toggle('d-none', !showUserColumns);
             if (freqDurationHeader) freqDurationHeader.classList.toggle('d-none', !showRecurringColumns);
             if (startEndHeader) startEndHeader.classList.toggle('d-none', !showRecurringColumns);
+
+            const allowMultiTaxation = "{{ ($account->allow_multi_taxation ?? false) ? '1' : '' }}" === "1";
+            let colsBeforeTotalPrice = 3;
+            if (allowMultiTaxation) {
+                colsBeforeTotalPrice += 1;
+            }
+            if (showUserColumns) {
+                colsBeforeTotalPrice += 1;
+            }
+            if (showRecurringColumns) {
+                colsBeforeTotalPrice += 2;
+            }
+
+            document.querySelectorAll('#manualOrderSummary td[colspan]').forEach(td => {
+                td.setAttribute('colspan', colsBeforeTotalPrice);
+            });
 
             return {
                 showRecurringColumns,

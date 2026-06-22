@@ -5,11 +5,11 @@
     <button type="button"
         class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium"
         data-bs-toggle="modal" data-bs-target="#productCategoriesModal">
-        <i class="fas fa-folder btn-icon"></i> Manage Categories
+        <i class="fas fa-tags btn-icon"></i> Manage Categories
     </button>
     <a href="{{ route('services.create') }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-        <i class="fas fa-plus btn-icon"></i> Add Item
+        Create Item <i class="fas fa-arrow-right btn-icon ms-1"></i>
     </a>
 </div>
 @endsection
@@ -26,44 +26,34 @@
             </div>
             <div class="modal-body bg-white p-2">
                 <!-- Category Form -->
-                <div id="add-cat-pane" class="bg-DarkLight p-2 rounded-3 mb-3">
+                <div id="add-cat-pane" class="bg-DarkLight p-2 rounded-3 mb-2">
                     <form id="catForm" method="POST" action="{{ route('product-categories.store') }}" class="mainForm">
                         @csrf
                         <input type="hidden" id="catId" name="_cat_id" value="">
                         <div id="catMethodField"></div>
-                        <div class="row g-2 mb-3">
-                            <div class="col-12 col-md-6">
-                                <label for="catName" class="form-label small lh-sm fw-semibold text-dark mb-1">Category
-                                    Name<span class="text-danger">*</span></label>
+                        <div class="row g-2">
+                            <div class="col-12 col-md-9">
                                 <input type="text" name="name" id="catName" class="form-control"
-                                    value="{{ old('name') }}" required maxlength="150">
+                                    placeholder="Category Name*" value="{{ old('name') }}" required maxlength="150">
                             </div>
-                            <div class="col-12 col-md-6">
-                                <label for="catStatus"
-                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Status</label>
+                            <div class="col-12 col-md-3">
                                 <select name="status" id="catStatus" class="form-select">
                                     <option value="active">Active</option>
                                     <option value="inactive">Inactive</option>
                                 </select>
                             </div>
                             <div class="col-12">
-                                <label for="catDescription"
-                                    class="form-label small lh-sm fw-semibold text-dark mb-1">Description</label>
-                                <textarea name="description" id="catDescription" rows="2"
+                                <textarea name="description" id="catDescription" rows="2" placeholder="Description"
                                     class="form-control">{{ old('description') }}</textarea>
                             </div>
-                        </div>
-
-                        <div class="d-flex align-items-center justify-content-end mt-2">
-                            <button type="button" id="catCancelBtn"
-                                class="btn btn-outline-primary bg-white text-primary fw-medium d-none me-2"
-                                onclick="resetCatForm()">
-                                <i class="fas fa-times btn-icon me-1"></i> Cancel
-                            </button>
-                            <button type="submit" id="catSubmitBtn"
-                                class="btn btn-outline-primary btn-primary text-white fw-medium text-end">
-                                Save Category <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                            </button>
+                            <div class="col-12">
+                                <div class="d-flex align-items-center justify-content-end mt-1">
+                                    <button type="submit" id="catSubmitBtn"
+                                        class="btn btn-outline-primary btn-primary text-white fw-medium text-end">
+                                        Add Category <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -78,33 +68,35 @@
                             <table class="table table-striped mainTable border align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th width="40%">Category</th>
-                                        <th width="20%">Status</th>
-                                        <th width="20%">Description</th>
-                                        <th class="text-end" width="20%">Actions</th>
+                                        <th width="70%">Category Details</th>
+                                        <th class="text-end" width="30%">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse($productCategories as $pc)
+                                    @php
+                                    $words = explode(' ', trim($pc['name']));
+                                    $initials = strtoupper(count($words) >= 2 ? substr($words[0], 0, 1) .
+                                    substr($words[1], 0, 1) : substr($pc['name'], 0, 2));
+                                    @endphp
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center gap-3">
                                                 <div
-                                                    class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold">
-                                                    <span class="d-block position-absolute"><i
-                                                            class="fas fa-folder"></i></span>
+                                                    class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold flex-shrink-0">
+                                                    <span class="d-block position-absolute">{{ $initials }}</span>
+                                                    <div class="status-dot {{ strtolower($pc['status']) }}"
+                                                        title="{{ ucfirst($pc['status']) }}"></div>
                                                 </div>
                                                 <div>
                                                     <span class="d-block fw-semibold">{{ $pc['name'] }}</span>
+                                                    @if($pc['description'])
+                                                    <span class="d-block text-dark small">{{ $pc['description']
+                                                        }}</span>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>
-                                            <span
-                                                class="badge {{ $pc['status'] === 'active' ? 'text-bg-success' : 'text-bg-secondary' }}"
-                                                style="font-size: 0.65rem;">{{ ucfirst($pc['status']) }}</span>
-                                        </td>
-                                        <td class="text-muted small">{{ $pc['description'] ?: '—' }}</td>
                                         <td class="text-end">
                                             <div class="tableActionButton d-inline-flex gap-1">
                                                 <button type="button" class="bg03 color03 border-0"
@@ -123,7 +115,7 @@
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="4" class="text-center py-4 text-muted bg-white">
+                                        <td colspan="2" class="text-center py-4 text-muted bg-white">
                                             <i class="fas fa-folder-open text-muted mb-2 fs-2 opacity-50"></i>
                                             <p class="text-muted small mb-0">No categories yet. Create one above!</p>
                                         </td>
@@ -139,38 +131,57 @@
     </div>
 </div>
 
-<div class="position-relative bg-white p-3 rounded-3 shadow-sm">
+<div class="position-relative bg-white p-2 rounded-3 shadow-sm">
     @php
     $groupedServices = collect($services)->groupBy('category_name');
     @endphp
 
     @if (count($services) > 0)
-    <!-- Category Tabs -->
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 px-1 border-bottom">
-        <div class="btn-group" role="group" aria-label="Category Tabs">
-            @foreach ($groupedServices as $categoryName => $servicesInCategory)
-                <button type="button" class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 text-primary bg-transparent border-bottom border-2 {{ $loop->first ? 'border-primary fw-bold active' : 'border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium category-tab-btn" data-category="{{ \Illuminate\Support\Str::slug($categoryName) }}" {!! $loop->first ? '' : 'style="opacity: 0.7;"' !!}>
-                    {{ $categoryName }} <span class="badge rounded-pill {{ $loop->first ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{ count($servicesInCategory) }}</span>
+    <!-- Category Tabs Slider -->
+    <div class="tabs-slider-container position-relative d-flex align-items-center mb-3">
+        <!-- Left Navigation Arrow -->
+        <button type="button" class="btn btn-sm btn-outline-primary tab-nav-btn tab-nav-prev d-none me-2">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+
+        <!-- Tabs Scrollable Container -->
+        <div class="tabs-scroll-container flex-grow-1">
+            <div class="btn-group d-flex flex-row flex-nowrap" role="group" aria-label="Category Tabs"
+                style="width: max-content;">
+                @foreach ($groupedServices as $categoryName => $servicesInCategory)
+                <button type="button"
+                    class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 {{ $loop->first ? 'rounded-top text-primary bg-primary-subtle border-primary border-bottom border-2 fw-bold active' : 'rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium category-tab-btn flex-shrink-0"
+                    data-category="{{ \Illuminate\Support\Str::slug($categoryName) }}">
+                    {{ $categoryName }} <span
+                        class="badge rounded-pill {{ $loop->first ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{
+                        count($servicesInCategory) }}</span>
                 </button>
-            @endforeach
+                @endforeach
+            </div>
         </div>
+
+        <!-- Right Navigation Arrow -->
+        <button type="button" class="btn btn-sm btn-outline-primary tab-nav-btn tab-nav-next d-none ms-2">
+            <i class="fas fa-chevron-right"></i>
+        </button>
     </div>
     @endif
 
     <div class="services-tab-container">
         @forelse ($groupedServices as $categoryName => $servicesInCategory)
-        <div class="category-pane mb-4 {{ $loop->first ? '' : 'd-none' }}" data-category="{{ \Illuminate\Support\Str::slug($categoryName) }}">
+        <div class="category-pane {{ $loop->first ? '' : 'd-none' }}"
+            data-category="{{ \Illuminate\Support\Str::slug($categoryName) }}">
             <h5 class="fw-semibold text-dark mb-2 px-1 category-title-header d-none">{{ $categoryName }}</h5>
             <div class="table-responsive card border-0 overflow-hidden shadow-sm">
                 <table class="table mainTable align-middle mb-0" style="table-layout: fixed; width: 100%;">
                     <thead class="table-light">
                         <tr>
-                            <th class="w-25">Item</th>
-                            <th>Type</th>
-                            <th>Costings</th>
-                            <th class="text-center">Grace</th>
-                            <th>Add-ons</th>
-                            <th class="text-end">Actions</th>
+                            <th width="25%">Item</th>
+                            <th class="text-center" width="10%">Type</th>
+                            <th class="text-end" width="10%">Costings</th>
+                            <th class="text-center" width="10%">Grace</th>
+                            <th width="25%">Add-ons</th>
+                            <th class="text-end" width="20%">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="services-sortable-body">
@@ -181,10 +192,8 @@
                                 <div class="d-flex align-items-center gap-3">
                                     <div
                                         class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold flex-shrink-0">
-                                        <span class="d-block position-absolute">
-                                            <i
-                                                class="fas fa-{{ $service['type'] === 'product' ? 'box' : 'cog' }}"></i>
-                                        </span>
+                                        <span class="d-block position-absolute">{{ strtoupper(substr($service['name'],
+                                            0, 2)) }}</span>
                                         <div class="status-dot {{ strtolower($service['status']) }}"
                                             title="{{ ucfirst($service['status']) }}"></div>
                                     </div>
@@ -193,23 +202,24 @@
                                             ? str_ireplace($searchTerm, '<mark class="bg-warning-subtle p-0">' .
                                                 $searchTerm . '</mark>', $service['name'])
                                             : $service['name'] !!}</span>
-                                        <span class="d-block text-muted small">Seq: <span data-seq-badge>{{
+                                        <span class="d-block text-dark small">Seq: <span data-seq-badge>{{
                                                 $service['sequence'] }}</span></span>
                                     </div>
                                 </div>
                             </td>
-                            <td>
+                            <td class="text-center">
                                 <span class="service-type-badge text-capitalize">
                                     {{ $service['type'] ?? 'service' }}
                                 </span>
                             </td>
-                            <td>
+                            <td class="text-end">
                                 @if(count($service['costings']) > 0)
-                                <div class="service-pill-wrap">
+                                <div class="d-flex flex-column align-items-end gap-1">
                                     @foreach($service['costings'] as $costing)
-                                    <span class="service-cost-pill">
-                                        {{ $costing['currency_code'] }} {{ number_format($costing['selling_price'],
-                                        0) }}
+                                    <span class="fw-semibold text-dark">
+                                        {{ number_format($costing['selling_price'], 2) }}
+                                        <span class="currency-code-small text-muted d-block">{{
+                                            $costing['currency_code'] }}</span>
                                     </span>
                                     @endforeach
                                 </div>
@@ -225,7 +235,7 @@
                                 @if(!empty($service['addons']) && count($service['addons']) > 0)
                                 <div class="service-pill-wrap">
                                     @foreach($service['addons'] as $addon)
-                                    <span class="app-badge app-badge--sm app-badge--gray">
+                                    <span class="">
                                         {{ $addon['name'] }}
                                     </span>
                                     @endforeach
@@ -238,8 +248,7 @@
                                 <div class="tableActionButton d-inline-flex gap-1">
                                     <a href="{{ route('services.edit', $service['record_id']) }}"
                                         class="bg03 color03">Edit</a>
-                                    <form method="POST"
-                                        action="{{ route('services.destroy', $service['record_id']) }}"
+                                    <form method="POST" action="{{ route('services.destroy', $service['record_id']) }}"
                                         class="d-inline" data-name="{{ $service['name'] }}"
                                         onsubmit="return confirm('Delete ' + this.dataset.name + '?')">
                                         @csrf @method('DELETE')
@@ -340,7 +349,6 @@
 
         const form = document.getElementById('catForm');
         const submitBtn = document.getElementById('catSubmitBtn');
-        const cancelBtn = document.getElementById('catCancelBtn');
         const methodField = document.getElementById('catMethodField');
 
         form.action = 'product-categories/' + id;
@@ -351,7 +359,6 @@
         document.getElementById('catStatus').value = status;
 
         submitBtn.innerHTML = 'Update Category <i class="fas fa-arrow-right btn-icon ms-1"></i>';
-        cancelBtn.classList.remove('d-none');
 
         const catTabTitle = document.getElementById('catTabTitle');
         if (catTabTitle) {
@@ -364,15 +371,13 @@
     function resetCatForm() {
         const form = document.getElementById('catForm');
         const submitBtn = document.getElementById('catSubmitBtn');
-        const cancelBtn = document.getElementById('catCancelBtn');
         const methodField = document.getElementById('catMethodField');
 
         form.action = "{{ route('product-categories.store') }}";
         methodField.innerHTML = '';
         form.reset();
 
-        submitBtn.innerHTML = 'Save Category <i class="fas fa-arrow-right btn-icon ms-1"></i>';
-        cancelBtn.classList.add('d-none');
+        submitBtn.innerHTML = 'Add Category <i class="fas fa-arrow-right btn-icon ms-1"></i>';
 
         const catTabTitle = document.getElementById('catTabTitle');
         if (catTabTitle) {
@@ -384,23 +389,30 @@
     }
 
     function buildCatRow(cat) {
-        var statusBadge = cat.status === 'active'
-            ? '<span class="badge text-bg-success" style="font-size: 0.65rem;">Active</span>'
-            : '<span class="badge text-bg-secondary" style="font-size: 0.65rem;">Inactive</span>';
         var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        var nameTrimmed = (cat.name || '').trim();
+        var words = nameTrimmed.split(/\s+/);
+        var initials = (words.length >= 2 ? words[0].substring(0, 1) + words[1].substring(0, 1) : nameTrimmed.substring(0, 2)).toUpperCase();
+        var statusDot = '<div class="status-dot ' + (cat.status || '').toLowerCase() + '" title="' + (cat.status || '') + '"></div>';
+
+        var descHtml = '';
+        if (cat.description) {
+            descHtml = '<span class="d-block text-muted small">' + cat.description.replace(/</g, '&lt;') + '</span>';
+        }
+
         return '<tr>' +
             '<td>' +
             '<div class="d-flex align-items-center gap-3">' +
-            '<div class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold">' +
-            '<span class="d-block position-absolute"><i class="fas fa-folder"></i></span>' +
+            '<div class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold flex-shrink-0">' +
+            '<span class="d-block position-absolute">' + initials + '</span>' +
+            statusDot +
             '</div>' +
             '<div>' +
             '<span class="d-block fw-semibold">' + (cat.name || '').replace(/</g, '&lt;') + '</span>' +
+            descHtml +
             '</div>' +
             '</div>' +
             '</td>' +
-            '<td>' + statusBadge + '</td>' +
-            '<td class="text-muted small">' + ((cat.description || '').replace(/</g, '&lt;') || '\u2014') + '</td>' +
             '<td class="text-end">' +
             '<div class="tableActionButton d-inline-flex gap-1">' +
             '<button type="button" class="bg03 color03 border-0" onclick="editCategory(this)"' +
@@ -421,7 +433,7 @@
     function refreshCatsTable(categories, activeTab) {
         var tbody = document.querySelector('#cat-list-pane tbody');
         if (categories.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted bg-white">' +
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center py-4 text-muted bg-white">' +
                 '<i class="fas fa-folder-open text-muted mb-2 fs-2 opacity-50"></i>' +
                 '<p class="text-muted small mb-0">No categories yet. Create one above!</p>' +
                 '</td></tr>';
@@ -570,17 +582,19 @@
 
                 categoryTabs.forEach(t => {
                     if (t === this) {
-                        t.classList.add('fw-bold', 'active', 'border-primary');
-                        t.classList.remove('border-transparent');
-                        t.style.opacity = '1';
+                        t.classList.add('rounded-top', 'bg-primary-subtle', 'border-primary', 'fw-bold', 'active');
+                        t.classList.remove('rounded-0', 'bg-transparent', 'border-transparent');
+                        t.style.opacity = '';
                         const badge = t.querySelector('.badge');
                         if (badge) {
                             badge.className = 'badge rounded-pill bg-primary text-white';
                         }
+                        // Scroll active tab into view smoothly
+                        t.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
                     } else {
-                        t.classList.remove('fw-bold', 'active', 'border-primary');
-                        t.classList.add('border-transparent');
-                        t.style.opacity = '0.7';
+                        t.classList.remove('rounded-top', 'bg-primary-subtle', 'border-primary', 'fw-bold', 'active');
+                        t.classList.add('rounded-0', 'bg-transparent', 'border-transparent');
+                        t.style.opacity = '';
                         const badge = t.querySelector('.badge');
                         if (badge) {
                             badge.className = 'badge rounded-pill bg-primary-subtle text-primary';
@@ -598,6 +612,64 @@
                 });
             });
         });
+
+        // Tabs scroll/slider logic
+        const tabsContainer = document.querySelector('.tabs-scroll-container');
+        const prevBtn = document.querySelector('.tab-nav-prev');
+        const nextBtn = document.querySelector('.tab-nav-next');
+
+        if (tabsContainer && prevBtn && nextBtn) {
+            const updateArrows = () => {
+                const scrollLeft = Math.ceil(tabsContainer.scrollLeft);
+                const scrollWidth = tabsContainer.scrollWidth;
+                const clientWidth = tabsContainer.clientWidth;
+
+                // Only show arrows if container actually overflows
+                if (scrollWidth > clientWidth) {
+                    prevBtn.classList.remove('d-none');
+                    nextBtn.classList.remove('d-none');
+                    prevBtn.classList.add('d-inline-flex');
+                    nextBtn.classList.add('d-inline-flex');
+
+                    // Disable/enable arrows based on scroll position
+                    if (scrollLeft <= 5) {
+                        prevBtn.classList.add('opacity-50');
+                        prevBtn.setAttribute('disabled', 'true');
+                    } else {
+                        prevBtn.classList.remove('opacity-50');
+                        prevBtn.removeAttribute('disabled');
+                    }
+
+                    if (scrollLeft + clientWidth >= scrollWidth - 5) {
+                        nextBtn.classList.add('opacity-50');
+                        nextBtn.setAttribute('disabled', 'true');
+                    } else {
+                        nextBtn.classList.remove('opacity-50');
+                        nextBtn.removeAttribute('disabled');
+                    }
+                } else {
+                    prevBtn.classList.add('d-none');
+                    nextBtn.classList.add('d-none');
+                    prevBtn.classList.remove('d-inline-flex');
+                    nextBtn.classList.remove('d-inline-flex');
+                }
+            };
+
+            prevBtn.addEventListener('click', () => {
+                tabsContainer.scrollBy({ left: -200, behavior: 'smooth' });
+            });
+
+            nextBtn.addEventListener('click', () => {
+                tabsContainer.scrollBy({ left: 200, behavior: 'smooth' });
+            });
+
+            tabsContainer.addEventListener('scroll', updateArrows);
+            window.addEventListener('resize', updateArrows);
+
+            // Initial check + small delay to let layout settle
+            updateArrows();
+            setTimeout(updateArrows, 150);
+        }
     });
 </script>
 

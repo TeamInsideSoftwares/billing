@@ -4,11 +4,11 @@
 <div class="d-flex align-items-center gap-2 flex-wrap">
     <a href="{{ route('payments.index', $selectedClientId !== '' ? ['c' => $selectedClientId] : []) }}"
         class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
-        <i class="fas fa-arrow-left btn-icon"></i> Back to Payments
+        <i class="fas fa-list btn-icon"></i> Payment List
     </a>
     <a href="{{ route('payments.create', $selectedClientId !== '' ? ['c' => $selectedClientId] : []) }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-        <i class="fas fa-plus btn-icon"></i> Record Payment
+        Record Payment <i class="fas fa-arrow-right btn-icon ms-1"></i>
     </a>
 </div>
 @endsection
@@ -16,6 +16,16 @@
 @section('content')
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+<style>
+    #ledgerDataTable {
+        width: 100% !important;
+        table-layout: fixed;
+    }
+    #ledgerDataTable td {
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+</style>
 
 <div class="position-relative bg-white p-2 rounded-3">
     <!-- Filters Card -->
@@ -70,12 +80,12 @@
     @else
 
     <!-- Table Card -->
-    <div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-3">
+    <div class="card position-relative overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-3">
         <div class="table-responsive p-2 bg-white rounded-3">
             <div id="balanceToggleContainer" class="d-inline-flex align-items-center me-3 d-none">
-                <div class="form-check form-switch mb-0 d-inline-flex align-items-center me-1"
+                <div class="form-check form-switch mb-0 d-inline-flex align-items-center rounded-pill me-1"
                     style="padding-left: 2.5em; min-height: auto;">
-                    <input class="form-check-input" type="checkbox" role="switch" id="toggleBalanceCol"
+                    <input class="form-check-input rounded-pill mt-0" type="checkbox" role="switch" id="toggleBalanceCol"
                         style="cursor: pointer; height: 1.15em; width: 2.1em;">
                     <label class="form-check-label small fw-semibold text-dark ms-2 align-self-center"
                         for="toggleBalanceCol" style="cursor: pointer; user-select: none;">
@@ -83,15 +93,15 @@
                     </label>
                 </div>
             </div>
-            <table id="ledgerDataTable" class="table table-striped mainTable align-middle mb-0">
+            <table id="ledgerDataTable" class="table table-striped mainTable align-middle mb-0" style="width: 100%;">
                 <thead class="table-light">
                     <tr>
-                        <th scope="col" width="10%">Date</th>
-                        <th scope="col" class="text-end" width="10%">Billed</th>
-                        <th scope="col" class="text-end" width="10%">Received</th>
-                        <th scope="col" class="text-end" width="10%">Balance</th>
-                        <th scope="col">Reference</th>
-                        <th scope="col">Narration</th>
+                        <th width="10%">Date</th>
+                        <th class="text-end" width="10%">Billed</th>
+                        <th class="text-end" width="10%">Received</th>
+                        <th class="text-end" width="10%">Balance</th>
+                        <th>Reference</th>
+                        <th>Narration</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -137,13 +147,13 @@
                     </tr>
                     @endforeach
                 </tbody>
-                <tfoot class="table-light border-top">
+                <tfoot class="table-light">
                     @if($selectedFyId !== 'all' && $selectedClientId !== '' && $selectedClientId !== 'all')
                     <tr>
                         <td colspan="2" class="text-end fw-medium text-muted label-cell">Opening Balance</td>
                         <td class="text-end fw-semibold text-dark val-cell">{{ number_format($openingBalance, 0, '.',
                             ',') }}</td>
-                        <td colspan="2" class="empty-cell"></td>
+                        <td colspan="3" class="empty-cell"></td>
                     </tr>
                     @endif
                     <tr>
@@ -152,7 +162,7 @@
                         <td class="text-end fw-bold fs-6 lh-sm text-dark val-cell">{{ number_format($closingBalance, 0,
                             '.',
                             ',') }}</td>
-                        <td colspan="2" class="empty-cell"></td>
+                        <td colspan="3" class="empty-cell"></td>
                     </tr>
                 </tfoot>
             </table>
@@ -162,13 +172,13 @@
 </div>
 
 <div class="modal fade" id="pdfViewerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-white border-bottom py-2">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-DarkLight py-2 border-0">
                 <h5 class="modal-title fw-semibold" id="pdfViewerModalLabel">Invoice PDF</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0" style="height: 85vh;">
+            <div class="modal-body bg-white p-2" style="height: 80vh;">
                 <iframe id="pdfViewerFrame" src="" style="width: 100%; height: 100%; border: 0;"></iframe>
             </div>
         </div>
@@ -189,9 +199,9 @@
             const table = jQuery('#ledgerDataTable').DataTable({
                 paging: false,
                 info: false,
+                autoWidth: false,
                 order: [[0, 'asc']],
-                dom: "<'row align-items-center g-2 mb-2'<'col-md-7'B><'col-md-5'f>>" +
-                    "<'row'<'col-12'tr>>",
+
                 buttons: [
                     { extend: 'excelHtml5', text: 'Excel' },
                     {
@@ -261,6 +271,7 @@
                 const isChecked = this.checked;
                 table.column(3).visible(isChecked);
                 updateFooterLayout(isChecked);
+                table.columns.adjust();
             });
 
             // Initialize layout on load

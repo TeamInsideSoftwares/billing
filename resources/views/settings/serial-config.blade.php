@@ -20,7 +20,7 @@
 
     <!-- Proforma Invoice Serial Config -->
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="bg-light p-2 rounded-3 h-100">
+        <div class="bg-white p-2 rounded-3 h-100">
             <div class="mb-2">
                 <h6 class="fw-semibold text-primary small lh-sm mb-0">Proforma Invoice Serial</h6>
             </div>
@@ -40,9 +40,9 @@
                             : 'Configure serial first';
                 @endphp
 
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold mb-1">Preview</label>
-                    <div class="bg-primary-subtle border border-primary rounded-2 px-3 py-2 text-center">
+                <div class="mb-2">
+                    <label class="form-label small lh-sm fw-semibold mb-1">Preview</label>
+                    <div class="bg-primary-subtle rounded-2 px-3 py-2 text-center">
                         <span id="proforma-preview"
                             class="fw-bold text-primary font-monospace">
                             {{ $proformaPreview }}
@@ -63,23 +63,23 @@
                             ? 'Start From'
                             : 'Value';
                     @endphp
-                    <div class="border-bottom pb-3 mb-3 serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
+                    <div class="position-relative p-2 mb-2 rounded-3 bg-DarkLight serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
                         data-part="{{ $part }}">
-                        <div class="d-flex align-items-center gap-2 mb-2">
+                        <label class="d-flex align-items-center gap-2 mb-2" style="cursor: pointer;">
                             <input type="checkbox"
-                                class="form-check-input part-toggle serial-part-toggle"
+                                class="form-check-input part-toggle serial-part-toggle mt-0 border-primary border-2" style="cursor: pointer;"
                                 data-part="{{ $part }}"
                                 name="{{ $part }}_show"
                                 value="1"
                                 {{ $isEnabled ? 'checked' : '' }}>
-                            <label class="fw-semibold small mb-0">
+                            <span class="fw-semibold small lh-sm mb-0">
                                 {{ $label }}
-                            </label>
-                        </div>
+                            </span>
+                        </label>
                         <div class="row g-2 align-items-end serial-part-grid">
                             <!-- Type -->
-                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
-                                <label class="form-label small mb-1">
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-4' }}">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                     Type
                                 </label>
                                 <select name="{{ $part }}_type"
@@ -95,10 +95,10 @@
                                 </select>
                             </div>
                             <!-- Value -->
-                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-8' }}">
 
                                 <div class="input-group-val">
-                                    <label class="form-label small mb-1 val-label">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         {{ $valLabel }}
                                     </label>
                                     <input type="text"
@@ -110,7 +110,7 @@
                                             : $proformaSerialConfig->{$part . '_value'} ?? '' }}">
                                 </div>
                                 <div class="input-group-len d-none">
-                                    <label class="form-label small mb-1">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         Length
                                     </label>
                                     <input type="text"
@@ -122,7 +122,7 @@
                             <!-- Separator -->
                             @if ($hasSeparator)
                                 <div class="col-12 col-md-4">
-                                    <label class="form-label small mb-1">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         Separator
                                     </label>
                                     <select name="{{ $part }}_separator"
@@ -139,22 +139,23 @@
                         </div>
                     </div>
                 @endforeach
-                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-3 d-flex align-items-center gap-2">
-                    <input type="checkbox" name="reset_on_fy" id="proforma-reset-on-fy" value="1"
-                        {{ $proformaSerialConfig->reset_on_fy ?? false ? 'checked' : '' }}
-                        class="form-check-input serial-warning-checkbox">
-                    <label for="proforma-reset-on-fy" class="form-label small text-warning-emphasis fw-medium mb-0">
+                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-2 d-flex align-items-center gap-2" style="cursor: pointer;">
+                    <input type="checkbox" name="reset_on_fy" id="proforma-reset-on-fy" value="1" class="form-check-input serial-warning-checkbox border-primary border-2 mt-0" style="cursor: pointer;" 
+                        {{ $proformaSerialConfig->reset_on_fy ?? false ? 'checked' : '' }}>
+                    <label for="proforma-reset-on-fy" class="form-label small text-dark fw-medium mb-0" style="cursor: pointer;">
                         Reset Proforma Serial Number when new FY starts
                     </label>
+                </div> 
+                <div class="mainForm">
+                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Proforma Serial <i class="fas fa-arrow-right btn-icon ms-1"></i></button>
                 </div>
-                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Proforma Serial</button>
             </form>
         </div>
     </div>
 
     <!-- Tax Invoice Serial Config -->
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="bg-light p-2 rounded-3 h-100">
+        <div class="bg-white p-2 rounded-3 h-100">
             <div class="mb-2">
                 <h6 class="fw-semibold text-primary small lh-sm mb-0">Tax Invoice Serial</h6>
             </div>
@@ -176,9 +177,9 @@
                             : 'Configure serial first';
                 @endphp
 
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold mb-1">Preview</label>
-                    <div class="bg-primary-subtle border border-primary rounded-2 px-3 py-2 text-center">
+                <div class="mb-2">
+                    <label class="form-label small lh-sm fw-semibold mb-1">Preview</label>
+                    <div class="bg-primary-subtle rounded-2 px-3 py-2 text-center">
                         <span id="billing-preview"
                             class="fw-bold text-primary font-monospace">
                             {{ $billingPreview }}
@@ -199,23 +200,24 @@
                             ? 'Start From'
                             : 'Value';
                     @endphp
-                    <div class="border-bottom pb-3 mb-3 serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
+                    <div class="position-relative p-2 mb-2 rounded-3 bg-DarkLight serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
                         data-part="{{ $part }}">
-                        <div class="d-flex align-items-center gap-2 mb-2">
+                        <label class="d-flex align-items-center gap-2 mb-2" style="cursor: pointer;">
                             <input type="checkbox"
-                                class="form-check-input part-toggle serial-part-toggle"
+                                id="billing-{{ $part }}-toggle"
+                                class="form-check-input part-toggle serial-part-toggle mt-0 border-primary border-2" style="cursor: pointer;"
                                 data-part="{{ $part }}"
                                 name="{{ $part }}_show"
                                 value="1"
                                 {{ $isEnabled ? 'checked' : '' }}>
-                            <label class="fw-semibold small mb-0">
+                            <span class="fw-semibold small lh-sm mb-0">
                                 {{ $label }}
-                            </label>
-                        </div>
+                            </span>
+                        </label>
                         <div class="row g-2 align-items-end serial-part-grid">
                             <!-- Type -->
-                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
-                                <label class="form-label small mb-1">
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-4' }}">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                     Type
                                 </label>
                                 <select name="{{ $part }}_type"
@@ -231,10 +233,10 @@
                                 </select>
                             </div>
                             <!-- Value -->
-                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-8' }}">
 
                                 <div class="input-group-val">
-                                    <label class="form-label small mb-1 val-label">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         {{ $valLabel }}
                                     </label>
                                     <input type="text"
@@ -246,7 +248,7 @@
                                             : $taxInvoiceSerialConfig->{$part . '_value'} ?? '' }}">
                                 </div>
                                 <div class="input-group-len d-none">
-                                    <label class="form-label small mb-1">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         Length
                                     </label>
                                     <input type="text"
@@ -258,7 +260,7 @@
                             <!-- Separator -->
                             @if ($hasSeparator)
                                 <div class="col-12 col-md-4">
-                                    <label class="form-label small mb-1">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         Separator
                                     </label>
                                     <select name="{{ $part }}_separator"
@@ -275,22 +277,24 @@
                         </div>
                     </div>
                 @endforeach
-                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-3 d-flex align-items-center gap-2">
-                    <input type="checkbox" name="reset_on_fy" id="billing-reset-on-fy" value="1"
+                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-2 d-flex align-items-center gap-2" style="cursor: pointer;">
+                    <input type="checkbox" name="reset_on_fy" id="billing-reset-on-fy" value="1" style="cursor: pointer;"
                         {{ $taxInvoiceSerialConfig->reset_on_fy ?? false ? 'checked' : '' }}
-                        class="form-check-input serial-warning-checkbox">
-                    <label for="billing-reset-on-fy" class="form-label small text-warning-emphasis fw-medium mb-0">
+                        class="form-check-input serial-warning-checkbox border-primary border-2">
+                    <label for="billing-reset-on-fy" class="form-label small text-dark fw-medium mb-0" style="cursor: pointer;">
                         Reset Tax Serial Number when new FY starts
                     </label>
                 </div>
-                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Tax Invoice Serial</button>
+                <div class="mainForm">
+                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Tax Invoice Serial <i class="fas fa-arrow-right btn-icon ms-1"></i></button>
+                </div>
             </form>
         </div>
     </div>
 
     <!-- Quotation Serial Config -->
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="bg-light p-2 rounded-3 h-100">
+        <div class="bg-white p-2 rounded-3 h-100">
             <div class="mb-2">
                 <h6 class="fw-semibold text-primary small lh-sm mb-0">Quotation Serial</h6>
             </div>
@@ -312,9 +316,9 @@
                             : 'Configure serial first';
                 @endphp
 
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold mb-1">Preview</label>
-                    <div class="bg-primary-subtle border border-primary rounded-2 px-3 py-2 text-center">
+                <div class="mb-2">
+                    <label class="form-label small lh-sm fw-semibold mb-1">Preview</label>
+                    <div class="bg-primary-subtle rounded-2 px-3 py-2 text-center">
                         <span id="quotation-preview"
                             class="fw-bold text-primary font-monospace">
                             {{ $quotationPreview }}
@@ -335,23 +339,24 @@
                             ? 'Start From'
                             : 'Value';
                     @endphp
-                    <div class="border-bottom pb-3 mb-3 serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
+                    <div class="position-relative p-2 mb-2 rounded-3 bg-DarkLight serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
                         data-part="{{ $part }}">
-                        <div class="d-flex align-items-center gap-2 mb-2">
+                        <label class="d-flex align-items-center gap-2 mb-2" style="cursor: pointer;">
                             <input type="checkbox"
-                                class="form-check-input part-toggle serial-part-toggle"
+                                id="quotation-{{ $part }}-toggle"
+                                class="form-check-input part-toggle serial-part-toggle mt-0 border-primary border-2" style="cursor: pointer;"
                                 data-part="{{ $part }}"
                                 name="{{ $part }}_show"
                                 value="1"
                                 {{ $isEnabled ? 'checked' : '' }}>
-                            <label class="fw-semibold small mb-0">
+                            <span class="fw-semibold small lh-sm mb-0">
                                 {{ $label }}
-                            </label>
-                        </div>
+                            </span>
+                        </label>
                         <div class="row g-2 align-items-end serial-part-grid">
                             <!-- Type -->
-                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
-                                <label class="form-label small mb-1">
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-4' }}">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                     Type
                                 </label>
                                 <select name="{{ $part }}_type"
@@ -367,10 +372,10 @@
                                 </select>
                             </div>
                             <!-- Value -->
-                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-8' }}">
 
                                 <div class="input-group-val">
-                                    <label class="form-label small mb-1 val-label">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         {{ $valLabel }}
                                     </label>
                                     <input type="text"
@@ -382,7 +387,7 @@
                                             : $quotationSerialConfig->{$part . '_value'} ?? '' }}">
                                 </div>
                                 <div class="input-group-len d-none">
-                                    <label class="form-label small mb-1">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         Length
                                     </label>
                                     <input type="text"
@@ -394,7 +399,7 @@
                             <!-- Separator -->
                             @if ($hasSeparator)
                                 <div class="col-12 col-md-4">
-                                    <label class="form-label small mb-1">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         Separator
                                     </label>
                                     <select name="{{ $part }}_separator"
@@ -411,22 +416,24 @@
                         </div>
                     </div>
                 @endforeach
-                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-3 d-flex align-items-center gap-2">
-                    <input type="checkbox" name="reset_on_fy" id="quotation-reset-on-fy" value="1"
+                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-2 d-flex align-items-center gap-2" style="cursor: pointer;">
+                    <input type="checkbox" name="reset_on_fy" id="quotation-reset-on-fy" value="1" style="cursor: pointer;"
                         {{ $quotationSerialConfig->reset_on_fy ?? false ? 'checked' : '' }}
-                        class="form-check-input serial-warning-checkbox">
-                    <label for="quotation-reset-on-fy" class="form-label small text-warning-emphasis fw-medium mb-0">
+                        class="form-check-input serial-warning-checkbox border-primary border-2">
+                    <label for="quotation-reset-on-fy" class="form-label small text-dark fw-medium mb-0" style="cursor: pointer;">
                         Reset Quotation Serial Number when new FY starts
                     </label>
                 </div>
-                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Quotation Serial</button>
+                <div class="mainForm">
+                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Quotation Serial <i class="fas fa-arrow-right btn-icon ms-1"></i></button>
+                </div>
             </form>
         </div>
     </div>
 
     <!-- Order Serial Config -->
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="bg-light p-2 rounded-3 h-100">
+        <div class="bg-white p-2 rounded-3 h-100">
             <div class="mb-2">
                 <h6 class="fw-semibold text-primary small lh-sm mb-0">Order Serial</h6>
             </div>
@@ -446,9 +453,9 @@
                             : 'Configure serial first';
                 @endphp
 
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold mb-1">Preview</label>
-                    <div class="bg-primary-subtle border border-primary rounded-2 px-3 py-2 text-center">
+                <div class="mb-2">
+                    <label class="form-label small lh-sm fw-semibold mb-1">Preview</label>
+                    <div class="bg-primary-subtle rounded-2 px-3 py-2 text-center">
                         <span id="order-preview"
                             class="fw-bold text-primary font-monospace">
                             {{ $orderPreview }}
@@ -469,23 +476,24 @@
                             ? 'Start From'
                             : 'Value';
                     @endphp
-                    <div class="border-bottom pb-3 mb-3 serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
+                    <div class="position-relative p-2 mb-2 rounded-3 bg-DarkLight serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
                         data-part="{{ $part }}">
-                        <div class="d-flex align-items-center gap-2 mb-2">
+                        <label class="d-flex align-items-center gap-2 mb-2" style="cursor: pointer;">
                             <input type="checkbox"
-                                class="form-check-input part-toggle serial-part-toggle"
+                                id="order-{{ $part }}-toggle"
+                                class="form-check-input part-toggle serial-part-toggle mt-0 border-primary border-2" style="cursor: pointer;"
                                 data-part="{{ $part }}"
                                 name="{{ $part }}_show"
                                 value="1"
                                 {{ $isEnabled ? 'checked' : '' }}>
-                            <label class="fw-semibold small mb-0">
+                            <span class="fw-semibold small lh-sm mb-0">
                                 {{ $label }}
-                            </label>
-                        </div>
+                            </span>
+                        </label>
                         <div class="row g-2 align-items-end serial-part-grid">
                             <!-- Type -->
-                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
-                                <label class="form-label small mb-1">
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-4' }}">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                     Type
                                 </label>
                                 <select name="{{ $part }}_type"
@@ -501,10 +509,10 @@
                                 </select>
                             </div>
                             <!-- Value -->
-                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-8' }}">
 
                                 <div class="input-group-val">
-                                    <label class="form-label small mb-1 val-label">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         {{ $valLabel }}
                                     </label>
                                     <input type="text"
@@ -516,7 +524,7 @@
                                             : $orderSerialConfig->{$part . '_value'} ?? '' }}">
                                 </div>
                                 <div class="input-group-len d-none">
-                                    <label class="form-label small mb-1">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         Length
                                     </label>
                                     <input type="text"
@@ -528,7 +536,7 @@
                             <!-- Separator -->
                             @if ($hasSeparator)
                                 <div class="col-12 col-md-4">
-                                    <label class="form-label small mb-1">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         Separator
                                     </label>
                                     <select name="{{ $part }}_separator"
@@ -545,22 +553,24 @@
                         </div>
                     </div>
                 @endforeach
-                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-3 d-flex align-items-center gap-2">
-                    <input type="checkbox" name="reset_on_fy" id="order-reset-on-fy" value="1"
+                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-2 d-flex align-items-center gap-2" style="cursor: pointer;">
+                    <input type="checkbox" name="reset_on_fy" id="order-reset-on-fy" value="1" style="cursor: pointer;"
                         {{ $orderSerialConfig->reset_on_fy ?? false ? 'checked' : '' }}
-                        class="form-check-input serial-warning-checkbox">
-                    <label for="order-reset-on-fy" class="form-label small text-warning-emphasis fw-medium mb-0">
+                        class="form-check-input serial-warning-checkbox border-primary border-2">
+                    <label for="order-reset-on-fy" class="form-label small text-dark fw-medium mb-0" style="cursor: pointer;">
                         Reset Order Serial Number when new FY starts
                     </label>
                 </div>
-                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Order Serial</button>
+                <div class="mainForm">
+                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Order Serial <i class="fas fa-arrow-right btn-icon ms-1"></i></button>
+                </div>
             </form>
         </div>
     </div>
 
     <!-- Payment Receipt Serial Config -->
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="bg-light p-2 rounded-3 h-100">
+        <div class="bg-white p-2 rounded-3 h-100">
             <div class="mb-2">
                 <h6 class="fw-semibold text-primary small lh-sm mb-0">Payment Receipt Number</h6>
             </div>
@@ -582,9 +592,9 @@
                             : 'Configure serial first';
                 @endphp
 
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold mb-1">Preview</label>
-                    <div class="bg-primary-subtle border border-primary rounded-2 px-3 py-2 text-center">
+                <div class="mb-2">
+                    <label class="form-label small lh-sm fw-semibold mb-1">Preview</label>
+                    <div class="bg-primary-subtle rounded-2 px-3 py-2 text-center">
                         <span id="payment-receipt-preview"
                             class="fw-bold text-primary font-monospace">
                             {{ $paymentReceiptPreview }}
@@ -605,23 +615,24 @@
                             ? 'Start From'
                             : 'Value';
                     @endphp
-                    <div class="border-bottom pb-3 mb-3 serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
+                    <div class="position-relative p-2 mb-2 rounded-3 bg-DarkLight serial-part-row {{ !$isEnabled ? 'serial-part-row--disabled' : '' }}"
                         data-part="{{ $part }}">
-                        <div class="d-flex align-items-center gap-2 mb-2">
+                        <label class="d-flex align-items-center gap-2 mb-2" style="cursor: pointer;">
                             <input type="checkbox"
-                                class="form-check-input part-toggle serial-part-toggle"
+                                id="payment-receipt-{{ $part }}-toggle"
+                                class="form-check-input part-toggle serial-part-toggle mt-0 border-primary border-2" style="cursor: pointer;"
                                 data-part="{{ $part }}"
                                 name="{{ $part }}_show"
                                 value="1"
                                 {{ $isEnabled ? 'checked' : '' }}>
-                            <label class="fw-semibold small mb-0">
+                            <span class="fw-semibold small lh-sm mb-0">
                                 {{ $label }}
-                            </label>
-                        </div>
+                            </span>
+                        </label>
                         <div class="row g-2 align-items-end serial-part-grid">
                             <!-- Type -->
-                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
-                                <label class="form-label small mb-1">
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-4' }}">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                     Type
                                 </label>
                                 <select name="{{ $part }}_type"
@@ -637,10 +648,10 @@
                                 </select>
                             </div>
                             <!-- Value -->
-                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-6' }}">
+                            <div class="{{ $hasSeparator ? 'col-12 col-md-4' : 'col-12 col-md-8' }}">
 
                                 <div class="input-group-val">
-                                    <label class="form-label small mb-1 val-label">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         {{ $valLabel }}
                                     </label>
                                     <input type="text"
@@ -652,7 +663,7 @@
                                             : $paymentReceiptSerialConfig->{$part . '_value'} ?? '' }}">
                                 </div>
                                 <div class="input-group-len d-none">
-                                    <label class="form-label small mb-1">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         Length
                                     </label>
                                     <input type="text"
@@ -664,7 +675,7 @@
                             <!-- Separator -->
                             @if ($hasSeparator)
                                 <div class="col-12 col-md-4">
-                                    <label class="form-label small mb-1">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">
                                         Separator
                                     </label>
                                     <select name="{{ $part }}_separator"
@@ -681,15 +692,17 @@
                         </div>
                     </div>
                 @endforeach
-                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-3 d-flex align-items-center gap-2">
-                    <input type="checkbox" name="reset_on_fy" id="payment-receipt-reset-on-fy" value="1"
+                <div class="bg-warning-subtle border border-warning-subtle rounded-2 p-2 mb-2 d-flex align-items-center gap-2" style="cursor: pointer;">
+                    <input type="checkbox" name="reset_on_fy" id="payment-receipt-reset-on-fy" value="1" style="cursor: pointer;"
                         {{ $paymentReceiptSerialConfig->reset_on_fy ?? false ? 'checked' : '' }}
-                        class="form-check-input serial-warning-checkbox">
-                    <label for="payment-receipt-reset-on-fy" class="form-label small text-warning-emphasis fw-medium mb-0">
+                        class="form-check-input serial-warning-checkbox border-primary border-2">
+                    <label for="payment-receipt-reset-on-fy" class="form-label small text-dark fw-medium mb-0" style="cursor: pointer;">
                         Reset Payment Receipt Serial Number when new FY starts
                     </label>
                 </div>
-                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Payment Receipt Serial</button>
+                <div class="mainForm">
+                    <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">Save Payment Receipt Serial <i class="fas fa-arrow-right btn-icon ms-1"></i></button>
+                </div>
             </form>
         </div>
     </div>

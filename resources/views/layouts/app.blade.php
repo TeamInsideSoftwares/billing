@@ -26,16 +26,24 @@
     @if (session('success') || session('error'))
     <div id="app-toast-container" class="app-toast-container">
         @if (session('success'))
-        <div class="app-toast app-toast-success" onclick="this.remove()">
+        {{-- <div class="app-toast app-toast-success" >
             <i class="fas fa-check-circle toast-icon"></i>
             <span>{{ session('success') }}</span>
-        </div>
+        </div> --}}
+        <div class="alert alert-success alert-dismissible fade show text-center rounded-0 border-0 fs-6 lh-sm" onclick="this.remove()" role="alert"> 
+            <strong>{{ session('success') }}</strong>
+            <!--<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>-->
+        </div>  
         @endif
         @if (session('error'))
-        <div class="app-toast app-toast-error" onclick="this.remove()">
+        {{-- <div class="app-toast app-toast-error">
             <i class="fas fa-times-circle toast-icon"></i>
             <span>{{ session('error') }}</span>
-        </div>
+        </div> --}}
+        <div class="alert alert-danger alert-dismissible fade show text-center rounded-0 border-0 fs-6 lh-sm" onclick="this.remove()" role="alert"> 
+            <strong>{{ session('error') }}</strong>
+            <!--<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>-->
+        </div> 
         @endif
     </div>
     @endif
@@ -63,8 +71,8 @@
             <a href="{{ route('clients.dashboard') }}" class="brand-block"
                 style="text-decoration: none; color: inherit;">
                 <div class="brand-mark-wrap">
-                    <div class="brand-mark">
-                        <i class="fas fa-file-invoice-dollar"></i>
+                    <div class="brand-mark bg-primary rounded-circle">
+                        SR
                     </div>
                 </div>
                 <div class="brand-text">
@@ -76,18 +84,18 @@
             <nav class="nav-list">
                 @php
                 $navIcons = [
-                'dashboard' => 'fa-tachometer-alt',
+                'dashboard' => 'fa-chart-bar',
                 'clients.dashboard' => 'fa-address-card',
-                'clients' => 'fa-users',
-                'services' => 'fa-box',
-                'orders' => 'fa-shopping-cart',
+                'clients' => 'fa-user',
+                'services' => 'fa-list-alt',
+                'orders' => 'fa-clipboard',
                 'quotations' => 'fa-file-alt',
-                'invoices' => 'fa-file-invoice-dollar',
+                'invoices' => 'fa-file',
                 'invoices.expiry-list' => 'fa-calendar-times',
-                'payments' => 'fa-money-bill-wave',
-                'gst-report' => 'fa-receipt',
+                'payments' => 'fa-credit-card',
+                'gst-report' => 'fa-newspaper',
                 // 'users' => 'fa-user-tie',
-                'settings' => 'fa-cog',
+                'settings' => 'fa-compass',
                 ];
                 @endphp
                 @foreach ($navItems as $item)
@@ -96,22 +104,24 @@
                 $baseRoute = explode('.', $item['route'])[0];
                 // Highlight the whole module for nested routes like create/show/edit/pdf.
                 if ($item['route'] === 'clients.dashboard') {
-                    $isActive = request()->routeIs('clients.dashboard');
+                $isActive = request()->routeIs('clients.dashboard');
                 } elseif ($item['route'] === 'clients.index') {
-                    $isActive = (request()->routeIs('clients.*') || request()->routeIs($item['route'])) && !request()->routeIs('clients.dashboard');
+                $isActive = (request()->routeIs('clients.*') || request()->routeIs($item['route'])) &&
+                !request()->routeIs('clients.dashboard');
                 } elseif ($item['route'] === 'invoices.expiry-list') {
-                    $isActive = request()->routeIs('invoices.expiry-list');
+                $isActive = request()->routeIs('invoices.expiry-list');
                 } elseif ($item['route'] === 'invoices.index') {
-                    $isActive = (request()->routeIs('invoices.*') || request()->routeIs($item['route'])) && !request()->routeIs('invoices.expiry-list');
+                $isActive = (request()->routeIs('invoices.*') || request()->routeIs($item['route'])) &&
+                !request()->routeIs('invoices.expiry-list');
                 } else {
-                    $isActive = request()->routeIs($baseRoute . '.*') || request()->routeIs($item['route']);
+                $isActive = request()->routeIs($baseRoute . '.*') || request()->routeIs($item['route']);
                 }
 
                 $icon = $navIcons[$item['route']] ?? ($navIcons[$baseRoute] ?? 'fa-circle');
                 @endphp
                 <a href="{{ route($item['route']) }}" class="nav-link {{ $isActive ? 'is-active' : '' }}"
-                    data-tooltip="{{ $item['label'] }}">
-                    <i class="fas {{ $icon }} nav-icon"></i>
+                     data-tooltip="{{ $item['label'] }}">
+                    <i class="far {{ $icon }} nav-icon opacity-50"></i>
                     <span class="nav-text">{{ $item['label'] }}</span>
                 </a>
                 @endforeach
@@ -150,24 +160,12 @@
             }
             @endphp
             <div class="user-section">
-                <!-- Notifications -->
-                <div class="sidebar-user-item notification-row" id="openNotificationsModalRow" role="button"
-                    tabindex="0">
-                    <div class="sidebar-icon-area">
-                        <button type="button" class="icon-btn notification-btn" id="openNotificationsModal"
-                            title="Notifications">
-                            <i class="fas fa-bell"></i>
-                            <span class="notification-badge"></span>
-                        </button>
-                    </div>
-                    <span class="nav-text">Notifications</span>
-                </div>
 
                 <!-- User Profile -->
                 <div class="sidebar-user-item">
                     <div class="sidebar-icon-area">
                         <div class="dropdown">
-                            <button type="button" class="icon-btn profile-btn" data-bs-toggle="dropdown"
+                            <button type="button" class="icon-btn profile-btn bg-transparent" data-bs-toggle="dropdown"
                                 aria-expanded="false" title="Account">
                                 {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                             </button>
@@ -192,9 +190,21 @@
                         </div>
                     </div>
                     <div class="user-info">
-                        <strong class="user-name">{{ auth()->user()->slug }}</strong>
+                        <strong class="user-name text-capitalize">{{ auth()->user()->slug }}</strong>
                         <span class="user-email">{{ auth()->user()->email }}</span>
                     </div>
+                </div>
+                <!-- Notifications -->
+                <div class="sidebar-user-item notification-row" id="openNotificationsModalRow" role="button"
+                    tabindex="0">
+                    <div class="sidebar-icon-area">
+                        <button type="button" class="icon-btn notification-btn" id="openNotificationsModal"
+                            title="Notifications">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-badge"></span>
+                        </button>
+                    </div>
+                    <span class="nav-text">Notifications</span>
                 </div>
 
                 <a href="{{ route('password.change') }}" class="sidebar-user-item"
@@ -230,10 +240,10 @@
                         aria-controls="app-sidebar" aria-expanded="false">
                         <i class="fas fa-bars"></i>
                     </button>
-                    <div class="page-title-block">
-                        <h2 class="page-title">{{ $title ?? 'Dashboard' }}</h2>
+                    <div class="page-title-block d-flex">
+                        <h2 class="">{{ $title ?? 'Dashboard' }}</h2>
                         @if (!empty($subtitle))
-                        <p class="page-subtitle">{{ $subtitle }}</p>
+                        <p class="fs-6 lh-sm text-dark mb-0">{{ $subtitle }}</p>
                         @endif
                     </div>
                 </div>
@@ -268,19 +278,13 @@
     <div class="modal fade" id="notificationsModal" tabindex="-1" aria-labelledby="notificationsModalLabel"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-md">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-white border-bottom">
+            <div class="modal-content border-0">
+                <div class="modal-header bg-DarkLight py-2 border-0">
                     <h5 class="modal-title fw-semibold" id="notificationsModalLabel">Notifications</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body bg-light p-4">
-                    <div id="notificationsList" class="notification-list"></div>
-                </div>
-                <div class="modal-footer bg-light border-top-0 d-flex justify-content-end pt-0 px-4 pb-4">
-                    <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium"
-                        data-bs-dismiss="modal">
-                        <i class="fas fa-times btn-icon me-1"></i> Close
-                    </button>
+                <div class="modal-body bg-white p-2">
+                    <div id="notificationsList" class="notification-list bg-DarkLight p-2 rounded-3"></div>
                 </div>
             </div>
         </div>
@@ -338,7 +342,7 @@
             if (notificationsList) {
                 notificationsList.innerHTML = '';
                 if (notifications.length === 0) {
-                    notificationsList.innerHTML = '<div class="text-muted">No notifications yet.</div>';
+                    notificationsList.innerHTML = '<div class="text-muted w-100 d-flex align-items-center justify-content-center text-center rounded-3 bg-white" style="height: 200px; border: 2px dashed #ccc;">No notifications yet.</div>';
                 } else {
                     notifications.forEach((item) => {
                         notificationsList.appendChild(renderNotificationItem(item));

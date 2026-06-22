@@ -1,11 +1,11 @@
 @php
 $quotationDateBounds = $quotationDateBounds ?? [
-    'min_date' => date('Y-m-d'),
-    'max_date' => date('Y-m-d'),
-    'issue_max_date' => date('Y-m-d'),
-    'due_max_date' => date('Y-m-d'),
-    'default_issue_date' => '',
-    'default_due_date' => '',
+'min_date' => date('Y-m-d'),
+'max_date' => date('Y-m-d'),
+'issue_max_date' => date('Y-m-d'),
+'due_max_date' => date('Y-m-d'),
+'default_issue_date' => '',
+'default_due_date' => '',
 ];
 $accountHasUsers = (bool) ($account->have_users ?? false);
 @endphp
@@ -26,19 +26,20 @@ $accountHasUsers = (bool) ($account->have_users ?? false);
                             <option value="">Choose client</option>
                             @php
                             $groupedClients = $clients->groupBy(
-                                fn ($c) => $c->type === 'trial' ? 'trial' : 'regular'
+                            fn ($c) => $c->type === 'trial' ? 'trial' : 'regular'
                             );
                             @endphp
                             @foreach (['regular', 'trial'] as $group)
-                                @if ($groupedClients->has($group))
-                                    <optgroup label="{{ $group === 'regular' ? 'Regular Clients' : 'Trial Clients' }}">
-                                        @foreach ($groupedClients[$group] as $client)
-                                            <option value="{{ $client->clientid }}" {{ (string)request('c', request('clientid', $clientId))===(string)$client->clientid ? 'selected' : '' }}>
-                                                {{ $client->business_name ?? $client->contact_name }}
-                                            </option>
-                                        @endforeach
-                                    </optgroup>
-                                @endif
+                            @if ($groupedClients->has($group))
+                            <optgroup label="{{ $group === 'regular' ? 'Regular Clients' : 'Trial Clients' }}">
+                                @foreach ($groupedClients[$group] as $client)
+                                <option value="{{ $client->clientid }}" {{ (string)request('c', request('clientid',
+                                    $clientId))===(string)$client->clientid ? 'selected' : '' }}>
+                                    {{ $client->business_name ?? $client->contact_name }}
+                                </option>
+                                @endforeach
+                            </optgroup>
+                            @endif
                             @endforeach
                         </select>
                     </div>
@@ -48,7 +49,8 @@ $accountHasUsers = (bool) ($account->have_users ?? false);
                         <div id="quoTitleError" class="text-danger small mt-1 d-none">Quotation title is required.</div>
                     </div>
                     <div class="col-12 col-md-6">
-                        <label for="issue_date" class="form-label small lh-sm fw-normal text-white mb-1">Issue Date</label>
+                        <label for="issue_date" class="form-label small lh-sm fw-normal text-white mb-1">Issue
+                            Date</label>
                         <div class="input-group">
                             <input type="date" id="issue_date" name="issue_date" class="form-control" required readonly
                                 min="{{ $quotationDateBounds['min_date'] }}"
@@ -87,32 +89,33 @@ $accountHasUsers = (bool) ($account->have_users ?? false);
                             <option value="">Select item</option>
                             @php
                             $servicesByCategory = $services->groupBy(function ($service) {
-                                return trim((string) ($service->category->name ?? 'Uncategorized')) ?: 'Uncategorized';
+                            return trim((string) ($service->category->name ?? 'Uncategorized')) ?: 'Uncategorized';
                             });
                             @endphp
                             @foreach($servicesByCategory as $categoryName => $categoryServices)
-                                <optgroup label="{{ $categoryName }}">
-                                    @foreach($categoryServices as $service)
-                                        @php
-                                        $costing = $service->costings->firstWhere('costing_type', 'selling_price') ??
-                                        $service->costings->first();
-                                        @endphp
-                                        <option value="{{ $service->itemid }}" data-name="{{ $service->name }}"
-                                            data-category="{{ $service->category->name ?? '' }}"
-                                            data-description="{{ $service->description ?? '' }}"
-                                            data-unit-price="{{ $costing->selling_price ?? 0 }}"
-                                            data-tax-rate="{{ $costing->tax_rate ?? 0 }}"
-                                            data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
-                                            {{ $service->name }}
-                                        </option>
-                                    @endforeach
-                                </optgroup>
+                            <optgroup label="{{ $categoryName }}">
+                                @foreach($categoryServices as $service)
+                                @php
+                                $costing = $service->costings->firstWhere('costing_type', 'selling_price') ??
+                                $service->costings->first();
+                                @endphp
+                                <option value="{{ $service->itemid }}" data-name="{{ $service->name }}"
+                                    data-category="{{ $service->category->name ?? '' }}"
+                                    data-description="{{ $service->description ?? '' }}"
+                                    data-unit-price="{{ $costing->selling_price ?? 0 }}"
+                                    data-tax-rate="{{ $costing->tax_rate ?? 0 }}"
+                                    data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
+                                    {{ $service->name }}
+                                </option>
+                                @endforeach
+                            </optgroup>
                             @endforeach
                         </select>
                     </div>
 
                     <div class="col-12 col-md-12">
-                        <textarea id="item_description" class="form-control" placeholder="Description (Optional)"></textarea>
+                        <textarea id="item_description" class="form-control"
+                            placeholder="Description (Optional)"></textarea>
                     </div>
 
                     <div class="col-3 col-md-3">
@@ -124,7 +127,8 @@ $accountHasUsers = (bool) ($account->have_users ?? false);
                         <input type="number" id="no_of_users" class="form-control" value="1" min="1" step="1" disabled>
                     </div>
                     <div class="col-12 col-md-5">
-                        <label for="frequency" class="form-label small lh-sm fw-semibold text-dark mb-1">Frequency</label>
+                        <label for="frequency"
+                            class="form-label small lh-sm fw-semibold text-dark mb-1">Frequency</label>
                         <select id="frequency" class="form-select">
                             <option value="One-Time">One-Time</option>
                             <option value="Day(s)">Day(s)</option>
@@ -137,10 +141,12 @@ $accountHasUsers = (bool) ($account->have_users ?? false);
 
                     <div id="durationWrap" class="col-12 col-md-2">
                         <label for="duration" class="form-label small lh-sm fw-semibold text-dark mb-1">Dur</label>
-                        <input type="number" id="duration" class="form-control" min="0" step="1" placeholder="e.g. 12" disabled>
+                        <input type="number" id="duration" class="form-control" min="0" step="1" placeholder="e.g. 12"
+                            disabled>
                     </div>
                     <div id="startDateWrap" class="col-6 col-md-6">
-                        <label for="start_date" class="form-label small lh-sm fw-semibold text-dark mb-1">Start Date</label>
+                        <label for="start_date" class="form-label small lh-sm fw-semibold text-dark mb-1">Start
+                            Date</label>
                         <div class="input-group">
                             <input type="date" id="start_date" class="form-control" readonly>
                             <span class="input-group-text"><i class="far fa-calendar-alt text-muted"></i></span>
@@ -159,12 +165,15 @@ $accountHasUsers = (bool) ($account->have_users ?? false);
                         <input type="number" id="unit_price" class="form-control" min="0" step="0.01">
                     </div>
                     <div class="col-4 col-md-4">
-                        <label for="discount_percent" class="form-label small lh-sm fw-semibold text-dark mb-1">Discount (%)</label>
-                        <input type="number" id="discount_percent" class="form-control" min="0" max="100" step="0.01" value="0">
+                        <label for="discount_percent" class="form-label small lh-sm fw-semibold text-dark mb-1">Discount
+                            (%)</label>
+                        <input type="number" id="discount_percent" class="form-control" min="0" max="100" step="0.01"
+                            value="0">
                     </div>
 
                     <div class="col-4 col-md-4 d-flex justify-content-end mt-auto ms-auto pt-2">
-                        <button type="button" id="addItem" class="btn btn-outline-primary btn-primary text-white fw-medium">
+                        <button type="button" id="addItem"
+                            class="btn btn-outline-primary btn-primary text-white fw-medium">
                             Add Item <i class="fas fa-arrow-right btn-icon ms-1"></i>
                         </button>
                     </div>
@@ -175,7 +184,7 @@ $accountHasUsers = (bool) ($account->have_users ?? false);
         <!-- Right Column: col-12 col-lg-9 -->
         <div class="col-12 col-lg-9">
             <div id="quotationItemsTableWrap"
-                class="order-create-table-wrap bg-DarkLight p-2 h-100 d-flex flex-column justify-content-between rounded-3 mt-0">
+                class="order-create-table-wrap bg-DarkLight p-2 h-100 rounded-3 mt-0">
                 <div>
                     <div class="card overflow-hidden">
                         <div class="table-responsive">
@@ -184,11 +193,14 @@ $accountHasUsers = (bool) ($account->have_users ?? false);
                                     <tr>
                                         <th width="25%">Item</th>
                                         <th class="text-center" width="10%">Qty</th>
-                                        <th class="text-center" width="15%">Price/Disc</th>
-                                        <th class="text-center {{ $accountHasUsers ? '' : 'd-none' }}" id="usersColHeader" width="10%">Users</th>
-                                        <th class="text-center d-none" id="freqDurHeader" width="10%">Freq/Dur</th>
-                                        <th class="text-center d-none" id="startEndHeader" width="15%">Start/End</th>
-                                        <th class="text-end" width="10%">Total</th>
+                                        @if ($account->allow_multi_taxation)
+                                        <th class="text-center" width="10%">Tax %</th>
+                                        @endif
+                                        <th id="usersColHeader" class="d-none text-center" width="10%">Users</th>
+                                        <th id="freqDurHeader" class="d-none text-center" width="10%">Freq & Dur</th>
+                                        <th id="startEndHeader" class="d-none text-center" width="15%">Start & End Date</th>
+                                        <th class="text-end" width="15%">Price (Disc)</th>
+                                        <th class="text-end" width="15%">Total Price</th>
                                         <th class="text-end" width="10%">Actions</th>
                                     </tr>
                                 </thead>
@@ -197,24 +209,24 @@ $accountHasUsers = (bool) ($account->have_users ?? false);
                                 </tbody>
                                 <thead id="quoteSummary" class="d-none">
                                     <tr>
-                                        <td class="bg-light fw-semibold text-dark text-end" colspan="5">Subtotal</td>
-                                        <td id="summarySubtotal" class="bg-light fw-semibold text-end">0</td>
-                                        <td class="bg-light" colspan="2"></td>
+                                        <td class="bg-light fw-semibold text-dark text-end py-1" colspan="{{ $account->allow_multi_taxation ? 7 : 6 }}">Subtotal</td>
+                                        <td id="summarySubtotal" class="bg-light fw-semibold text-end py-1">0</td>
+                                        <td class="bg-light py-1"></td>
                                     </tr>
                                     <tr>
-                                        <td class="bg-light fw-semibold text-dark text-end" colspan="5">Discount</td>
-                                        <td id="summaryDiscount" class="bg-light fw-semibold text-success text-end">- 0</td>
-                                        <td class="bg-light" colspan="2"></td>
+                                        <td class="bg-light fw-semibold text-dark text-end py-1" colspan="{{ $account->allow_multi_taxation ? 7 : 6 }}">Discount</td>
+                                        <td id="summaryDiscount" class="bg-light fw-semibold text-success text-end py-1">- 0</td>
+                                        <td class="bg-light py-1"></td>
                                     </tr>
                                     <tr>
-                                        <td class="bg-light fw-semibold text-dark text-end" colspan="5">Tax</td>
-                                        <td id="summaryTax" class="bg-light fw-semibold text-end">0</td>
-                                        <td class="bg-light" colspan="2"></td>
+                                        <td class="bg-light fw-semibold text-dark text-end py-1" colspan="{{ $account->allow_multi_taxation ? 7 : 6 }}">Tax</td>
+                                        <td id="summaryTax" class="bg-light fw-semibold text-end py-1">0</td>
+                                        <td class="bg-light py-1"></td>
                                     </tr>
                                     <tr>
-                                        <td class="bg-DarkLight fw-semibold text-dark text-end" colspan="5">Grand Total</td>
-                                        <td id="summaryTotal" class="bg-DarkLight fw-semibold fs-6 lh-sm text-end">0</td>
-                                        <td class="bg-DarkLight" colspan="2"></td>
+                                        <td class="bg-DarkLight fw-semibold text-dark text-end py-1" colspan="{{ $account->allow_multi_taxation ? 7 : 6 }}">Grand Total</td>
+                                        <td id="summaryTotal" class="bg-DarkLight fw-semibold fs-6 lh-sm text-end py-1">0</td>
+                                        <td class="bg-DarkLight py-1"></td>
                                     </tr>
                                 </thead>
                             </table>
@@ -222,15 +234,9 @@ $accountHasUsers = (bool) ($account->have_users ?? false);
                     </div>
                 </div>
 
-                <div id="itemsEmpty" class="alert alert-light border mt-3 mb-0">No items added yet.</div>
-
-                <div class="d-flex align-items-center justify-content-between mt-3">
-                    <a href="{{ route('quotations.create', ['step' => 1, 'c' => $clientId]) }}"
-                        class="btn btn-outline-primary bg-white text-primary fw-medium">
-                        <i class="fas fa-times btn-icon me-1"></i> Back
-                    </a>
-                    <button type="button" id="toStep3" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                        Review & Terms <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                <div class="d-flex align-items-center justify-content-end mt-2">
+                    <button type="button" id="toStep3" class="btn btn-outline-primary bg-primary text-white fw-medium">
+                        Save & Continue <i class="fas fa-arrow-right btn-icon ms-1"></i>
                     </button>
                 </div>
             </div>

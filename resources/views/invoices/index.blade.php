@@ -9,7 +9,7 @@
 
     <a href="{{ route('invoices.create', $selectedClientId ? ['c' => $selectedClientId] : []) }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-        <i class="fas fa-plus btn-icon"></i> Create Invoice
+        Create Invoice <i class="fas fa-arrow-right btn-icon"></i>
     </a>
 </div>
 @endsection
@@ -60,37 +60,32 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
 
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 px-1">
         <div class="btn-group" role="group" aria-label="Invoice Tabs">
-            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'invoices' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
-                href="{{ route('invoices.index', array_filter(['tab' => 'invoices', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}"
-                {!! $currentTab==='invoices' ? '' : 'style="opacity: 0.7;"' !!}>
+            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 {{ $currentTab === 'invoices' ? 'rounded-top text-primary bg-primary-subtle border-primary border-bottom border-2 fw-bold' : 'rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
+                href="{{ route('invoices.index', array_filter(['tab' => 'invoices', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}">
                 All <span
                     class="badge rounded-pill {{ $currentTab === 'invoices' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{
                     $allInvoicesCount ?? 0 }}</span>
             </a>
-            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'paid' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
-                href="{{ route('invoices.index', array_filter(['tab' => 'paid', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}"
-                {!! $currentTab==='paid' ? '' : 'style="opacity: 0.7;"' !!}>
+            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 {{ $currentTab === 'paid' ? 'rounded-top text-primary bg-primary-subtle border-primary border-bottom border-2 fw-bold' : 'rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
+                href="{{ route('invoices.index', array_filter(['tab' => 'paid', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}">
                 Paid <span
                     class="badge rounded-pill {{ $currentTab === 'paid' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{
                     $paidInvoicesCount ?? 0 }}</span>
             </a>
-            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'outstanding' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
-                href="{{ route('invoices.index', array_filter(['tab' => 'outstanding', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}"
-                {!! $currentTab==='outstanding' ? '' : 'style="opacity: 0.7;"' !!}>
+            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 {{ $currentTab === 'outstanding' ? 'rounded-top text-primary bg-primary-subtle border-primary border-bottom border-2 fw-bold' : 'rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
+                href="{{ route('invoices.index', array_filter(['tab' => 'outstanding', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}">
                 Outstanding <span
                     class="badge rounded-pill {{ $currentTab === 'outstanding' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{
                     $outstandingInvoicesCount ?? 0 }}</span>
             </a>
-            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'draft' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
-                href="{{ route('invoices.index', array_filter(['tab' => 'draft', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}"
-                {!! $currentTab==='draft' ? '' : 'style="opacity: 0.7;"' !!}>
+            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 {{ $currentTab === 'draft' ? 'rounded-top text-primary bg-primary-subtle border-primary border-bottom border-2 fw-bold' : 'rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
+                href="{{ route('invoices.index', array_filter(['tab' => 'draft', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}">
                 Draft <span
                     class="badge rounded-pill {{ $currentTab === 'draft' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{
                     $draftInvoicesCount ?? 0 }}</span>
             </a>
-            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'cancelled' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
-                href="{{ route('invoices.index', array_filter(['tab' => 'cancelled', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}"
-                {!! $currentTab==='cancelled' ? '' : 'style="opacity: 0.7;"' !!}>
+            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 {{ $currentTab === 'cancelled' ? 'rounded-top text-primary bg-primary-subtle border-primary border-bottom border-2 fw-bold' : 'rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
+                href="{{ route('invoices.index', array_filter(['tab' => 'cancelled', 'c' => $selectedClientId, 'type' => $selectedType ?? ''])) }}">
                 Cancelled <span
                     class="badge rounded-pill {{ $currentTab === 'cancelled' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{
                     $cancelledInvoicesCount ?? 0 }}</span>
@@ -203,24 +198,9 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                                             }}</span>
                                     </div>
                                     <div>
-                                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                                            <span class="fw-semibold text-dark ">{{ $clientName }}</span>
-                                            @if ($paymentStatus === 'paid')
-                                            <span
-                                                class="status-pill d-inline-block paid py-0.5 px-2 rounded-pill bg-success-subtle text-success fw-semibold"
-                                                style="font-size: 11px;line-height:18px;">Paid</span>
-                                            @elseif($paymentStatus === 'partly_paid')
-                                            <span
-                                                class="status-pill d-inline-block partial bg-primary-subtle text-primary fw-semibold rounded-pill py-0.5 px-2"
-                                                style="font-size: 11px;line-height:18px;;">Partly Paid</span>
-                                            @else
-                                            <span
-                                                class="status-pill d-inline-block overdue bg-danger-subtle text-danger fw-semibold rounded-pill py-0.5 px-2"
-                                                style="font-size: 11px;line-height:18px;;">Unpaid</span>
-                                            @endif
-                                        </div>
+                                        <span class="fw-semibold text-dark d-block mb-0">{{ $clientName }}</span>
                                         @if($invoice->client)
-                                        <span class="d-block text-dark small">{{ $invoice->client->primary_email ??
+                                        <span class="d-block text-dark small lh-sm">{{ $invoice->client->primary_email ??
                                             $invoice->client->email }}</span>
                                         @endif
                                     </div>
@@ -229,11 +209,24 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                             <td>
                                 <div class="invoice-row-title">
                                     <div class="invoice-row-text">
-                                        <strong class="text-dark">{{ $invoice->invoice_title ?: $invoice->invoice_number
-                                            }}</strong>
+                                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                            <strong class="text-dark">{{ $invoice->invoice_title ?: $invoice->invoice_number }}</strong>
+                                            @if ($paymentStatus === 'paid')
+                                            <span
+                                                class="status-pill d-inline-block paid py-0.5 px-2 rounded-pill bg-success-subtle text-success fw-semibold"
+                                                style="font-size: 11px;line-height:18px;">Paid</span>
+                                            @elseif($paymentStatus === 'partly_paid')
+                                            <span
+                                                class="status-pill d-inline-block partial bg-primary-subtle text-primary fw-semibold rounded-pill py-0.5 px-2"
+                                                style="font-size: 11px;line-height:18px;">Partly Paid</span>
+                                            @else
+                                            <span
+                                                class="status-pill d-inline-block overdue bg-danger-subtle text-danger fw-semibold rounded-pill py-0.5 px-2"
+                                                style="font-size: 11px;line-height:18px;">Unpaid</span>
+                                            @endif
+                                        </div>
                                         @if ($documentNumber)
-                                        <div class="invoice-number-line mt-1">
-                                            <span class="text-dark small me-2">{{ $documentNumber }}</span>
+                                        <div class="invoice-number-line mt-1 d-flex align-items-center gap-2">
                                             @if (!empty($invoice->ti_number))
                                             <span
                                                 class="status-pill d-inline-block paid py-0.5 px-2 rounded-pill bg-success-subtle text-success fw-semibold"
@@ -243,6 +236,7 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                                                 class="status-pill d-inline-block partial bg-primary-subtle text-primary fw-semibold rounded-pill py-0.5 px-2"
                                                 style="font-size: 11px;line-height:18px;">PI</span>
                                             @endif
+                                            <span class="text-dark small">{{ $documentNumber }}</span>
                                         </div>
                                         @endif
                                     </div>
@@ -352,25 +346,10 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                                         }}</span>
                                 </div>
                                 <div class="flex-grow-1 min-w-0 ps-2">
-                                    <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
-                                        <h6 class="fw-semibold text-dark mb-0 text-truncate lh-sm"
-                                            title="{{ $clientName }}">
-                                            {{ $clientName }}
-                                        </h6>
-                                        @if ($paymentStatus === 'paid')
-                                        <span
-                                            class="status-pill d-inline-block paid py-0.5 px-2 rounded-pill bg-success-subtle text-success fw-semibold"
-                                            style="font-size: 11px;line-height:18px;">Paid</span>
-                                        @elseif($paymentStatus === 'partly_paid')
-                                        <span
-                                            class="status-pill d-inline-block partial bg-primary-subtle text-primary fw-semibold rounded-pill py-0.5 px-2"
-                                            style="font-size: 11px;line-height:18px;">Partly Paid</span>
-                                        @else
-                                        <span
-                                            class="status-pill d-inline-block overdue bg-danger-subtle text-danger fw-semibold rounded-pill py-0.5 px-2"
-                                            style="font-size: 11px;line-height:18px;">Unpaid</span>
-                                        @endif
-                                    </div>
+                                    <h6 class="fw-semibold text-dark mb-1 text-truncate lh-sm"
+                                        title="{{ $clientName }}">
+                                        {{ $clientName }}
+                                    </h6>
                                     @if($invoice->client)
                                     <span class="d-block text-dark lh-sm text-break grid-text-medium"
                                         title="{{ $invoice->client->primary_email ?? $invoice->client->email }}">{{
@@ -381,13 +360,27 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
 
                             <!-- Invoice Info -->
                             <div class="mb-3">
-                                <strong class="text-dark d-block text-truncate lh-sm"
-                                    title="{{ $invoice->invoice_title ?: $invoice->invoice_number }}">
-                                    {{ $invoice->invoice_title ?: $invoice->invoice_number }}
-                                </strong>
+                                <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                    <strong class="text-dark text-truncate lh-sm"
+                                        title="{{ $invoice->invoice_title ?: $invoice->invoice_number }}">
+                                        {{ $invoice->invoice_title ?: $invoice->invoice_number }}
+                                    </strong>
+                                    @if ($paymentStatus === 'paid')
+                                    <span
+                                        class="status-pill d-inline-block paid py-0.5 px-2 rounded-pill bg-success-subtle text-success fw-semibold"
+                                        style="font-size: 11px;line-height:18px;">Paid</span>
+                                    @elseif($paymentStatus === 'partly_paid')
+                                    <span
+                                        class="status-pill d-inline-block partial bg-primary-subtle text-primary fw-semibold rounded-pill py-0.5 px-2"
+                                        style="font-size: 11px;line-height:18px;">Partly Paid</span>
+                                    @else
+                                    <span
+                                        class="status-pill d-inline-block overdue bg-danger-subtle text-danger fw-semibold rounded-pill py-0.5 px-2"
+                                        style="font-size: 11px;line-height:18px;">Unpaid</span>
+                                    @endif
+                                </div>
                                 @if ($documentNumber)
                                 <div class="invoice-number-line mt-1.5 d-flex align-items-center gap-2">
-                                    <span class="text-dark small">{{ $documentNumber }}</span>
                                     @if (!empty($invoice->ti_number))
                                     <span
                                         class="status-pill d-inline-block paid py-0.5 px-2 rounded-pill bg-success-subtle text-success fw-semibold"
@@ -397,6 +390,7 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                                         class="status-pill d-inline-block partial bg-primary-subtle text-primary fw-semibold rounded-pill py-0.5 px-2"
                                         style="font-size: 11px;line-height:18px;">PI</span>
                                     @endif
+                                    <span class="text-dark small">{{ $documentNumber }}</span>
                                 </div>
                                 @endif
                             </div>
@@ -466,13 +460,13 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
 </div>
 
 <div class="modal fade" id="pdfViewerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-white border-bottom py-2">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-DarkLight py-2 border-0">
                 <h5 class="modal-title fw-semibold">Invoice PDF</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0" style="height: 85vh;">
+            <div class="modal-body bg-white p-2" style="height: 80vh;">
                 <iframe id="pdfViewerFrame" src="" style="width: 100%; height: 100%; border: 0;"></iframe>
             </div>
         </div>

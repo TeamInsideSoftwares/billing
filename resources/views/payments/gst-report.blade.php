@@ -71,39 +71,24 @@ $monthOptions = [
 
 
     <!-- Table Card -->
-    <div class="card border-0 shadow-sm overflow-hidden mb-3">
+    <div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-0">
         <div class="table-responsive">
-            <table class="table mainTable border align-middle mb-0" style="table-layout: fixed; width: 100%;">
-                <colgroup>
-                    <col style="width: 6%;">
-                    <col style="width: 14%;">
-                    <col style="width: 20%;">
-                    <col style="width: 10%;">
-                    <col style="width: 14%;">
-                    <col style="width: 10%;">
-                    <col style="width: 7%;">
-                    <col style="width: 7%;">
-                    <col style="width: 7%;">
-                    <col style="width: 9%;">
-                </colgroup>
+            <table class="table table-striped mainTable align-middle mb-0" style="table-layout: fixed; width: 100%;">
                 <thead class="table-light">
                     <tr>
-                        <th scope="col">S.No</th>
-                        <th scope="col">Invoice Number</th>
-                        <th scope="col">Client</th>
-                        <th scope="col">State</th>
-                        <th scope="col">GSTIN</th>
-                        <th scope="col" class="text-end">Invoice Total</th>
-                        <th scope="col" class="text-end">IGST</th>
-                        <th scope="col" class="text-end">SGST</th>
-                        <th scope="col" class="text-end">CGST</th>
-                        <th scope="col" class="text-end">Total GST</th>
+                        <th width="10%">Invoice Number</th>
+                        <th width="25%">Client</th>
+                        <th width="15%">GSTIN</th>
+                        <th width="10%" class="text-end">Invoice Amount</th>
+                        <th width="10%" class="text-end">IGST</th>
+                        <th width="10%" class="text-end">SGST</th>
+                        <th width="10%" class="text-end">CGST</th>
+                        <th width="10%" class="text-end">Total Tax</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($rows as $row)
                     <tr>
-                        <td>{{ $loop->iteration }}</td>
                         <td>
                             @php
                             $pdfType = 'tax_invoice';
@@ -116,54 +101,56 @@ $monthOptions = [
                                 {{ $row['ti_number'] }}
                             </a>
                         </td>
-                        <td class="fw-semibold text-dark">{{ $row['client_name'] }}</td>
-                        <td>{{ $row['state'] }}</td>
-                        <td class="text-muted small">{{ $row['gstin'] ?: '-' }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold">
+                                    <span class="d-block position-absolute">{{ strtoupper(substr($row['client_name'], 0, 2)) }}</span>
+                                </div>
+                                <div>
+                                    <span class="d-block fw-semibold text-dark">{{ $row['client_name'] }}</span>
+                                    <span class="d-block text-dark small">{{ $row['state'] }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-dark">{{ $row['gstin'] ?: '-' }}</td> 
                         <td class="text-end fw-semibold text-dark">{{ number_format($row['grand_total'], 0) }}</td>
-                        <td class="text-end text-muted">{{ $row['igst'] > 0 ? number_format($row['igst'], 0) : '-' }}
+                        <td class="text-end text-dark">{{ $row['igst'] > 0 ? number_format($row['igst'], 0) : '-' }}
                         </td>
-                        <td class="text-end text-muted">{{ $row['sgst'] > 0 ? number_format($row['sgst'], 0) : '-' }}
+                        <td class="text-end text-dark">{{ $row['sgst'] > 0 ? number_format($row['sgst'], 0) : '-' }}
                         </td>
-                        <td class="text-end text-muted">{{ $row['cgst'] > 0 ? number_format($row['cgst'], 0) : '-' }}
+                        <td class="text-end text-dark">{{ $row['cgst'] > 0 ? number_format($row['cgst'], 0) : '-' }}
                         </td>
                         <td class="text-end fw-bold text-dark">{{ number_format($row['tax_total'], 0) }}</td>
                     </tr>
                     @endforeach
                 </tbody>
-                <tfoot class="table-light border-top">
+                <tfoot class="table-light">
                     <tr>
-                        <th colspan="5" class="fw-semibold text-muted">Totals</th>
-                        <th class="text-end fw-bold text-dark">{{ number_format($grandTotalSum, 0) }}</th>
-                        <th class="text-end fw-bold text-muted">{{ $igstTotal > 0 ? number_format($igstTotal, 0) : '-'
-                            }}</th>
-                        <th class="text-end fw-bold text-muted">{{ $sgstTotal > 0 ? number_format($sgstTotal, 0) : '-'
-                            }}</th>
-                        <th class="text-end fw-bold text-muted">{{ $cgstTotal > 0 ? number_format($cgstTotal, 0) : '-'
-                            }}</th>
-                        <th class="text-end fw-bold text-primary">{{ number_format($taxTotal, 0) }}</th>
+                        <th colspan="3" class="fw-semibold text-dark text-end">Grand Total</th>
+                        <th class="text-end fw-bold text-dark  fs-6 lh-sm">{{ number_format($grandTotalSum, 0) }}</th>
+                        <th class="text-end fw-bold text-dark" colspan="3">Total Tax<!-- {{ $igstTotal > 0 ? number_format($igstTotal, 0) : '-'
+                            }} --></th>
+                        <!-- <th class="text-end fw-bold text-dark">{{ $sgstTotal > 0 ? number_format($sgstTotal, 0) : '-'
+                        }} </th>
+                        <th class="text-end fw-bold text-dark">{{ $cgstTotal > 0 ? number_format($cgstTotal, 0) : '-'
+                        }} </th>-->
+                        <th class="text-end fw-bold text-dark fs-6 lh-sm">{{ number_format($taxTotal, 0) }}</th>
                     </tr>
                 </tfoot>
             </table>
-        </div>
-    </div>
-
-    <!-- Simple Tax Total Summary below the table -->
-    <div class="d-flex justify-content-end px-1 mb-3">
-        <div class="text-secondary fw-semibold fs-6">
-            Tax Total: <span class="text-dark fw-bold">{{ number_format($taxTotal, 0) }}</span>
         </div>
     </div>
     @endif
 </div>
 
 <div class="modal fade" id="pdfViewerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-white border-bottom py-2">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-DarkLight py-2 border-0">
                 <h5 class="modal-title fw-semibold" id="pdfViewerModalLabel">Invoice PDF</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0" style="height: 85vh;">
+            <div class="modal-body bg-white p-2" style="height: 80vh;">
                 <iframe id="pdfViewerFrame" src="" style="width: 100%; height: 100%; border: 0;"></iframe>
             </div>
         </div>

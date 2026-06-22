@@ -2,15 +2,15 @@
 
 @section('header_actions')
 <a href="{{ route('services.index') }}"
-    class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
-    Back to Items
+    class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
+    <i class="fas fa-list btn-icon"></i> Item List
 </a>
 @endsection
 
 @section('content')
 <div id="app-toast-container" class="app-toast-container"></div>
 
-<section class="position-relative bg-white p-3 rounded-3">
+<section class="position-relative bg-white p-2 rounded-3">
     <form method="POST" action="{{ isset($service) ? route('services.update', $service) : route('services.store') }}"
         class="mainForm" id="item-form">
         @isset($service)
@@ -54,15 +54,15 @@
         @endphp
 
         <div class="row g-2 align-items-stretch">
-            <div class="col-12 col-lg-4">
+            <div class="col-12 col-lg-3">
                 <div class="bg-light p-2 rounded-3 h-100">
                     <div class="mb-2">
                         <h5 class="fw-semibold text-primary small lh-sm mb-0">Item Details</h5>
                     </div>
-
                     <div class="row g-2">
                         <div class="col-12">
-                            <label for="type" class="form-label small lh-sm fw-semibold text-dark mb-1">Type *</label>
+                            <label for="type" class="form-label small lh-sm fw-semibold text-dark mb-1">Type<span
+                                    class="text-danger">*</span></label>
                             <select id="type" name="type" required class="form-select">
                                 <option value="product" {{ old('type', isset($service) ? $service->type : 'service') ==
                                     'product' ? 'selected' : '' }}>Product</option>
@@ -76,7 +76,7 @@
                                 class="form-label small lh-sm fw-semibold text-dark mb-1">Category</label>
                             <div class="input-group">
                                 <select id="ps_catid" name="ps_catid" class="form-select">
-                                    <option value="">-- No Category --</option>
+                                    <option value="">No Category</option>
                                     @foreach($categories as $category)
                                     <option value="{{ $category->ps_catid }}" {{ old('ps_catid', isset($service) ?
                                         $service->ps_catid : '') == $category->ps_catid ? 'selected' : '' }}>
@@ -92,12 +92,19 @@
                             @error('ps_catid') <span class="error">{{ $message }}</span> @enderror
                         </div>
                         <div class="col-12">
-                            <label for="name" class="form-label small lh-sm fw-semibold text-dark mb-1">Item Name
-                                *</label>
+                            <label for="name" class="form-label small lh-sm fw-semibold text-dark mb-1">Item Name<span
+                                    class="text-danger">*</span></label>
                             <input type="text" id="name" name="name"
                                 value="{{ old('name', isset($service) ? $service->name : '') }}" required
                                 class="form-control">
                             @error('name') <span class="error">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="col-12">
+                            <label for="name"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Description</label>
+                            <textarea id="description" name="description" rows="3"
+                                class="form-control">{{ old('description', isset($service) ? $service->description : '') }}</textarea>
+                            @error('description') <span class="error">{{ $message }}</span> @enderror
                         </div>
                         <div class="col-12">
                             <label for="grace_period" class="form-label small lh-sm fw-semibold text-dark mb-1">Grace
@@ -111,30 +118,26 @@
                 </div>
             </div>
 
-            <div class="col-12 col-lg-4">
+            <div class="col-12 col-lg-3">
                 <div class="bg-light p-2 rounded-3 h-100">
-                    <div class="mb-2">
-                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Description & Settings</h5>
-                    </div>
-
                     <div class="row g-2">
                         <div class="col-12">
-                            <label for="description"
-                                class="form-label small lh-sm fw-semibold text-dark mb-1">Description</label>
-                            <textarea id="description" name="description" rows="3"
-                                class="form-control">{{ old('description', isset($service) ? $service->description : '') }}</textarea>
-                            @error('description') <span class="error">{{ $message }}</span> @enderror
+                            <div>
+                                <h5 class="fw-semibold text-primary small lh-sm mb-0">Settings</h5>
+                            </div>
                         </div>
                         @if($account && $account->allow_sync)
                         <div class="col-12">
                             <div
-                                class="d-flex justify-content-between align-items-center bg-white rounded-3 border p-3">
-                                <label for="sync" class="form-label small lh-sm fw-semibold text-dark mb-0">Sync with
+                                class="d-flex justify-content-between align-items-center bg-white rounded-3 border p-2">
+                                <label for="sync" class="form-label small lh-sm fw-semibold text-dark mb-0"
+                                    style="cursor: pointer;">Sync with
                                     Superadmin</label>
-                                <div class="form-check form-switch fs-4 mb-0">
+                                <div class="form-check form-switch fs-5 lh-sm mb-0">
                                     <input type="hidden" name="sync" value="no">
-                                    <input type="checkbox" name="sync" value="yes" id="sync" class="form-check-input"
-                                        role="switch" {{ old('sync', isset($service) ? $service->sync : 'no') == 'yes' ?
+                                    <input type="checkbox" name="sync" value="yes" id="sync"
+                                        class="form-check-input border-primary" role="switch" style="cursor: pointer;"
+                                        {{ old('sync', isset($service) ? $service->sync : 'no') == 'yes' ?
                                     'checked' : '' }}>
                                 </div>
                             </div>
@@ -143,151 +146,174 @@
                         @endif
                         <div class="col-12">
                             <div
-                                class="d-flex justify-content-between align-items-center bg-white rounded-3 border p-3">
-                                <label for="user_wise" class="form-label small lh-sm fw-semibold text-dark mb-0">Sold
+                                class="d-flex justify-content-between align-items-center bg-white rounded-3 border p-2">
+                                <label for="user_wise" class="form-label small lh-sm fw-semibold text-dark mb-0"
+                                    style="cursor: pointer;">Sold
                                     per User?</label>
-                                <div class="form-check form-switch fs-4 mb-0">
+                                <div class="form-check form-switch fs-5 lh-sm mb-0">
                                     <input type="hidden" name="user_wise" value="0">
                                     <input type="checkbox" name="user_wise" value="1" id="user_wise"
-                                        class="form-check-input" role="switch" {{ old('user_wise', isset($service) ?
-                                        $service->user_wise : 0) ? 'checked' : '' }}>
+                                        class="form-check-input border-primary" role="switch" style="cursor: pointer;"
+                                        {{ old('user_wise', isset($service) ? $service->user_wise : 0) ? 'checked' : ''
+                                    }}>
                                 </div>
                             </div>
                             @error('user_wise') <span class="error">{{ $message }}</span> @enderror
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <div class="col-12 col-lg-4">
-                <div class="bg-light p-2 rounded-3 h-100">
-                    <div class="mb-2">
-                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Parent Items</h5>
-                        <p class="small text-muted mb-0">This item belongs under which parent item(s)?</p>
-                    </div>
-
-                    <div class="position-relative" id="addons-dropdown-wrap">
-                        <button type="button" class="btn btn-outline-secondary dropdown-toggle w-100 text-start"
-                            id="addons-toggle">
-                            <span id="addons-selected-label">Select parent items</span>
-                        </button>
-                        <div id="addons-dropdown"
-                            class="bg-white border rounded-3 shadow-sm p-2 position-absolute w-100 z-3"
-                            style="display: none; max-height: 220px; overflow-y: auto;">
-                            @forelse($availableAddonItems as $item)
-                            <label class="d-flex align-items-center gap-2 px-2 py-1 rounded-1" style="cursor: pointer;">
-                                <input type="checkbox" value="{{ $item->itemid }}" data-item-name="{{ $item->name }}"
-                                    class="form-check-input m-0 addon-checkbox" {{ in_array($item->itemid,
-                                $selectedAddonIds, true) ? 'checked' : '' }}>
-                                <span class="small">{{ $item->name }} <span class="text-muted">({{ ucfirst($item->type
-                                        ?? 'service') }})</span></span>
-                            </label>
-                            @empty
-                            <span class="text-muted small px-2">No existing items available.</span>
-                            @endforelse
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <div class="mt-4">
+                                <h5 class="fw-semibold text-primary small lh-sm mb-0">Parent Items</h5>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="position-relative" id="addons-dropdown-wrap">
+                                <label for="type" class="form-label small lh-sm fw-semibold text-dark mb-1">This item
+                                    belongs
+                                    under which parent item(s)?</label>
+                                <button type="button"
+                                    class="btn btn-outline-primary dropdown-toggle w-100 text-start justify-content-between"
+                                    id="addons-toggle">
+                                    <span id="addons-selected-label">Select parent items</span>
+                                </button>
+                                <div id="addons-dropdown"
+                                    class="bg-white border rounded-3 shadow-sm p-2 position-absolute w-100 z-3"
+                                    style="display: none; max-height: 220px; overflow-y: auto;">
+                                    @forelse($availableAddonItems as $item)
+                                    <label class="d-flex align-items-center gap-2 px-2 py-1 rounded-1"
+                                        style="cursor: pointer;">
+                                        <input type="checkbox" value="{{ $item->itemid }}"
+                                            data-item-name="{{ $item->name }}"
+                                            class="form-check-input m-0 addon-checkbox" {{ in_array($item->itemid,
+                                        $selectedAddonIds, true) ? 'checked' : '' }}>
+                                        <span>{{ $item->name }} <span class="text-muted">({{ ucfirst($item->type
+                                                ?? 'service') }})</span></span>
+                                    </label>
+                                    @empty
+                                    <span class="text-muted small px-2">No existing items available.</span>
+                                    @endforelse
+                                </div>
+                            </div>
                         </div>
                     </div>
+
+
                     <div id="addons-hidden-inputs"></div>
-                    <div id="saved-addons-list" class="d-flex flex-wrap gap-1 mt-2"></div>
+                    <div id="saved-addons-list" class="d-flex flex-wrap gap-1 mt-3"></div>
                     @error('addons') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     @error('addons.*') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                 </div>
             </div>
-        </div>
 
-        <div class="bg-light p-2 rounded-3 mt-2">
-            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
-                <div>
-                    <h5 class="fw-semibold text-primary small lh-sm mb-0">Item Costings</h5>
-                    <p class="small text-muted mb-0">Add pricing per currency</p>
-                </div>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <button type="button" id="add-costing-row"
-                        class="btn btn-outline-primary btn-sm btn-primary text-white">+ Add currency</button>
-                    @if($account->allow_multi_taxation)
-                    <a href="#" id="open-tax-modal" class="btn btn-outline-primary btn-sm bg-white text-primary">+ Add
-                        Tax</a>
-                    @endif
-                </div>
-            </div>
+            <div class="col-12 col-lg-6">
+                <div class="bg-light p-2 rounded-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-0">
+                        <div>
+                            <h5 class="fw-semibold text-primary small lh-sm mb-1">Item Costings</h5>
+                            <p class="small text-dark mb-0">Add pricing per currency</p>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            @if($account->allow_multi_taxation)
+                            <a href="#" id="open-tax-modal"
+                                class="btn btn-outline-primary btn-sm bg-white text-primary">+ Add
+                                Tax</a>
+                            @endif
+                        </div>
+                    </div>
 
-            <div id="costings-empty-state" class="alert alert-light border mb-0">
-                No pricing rows yet. Click + Add currency.
-            </div>
+                    <div id="costings-empty-state" class="alert alert-light border mb-0">
+                        No pricing rows yet. Click + Add currency.
+                    </div>
 
-            <div id="costings-table-wrap" class="card border-0 shadow-sm overflow-hidden mt-3">
-                <div class="table-responsive">
-                    <table class="table mainTable align-middle mb-0" id="costings-table">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Currency *</th>
-                                <th>Cost Price *</th>
-                                <th>Selling Price *</th>
-                                <th>SAC Code</th>
-                                <th>Tax</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="costing-rows">
-                            @foreach($existingCostings as $index => $costing)
-                            <tr>
-                                <td>
-                                    <select name="costings[{{ $index }}][currency_code]"
-                                        class="form-select form-select-sm" required>
-                                        <option value="">Select</option>
-                                        @foreach($currencies as $currency)
-                                        <option value="{{ $currency->iso }}" {{ ($costing['currency_code'] ?? ''
-                                            )===$currency->iso ? 'selected' : '' }}>
-                                            {{ $currency->iso }} - {{ $currency->name }}
-                                        </option>
+                    <div id="costings-table-wrap" class="card border-0  overflow-hidden mt-2">
+                        <div class="bg-DarkLight rounded-3 p-2">
+                            <div class="table-responsive">
+                                <table class="table mainTable align-middle mb-0" id="costings-table">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="30%">Currency<span class="text-danger">*</span></th>
+                                            <th width="15%">Cost Price<span class="text-danger">*</span></th>
+                                            <th width="15%">Selling Price<span class="text-danger">*</span></th>
+                                            <th width="15%">SAC Code</th>
+                                            <th width="10%">Tax</th>
+                                            <th width="15%" class="text-end">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="costing-rows">
+                                        @foreach($existingCostings as $index => $costing)
+                                        <tr>
+                                            <td>
+                                                <select name="costings[{{ $index }}][currency_code]"
+                                                    class="form-select form-select-sm h-75" required>
+                                                    <option value="">Select</option>
+                                                    @foreach($currencies as $currency)
+                                                    <option value="{{ $currency->iso }}" {{ ($costing['currency_code']
+                                                        ?? '' )===$currency->iso ? 'selected' : '' }}>
+                                                        {{ $currency->iso }} - {{ $currency->name }}
+                                                    </option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td><input type="number" step="0.01"
+                                                    name="costings[{{ $index }}][cost_price]"
+                                                    value="{{ $costing['cost_price'] ?? '' }}" required
+                                                    class="form-control form-control-sm h-75"></td>
+                                            <td><input type="number" step="0.01"
+                                                    name="costings[{{ $index }}][selling_price]"
+                                                    value="{{ $costing['selling_price'] ?? '' }}" required
+                                                    class="form-control form-control-sm h-75"></td>
+                                            <td><input type="text" maxlength="20"
+                                                    name="costings[{{ $index }}][sac_code]"
+                                                    value="{{ $costing['sac_code'] ?? '' }}"
+                                                    class="form-control form-control-sm h-75">
+                                            </td>
+                                            <td>
+                                                @if($account->allow_multi_taxation)
+                                                <select name="costings[{{ $index }}][tax_rate]"
+                                                    class="form-select form-select-sm">
+                                                    <option value="0">-- None --</option>
+                                                    @php
+                                                    $groupedTaxes = $taxes->groupBy(fn($tax) => $tax->type ?: 'Other');
+                                                    @endphp
+                                                    @foreach($groupedTaxes as $taxType => $typeTaxes)
+                                                    @if($typeTaxes->isNotEmpty())
+                                                    <optgroup label="{{ $taxType }}">
+                                                        @foreach($typeTaxes as $tax)
+                                                        <option value="{{ $tax->rate }}" {{ (string)
+                                                            ($costing['tax_rate'] ?? '' )===(string) $tax->rate ?
+                                                            'selected' : '' }}>{{
+                                                            $tax->tax_name ??
+                                                            $tax->type }} ({{ $tax->rate }}%)</option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                    @endif
+                                                    @endforeach
+                                                </select>
+                                                @else
+                                                <input type="hidden" name="costings[{{ $index }}][tax_rate]"
+                                                    value="{{ number_format($account->fixed_tax_rate ?? 0, 2, '.', '') }}">
+                                                <span class="badge text-bg-warning">
+                                                    {{ number_format($account->fixed_tax_rate ?? 0, 2) }}%
+                                                </span>
+                                                @endif
+                                            </td>
+                                            <td class="text-end">
+                                                <div class="tableActionButton d-inline-flex gap-1">
+                                                    <button type="button"
+                                                        class="bg04 color04 remove-costing">Delete</button>
+                                                </div>
+                                            </td>
+                                        </tr>
                                         @endforeach
-                                    </select>
-                                </td>
-                                <td><input type="number" step="0.01" name="costings[{{ $index }}][cost_price]"
-                                        value="{{ $costing['cost_price'] ?? '' }}" required
-                                        class="form-control form-control-sm"></td>
-                                <td><input type="number" step="0.01" name="costings[{{ $index }}][selling_price]"
-                                        value="{{ $costing['selling_price'] ?? '' }}" required
-                                        class="form-control form-control-sm"></td>
-                                <td><input type="text" maxlength="20" name="costings[{{ $index }}][sac_code]"
-                                        value="{{ $costing['sac_code'] ?? '' }}" class="form-control form-control-sm">
-                                </td>
-                                <td>
-                                    @if($account->allow_multi_taxation)
-                                    <select name="costings[{{ $index }}][tax_rate]" class="form-select form-select-sm">
-                                        <option value="0">-- None --</option>
-                                        @php
-                                            $groupedTaxes = $taxes->groupBy(fn($tax) => $tax->type ?: 'Other');
-                                        @endphp
-                                        @foreach($groupedTaxes as $taxType => $typeTaxes)
-                                        @if($typeTaxes->isNotEmpty())
-                                        <optgroup label="{{ $taxType }}">
-                                            @foreach($typeTaxes as $tax)
-                                            <option value="{{ $tax->rate }}" {{ (string) ($costing['tax_rate'] ?? ''
-                                                )===(string) $tax->rate ? 'selected' : '' }}>{{ $tax->tax_name ??
-                                                $tax->type }} ({{ $tax->rate }}%)</option>
-                                            @endforeach
-                                        </optgroup>
-                                        @endif
-                                        @endforeach
-                                    </select>
-                                    @else
-                                    <input type="hidden" name="costings[{{ $index }}][tax_rate]"
-                                        value="{{ number_format($account->fixed_tax_rate ?? 0, 2, '.', '') }}">
-                                    <span class="badge text-bg-secondary">
-                                        {{ number_format($account->fixed_tax_rate ?? 0, 2) }}%
-                                    </span>
-                                    @endif
-                                </td>
-                                <td class="text-end">
-                                    <div class="tableActionButton d-inline-flex gap-1">
-                                        <button type="button" class="bg04 color04 remove-costing">Delete</button>
-                                    </div>
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" id="add-costing-row" class="btn btn-outline-primary w-100 mt-2"><i
+                            class="fas fa-plus me-1"></i> Add More</button>
                 </div>
             </div>
         </div>
@@ -397,13 +423,39 @@
             <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">Update Item</button>
             @else
             <button type="button" id="save-item-stay-btn"
-                class="btn btn-outline-primary btn-primary text-white fw-medium">Save Item</button>
+                class="btn btn-outline-primary btn-primary text-white fw-medium">Save Item <i
+                    class="fas fa-arrow-right btn-icon ms-1"></i></button>
             <a href="{{ route('services.index') }}" id="finish-btn"
-                class="btn btn-outline-primary bg-white text-primary fw-medium hidden">Finish</a>
+                class="btn btn-outline-primary btn-primary text-white fw-medium hidden">Finish <i
+                    class="fas fa-arrow-right btn-icon ms-1"></i></a>
             @endisset
         </div>
     </form>
 </section>
+
+@php
+$currencyOptions = collect($currencies)->map(function ($currency) {
+return '<option value="'.e($currency->iso).'">'.e($currency->iso.' - '.$currency->name).'</option>';
+})->implode('');
+
+$isMultiTax = $account->allow_multi_taxation ?? false;
+$fixedTaxRate = $account->fixed_tax_rate ?? 0;
+
+$taxGroupsData = $isMultiTax ? $taxes->groupBy('type')->map(function ($group, $type) {
+return $group->map(fn($t) => [
+'name' => $t->tax_name ?? $t->type,
+'rate' => $t->rate,
+])->values()->all();
+})->filter(fn($group) => count($group) > 0)->all() : [];
+@endphp
+
+<script type="application/json"
+    id="edit-url-template-data">{!! json_encode(route('services.edit', 'SERVICEID')) !!}</script>
+<script type="application/json" id="currency-options-data">{!! json_encode($currencyOptions) !!}</script>
+<script type="application/json" id="is-multi-tax-data">{!! json_encode($isMultiTax) !!}</script>
+<script type="application/json" id="fixed-tax-rate-data">{!! json_encode($fixedTaxRate) !!}</script>
+<script type="application/json" id="tax-groups-data">{!! json_encode($taxGroupsData) !!}</script>
+<script type="application/json" id="initial-saved-addon-ids-data">{!! json_encode($selectedAddonIds) !!}</script>
 
 <script>
     function showToast(type, message) {
@@ -435,28 +487,12 @@
         const savedItemsList = document.getElementById('saved-items-list');
         const savedItemsCount = document.getElementById('saved-items-count');
         let costingRowIndex = costingTableBody.rows.length;
-        const editUrlTemplate = @json(route('services.edit', 'SERVICEID'));
+        const editUrlTemplate = JSON.parse(document.getElementById('edit-url-template-data').textContent || '""');
 
-        @php
-        $currencyOptions = collect($currencies) -> map(function ($currency) {
-            return '<option value="'.e($currency -> iso). '">'.e($currency -> iso. ' - '.$currency -> name). '</option>';
-        }) -> implode('');
-
-        $isMultiTax = $account -> allow_multi_taxation ?? false;
-        $fixedTaxRate = $account -> fixed_tax_rate ?? 0;
-
-        $taxGroupsData = $isMultiTax ? $taxes -> groupBy('type') -> map(function ($group, $type) {
-            return $group -> map(fn($t) => [
-                'name' => $t -> tax_name ?? $t -> type,
-                'rate' => $t -> rate,
-            ]) -> values() -> all();
-        }) -> filter(fn($group) => count($group) > 0) -> all() : [];
-        @endphp
-
-        const currencyOptionsHtml = @json($currencyOptions);
-        const isMultiTax = @json($isMultiTax);
-        const fixedTaxRate = parseFloat(@json($fixedTaxRate)) || 0;
-        const taxGroups = @json($taxGroupsData);
+        const currencyOptionsHtml = JSON.parse(document.getElementById('currency-options-data').textContent || '""');
+        const isMultiTax = JSON.parse(document.getElementById('is-multi-tax-data').textContent || 'false');
+        const fixedTaxRate = parseFloat(document.getElementById('fixed-tax-rate-data').textContent || '0') || 0;
+        const taxGroups = JSON.parse(document.getElementById('tax-groups-data').textContent || '{}');
 
         function _esc(s) {
             const d = document.createElement('div');
@@ -483,7 +519,7 @@
             if (isMultiTax) {
                 return `<select name="costings[${i}][tax_rate]" class="form-select form-select-sm">${taxOptionsHtml}</select>`;
             } else {
-                return `<input type="hidden" name="costings[${i}][tax_rate]" value="${fixedTaxRate.toFixed(2)}"><span class="badge text-bg-secondary">${fixedTaxRate.toFixed(2)}%</span>`;
+                return `<input type="hidden" name="costings[${i}][tax_rate]" value="${fixedTaxRate.toFixed(2)}"><span class="badge text-bg-warning">${fixedTaxRate.toFixed(2)}%</span>`;
             }
         }
 
@@ -544,7 +580,7 @@
         const selectedLabel = document.getElementById('addons-selected-label');
         const savedAddonsList = document.getElementById('saved-addons-list');
         const hiddenInputsWrap = document.getElementById('addons-hidden-inputs');
-        const initialSavedAddonIds = @json($selectedAddonIds);
+        const initialSavedAddonIds = JSON.parse(document.getElementById('initial-saved-addon-ids-data').textContent || '[]');
         const savedAddons = new Map();
 
         function refreshAddonLabel() {
@@ -557,17 +593,19 @@
             hiddenInputsWrap.innerHTML = '';
 
             if (savedAddons.size === 0) {
-                const empty = document.createElement('span');
-                empty.className = 'text-muted small';
-                empty.textContent = 'No parent items selected yet.';
+                const empty = document.createElement('div');
+                empty.className = 'text-muted w-100 d-flex align-items-center justify-content-center text-center rounded-3 bg-white';
+                empty.style.height = '200px';
+                empty.style.border = '2px dashed #ccc';
+                empty.textContent = 'No parent items selected yet';
                 savedAddonsList.appendChild(empty);
                 return;
             }
 
             savedAddons.forEach((name, id) => {
                 const pill = document.createElement('span');
-                pill.className = 'badge bg-light text-dark border fw-normal';
-                pill.innerHTML = `${name} <button type="button" data-remove-addon-id="${id}" class="btn-close btn-close-dark" style="font-size: 0.5rem; vertical-align: middle;"></button>`;
+                pill.className = 'bg-white text-dark border fw-normal px-3 py-1 rounded-pill small lh-sm';
+                pill.innerHTML = `${name} <button type="button" data-remove-addon-id="${id}" class="btn-close btn-close-dark ms-2" style="font-size: 0.5rem; vertical-align: middle;"></button>`;
                 savedAddonsList.appendChild(pill);
 
                 const hidden = document.createElement('input');
@@ -721,7 +759,7 @@
 
                 try {
                     saveItemStayBtn.disabled = true;
-                    saveItemStayBtn.textContent = 'Saving...';
+                    saveItemStayBtn.innerHTML = 'Saving... <i class="fas fa-spinner fa-spin ms-1"></i>';
 
                     const res = await fetch("{{ route('services.ajax-save') }}", {
                         method: 'POST',
@@ -751,7 +789,7 @@
                     showToast('error', error.message || 'Unable to save item.');
                 } finally {
                     saveItemStayBtn.disabled = false;
-                    saveItemStayBtn.textContent = 'Save Item';
+                    saveItemStayBtn.innerHTML = 'Save Item <i class="fas fa-arrow-right btn-icon ms-1"></i>';
                 }
             });
         }

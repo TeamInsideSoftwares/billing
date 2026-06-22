@@ -513,7 +513,7 @@ class OrdersController extends Controller
 
         return view('orders.create', [
             'title' => 'Edit Order',
-            'subtitle' => 'Edit this item-based order.',
+            'subtitle' => null,
             'order' => $order,
             'clients' => Client::where('accountid', $accountId)->regular()->active()->with('primaryContact')->orderBy('business_name')->get(),
             'services' => Service::where('accountid', $accountId)->with('costings', 'category')->orderBy('name')->get(),

@@ -694,7 +694,7 @@ class PaymentsController extends Controller
         $selectedClient = $selectedClientId ? Client::query()->find($selectedClientId) : null;
 
         return view('payments.form', [
-            'title' => 'Record New Payment',
+            'title' => 'Record Payment',
             'clients' => Client::query()->where('accountid', $accountId)->regular()->active()->get(),
             'invoices' => $this->filterDueInvoices(
                 Invoice::query()->where('accountid', $accountId)->with(['client', 'invoiceItems'])

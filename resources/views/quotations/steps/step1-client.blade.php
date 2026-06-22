@@ -1,27 +1,23 @@
 <div class="position-relative d-flex align-items-center justify-content-center"
-    style="min-height: calc(100vh - 240px);">
+    style="min-height: calc(100vh - 160px);">
     <div class="row w-100">
         <div class="col-12 col-md-3 mx-auto">
-            <div class="bg-white p-4 rounded-3">
+            <div class="bg-white p-4 rounded-3 mx-auto mb-5">
 
                 {{-- Header --}}
-                <div class="d-flex align-items-center gap-3 mb-4">
-                    <div class="d-flex align-items-center justify-content-center bg-white rounded-circle border"
-                        style="width: 40px; height: 40px;">
-                        <i class="fas fa-user text-primary"></i>
-                    </div>
+                <div class="d-flex align-items-center gap-3 mb-3 pb-1">
                     <div class="min-w-0">
-                        <div class="fw-semibold text-dark">Select Client</div>
-                        <div class="text-muted small">Choose client first</div>
+                        <h5 class="fw-semibold text-black mb-0">Select Client</h5>
+                        <p class="text-dark mb-0">Choose client first</p>
                     </div>
-                </div>
+                </div> 
 
                 {{-- Client Select --}}
                 <form action="#" method="" class="mainForm">
                     <div class="row g-2 mb-3">
                         <div class="col-12">
                             <label class="form-label small lh-sm fw-semibold text-dark mb-1" for="clientid">
-                                Client *
+                                Client<span class="text-danger">*</span>
                             </label>
 
                             <select id="clientid" class="form-select" required>
@@ -55,7 +51,7 @@
                 {{-- Button --}}
                 <div class="d-flex justify-content-end mt-3">
                     <button type="button" class="btn btn-outline-primary btn-primary text-white fw-medium" id="toStep2">
-                        Next
+                        Create Quotation
                         <i class="fas fa-arrow-right btn-icon ms-1"></i>
                     </button>
                 </div>

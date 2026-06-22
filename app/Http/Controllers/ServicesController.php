@@ -152,7 +152,7 @@ class ServicesController extends Controller
             ->get(['itemid', 'name', 'type']);
 
         return view('services.form', [
-            'title' => 'Create New Item',
+            'title' => 'Create Item',
             'categories' => $categories,
             'defaultCurrency' => $accountCurrency,
             'currencies' => $currencies,

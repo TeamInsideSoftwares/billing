@@ -3,7 +3,7 @@
 @section('header_actions')
 <a href="{{ route('quotations.index') }}"
     class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-    <i class="fas fa-arrow-left"></i> Back to Quotations
+    Quotation List <i class="fas fa-arrow-right"></i>
 </a>
 @endsection
 
@@ -23,7 +23,7 @@ $quotationDateBounds = $quotationDateBounds ?? [
 ];
 @endphp
 
-<div class="position-relative {{ $step !== 1 ? 'bg-white p-3' : '' }} rounded-3">
+<div class="position-relative {{ $step !== 1 ? 'bg-white p-2' : '' }} rounded-3">
     @if ($errors->any())
     <div class="alert alert-danger mb-4">
         <ul class="mb-0 ps-3">
@@ -113,6 +113,7 @@ return [
         let meta = { ...draftMeta };
         let editingItemIndex = null;
         const accountHasUsers = @json((bool)($account -> have_users ?? false));
+        const allowMultiTaxation = @json((bool)($account -> allow_multi_taxation ?? false));
         const itemSelect = document.getElementById('itemid');
         const qty = document.getElementById('quantity');
         const unitPrice = document.getElementById('unit_price');
@@ -188,7 +189,9 @@ return [
 
         function setAddButtonState() {
             if (!addBtn) return;
-            addBtn.textContent = editingItemIndex === null ? 'Add' : 'Update';
+            addBtn.innerHTML = editingItemIndex === null
+                ? 'Add Item <i class="fas fa-arrow-right btn-icon ms-1"></i>'
+                : 'Update Item <i class="fas fa-arrow-right btn-icon ms-1"></i>';
         }
 
         function formatNumber(value) {
@@ -249,13 +252,45 @@ return [
             freqDurHeader?.classList.toggle('d-none', !showRecurringColumns);
             startEndHeader?.classList.toggle('d-none', !showRecurringColumns);
 
+            let colsBeforeTotalPrice = 3;
+            if (allowMultiTaxation) {
+                colsBeforeTotalPrice += 1;
+            }
+            if (showUsersColumn) {
+                colsBeforeTotalPrice += 1;
+            }
+            if (showRecurringColumns) {
+                colsBeforeTotalPrice += 2;
+            }
+            document.querySelectorAll('#quoteSummary td[colspan]').forEach(td => {
+                td.setAttribute('colspan', colsBeforeTotalPrice);
+            });
+
             body.innerHTML = '';
             if (itemsTable) {
-                itemsTable.classList.toggle('d-none', items.length === 0);
+                itemsTable.classList.remove('d-none');
             }
-            if (itemsEmpty) {
-                itemsEmpty.classList.toggle('d-none', items.length > 0);
+
+            if (items.length === 0) {
+                const totalCols = allowMultiTaxation ? 6 : 5;
+                body.innerHTML = `
+                    <tr>
+                        <td colspan="${totalCols}" class="text-center text-muted py-4">
+                            No items added yet. Select an item or add one manually.
+                        </td>
+                    </tr>
+                `;
+                if (toStep3) {
+                    toStep3.disabled = true;
+                }
+                recalcSummary(items);
+                return;
             }
+
+            if (toStep3) {
+                toStep3.disabled = false;
+            }
+
             items.forEach((it, idx) => {
                 const tr = document.createElement('tr');
                 if (editingItemIndex === idx) {
@@ -263,32 +298,42 @@ return [
                 }
                 const itemDescription = String(it.item_description || '').trim();
                 const itemLabel = itemDescription
-                    ? `${it.item_name}<div class="small text-muted">${itemDescription}</div>`
-                    : it.item_name;
+                    ? `<div class="fw-semibold">${it.item_name}</div><div class="small-text">${itemDescription}</div>`
+                    : `<div class="fw-semibold">${it.item_name}</div>`;
                 const isUserWise = Number(it.no_of_users || 0) > 0;
                 const lineTotal = computeLineTotal(it);
-                const usersCell = showUsersColumn ? `<td class="text-center">${isUserWise ? formatNumber(it.no_of_users) : '-'}</td>` : '';
-                tr.innerHTML = `<td>${itemLabel}</td>
+                
+                let rowHtml = `
+                <td>${itemLabel}</td>
                 <td class="text-center">${formatNumber(it.quantity)}</td>
-                <td class="text-center">
-                    <div>${formatNumber(it.unit_price)}</div>
-                    <div class="text-dark">${formatNumber(it.discount_percent)}%</div>
-                </td>
-                ${usersCell}
-                <td class="${showRecurringColumns ? '' : 'd-none'}">
+                `;
+                
+                if (allowMultiTaxation) {
+                    rowHtml += `<td class="text-center">${it.tax_rate ?? 0}%</td>`;
+                }
+                
+                rowHtml += `
+                <td class="text-center ${showUsersColumn ? '' : 'd-none'}">${isUserWise ? formatNumber(it.no_of_users) : '-'}</td>
+                <td class="text-center ${showRecurringColumns ? '' : 'd-none'}">
                     <div>${(it.frequency && it.frequency !== 'One-Time') ? `<span class="text-dark">${it.duration || '-'}</span> ` : ''}${it.frequency || '-'}</div>
                 </td>
-                <td class="${showRecurringColumns ? '' : 'd-none'}">
+                <td class="text-center ${showRecurringColumns ? '' : 'd-none'}">
                     <div>${formatDateToDisplay(it.start_date)}</div>
                     <div class="text-dark">${formatDateToDisplay(it.end_date)}</div>
                 </td>
-                <td class="text-right">${formatNumber(lineTotal)}</td>
+                <td class="text-end">
+                    <div>${formatNumber(it.unit_price)}</div>
+                    <small class="d-block small lh-sm fw-semibold text-success text-uppercase">(${Number(it.discount_percent || 0).toFixed(0)}% Off)</small>
+                </td>
+                <td class="text-end">${formatNumber(lineTotal)}</td>
                 <td class="text-end">
                     <div class="tableActionButton d-inline-flex gap-1 align-items-center">
-                        <button type="button" data-edit="${idx}" class="bg03 color03">Edit</button>
-                        <button type="button" data-i="${idx}" class="bg04 color04">Remove</button>
+                        <button type="button" data-edit="${idx}" class="bg03 color03 border-0">Edit</button>
+                        <button type="button" data-i="${idx}" class="bg04 color04 border-0">Remove</button>
                     </div>
-                </td>`;
+                </td>
+                `;
+                tr.innerHTML = rowHtml;
                 body.appendChild(tr);
             });
             body.querySelectorAll('button[data-i]').forEach(btn => btn.addEventListener('click', function () {

@@ -150,7 +150,7 @@
                                         ? str_ireplace($searchTerm, '<mark class="bg-warning-subtle p-0">' . $searchTerm
                                             . '</mark>', $client['name'])
                                         : $client['name'] !!}</span>
-                                    <span class="d-block text-muted small">{{ $client['email'] }}</span>
+                                    <span class="d-block text-dark small">{{ $client['email'] }}</span>
                                 </div>
                             </div>
                         </td>
@@ -159,7 +159,7 @@
                             <div class="fw-medium">{{ $client['contact'] }}</div>
                             @endif
                             @if ($client['phone'])
-                            <small class="text-muted">{{ $client['phone'] }}</small>
+                            <small class="text-dark">{{ $client['phone'] }}</small>
                             @endif
                         </td>
                         <td>{{ $client['state'] ?? '—' }}</td>
@@ -178,7 +178,7 @@
                             <div class="tableActionButton d-inline-flex gap-1 align-items-center">
                                 <div class="form-check form-switch mb-0 d-inline-flex align-items-center me-1"
                                     style="padding-left: 2.5em; min-height: auto;">
-                                    <input class="form-check-input client-status-toggle" type="checkbox" role="switch"
+                                    <input class="form-check-input client-status-toggle border-primary" type="checkbox" role="switch"
                                         data-id="{{ $client['record_id'] }}" {{ strtolower($client['status'])==='active'
                                         ? 'checked' : '' }} style="cursor: pointer; height: 1.15em; width: 2.1em;"
                                         title="Toggle Status">
@@ -233,7 +233,7 @@
                                         '</mark>', $client['name'])
                                     : $client['name'] !!}
                                 </h6>
-                                <span class="d-block text-muted lh-sm text-break grid-text-medium"
+                                <span class="d-block text-dark lh-sm text-break grid-text-medium"
                                     title="{{ $client['email'] }}">{{ $client['email'] }}</span>
                             </div>
                         </div>
@@ -249,11 +249,11 @@
                             </div>
                             @endif
                             @if ($client['phone'])
-                            <div class="text-muted text-truncate lh-sm mb-1" title="{{ $client['phone'] }}">
+                            <div class="text-dark text-truncate lh-sm mb-1" title="{{ $client['phone'] }}">
                                 <i class="fas fa-phone contact-icon me-1 text-muted"></i>{{ $client['phone'] }}
                             </div>
                             @endif
-                            <div class="text-muted lh-sm text-truncate" title="{{ $client['state'] ?? '—' }}">
+                            <div class="text-dark lh-sm text-truncate" title="{{ $client['state'] ?? '—' }}">
                                 <i class="fas fa-map-marker-alt contact-icon me-2 text-muted"></i>{{ $client['state']
                                 ??
                                 '—' }}
@@ -281,13 +281,6 @@
 
                     <!-- Action Buttons -->
                     <div class="tableActionButton d-flex flex-wrap gap-1 mt-2">
-                        <div class="form-check form-switch mb-0 d-inline-flex align-items-center justify-content-center flex-grow-1"
-                            style="padding-left: 2.5em; min-height: 30px;">
-                            <input class="form-check-input client-status-toggle" type="checkbox" role="switch"
-                                data-id="{{ $client['record_id'] }}" {{ strtolower($client['status'])==='active'
-                                ? 'checked' : '' }} style="cursor: pointer; height: 1.15em; width: 2.1em;"
-                                title="Toggle Status">
-                        </div>
                         <a href="{{ route('clients.dashboard', $client['record_id']) }}"
                             class="bg01 color01 flex-grow-1 text-center">View</a>
                         <a href="#" class="bg02 color02 flex-grow-1 text-center open-documents-modal"
@@ -296,6 +289,13 @@
                             Agreement</a>
                         <a href="{{ route('clients.edit', $client['record_id']) }}"
                             class="bg03 color03 flex-grow-1 text-center">Edit</a>
+                        <div class="form-check form-switch mb-0 d-inline-flex align-items-center justify-content-center flex-grow-1"
+                            style="padding-left: 2.5em; min-height: 30px;">
+                            <input class="form-check-input client-status-toggle border-primary" type="checkbox" role="switch"
+                                data-id="{{ $client['record_id'] }}" {{ strtolower($client['status'])==='active'
+                                ? 'checked' : '' }} style="cursor: pointer; height: 1.15em; width: 2.1em;"
+                                title="Toggle Status">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -421,7 +421,7 @@
                                         <h6 class="fw-semibold text-primary mb-0">Business Address</h6>
                                         <div class="mb-0 bg-white border rounded-1 px-1 py-0">
                                             <div class="form-check mb-0 form-check-small">
-                                                <input class="form-check-input" type="checkbox"
+                                                <input class="form-check-input border-primary border-2" type="checkbox"
                                                     id="groupSameAsRegistered" value="1">
                                                 <label class="form-check-label small lh-sm fw-normal text-dark"
                                                     for="groupSameAsRegistered">
@@ -1510,7 +1510,7 @@
                 const msg = isChecked
                     ? "Are you sure? All login details will also be activated."
                     : "Are you sure? All login details will also be deactivated.";
-                
+
                 const isConfirmed = await window.appConfirm(msg, {
                     title: 'Please Confirm',
                     icon: 'warning',

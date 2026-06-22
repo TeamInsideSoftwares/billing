@@ -264,7 +264,7 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
                         <div class="d-flex align-items-center gap-1">
                             <div class="mb-0 bg-white border rounded-1 px-2 py-1 ms-1">
                                 <div class="form-check mb-0 form-check-large">
-                                    <input class="form-check-input" type="checkbox" id="useExistingBilling"
+                                    <input class="form-check-input border-primary border-2" type="checkbox" id="useExistingBilling"
                                         style="cursor:pointer;" {{ old('existing_bd_id', $client->bd_id ?? '') !== '' ?
                                     'checked' : '' }}>
                                     <label class="form-check-label small lh-sm fw-normal text-dark"
@@ -275,7 +275,7 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
                             </div>
                             <div class="mb-0 bg-white border rounded-1 px-2 py-1 ms-1">
                                 <div class="form-check mb-0 form-check-large">
-                                    <input class="form-check-input" type="checkbox" id="billing_same_as_client"
+                                    <input class="form-check-input border-primary border-2" type="checkbox" id="billing_same_as_client"
                                         name="billing_same_as_client" value="1" {{ old('billing_same_as_client')
                                         ? 'checked' : '' }}>
                                     <label class="form-check-label small lh-sm fw-normal text-dark"
@@ -497,7 +497,7 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
                                         <h6 class="fw-semibold text-primary mb-0 align-self-end">Business Address</h6>
                                         <div class="mb-0 bg-white border rounded-1 px-1 py-0">
                                             <div class="form-check mb-0">
-                                                <input class="form-check-input" type="checkbox"
+                                                <input class="form-check-input border-primary border-2" type="checkbox"
                                                     id="formGroupSameAsRegistered" value="1">
                                                 <label class="form-check-label small lh-sm fw-normal text-dark"
                                                     for="formGroupSameAsRegistered">
@@ -598,7 +598,7 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
                             </div>
                             <div class="col-12 col-md-12">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="contact_is_primary_field"
+                                    <input class="form-check-input border-primary border-2" type="checkbox" id="contact_is_primary_field"
                                         style="cursor:pointer;">
                                     <label class="form-check-label fw-normal text-dark mb-0" style="cursor:pointer;"
                                         for="contact_is_primary_field">

@@ -27,23 +27,20 @@
     <div class="container">
         <div class="row min-vh-100 justify-content-center align-items-center">
 
-            <div class="col-md-6 col-lg-4">
-
-                <div class="card border-0 shadow-lg">
-
-                    <div class="card-body p-4 p-lg-5">
-
-                        <div class="text-center mb-4">
+            <div class="col-md-6 col-lg-4 mx-auto">
+                <div class="card border-0">
+                    <div class="card-body p-3">
+                        <div class="text-start mb-3">
 
                             <p class="text-primary fw-semibold text-uppercase small mb-2">
-                                SkoolReady
+                                <small>SkoolReady</small>
                             </p>
 
-                            <h2 class="fw-bold mb-2">
+                            <h3 class="fw-bold text-dark mb-2">
                                 Forgot Password
-                            </h2>
+                            </h3>
 
-                            <p class="text-muted mb-0">
+                            <p class="text-dark mb-0">
                                 Enter your email address to receive a password reset link.
                             </p>
 
@@ -74,13 +71,13 @@
                             </div>
                         @endif
 
-                        <form action="{{ route('password.email') }}" method="POST">
+                        <form action="{{ route('password.email') }}" method="POST" id="forgotPasswordForm" class="mainForm">
 
                             @csrf
 
-                            <div class="mb-4">
-                                <label for="email" class="form-label">
-                                    Email Address
+                            <div class="mb-3">
+                                <label for="email" class="form-label small lh-sm fw-semibold text-dark mb-1">
+                                    Email Address<span class="text-danger">*</span>
                                 </label>
 
                                 <input type="email"
@@ -92,16 +89,17 @@
                                        autofocus>
                             </div>
 
-                            <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex justify-content-between text-end">
 
                                 <a href="{{ route('login') }}"
-                                   class="text-decoration-none">
-                                    Back to Sign In
+                                   class="text-decoration-none fw-semibold btn btn-outline-primary bg-white text-primary fw-medium text-center d-inline-flex align-items-center justify-content-center">
+                                    <i class="fas fa-arrow-left btn-icon me-1"></i> Back to Login
                                 </a>
 
                                 <button type="submit"
-                                        class="btn btn-primary">
-                                    Send Reset Link
+                                        class="btn btn-outline-primary btn-primary text-white fw-medium"
+                                        id="resetBtn">
+                                    Send Reset Link <i class="fas fa-arrow-right btn-icon ms-1"></i>
                                 </button>
 
                             </div>
@@ -116,6 +114,17 @@
 
         </div>
     </div>
+
+    <script>
+        document.getElementById('forgotPasswordForm').addEventListener('submit', function() {
+            const btn = document.getElementById('resetBtn');
+            btn.disabled = true;
+            btn.innerHTML = `
+                <span class="spinner-border spinner-border-sm me-2"></span>
+                Sending...
+            `;
+        });
+    </script>
 
 </body>
 

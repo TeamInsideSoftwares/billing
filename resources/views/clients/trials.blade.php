@@ -234,9 +234,9 @@
                                         '</mark>', $client['name'])
                                     : $client['name'] !!}
                                 </h6>
-                                <span class="d-block text-muted lh-sm text-break grid-text-medium mt-1"
+                                <span class="d-block text-dark lh-sm text-break grid-text-medium mt-1"
                                     title="{{ $client['email'] }}">{{ $client['email'] }}</span>
-                                <span class="d-block text-muted lh-sm text-break grid-text-medium mt-1"
+                                <span class="d-block text-dark lh-sm text-break grid-text-medium mt-1"
                                     title="{{ $client['phone'] ?? '—' }}">{{ $client['phone'] ?? '—' }}</span>
                             </div>
                         </div>

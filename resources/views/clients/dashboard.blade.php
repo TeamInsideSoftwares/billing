@@ -1,9 +1,15 @@
 @extends('layouts.app')
 
+@php
+if (isset($client)) {
+$title = 'Client Dashboard';
+}
+@endphp
+
 @section('header_actions')
 @if(collect($clients)->isNotEmpty())
 <div class="d-flex align-items-center gap-2 flex-wrap">
-    <span class="text-muted small d-none d-md-inline"></span>
+
     <select class="form-select border-0 shadow-sm client-dashboard-picker"
         onchange="if(this.value) window.location.href='{{ url('/client-dashboard') }}/' + this.value;">
         @if(!isset($client))
@@ -22,29 +28,66 @@
 @endsection
 
 @section('content')
-<div class="position-relative bg-white p-2 rounded-3">
+<div class="position-relative {{ isset($client) ? 'bg-white p-2' : '' }} rounded-3">
     @if(!isset($client))
     @if(collect($clients)->isNotEmpty())
     {{-- Choose Client State --}}
-    <div
-        class="search-landing-container py-5 d-flex justify-content-center align-items-center client-dashboard-empty-shell">
-        <div class="card border-0 bg-DarkLight p-1 rounded-3 client-dashboard-empty-card">
-            <div class="card-body bg-white rounded-3 p-4">
-                <div class="d-flex align-items-center gap-3">
-                    <span class="text-muted fw-bold"></span>
-                    <select class="form-select border shadow-sm client-dashboard-picker client-dashboard-picker--large"
-                        onchange="if(this.value) window.location.href='{{ url('/client-dashboard') }}/' + this.value;">
-                        <option value="" selected disabled>-- Choose Client --</option>
-                        @foreach($clients as $c)
-                        <option value="{{ $c->clientid }}">
-                            {{ $c->business_name ?? $c->contact_name }}
-                        </option>
-                        @endforeach
-                    </select>
+    <div id="step1" class="position-relative d-flex align-items-center justify-content-center"
+        style="min-height: calc(100vh - 160px);">
+        <div class="row w-100">
+            <div class="col-12 col-md-3 mx-auto">
+                <div class="bg-white p-4 rounded-3 mx-auto mb-5">
+                    <div class="d-flex align-items-center justify-content-between mb-3 pb-1">
+                        <div class="min-w-0">
+                            <h5 class="fw-semibold text-black mb-0">Client Dashboard</h5>
+                            <p class="text-dark mb-0">Choose a client to view their profile dashboard</p>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mainForm">
+                        <div class="col-12">
+                            <label for="dashboardClientId"
+                                class="form-label small lh-sm fw-semibold text-dark mb-1">Clients ({{
+                                collect($clients)->count() }}) <span class="text-danger">*</span></label>
+                            <select id="dashboardClientId" name="clientid" required class="form-select">
+                                <option value="">Choose client</option>
+                                @foreach($clients as $c)
+                                <option value="{{ $c->clientid }}">
+                                    {{ $c->business_name ?? $c->contact_name }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+                        <button type="button" id="btnViewDashboard"
+                            class="btn btn-outline-primary btn-primary text-white fw-medium">
+                            View Dashboard <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <script>
+        (function () {
+            const clientSelect = document.getElementById('dashboardClientId');
+            const btnView = document.getElementById('btnViewDashboard');
+
+            btnView.addEventListener('click', function () {
+                const selectedClientId = clientSelect.value;
+                if (!selectedClientId) {
+                    alert('Please select a client first.');
+                    clientSelect.focus();
+                    return;
+                }
+
+                window.location.href = "{{ url('/client-dashboard') }}/" + encodeURIComponent(selectedClientId);
+            });
+        })();
+    </script>
     @else
     {{-- Empty State (No clients found) --}}
     <div class="search-landing-container py-5 text-center">
@@ -68,805 +111,1133 @@
 
     {{-- Profile Header Card --}}
     {{-- Client Header --}}
-<div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-4">
-    <div class="card-body bg-white rounded-3 p-3">
+    <div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-2">
+        <div class="card-body bg-white rounded-3 p-3">
 
-        <div class="row align-items-center g-3">
+            <div class="row align-items-center g-0">
 
-            {{-- Logo / Avatar --}}
-            <div class="col-auto">
-
-                @if($client->logo_path)
-
-                    <div class="border rounded-circle overflow-hidden bg-white d-flex align-items-center justify-content-center"
-                         style="width:80px;height:80px;">
-                        <img src="{{ $client->logo_path }}"
-                             alt="{{ $client->business_name }}"
-                             class="w-100 h-100 object-fit-contain">
+                {{-- Logo / Avatar --}}
+                <div class="col-auto">
+                    <div class="position-relative" style="width:80px; height:80px;">
+                        @if($client->logo_path)
+                        <div
+                            class="border rounded-circle overflow-hidden bg-white d-flex align-items-center justify-content-center w-100 h-100">
+                            <img src="{{ $client->logo_path }}" alt="{{ $client->business_name }}"
+                                class="w-100 h-100 object-fit-cover">
+                        </div>
+                        @else
+                        <div class="rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center w-100 h-100"
+                            style="font-size:1.5rem;">
+                            {{ strtoupper(substr($client->business_name ?? $client->contact_name, 0, 2)) }}
+                        </div>
+                        @endif
+                        <div class="status-dot {{ strtolower($client->status ?? 'active') }}"
+                            title="{{ ucfirst($client->status ?? 'Active') }}"
+                            style="width: 16px; height: 16px; border-width: 3px; top: 4px; right: 4px;"></div>
                     </div>
+                </div>
 
-                @else
+                {{-- Client Info --}}
+                <div class="col ms-3">
 
-                    <div class="rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center"
-                         style="width:80px;height:80px;font-size:1.5rem;">
-                        {{ strtoupper(substr($client->business_name ?? $client->contact_name, 0, 2)) }}
-                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1 ">
 
-                @endif
+                        <h4 class="fw-bold mb-0">
+                            {{ $client->business_name }}
+                        </h4>
 
-            </div>
-
-            {{-- Client Info --}}
-            <div class="col">
-
-                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-
-                    <h3 class="fw-bold mb-0">
-                        {{ $client->business_name }}
-                    </h3>
-
-                    <span class="badge bg-success">
-                        {{ ucfirst($client->status ?? 'Active') }}
-                    </span>
-
-                    @if($client->type === 'trial')
+                        @if($client->type === 'trial')
                         <span class="badge bg-warning text-dark">
                             Trial
                         </span>
-                    @endif
+                        @endif
 
-                </div>
-
-                <p class="text-muted mb-2">
-                    <i class="fas fa-envelope me-1"></i>
-                    {{ $client->primary_email ?? $client->email }}
-
-                    <span class="mx-2">|</span>
-
-                    <i class="fas fa-phone me-1"></i>
-                    {{ $client->phone ?? 'No Phone' }}
-                </p>
-
-                <div class="d-flex flex-wrap gap-3 text-muted small">
-
-                    <span>
-                        <i class="fas fa-map-marker-alt me-1"></i>
-                        {{ $client->city ?? '-' }}
-                        {{ $client->state ? ', '.$client->state : '' }}
-                    </span>
-
-                    <span>
-                        <i class="fas fa-calendar-alt me-1"></i>
-                        Joined:
-                        {{ $client->created_at?->format('d M Y') ?? '-' }}
-                    </span>
-
-                </div>
-
-            </div>
-
-            {{-- Actions --}}
-            <div class="col-12 col-xl-auto">
-
-                <div class="d-flex flex-wrap gap-2 justify-content-xl-end">
-
-                    <a href="{{ route('orders.create', ['c' => $client->clientid]) }}"
-                       class="btn btn-outline-primary">
-                        <i class="fas fa-shopping-cart me-1"></i>
-                        Add Order
-                    </a>
-
-                    <a href="{{ route('quotations.create', ['c' => $client->clientid]) }}"
-                       class="btn btn-outline-primary">
-                        <i class="fas fa-file-alt me-1"></i>
-                        Add Quotation
-                    </a>
-
-                    <a href="{{ route('invoices.create', ['clientid' => $client->clientid]) }}"
-                       class="btn btn-outline-primary">
-                        <i class="fas fa-file-invoice-dollar me-1"></i>
-                        Add Invoice
-                    </a>
-
-                    <a href="{{ route('payments.create', ['clientid' => $client->clientid]) }}"
-                       class="btn btn-outline-primary">
-                        <i class="fas fa-wallet me-1"></i>
-                        Add Payment
-                    </a>
-
-                    <a href="{{ route('clients.index') }}"
-                       class="btn btn-outline-secondary">
-                        <i class="fas fa-file-pdf me-1"></i>
-                        Add PO
-                    </a>
-
-                    <a href="{{ route('clients.edit', $client) }}"
-                       class="btn btn-primary">
-                        <i class="fas fa-edit me-1"></i>
-                        Edit Profile
-                    </a>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-</div>
-
-{{-- Financial Metrics --}}
-<div class="row g-3 mb-4">
-
-    {{-- Outstanding --}}
-    <div class="col-6 col-lg-3">
-        <div class="card border-0 bg-DarkLight p-1 rounded-3 h-100">
-            <div class="card-body bg-white rounded-3 p-3 d-flex align-items-center">
-
-                <div class="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center me-3"
-                     style="width:50px;height:50px;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-
-                <div>
-                    <div class="text-muted small text-uppercase fw-semibold">
-                        Outstanding
                     </div>
-                    <h5 class="mb-0 fw-bold text-danger">
-                        {{ $client->currency ?? 'INR' }}
-                        {{ number_format($outstanding, 0) }}
-                    </h5>
-                </div>
 
-            </div>
-        </div>
-    </div>
+                    <p class="text-black mb-1">
+                        <i class="fas fa-envelope text-muted small lh-sm"></i>
+                        {{ $client->primary_email ?? $client->email }}
 
-    {{-- Total Invoiced --}}
-    <div class="col-6 col-lg-3">
-        <div class="card border-0 bg-DarkLight p-1 rounded-3 h-100">
-            <div class="card-body bg-white rounded-3 p-3 d-flex align-items-center">
+                        <span class="mx-2 text-muted">|</span>
 
-                <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3"
-                     style="width:50px;height:50px;">
-                    <i class="fas fa-file-invoice"></i>
-                </div>
+                        <i class="fas fa-phone text-muted small lh-sm"></i>
+                        {{ $client->phone ?? 'No Phone' }}
+                    </p>
 
-                <div>
-                    <div class="text-muted small text-uppercase fw-semibold">
-                        Total Invoiced
+                    <div class="d-flex flex-wrap gap-0 text-black ">
+
+                        <span>
+                            <i class="fas fa-map-marker-alt text-muted small lh-sm"></i>
+                            {{ $client->city ?? '-' }}
+                            {{ $client->state ? ', '.$client->state : '' }}
+                        </span>
+                        <span class="mx-2 text-muted">|</span>
+                        <span>
+                            <i class="fas fa-calendar-alt text-muted small lh-sm"></i>
+                            Joined:
+                            {{ $client->created_at?->format('d M Y') ?? '-' }}
+                        </span>
+
                     </div>
-                    <h5 class="mb-0 fw-bold">
-                        {{ $client->currency ?? 'INR' }}
-                        {{ number_format($invoicedTotal, 0) }}
-                    </h5>
+
                 </div>
 
-            </div>
-        </div>
-    </div>
+                {{-- Actions --}}
+                <div class="col-12 col-xl-auto">
 
-    {{-- Total Paid --}}
-    <div class="col-6 col-lg-3">
-        <div class="card border-0 bg-DarkLight p-1 rounded-3 h-100">
-            <div class="card-body bg-white rounded-3 p-3 d-flex align-items-center">
+                    <div class="d-flex flex-wrap gap-2 justify-content-xl-end">
 
-                <div class="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center me-3"
-                     style="width:50px;height:50px;">
-                    <i class="fas fa-check-circle"></i>
-                </div>
+                        <a href="{{ route('orders.create', ['c' => $client->clientid]) }}"
+                            class="btn btn-outline-primary">
+                            Add Order
+                        </a>
 
-                <div>
-                    <div class="text-muted small text-uppercase fw-semibold">
-                        Total Paid
+                        <a href="{{ route('quotations.create', ['c' => $client->clientid]) }}"
+                            class="btn btn-outline-primary">
+
+                            Add Quotation
+                        </a>
+
+                        <a href="{{ route('invoices.create', ['clientid' => $client->clientid]) }}"
+                            class="btn btn-outline-primary">
+
+                            Add Invoice
+                        </a>
+
+                        <a href="{{ route('payments.create', ['clientid' => $client->clientid]) }}"
+                            class="btn btn-outline-primary">
+
+                            Add Payment
+                        </a>
+
+                        <a href="{{ route('clients.index') }}" class="btn btn-outline-primary">Add PO</a>
+
+                        <a href="{{ route('clients.edit', $client) }}" class="btn btn-primary ">
+                            Edit Profile <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                        </a>
+
                     </div>
-                    <h5 class="mb-0 fw-bold text-success">
-                        {{ $client->currency ?? 'INR' }}
-                        {{ number_format($paidTotal, 0) }}
-                    </h5>
+
                 </div>
 
             </div>
+
         </div>
     </div>
 
-    {{-- Active Orders --}}
-    <div class="col-6 col-lg-3">
-        <div class="card border-0 bg-DarkLight p-1 rounded-3 h-100">
-            <div class="card-body bg-white rounded-3 p-3 d-flex align-items-center">
 
-                <div class="bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center me-3"
-                     style="width:50px;height:50px;">
-                    <i class="fas fa-clock"></i>
-                </div>
-
-                <div>
-                    <div class="text-muted small text-uppercase fw-semibold">
-                        Active Orders
-                    </div>
-                    <h5 class="mb-0 fw-bold text-warning">
-                        {{ $activeOrdersCount }}
-                    </h5>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-</div>
 
     {{-- Tabs Content Area --}}
-    <div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-4">
-        <div class="card-body bg-white rounded-3 p-4">
-            <div class="row g-4">
-            {{-- Vertical Tabs Header Navigation --}}
-            <div class="col-12 col-md-2 border-end pe-md-3">
-                <div class="nav flex-column nav-pills text-start dashboard-tabs-stack" id="dashboardTabs"
-                    role="tablist">
-                    <button class="nav-link active text-start py-2 px-3 border-0 d-flex align-items-center gap-2"
-                        id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab"
-                        aria-controls="overview" aria-selected="true">
-                        <i class="fas fa-user-circle dashboard-tab-icon"></i>
-                        <span>Profile & Contacts</span>
-                    </button>
-                    <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2"
-                        id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button" role="tab"
-                        aria-controls="orders" aria-selected="false">
-                        <i class="fas fa-shopping-cart dashboard-tab-icon"></i>
-                        <span>Orders ({{ $orders->count() }})</span>
-                    </button>
-                    <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2"
-                        id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices" type="button" role="tab"
-                        aria-controls="invoices" aria-selected="false">
-                        <i class="fas fa-file-invoice-dollar dashboard-tab-icon"></i>
-                        <span>Invoices ({{ $invoices->count() }})</span>
-                    </button>
-                    <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2"
-                        id="quotations-tab" data-bs-toggle="tab" data-bs-target="#quotations" type="button" role="tab"
-                        aria-controls="quotations" aria-selected="false">
-                        <i class="fas fa-file-alt dashboard-tab-icon"></i>
-                        <span>Quotations ({{ $quotations->count() }})</span>
-                    </button>
-                    <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2"
-                        id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button" role="tab"
-                        aria-controls="payments" aria-selected="false">
-                        <i class="fas fa-wallet dashboard-tab-icon"></i>
-                        <span>Payments ({{ $payments->count() }})</span>
-                    </button>
-                    <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2"
-                        id="ledger-tab" data-bs-toggle="tab" data-bs-target="#ledger" type="button" role="tab"
-                        aria-controls="ledger" aria-selected="false">
-                        <i class="fas fa-receipt dashboard-tab-icon"></i>
-                        <span>Ledger ({{ $ledger->count() }})</span>
-                    </button>
-                    <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2"
-                        id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button" role="tab"
-                        aria-controls="documents" aria-selected="false">
-                        <i class="fas fa-folder dashboard-tab-icon"></i>
-                        <span>Documents ({{ $documents->count() }})</span>
-                    </button>
-                    <button class="nav-link text-start py-2 px-3 border-0 d-flex align-items-center gap-2"
-                        id="comms-tab" data-bs-toggle="tab" data-bs-target="#comms" type="button" role="tab"
-                        aria-controls="comms" aria-selected="false">
-                        <i class="fas fa-history dashboard-tab-icon"></i>
-                        <span>Email History ({{ $communicationLogs->count() }})</span>
-                    </button>
-                </div>
-            </div>
 
-            {{-- Tab Content Panel --}}
-            <div class="col-12 col-md-10 ps-md-3">
-                <div class="tab-content" id="dashboardTabsContent">
-                    {{-- 1. Profile & Contacts Tab --}}
-                    <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
-                        <div class="row g-4">
-                            <div class="col-md-6 text-start">
-                                <div class="card border-0 bg-light rounded-3 p-3 h-100">
-                                    <h5 class="fw-bold text-dark mb-3"><i
-                                            class="fas fa-building text-muted-light me-1"></i> Business Details</h5>
-                                    <div class="d-flex flex-column gap-2 text-start">
-                                        <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">Business Name</div>
-                                            <div class="col-8 fw-semibold text-dark">{{ $client->business_name ?: '-' }}</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">Primary Email</div>
-                                            <div class="col-8 text-truncate">{{ $client->primary_email ?: '-' }}</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">Secondary Email</div>
-                                            <div class="col-8">{{ $client->email ?: '-' }}</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">Phone Number</div>
-                                            <div class="col-8">{{ $client->phone ?: '-' }}</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">WhatsApp</div>
-                                            <div class="col-8">{{ $client->whatsapp_number ?: '-' }}</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">Currency</div>
-                                            <div class="col-8"><span class="badge bg-secondary-light text-secondary">{{
-                                                    $client->currency }}</span></div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">Tax Number / GST</div>
-                                            <div class="col-8">{{ $client->tax_number ?: 'N/A' }}</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">Address</div>
-                                            <div class="col-8">
-                                                @if($client->address_line_1 || $client->city || $client->state || $client->postal_code || $client->country)
-                                                    {{ $client->address_line_1 }}@if($client->address_line_2)<br>{{ $client->address_line_2 }}@endif<br>
-                                                    {{ $client->city }}{{ $client->state ? ', ' . $client->state : '' }} {{ $client->postal_code }}<br>
+
+    <div class="row g-2">
+        <div class="col-12 col-md-10">
+            <div class="card overflow-hidden border-0 bg-DarkLight rounded-3 h-100">
+                <div class="card-body bg-transparent rounded-3 p-2">
+                    <!-- Category Tabs Slider -->
+                    <div class="tabs-slider-container position-relative d-flex align-items-center mb-3">
+                        <!-- Left Navigation Arrow -->
+                        <button type="button"
+                            class="btn btn-sm btn-outline-primary tab-nav-btn tab-nav-prev d-none me-2">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+
+                        <!-- Tabs Scrollable Container -->
+                        <div class="tabs-scroll-container flex-grow-1">
+                            <div class="btn-group d-flex flex-row flex-nowrap bg-light" id="dashboardTabs"
+                                role="tablist" style="width: max-content;">
+                                <button
+                                    class="btn btn-md px-3 category-tab-btn flex-shrink-0 d-inline-flex align-items-center gap-2 active"
+                                    id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button"
+                                    role="tab" aria-controls="overview" aria-selected="true">
+                                    <i class="far fa-user-circle dashboard-tab-icon"></i>
+                                    <span>Profile & Contacts</span>
+                                </button>
+                                <button
+                                    class="btn btn-md px-3 category-tab-btn flex-shrink-0 d-inline-flex align-items-center gap-2"
+                                    id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button"
+                                    role="tab" aria-controls="orders" aria-selected="false">
+                                    <i class="far fa-clipboard dashboard-tab-icon"></i>
+                                    <span>Orders</span>
+                                    <span class="badge rounded-pill">{{ $orders->count() }}</span>
+                                </button>
+                                <button
+                                    class="btn btn-md px-3 category-tab-btn flex-shrink-0 d-inline-flex align-items-center gap-2"
+                                    id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices" type="button"
+                                    role="tab" aria-controls="invoices" aria-selected="false">
+                                    <i class="far fa-file-alt dashboard-tab-icon"></i>
+                                    <span>Invoices</span>
+                                    <span class="badge rounded-pill">{{ $invoices->count() }}</span>
+                                </button>
+                                <button
+                                    class="btn btn-md px-3 category-tab-btn flex-shrink-0 d-inline-flex align-items-center gap-2"
+                                    id="quotations-tab" data-bs-toggle="tab" data-bs-target="#quotations" type="button"
+                                    role="tab" aria-controls="quotations" aria-selected="false">
+                                    <i class="far fa-file dashboard-tab-icon"></i>
+                                    <span>Quotations</span>
+                                    <span class="badge rounded-pill">{{ $quotations->count() }}</span>
+                                </button>
+                                <button
+                                    class="btn btn-md px-3 category-tab-btn flex-shrink-0 d-inline-flex align-items-center gap-2"
+                                    id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button"
+                                    role="tab" aria-controls="payments" aria-selected="false">
+                                    <i class="far fa-credit-card dashboard-tab-icon"></i>
+                                    <span>Payments</span>
+                                    <span class="badge rounded-pill">{{ $payments->count() }}</span>
+                                </button>
+                                <button
+                                    class="btn btn-md px-3 category-tab-btn flex-shrink-0 d-inline-flex align-items-center gap-2"
+                                    id="ledger-tab" data-bs-toggle="tab" data-bs-target="#ledger" type="button"
+                                    role="tab" aria-controls="ledger" aria-selected="false">
+                                    <i class="far fa-list-alt dashboard-tab-icon"></i>
+                                    <span>Ledger</span>
+                                    <span class="badge rounded-pill">{{ $ledger->count() }}</span>
+                                </button>
+                                <button
+                                    class="btn btn-md px-3 category-tab-btn flex-shrink-0 d-inline-flex align-items-center gap-2"
+                                    id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button"
+                                    role="tab" aria-controls="documents" aria-selected="false">
+                                    <i class="far fa-folder dashboard-tab-icon"></i>
+                                    <span>Documents</span>
+                                    <span class="badge rounded-pill">{{ $documents->count() }}</span>
+                                </button>
+                                <button
+                                    class="btn btn-md px-3 category-tab-btn flex-shrink-0 d-inline-flex align-items-center gap-2"
+                                    id="comms-tab" data-bs-toggle="tab" data-bs-target="#comms" type="button" role="tab"
+                                    aria-controls="comms" aria-selected="false">
+                                    <i class="far fa-envelope dashboard-tab-icon"></i>
+                                    <span>Email History</span>
+                                    <span class="badge rounded-pill">{{ $communicationLogs->count() }}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Right Navigation Arrow -->
+                        <button type="button"
+                            class="btn btn-sm btn-outline-primary tab-nav-btn tab-nav-next d-none ms-2">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Tab Content Panel -->
+                    <div class="tab-content" id="dashboardTabsContent">
+                        {{-- 1. Profile & Contacts Tab --}}
+                        <div class="tab-pane fade show active" id="overview" role="tabpanel"
+                            aria-labelledby="overview-tab">
+                            <div class="row g-2">
+                                <div class="col-12 col-md-4 text-start">
+                                    <div class="card border-0 bg-white rounded-3 p-3 h-100">
+                                        <h5 class="fw-semibold text-dark border-bottom pb-1 fs-6 lh-sm mb-3">Business
+                                            Details</h5>
+                                        <div class="d-flex flex-column gap-2 text-start">
+                                            <div class="row">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Business
+                                                    Name
+                                                </div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto">{{
+                                                    $client->business_name ?:
+                                                    '-' }}</div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Primary
+                                                    Email</div>
+                                                <div
+                                                    class="col-8 fw-semibold text-dark fs-6 lh-sm text-truncate my-auto">
+                                                    {{
+                                                    $client->primary_email ?: '-' }}
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Secondary
+                                                    Email
+                                                </div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto">{{
+                                                    $client->email ?:
+                                                    '-' }}
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Phone Number
+                                                </div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto">{{
+                                                    $client->phone ?:
+                                                    '-' }}
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">WhatsApp
+                                                </div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto">{{
+                                                    $client->whatsapp_number ?:
+                                                    '-' }}</div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Currency
+                                                </div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto"><span
+                                                        class="badge bg-secondary-light text-secondary">{{
+                                                        $client->currency }}</span></div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Tax Number /
+                                                    GST
+                                                </div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto">{{
+                                                    $client->tax_number ?: 'N/A'
+                                                    }}</div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Address
+                                                </div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto">
+                                                    @if($client->address_line_1 || $client->city || $client->state ||
+                                                    $client->postal_code || $client->country)
+                                                    {{ $client->address_line_1 }}@if($client->address_line_2)<br>{{
+                                                    $client->address_line_2 }}@endif<br>
+                                                    {{ $client->city }}{{ $client->state ? ', ' . $client->state : '' }}
+                                                    {{ $client->postal_code }}<br>
                                                     {{ $client->country }}
-                                                @else
+                                                    @else
                                                     -
-                                                @endif
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-md-6 text-start">
-                                <div class="card border-0 bg-light rounded-3 p-3 h-100">
-                                    <h5 class="fw-bold text-dark mb-3"><i
-                                            class="fas fa-file-invoice text-muted-light me-1"></i> Billing Details</h5>
-                                    <div class="d-flex flex-column gap-2 text-start">
-                                        <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">Business Name</div>
-                                            <div class="col-8">{{ $client->billingDetail->business_name ?? '-' }}</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">GSTIN</div>
-                                            <div class="col-8"><span class="font-monospace text-primary fw-semibold">{{
-                                                    $client->billingDetail->gstin ?? '—' }}</span></div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">Billing Email</div>
-                                            <div class="col-8">{{ $client->billingDetail->billing_email ??
-                                                $client->billing_email ?? '-' }}</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">Billing Phone</div>
-                                            <div class="col-8">{{ $client->billingDetail->billing_phone ?? '-' }}</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-4 fw-semibold text-secondary">Address</div>
-                                            <div class="col-8">
-                                                @if($client->billingDetail?->address_line_1 || $client->billingDetail?->city || $client->billingDetail?->state || $client->billingDetail?->postal_code || $client->billingDetail?->country)
-                                                    {{ $client->billingDetail->address_line_1 ?? '-' }}@if($client->billingDetail->address_line_2)<br>{{ $client->billingDetail->address_line_2 }}@endif<br>
+                                <div class="col-12 col-md-4 text-start">
+                                    <div class="card border-0 bg-white rounded-3 p-3 h-100">
+                                        <h5 class="fw-semibold text-dark border-bottom pb-1 fs-6 lh-sm mb-3"> Billing
+                                            Details
+                                        </h5>
+                                        <div class="d-flex flex-column gap-2 text-start">
+                                            <div class="row">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Business
+                                                    Name</div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto">{{
+                                                    $client->billingDetail->business_name ?? '-' }}
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">GSTIN</div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto"><span
+                                                        class="text-dark fw-semibold">{{
+                                                        $client->billingDetail->gstin ?? '—' }}</span></div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Billing
+                                                    Email</div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto">{{
+                                                    $client->billingDetail->billing_email ??
+                                                    $client->billing_email ?? '-' }}</div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Billing
+                                                    Phone</div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto">{{
+                                                    $client->billingDetail->billing_phone ?? '-' }}
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Address
+                                                </div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto">
+                                                    @if($client->billingDetail?->address_line_1 ||
+                                                    $client->billingDetail?->city || $client->billingDetail?->state ||
+                                                    $client->billingDetail?->postal_code ||
+                                                    $client->billingDetail?->country)
+                                                    {{ $client->billingDetail->address_line_1 ?? '-'
+                                                    }}@if($client->billingDetail->address_line_2)<br>{{
+                                                    $client->billingDetail->address_line_2 }}@endif<br>
                                                     {{ $client->billingDetail->city ?? '' }}{{
-                                                    $client->billingDetail?->state ? ', ' . $client->billingDetail->state :
+                                                    $client->billingDetail?->state ? ', ' .
+                                                    $client->billingDetail->state :
                                                     '' }} {{ $client->billingDetail->postal_code ?? '' }}<br>
                                                     {{ $client->billingDetail->country ?? '' }}
-                                                @else
+                                                    @else
                                                     -
-                                                @endif
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {{-- Contact Persons Card --}}
-                            <div class="col-12 text-start">
-                                <div class="card border-0 bg-light rounded-3 p-3">
-                                    <h5 class="fw-bold text-dark mb-3"><i
-                                            class="fas fa-address-book text-muted-light me-1"></i> Contact Persons</h5>
-                                    @forelse($client->contacts->sortByDesc('is_primary') as $loop_index => $contact)
+                                {{-- Contact Persons Card --}}
+                                <div class="col-12 col-md-4 text-start">
+                                    <div class="card border-0 bg-white rounded-3 p-3 h-100">
+                                        <h5 class="fw-semibold text-dark border-bottom pb-1 fs-6 lh-sm mb-3"> Contact
+                                            Persons
+                                        </h5>
+                                        @forelse($client->contacts->sortByDesc('is_primary') as $loop_index => $contact)
                                         @if(!$loop->first)
-                                            <hr class="my-3">
+                                        <hr class="my-3">
                                         @endif
                                         <div class="d-flex flex-column gap-2 text-start">
                                             <div class="row">
-                                                <div class="col-4 fw-semibold text-secondary">Name</div>
-                                                <div class="col-8 fw-semibold text-dark d-flex align-items-center gap-2">
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Name</div>
+                                                <div
+                                                    class="col-8 fw-semibold text-dark fs-6 lh-sm d-flex align-items-center gap-2 my-auto">
                                                     {{ $contact->name }}
                                                     @if($contact->is_primary)
-                                                        <span class="badge bg-success" style="font-size: 0.65rem;">Primary</span>
+                                                    <span class="text-white bg-success px-2 py-1 rounded-pill lh-sm"
+                                                        style="font-size: 0.6rem;">Primary</span>
                                                     @endif
                                                 </div>
                                             </div>
                                             @if($contact->designation)
                                             <div class="row">
-                                                <div class="col-4 fw-semibold text-secondary">Designation</div>
-                                                <div class="col-8">{{ $contact->designation }}</div>
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Designation
+                                                </div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto">{{
+                                                    $contact->designation }}
+                                                </div>
                                             </div>
                                             @endif
                                             @if($contact->email)
                                             <div class="row">
-                                                <div class="col-4 fw-semibold text-secondary">Email</div>
-                                                <div class="col-8 text-truncate">{{ $contact->email }}</div>
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Email</div>
+                                                <div
+                                                    class="col-8 fw-semibold text-dark fs-6 lh-sm text-truncate my-auto">
+                                                    {{
+                                                    $contact->email }}</div>
                                             </div>
                                             @endif
                                             @if($contact->phone)
                                             <div class="row">
-                                                <div class="col-4 fw-semibold text-secondary">Phone</div>
-                                                <div class="col-8">{{ $contact->phone }}</div>
+                                                <div class="col-4 fw-normal text-muted small lh-sm my-auto">Phone</div>
+                                                <div class="col-8 fw-semibold text-dark fs-6 lh-sm my-auto">{{
+                                                    $contact->phone
+                                                    }}</div>
                                             </div>
                                             @endif
                                         </div>
-                                    @empty
+                                        @empty
                                         <p class="text-muted mb-0">No contacts found for this client.</p>
-                                    @endforelse
+                                        @endforelse
+                                    </div>
+                                </div>
+
+                                @if(!empty($client->notes))
+                                <div class="col-12 text-start mt-3">
+                                    <div class="card border-0 bg-light-soft rounded-3 p-3">
+                                        <h5 class="fw-bold text-dark mb-2"><i
+                                                class="fas fa-sticky-note text-muted-light me-1"></i> Notes & Special
+                                            Instructions</h5>
+                                        <p class="mb-0 text-secondary pre-wrap">{{ $client->notes }}</p>
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- 2. Orders Tab --}}
+                        <div class="tab-pane fade" id="orders" role="tabpanel" aria-labelledby="orders-tab">
+                            <div class="table-responsive p-2 border-0 bg-DarkLight rounded-3 text-start">
+                                <table class="table table-striped border mainTable align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="6%">Order</th>
+                                            <th width="40%">Item Details</th>
+                                            <th class="text-center" width="15%">Create Date</th>
+                                            <th class="text-center" width="15%">Expiry</th>
+                                            <th class="text-end" width="20%">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($orders as $order)
+                                        <tr>
+                                            <td class="fw-semibold text-dark">#{{ $order->order_number }}</td>
+                                            <td>
+                                                <div class="d-flex align-items-center flex-wrap gap-1">
+                                                    <span class="fw-bold text-dark">{{ $order->item_name ?? 'Item'
+                                                        }}</span>
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        @if($order->status === 'cancelled')
+                                                        <span
+                                                            class="status-pill rounded-pill border border-danger text-danger bg-light is-cancelled py-0 px-2 small"
+                                                            style="font-size: 11px;">Cancelled</span>
+                                                        @endif
+                                                    </div>
+                                                    @if(!empty($order->item_description))
+                                                    <button type="button"
+                                                        class="btn p-0 border-0 bg-transparent btn-desc-toggle d-inline-flex align-items-center"
+                                                        style="outline: none; box-shadow: none;">
+                                                        <i class="fas fa-arrow-up text-primary ms-2 desc-toggle-icon"
+                                                            style="transition: transform 0.2s ease; font-size: 0.8rem;"></i>
+                                                    </button>
+                                                    @endif
+                                                </div>
+                                                @if(!empty($order->item_description))
+                                                <div class="text-dark mt-1 d-none desc-container">{{
+                                                    $order->item_description }}</div>
+                                                @endif
+                                                <div class="d-flex flex-wrap text-black mt-2">
+                                                    <div
+                                                        class="border-end border-dark-subtle rounded-pill small lh-sm px-2 py-1 me-2 my-1">
+                                                        <small>Qty:</small>
+                                                        <span class="fw-semibold">{{
+                                                            rtrim(rtrim(number_format((float) ($order->quantity
+                                                            ?? 1), 2, '.',
+                                                            ''), '0'), '.') }}</span>
+                                                    </div>
+                                                    @if(!empty($order->no_of_users))
+                                                    <div
+                                                        class="border-end border-dark-subtle rounded-pill small lh-sm px-2 py-1 me-2 my-1">
+                                                        <small>Users:</small>
+                                                        <span class="fw-semibold">{{ $order->no_of_users }}</span>
+                                                    </div>
+                                                    @endif
+                                                    @if(!empty($order->delivery_date))
+                                                    <div
+                                                        class="border-end border-dark-subtle rounded-pill small lh-sm px-2 py-1 me-2 my-1">
+                                                        <small>Delivery Date:</small> <span class="fw-semibold">{{
+                                                            $order->delivery_date->format('d M Y')
+                                                            }}</span>
+                                                    </div>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td class="text-center">{{ !empty($order->start_date) ?
+                                                $order->start_date->format('d M Y') : '-' }}</td>
+                                            <td class="text-center">
+                                                @php
+                                                $orderEndDate = $order->end_date ? $order->end_date->format('Y-m-d') :
+                                                null;
+
+                                                $showDays = $orderEndDate
+                                                && !in_array($orderEndDate, ['9999-12-31', '2099-12-31']);
+
+                                                $daysLeft = null;
+
+                                                if ($showDays) {
+                                                $daysLeft = now()->startOfDay()->diffInDays(
+                                                $order->end_date->startOfDay(),
+                                                false
+                                                );
+                                                }
+                                                @endphp
+
+                                                @if(in_array($orderEndDate, ['9999-12-31', '2099-12-31']))
+                                                No Expiry
+                                                @else
+                                                {{ $order->end_date ? $order->end_date->format('d M Y') : '-' }}
+                                                @endif
+
+                                                @if($showDays)
+                                                <br>
+                                                @if($daysLeft >= 0)
+                                                <small class="text-success fw-semibold">
+                                                    {{ $daysLeft }} day(s)
+                                                </small>
+                                                @else
+                                                <small class="text-danger fw-semibold">
+                                                    - {{ abs($daysLeft) }} day(s)
+                                                </small>
+                                                @endif
+                                                @endif
+                                            </td>
+                                            <td class="text-end">
+                                                <div class="tableActionButton d-inline-flex gap-1">
+                                                    <a href="{{ route('orders.edit', $order->orderid) }}"
+                                                        class="bg03 color03">Edit</a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4 text-muted bg-white">No orders found
+                                                for this client.</td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {{-- 3. Invoices Tab --}}
+                        <div class="tab-pane fade" id="invoices" role="tabpanel" aria-labelledby="invoices-tab">
+                            <div class="table-responsive p-2 border-0 bg-DarkLight rounded-3 text-start">
+                                <table class="table table-striped border mainTable align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 10%;">Issue Date</th>
+                                            <th style="width: 10%;">Due Date</th>
+                                            <th style="width: 35%;">Invoice</th>
+                                            <th style="width: 12%;" class="text-end">Invoice Amount</th>
+                                            <th style="width: 13%;" class="text-end">Balance Due</th>
+                                            <th style="width: 20%;" class="text-end">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($invoices as $invoice)
+                                        @php
+                                        $documentId = $invoice->invoiceid;
+                                        $documentNumber = $invoice->ti_number ?: $invoice->pi_number ?:
+                                        $invoice->invoice_number;
+                                        $invoiceAmount = (float) ($invoice->grand_total ?? 0);
+                                        $amountPaid = (float) ($invoice->amount_paid ?? 0);
+                                        $balanceDue = (float) ($invoice->balance_due ?? max(0, $invoiceAmount -
+                                        $amountPaid));
+                                        $paymentStatus = strtolower(trim((string) ($invoice->payment_status ?? '')));
+                                        if (!in_array($paymentStatus, ['paid', 'partly_paid', 'unpaid'], true)) {
+                                        $paymentStatus = 'unpaid';
+                                        if ($amountPaid > 0 && $balanceDue <= 0 && $invoiceAmount> 0) {
+                                            $paymentStatus = 'paid';
+                                            } elseif ($amountPaid > 0) {
+                                            $paymentStatus = 'partly_paid';
+                                            }
+                                            }
+                                            @endphp
+                                            <tr>
+                                                <td>
+                                                    {{ $invoice->issue_date?->format('d M Y') ?? '-' }}
+                                                </td>
+                                                <td>
+                                                    {{ $invoice->due_date?->format('d M Y') ?? '-' }}
+                                                </td>
+                                                <td>
+                                                    <div class="invoice-row-title">
+                                                        <div class="invoice-row-text">
+                                                            <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                                                <strong class="text-dark">{{ $invoice->invoice_title ?:
+                                                                    $invoice->invoice_number }}</strong>
+                                                                @if ($paymentStatus === 'paid')
+                                                                <span
+                                                                    class="status-pill d-inline-block paid py-0.5 px-2 rounded-pill bg-success-subtle text-success fw-semibold"
+                                                                    style="font-size: 11px;line-height:18px;">Paid</span>
+                                                                @elseif($paymentStatus === 'partly_paid')
+                                                                <span
+                                                                    class="status-pill d-inline-block partial bg-primary-subtle text-primary fw-semibold rounded-pill py-0.5 px-2"
+                                                                    style="font-size: 11px;line-height:18px;">Partly
+                                                                    Paid</span>
+                                                                @else
+                                                                <span
+                                                                    class="status-pill d-inline-block overdue bg-danger-subtle text-danger fw-semibold rounded-pill py-0.5 px-2"
+                                                                    style="font-size: 11px;line-height:18px;">Unpaid</span>
+                                                                @endif
+                                                            </div>
+                                                            @if ($documentNumber)
+                                                            <div
+                                                                class="invoice-number-line mt-1 d-flex align-items-center gap-2">
+                                                                @if (!empty($invoice->ti_number))
+                                                                <span
+                                                                    class="status-pill d-inline-block paid py-0.5 px-2 rounded-pill bg-success-subtle text-success fw-semibold"
+                                                                    style="font-size: 11px;line-height:18px;">TI</span>
+                                                                @else
+                                                                <span
+                                                                    class="status-pill d-inline-block partial bg-primary-subtle text-primary fw-semibold rounded-pill py-0.5 px-2"
+                                                                    style="font-size: 11px;line-height:18px;">PI</span>
+                                                                @endif
+                                                                <span class="text-dark small">{{ $documentNumber
+                                                                    }}</span>
+                                                            </div>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-end text-dark">
+                                                    <span>{{ number_format($invoiceAmount, 0) }}</span>
+                                                    <span class="currency-code-small d-block text-muted">{{
+                                                        $client->currency }}</span>
+                                                </td>
+                                                <td class="text-end text-dark">
+                                                    <span class="text-danger fs-6 lh-sm fw-semibold">{{
+                                                        number_format($balanceDue, 0) }}</span>
+                                                    <span class="currency-code-small d-block text-muted">{{
+                                                        $client->currency }}</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="tableActionButton d-inline-flex gap-1">
+                                                        @if (($invoice->status ?? '') === 'cancelled')
+                                                        <form method="POST"
+                                                            action="{{ route('invoices.restore', array_filter(['invoice' => $documentId, 'c' => $client->clientid])) }}"
+                                                            class="d-inline"
+                                                            onsubmit="return confirm('Restore this invoice?')">
+                                                            @csrf
+                                                            @method('PATCH')
+                                                            <button type="submit" class="bg02 color02">Restore</button>
+                                                        </form>
+                                                        @elseif (strtolower($invoice->status ?? '') === 'draft')
+                                                        <a href="{{ route('invoices.edit', array_filter(['invoice' => $documentId, 'c' => $client->clientid])) }}"
+                                                            class="bg02 color02">Continue</a>
+                                                        <form method="POST"
+                                                            action="{{ route('invoices.destroy', array_filter(['invoice' => $documentId, 'c' => $client->clientid])) }}"
+                                                            class="d-inline"
+                                                            onsubmit="return confirm('Delete this draft?')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="bg04 color04">Delete</button>
+                                                        </form>
+                                                        @else
+                                                        <button type="button" class="bg01 color01 border-0 view-pdf-btn"
+                                                            data-pdf-url="{{ route('invoices.pdf', $invoice->invoiceid) }}">
+                                                            View
+                                                        </button>
+                                                        <a href="{{ route('invoices.email-compose', $invoice->invoiceid) }}"
+                                                            class="bg03 color03">Send</a>
+                                                        <a href="{{ route('invoices.edit', array_filter(['invoice' => $documentId, 'c' => $client->clientid])) }}"
+                                                            class="bg03 color03">Edit</a>
+                                                        <form method="POST"
+                                                            action="{{ route('invoices.destroy', array_filter(['invoice' => $documentId, 'c' => $client->clientid])) }}"
+                                                            class="d-inline"
+                                                            onsubmit="return confirm('Cancel this invoice?')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="bg04 color04">Cancel</button>
+                                                        </form>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            @empty
+                                            <tr>
+                                                <td colspan="6" class="text-center py-4 text-muted bg-white">No invoices
+                                                    found for this client.</td>
+                                            </tr>
+                                            @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {{-- 4. Quotations Tab --}}
+                        <div class="tab-pane fade" id="quotations" role="tabpanel" aria-labelledby="quotations-tab">
+                            <div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-0">
+                                <div class="table-responsive text-start">
+                                    <table class="table table-striped mainTable align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th width="10%">Issue Date</th>
+                                                <th width="25%">Client</th>
+                                                <th width="25%">Quotation Details</th>
+                                                <th class="text-center" width="10%">Due Date</th>
+                                                <th class="text-end" width="15%">Amount</th>
+                                                <th class="text-end" width="15%">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @forelse($quotations as $quotation)
+                                            <tr>
+                                                <td>{{ $quotation->issue_date?->format('d M Y') ?? '—' }}</td>
+                                                <td>
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <div class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold">
+                                                            <span class="d-block position-absolute">{{ strtoupper(substr($client->business_name ?? $client->contact_name, 0, 2)) }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="d-block fw-semibold">{{ $client->business_name ?? $client->contact_name }}</span>
+                                                            @if($client->primary_email ?? $client->email)
+                                                            <span class="d-block text-dark small lh-sm">{{ $client->primary_email ?? $client->email }}</span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="fw-semibold text-dark">
+                                                        {{ $quotation->quo_title ?: '—' }}
+                                                    </div>
+                                                    <small class="text-dark d-block">#{{ $quotation->quotation_number }}</small>
+                                                </td>
+                                                <td class="text-center">{{ $quotation->due_date?->format('d M Y') ?? '—' }}</td>
+                                                <td class="text-end">
+                                                    <span class="fw-semibold text-dark">
+                                                        {{ number_format($quotation->grand_total, 2) }}
+                                                        <span class="currency-code-small text-muted d-block">{{ $client->currency }}</span>
+                                                    </span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="tableActionButton d-inline-flex gap-1 align-items-center">
+                                                        <button type="button" class="bg01 color01 border-0 view-pdf-btn"
+                                                            data-pdf-url="{{ route('quotations.pdf', $quotation->quotationid) }}">
+                                                            View
+                                                        </button>
+                                                        <a href="{{ route('quotations.edit', $quotation->quotationid) }}"
+                                                            class="bg03 color03">Edit</a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            @empty
+                                            <tr>
+                                                <td colspan="6" class="text-center py-4 text-muted bg-white">No quotations found for this client.</td>
+                                            </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
+                        </div>
 
-                            @if(!empty($client->notes))
-                            <div class="col-12 text-start mt-3">
-                                <div class="card border-0 bg-light-soft rounded-3 p-3">
-                                    <h5 class="fw-bold text-dark mb-2"><i
-                                            class="fas fa-sticky-note text-muted-light me-1"></i> Notes & Special
-                                        Instructions</h5>
-                                    <p class="mb-0 text-secondary pre-wrap">{{ $client->notes }}</p>
-                                </div>
+                        {{-- 5. Payments Tab --}}
+                        <div class="tab-pane fade" id="payments" role="tabpanel" aria-labelledby="payments-tab">
+                            <div class="table-responsive p-2 border-0 bg-DarkLight rounded-3 text-start">
+                                <table class="table table-striped border mainTable align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 30%;">Payment Details</th>
+                                            <th style="width: 30%;">Invoice Details</th>
+                                            <th style="width: 20%;" class="text-end">Settlement</th>
+                                            <th style="width: 20%;" class="text-end">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($payments as $payment)
+                                        <tr>
+                                            <td>
+                                                <strong class="fw-semibold text-dark">#{{ $payment->paymentid }}</strong>
+                                                <div class="text-dark small lh-sm mt-1">
+                                                    {{ $payment->payment_date?->format('d M Y') ?? $payment->created_at?->format('d M Y') }}
+                                                </div>
+                                                <div class="text-dark small lh-sm mt-1">
+                                                    <span class="badge bg-light text-primary border text-uppercase fw-bold">{{ $payment->mode ?: 'Payment' }}</span>
+                                                    @if (!empty($payment->receipt_number))
+                                                    <span class="mx-1">|</span>
+                                                    <span class="badge text-bg-primary">{{ $payment->receipt_number }}</span>
+                                                    @endif
+                                                </div>
+                                                @if (!empty($payment->reference_number))
+                                                <div class="text-dark small lh-sm mt-1">Ref: {{ $payment->reference_number }}</div>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @php
+                                                $linkedInvoice = $payment->invoice;
+                                                $invoiceDisplay = null;
+                                                if ($linkedInvoice) {
+                                                $invoiceDisplay = $linkedInvoice->ti_number ?: $linkedInvoice->pi_number
+                                                ?: $linkedInvoice->invoice_number;
+                                                if ($linkedInvoice->invoice_title) {
+                                                $invoiceDisplay = $linkedInvoice->invoice_title . ' (' . $invoiceDisplay
+                                                . ')';
+                                                }
+                                                }
+                                                @endphp
+                                                @if ($invoiceDisplay)
+                                                <span class="d-block fw-semibold text-dark">{{ $invoiceDisplay }}</span>
+                                                @else
+                                                <span class="d-block fw-normal text-muted small">—</span>
+                                                @endif
+                                                @if (!empty($payment->description) && trim((string)
+                                                $payment->description) !== trim((string) $payment->paymentid))
+                                                <span class="d-block text-dark small mt-1">{{ $payment->description
+                                                    }}</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-end">
+                                                <div class="d-flex flex-column align-items-end">
+                                                    <strong class="text-dark fw-bold">
+                                                        {{ $client->currency }} {{ number_format((float)
+                                                        ($payment->received_amount ?? 0) + (float) ($payment->tds_amount
+                                                        ?? 0), 0) }}
+                                                    </strong>
+                                                    @if ((float) ($payment->received_amount ?? 0) > 0)
+                                                    <div class="text-muted small">
+                                                        Received {{ number_format((float) ($payment->received_amount ??
+                                                        0), 0) }}
+                                                    </div>
+                                                    @endif
+                                                    @if ((float) ($payment->tds_amount ?? 0) > 0)
+                                                    <div class="text-danger small">
+                                                        TDS {{ number_format((float) ($payment->tds_amount ?? 0), 0) }}
+                                                    </div>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td class="text-end">
+                                                <div class="tableActionButton d-inline-flex gap-1">
+                                                    <button type="button" class="bg01 color01 border-0 view-pdf-btn"
+                                                        data-pdf-url="{{ route('payments.show', $payment->paymentid) }}">
+                                                        View
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="4" class="text-center py-4 text-muted bg-white">No payments
+                                                found for this client.</td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
                             </div>
-                            @endif
                         </div>
-                    </div>
 
-                    {{-- 2. Orders Tab --}}
-                    <div class="tab-pane fade" id="orders" role="tabpanel" aria-labelledby="orders-tab">
-                        <div class="table-responsive text-start">
-                            <table class="table table-striped mainTable align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Order #</th>
-                                        <th>Item Details</th>
-                                        <th>Qty</th>
-                                        <th>Duration</th>
-                                        <th>Status</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($orders as $order)
-                                    <tr>
-                                        <td><strong>{{ $order->order_number }}</strong></td>
-                                        <td>
-                                            <div class="fw-semibold text-dark">{{ $order->item_name }}</div>
-                                            @if($order->item_description)
-                                            <small class="text-muted">{{ Str::limit($order->item_description, 60)
-                                                }}</small>
-                                            @endif
-                                        </td>
-                                        <td>{{ $order->quantity }}</td>
-                                        <td>
-                                            <div class="small">
-                                                <i class="far fa-calendar-alt text-muted-light"></i>
-                                                {{ $order->start_date?->format('d M Y') ?? 'N/A' }} to {{
-                                                $order->end_date?->format('d M Y') ?? 'N/A' }}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="status-pill {{ strtolower($order->status ?? 'active') }}">{{
-                                                ucfirst($order->status ?? 'Active') }}</span>
-                                        </td>
-                                        <td>
-                                            <div class="tableActionButton d-inline-flex gap-1">
-                                                <a href="{{ route('orders.edit', $order->orderid) }}"
-                                                    class="bg03 color03">Edit</a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center py-4 text-muted">No orders found for this
-                                            client.</td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
+                        {{-- 6. Ledger Tab --}}
+                        <div class="tab-pane fade" id="ledger" role="tabpanel" aria-labelledby="ledger-tab">
+                            <div class="table-responsive text-start">
+                                <table class="table table-striped mainTable align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="15%">Date</th>
+                                            <th width="15%" class="text-center">Reference ID</th>
+                                            <th width="15%" class="text-center">Type</th>
+                                            <th width="15%" class="text-center">Mode</th>
+                                            <th width="20%">Description</th>
+                                            <th width="20%" class="text-end">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @php
+                                        $runningBalance = 0;
+                                        @endphp
+                                        @forelse($ledger as $ledgerItem)
+                                        <tr>
+                                            <td>{{ $ledgerItem->date?->format('d M Y') ??
+                                                $ledgerItem->created_at?->format('d M Y') }}</td>
+                                            <td class="text-center">
+                                                <span class="font-monospace fw-semibold">{{
+                                                    $ledgerItem->invoiceid_paymentid
+                                                    ?: '—' }}</span>
+                                            </td>
+                                            <td class="text-center">
+                                                @if($ledgerItem->type === 'debit' || $ledgerItem->type === 'invoice')
+                                                <span
+                                                    class="badge bg-danger-light text-danger text-uppercase client-ledger-badge">Debit</span>
+                                                @else
+                                                <span
+                                                    class="badge bg-success-light text-success text-uppercase client-ledger-badge">Credit</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-center"><span class="text-capitalize small">{{ $ledgerItem->mode ?: '—'
+                                                    }}</span>
+                                            </td>
+                                            <td class="small">{{ $ledgerItem->description ?: '—' }}</td>
+                                            <td
+                                                class="text-end fw-bold {{ ($ledgerItem->type === 'debit' || $ledgerItem->type === 'invoice') ? 'text-danger' : 'text-success' }}">
+                                                {{ ($ledgerItem->type === 'debit' || $ledgerItem->type === 'invoice') ?
+                                                '-'
+                                                : '+' }} {{ number_format($ledgerItem->amount, 2) }}
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4 text-muted">No ledger transactions
+                                                found
+                                                for this client.</td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
 
-                    {{-- 3. Invoices Tab --}}
-                    <div class="tab-pane fade" id="invoices" role="tabpanel" aria-labelledby="invoices-tab">
-                        <div class="table-responsive text-start">
-                            <table class="table table-striped mainTable align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Invoice #</th>
-                                        <th>Issue Date</th>
-                                        <th>Due Date</th>
-                                        <th>Grand Total</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($invoices as $invoice)
-                                    <tr>
-                                        <td><strong>{{ $invoice->invoice_number }}</strong></td>
-                                        <td>{{ $invoice->issue_date?->format('d M Y') ??
-                                            $invoice->created_at?->format('d M Y') }}</td>
-                                        <td>{{ $invoice->due_date?->format('d M Y') ?? '-' }}</td>
-                                        <td><strong>{{ $client->currency }} {{ number_format($invoice->grand_total, 2)
-                                                }}</strong></td>
-                                        <td>
-                                            <span class="status-pill {{ strtolower($invoice->status ?? 'draft') }}">{{
-                                                ucfirst($invoice->status ?? 'Draft') }}</span>
-                                        </td>
-                                        <td>
-                                            <div class="tableActionButton d-inline-flex gap-1">
-                                                <button type="button" class="bg01 color01 border-0 view-pdf-btn"
-                                                    data-pdf-url="{{ route('invoices.pdf', $invoice->invoiceid) }}">
-                                                    View
-                                                </button>
-                                                <a href="{{ route('invoices.edit', $invoice->invoiceid) }}"
-                                                    class="bg03 color03">Edit</a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center py-4 text-muted">No invoices found for this
-                                            client.</td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
+                        {{-- 7. Documents Tab --}}
+                        <div class="tab-pane fade" id="documents" role="tabpanel" aria-labelledby="documents-tab">
+                            <div class="table-responsive p-2 border-0 bg-DarkLight rounded-3 text-start">
+                                <table class="table table-striped border mainTable align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="15%">Type</th>
+                                            <th width="25%">Title</th>
+                                            <th width="15%">Document Number</th>
+                                            <th width="15%">Document Date</th>
+                                            <th class="text-end" width="30%">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($documents as $document)
+                                        <tr>
+                                            <td>
+                                                @if($document->type === 'po')
+                                                <span class="border border-primary rounded-pill small lh-sm px-2 py-1 bg-primary text-white">PO</span>
+                                                @else
+                                                <span class="border rounded-pill small lh-sm px-2 py-1 text-white" style="background-color: #346739; border-color: #346739;">Agreement</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <span class="d-block fw-semibold text-dark">{{ $document->title ?: '—' }}</span>
+                                            </td>
+                                            <td>{{ $document->document_number ?: '—' }}</td>
+                                            <td>{{ $document->document_date?->format('d M Y') ?? '—' }}</td>
+                                            <td class="text-end">
+                                                <div class="tableActionButton d-inline-flex gap-1">
+                                                    @if($document->file_path)
+                                                    <a href="{{ route('clients.documents.file', ['client' => $client->clientid, 'document' => $document->client_docid]) }}"
+                                                        target="_blank" class="bg01 color01 text-decoration-none">View</a>
+                                                    @else
+                                                    —
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4 text-muted bg-white">No agreements or PO documents uploaded.</td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
 
-                    {{-- 4. Quotations Tab --}}
-                    <div class="tab-pane fade" id="quotations" role="tabpanel" aria-labelledby="quotations-tab">
-                        <div class="table-responsive text-start">
-                            <table class="table table-striped mainTable align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Quotation #</th>
-                                        <th>Title</th>
-                                        <th>Issue Date</th>
-                                        <th>Due Date</th>
-                                        <th>Grand Total</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($quotations as $quotation)
-                                    <tr>
-                                        <td><strong>{{ $quotation->quotation_number }}</strong></td>
-                                        <td>{{ $quotation->quo_title ?: '—' }}</td>
-                                        <td>{{ $quotation->issue_date?->format('d M Y') ?? '—' }}</td>
-                                        <td>{{ $quotation->due_date?->format('d M Y') ?? '—' }}</td>
-                                        <td><strong>{{ $client->currency }} {{ number_format($quotation->grand_total, 2)
-                                                }}</strong></td>
-                                        <td>
-                                            <span class="status-pill {{ strtolower($quotation->status ?? 'draft') }}">{{
-                                                ucfirst($quotation->status ?? 'Draft') }}</span>
-                                        </td>
-                                        <td>
-                                            <div class="tableActionButton d-inline-flex gap-1">
-                                                <button type="button" class="bg01 color01 border-0 view-pdf-btn"
-                                                    data-pdf-url="{{ route('quotations.pdf', $quotation->quotationid) }}">
-                                                    View
-                                                </button>
-                                                <a href="{{ route('quotations.edit', $quotation->quotationid) }}"
-                                                    class="bg03 color03">Edit</a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="7" class="text-center py-4 text-muted">No quotations found for this
-                                            client.</td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {{-- 5. Payments Tab --}}
-                    <div class="tab-pane fade" id="payments" role="tabpanel" aria-labelledby="payments-tab">
-                        <div class="table-responsive text-start">
-                            <table class="table table-striped mainTable align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Payment ID</th>
-                                        <th>Date</th>
-                                        <th>Amount</th>
-                                        <th>TDS Amount</th>
-                                        <th>Mode</th>
-                                        <th>Reference #</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($payments as $payment)
-                                    <tr>
-                                        <td><strong>{{ $payment->paymentid }}</strong></td>
-                                        <td>{{ $payment->payment_date?->format('d M Y') ??
-                                            $payment->created_at?->format('d M Y') }}</td>
-                                        <td><strong class="text-success">{{ $client->currency }} {{
-                                                number_format($payment->received_amount, 2) }}</strong></td>
-                                        <td>{{ $payment->tds_amount ? $client->currency . ' ' .
-                                            number_format($payment->tds_amount, 2) : '—' }}</td>
-                                        <td><span class="badge bg-light text-dark text-capitalize border">{{
-                                                $payment->mode ?: '—' }}</span></td>
-                                        <td><span class="font-monospace text-muted">{{ $payment->reference_number ?: '—'
-                                                }}</span></td>
-                                        <td>
-                                            <div class="tableActionButton d-inline-flex gap-1">
-                                                <button type="button" class="bg01 color01 border-0 view-pdf-btn"
-                                                    data-pdf-url="{{ route('payments.show', $payment->paymentid) }}">
-                                                    View
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="7" class="text-center py-4 text-muted">No payments found for this
-                                            client.</td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {{-- 6. Ledger Tab --}}
-                    <div class="tab-pane fade" id="ledger" role="tabpanel" aria-labelledby="ledger-tab">
-                        <div class="table-responsive text-start">
-                            <table class="table table-striped mainTable align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Reference ID</th>
-                                        <th>Type</th>
-                                        <th>Mode</th>
-                                        <th>Description</th>
-                                        <th class="text-end">Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @php
-                                    $runningBalance = 0;
-                                    @endphp
-                                    @forelse($ledger as $ledgerItem)
-                                    <tr>
-                                        <td>{{ $ledgerItem->date?->format('d M Y') ??
-                                            $ledgerItem->created_at?->format('d M Y') }}</td>
-                                        <td>
-                                            <span class="font-monospace fw-semibold">{{ $ledgerItem->invoiceid_paymentid
-                                                ?: '—' }}</span>
-                                        </td>
-                                        <td>
-                                            @if($ledgerItem->type === 'debit' || $ledgerItem->type === 'invoice')
-                                            <span
-                                                class="badge bg-danger-light text-danger text-uppercase client-ledger-badge">Debit</span>
-                                            @else
-                                            <span
-                                                class="badge bg-success-light text-success text-uppercase client-ledger-badge">Credit</span>
-                                            @endif
-                                        </td>
-                                        <td><span class="text-capitalize small">{{ $ledgerItem->mode ?: '—' }}</span>
-                                        </td>
-                                        <td class="small">{{ $ledgerItem->description ?: '—' }}</td>
-                                        <td
-                                            class="text-end fw-bold {{ ($ledgerItem->type === 'debit' || $ledgerItem->type === 'invoice') ? 'text-danger' : 'text-success' }}">
-                                            {{ ($ledgerItem->type === 'debit' || $ledgerItem->type === 'invoice') ? '-'
-                                            : '+' }} {{ number_format($ledgerItem->amount, 2) }}
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center py-4 text-muted">No ledger transactions found
-                                            for this client.</td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {{-- 7. Documents Tab --}}
-                    <div class="tab-pane fade" id="documents" role="tabpanel" aria-labelledby="documents-tab">
-                        <div class="table-responsive text-start">
-                            <table class="table table-striped mainTable align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Type</th>
-                                        <th>Title</th>
-                                        <th>Document Number</th>
-                                        <th>Document Date</th>
-                                        <th>Status</th>
-                                        <th>File Link</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($documents as $document)
-                                    <tr>
-                                        <td><span class="badge bg-light text-dark fw-bold text-uppercase border">{{
-                                                $document->type }}</span></td>
-                                        <td>{{ $document->title ?: '—' }}</td>
-                                        <td><span class="font-monospace">{{ $document->document_number ?: '—' }}</span>
-                                        </td>
-                                        <td>{{ $document->document_date?->format('d M Y') ?? '—' }}</td>
-                                        <td>
-                                            <span class="status-pill {{ strtolower($document->status ?? 'active') }}">{{
-                                                ucfirst($document->status ?? 'Active') }}</span>
-                                        </td>
-                                        <td>
-                                            @if($document->file_path)
-                                            <div class="tableActionButton d-inline-flex gap-1">
-                                                <a href="{{ route('clients.documents.file', ['client' => $client->clientid, 'document' => $document->client_docid]) }}"
-                                                    target="_blank" class="bg01 color01">
-                                                    <i class="fas fa-file-download me-1"></i> View File
-                                                </a>
-                                            </div>
-                                            @else
-                                            —
-                                            @endif
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center py-4 text-muted">No agreements or PO
-                                            documents uploaded.</td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {{-- 8. Communication Log Tab --}}
-                    <div class="tab-pane fade" id="comms" role="tabpanel" aria-labelledby="comms-tab">
-                        <div class="table-responsive text-start">
-                            <table class="table table-striped mainTable align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Sent Date</th>
-                                        <th>Channel</th>
-                                        <th>Subject</th>
-                                        <th>Recipient</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($communicationLogs as $log)
-                                    <tr>
-                                        <td>{{ $log->created_at?->format('d M Y H:i') }}</td>
-                                        <td>
-                                            <span class="badge text-capitalize text-dark bg-light border">
-                                                <i
-                                                    class="fas {{ $log->channel === 'email' ? 'fa-envelope text-primary' : 'fa-mobile-alt text-success' }} me-1"></i>
-                                                {{ $log->channel ?: 'Email' }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="fw-semibold text-dark d-block">{{ $log->subject }}</span>
-                                            @if($log->body)
-                                            <small class="text-muted d-block text-truncate-2 client-log-preview">{{
-                                                strip_tags($log->body) }}</small>
-                                            @endif
-                                        </td>
-                                        <td class="small">{{ $log->to_email ?: $log->phone_number ?: '—' }}</td>
-                                        <td>
-                                            <span
-                                                class="badge {{ $log->status === 'sent' || $log->status === 'success' ? 'bg-success-light text-success' : 'bg-warning-light text-warning' }} text-uppercase client-log-status-badge">
-                                                {{ $log->status ?: 'Sent' }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center py-4 text-muted">No emails or alerts logged
-                                            for this client.</td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
+                        {{-- 8. Communication Log Tab --}}
+                        <div class="tab-pane fade" id="comms" role="tabpanel" aria-labelledby="comms-tab">
+                            <div class="table-responsive text-start">
+                                <table class="table table-striped mainTable align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="15%">Date & Time</th>
+                                            <th width="10%" class="text-center">Channel</th>
+                                            <th width="40%">Subject</th>
+                                            <th width="20%">Recipient</th>
+                                            <th width="15%" class="text-center">Status</th>
+                                        </tr> 
+                                    </thead>
+                                    <tbody>
+                                        @forelse($communicationLogs as $log)
+                                        <tr>
+                                            <td>
+                                                <span class="d-block text-dark">{{ $log->created_at?->format('d M Y') }}</span>
+                                                <span class="d-block text-dark mt-1">{{ $log->created_at?->format('H:i') }}</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge text-capitalize text-dark bg-light border rounded-pill">
+                                                    <i
+                                                        class="fas {{ $log->channel === 'email' ? 'fa-envelope text-primary' : 'fa-mobile-alt text-success' }} me-1"></i>
+                                                    {{ $log->channel ?: 'Email' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="fw-semibold text-dark d-block">{{ $log->subject }}</span>
+                                                @if($log->body)
+                                                <p class="text-dark d-block text-truncate-2 client-log-preview mt-1 mb-0">{{
+                                                    strip_tags($log->body) }}</p>
+                                                @endif
+                                            </td>
+                                            <td class="small">{{ $log->to_email ?: $log->phone_number ?: '—' }}</td>
+                                            <td class="text-center">
+                                                <span
+                                                    class="badge {{ $log->status === 'sent' || $log->status === 'success' ? 'bg-success-light text-success border border-success rounded-pill' : ($log->status === 'failed' ? 'bg-danger-light text-danger border border-danger rounded-pill' : 'bg-secondary-light text-secondary border border-secondary rounded-pill') }} text-uppercase client-log-status-badge">
+                                                    {{ $log->status ?: 'Sent' }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4 text-muted">No emails or alerts
+                                                logged
+                                                for this client.</td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+        <div class="col-12 col-md-2">
+            <div class="card overflow-hidden border-0 bg-DarkLight p-2 p-xxl-3 rounded-3 h-100">
+                <div class="card-body bg-transparent rounded-3 p-2">
+                    {{-- Financial Metrics --}}
+                    <div class="row g-3">
+
+                        {{-- Outstanding --}}
+                        <div class="col-12 col-lg-12">
+                            <div class="card border-0 bg-DarkLight rounded-3 h-100">
+                                <div class="card-body bg-white rounded-3 p-3 d-flex align-items-center">
+
+                                    <div class="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center me-3"
+                                        style="width:50px;height:50px;">
+                                        <i class="far fa-bell fs-4 lh-sm"></i>
+                                    </div>
+
+                                    <div>
+                                        <div class="text-dark small lh-sm text-uppercase fw-normal mb-1">
+                                            Outstanding
+                                        </div>
+                                        <h5 class="mb-0 fw-bold text-danger">
+                                            {{ number_format($outstanding, 0) }}
+                                            <span class="text-muted small fw-normal fs-6 lh-sm">{{ $client->currency
+                                                ?? 'INR'
+                                                }}</span>
+                                        </h5>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Total Invoiced --}}
+                        <div class="col-12 col-lg-12">
+                            <div class="card border-0 bg-DarkLight rounded-3 h-100">
+                                <div class="card-body bg-white rounded-3 p-3 d-flex align-items-center">
+
+                                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                                        style="width:50px;height:50px;">
+                                        <i class="far fa-file-alt fs-4 lh-sm"></i>
+                                    </div>
+
+                                    <div>
+                                        <div class="text-dark small lh-sm text-uppercase fw-normal mb-1">
+                                            Total Invoiced
+                                        </div>
+                                        <h5 class="mb-0 fw-bold text-primary">
+                                            {{ number_format($invoicedTotal, 0) }}
+                                            <span class="text-muted small fw-normal fs-6 lh-sm">{{ $client->currency
+                                                ?? 'INR'
+                                                }}</span>
+                                        </h5>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Total Paid --}}
+                        <div class="col-12 col-lg-12">
+                            <div class="card border-0 bg-DarkLight rounded-3 h-100">
+                                <div class="card-body bg-white rounded-3 p-3 d-flex align-items-center">
+
+                                    <div class="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center me-3"
+                                        style="width:50px;height:50px;">
+                                        <i class="far fa-check-circle fs-4 lh-sm"></i>
+                                    </div>
+
+                                    <div>
+                                        <div class="text-dark small lh-sm text-uppercase fw-normal mb-1">
+                                            Total Paid
+                                        </div>
+                                        <h5 class="mb-0 fw-bold text-success">
+                                            {{ number_format($paidTotal, 0) }}
+                                            <span class="text-muted small fw-normal fs-6 lh-sm">{{ $client->currency
+                                                ??
+                                                'INR'
+                                                }}</span>
+                                        </h5>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Active Orders --}}
+                        <div class="col-12 col-lg-12">
+                            <div class="card border-0 bg-DarkLight rounded-3 h-100">
+                                <div class="card-body bg-white rounded-3 p-3 d-flex align-items-center">
+
+                                    <div class="bg-info bg-opacity-10 text-info rounded-circle d-flex align-items-center justify-content-center me-3"
+                                        style="width:50px;height:50px;">
+                                        <i class="far fa-clock fs-4 lh-sm"></i>
+                                    </div>
+
+                                    <div>
+                                        <div class="text-dark small lh-sm text-uppercase fw-normal  mb-1">
+                                            Active Orders
+                                        </div>
+                                        <h5 class="mb-0 fw-bold text-info">
+                                            {{ $activeOrdersCount }}
+                                        </h5>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -874,13 +1245,13 @@
 </div>
 
 <div class="modal fade" id="pdfViewerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-white border-bottom py-2">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-DarkLight py-2 border-0">
                 <h5 class="modal-title fw-semibold">PDF Preview</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0" style="height: 85vh;">
+            <div class="modal-body bg-white p-2" style="height: 80vh;">
                 <iframe id="pdfViewerFrame" src="" style="width: 100%; height: 100%; border: 0;"></iframe>
             </div>
         </div>
@@ -908,7 +1279,91 @@
             button.addEventListener('shown.bs.tab', function (event) {
                 const target = event.target.getAttribute('data-bs-target');
                 window.location.hash = target;
+
+                // Scroll active tab into view smoothly
+                event.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
             });
+        });
+
+        // Tabs scroll/slider logic (same as All Item List page)
+        const tabsContainer = document.querySelector('.tabs-scroll-container');
+        const prevBtn = document.querySelector('.tab-nav-prev');
+        const nextBtn = document.querySelector('.tab-nav-next');
+
+        if (tabsContainer && prevBtn && nextBtn) {
+            const updateArrows = () => {
+                const scrollLeft = Math.ceil(tabsContainer.scrollLeft);
+                const scrollWidth = tabsContainer.scrollWidth;
+                const clientWidth = tabsContainer.clientWidth;
+
+                if (scrollWidth > clientWidth) {
+                    prevBtn.classList.remove('d-none');
+                    nextBtn.classList.remove('d-none');
+                    prevBtn.classList.add('d-inline-flex');
+                    nextBtn.classList.add('d-inline-flex');
+
+                    if (scrollLeft <= 5) {
+                        prevBtn.classList.add('opacity-50');
+                        prevBtn.setAttribute('disabled', 'true');
+                    } else {
+                        prevBtn.classList.remove('opacity-50');
+                        prevBtn.removeAttribute('disabled');
+                    }
+
+                    if (scrollLeft + clientWidth >= scrollWidth - 5) {
+                        nextBtn.classList.add('opacity-50');
+                        nextBtn.setAttribute('disabled', 'true');
+                    } else {
+                        nextBtn.classList.remove('opacity-50');
+                        nextBtn.removeAttribute('disabled');
+                    }
+                } else {
+                    prevBtn.classList.add('d-none');
+                    nextBtn.classList.add('d-none');
+                    prevBtn.classList.remove('d-inline-flex');
+                    nextBtn.classList.remove('d-inline-flex');
+                }
+            };
+
+            prevBtn.addEventListener('click', () => {
+                tabsContainer.scrollBy({ left: -200, behavior: 'smooth' });
+            });
+
+            nextBtn.addEventListener('click', () => {
+                tabsContainer.scrollBy({ left: 200, behavior: 'smooth' });
+            });
+
+            tabsContainer.addEventListener('scroll', updateArrows);
+            window.addEventListener('resize', updateArrows);
+
+            updateArrows();
+            setTimeout(updateArrows, 150);
+
+            // Initially scroll active tab into view
+            const activeTab = document.querySelector('#dashboardTabs button.active');
+            if (activeTab) {
+                setTimeout(() => {
+                    activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                }, 200);
+            }
+        }
+        // Item description toggle logic
+        document.addEventListener('click', function (e) {
+            const toggleBtn = e.target.closest('.btn-desc-toggle');
+            if (!toggleBtn) return;
+
+            e.preventDefault();
+            const parent = toggleBtn.closest('td') || toggleBtn.closest('.col');
+            if (parent) {
+                const descContainer = parent.querySelector('.desc-container');
+                const toggleIcon = toggleBtn.querySelector('.desc-toggle-icon');
+                if (descContainer) {
+                    descContainer.classList.toggle('d-none');
+                }
+                if (toggleIcon) {
+                    toggleIcon.classList.toggle('rotated');
+                }
+            }
         });
 
         const pdfModal = new bootstrap.Modal(document.getElementById('pdfViewerModal'));

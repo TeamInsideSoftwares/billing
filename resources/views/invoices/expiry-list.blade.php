@@ -96,38 +96,44 @@ default => collect(),
         </form>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 px-1">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2 px-1">
         <div class="btn-group" role="group" aria-label="Expiry Tabs">
-            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'upcoming' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
-                href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'upcoming', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}"
-                {!! $currentTab==='upcoming' ? '' : 'style="opacity: 0.7;"' !!}>
+            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 {{ $currentTab === 'upcoming' ? 'rounded-top text-primary bg-primary-subtle border-primary border-bottom border-2 fw-bold' : 'rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
+                href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'upcoming', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}">
                 Upcoming <span
                     class="badge rounded-pill {{ $currentTab === 'upcoming' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{
                     $upcomingItems->count() }}</span>
             </a>
-            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'expired' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
-                href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'expired', 'from' => $fromDate ?? '', 'to' => $toDate ?? ''])) }}"
-                {!! $currentTab==='expired' ? '' : 'style="opacity: 0.7;"' !!}>
+            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 {{ $currentTab === 'expired' ? 'rounded-top text-primary bg-primary-subtle border-primary border-bottom border-2 fw-bold' : 'rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
+                href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'expired', 'from' => $fromDate ?? '', 'to' => $toDate ?? ''])) }}">
                 Expired <span
                     class="badge rounded-pill {{ $currentTab === 'expired' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{
                     $expiredItems->count() }}</span>
             </a>
-            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'suspended' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
-                href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'suspended', 'from' => $fromDate ?? '', 'to' => $toDate ?? ''])) }}"
-                {!! $currentTab==='suspended' ? '' : 'style="opacity: 0.7;"' !!}>
+            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 {{ $currentTab === 'suspended' ? 'rounded-top text-primary bg-primary-subtle border-primary border-bottom border-2 fw-bold' : 'rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
+                href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'suspended', 'from' => $fromDate ?? '', 'to' => $toDate ?? ''])) }}">
                 Suspended <span
                     class="badge rounded-pill {{ $currentTab === 'suspended' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{
                     $suspendedItems->count() }}</span>
             </a>
             @if(!empty($hasTrialClients))
-            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 rounded-0 {{ $currentTab === 'trial' ? 'text-primary bg-transparent border-primary border-bottom border-2 fw-bold' : 'text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
-                href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'trial', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}"
-                {!! $currentTab==='trial' ? '' : 'style="opacity: 0.7;"' !!}>
+            <a class="btn btn-md px-3 border-top-0 border-start-0 border-end-0 {{ $currentTab === 'trial' ? 'rounded-top text-primary bg-primary-subtle border-primary border-bottom border-2 fw-bold' : 'rounded-0 text-primary bg-transparent border-bottom border-2 border-transparent' }} d-inline-flex align-items-center gap-2 fw-medium"
+                href="{{ route('invoices.expiry-list', array_filter(['c' => $selectedClientId, 'tab' => 'trial', 'from' => $fromDate ?? '', 'to' => $toDate ?? '', 'next_days' => $nextDays ?? 60])) }}">
                 Prospect Clients <span
                     class="badge rounded-pill {{ $currentTab === 'trial' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary' }}">{{
                     ($trialItems ?? collect())->count() }}</span>
             </a>
             @endif
+        </div>
+        <div class="btn-group align-self-end" role="group" aria-label="View Toggle">
+            <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
+                style="font-size:0.875rem;" id="btn-grid-view">
+                <i class="fas fa-th-large toggle-icon"></i> Grid
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 h-auto"
+                style="font-size:0.875rem;" id="btn-list-view">
+                <i class="fas fa-list toggle-icon"></i> List
+            </button>
         </div>
     </div>
 
@@ -153,8 +159,8 @@ default => collect(),
                 <input type="number" name="next_days" id="upcoming_next_days_inline"
                     class="form-control form-control-sm" style="width: 200px;" value="{{ $nextDays ?? 60 }}" min="1"
                     step="1">
-                <button type="submit" class="btn btn-sm btn-outline-primary bg-primary text-white fw-medium">Apply
-                    Now <i class="fas fa-arrow-right btn-icon ms-1"></i></button>
+                <button type="submit" class="btn btn-sm btn-outline-primary bg-primary text-white fw-medium">View <i
+                        class="fas fa-arrow-right btn-icon ms-1"></i></button>
             </form>
             @elseif($currentTab === 'expired')
             <div class="meta-info">
@@ -179,7 +185,7 @@ default => collect(),
             </div>
         </div>
         @else
-        <div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-3">
+        <div id="expiry-list-view" class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-3">
             <div class="table-responsive">
                 <table class="table table-striped mainTable align-middle mb-0">
                     <thead class="table-light">
@@ -284,6 +290,149 @@ default => collect(),
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <!-- Expiry Grid View (5 blocks in one row on desktop) -->
+        <div id="expiry-grid-view"
+            class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 p-1 pb-3 mt-2 bg-DarkLight rounded-3 d-none mb-3">
+            @foreach ($tabRows as $row)
+            <div class="col">
+                <div class="card h-100 border-0 overflow-hidden">
+                    <div class="card-body p-3 d-flex flex-column justify-content-between">
+                        <div>
+                            <!-- Header / Dates -->
+                            <div class="d-flex justify-content-end align-items-center mb-3">
+                                <div class="text-dark small lh-sm" style="font-size: 13px;">
+                                    Expiry: <span class="text-dark fw-semibold">{{ $row['end_date_display'] }}</span>
+                                </div>
+                                <div>
+                                    @if(strtolower((string)($row['status'] ?? '')) === 'suspended')
+                                    <span class="status-pill d-inline-block overdue bg-danger-subtle text-danger fw-semibold rounded-pill py-0.5 px-2" style="font-size: 11px; line-height: 18px;">Suspended</span>
+                                    @elseif(strtolower((string)($row['status'] ?? '')) === 'cancelled')
+                                    <span class="status-pill d-inline-block overdue bg-secondary-subtle text-secondary fw-semibold rounded-pill py-0.5 px-2" style="font-size: 11px; line-height: 18px;">Cancelled</span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <!-- Client Info -->
+                            <div class="d-flex align-items-center gap-2 mb-3 pb-3 border-bottom">
+                                <div class="tablePrifix position-relative align-self-center bg-primary-subtle text-primary rounded-circle fw-semibold flex-shrink-0">
+                                    <span class="d-block position-absolute">{{ strtoupper(substr($row['client_name'], 0, 2)) }}</span>
+                                </div>
+                                <div class="flex-grow-1 min-w-0 ps-2">
+                                    <h6 class="fw-semibold text-dark mb-1 text-truncate lh-sm" title="{{ $row['client_name'] }}">
+                                        {{ $row['client_name'] }}
+                                    </h6>
+                                    <span class="d-block text-dark small lh-sm text-truncate" title="{{ $row['item_name'] }}">
+                                        {{ $row['item_name'] }}
+                                    </span>
+                                </div> 
+                            </div>
+
+                            <!-- Additional Details -->
+                            <div class="bg-light rounded-3 px-3 py-2 mt-auto grid-text-medium mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1 text-dark small lh-sm">
+                                    <span class="text-muted">Days Left</span>
+                                    <div>
+                                        @if ($row['days_left'] === null)
+                                        <span class="text-muted fw-semibold">-</span>
+                                        @elseif($row['days_left'] > 0)
+                                        <span class="text-success fw-semibold">{{ $row['days_left'] }} day(s)</span>
+                                        @elseif($row['days_left'] === 0)
+                                        <span class="text-warning fw-semibold">Today</span>
+                                        @else
+                                        <span class="text-danger fw-semibold">-{{ abs($row['days_left']) }} day(s)</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                @if(!empty($row['invoice_number']))
+                                <div class="d-flex justify-content-between align-items-center mb-1 text-dark small lh-sm">
+                                    <span class="text-muted">Invoice Ref</span>
+                                    <span class="text-truncate text-end fw-semibold" style="max-width: 120px;" title="{{ $row['invoice_number'] }}">{{ $row['invoice_number'] }}</span>
+                                </div>
+                                @endif
+                                @if(!empty($row['order_number']))
+                                <div class="d-flex justify-content-between align-items-center mb-1 text-dark small lh-sm">
+                                    <span class="text-muted">Order Ref</span>
+                                    <span class="text-truncate text-end fw-semibold" style="max-width: 120px;" title="#{{ $row['order_number'] }}">#{{ $row['order_number'] }}</span>
+                                </div>
+                                @endif
+                                @if(!empty($row['frequency']))
+                                <div class="d-flex justify-content-between align-items-center mb-1 text-dark small lh-sm">
+                                    <span class="text-muted">Cycle</span>
+                                    <span class="text-end fw-semibold">{{ $row['duration'] }} {{ $row['frequency'] }}</span>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="tableActionButton d-flex flex-wrap gap-1 mt-0">
+                            @if(strtolower((string) ($row['status'] ?? '')) !== 'cancelled')
+                            <form method="POST"
+                                action="{{ route('invoices.orders.send-reminder', ['order' => $row['orderid']]) }}"
+                                class="d-inline flex-grow-1"
+                                onsubmit="return confirm('Send manual reminder for this order?')">
+                                @csrf
+                                <input type="hidden" name="c" value="{{ $selectedClientId }}">
+                                <input type="hidden" name="tab" value="{{ $currentTab }}">
+                                <input type="hidden" name="from" value="{{ $fromDate ?? '' }}">
+                                <input type="hidden" name="to" value="{{ $toDate ?? '' }}">
+                                <input type="hidden" name="next_days" value="{{ $nextDays ?? '' }}">
+                                <button type="submit" class="bg03 color03 w-100 text-center border-0 py-1.5">Reminder</button>
+                            </form>
+                            @endif
+
+                            <button type="button" class="bg02 color02 border-0 flex-grow-1 text-center py-1.5 js-renew-order-btn"
+                                data-order-id="{{ $row['orderid'] }}"
+                                data-order-number="{{ $row['order_number'] }}"
+                                data-client-name="{{ $row['client_name'] }}"
+                                data-invoice-number="{{ $row['invoice_number'] }}"
+                                data-item-name="{{ $row['item_name'] }}"
+                                data-item-description="{{ $row['item_description'] }}"
+                                data-start-date="{{ $row['start_date_display'] }}"
+                                data-end-date-display="{{ $row['end_date_display'] }}"
+                                data-days-left="{{ $row['days_left'] }}"
+                                data-status="{{ ucfirst($row['status']) }}"
+                                data-end-date="{{ $row['end_date'] ? $row['end_date']->format('Y-m-d') : '' }}"
+                                data-client-id="{{ $row['clientid'] }}"
+                                data-frequency="{{ $row['frequency'] ?? '' }}"
+                                data-duration="{{ $row['duration'] ?? 1 }}">
+                                Renew
+                            </button>
+
+                            @if ($currentTab === 'expired' && $row['status'] !== 'suspended')
+                            <form method="POST"
+                                action="{{ route('invoices.orders.suspend', ['order' => $row['orderid']]) }}"
+                                class="d-inline flex-grow-1" onsubmit="return confirm('Suspend this order?')">
+                                @csrf
+                                @method('PATCH')
+                                <input type="hidden" name="c" value="{{ $selectedClientId }}">
+                                <input type="hidden" name="tab" value="{{ $currentTab }}">
+                                <input type="hidden" name="from" value="{{ $fromDate ?? '' }}">
+                                <input type="hidden" name="to" value="{{ $toDate ?? '' }}">
+                                <input type="hidden" name="next_days" value="{{ $nextDays ?? '' }}">
+                                <button type="submit" class="bg04 color04 w-100 text-center border-0 py-1.5" style="font-size: 11px;">Suspend</button>
+                            </form>
+                            @elseif($row['status'] === 'suspended')
+                            <form method="POST"
+                                action="{{ route('invoices.orders.unsuspend', ['order' => $row['orderid']]) }}"
+                                class="d-inline flex-grow-1" onsubmit="return confirm('Unsuspend this order?')">
+                                @csrf
+                                @method('PATCH')
+                                <input type="hidden" name="c" value="{{ $selectedClientId }}">
+                                <input type="hidden" name="tab" value="{{ $currentTab }}">
+                                <input type="hidden" name="from" value="{{ $fromDate ?? '' }}">
+                                <input type="hidden" name="to" value="{{ $toDate ?? '' }}">
+                                <input type="hidden" name="next_days" value="{{ $nextDays ?? '' }}">
+                                <button type="submit" class="bg02 color02 w-100 text-center border-0 py-1.5" style="font-size: 11px;">Unsuspend</button>
+                            </form>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endforeach
         </div>
         @endif
     </section>
@@ -526,6 +675,52 @@ default => collect(),
     }
     if (durationInput) {
         durationInput.addEventListener('input', refreshEndDate);
+    }
+
+    // View Toggle Logic
+    const btnList = document.getElementById('btn-list-view');
+    const btnGrid = document.getElementById('btn-grid-view');
+    const listView = document.getElementById('expiry-list-view');
+    const gridView = document.getElementById('expiry-grid-view');
+
+    function setView(viewType) {
+        if (viewType === 'grid') {
+            if (listView) listView.classList.add('d-none');
+            if (gridView) gridView.classList.remove('d-none');
+            if (btnList) {
+                btnList.classList.remove('active', 'btn-primary');
+                btnList.classList.add('btn-outline-primary');
+            }
+            if (btnGrid) {
+                btnGrid.classList.add('active', 'btn-primary');
+                btnGrid.classList.remove('btn-outline-primary');
+            }
+            localStorage.setItem('expiry_view_preference', 'grid');
+        } else {
+            if (listView) listView.classList.remove('d-none');
+            if (gridView) gridView.classList.add('d-none');
+            if (btnList) {
+                btnList.classList.add('active', 'btn-primary');
+                btnList.classList.remove('btn-outline-primary');
+            }
+            if (btnGrid) {
+                btnGrid.classList.remove('active', 'btn-primary');
+                btnGrid.classList.add('btn-outline-primary');
+            }
+            localStorage.setItem('expiry_view_preference', 'list');
+        }
+    }
+
+    if (btnList && btnGrid) {
+        btnList.addEventListener('click', () => setView('list'));
+        btnGrid.addEventListener('click', () => setView('grid'));
+
+        const savedPref = localStorage.getItem('expiry_view_preference');
+        if (savedPref === 'grid') {
+            setView('grid');
+        } else {
+            setView('list');
+        }
     }
         });
 </script>

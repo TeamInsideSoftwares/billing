@@ -16,7 +16,7 @@ $subtitle = null;
     @else
     <a href="{{ route('orders.create', array_filter(['c' => $clientId])) }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-        <i class="fas fa-plus btn-icon"></i> Create Orders
+        Create Orders <i class="fas fa-arrow-right btn-icon ms-1"></i>
     </a>
     @endif
 </div>
@@ -470,7 +470,7 @@ $subtitle = null;
                                 class="d-inline flex-grow-1" onsubmit="return confirm('Cancel this order?')">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="bg04 color04 text-center w-100">Cancel</button>
+                                <button type="submit" class="bg04 color04 text-center">Cancel</button>
                             </form>
                             @else
                             <form method="POST" action="{{ route('orders.restore', ['order' => $order['record_id']]) }}"
@@ -480,11 +480,13 @@ $subtitle = null;
                                 <button type="submit" class="bg02 color02 text-center w-100">Restore</button>
                             </form>
                             @endif
-                            <form method="POST" action="{{ route('orders.force-delete', ['order' => $order['record_id']]) }}"
-                                class="d-inline flex-grow-1" onsubmit="return confirm('Permanently delete this order?')">
+                            <form method="POST"
+                                action="{{ route('orders.force-delete', ['order' => $order['record_id']]) }}"
+                                class="d-inline flex-grow-1"
+                                onsubmit="return confirm('Permanently delete this order?')">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="bg04 color04 text-center w-100">Delete</button>
+                                <button type="submit" class="bg04 color04 text-center">Delete</button>
                             </form>
                         </div>
                     </div>

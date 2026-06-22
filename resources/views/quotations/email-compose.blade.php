@@ -9,7 +9,7 @@ $isWhatsappSent = (string) ($whatsappDraft->status ?? '') === 'sent';
 $isSmsSent = (string) ($smsDraft->status ?? '') === 'sent';
 
 $title = 'Compose Quotation Communications';
-$subtitle = "Client: {$clientName} • Quotation: {$displayDocNumber}";
+$subtitle = "{$clientName} | {$displayDocNumber}";
 
 $hasEmailTemplate = !empty($templateCatalog['email'] ?? []);
 $hasWhatsappTemplate = !empty($templateCatalog['whatsapp'] ?? []);
@@ -19,10 +19,6 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
 @extends('layouts.app')
 
 @section('header_actions')
-<a href="{{ route('quotations.create', ['step' => 3, 'c' => $quotation->clientid, 'd' => $quotation->quotationid], false) }}"
-    class="btn btn-outline-secondary d-inline-flex align-items-center gap-1 fw-medium me-1">
-    <i class="fas fa-arrow-left"></i> Edit Quotation
-</a>
 <a href="{{ route('quotations.index', [], false) }}"
     class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
     <i class="fas fa-list btn-icon"></i> Quotation List
@@ -35,24 +31,30 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
     <!-- Channels Row -->
     <div class="row g-2 align-items-stretch">
         <!-- Email Column -->
-        <div class="col-12 col-lg-4">
-            <div class="bg-light p-2 rounded-3 h-100 {{ !$hasEmailTemplate ? 'opacity-50' : '' }}">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <h5 class="fw-semibold text-primary small lh-sm mb-0">
-                        <i class="fas fa-envelope me-1"></i> Email
+        <div class="col-12 col-lg-6">
+            <div class="bg-DarkLight p-2 rounded-3 h-100 {{ !$hasEmailTemplate ? 'opacity-50' : '' }}">
+                <div class="bg-light p-2 border-bottom rounded-3 d-flex align-items-center justify-content-between mb-2">
+                    <h5 class="fw-bold text-primary small lh-sm mb-0">
+                        <i class="fas fa-envelope fs-6 lh-sm me-1"></i> Email <span class="text-dark">({{ $fromEmail }})</span>
                         @if(!$hasEmailTemplate)
                         <span class="text-danger ms-1" style="font-size: 0.75rem;">(No Template)</span>
                         @endif
                     </h5>
                     <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="border-0 p-0 bg-transparent fw-semibold text-dark small lh-sm preview-channel-btn"
+                            data-channel="email" {{ !$hasEmailTemplate ? 'disabled' : '' }}>Raw Message
+                        </button>
                         @if($isEmailSent)
                         <span class="badge bg-success small"><i class="fas fa-check-circle me-1"></i> Sent</span>
                         @endif
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input channel-select-checkbox" type="checkbox" id="send_email"
-                                data-channel="email" {{ $hasEmailTemplate ? 'checked' : 'disabled' }}>
-                            <label class="form-check-label small fw-semibold text-muted"
-                                for="send_email">Include</label>
+                        <div class="bg-white px-2 py-1 rounded-pill border" style="cursor:pointer;">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input channel-select-checkbox" style="cursor:pointer;"
+                                    type="checkbox" id="send_email" data-channel="email" {{ $hasEmailTemplate
+                                    ? 'checked' : 'disabled' }}>
+                                <label class="form-check-label small fw-semibold text-dark" for="send_email"
+                                    style="cursor:pointer;">Send Email</label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -60,25 +62,20 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
                     <form id="emailForm" class="mainForm" data-channel="email" enctype="multipart/form-data">
                         <input type="hidden" name="logid" value="{{ $emailDraft->logid ?? '' }}">
                         <input type="hidden" name="channel" value="email">
+                        <input type="hidden" name="from_email" value="{{ $fromEmail }}">
                         <input type="hidden" name="selected_templateid"
                             value="{{ $templateCatalog['email'][0]['templateid'] ?? '' }}">
                         <input type="hidden" name="existing_custom_attachment_paths" id="existingCustomAttachmentPaths"
                             value="{{ implode(',', $emailCustomAttachmentUrls ?? []) }}">
 
                         <div class="row g-2">
-                            <div class="col-4">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">From</label>
-                                <input type="email" name="from_email" value="{{ $fromEmail }}" class="form-control"
-                                    readonly {{ !$hasEmailTemplate ? 'disabled' : '' }}>
-                            </div>
-
-                            <div class="col-4">
+                            <div class="col-6">
                                 <label class="form-label small lh-sm fw-semibold text-dark mb-1">To</label>
                                 <input type="text" name="to_email" value="{{ old('to_email', $emailTo) }}"
                                     class="form-control" {{ !$hasEmailTemplate ? 'disabled' : '' }}>
                             </div>
 
-                            <div class="col-4">
+                            <div class="col-6">
                                 <label class="form-label small lh-sm fw-semibold text-dark mb-1">CC</label>
                                 <input type="text" name="cc_email" value="{{ old('cc_email', $emailCc) }}"
                                     class="form-control" {{ !$hasEmailTemplate ? 'disabled' : '' }}>
@@ -109,10 +106,6 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
 
                         <div class="d-flex align-items-center justify-content-between mt-2">
                             <span class="auto-save-status small text-muted" data-channel="email" style="min-height:1.4em;"></span>
-                            <button type="button" class="btn btn-outline-secondary preview-channel-btn ms-2"
-                                data-channel="email" {{ !$hasEmailTemplate ? 'disabled' : '' }}>
-                                <i class="fas fa-eye me-1"></i> Preview
-                            </button>
                         </div>
                     </form>
                 </div>
@@ -120,25 +113,30 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
         </div>
 
         <!-- WhatsApp Column -->
-        <div class="col-12 col-lg-4">
-            <div class="bg-light p-2 rounded-3 h-100 {{ !$hasWhatsappTemplate ? 'opacity-50' : '' }}">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <h5 class="fw-semibold text-primary small lh-sm mb-0">
-                        <i class="fab fa-whatsapp me-1"></i> WhatsApp
+        <div class="col-12 col-lg-3">
+            <div class="bg-DarkLight p-2 rounded-3 h-100 {{ !$hasWhatsappTemplate ? 'opacity-50' : '' }}">
+                <div class="bg-light p-2 border-bottom rounded-3 d-flex align-items-center justify-content-between mb-2">
+                    <h5 class="fw-bold small lh-sm mb-0" style="color:#128C7E;">
+                        <i class="fab fa-whatsapp fs-6 lh-sm me-1"></i> WhatsApp
                         @if(!$hasWhatsappTemplate)
                         <span class="text-danger ms-1" style="font-size: 0.75rem;">(No Template)</span>
                         @endif
                     </h5>
                     <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="border-0 p-0 bg-transparent fw-semibold text-dark small lh-sm preview-channel-btn"
+                            data-channel="whatsapp" {{ !$hasWhatsappTemplate ? 'disabled' : '' }}>Raw Message
+                        </button>
                         @if($isWhatsappSent)
                         <span class="badge bg-success small"><i class="fas fa-check-circle me-1"></i> Sent</span>
                         @endif
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input channel-select-checkbox" type="checkbox" id="send_whatsapp"
-                                data-channel="whatsapp" {{ ($whatsappDraft && $hasWhatsappTemplate) ? 'checked' : '' }}
-                                {{ !$hasWhatsappTemplate ? 'disabled' : '' }}>
-                            <label class="form-check-label small fw-semibold text-muted"
-                                for="send_whatsapp">Include</label>
+                        <div class="bg-white px-2 py-1 rounded-pill border" style="cursor:pointer;">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input channel-select-checkbox" style="cursor:pointer;"
+                                    type="checkbox" id="send_whatsapp" data-channel="whatsapp" {{ ($whatsappDraft &&
+                                    $hasWhatsappTemplate) ? 'checked' : '' }} {{ !$hasWhatsappTemplate ? 'disabled' : '' }}>
+                                <label class="form-check-label small fw-semibold text-dark" style="cursor:pointer;"
+                                    for="send_whatsapp">Send Whatsapp</label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -166,10 +164,6 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
 
                         <div class="d-flex align-items-center justify-content-between mt-2">
                             <span class="auto-save-status small text-muted" data-channel="whatsapp" style="min-height:1.4em;"></span>
-                            <button type="button" class="btn btn-outline-secondary preview-channel-btn ms-2"
-                                data-channel="whatsapp" {{ !$hasWhatsappTemplate ? 'disabled' : '' }}>
-                                <i class="fas fa-eye me-1"></i> Preview
-                            </button>
                         </div>
                     </form>
                 </div>
@@ -177,24 +171,30 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
         </div>
 
         <!-- SMS Column -->
-        <div class="col-12 col-lg-4">
-            <div class="bg-light p-2 rounded-3 h-100 {{ !$hasSmsTemplate ? 'opacity-50' : '' }}">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <h5 class="fw-semibold text-primary small lh-sm mb-0">
-                        <i class="fas fa-sms me-1"></i> SMS
+        <div class="col-12 col-lg-3">
+            <div class="bg-DarkLight p-2 rounded-3 h-100 {{ !$hasSmsTemplate ? 'opacity-50' : '' }}">
+                <div class="bg-light border-bottom p-2 rounded-3 d-flex align-items-center justify-content-between mb-2">
+                    <h5 class="fw-bold small lh-sm mb-0" style="color:#1179c5;">
+                        <i class="fas fa-sms fs-6 lh-sm me-1"></i> SMS
                         @if(!$hasSmsTemplate)
                         <span class="text-danger ms-1" style="font-size: 0.75rem;">(No Template)</span>
                         @endif
                     </h5>
                     <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="border-0 p-0 bg-transparent fw-semibold text-dark small lh-sm preview-channel-btn"
+                            data-channel="sms" {{ !$hasSmsTemplate ? 'disabled' : '' }}>Raw Message
+                        </button>
                         @if($isSmsSent)
                         <span class="badge bg-success small"><i class="fas fa-check-circle me-1"></i> Sent</span>
                         @endif
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input channel-select-checkbox" type="checkbox" id="send_sms"
-                                data-channel="sms" {{ ($smsDraft && $hasSmsTemplate) ? 'checked' : '' }} {{
-                                !$hasSmsTemplate ? 'disabled' : '' }}>
-                            <label class="form-check-label small fw-semibold text-muted" for="send_sms">Include</label>
+                        <div class="bg-white px-2 py-1 rounded-pill border" style="cursor:pointer;">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input channel-select-checkbox" style="cursor:pointer;"
+                                    type="checkbox" id="send_sms" data-channel="sms" {{ ($smsDraft && $hasSmsTemplate)
+                                    ? 'checked' : '' }} {{ !$hasSmsTemplate ? 'disabled' : '' }}>
+                                <label class="form-check-label small fw-semibold text-dark" style="cursor:pointer;"
+                                    for="send_sms">Send SMS</label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -221,10 +221,6 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
 
                         <div class="d-flex align-items-center justify-content-between mt-2">
                             <span class="auto-save-status small text-muted" data-channel="sms" style="min-height:1.4em;"></span>
-                            <button type="button" class="btn btn-outline-secondary preview-channel-btn ms-2"
-                                data-channel="sms" {{ !$hasSmsTemplate ? 'disabled' : '' }}>
-                                <i class="fas fa-eye me-1"></i> Preview
-                            </button>
                         </div>
                     </form>
                 </div>
@@ -232,11 +228,9 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
         </div>
     </div>
 
-    <!-- Bottom Actions Card -->
-    <div class="bg-light p-3 rounded-3 mt-4 d-flex align-items-center justify-content-end">
-        <button type="button" id="globalSendBtn"
-            class="btn btn-outline-primary btn-primary text-white fw-medium px-4 d-inline-flex align-items-center gap-2">
-            <i class="fas fa-paper-plane"></i> Send to Client
+    <div class="d-flex justify-content-end mt-2">
+        <button type="button" id="globalSendBtn" class="btn btn-primary text-white fw-medium">
+            Send to Client <i class="fas fa-arrow-right btn-icon ms-1"></i>
         </button>
     </div>
 </section>
@@ -244,29 +238,27 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
 <!-- Raw Message Preview Modal -->
 <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-primary text-white py-2">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-DarkLight py-2 border-0">
                 <h5 class="modal-title fw-semibold" id="previewModalLabel">Raw Message Preview</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                    aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body bg-light p-3">
-                <div id="modalPreviewSubjectArea" class="mb-3" style="display: none;">
-                    <div class="small fw-semibold text-muted mb-1">Subject</div>
-                    <div id="modalPreviewSubject" class="p-2 bg-white rounded border fw-semibold text-dark"></div>
+            <div class="modal-body bg-white p-2">
+                <div class="bg-DarkLight p-2 rounded-3">
+                    <div id="modalPreviewSubjectArea" class="mb-3" style="display: none;">
+                        <div class="form-label small lh-sm fw-semibold text-dark mb-1">Subject</div>
+                        <div id="modalPreviewSubject" class="p-2 bg-white rounded border fw-semibold text-dark"></div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-label small lh-sm fw-semibold text-dark mb-1">Message Content</div>
+                        <pre id="modalPreviewBody" class="p-3 bg-white rounded border mb-0 text-dark"
+                            style="white-space: pre-wrap; word-break: break-word; min-height: 120px; font-family: inherit; font-size: 0.92rem;"></pre>
+                    </div>
+                    <div id="modalPreviewAttachmentsArea" class="mb-0" style="display: none;">
+                        <div class="form-label small lh-sm fw-semibold text-dark mb-1">Attachments</div>
+                        <div id="modalPreviewAttachments" class="small text-break"></div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <div class="small fw-semibold text-muted mb-1">Message Content</div>
-                    <pre id="modalPreviewBody" class="p-3 bg-white rounded border mb-0 text-dark"
-                        style="white-space: pre-wrap; word-break: break-word; min-height: 120px; font-family: inherit; font-size: 0.92rem;"></pre>
-                </div>
-                <div id="modalPreviewAttachmentsArea" class="mb-0" style="display: none;">
-                    <div class="small fw-semibold text-muted mb-1">Attachments</div>
-                    <div id="modalPreviewAttachments" class="small text-break"></div>
-                </div>
-            </div>
-            <div class="modal-footer bg-white py-2 border-top-0">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

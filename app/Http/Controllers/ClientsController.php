@@ -744,7 +744,7 @@ class ClientsController extends Controller
 
         return view('clients.dashboard', [
             'title' => $client ? ($client->business_name ?? $client->contact_name).' - Dashboard' : 'Client Dashboard',
-            'subtitle' => $client ? 'Profile Landing Page' : 'Choose a client to view their profile dashboard',
+            'subtitle' => null,
             'clients' => $clients,
             'client' => $client,
             'outstanding' => $outstanding ?? 0,

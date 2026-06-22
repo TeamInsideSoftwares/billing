@@ -3,12 +3,12 @@
 @section('header_actions')
 <a href="{{ route('payments.index', !empty($selectedClientId) ? ['c' => $selectedClientId] : []) }}"
     class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-    <i class="fas fa-arrow-left btn-icon"></i> Back to Payments
+    <i class="fas fa-list btn-icon"></i> Payment List
 </a>
 @endsection
 
 @section('content')
-<div class="position-relative bg-white p-3 rounded-3">
+<div class="position-relative bg-white p-2 rounded-3">
     @php
     $isEditingPayment = isset($payment);
     $defaultClientId = $isEditingPayment
@@ -138,16 +138,27 @@
                                         <select id="clientid" name="clientid" class="form-select" required>
                                             <option value="">Select Client</option>
                                             @foreach ($clients ?? [] as $client)
-                                            <option value="{{ $client->clientid }}" {{ (string)$defaultClientId === (string)$client->clientid ? 'selected' : '' }}>
+                                            <option value="{{ $client->clientid }}" {{
+                                                (string)$defaultClientId===(string)$client->clientid ? 'selected' : ''
+                                                }}>
                                                 {{ $client->business_name ?? $client->contact_name }}
                                             </option>
                                             @endforeach
                                         </select>
                                         @else
                                         <input type="hidden" name="clientid" value="{{ $defaultClientId }}">
-                                        <div class="fw-semibold text-dark">{{ $selectedClientName }}</div>
+                                        <select class="form-select" disabled>
+                                            <option value="">Select Client</option>
+                                            @foreach ($clients ?? [] as $client)
+                                            <option value="{{ $client->clientid }}" {{
+                                                (string)$defaultClientId===(string)$client->clientid ? 'selected' : ''
+                                                }}>
+                                                {{ $client->business_name ?? $client->contact_name }}
+                                            </option>
+                                            @endforeach
+                                        </select>
                                         @if ($selectedClientEmail)
-                                        <div class="small text-muted">{{ $selectedClientEmail }}</div>
+                                        <div class="small lh-sm text-white mt-2 ms-1">{{ $selectedClientEmail }}</div>
                                         @endif
                                         @endif
                                     </div>
@@ -155,20 +166,22 @@
                             </div>
 
                             {{-- Payment Details card --}}
-                            <div class="bg-light p-2 rounded-3">
+                            <div class="bg-light p-2 rounded-3 mt-2">
                                 <div class="d-flex align-items-center justify-content-between mb-2">
                                     <h5 class="fw-semibold text-primary small lh-sm mb-0">Payment Details</h5>
                                     @if ($displayReceiptNumber !== '')
-                                    <span class="badge text-bg-secondary">{{ $displayReceiptNumber }}</span>
+                                    <span class="badge text-bg-primary">{{ $displayReceiptNumber }}</span>
                                     @endif
                                 </div>
 
                                 <div class="row g-2">
                                     <div class="col-12">
                                         <label for="payment_flow"
-                                            class="form-label small lh-sm fw-semibold text-dark mb-1">Payment Type *</label>
+                                            class="form-label small lh-sm fw-semibold text-dark mb-1">Payment Type<span
+                                                class="text-danger">*</span></label>
                                         <select id="payment_flow" name="payment_flow" class="form-select">
-                                            <option value="standard" {{ $defaultPaymentFlow==='standard' ? 'selected' : '' }}>
+                                            <option value="standard" {{ $defaultPaymentFlow==='standard' ? 'selected'
+                                                : '' }}>
                                                 Invoice Payment</option>
                                             <option value="tds" {{ $defaultPaymentFlow==='tds' ? 'selected' : '' }}>TDS
                                                 Deduction</option>
@@ -176,8 +189,9 @@
                                     </div>
                                     <div id="received-amount-wrap" class="col-12">
                                         <label for="received_amount"
-                                            class="form-label small lh-sm fw-semibold text-dark mb-1">Amount * (<span
-                                                id="currencyLabel">{{ $defaultCurrency }}</span>)</label>
+                                            class="form-label small lh-sm fw-semibold text-dark mb-1">Amount<span
+                                                class="text-danger">* </span>(<span id="currencyLabel">{{
+                                                $defaultCurrency }}</span>)</label>
                                         @php
                                         $receivedAmountDisplay = old(
                                         'received_amount',
@@ -187,8 +201,8 @@
                                         $receivedAmountDisplay = (float) $receivedAmountDisplay;
                                         if (
                                         abs($receivedAmountDisplay - round($receivedAmountDisplay)) < 0.000001 ) {
-                                            $receivedAmountDisplay=(string) (int) round($receivedAmountDisplay); } } @endphp
-                                            <input type="text" id="received_amount" name="received_amount"
+                                            $receivedAmountDisplay=(string) (int) round($receivedAmountDisplay); } }
+                                            @endphp <input type="text" id="received_amount" name="received_amount"
                                             value="{{ $receivedAmountDisplay }}" class="form-control" required>
                                             @error('received_amount')
                                             <div class="text-danger small mt-1">{{ $message }}</div>
@@ -203,8 +217,8 @@
                                                 style="max-width: 90px;">
                                                 <option value="percent" {{ $defaultTdsInputType==='percent' ? 'selected'
                                                     : '' }}>%</option>
-                                                <option value="amount" {{ $defaultTdsInputType==='amount' ? 'selected' : ''
-                                                    }}>Amount</option>
+                                                <option value="amount" {{ $defaultTdsInputType==='amount' ? 'selected'
+                                                    : '' }}>Amount</option>
                                             </select>
                                             <input type="text" id="tds_amount" class="form-control"
                                                 value="{{ $defaultTdsDisplayValue }}">
@@ -227,7 +241,7 @@
                             </div>
 
                             <div id="invoice-list-wrap" class="payments-invoice-list-wrap">
-                                <div id="invoice-list" class="payments-invoice-list row g-3"></div>
+                                <div id="invoice-list" class="payments-invoice-list row g-2"></div>
                             </div>
                         </div>
                     </div>
@@ -241,7 +255,8 @@
                             <div class="row g-2">
                                 <div class="col-12">
                                     <label for="payment_date"
-                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Date *</label>
+                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Date<span
+                                            class="text-danger">*</span></label>
                                     <input type="date" id="payment_date" name="payment_date" class="form-control"
                                         min="{{ $paymentDateBounds['min_date'] }}"
                                         max="{{ $paymentDateBounds['max_date'] }}"
@@ -252,8 +267,9 @@
                                     @enderror
                                 </div>
                                 <div class="col-12">
-                                    <label for="mode" class="form-label small lh-sm fw-semibold text-dark mb-1">Mode
-                                        *</label>
+                                    <label for="mode"
+                                        class="form-label small lh-sm fw-semibold text-dark mb-1">Mode<span
+                                            class="text-danger">*</span></label>
                                     <select id="mode" name="mode" class="form-select" required>
                                         <option value="Bank Transfer" {{ old('mode', isset($payment) ? $payment->mode :
                                             '') == 'Bank Transfer' ? 'selected' : '' }}>
@@ -294,11 +310,7 @@
                     </div>
                 </div>
 
-                <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
-                    <a href="{{ route('payments.index', !empty($selectedClientId) ? ['c' => $selectedClientId] : []) }}"
-                        class="btn btn-outline-primary bg-white text-primary fw-medium">
-                        <i class="fas fa-times btn-icon me-1"></i> Cancel
-                    </a>
+                <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
                     <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
                         {{ $isEditingPayment ? 'Update Payment' : 'Record Payment' }}
                         <i class="fas fa-arrow-right btn-icon ms-1"></i>
@@ -344,20 +356,28 @@
         });
     });
 </script>
+<script id="client-currencies-data" type="application/json">@json($clientCurrencies)</script>
+<script id="invoice-totals-data" type="application/json">@json($invoiceTotals)</script>
+<script id="invoice-options-data" type="application/json">@json($invoiceOptions)</script>
+<script id="payment-details-data" type="application/json">@json($paymentDetailsMap)</script>
+<script id="is-editing-payment-data" type="application/json">@json(isset($payment))</script>
+<script id="default-tds-input-type-data" type="application/json">@json($defaultTdsInputType)</script>
+<script id="default-tds-display-value-data" type="application/json">@json($defaultTdsDisplayValue)</script>
+<script id="client-email-map-data"
+    type="application/json">@json(collect($clients ?? [])->mapWithKeys(fn($client) => [(string) $client->clientid => (string)($client->primary_email ?? ($client->email ?? ''))])->all())</script>
+
 <script>
     (function () {
-        const clientCurrencies = @json($clientCurrencies);
-        const invoiceTotals = @json($invoiceTotals);
-        const invoiceOptions = @json($invoiceOptions);
-        const paymentDetailsMap = @json($paymentDetailsMap);
-        const isEditingPayment = @json(isset($payment));
-        const defaultTdsInputType = @json($defaultTdsInputType);
-        const defaultTdsDisplayValue = @json($defaultTdsDisplayValue);
+        const clientCurrencies = JSON.parse(document.getElementById('client-currencies-data').textContent);
+        const invoiceTotals = JSON.parse(document.getElementById('invoice-totals-data').textContent);
+        const invoiceOptions = JSON.parse(document.getElementById('invoice-options-data').textContent);
+        const paymentDetailsMap = JSON.parse(document.getElementById('payment-details-data').textContent);
+        const isEditingPayment = JSON.parse(document.getElementById('is-editing-payment-data').textContent);
+        const defaultTdsInputType = JSON.parse(document.getElementById('default-tds-input-type-data').textContent);
+        const defaultTdsDisplayValue = JSON.parse(document.getElementById('default-tds-display-value-data').textContent);
         const selectedClientName = document.getElementById('selectedClientName');
         const selectedClientEmail = document.getElementById('selectedClientEmail');
-        const clientEmailMap = @json(collect($clients ?? []) -> mapWithKeys(fn($client) => [
-            (string) $client -> clientid => (string)($client -> primary_email ?? ($client -> email ?? '')),
-        ]) -> all());
+        const clientEmailMap = JSON.parse(document.getElementById('client-email-map-data').textContent);
 
         const clientSelect = document.getElementById('clientid');
         const invoiceList = document.getElementById('invoice-list');
@@ -444,12 +464,12 @@
         function renderInvoiceList() {
             const clientId = clientSelect ? clientSelect.value : '';
             if (!clientId) {
-                invoiceList.innerHTML = '<p class="text-muted small mb-0">Select a client first</p>';
+                invoiceList.innerHTML = '<div class="text-muted w-100 d-flex align-items-center justify-content-center text-center rounded-3 bg-white" style="height: 200px; border: 2px dashed #ccc;">Select a client first</div>';
                 return;
             }
             const clientInvoices = invoiceOptions.filter((invoice) => invoice.clientid === clientId);
             if (!clientInvoices.length) {
-                invoiceList.innerHTML = '<p class="text-muted small mb-0">No invoices for this client</p>';
+                invoiceList.innerHTML = '<div class="text-muted w-100 d-flex align-items-center justify-content-center text-center rounded-3 bg-white" style="height: 200px; border: 2px dashed #ccc;">No invoices for this client</div>';
                 return;
             }
 
@@ -462,7 +482,7 @@
             });
 
             if (!visibleInvoices.length) {
-                invoiceList.innerHTML = '<p class="text-muted small mb-0">No unpaid invoices for this client</p>';
+                invoiceList.innerHTML = '<div class="text-muted w-100 d-flex align-items-center justify-content-center text-center rounded-3 bg-white" style="height: 200px; border: 2px dashed #ccc;">No unpaid invoices for this client</div>';
                 return;
             }
 
@@ -488,28 +508,28 @@
 
                 return `
                         <div class="col-12">
-                        <div class="border rounded-3 p-3 bg-white invoice-row">
+                        <div class="border-bottom rounded-3 p-3 bg-white invoice-row">
                             <div class="d-flex align-items-start gap-3">
                                 <div class="flex-grow-1 min-w-0">
                                     <label class="d-flex align-items-start gap-2 form-check-label" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input mt-1 invoice-option-checkbox" name="invoice_ids[]" value="${invoice.invoiceid}" ${isChecked ? 'checked' : ''}>
+                                        <input type="checkbox" class="form-check-input mt-1 invoice-option-checkbox border-primary border-2" name="invoice_ids[]" value="${invoice.invoiceid}" ${isChecked ? 'checked' : ''}>
                                         <span class="flex-grow-1">
                                             <strong class="d-block text-dark text-truncate">${title}</strong>
-                                            <small class="text-muted">${invoice.invoice_number ? '#' + invoice.invoice_number : ''}</small>
+                                            <small class="text-dark">${invoice.invoice_number ? '#' + invoice.invoice_number : ''}</small>
                                             <div class="d-flex flex-wrap gap-2 mt-1 small">
-                                                <span class="badge ${statusClass === 'payments-status-paid' ? 'text-bg-success' : (statusClass === 'payments-status-partly' ? 'text-bg-warning' : 'text-bg-secondary')}" style="font-size: 0.65rem;">${status}</span>
-                                                <span class="text-muted">Amt: <strong>${amountBreakup}</strong></span>
-                                                <span class="text-muted">Due: <strong>${Math.round(available).toLocaleString('en-US')}</strong></span>
+                                                <span class="py-1 px-2 fw-semibold small lh-sm rounded-pill text-capitalize ${statusClass === 'payments-status-paid' ? 'text-bg-success' : (statusClass === 'payments-status-partly' ? 'text-bg-warning' : 'text-bg-secondary')}" >${status}</span>
+                                                <span class="text-dark">Amt: <strong>${amountBreakup}</strong></span> |
+                                                <span class="text-dark">Due: <strong>${Math.round(available).toLocaleString('en-US')}</strong></span>
                                             </div>
                                         </span>
                                     </label>
                                     <input type="hidden" class="invoice-collectible-input" data-due="${available}" data-without-tax="${availableWithoutTax}" value="${Math.round(available).toLocaleString('en-US')}">
                                 </div>
-                                <div class="flex-shrink-0 d-flex align-items-center gap-2 pt-1">
-                                    <span class="small text-muted invoice-allocated-label text-nowrap">Amount:</span>
-                                    <input type="text" class="form-control form-control-sm invoice-allocated-input" style="max-width: 90px;" value="0">
+                                <div class="d-flex align-self-center align-items-center gap-2 pt-1">
+                                    <span class="small lh-sm text-dark invoice-allocated-label text-nowrap">Amount:</span>
+                                    <input type="text" class="form-control form-control-sm invoice-allocated-input" style="max-width: 90px; height:30px;" value="0">
                                     <input type="text" class="form-control form-control-sm invoice-tds-input" style="max-width: 90px; display: none;" value="${savedTdsAmount > 0 ? formatInputNumber(savedTdsAmount) : ''}">
-                                    <span class="small text-muted text-nowrap invoice-live-state">0</span>
+                                    <span class="small text-dark d-block invoice-live-state">0</span>
                                 </div>
                             </div>
                             <input type="hidden" class="invoice-received-amount-hidden" name="invoice_received_amounts[${invoice.invoiceid}]" value="0">
@@ -589,18 +609,18 @@
 
                 if (liveState) {
                     if (!checkbox || !checkbox.checked) {
-                        liveState.textContent = '';
+                        liveState.innerHTML = '';
                         liveState.style.color = '#64748b';
                     } else if (allocated <= 0) {
-                        liveState.textContent =
-                            `New Balance: ${Math.round(getAvailableToCollect(invoiceId)).toLocaleString('en-US')}`;
+                        liveState.innerHTML =
+                            `New Balance: <span class="fw-semibold fs-6 lh-sm">${Math.round(getAvailableToCollect(invoiceId)).toLocaleString('en-US')}</span>`;
                         liveState.style.color = '#92400e';
                     } else if (nowRemaining <= 0.1) {
-                        liveState.textContent = 'Fully Paid';
+                        liveState.innerHTML = 'Fully Paid';
                         liveState.style.color = '#047857';
                     } else {
-                        liveState.textContent =
-                            `New Balance: ${Math.round(nowRemaining).toLocaleString('en-US')}`;
+                        liveState.innerHTML =
+                            `New Balance: <span class="fw-semibold fs-6 lh-sm">${Math.round(nowRemaining).toLocaleString('en-US')}</span>`;
                         liveState.style.color = '#92400e';
                     }
                 }

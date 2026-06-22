@@ -107,7 +107,7 @@ class DashboardController extends Controller
 
         $stats = [
             [
-                'label' => 'Total Clients',
+                'label' => 'Account / Clients',
                 'value' => Client::where('accountid', $accountid)->count(),
                 'change' => '',
                 'icon' => 'fa-users',
