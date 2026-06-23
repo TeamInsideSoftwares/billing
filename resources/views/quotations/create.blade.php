@@ -192,7 +192,7 @@ return [
         }
 
         function formatNumber(value) {
-            return Number(value || 0).toLocaleString('en-US');
+            return Math.round(Number(value || 0)).toLocaleString('en-US');
         }
 
         function formatDateToDisplay(dateStr) {
@@ -211,8 +211,9 @@ return [
         function computeLineTotal(item) {
             const q = Math.max(1, Number(item.quantity || 1));
             const p = Math.max(0, Number(item.unit_price || 0));
+            const u = Math.max(1, Number(item.no_of_users || 1));
             const d = Math.max(0, Math.min(100, Number(item.discount_percent || 0)));
-            const sub = q * p;
+            const sub = q * p * u;
             const discountAmount = Math.floor(sub * d / 100);
             const taxable = Math.floor(Math.max(0, sub - discountAmount));
             return taxable;
@@ -223,9 +224,10 @@ return [
             items.forEach((it) => {
                 const q = Number(it.quantity || 0);
                 const p = Number(it.unit_price || 0);
+                const u = Math.max(1, Number(it.no_of_users || 1));
                 const d = Number(it.discount_percent || 0);
                 const t = Number(it.tax_rate || 0);
-                const lineSub = q * p;
+                const lineSub = q * p * u;
                 const lineDisc = Math.floor(lineSub * d / 100);
                 const taxable = Math.floor(Math.max(0, lineSub - lineDisc));
                 const lineTax = Math.ceil(taxable * t / 100);
@@ -462,7 +464,7 @@ return [
 
         itemSelect?.addEventListener('change', function () {
             const opt = this.options[this.selectedIndex];
-            unitPrice.value = opt?.dataset?.unitPrice || '';
+            unitPrice.value = opt?.dataset?.unitPrice ? Math.round(Number(opt.dataset.unitPrice)) : '';
             description.value = opt?.dataset?.description || '';
             if (opt?.value) {
                 builderCard?.classList.add('item-selected');
@@ -502,12 +504,12 @@ return [
             }
             const opt = itemSelect.options[itemSelect.selectedIndex];
             const q = Math.max(1, Number(qty.value || 1));
-            const p = Math.max(0, Number(unitPrice.value || 0));
+            const p = Math.round(Math.max(0, Number(unitPrice.value || 0)));
             const d = Math.max(0, Math.min(100, Number(discount.value || 0)));
             const t = Math.max(0, Number(opt?.dataset?.taxRate || 0));
             const userWise = accountHasUsers && isSelectedItemUserWise();
             const u = userWise ? Math.max(1, Number(users.value || 1)) : null;
-            const sub = q * p;
+            const sub = q * p * Math.max(1, u ?? 1);
             const dAmt = Math.floor(sub * d / 100);
             const taxable = Math.floor(Math.max(0, sub - dAmt));
             const total = taxable;

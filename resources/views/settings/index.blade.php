@@ -1642,11 +1642,6 @@ $activeSettingsTab = 'billing-details';
 
                     if (!isSubTab) {
                         window.history.replaceState(null, null, `#${targetId}`);
-                        try {
-                            window.localStorage.setItem('settings_active_tab', targetId);
-                        } catch (error) {
-                            // Ignore storage failures in private mode or restricted browsers.
-                        }
                     }
 
                     // Dynamically toggle active/inactive bootstrap classes
@@ -1691,7 +1686,6 @@ $activeSettingsTab = 'billing-details';
             const hash = window.location.hash.replace('#', '');
             const urlParams = new URLSearchParams(window.location.search);
             const encodedE = urlParams.get('e');
-            let storedTab = null;
             let decodedE = null;
             try {
                 decodedE = encodedE ? atob(encodedE) : null;
@@ -1699,19 +1693,18 @@ $activeSettingsTab = 'billing-details';
                 console.error('Failed to decode parameter e:', e);
             }
 
-            try {
-                storedTab = window.localStorage.getItem('settings_active_tab');
-            } catch (error) {
-                storedTab = null;
-            }
             const tcTypeFromUrl = (urlParams.get('t') || '').toLowerCase();
 
             if (hash) {
                 activateTab(hash);
-            } else if (storedTab) {
-                activateTab(storedTab);
+                if (hash === 'terms-conditions') {
+                    setTimeout(function() { if (typeof initTinymce === 'function') initTinymce(); }, 300);
+                }
             } else if (decodedE) {
-                if (decodedE.startsWith('TC')) activateTab('terms-conditions');
+                if (decodedE.startsWith('TC')) {
+                    activateTab('terms-conditions');
+                    setTimeout(function() { if (typeof initTinymce === 'function') initTinymce(); }, 300);
+                }
                 else if (decodedE.startsWith('SET')) activateTab('config');
                 else if (decodedE.startsWith('ABD')) activateTab('billing-details');
                 else activateTab('personal');
@@ -1767,14 +1760,14 @@ $activeSettingsTab = 'billing-details';
                     // Visibility & Label Logic
                     if (type === 'manual text') {
                         valInputGroup.classList.remove('is-hidden');
-                        valLabel.innerText = 'Enter value';
+                        if (valLabel) valLabel.innerText = 'Enter value';
                         lengthInputGroup.classList.add('is-hidden');
                     } else if (type === 'auto generate') {
                         valInputGroup.classList.add('is-hidden');
                         lengthInputGroup.classList.remove('is-hidden');
                     } else if (type === 'auto increment') {
                         valInputGroup.classList.remove('is-hidden');
-                        valLabel.innerText = 'Start From';
+                        if (valLabel) valLabel.innerText = 'Start From';
                         lengthInputGroup.classList.add('is-hidden');
                     } else {
                         valInputGroup.classList.add('is-hidden');
@@ -1900,7 +1893,15 @@ $activeSettingsTab = 'billing-details';
             }, 100);
 
             // TinyMCE for Terms and Conditions Tab
-            if (window.tinymce) {
+            var tinymceInitialized = false;
+
+            window.initTinymce = function () {
+                if (tinymceInitialized || !window.tinymce) return;
+                
+                const pane = document.getElementById('terms-conditions');
+                if (!pane || (!pane.classList.contains('show') && !pane.classList.contains('active'))) return;
+
+                tinymceInitialized = true;
                 tinymce.init({
                     license_key: 'gpl',
                     selector: '#settings_tc_content',
@@ -1922,7 +1923,26 @@ $activeSettingsTab = 'billing-details';
                         tinymce.triggerSave();
                     });
                 }
+            };
+
+            function waitForTinymce() {
+                if (window.tinymce) {
+                    window.initTinymce();
+                } else {
+                    setTimeout(waitForTinymce, 100);
+                }
             }
+            waitForTinymce();
+
+            document.addEventListener('settings:tab-activated', function (e) {
+                if (e.detail && e.detail.tabId === 'terms-conditions') {
+                    if (window.tinymce) {
+                        window.initTinymce();
+                    } else {
+                        setTimeout(window.initTinymce, 200);
+                    }
+                }
+            });
         });
 
         // Signature preview function
@@ -2565,6 +2585,11 @@ $activeSettingsTab = 'billing-details';
             setActiveTab(typeTabs, 'type', initialTemplateType);
             resetAllTemplateForms(initialTemplateType);
             ensureTemplateEditorReady();
+
+            const initialHash = window.location.hash.replace('#', '');
+            if (initialHash === 'message-templates') {
+                setTimeout(function () { ensureTemplateEditorReady(); }, 400);
+            }
 
             templateForms.forEach((form) => {
                 form.addEventListener('submit', function (event) {

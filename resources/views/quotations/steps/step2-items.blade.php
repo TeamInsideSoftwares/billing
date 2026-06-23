@@ -162,12 +162,12 @@ $accountHasUsers = (bool) ($account->have_users ?? false);
                     </div>
                     <div class="col-4 col-md-4">
                         <label for="unit_price" class="form-label small lh-sm fw-semibold text-dark mb-1">Price</label>
-                        <input type="number" id="unit_price" class="form-control" min="0" step="0.01">
+                        <input type="number" id="unit_price" class="form-control" min="0" step="1">
                     </div>
                     <div class="col-4 col-md-4">
                         <label for="discount_percent" class="form-label small lh-sm fw-semibold text-dark mb-1">Discount
                             (%)</label>
-                        <input type="number" id="discount_percent" class="form-control" min="0" max="100" step="0.01"
+                        <input type="number" id="discount_percent" class="form-control" min="0" max="100" step="1"
                             value="0">
                     </div>
 

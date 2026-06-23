@@ -762,7 +762,7 @@ return [
                         row.innerHTML = `
                         <label class="d-flex align-items-start gap-2" style="cursor:pointer;">
                             <input type="checkbox" class="form-check-input mt-1 flex-shrink-0" data-term="true" checked data-tc-id="${term.id}" data-content="${escapedContent}" value="${escapedContent}">
-                            <div class="small text-secondary lh-sm" style="word-break:break-word;overflow-wrap:anywhere;">${term.content}</div>
+                            <div class="text-dark" style="word-break:break-word;overflow-wrap:anywhere;">${term.content}</div>
                         </label>
                     `;
 

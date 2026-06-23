@@ -234,6 +234,8 @@ class ServicesController extends Controller
                     'tax_rate' => $costing['tax_rate'],
                 ]);
             });
+
+            $this->syncWithSuperadmin($item);
         });
 
         return redirect()->route('services.index')->with('success', 'Item created successfully.');
@@ -343,6 +345,8 @@ class ServicesController extends Controller
                     'tax_rate' => $costing['tax_rate'],
                 ]);
             });
+
+            $this->syncWithSuperadmin($service);
         });
 
         return redirect()->route('services.index')->with('success', 'Item updated successfully.');
@@ -353,6 +357,8 @@ class ServicesController extends Controller
         DB::transaction(function () use ($service) {
             $service->costings()->delete();
             $service->delete();
+
+            DB::table('isplayhr_account_auth.products')->where('productid', $service->itemid)->delete();
         });
 
         return redirect()->route('services.index')->with('success', 'Item deleted successfully.');
@@ -452,6 +458,8 @@ class ServicesController extends Controller
                     ]);
                 }
 
+                $this->syncWithSuperadmin($item);
+
                 return $item;
             });
 
@@ -465,6 +473,30 @@ class ServicesController extends Controller
                 'success' => false,
                 'message' => 'Failed to save item: '.$e->getMessage(),
             ], 500);
+        }
+    }
+
+    private function syncWithSuperadmin(Service $item): void
+    {
+        if ($item->sync === 'yes') {
+            $exists = DB::table('isplayhr_account_auth.products')->where('productid', $item->itemid)->exists();
+            if (! $exists) {
+                DB::table('isplayhr_account_auth.products')->insert([
+                    'productid' => $item->itemid,
+                    'product_name' => $item->name,
+                    'url' => '',
+                    'svg_icons' => '',
+                    'db_connection' => null,
+                    'status' => $item->is_active ? 'active' : 'inactive',
+                ]);
+            } else {
+                DB::table('isplayhr_account_auth.products')->where('productid', $item->itemid)->update([
+                    'product_name' => $item->name,
+                    'status' => $item->is_active ? 'active' : 'inactive',
+                ]);
+            }
+        } else {
+            DB::table('isplayhr_account_auth.products')->where('productid', $item->itemid)->delete();
         }
     }
 }

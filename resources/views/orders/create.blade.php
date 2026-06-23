@@ -365,6 +365,7 @@ $initialOrderItems = [[
         const deliveryDateInput = document.getElementById('item_delivery_date');
         const descriptionInput = document.getElementById('item_description');
         const quantityInput = document.getElementById('item_quantity');
+        const docSelect = document.getElementById('client_docid');
         const orderForm = document.getElementById('orderForm');
         const quotationMap = new Map(clientQuotations.map((quotation) => [String(quotation.quotationid || ''), quotation]));
 
@@ -398,6 +399,7 @@ $initialOrderItems = [[
                 start_date: String(item?.start_date || todayDate),
                 end_date: String(item?.end_date || maxEndDate),
                 delivery_date: String(item?.delivery_date || ''),
+                client_docid: String(item?.client_docid || ''),
             };
         }
 
@@ -518,6 +520,7 @@ $initialOrderItems = [[
                 start_date: String(startDateInput?.value || todayDate),
                 end_date: String(endDateInput?.value || maxEndDate),
                 delivery_date: String(deliveryDateInput?.value || ''),
+                client_docid: String(docSelect?.value || ''),
             };
         }
 
@@ -545,12 +548,13 @@ $initialOrderItems = [[
             if (itemSelect) itemSelect.value = '';
             if (quantityInput) quantityInput.value = 1;
             if (usersInput) usersInput.value = 1;
-            if (frequencyInput) frequencyInput.value = '';
+            if (frequencyInput) frequencyInput.value = 'One-Time';
             if (durationInput) durationInput.value = 1;
             if (startDateInput) startDateInput.value = todayDate;
             if (endDateInput) endDateInput.value = maxEndDate;
             if (deliveryDateInput) deliveryDateInput.value = '';
             if (descriptionInput) descriptionInput.value = '';
+            if (docSelect) docSelect.value = '';
             editingItemIndex = null;
             confirmedDuplicateItemId = null;
             toggleUsersField();
@@ -569,6 +573,7 @@ $initialOrderItems = [[
             if (endDateInput) endDateInput.value = item.end_date || maxEndDate;
             if (deliveryDateInput) deliveryDateInput.value = item.delivery_date || '';
             if (descriptionInput) descriptionInput.value = item.item_description || '';
+            if (docSelect) docSelect.value = item.client_docid || '';
             confirmedDuplicateItemId = item.itemid || null;
             toggleUsersField();
             toggleDurationField();

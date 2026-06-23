@@ -422,11 +422,11 @@
             <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">Update Item</button>
             @else
             <button type="button" id="save-item-stay-btn"
-                class="btn btn-outline-primary btn-primary text-white fw-medium">Save Item <i
+                class="btn btn-outline-primary btn-primary text-white fw-medium">Save & Add Another <i
+                    class="fas fa-plus btn-icon ms-1"></i></button>
+            <button type="button" id="finish-btn"
+                class="btn btn-outline-primary btn-primary text-white fw-medium">Save & Finish <i
                     class="fas fa-arrow-right btn-icon ms-1"></i></button>
-            <a href="{{ route('services.index') }}" id="finish-btn"
-                class="btn btn-outline-primary btn-primary text-white fw-medium hidden">Finish <i
-                    class="fas fa-arrow-right btn-icon ms-1"></i></a>
             @endisset
         </div>
     </form>
@@ -774,8 +774,30 @@ return $group->map(fn($t) => [
                     showToast('error', error.message || 'Unable to save item.');
                 } finally {
                     saveItemStayBtn.disabled = false;
-                    saveItemStayBtn.innerHTML = 'Save Item <i class="fas fa-arrow-right btn-icon ms-1"></i>';
+                    saveItemStayBtn.innerHTML = 'Save & Add Another <i class="fas fa-plus btn-icon ms-1"></i>';
                 }
+            });
+        }
+
+        const finishBtn = document.getElementById('finish-btn');
+        if (finishBtn) {
+            finishBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const nameVal = document.getElementById('name').value.trim();
+                // If form is empty, just go to finish URL
+                if (!nameVal) {
+                    window.location.href = "{{ route('services.index') }}";
+                    return;
+                }
+                
+                // If there is data, submit form
+                const form = document.getElementById('item-form');
+                if (form && !form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+                
+                form.submit();
             });
         }
 

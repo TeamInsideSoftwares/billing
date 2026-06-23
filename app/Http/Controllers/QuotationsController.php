@@ -287,7 +287,8 @@ class QuotationsController extends Controller
             $unitPrice = max(0, (float) ($item['unit_price'] ?? 0));
             $discountPercent = max(0, min(100, (float) ($item['discount_percent'] ?? 0)));
             $taxRate = max(0, (float) ($item['tax_rate'] ?? 0));
-            $lineSubtotal = $quantity * $unitPrice;
+            $noOfUsers = ! empty($item['no_of_users']) ? max(1, (int) $item['no_of_users']) : 1;
+            $lineSubtotal = $quantity * $unitPrice * $noOfUsers;
             $discountedUnitPrice = round(max(0, $unitPrice * ((100 - $discountPercent) / 100)), 2);
             $discountAmount = $lineSubtotal * ($discountPercent / 100);
             $taxable = max(0, $lineSubtotal - $discountAmount);
@@ -417,7 +418,8 @@ class QuotationsController extends Controller
             $discountPercent = max(0, min(100, (float) ($item['discount_percent'] ?? 0)));
             $taxRate = max(0, (float) ($item['tax_rate'] ?? 0));
 
-            $lineSubtotal = $quantity * $unitPrice;
+            $noOfUsers = ! empty($item['no_of_users']) ? max(1, (int) $item['no_of_users']) : 1;
+            $lineSubtotal = $quantity * $unitPrice * $noOfUsers;
             $discountedUnitPrice = round(max(0, $unitPrice * ((100 - $discountPercent) / 100)), 2);
             $discountAmount = $lineSubtotal * ($discountPercent / 100);
             $taxable = max(0, $lineSubtotal - $discountAmount);

@@ -57,6 +57,7 @@ class Order extends Model
                 'no_of_users' => ['label' => 'Number of users', 'action' => 'users_changed'],
                 'end_date' => ['label' => 'Expiry date', 'action' => 'expiry_date_changed'],
                 'delivery_date' => ['label' => 'Delivery date', 'action' => 'delivery_date_changed'],
+                'client_docid' => ['label' => 'Purchase Order', 'action' => 'po_changed'],
             ];
 
             foreach ($fields as $field => $meta) {
@@ -67,12 +68,23 @@ class Order extends Model
                     $oldFormatted = self::formatTimelineValue($old);
                     $newFormatted = self::formatTimelineValue($new);
 
+                    if ($field === 'client_docid') {
+                        if ($old) {
+                            $oldDoc = ClientDocument::find($old);
+                            $oldFormatted = $oldDoc ? ($oldDoc->document_number ?: ($oldDoc->title ?: $old)) : $old;
+                        }
+                        if ($new) {
+                            $newDoc = ClientDocument::find($new);
+                            $newFormatted = $newDoc ? ($newDoc->document_number ?: ($newDoc->title ?: $new)) : $new;
+                        }
+                    }
+
                     $desc = "{$meta['label']} changed from {$oldFormatted} to {$newFormatted}";
 
-                    if (in_array($field, ['end_date', 'delivery_date'])) {
-                        if (is_null($old)) {
+                    if (in_array($field, ['end_date', 'delivery_date', 'client_docid'])) {
+                        if (is_null($old) || $old === '') {
                             $desc = "{$meta['label']} set to {$newFormatted}";
-                        } elseif (is_null($new)) {
+                        } elseif (is_null($new) || $new === '') {
                             $desc = "{$meta['label']} removed (was {$oldFormatted})";
                         }
                     }

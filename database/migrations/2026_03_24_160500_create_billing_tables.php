@@ -154,42 +154,6 @@ return new class extends Migration
             $table->index(['accountid', 'status']);
         });
 
-        Schema::create('estimates', function (Blueprint $table) {
-            $table->string('estimateid', 6)->primary();
-            $table->string('accountid', 10);
-            $table->string('clientid', 10);
-            $table->string('estimate_number', 30)->unique();
-            $table->string('status', 20)->default('draft');
-            $table->date('issue_date');
-            $table->date('expiry_date')->nullable();
-            $table->decimal('subtotal', 12, 2)->default(0);
-            $table->decimal('tax_total', 12, 2)->default(0);
-            $table->decimal('discount_total', 12, 2)->default(0);
-            $table->decimal('grand_total', 12, 2)->default(0);
-            $table->text('notes')->nullable();
-            $table->text('terms')->nullable();
-            $table->string('invoiceid', 6)->nullable();
-            $table->string('created_by', 10)->nullable();
-            $table->timestamps();
-
-            $table->index(['accountid', 'status']);
-        });
-
-        Schema::create('estimate_items', function (Blueprint $table) {
-            $table->string('estimateitemid', 6)->primary();
-            $table->string('estimateid', 6);
-            $table->string('serviceid', 6)->nullable();
-            $table->string('item_name', 150);
-            $table->text('item_description')->nullable();
-            $table->decimal('quantity', 10, 2)->default(1);
-            $table->decimal('unit_price', 12, 2)->default(0);
-            $table->decimal('tax_rate', 5, 2)->default(0);
-            $table->decimal('line_total', 12, 2)->default(0);
-            $table->unsignedInteger('sort_order')->default(1);
-            $table->timestamps();
-
-        });
-
         Schema::create('settings', function (Blueprint $table) {
             $table->string('settingid', 6)->primary();
             $table->string('accountid', 10);
@@ -207,8 +171,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('settings');
-        Schema::dropIfExists('estimate_items');
-        Schema::dropIfExists('estimates');
         Schema::dropIfExists('subscriptions');
         Schema::dropIfExists('payments');
         Schema::dropIfExists('invoice_items');

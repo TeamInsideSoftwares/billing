@@ -141,22 +141,22 @@ class Quotation extends Model
     {
         return (float) floor((float) $this->items->sum(function ($item) {
             $lineTotal = (float) ($item->line_total ?? 0);
-            $discountedAmount = (float) ($item->discount_amount ?? 0);
+            $discountPercent = max(0, min(100, (float) ($item->discount_percent ?? 0)));
 
-            return max(0, $lineTotal - ($discountedAmount > 0 ? $discountedAmount : $lineTotal));
+            return max(0, $lineTotal * ($discountPercent / 100));
         }));
     }
 
     public function getTaxTotalAttribute(): float
     {
-        return (float) $this->items->sum(function ($item) {
+        return (float) ceil((float) $this->items->sum(function ($item) {
             $lineTotal = (float) ($item->line_total ?? 0);
-            $discountedAmount = (float) ($item->discount_amount ?? 0);
-            $taxableAmount = max(0, $discountedAmount > 0 ? $discountedAmount : $lineTotal);
+            $discountPercent = max(0, min(100, (float) ($item->discount_percent ?? 0)));
+            $taxableAmount = max(0, $lineTotal - ($lineTotal * $discountPercent / 100));
             $rate = (float) ($item->tax_rate ?? 0);
 
             return ceil($taxableAmount * ($rate / 100));
-        });
+        }));
     }
 
     public function getGrandTotalAttribute(): float

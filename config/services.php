@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'superadmin_api' => [
+        'url' => env('SUPERADMIN_API_URL'),
+        'key' => env('SUPERADMIN_API_KEY'),
+    ],
+
 ];

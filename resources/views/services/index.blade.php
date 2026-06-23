@@ -217,9 +217,10 @@
                                 <div class="d-flex flex-column align-items-end gap-1">
                                     @foreach($service['costings'] as $costing)
                                     <span class="fw-semibold text-dark">
-                                        {{ number_format($costing['selling_price'], 2) }}
-                                        <span class="currency-code-small text-muted d-block">{{
-                                            $costing['currency_code'] }}</span>
+                                        {{ rtrim(rtrim(number_format($costing['selling_price'], 2, '.', ''), '0'), '.') }}
+                                        <span class="currency-code-small text-muted d-block">
+                                            {{ $costing['currency_code'] }}
+                                        </span>
                                     </span>
                                     @endforeach
                                 </div>

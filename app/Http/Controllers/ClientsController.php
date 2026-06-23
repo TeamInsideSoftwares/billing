@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\AdminTrialNotificationMail;
 use App\Mail\TrialWelcomeMail;
 use App\Models\Account;
+use App\Models\AccountBillingDetail;
 use App\Models\Client;
 use App\Models\ClientBillingDetail;
 use App\Models\ClientContact;
@@ -18,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -208,7 +211,7 @@ class ClientsController extends Controller
         $welcomeEmailSent = false;
         try {
             DB::transaction(function () use (&$client, &$order, $validated, $service, $businessName, $startDate, $endDate, $addressLine1) {
-                $client = $this->createClientRecord([
+                $client = Client::create([
                     'accountid' => $validated['accountid'],
                     'type' => $validated['type'],
                     'business_name' => $businessName,
@@ -254,6 +257,8 @@ class ClientsController extends Controller
                     'type' => $validated['type'] === 'trial' ? 'trial' : 'regular',
                 ]);
             });
+
+            $this->syncWithSuperadmin($client, $validated['domain'] ?? null);
 
             if (strtolower((string) $client->type) === 'trial') {
                 $welcomeEmailSent = $this->sendTrialWelcomeEmail(
@@ -428,7 +433,7 @@ class ClientsController extends Controller
 
         $resultCount = $query->count();
 
-        $clients = $query->latest()->take(50)->get()->map(function ($client) use ($selectedItem) {
+        $clients = $query->orderBy('business_name')->take(50)->get()->map(function ($client) use ($selectedItem) {
             $invoiceTotal = $client->invoices
                 ->where('status', '!=', 'cancelled')
                 ->where('payment_status', '!=', 'paid')
@@ -694,8 +699,9 @@ class ClientsController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($clientData, $contacts) {
-            $client = $this->createClientRecord($clientData);
+        $client = null;
+        DB::transaction(function () use ($clientData, $contacts, &$client) {
+            $client = Client::create($clientData);
 
             foreach ($contacts as $contact) {
                 $client->contacts()->create([
@@ -708,6 +714,8 @@ class ClientsController extends Controller
                 ]);
             }
         });
+
+        $this->syncWithSuperadmin($client);
 
         return redirect()->route('clients.index')->with('success', 'Client created successfully.');
     }
@@ -1199,6 +1207,8 @@ class ClientsController extends Controller
             }
         });
 
+        $this->syncWithSuperadmin($client);
+
         return redirect()->route('clients.index')->with('success', 'Client updated successfully.');
     }
 
@@ -1220,6 +1230,8 @@ class ClientsController extends Controller
             $client->orders()->where('type', 'trial')->update(['type' => 'regular']);
         });
 
+        $this->syncWithSuperadmin($client);
+
         return redirect()->route('clients.trials')->with('success', 'Client converted to regular successfully.');
     }
 
@@ -1239,6 +1251,8 @@ class ClientsController extends Controller
         $client->update([
             'status' => $validated['status'],
         ]);
+
+        $this->syncWithSuperadmin($client);
 
         return response()->json([
             'success' => true,
@@ -1323,7 +1337,30 @@ class ClientsController extends Controller
         }
 
         try {
-            Mail::to($email)->send(new TrialWelcomeMail(
+            $mail = Mail::to($email);
+
+            $accountBillingDetail = AccountBillingDetail::where('accountid', $client->accountid)->first();
+            if ($accountBillingDetail && ! empty($accountBillingDetail->billing_from_email)) {
+                try {
+                    Mail::to($accountBillingDetail->billing_from_email)->send(new AdminTrialNotificationMail(
+                        businessName: (string) ($client->business_name ?: 'N/A'),
+                        contactName: (string) ($client->contact_name ?: 'N/A'),
+                        email: $email,
+                        phone: $client->phone,
+                        trialItemName: $order->item_name ?? 'N/A',
+                        trialDays: $this->trialEmailDays()
+                    ));
+                } catch (Throwable $e) {
+                    Log::warning('Admin trial notification email failed.', [
+                        'accountid' => $client->accountid,
+                        'clientid' => $client->clientid,
+                        'email' => $accountBillingDetail->billing_from_email,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            $mail->send(new TrialWelcomeMail(
                 name: (string) ($client->contact_name ?: $client->business_name ?: 'there'),
                 email: $email,
                 temporaryPassword: $temporaryPassword,
@@ -1454,6 +1491,8 @@ class ClientsController extends Controller
             $message = 'Client information saved successfully.';
         }
 
+        $this->syncWithSuperadmin($client);
+
         return response()->json([
             'success' => true,
             'clientid' => $client->clientid,
@@ -1551,8 +1590,65 @@ class ClientsController extends Controller
         ]);
     }
 
-    private function createClientRecord(array $attributes): Client
+    private function syncWithSuperadmin(Client $client, ?string $domain = null): void
     {
-        return Client::create($attributes);
+        $account = Account::find($client->accountid);
+        if ($account && $account->allow_sync) {
+            $apiUrl = config('services.superadmin_api.url');
+            $apiKey = config('services.superadmin_api.key');
+
+            $contactName = $client->contact_name ?: ($client->business_name ?: 'Client User');
+
+            $payload = [
+                'accountid' => $client->clientid,
+                'groupid' => $client->groupid ?: $client->clientid,
+                'account_type' => 'Client',
+                'account_business_name' => $client->business_name ?: '',
+                'account_contact_person_name' => $contactName,
+                'account_domain' => $domain,
+                'account_email' => $client->primary_email ?: ($client->email ?: ''),
+                'account_mobile' => $client->phone ?: '',
+                'account_address' => trim($client->address_line_1.' '.$client->address_line_2) ?: null,
+                'account_city' => $client->city ?: 'N/A',
+                'account_state' => $client->state ?: 'N/A',
+                'status' => $client->status ?: 'active',
+                'user_name' => $contactName,
+                'user_email' => $client->primary_email ?: ($client->email ?: ''),
+                'user_password' => '123456',
+                'user_mobile' => $client->phone ?: '',
+            ];
+
+            Log::info('Initiating Superadmin Sync', [
+                'clientid' => $client->clientid,
+                'apiUrl' => $apiUrl,
+                'payload' => $payload,
+            ]);
+
+            try {
+                $response = Http::acceptJson()
+                    ->timeout(10)
+                    ->connectTimeout(5)
+                    ->withHeaders([
+                        'X-API-KEY' => $apiKey,
+                    ])->post($apiUrl, $payload);
+
+                if ($response->successful()) {
+                    Log::info('Superadmin Sync Succeeded', [
+                        'status' => $response->status(),
+                        'body' => $response->json() ?? $response->body(),
+                    ]);
+                } else {
+                    Log::error('Superadmin Sync Failed with Status '.$response->status(), [
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                    ]);
+                }
+            } catch (Throwable $e) {
+                Log::error('Superadmin Sync Failed with Exception', [
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+        }
     }
 }
