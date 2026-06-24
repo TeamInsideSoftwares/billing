@@ -329,7 +329,7 @@ class InvoicesController extends Controller
         return asset('storage/'.$targetPath);
     }
 
-    private function buildInvoicePdfAttachment(Invoice $invoice, bool $isTaxInvoice): array
+    public function buildInvoicePdfAttachment(Invoice $invoice, bool $isTaxInvoice): array
     {
         $invoice->loadMissing(['client.billingDetail', 'invoiceItems', 'paymentDetails.payment']);
 
@@ -394,7 +394,7 @@ class InvoicesController extends Controller
         ];
     }
 
-    private function persistInvoicePdfVersion(Invoice $invoice, bool $isTaxInvoice): ?array
+    public function persistInvoicePdfVersion(Invoice $invoice, bool $isTaxInvoice): ?array
     {
         $invoice->loadMissing(['client']);
 

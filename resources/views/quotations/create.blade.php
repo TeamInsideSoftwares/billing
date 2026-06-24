@@ -115,6 +115,7 @@ return [
         const qty = document.getElementById('quantity');
         const unitPrice = document.getElementById('unit_price');
         const discount = document.getElementById('discount_percent');
+        const taxRate = document.getElementById('tax_rate');
         const users = document.getElementById('no_of_users');
         const usersWrap = document.getElementById('usersWrap');
         const usersColHeader = document.getElementById('usersColHeader');
@@ -351,6 +352,7 @@ return [
                 qty.value = item.quantity ?? 1;
                 unitPrice.value = item.unit_price ?? '';
                 discount.value = item.discount_percent ?? 0;
+                if (taxRate) taxRate.value = item.tax_rate ?? 0;
                 frequency.value = item.frequency || '';
                 
                 syncUsersField();
@@ -466,6 +468,9 @@ return [
             const opt = this.options[this.selectedIndex];
             unitPrice.value = opt?.dataset?.unitPrice ? Math.round(Number(opt.dataset.unitPrice)) : '';
             description.value = opt?.dataset?.description || '';
+            if (taxRate && opt?.dataset?.taxRate) {
+                taxRate.value = opt.dataset.taxRate;
+            }
             if (opt?.value) {
                 builderCard?.classList.add('item-selected');
             } else {
@@ -506,7 +511,7 @@ return [
             const q = Math.max(1, Number(qty.value || 1));
             const p = Math.round(Math.max(0, Number(unitPrice.value || 0)));
             const d = Math.max(0, Math.min(100, Number(discount.value || 0)));
-            const t = Math.max(0, Number(opt?.dataset?.taxRate || 0));
+            const t = taxRate ? Math.max(0, Number(taxRate.value || 0)) : Math.max(0, Number(opt?.dataset?.taxRate || 0));
             const userWise = accountHasUsers && isSelectedItemUserWise();
             const u = userWise ? Math.max(1, Number(users.value || 1)) : null;
             const sub = q * p * Math.max(1, u ?? 1);
@@ -544,6 +549,9 @@ return [
             qty.value = '1';
             unitPrice.value = '';
             discount.value = '0';
+            if (taxRate && allowMultiTaxation) {
+                taxRate.value = '0';
+            }
             frequency.value = 'One-Time';
             duration.value = '1';
             setDateInputValue(startDate, today);

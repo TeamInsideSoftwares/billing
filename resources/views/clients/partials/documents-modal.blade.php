@@ -267,8 +267,9 @@
         setTimeout(function () { document.getElementById('docTitle').focus(); }, 150);
     }
 
-    function deleteDocument(docId, btn) {
-        if (!confirm('Delete this document?')) return;
+    async function deleteDocument(docId, btn) {
+        const confirmed = await window.appConfirm('Delete this document?');
+        if (!confirmed) return;
         var form = btn.closest('form');
         var formData = new FormData(form);
         formData.append('clientid', currentDocClientId);

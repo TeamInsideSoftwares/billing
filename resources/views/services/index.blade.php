@@ -250,8 +250,7 @@
                                     <a href="{{ route('services.edit', $service['record_id']) }}"
                                         class="bg03 color03">Edit</a>
                                     <form method="POST" action="{{ route('services.destroy', $service['record_id']) }}"
-                                        class="d-inline" data-name="{{ $service['name'] }}"
-                                        onsubmit="return confirm('Delete ' + this.dataset.name + '?')">
+                                        class="d-inline service-delete-form" data-name="{{ $service['name'] }}">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="bg04 color04">Delete</button>
                                     </form>
@@ -529,12 +528,13 @@
             catForm.addEventListener('submit', handleCatFormSubmit);
         }
 
-        document.querySelector('#cat-list-pane').addEventListener('submit', function (e) {
+        document.querySelector('#cat-list-pane').addEventListener('submit', async function (e) {
             var deleteForm = e.target.closest('.cat-delete-form');
             if (!deleteForm) return;
             e.preventDefault();
             var name = deleteForm.dataset.name || 'this category';
-            if (!confirm('Delete category ' + name + '?')) return;
+            const confirmed = await window.appConfirm('Delete category ' + name + '?');
+            if (!confirmed) return;
 
             var formData = new FormData(deleteForm);
             var url = deleteForm.action;
@@ -600,6 +600,18 @@
                         pane.classList.add('d-none');
                     }
                 });
+            });
+        });
+
+        // Service Deletion Confirm
+        document.querySelectorAll('.service-delete-form').forEach(form => {
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const name = this.dataset.name || 'this item';
+                const confirmed = await window.appConfirm('Delete ' + name + '?');
+                if (confirmed) {
+                    this.submit();
+                }
             });
         });
 

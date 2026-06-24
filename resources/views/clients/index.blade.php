@@ -7,6 +7,11 @@
         data-bs-toggle="modal" data-bs-target="#manageGroupsModal">
         <i class="fas fa-layer-group btn-icon"></i> Client Groups
     </button>
+    <button type="button"
+        class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium"
+        data-bs-toggle="modal" data-bs-target="#manageCategoriesModal">
+        <i class="fas fa-tags btn-icon"></i> Client Categories
+    </button>
     <a href="{{ route('clients.create') }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
         <i class="fas fa-plus btn-icon"></i> Add Client
@@ -560,6 +565,105 @@
     </div>
 </div>
 
+<!-- Manage Categories Modal -->
+<div class="modal fade" id="manageCategoriesModal" tabindex="-1" aria-labelledby="manageCategoriesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-DarkLight py-2 border-0">
+                <h5 class="modal-title fw-semibold" id="manageCategoriesModalLabel">Client Categories</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-white p-2">
+                <!-- Category Form -->
+                <div id="add-category-pane" class="bg-DarkLight p-2 rounded-3 mb-3">
+                    <form id="categoryForm" method="POST" action="{{ route('client-categories.store') }}" class="mainForm">
+                        @csrf
+                        <div id="categoryMethodField"></div>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-12 col-md-8">
+                                <label for="categoryName" class="form-label small lh-sm fw-semibold text-dark mb-1">Category Name<span class="text-danger">*</span></label>
+                                <input type="text" name="name" id="categoryName" class="form-control" value="{{ old('name') }}" required>
+                            </div>
+                            <div class="col-12 col-md-4 d-flex">
+                                <button type="submit" id="categorySubmitBtn" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">
+                                    Save Category <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Categories List -->
+                <div id="category-list-pane" class="position-relative bg-DarkLight p-2 rounded-3">
+                    <h6 class="fw-semibold text-dark mb-2 px-1">
+                        <span>Category List ({{ $categories->count() }})</span>
+                    </h6>
+                    <div class="card border-0 overflow-hidden">
+                        <div class="table-responsive">
+                            <table class="table table-striped mainTable border align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="15%">Seq</th>
+                                        <th width="55%">Category Name</th>
+                                        <th class="text-end" width="30%">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($categories as $category)
+                                    <tr>
+                                        <td>
+                                            <form method="POST" action="{{ route('client-categories.update-sequence', $category->categoryid) }}" class="category-sequence-form">
+                                                @csrf @method('PATCH')
+                                                <select name="sequence" class="form-select form-select-sm category-sequence-select" style="width: 70px;">
+                                                    @for ($i = 1; $i <= $categories->count(); $i++)
+                                                        <option value="{{ $i }}" {{ ($category->sequence ?? $loop->parent->iteration) == $i ? 'selected' : '' }}>
+                                                            {{ $i }}
+                                                        </option>
+                                                    @endfor
+                                                </select>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold">
+                                                    <span class="d-block position-absolute">{{ strtoupper(substr($category->name, 0, 2)) }}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="d-block fw-semibold">{{ $category->name }}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="tableActionButton d-inline-flex gap-1">
+                                                <button type="button" class="bg03 color03 border-0"
+                                                    onclick="editCategory(this)" data-id="{{ $category->categoryid }}"
+                                                    data-name="{{ $category->name }}">Edit</button>
+                                                <form method="POST" action="{{ route('client-categories.destroy', $category->categoryid) }}" class="d-inline category-delete-form">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="bg04 color04 border-0">Delete</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    <tr>
+                                        <td colspan="3" class="text-center py-4 text-muted bg-white">
+                                            <i class="fas fa-tags text-muted mb-2 fs-2 opacity-50"></i>
+                                            <p class="text-muted small mb-0">No categories yet. Create one above!</p>
+                                        </td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @include('clients.partials.documents-modal')
 
 <div class="modal fade" id="clientShowModal" tabindex="-1" aria-labelledby="clientShowModalLabel" aria-hidden="true">
@@ -722,6 +826,148 @@
             el.classList.remove('is-invalid');
         });
     }
+
+    function editCategory(btn) {
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+        const sequence = btn.dataset.sequence;
+
+        const form = document.getElementById('categoryForm');
+        const submitBtn = document.getElementById('categorySubmitBtn');
+        const cancelBtn = document.getElementById('categoryCancelBtn');
+        const methodField = document.getElementById('categoryMethodField');
+
+        form.action = 'client-categories/' + id;
+        methodField.innerHTML = '<input type="hidden" name="_method" value="PUT">';
+
+        document.getElementById('categoryName').value = name;
+
+        submitBtn.innerHTML = 'Update Category <i class="fas fa-arrow-right btn-icon ms-1"></i>';
+
+        setTimeout(() => {
+            document.getElementById('categoryName').focus();
+        }, 150);
+    }
+
+    function resetCategoryForm() {
+        const form = document.getElementById('categoryForm');
+        const submitBtn = document.getElementById('categorySubmitBtn');
+        const cancelBtn = document.getElementById('categoryCancelBtn');
+        const methodField = document.getElementById('categoryMethodField');
+
+        form.action = "{{ route('client-categories.store') }}";
+        methodField.innerHTML = '';
+        form.reset();
+
+        submitBtn.innerHTML = 'Save Category <i class="fas fa-arrow-right btn-icon ms-1"></i>';
+    }
+
+    function buildCategoryRow(category, totalCategories, currentIndex) {
+        var csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        var prefix = category.name ? category.name.substring(0, 2).toUpperCase() : '';
+        
+        var seqOptions = '';
+        for (var i = 1; i <= totalCategories; i++) {
+            var selected = (category.sequence || (currentIndex + 1)) == i ? 'selected' : '';
+            seqOptions += '<option value="' + i + '" ' + selected + '>' + i + '</option>';
+        }
+
+        return '<tr>' +
+            '<td>' +
+            '<form method="POST" action="client-categories/' + category.categoryid + '/sequence" class="category-sequence-form">' +
+            '<input type="hidden" name="_token" value="' + csrf + '">' +
+            '<input type="hidden" name="_method" value="PATCH">' +
+            '<select name="sequence" class="form-select form-select-sm category-sequence-select" style="width: 70px;">' +
+            seqOptions +
+            '</select>' +
+            '</form>' +
+            '</td>' +
+            '<td>' +
+            '<div class="d-flex align-items-center gap-3">' +
+            '<div class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold">' +
+            '<span class="d-block position-absolute">' + prefix + '</span>' +
+            '</div>' +
+            '<div>' +
+            '<span class="d-block fw-semibold">' + (category.name || '').replace(/"/g, '&quot;') + '</span>' +
+            '</div>' +
+            '</div>' +
+            '</td>' +
+            '<td class="text-end">' +
+            '<div class="tableActionButton d-inline-flex gap-1">' +
+            '<button type="button" class="bg03 color03 border-0" onclick="editCategory(this)" data-id="' + category.categoryid + '" data-name="' + (category.name || '').replace(/"/g, '&quot;') + '" data-sequence="' + category.sequence + '">Edit</button>' +
+            '<form method="POST" action="client-categories/' + category.categoryid + '" class="d-inline category-delete-form">' +
+            '<input type="hidden" name="_token" value="' + csrf + '">' +
+            '<input type="hidden" name="_method" value="DELETE">' +
+            '<button type="submit" class="bg04 color04 border-0">Delete</button>' +
+            '</form>' +
+            '</div>' +
+            '</td>' +
+            '</tr>';
+    }
+
+    function refreshCategoriesTable(categories) {
+        var tbody = document.querySelector('#category-list-pane tbody');
+        if (categories.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center py-4 text-muted bg-white">' +
+                '<i class="fas fa-tags text-muted mb-2 fs-2 opacity-50"></i>' +
+                '<p class="text-muted small mb-0">No categories yet. Create one above!</p>' +
+                '</td></tr>';
+        } else {
+            var totalCategories = categories.length;
+            var html = '';
+            categories.forEach(function(cat, idx) {
+                html += buildCategoryRow(cat, totalCategories, idx);
+            });
+            tbody.innerHTML = html;
+        }
+        document.querySelector('#category-list-pane h6 span').textContent = 'Category List (' + categories.length + ')';
+    }
+
+    function handleCategoryFormSubmit(e) {
+        e.preventDefault();
+        var form = this;
+        var formData = new FormData(form);
+        var url = form.action;
+        var method = (form.querySelector('input[name="_method"]')?.value || 'POST').toUpperCase();
+        if (method !== 'POST') {
+            formData.set('_method', method);
+        }
+
+        document.getElementById('categorySubmitBtn').disabled = true;
+
+        fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+        })
+            .then(function (res) {
+                if (res.status === 422) {
+                    return res.json().then(function (data) { throw data; });
+                }
+                if (!res.ok) {
+                    throw new Error('Server error');
+                }
+                return res.json();
+            })
+            .then(function (data) {
+                if (data.success) {
+                    refreshCategoriesTable(data.categories);
+                    resetCategoryForm();
+                    showGroupToast(data.message);
+                }
+            })
+            .catch(function (err) {
+                showGroupToast('Something went wrong. Please try again.', 'danger');
+            })
+            .finally(function () {
+                document.getElementById('categorySubmitBtn').disabled = false;
+            });
+    }
+
+    document.getElementById('manageCategoriesModal').addEventListener('hidden.bs.modal', resetCategoryForm);
 
     const clientsIndexUrl = "{{ route('clients.index') }}";
     const clientsBaseUrl = "{{ url('/') }}";
@@ -903,6 +1149,78 @@
                 .catch(function () {
                     showGroupToast('Something went wrong. Please try again.', 'danger');
                 });
+        });
+
+        var categoryForm = document.getElementById('categoryForm');
+        if (categoryForm) {
+            categoryForm.removeEventListener('submit', handleCategoryFormSubmit);
+            categoryForm.addEventListener('submit', handleCategoryFormSubmit);
+        }
+
+        document.querySelector('#category-list-pane').addEventListener('submit', async function (e) {
+            var deleteForm = e.target.closest('.category-delete-form');
+            if (!deleteForm) return;
+            e.preventDefault();
+
+            const confirmed = await window.appConfirm('Delete this category?');
+            if (!confirmed) return;
+
+            var formData = new FormData(deleteForm);
+            var url = deleteForm.action;
+
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            })
+                .then(function (res) {
+                    if (!res.ok) throw new Error('Server error');
+                    return res.json();
+                })
+                .then(function (data) {
+                    if (data.success) {
+                        refreshCategoriesTable(data.categories);
+                        showGroupToast(data.message);
+                    }
+                })
+                .catch(function () {
+                    showGroupToast('Something went wrong. Please try again.', 'danger');
+                });
+        });
+
+        document.querySelector('#category-list-pane').addEventListener('change', function (e) {
+            if (e.target.classList.contains('category-sequence-select')) {
+                var sequenceForm = e.target.closest('.category-sequence-form');
+                if (!sequenceForm) return;
+
+                var formData = new FormData(sequenceForm);
+                var url = sequenceForm.action;
+
+                fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('Server error');
+                        return res.json();
+                    })
+                    .then(function (data) {
+                        if (data.success) {
+                            refreshCategoriesTable(data.categories);
+                            showGroupToast(data.message);
+                        }
+                    })
+                    .catch(function () {
+                        showGroupToast('Something went wrong updating sequence.', 'danger');
+                    });
+            }
         });
     });
 

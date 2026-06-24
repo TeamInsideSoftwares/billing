@@ -65,6 +65,26 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
                             @error('groupid') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                             <div class="text-danger small mt-1 ajax-error" id="ajax-error-groupid"></div>
                         </div>
+                        <div class="col-12">
+                            <label for="categoryid" class="form-label small lh-sm fw-semibold text-dark mb-1">Client Category</label>
+                            <div class="input-group">
+                                <select id="categoryid" name="categoryid" class="form-select">
+                                    <option value="">No Category</option>
+                                    @foreach($categories as $category)
+                                    <option value="{{ $category->categoryid }}" {{ old('categoryid', $client->categoryid ?? '') ==
+                                        $category->categoryid ? 'selected' : '' }}>
+                                        {{ $category->name }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                                <button type="button" class="btn btn-outline-primary btn-primary text-white"
+                                    data-bs-toggle="modal" data-bs-target="#categoriesModal" title="Add Category">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            @error('categoryid') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                            <div class="text-danger small mt-1 ajax-error" id="ajax-error-categoryid"></div>
+                        </div>
                         <div class="col-12 col-md-12">
                             <label for="primary_email" class="form-label small lh-sm fw-semibold text-dark mb-1">Primary
                                 Email<span class="text-danger">*</span></label>
@@ -545,6 +565,35 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
                             <button type="submit" id="groupSubmitBtn"
                                 class="btn btn-outline-primary btn-primary text-white fw-medium">
                                 Save Client Group <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Categories Modal -->
+    <div class="modal fade" id="categoriesModal" tabindex="-1" aria-labelledby="categoriesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-md">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header border-0 bg-white py-2">
+                    <h5 class="modal-title fw-semibold" id="categoriesModalLabel">Add Client Category</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-DarkLight p-3">
+                    <form id="categoryForm" method="POST" action="{{ route('client-categories.store') }}" class="mainForm">
+                        @csrf
+                        <div class="row g-2 mb-3">
+                            <div class="col-12">
+                                <label for="categoryName" class="form-label small lh-sm fw-semibold text-dark mb-1">Category Name<span class="text-danger">*</span></label>
+                                <input type="text" name="name" id="categoryName" required class="form-control">
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-end mt-2">
+                            <button type="submit" id="categorySubmitBtn"
+                                class="btn btn-outline-primary btn-primary text-white fw-medium">
+                                Save Category <i class="fas fa-arrow-right btn-icon ms-1"></i>
                             </button>
                         </div>
                     </form>
@@ -1285,6 +1334,84 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
 
         loadSelectedBillingProfile();
         if (sameAsClientCheckbox.checked) copyClientDetailsToBilling();
+
+        var groupForm = document.getElementById('groupForm');
+        if (groupForm) {
+            groupForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var btn = document.getElementById('groupSubmitBtn');
+                if (!btn) return;
+                var originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new FormData(this),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                }).then(res => res.json()).then(data => {
+                    if (data.success) {
+                        var select = document.getElementById('groupid');
+                        select.innerHTML = '<option value="">Not part of any Group</option>';
+                        data.groups.forEach(g => {
+                            var opt = document.createElement('option');
+                            opt.value = g.groupid;
+                            opt.textContent = g.group_name;
+                            select.appendChild(opt);
+                        });
+                        var modal = bootstrap.Modal.getInstance(document.getElementById('groupsModal'));
+                        if (modal) modal.hide();
+                        resetGroupForm();
+                        if (window.showToast) window.showToast('success', data.message);
+                    }
+                }).catch(err => {
+                    console.error(err);
+                    alert('An error occurred while saving the group.');
+                }).finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                });
+            });
+        }
+
+        var categoryForm = document.getElementById('categoryForm');
+        if (categoryForm) {
+            categoryForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var btn = document.getElementById('categorySubmitBtn');
+                if (!btn) return;
+                var originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new FormData(this),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                }).then(res => res.json()).then(data => {
+                    if (data.success) {
+                        var select = document.getElementById('categoryid');
+                        select.innerHTML = '<option value="">No Category</option>';
+                        data.categories.forEach(c => {
+                            var opt = document.createElement('option');
+                            opt.value = c.categoryid;
+                            opt.textContent = c.name;
+                            select.appendChild(opt);
+                        });
+                        var modal = bootstrap.Modal.getInstance(document.getElementById('categoriesModal'));
+                        if (modal) modal.hide();
+                        categoryForm.reset();
+                        if (window.showToast) window.showToast('success', data.message);
+                    }
+                }).catch(err => {
+                    console.error(err);
+                    alert('An error occurred while saving the category.');
+                }).finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                });
+            });
+        }
     })();
 
     function selectGroup(id, name) {

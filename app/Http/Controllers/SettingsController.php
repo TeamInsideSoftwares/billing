@@ -1211,13 +1211,21 @@ class SettingsController extends Controller
         return redirect()->to(route('settings.index').'#taxes')->with('success', 'Tax deleted successfully.');
     }
 
-    public function taxToggle(Tax $tax)
+    public function taxToggle(Request $request, Tax $tax)
     {
         $accountid = $this->resolveAccountId();
         if ($tax->accountid !== $accountid) {
             abort(403, 'Unauthorized');
         }
         $tax->update(['is_active' => ! $tax->is_active]);
+
+        if ($request->wantsJson() || $request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'is_active' => $tax->is_active,
+                'message' => 'Tax status updated successfully.',
+            ]);
+        }
 
         return redirect()->to(route('settings.index').'#taxes')->with('success', 'Tax status toggled.');
     }

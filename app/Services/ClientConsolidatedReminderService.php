@@ -103,7 +103,7 @@ class ClientConsolidatedReminderService
                 ->where('channel', 'email')
                 ->where('status', 'sent')
                 ->where('created_by', 'SYSTEM')
-                ->whereDate('created_at', $today->toDateString())
+                ->where('created_at', '>=', $today->copy()->subDays(7)->startOfDay())
                 ->exists();
 
             if ($alreadySent) {

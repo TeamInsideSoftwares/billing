@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'accountid',
     'groupid',
+    'categoryid',
     'logo_path',
     'business_name',
     'primary_email',
@@ -82,6 +83,11 @@ class Client extends Model
     public function group(): BelongsTo
     {
         return $this->belongsTo(Group::class, 'groupid');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ClientCategory::class, 'categoryid');
     }
 
     public function documents(): HasMany

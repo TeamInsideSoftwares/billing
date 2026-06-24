@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\AdminTrialNotificationMail;
-use App\Mail\TrialWelcomeMail;
 use App\Models\Account;
 use App\Models\AccountBillingDetail;
 use App\Models\Client;
 use App\Models\ClientBillingDetail;
-use App\Models\ClientContact;
+use App\Models\ClientCategory;
 use App\Models\ClientDocument;
 use App\Models\CommunicationLog;
 use App\Models\Group;
@@ -22,7 +20,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -51,6 +48,8 @@ class ClientsController extends Controller
             'address_line_1' => 'nullable|string|max:150',
             'address_line_2' => 'nullable|string|max:150',
             'groupid' => 'nullable|exists:groups,groupid',
+            'categoryid' => 'nullable|string|exists:client_categories,categoryid',
+            'domain' => 'nullable|string|max:150',
         ]);
 
         $validated['primary_email'] = strtolower(trim((string) ($validated['primary_email'] ?? '')));
@@ -229,14 +228,15 @@ class ClientsController extends Controller
                     'address_line_1' => $addressLine1,
                     'address_line_2' => $validated['address_line_2'] ?? null,
                     'groupid' => $validated['groupid'] ?? null,
+                    'categoryid' => $validated['categoryid'] ?? null,
                 ]);
 
                 $client->contacts()->create([
                     'accountid' => $client->accountid,
-                    'name' => $validated['contact_name'] ?: 'Primary Contact',
+                    'name' => $validated['contact_name'] ?: 'N/A',
                     'phone' => $validated['phone'] ?? null,
                     'email' => $validated['primary_email'] ?? null,
-                    'designation' => 'Primary Contact',
+                    'designation' => null,
                     'is_primary' => true,
                 ]);
 
@@ -385,11 +385,14 @@ class ClientsController extends Controller
             ->orderBy('city')
             ->pluck('city');
 
+        $categories = ClientCategory::where('accountid', $accountId)->orderBy('sequence')->orderBy('name')->get();
+
         return view('clients.index', [
             'title' => 'All Clients',
             'subtitle' => $searchTerm ? 'Found '.$resultCount.' result(s) for "'.$searchTerm.'"' : null,
             'clients' => $clients,
             'groups' => $groups,
+            'categories' => $categories,
             'searchTerm' => $searchTerm,
             'resultCount' => $resultCount,
             'selectedState' => $selectedState,
@@ -540,6 +543,7 @@ class ClientsController extends Controller
             'title' => 'Add Client',
             'accounts' => Account::where('status', 'active')->get(),
             'groups' => Group::where('accountid', $accountId)->get(),
+            'categories' => ClientCategory::where('accountid', $accountId)->orderBy('sequence')->orderBy('name')->get(),
             'billingProfiles' => $billingProfiles,
             'currencies' => $currencies,
         ]);
@@ -553,6 +557,7 @@ class ClientsController extends Controller
             'accountid' => 'required|string|exists:accounts,accountid|max:10',
             'business_name' => 'required|string',
             'groupid' => 'nullable|exists:groups,groupid',
+            'categoryid' => 'nullable|exists:client_categories,categoryid',
             'contacts_json' => 'nullable|json',
             'primary_email' => 'required|email|max:150',
             'email' => 'nullable|string|max:500',
@@ -786,223 +791,6 @@ class ClientsController extends Controller
         ]);
     }
 
-    public function clientsDocumentsCreate(): RedirectResponse
-    {
-        return redirect()->route('clients.index');
-    }
-
-    public function clientsDocumentsList(Client $client): JsonResponse
-    {
-        $accountId = $this->resolveAccountId();
-        if ((string) $client->accountid !== $accountId) {
-            abort(404);
-        }
-
-        return $this->documentsJsonResponse($client, 'Documents loaded.');
-    }
-
-    public function clientsDocumentsStore(Request $request, Client $client)
-    {
-        $accountId = $this->resolveAccountId();
-        if ((string) $client->accountid !== $accountId) {
-            abort(404);
-        }
-
-        $validated = $request->validate([
-            'type' => 'required|in:po,agreement',
-            'title' => 'nullable|string|max:150',
-            'document_number' => 'nullable|string|max:100',
-            'document_date' => 'nullable|date',
-            'file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120',
-        ]);
-
-        $filePath = null;
-        if ($request->hasFile('file')) {
-            $folder = $validated['type'] === 'po' ? 'client-documents/po' : 'client-documents/agreements';
-            $filePath = $request->file('file')->store($folder, 'public');
-        }
-
-        ClientDocument::create([
-            'accountid' => $accountId,
-            'clientid' => $client->clientid,
-            'type' => $validated['type'],
-            'status' => 'active',
-            'title' => $validated['title'] ?? null,
-            'document_number' => $validated['document_number'] ?? null,
-            'document_date' => $validated['document_date'] ?? null,
-            'file_path' => $filePath,
-        ]);
-
-        if ($request->expectsJson() || $request->ajax()) {
-            return $this->documentsJsonResponse($client, ucfirst($validated['type']).' saved successfully.');
-        }
-
-        return redirect()
-            ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $validated['type']])
-            ->with('success', ucfirst($validated['type']).' saved successfully.');
-    }
-
-    public function clientsDocumentsUpdate(Request $request, Client $client, ClientDocument $document)
-    {
-        $accountId = $this->resolveAccountId();
-        if (
-            (string) $client->accountid !== $accountId ||
-            (string) $document->accountid !== $accountId ||
-            (string) $document->clientid !== (string) $client->clientid
-        ) {
-            abort(404);
-        }
-
-        if (($document->status ?? 'active') === 'cancelled') {
-            return redirect()
-                ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $document->type])
-                ->with('error', ucfirst($document->type).' is cancelled. Restore it before editing.');
-        }
-
-        $validated = $request->validate([
-            'type' => 'required|in:po,agreement',
-            'title' => 'nullable|string|max:150',
-            'document_number' => 'nullable|string|max:100',
-            'document_date' => 'nullable|date',
-            'file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120',
-        ]);
-
-        $filePath = $document->file_path;
-        if ($request->hasFile('file')) {
-            if ($filePath) {
-                Storage::disk('public')->delete($filePath);
-            }
-
-            $folder = $validated['type'] === 'po' ? 'client-documents/po' : 'client-documents/agreements';
-            $filePath = $request->file('file')->store($folder, 'public');
-        }
-
-        $document->update([
-            'type' => $validated['type'],
-            'title' => $validated['title'] ?? null,
-            'document_number' => $validated['document_number'] ?? null,
-            'document_date' => $validated['document_date'] ?? null,
-            'file_path' => $filePath,
-            'status' => 'active',
-        ]);
-
-        $client->load('documents');
-
-        if ($request->expectsJson() || $request->ajax()) {
-            return $this->documentsJsonResponse($client, ucfirst($validated['type']).' updated successfully.');
-        }
-
-        return redirect()
-            ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $validated['type']])
-            ->with('success', ucfirst($validated['type']).' updated successfully.');
-    }
-
-    public function clientsDocumentsCancel(Client $client, ClientDocument $document)
-    {
-        $accountId = $this->resolveAccountId();
-        if (
-            (string) $client->accountid !== $accountId ||
-            (string) $document->accountid !== $accountId ||
-            (string) $document->clientid !== (string) $client->clientid
-        ) {
-            abort(404);
-        }
-
-        $document->update(['status' => 'cancelled']);
-
-        return redirect()
-            ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $document->type])
-            ->with('success', ucfirst($document->type).' cancelled successfully.');
-    }
-
-    public function clientsDocumentsRestore(Client $client, ClientDocument $document)
-    {
-        $accountId = $this->resolveAccountId();
-        if (
-            (string) $client->accountid !== $accountId ||
-            (string) $document->accountid !== $accountId ||
-            (string) $document->clientid !== (string) $client->clientid
-        ) {
-            abort(404);
-        }
-
-        $document->update(['status' => 'active']);
-
-        return redirect()
-            ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $document->type])
-            ->with('success', ucfirst($document->type).' restored successfully.');
-    }
-
-    public function clientsDocumentsDestroy(Client $client, ClientDocument $document)
-    {
-        $accountId = $this->resolveAccountId();
-        if (
-            (string) $client->accountid !== $accountId ||
-            (string) $document->accountid !== $accountId ||
-            (string) $document->clientid !== (string) $client->clientid
-        ) {
-            abort(404);
-        }
-
-        $type = $document->type;
-        $document->delete();
-
-        $client->load('documents');
-
-        $request = request();
-        if ($request->expectsJson() || $request->ajax()) {
-            return $this->documentsJsonResponse($client, ucfirst($type).' deleted successfully.');
-        }
-
-        return redirect()
-            ->route('clients.documents.create', ['client' => $client->clientid, 'type' => $type])
-            ->with('success', ucfirst($type).' deleted successfully.');
-    }
-
-    private function documentsJsonResponse(Client $client, string $message): JsonResponse
-    {
-        $client->load(['documents' => function ($query) {
-            $query->latest('document_date')
-                ->latest('created_at');
-        }]);
-
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'documents' => $client->documents->map(function ($d) use ($client) {
-                return [
-                    'client_docid' => $d->client_docid,
-                    'type' => $d->type,
-                    'title' => $d->title,
-                    'document_number' => $d->document_number,
-                    'document_date' => $d->document_date?->format('Y-m-d'),
-                    'document_date_display' => $d->document_date?->format('d M Y') ?? '—',
-                    'file_path' => $d->file_path,
-                    'status' => $d->status ?? 'active',
-                    'file_url' => $d->file_path ? route('clients.documents.file', ['client' => $client->clientid, 'document' => $d->client_docid]) : null,
-                ];
-            }),
-        ]);
-    }
-
-    public function clientsDocumentsFile(Client $client, ClientDocument $document)
-    {
-        $accountId = $this->resolveAccountId();
-        if (
-            (string) $client->accountid !== $accountId ||
-            (string) $document->accountid !== $accountId ||
-            (string) $document->clientid !== (string) $client->clientid
-        ) {
-            abort(404);
-        }
-
-        if (! $document->file_path || ! Storage::disk('public')->exists($document->file_path)) {
-            abort(404);
-        }
-
-        return Storage::disk('public')->response($document->file_path);
-    }
-
     public function clientsEdit(Client $client): View
     {
         $accountId = $client->accountid ?: $this->resolveAccountId();
@@ -1022,6 +810,7 @@ class ClientsController extends Controller
             'client' => $client,
             'accounts' => Account::where('status', 'active')->get(),
             'groups' => Group::where('accountid', $accountId)->get(),
+            'categories' => ClientCategory::where('accountid', $accountId)->orderBy('sequence')->orderBy('name')->get(),
             'billingProfiles' => $billingProfiles,
             'currencies' => $currencies,
         ]);
@@ -1032,6 +821,7 @@ class ClientsController extends Controller
         $validated = $request->validate([
             'business_name' => 'required|string',
             'groupid' => 'nullable|exists:groups,groupid',
+            'categoryid' => 'nullable|exists:client_categories,categoryid',
             'contacts_json' => 'nullable|json',
             'primary_email' => 'required|email|max:150',
             'email' => 'nullable|string|max:500',
@@ -1232,7 +1022,7 @@ class ClientsController extends Controller
 
         $this->syncWithSuperadmin($client);
 
-        return redirect()->route('clients.trials')->with('success', 'Client converted to regular successfully.');
+        return redirect()->route('clients.edit', $client)->with('success', 'Client converted to regular successfully.');
     }
 
     public function toggleClientStatus(Request $request, Client $client): JsonResponse
@@ -1337,36 +1127,69 @@ class ClientsController extends Controller
         }
 
         try {
-            $mail = Mail::to($email);
-
             $accountBillingDetail = AccountBillingDetail::where('accountid', $client->accountid)->first();
-            if ($accountBillingDetail && ! empty($accountBillingDetail->billing_from_email)) {
+            $senderEmail = $accountBillingDetail?->billing_from_email ?? '';
+            $senderName = $accountBillingDetail?->billing_name ?: $senderEmail;
+
+            if ($senderEmail !== '') {
                 try {
-                    Mail::to($accountBillingDetail->billing_from_email)->send(new AdminTrialNotificationMail(
-                        businessName: (string) ($client->business_name ?: 'N/A'),
-                        contactName: (string) ($client->contact_name ?: 'N/A'),
-                        email: $email,
-                        phone: $client->phone,
-                        trialItemName: $order->item_name ?? 'N/A',
-                        trialDays: $this->trialEmailDays()
-                    ));
+                    $adminMessage = view('emails.admin-trial-notification', [
+                        'businessName' => (string) ($client->business_name ?: 'N/A'),
+                        'contactName' => (string) ($client->contact_name ?: 'N/A'),
+                        'email' => $email,
+                        'phone' => $client->phone,
+                        'trialItemName' => $order->item_name ?? 'N/A',
+                        'trialDays' => $this->trialEmailDays(),
+                    ])->render();
+
+                    $this->sendViaCampio('email', [
+                        'account_id' => $client->accountid,
+                        'campaign_name' => '',
+                        'schedule_at' => now()->toIso8601String(),
+                        'subject' => 'New Trial Activation: '.($client->business_name ?: 'N/A'),
+                        'message' => $adminMessage,
+                        'sender_id' => $senderName,
+                        'records' => [[
+                            'id' => $client->clientid,
+                            'name' => 'Admin',
+                            'email' => $senderEmail,
+                        ]],
+                        'source_url' => config('app.url'),
+                        'notes' => 'Admin trial notification',
+                    ]);
                 } catch (Throwable $e) {
                     Log::warning('Admin trial notification email failed.', [
                         'accountid' => $client->accountid,
                         'clientid' => $client->clientid,
-                        'email' => $accountBillingDetail->billing_from_email,
+                        'email' => $senderEmail,
                         'error' => $e->getMessage(),
                     ]);
                 }
             }
 
-            $mail->send(new TrialWelcomeMail(
-                name: (string) ($client->contact_name ?: $client->business_name ?: 'there'),
-                email: $email,
-                temporaryPassword: $temporaryPassword,
-                trialDays: $this->trialEmailDays(),
-                loginUrl: (string) env('TRIAL_LOGIN_URL', 'http://alpha.skoolready.com/login'),
-            ));
+            $clientMessage = view('emails.trial-welcome', [
+                'name' => (string) ($client->contact_name ?: $client->business_name ?: 'there'),
+                'email' => $email,
+                'temporaryPassword' => $temporaryPassword,
+                'trialDays' => $this->trialEmailDays(),
+                'loginUrl' => (string) env('TRIAL_LOGIN_URL', 'http://alpha.skoolready.com/login'),
+            ])->render();
+
+            $this->sendViaCampio('email', [
+                'account_id' => $client->accountid,
+                'campaign_name' => '',
+                'schedule_at' => now()->toIso8601String(),
+                'subject' => 'Welcome to SkoolReady - Your 30 Day Trial is Active',
+                'message' => $clientMessage,
+                'sender_id' => $senderName,
+                'records' => [[
+                    'id' => $client->clientid,
+                    'name' => (string) ($client->contact_name ?: $client->business_name ?: 'there'),
+                    'email' => $email,
+                ]],
+                'source_url' => config('app.url'),
+                'notes' => 'Trial welcome email',
+            ]);
 
             return true;
         } catch (Throwable $e) {
@@ -1433,6 +1256,7 @@ class ClientsController extends Controller
             'clientid' => 'nullable|string|exists:clients,clientid',
             'business_name' => 'required|string|max:150',
             'groupid' => 'nullable|exists:groups,groupid',
+            'categoryid' => 'nullable|exists:client_categories,categoryid',
             'primary_email' => 'required|email|max:150',
             'email' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
@@ -1473,6 +1297,7 @@ class ClientsController extends Controller
             'accountid' => $userAccountId,
             'business_name' => $validated['business_name'],
             'groupid' => $validated['groupid'] ?? null,
+            'categoryid' => $validated['categoryid'] ?? null,
             'primary_email' => $validated['primary_email'],
             'email' => $validated['email'] ?? null,
             'phone' => $validated['phone'] ?? null,
@@ -1502,94 +1327,6 @@ class ClientsController extends Controller
         ]);
     }
 
-    /**
-     * Save or update client contact via AJAX.
-     */
-    public function clientsContactSaveAjax(Request $request, Client $client): JsonResponse
-    {
-        $accountId = $this->resolveAccountId();
-        if ((string) $client->accountid !== $accountId) {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'contactid' => 'nullable|string|exists:client_contacts,contactid',
-            'name' => 'required|string|max:150',
-            'designation' => 'nullable|string|max:150',
-            'email' => 'nullable|email|max:150',
-            'phone' => 'nullable|string|max:50',
-            'is_primary' => 'boolean',
-        ]);
-
-        $isPrimary = ! empty($validated['is_primary']);
-
-        if ($isPrimary) {
-            $client->contacts()->update(['is_primary' => false]);
-        }
-
-        if (! empty($validated['contactid'])) {
-            $contact = $client->contacts()->where('contactid', $validated['contactid'])->firstOrFail();
-            $contact->update([
-                'name' => $validated['name'],
-                'designation' => $validated['designation'],
-                'email' => $validated['email'],
-                'phone' => $validated['phone'],
-                'is_primary' => $isPrimary,
-            ]);
-            $message = 'Contact updated successfully.';
-        } else {
-            if ($client->contacts()->count() === 0) {
-                $isPrimary = true;
-            }
-            $contact = $client->contacts()->create([
-                'accountid' => $accountId,
-                'name' => $validated['name'],
-                'designation' => $validated['designation'],
-                'email' => $validated['email'],
-                'phone' => $validated['phone'],
-                'is_primary' => $isPrimary,
-            ]);
-            $message = 'Contact added successfully.';
-        }
-
-        $contacts = $client->contacts()->orderBy('created_at')->get();
-
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'contacts' => $contacts,
-        ]);
-    }
-
-    /**
-     * Delete client contact via AJAX.
-     */
-    public function clientsContactDeleteAjax(Client $client, ClientContact $contact): JsonResponse
-    {
-        $accountId = $this->resolveAccountId();
-        if ((string) $client->accountid !== $accountId || (string) $contact->clientid !== (string) $client->clientid) {
-            abort(403);
-        }
-
-        $wasPrimary = $contact->is_primary;
-        $contact->delete();
-
-        if ($wasPrimary) {
-            $firstContact = $client->contacts()->orderBy('created_at')->first();
-            if ($firstContact) {
-                $firstContact->update(['is_primary' => true]);
-            }
-        }
-
-        $contacts = $client->contacts()->orderBy('created_at')->get();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Contact deleted successfully.',
-            'contacts' => $contacts,
-        ]);
-    }
-
     private function syncWithSuperadmin(Client $client, ?string $domain = null): void
     {
         $account = Account::find($client->accountid);
@@ -1602,7 +1339,7 @@ class ClientsController extends Controller
             $payload = [
                 'accountid' => $client->clientid,
                 'groupid' => $client->groupid ?: $client->clientid,
-                'account_type' => 'Client',
+                'account_type' => $client->category ? $client->category->name : 'Client',
                 'account_business_name' => $client->business_name ?: '',
                 'account_contact_person_name' => $contactName,
                 'account_domain' => $domain,
@@ -1650,5 +1387,52 @@ class ClientsController extends Controller
                 ]);
             }
         }
+    }
+
+    private function sendViaCampio(string $channel, array $payload): array
+    {
+        $baseUrl = rtrim((string) env('CAMPIO_BASE_URL', 'http://alpha.skoolready.com/campio'), '/');
+        if ($baseUrl === '') {
+            return ['ok' => false, 'message' => 'CAMPIO_BASE_URL is not configured.'];
+        }
+
+        $endpoint = $baseUrl.'/api/campaigns/schedule/'.$channel;
+        $token = trim((string) env('CAMPIO_AUTH_TOKEN', ''));
+        $apiKey = trim((string) env('CAMPIO_API_KEY', ''));
+
+        $request = Http::acceptJson()->asJson()->timeout(30);
+        if ($token !== '') {
+            $request = $request->withToken($token);
+        }
+        if ($apiKey !== '') {
+            $request = $request->withHeaders(['X-API-KEY' => $apiKey]);
+        }
+
+        try {
+            $response = $request->post($endpoint, $payload);
+        } catch (Throwable $e) {
+            return ['ok' => false, 'message' => 'Campio request failed: '.$e->getMessage()];
+        }
+
+        $json = $response->json();
+        if (! $response->successful()) {
+            Log::error('Campio trial welcome email dispatch failed', [
+                'channel' => $channel,
+                'status' => $response->status(),
+                'response' => $json,
+            ]);
+
+            return [
+                'ok' => false,
+                'message' => is_array($json)
+                    ? ((string) ($json['message'] ?? 'Campio API returned an error.'))
+                    : ('Campio API returned HTTP '.$response->status().'.'),
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'campaign_id' => (string) (is_array($json) ? ($json['campaign_id'] ?? '') : ''),
+        ];
     }
 }

@@ -476,7 +476,7 @@ return $group->map(fn($t) => [
 
         const currencyOptionsHtml = JSON.parse(document.getElementById('currency-options-data').textContent || '""');
         const isMultiTax = JSON.parse(document.getElementById('is-multi-tax-data').textContent || 'false');
-        const fixedTaxRate = parseFloat(document.getElementById('fixed-tax-rate-data').textContent || '0') || 0;
+        const fixedTaxRate = parseFloat(JSON.parse(document.getElementById('fixed-tax-rate-data').textContent || '0')) || 0;
         const taxGroups = JSON.parse(document.getElementById('tax-groups-data').textContent || '{}');
 
         function _esc(s) {

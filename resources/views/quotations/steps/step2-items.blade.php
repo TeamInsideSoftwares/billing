@@ -171,6 +171,20 @@ $accountHasUsers = (bool) ($account->have_users ?? false);
                             value="0">
                     </div>
 
+                    @if ($account->allow_multi_taxation)
+                    <div class="col-4 col-md-4">
+                        <label for="tax_rate" class="form-label small lh-sm fw-semibold text-dark mb-1">Tax</label>
+                        <select id="tax_rate" class="form-select">
+                            <option value="0">No Tax</option>
+                            @foreach ($taxes as $tax)
+                            <option value="{{ $tax->rate }}">{{ $tax->tax_name ?: $tax->type }} ({{ number_format($tax->rate, 0) }}%)</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @else
+                    <input type="hidden" id="tax_rate" value="{{ $account->fixed_tax_rate ?? 0 }}">
+                    @endif
+
                     <div class="col-4 col-md-4 d-flex justify-content-end mt-auto ms-auto pt-2">
                         <button type="button" id="addItem"
                             class="btn btn-outline-primary btn-primary text-white fw-medium">

@@ -3,6 +3,9 @@
 use App\Http\Controllers\AccountsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingUiController;
+use App\Http\Controllers\ClientCategoriesController;
+use App\Http\Controllers\ClientContactsController;
+use App\Http\Controllers\ClientDocumentsController;
 use App\Http\Controllers\ClientsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GroupsController;
@@ -44,17 +47,22 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/clients/create', 'clientsCreate')->name('clients.create');
         Route::post('/clients', 'clientsStore')->name('clients.store');
         Route::post('/clients/ajax-save-info', 'clientsSaveInfoAjax')->name('clients.ajax-save-info');
-        Route::post('/clients/{client}/contacts/ajax-save', 'clientsContactSaveAjax')->name('clients.contacts.ajax-save');
-        Route::delete('/clients/{client}/contacts/{contact}/ajax-delete', 'clientsContactDeleteAjax')->name('clients.contacts.ajax-delete');
         Route::patch('/clients/{client}/convert-to-regular', 'convertTrialToRegular')->name('clients.convert-to-regular');
-        Route::get('/clients/{client}/documents/create', 'clientsDocumentsCreate')->name('clients.documents.create');
-        Route::get('/clients/{client}/documents', 'clientsDocumentsList')->name('clients.documents.list');
-        Route::post('/clients/{client}/documents', 'clientsDocumentsStore')->name('clients.documents.store');
-        Route::put('/clients/{client}/documents/{document}', 'clientsDocumentsUpdate')->name('clients.documents.update');
-        Route::delete('/clients/{client}/documents/{document}', 'clientsDocumentsDestroy')->name('clients.documents.delete');
-        Route::patch('/clients/{client}/documents/{document}/cancel', 'clientsDocumentsCancel')->name('clients.documents.cancel');
-        Route::patch('/clients/{client}/documents/{document}/restore', 'clientsDocumentsRestore')->name('clients.documents.restore');
-        Route::get('/clients/{client}/documents/{document}/file', 'clientsDocumentsFile')->name('clients.documents.file');
+        Route::controller(ClientDocumentsController::class)->group(function () {
+            Route::get('/clients/{client}/documents/create', 'create')->name('clients.documents.create');
+            Route::get('/clients/{client}/documents', 'list')->name('clients.documents.list');
+            Route::post('/clients/{client}/documents', 'store')->name('clients.documents.store');
+            Route::put('/clients/{client}/documents/{document}', 'update')->name('clients.documents.update');
+            Route::delete('/clients/{client}/documents/{document}', 'destroy')->name('clients.documents.delete');
+            Route::patch('/clients/{client}/documents/{document}/cancel', 'cancel')->name('clients.documents.cancel');
+            Route::patch('/clients/{client}/documents/{document}/restore', 'restore')->name('clients.documents.restore');
+            Route::get('/clients/{client}/documents/{document}/file', 'file')->name('clients.documents.file');
+        });
+
+        Route::controller(ClientContactsController::class)->group(function () {
+            Route::post('/clients/{client}/contacts/ajax-save', 'saveAjax')->name('clients.contacts.ajax-save');
+            Route::delete('/clients/{client}/contacts/{contact}/ajax-delete', 'deleteAjax')->name('clients.contacts.ajax-delete');
+        });
         Route::get('/clients/{client}/edit', 'clientsEdit')->name('clients.edit');
         Route::put('/clients/{client}', 'clientsUpdate')->name('clients.update');
         Route::delete('/clients/{client}', 'clientsDestroy')->name('clients.destroy');
@@ -66,6 +74,14 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/groups/{group}', 'groupsUpdate')->name('groups.update');
         Route::delete('/groups/{group}', 'groupsDestroy')->name('groups.destroy');
     });
+
+    Route::controller(ClientCategoriesController::class)->group(function () {
+        Route::post('/client-categories', 'store')->name('client-categories.store');
+        Route::put('/client-categories/{category}', 'update')->name('client-categories.update');
+        Route::delete('/client-categories/{category}', 'destroy')->name('client-categories.destroy');
+        Route::patch('/client-categories/{category}/sequence', 'updateSequence')->name('client-categories.update-sequence');
+    });
+
     Route::controller(ServicesController::class)->group(function () {
         Route::get('/services', 'services')->name('services.index');
         Route::get('/services/create', 'servicesCreate')->name('services.create');

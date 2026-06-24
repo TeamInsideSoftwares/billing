@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\InvoicesController;
 use App\Models\Account;
 use App\Models\AccountBillingDetail;
 use App\Models\CommunicationLog;
@@ -96,7 +97,7 @@ class ClientConsolidatedPaymentReminderService
                 continue;
             }
 
-            // Prevent sending duplicate consolidated payment reminders on the same day
+            // Prevent sending duplicate consolidated payment reminders within 7 days
             $alreadySent = CommunicationLog::query()
                 ->where('accountid', $accountId)
                 ->where('clientid', $clientId)
@@ -104,12 +105,12 @@ class ClientConsolidatedPaymentReminderService
                 ->where('channel', 'email')
                 ->where('status', 'sent')
                 ->where('created_by', 'SYSTEM')
-                ->whereDate('created_at', $todayStr)
+                ->where('created_at', '>=', $today->copy()->subDays(7)->startOfDay())
                 ->exists();
 
             if ($alreadySent) {
                 $summary['skipped']++;
-                $this->logSkipReason('duplicate reminder already sent today', [
+                $this->logSkipReason('reminder already sent within the last 7 days', [
                     'accountid' => $accountId,
                     'clientid' => $clientId,
                 ]);
@@ -129,7 +130,6 @@ class ClientConsolidatedPaymentReminderService
             foreach ($unpaidDueInvoices as $invoice) {
                 $pdfType = ! empty($invoice->ti_number) ? 'tax_invoice' : 'pi';
                 $pdfLink = $this->resolveStoredInvoicePdfUrl($invoice, $pdfType === 'tax_invoice');
-                $payLink = route('invoices.show', ['invoice' => $invoice->invoiceid]);
                 $pdfName = $this->buildInvoicePdfFilename($invoice, $pdfType === 'tax_invoice');
                 $issueDate = $invoice->issue_date ?? $invoice->created_at ?? null;
                 $overdueDays = $issueDate ? $today->diffInDays(Carbon::parse($issueDate)->startOfDay(), false) : null;
@@ -140,14 +140,8 @@ class ClientConsolidatedPaymentReminderService
                     'overdue_days' => $overdueDays,
                     'balance_due' => $invoice->balance_due,
                     'pdf_link' => $pdfLink,
-                    'pay_link' => $payLink,
+                    'pay_link' => '',
                 ];
-                if ($pdfLink !== '') {
-                    $emailAttachments[] = [
-                        'url' => $pdfLink,
-                        'name' => $pdfName,
-                    ];
-                }
 
                 $totalOverdueAmount += $invoice->balance_due;
             }
@@ -310,10 +304,11 @@ class ClientConsolidatedPaymentReminderService
             return (string) $stored['url'];
         }
 
-        return route('invoices.pdf', [
-            'invoice' => $invoice->invoiceid,
-            'type' => $isTaxInvoice ? 'tax_invoice' : 'pi',
-        ]);
+        // Force generate and store the PDF so we get a public URL instead of an authenticated route link
+        $controller = app(InvoicesController::class);
+        $newStored = $controller->persistInvoicePdfVersion($invoice, $isTaxInvoice);
+
+        return $newStored['url'] ?? '';
     }
 
     private function listStoredInvoicePdfVersions(Invoice $invoice): array
@@ -373,8 +368,8 @@ class ClientConsolidatedPaymentReminderService
             }
 
             $attachments[] = [
-                'url' => $url,
-                'name' => $name,
+                'file_url' => $url,
+                'file_name' => $name,
             ];
         }
 

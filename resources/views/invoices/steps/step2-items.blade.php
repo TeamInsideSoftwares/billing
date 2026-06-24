@@ -185,8 +185,7 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
                         <select id="manual_item_tax_rate" class="form-select">
                             <option value="0">No Tax</option>
                             @foreach ($taxes as $tax)
-                            <option value="{{ $tax->rate }}">{{ $tax->tax_name }} ({{ number_format($tax->rate, 0) }}%)
-                            </option>
+                            <option value="{{ $tax->rate }}">{{ $tax->tax_name ?: $tax->type }} ({{ number_format($tax->rate, 0) }}%)</option>
                             @endforeach
                         </select>
                     </div>
@@ -695,9 +694,9 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             setDateInputValue(manualStartInput, '');
             setDateInputValue(manualEndInput, '');
             toggleManualRecurringFields();
-            @if ($account -> have_users)
+            if (accountHasUsers) {
                 toggleManualUsersField();
-            @endif
+            }
         }
 
         function openAddItemForm() {

@@ -113,10 +113,12 @@
                             </div>
                         </td>
                         <td>
-                            @if ($client['item_name'])
+                            @forelse ($client['orders_data'] as $orderData)
+                            @php $item = $orderData['items'][0] ?? null; @endphp
+                            @if($item)
                             <span
                                 class="bg-DarkLight rounded-2 p-2 d-flex align-items-center gap-0 flex-wrap justify-content-between my-1">
-                                <span class="fw-semibold d-block align-self-center">{{ $client['item_name'] }}</span>
+                                <span class="fw-semibold d-block align-self-center">{{ $item['item_name'] }}</span>
 
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="d-flex flex-column align-items-center">
@@ -139,15 +141,15 @@
                                     </div>
 
                                     <div class="d-flex flex-column align-items-center">
-                                        @if ($client['item_order_id'])
+                                        @if ($orderData['record_id'])
                                         <div class="input-group input-group-sm"
                                             style="width: 130px; display: inline-flex; height: 24px; min-height: 24px;">
                                             <input type="date"
                                                 class="form-control form-control-sm trial-expiry-input text-danger fw-semibold py-0 px-1.5 rounded-start-1 rounded-end-0"
                                                 style="height: 30px; font-size: 0.8rem; min-height: 30px;"
-                                                value="{{ $client['item_end_date'] ? \Carbon\Carbon::parse($client['item_end_date'])->format('Y-m-d') : '' }}"
+                                                value="{{ $item['end_date'] ? \Carbon\Carbon::parse($item['end_date'])->format('Y-m-d') : '' }}"
                                                 min="{{ $client['created_at'] ? \Carbon\Carbon::parse($client['created_at'])->format('Y-m-d') : '' }}"
-                                                data-order-id="{{ $client['item_order_id'] }}"
+                                                data-order-id="{{ $orderData['record_id'] }}"
                                                 title="Edit trial expiry date">
                                             <span
                                                 class="input-group-text bg-white px-1.5 py-0 rounded-end-1 rounded-start-0"><i
@@ -155,9 +157,9 @@
                                                     style="font-size: 0.7rem;"></i></span>
                                         </div>
                                         @else
-                                        @if ($client['item_end_date'])
+                                        @if ($item['end_date'])
                                         <span class="text-danger fw-semibold small lh-sm mt-1">({{
-                                            \Carbon\Carbon::parse($client['item_end_date'])->format('d M Y') }})</span>
+                                            \Carbon\Carbon::parse($item['end_date'])->format('d M Y') }})</span>
                                         @else
                                         <span class="text-muted small mt-1">&#8212;</span>
                                         @endif
@@ -165,9 +167,10 @@
                                     </div>
                                 </div>
                             </span>
-                            @else
-                            <span class="text-muted">&#8212;</span>
                             @endif
+                            @empty
+                            <span class="text-muted">&#8212;</span>
+                            @endforelse
                         </td>
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1">
@@ -236,10 +239,12 @@
                         <div class="mb-2 border-top pt-2 grid-text-medium">
                             <!-- Item Details -->
                             <div class="mb-2">
-                                @if ($client['item_name'])
+                                @forelse ($client['orders_data'] as $orderData)
+                                @php $item = $orderData['items'][0] ?? null; @endphp
+                                @if($item)
                                 <span
                                     class="bg-light rounded-2 p-2 d-flex align-items-center gap-0 flex-wrap justify-content-between my-1">
-                                    <span class="fw-semibold">{{ $client['item_name'] }}</span>
+                                    <span class="fw-semibold">{{ $item['item_name'] }}</span>
 
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="d-flex flex-column align-items-center">
@@ -262,15 +267,15 @@
                                         </div>
 
                                         <div class="d-flex flex-column align-items-center">
-                                            @if ($client['item_order_id'])
+                                            @if ($orderData['record_id'])
                                             <div class="input-group input-group-sm"
                                                 style="width: 130px; display: inline-flex; height: 24px; min-height: 24px;">
                                                 <input type="date"
                                                     class="form-control form-control-sm trial-expiry-input text-danger fw-semibold py-0 px-1.5 rounded-start-1 rounded-end-0"
                                                     style="height: 30px; font-size: 0.8rem; min-height: 30px;"
-                                                    value="{{ $client['item_end_date'] ? \Carbon\Carbon::parse($client['item_end_date'])->format('Y-m-d') : '' }}"
+                                                    value="{{ $item['end_date'] ? \Carbon\Carbon::parse($item['end_date'])->format('Y-m-d') : '' }}"
                                                     min="{{ $client['created_at'] ? \Carbon\Carbon::parse($client['created_at'])->format('Y-m-d') : '' }}"
-                                                    data-order-id="{{ $client['item_order_id'] }}"
+                                                    data-order-id="{{ $orderData['record_id'] }}"
                                                     title="Edit trial expiry date">
                                                 <span
                                                     class="input-group-text bg-white px-1.5 py-0 rounded-end-1 rounded-start-0"><i
@@ -278,9 +283,9 @@
                                                         style="font-size: 0.7rem;"></i></span>
                                             </div>
                                             @else
-                                            @if ($client['item_end_date'])
+                                            @if ($item['end_date'])
                                             <span class="text-danger fw-semibold small lh-sm mt-1">({{
-                                                \Carbon\Carbon::parse($client['item_end_date'])->format('d M Y')
+                                                \Carbon\Carbon::parse($item['end_date'])->format('d M Y')
                                                 }})</span>
                                             @else
                                             <span class="text-muted small mt-1">&#8212;</span>
@@ -289,9 +294,10 @@
                                         </div>
                                     </div>
                                 </span>
-                                @else
-                                <span class="text-muted small">&#8212;</span>
                                 @endif
+                                @empty
+                                <span class="text-muted small">&#8212;</span>
+                                @endforelse
                             </div>
                         </div>
                     </div>
