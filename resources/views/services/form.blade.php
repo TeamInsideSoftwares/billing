@@ -232,18 +232,18 @@
                                 <table class="table mainTable align-middle mb-0" id="costings-table">
                                     <thead class="table-light">
                                         <tr>
-                                            <th width="30%">Currency<span class="text-danger">*</span></th>
-                                            <th width="15%">Cost Price<span class="text-danger">*</span></th>
-                                            <th width="15%">Selling Price<span class="text-danger">*</span></th>
-                                            <th width="15%">SAC Code</th>
-                                            <th width="10%">Tax</th>
-                                            <th width="15%" class="text-end">Action</th>
+                                            <th class="px-2" width="30%">Currency<span class="text-danger">*</span></th>
+                                            <th class="px-2" width="15%">Cost Price<span class="text-danger">*</span></th>
+                                            <th class="px-2" width="15%">Selling Price<span class="text-danger">*</span></th>
+                                            <th class="px-2" width="15%">SAC Code</th>
+                                            <th class="px-2" width="13%">Tax</th>
+                                            <th class="px-2" width="15%" class="text-end">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="costing-rows">
                                         @foreach($existingCostings as $index => $costing)
                                         <tr>
-                                            <td>
+                                            <td class="px-2">
                                                 <select name="costings[{{ $index }}][currency_code]"
                                                     class="form-select form-select-sm h-75" required>
                                                     <option value="">Select</option>
@@ -255,24 +255,24 @@
                                                     @endforeach
                                                 </select>
                                             </td>
-                                            <td><input type="number" step="0.01"
+                                            <td class="px-2"><input type="number" step="0.01"
                                                     name="costings[{{ $index }}][cost_price]"
                                                     value="{{ $costing['cost_price'] ?? '' }}" required
                                                     class="form-control form-control-sm h-75"></td>
-                                            <td><input type="number" step="0.01"
+                                            <td class="px-2"><input type="number" step="0.01"
                                                     name="costings[{{ $index }}][selling_price]"
                                                     value="{{ $costing['selling_price'] ?? '' }}" required
                                                     class="form-control form-control-sm h-75"></td>
-                                            <td><input type="text" maxlength="20"
+                                            <td class="px-2"><input type="text" maxlength="20"
                                                     name="costings[{{ $index }}][sac_code]"
                                                     value="{{ $costing['sac_code'] ?? '' }}"
                                                     class="form-control form-control-sm h-75">
                                             </td>
-                                            <td>
+                                            <td class="px-2">
                                                 @if($account->allow_multi_taxation)
                                                 <select name="costings[{{ $index }}][tax_rate]"
-                                                    class="form-select form-select-sm">
-                                                    <option value="0">-- None --</option>
+                                                    class="form-select form-select-sm h-75">
+                                                    <option value="0" {{ empty($costing['tax_rate']) || (float) ($costing['tax_rate'] ?? 0) === 0.0 ? 'selected' : '' }}>None</option>
                                                     @php
                                                     $groupedTaxes = $taxes->groupBy(fn($tax) => $tax->type ?: 'Other');
                                                     @endphp
@@ -280,11 +280,7 @@
                                                     @if($typeTaxes->isNotEmpty())
                                                     <optgroup label="{{ $taxType }}">
                                                         @foreach($typeTaxes as $tax)
-                                                        <option value="{{ $tax->rate }}" {{ (string)
-                                                            ($costing['tax_rate'] ?? '' )===(string) $tax->rate ?
-                                                            'selected' : '' }}>{{
-                                                            $tax->tax_name ??
-                                                            $tax->type }} ({{ $tax->rate }}%)</option>
+                                                        <option value="{{ $tax->rate }}" {{ (float) ($costing['tax_rate'] ?? 0) === (float) $tax->rate ? 'selected' : '' }}>{{ $tax->rate }}%</option>
                                                         @endforeach
                                                     </optgroup>
                                                     @endif
@@ -298,7 +294,7 @@
                                                 </span>
                                                 @endif
                                             </td>
-                                            <td class="text-end">
+                                            <td class="text-end px-2">
                                                 <div class="tableActionButton d-inline-flex gap-1">
                                                     <button type="button"
                                                         class="bg04 color04 remove-costing">Delete</button>
@@ -372,50 +368,7 @@
             </div>
         </div>
 
-        @if($account->allow_multi_taxation)
-        <div class="modal fade" id="addTaxModal" tabindex="-1">
-            <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
-                <div class="modal-content border-0 shadow-lg">
-                    <div class="modal-header bg-white border-bottom">
-                        <h5 class="modal-title fw-semibold">
-                            <i class="fas fa-receipt icon-spaced text-muted"></i>Add Tax
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body bg-light p-4">
-                        <form method="POST" action="{{ route('taxes.store') }}" id="quick-tax-form" class="mainForm">
-                            @csrf
-                            <input type="hidden" name="redirect_back" value="1">
-                            <div class="mb-3">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                                    for="quick_tax_rate">Rate (%)</label>
-                                <input type="number" id="quick_tax_rate" name="rate" placeholder="18" step="0.01"
-                                    min="0" max="100" required class="form-control">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                                    for="quick_tax_type">Type</label>
-                                <select id="quick_tax_type" name="type" required class="form-select">
-                                    @foreach(['GST'=>'GST','VAT'=>'VAT'] as $v=>$l)
-                                    <option value="{{ $v }}">{{ $l }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="d-flex align-items-center justify-content-between mt-3">
-                                <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium"
-                                    data-bs-dismiss="modal">
-                                    <i class="fas fa-times btn-icon me-1"></i> Cancel
-                                </button>
-                                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                    Add Tax <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-        @endif
+
 
         <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
             @isset($service)
@@ -431,6 +384,51 @@
         </div>
     </form>
 </section>
+
+@if($account->allow_multi_taxation)
+<div class="modal fade" id="addTaxModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered" style="max-width: 420px;">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-white border-bottom">
+                <h5 class="modal-title fw-semibold">
+                    <i class="fas fa-receipt icon-spaced text-muted"></i>Add Tax
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light p-4">
+                <form method="POST" action="{{ route('taxes.store') }}" id="quick-tax-form" class="mainForm">
+                    @csrf
+                    <input type="hidden" name="redirect_back" value="1">
+                    <div class="mb-3">
+                        <label class="form-label small lh-sm fw-semibold text-dark mb-1"
+                            for="quick_tax_rate">Rate (%)</label>
+                        <input type="number" id="quick_tax_rate" name="rate" placeholder="18" step="0.01"
+                            min="0" max="100" required class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small lh-sm fw-semibold text-dark mb-1"
+                            for="quick_tax_type">Type</label>
+                        <select id="quick_tax_type" name="type" required class="form-select">
+                            @foreach(['GST'=>'GST','VAT'=>'VAT'] as $v=>$l)
+                            <option value="{{ $v }}">{{ $l }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between mt-3">
+                        <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium"
+                            data-bs-dismiss="modal">
+                            <i class="fas fa-times btn-icon me-1"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
+                            Add Tax <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 
 @php
 $currencyOptions = collect($currencies)->map(function ($currency) {
@@ -485,24 +483,21 @@ return $group->map(fn($t) => [
             return d.innerHTML;
         }
 
-        let taxOptionsHtml = '<option value="0">-- None --</option>';
-        for (const type in taxGroups) {
-            if (taxGroups[type].length > 1) {
-                taxOptionsHtml += '<optgroup label="' + _esc(type) + '">';
-                taxGroups[type].forEach(t => {
-                    taxOptionsHtml += '<option value="' + t.rate + '">' + _esc(t.name) + ' (' + t.rate + '%)</option>';
-                });
-                taxOptionsHtml += '</optgroup>';
-            } else {
-                taxGroups[type].forEach(t => {
-                    taxOptionsHtml += '<option value="' + t.rate + '">' + _esc(t.name) + ' (' + t.rate + '%)</option>';
-                });
-            }
-        }
+        let taxOptionsHtml = '<option value="0">None</option>';
+
+for (const type in taxGroups) {
+    taxOptionsHtml += '<optgroup label="' + _esc(type) + '">';
+
+    taxGroups[type].forEach(t => {
+        taxOptionsHtml += `<option value="${t.rate}">${t.rate}%</option>`;
+    });
+
+    taxOptionsHtml += '</optgroup>';
+}
 
         function taxSelectHtml(i) {
             if (isMultiTax) {
-                return `<select name="costings[${i}][tax_rate]" class="form-select form-select-sm">${taxOptionsHtml}</select>`;
+                return `<select name="costings[${i}][tax_rate]" class="form-select form-select-sm h-75">${taxOptionsHtml}</select>`;
             } else {
                 return `<input type="hidden" name="costings[${i}][tax_rate]" value="${fixedTaxRate.toFixed(2)}"><span class="badge text-bg-warning">${fixedTaxRate.toFixed(2)}%</span>`;
             }
@@ -517,17 +512,17 @@ return $group->map(fn($t) => [
         function costingRowHtml(i) {
             return `
             <tr>
-                <td>
-                    <select name="costings[${i}][currency_code]" class="form-select form-select-sm" required>
+                <td class="px-2">
+                    <select name="costings[${i}][currency_code]" class="form-select form-select-sm h-75" required>
                         <option value="">Select</option>
                         ${currencyOptionsHtml}
                     </select>
                 </td>
-                <td><input type="number" step="0.01" name="costings[${i}][cost_price]" required class="form-control form-control-sm"></td>
-                <td><input type="number" step="0.01" name="costings[${i}][selling_price]" required class="form-control form-control-sm"></td>
-                <td><input type="text" maxlength="20" name="costings[${i}][sac_code]" class="form-control form-control-sm"></td>
-                <td>${taxSelectHtml(i)}</td>
-                <td class="text-end">
+                <td class="px-2"><input type="number" step="0.01" name="costings[${i}][cost_price]" required class="form-control form-control-sm h-75"></td>
+                <td class="px-2"><input type="number" step="0.01" name="costings[${i}][selling_price]" required class="form-control form-control-sm h-75"></td>
+                <td class="px-2"><input type="text" maxlength="20" name="costings[${i}][sac_code]" class="form-control form-control-sm h-75"></td>
+                <td class="px-2">${taxSelectHtml(i)}</td>
+                <td class="text-end px-2">
                     <div class="tableActionButton d-inline-flex gap-1">
                         <button type="button" class="bg04 color04 remove-costing">Delete</button>
                     </div>

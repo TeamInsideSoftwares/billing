@@ -118,8 +118,10 @@ $title = 'Client Dashboard';
                         @if($client->logo_path)
                         <div
                             class="border rounded-circle overflow-hidden bg-white d-flex align-items-center justify-content-center w-100 h-100">
-                            <img src="{{ $client->logo_path }}" alt="{{ $client->business_name }}"
-                                class="w-100 h-100 object-fit-cover">
+                            <a href="{{ $client->logo_path }}" target="_blank" class="w-100 h-100 d-block" title="View full logo">
+                                <img src="{{ $client->logo_path }}" alt="{{ $client->business_name }}"
+                                    class="w-100 h-100 object-fit-contain p-1">
+                            </a>
                         </div>
                         @else
                         <div class="rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center w-100 h-100"

@@ -195,7 +195,7 @@ default => collect(),
                             </td>
                             <td class="text-center">
                                 <span
-                                    class="{{ (($row['days_left'] ?? null) !== null && $row['days_left'] < 0) ? 'text-dark fw-semibold' : '' }}">
+                                    class="{{ (($row['days_left'] ?? null) !== null && $row['days_left'] < 0) ? '' : '' }}">
                                     {{ $row['end_date_display'] }}
                                 </span>
                             </td>

@@ -60,7 +60,7 @@
 
                         <div class="col-12 col-md-2" id="edit_users_wrapper">
                             <label class="form-label small lh-sm fw-semibold text-dark mb-1">User</label>
-                            <input type="number" id="edit_no_of_users" class="form-control" min="1" step="1" value="1">
+                            <input type="number" id="edit_no_of_users" class="form-control" min="1" step="1" value="1" disabled>
                         </div>
 
                         <div class="col-12 col-md-5">
@@ -175,6 +175,8 @@
                 editNoOfUsersInput.disabled = !show;
                 if (!show) {
                     editNoOfUsersInput.value = '';
+                } else if (!editNoOfUsersInput.value || Number(editNoOfUsersInput.value) < 1) {
+                    editNoOfUsersInput.value = 1;
                 }
             }
 
