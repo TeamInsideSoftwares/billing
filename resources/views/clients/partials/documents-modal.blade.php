@@ -253,7 +253,9 @@
         document.getElementById('docType').value = type;
         document.getElementById('docTitle').value = title;
         document.getElementById('docNumber').value = number;
-        document.getElementById('docDate').value = date;
+        const docDateEl = document.getElementById('docDate');
+        docDateEl.value = date;
+        if (docDateEl._flatpickr) docDateEl._flatpickr.setDate(date, false);
 
         submitBtn.innerHTML = 'Update Document <i class="fas fa-arrow-right btn-icon ms-1"></i>';
         if (cancelBtn) {

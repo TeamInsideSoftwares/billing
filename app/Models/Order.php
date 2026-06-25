@@ -55,6 +55,7 @@ class Order extends Model
                 'item_description' => ['label' => 'Description', 'action' => 'description_changed'],
                 'quantity' => ['label' => 'Quantity', 'action' => 'quantity_changed'],
                 'no_of_users' => ['label' => 'Number of users', 'action' => 'users_changed'],
+                'start_date' => ['label' => 'Start date', 'action' => 'start_date_changed'],
                 'end_date' => ['label' => 'Expiry date', 'action' => 'expiry_date_changed'],
                 'delivery_date' => ['label' => 'Delivery date', 'action' => 'delivery_date_changed'],
                 'client_docid' => ['label' => 'Purchase Order', 'action' => 'po_changed'],
@@ -81,7 +82,7 @@ class Order extends Model
 
                     $desc = "{$meta['label']} changed from {$oldFormatted} to {$newFormatted}";
 
-                    if (in_array($field, ['end_date', 'delivery_date', 'client_docid'])) {
+                    if (in_array($field, ['start_date', 'end_date', 'delivery_date', 'client_docid'])) {
                         if (is_null($old) || $old === '') {
                             $desc = "{$meta['label']} set to {$newFormatted}";
                         } elseif (is_null($new) || $new === '') {

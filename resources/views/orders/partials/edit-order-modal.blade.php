@@ -232,7 +232,10 @@
                         editDurationInput.value || 1
                     );
                     editEndDateInput.value = newEndDate;
+                    const minDateVal = editStartDateInput.value || todayStr;
+                    editEndDateInput.min = minDateVal;
                     if (editEndDateInput._flatpickr) {
+                        editEndDateInput._flatpickr.set('minDate', minDateVal);
                         editEndDateInput._flatpickr.setDate(newEndDate, false);
                     }
                 }
@@ -248,6 +251,10 @@
 
             if (editDurationInput) {
                 editDurationInput.addEventListener('input', editRefreshEndDate);
+            }
+
+            if (editStartDateInput) {
+                editStartDateInput.addEventListener('change', editRefreshEndDate);
             }
 
             function editPopulateDocuments(clientId, selectedDocId) {
@@ -293,7 +300,9 @@
                         editStartDateInput._flatpickr.setDate(editOriginalStartDate, false);
                     }
                     editEndDateInput.value = editOriginalEndDate;
+                    editEndDateInput.min = editOriginalStartDate;
                     if (editEndDateInput._flatpickr) {
+                        editEndDateInput._flatpickr.set('minDate', editOriginalStartDate);
                         editEndDateInput._flatpickr.setDate(editOriginalEndDate, false);
                     }
                     const deliveryDate = this.dataset.deliveryDate || '';

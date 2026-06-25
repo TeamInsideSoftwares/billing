@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('header_actions')
-<a href="{{ request()->query('return_to') === 'trials' ? route('clients.trials') : route('orders.index', ['c' => $preSelectedClientId ?? ($order->clientid ?? request('c'))]) }}"
+<a href="{{ route('orders.index', ['c' => 'all']) }}"
     class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
     <i class="fas fa-list btn-icon"></i> Order List
 </a>
@@ -473,11 +473,18 @@ $initialOrderItems = [[
         function refreshEndDate() {
             toggleDurationField();
             if (endDateInput) {
-                endDateInput.value = calculateEndDate(
+                const newEndDate = calculateEndDate(
                     startDateInput?.value || todayDate,
                     frequencyInput?.value || '',
                     durationInput?.value || 1
                 );
+                endDateInput.value = newEndDate;
+                const minDateVal = startDateInput?.value || todayDate;
+                endDateInput.min = minDateVal;
+                if (endDateInput._flatpickr) {
+                    endDateInput._flatpickr.set('minDate', minDateVal);
+                    endDateInput._flatpickr.setDate(newEndDate, false);
+                }
             }
         }
 
@@ -550,9 +557,18 @@ $initialOrderItems = [[
             if (usersInput) usersInput.value = 1;
             if (frequencyInput) frequencyInput.value = 'One-Time';
             if (durationInput) durationInput.value = 1;
-            if (startDateInput) startDateInput.value = todayDate;
-            if (endDateInput) endDateInput.value = maxEndDate;
-            if (deliveryDateInput) deliveryDateInput.value = '';
+            if (startDateInput) {
+                startDateInput.value = todayDate;
+                if (startDateInput._flatpickr) startDateInput._flatpickr.setDate(todayDate, false);
+            }
+            if (endDateInput) {
+                endDateInput.value = maxEndDate;
+                if (endDateInput._flatpickr) endDateInput._flatpickr.setDate(maxEndDate, false);
+            }
+            if (deliveryDateInput) {
+                deliveryDateInput.value = '';
+                if (deliveryDateInput._flatpickr) deliveryDateInput._flatpickr.clear();
+            }
             if (descriptionInput) descriptionInput.value = '';
             if (docSelect) docSelect.value = '';
             editingItemIndex = null;
@@ -569,9 +585,21 @@ $initialOrderItems = [[
             if (usersInput) usersInput.value = item.no_of_users || 1;
             if (frequencyInput) frequencyInput.value = item.frequency || '';
             if (durationInput) durationInput.value = item.duration || 1;
-            if (startDateInput) startDateInput.value = item.start_date || todayDate;
-            if (endDateInput) endDateInput.value = item.end_date || maxEndDate;
-            if (deliveryDateInput) deliveryDateInput.value = item.delivery_date || '';
+            if (startDateInput) {
+                startDateInput.value = item.start_date || todayDate;
+                if (startDateInput._flatpickr) startDateInput._flatpickr.setDate(startDateInput.value, false);
+            }
+            if (endDateInput) {
+                endDateInput.value = item.end_date || maxEndDate;
+                if (endDateInput._flatpickr) endDateInput._flatpickr.setDate(endDateInput.value, false);
+            }
+            if (deliveryDateInput) {
+                deliveryDateInput.value = item.delivery_date || '';
+                if (deliveryDateInput._flatpickr) {
+                    if (deliveryDateInput.value) deliveryDateInput._flatpickr.setDate(deliveryDateInput.value, false);
+                    else deliveryDateInput._flatpickr.clear();
+                }
+            }
             if (descriptionInput) descriptionInput.value = item.item_description || '';
             if (docSelect) docSelect.value = item.client_docid || '';
             confirmedDuplicateItemId = item.itemid || null;
@@ -874,6 +902,7 @@ $initialOrderItems = [[
                 }
                 if (startDateInput) {
                     startDateInput.value = todayDate;
+                    if (startDateInput._flatpickr) startDateInput._flatpickr.setDate(todayDate, false);
                 }
                 refreshEndDate();
                 toggleUsersField();

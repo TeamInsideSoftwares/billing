@@ -598,6 +598,15 @@ $orderItemsFlat = collect($orderItemsForClient ?? [])->values();
             if (selectedFrequency === '' && !nextValue) {
                 return;
             }
+            if (manualStartInput) {
+                const minVal = manualStartInput.value || '';
+                if (minVal) {
+                    manualEndInput.min = minVal;
+                    if (manualEndInput._flatpickr) {
+                        manualEndInput._flatpickr.set('minDate', minVal);
+                    }
+                }
+            }
             setDateInputValue(manualEndInput, nextValue);
         }
 

@@ -418,6 +418,15 @@ return [
             const base = startDate.value || today;
             const dur = Math.max(1, Number(duration.value || 1));
             if (!startDate.value) setDateInputValue(startDate, base);
+
+            const minVal = startDate.value || '';
+            if (minVal) {
+                endDate.min = minVal;
+                if (endDate._flatpickr) {
+                    endDate._flatpickr.set('minDate', minVal);
+                }
+            }
+
             if (!freq || freq === 'One-Time') {
                 setDateInputValue(endDate, freq === 'One-Time' ? '2099-12-31' : '');
                 return;

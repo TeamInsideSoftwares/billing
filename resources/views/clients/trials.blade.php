@@ -562,6 +562,7 @@
                                 if (el !== self) {
                                     el.value = newDate;
                                     el.defaultValue = newDate;
+                                    if (el._flatpickr) el._flatpickr.setDate(newDate, false);
                                 }
                             });
 
@@ -578,12 +579,14 @@
                         } else {
                             showTrialToast(data.message || 'Failed to update expiry date.', 'danger');
                             self.value = originalValue;
+                            if (self._flatpickr) self._flatpickr.setDate(originalValue, false);
                         }
                     })
                     .catch(function (err) {
                         self.disabled = false;
                         showTrialToast(err.message || 'Something went wrong. Please check inputs.', 'danger');
                         self.value = originalValue;
+                        if (self._flatpickr) self._flatpickr.setDate(originalValue, false);
                     });
             });
         });

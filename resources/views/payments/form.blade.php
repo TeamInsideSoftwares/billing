@@ -325,12 +325,14 @@
 
             if (minDate && paymentDate.value < minDate) {
                 paymentDate.value = minDate;
+                if (paymentDate._flatpickr) paymentDate._flatpickr.setDate(minDate, false);
                 paymentDate.setCustomValidity('Payment date cannot be before the financial year start.');
                 return;
             }
 
             if (maxDate && paymentDate.value > maxDate) {
                 paymentDate.value = maxDate;
+                if (paymentDate._flatpickr) paymentDate._flatpickr.setDate(maxDate, false);
                 paymentDate.setCustomValidity('Payment date cannot be after the allowed date.');
                 return;
             }
