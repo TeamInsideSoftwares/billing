@@ -2,15 +2,19 @@
 
 @section('header_actions')
 <div class="d-flex align-items-center gap-2 flex-wrap">
+    @if(auth()->user()->hasPermission('items.edit'))
     <button type="button"
         class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium"
         data-bs-toggle="modal" data-bs-target="#productCategoriesModal">
         <i class="fas fa-tags btn-icon"></i> Manage Categories
     </button>
+    @endif
+    @if(auth()->user()->hasPermission('items.create'))
     <a href="{{ route('services.create') }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
         Create Item <i class="fas fa-arrow-right btn-icon ms-1"></i>
     </a>
+    @endif
 </div>
 @endsection
 
@@ -99,17 +103,21 @@
                                         </td>
                                         <td class="text-end">
                                             <div class="tableActionButton d-inline-flex gap-1">
+                                                @if(auth()->user()->hasPermission('items.edit'))
                                                 <button type="button" class="bg03 color03 border-0"
                                                     onclick="editCategory(this)" data-id="{{ $pc['record_id'] }}"
                                                     data-name="{{ $pc['name'] }}"
                                                     data-description="{{ $pc['description'] ?? '' }}"
                                                     data-status="{{ strtolower($pc['status']) }}">Edit</button>
+                                                @endif
+                                                @if(auth()->user()->hasPermission('items.delete'))
                                                 <form method="POST"
                                                     action="{{ route('product-categories.destroy', $pc['record_id']) }}"
                                                     class="d-inline cat-delete-form" data-name="{{ $pc['name'] }}">
                                                     @csrf @method('DELETE')
                                                     <button type="submit" class="bg04 color04 border-0">Delete</button>
                                                 </form>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
@@ -247,13 +255,17 @@
                             </td>
                             <td class="text-end">
                                 <div class="tableActionButton d-inline-flex gap-1">
+                                    @if(auth()->user()->hasPermission('items.edit'))
                                     <a href="{{ route('services.edit', $service['record_id']) }}"
                                         class="bg03 color03">Edit</a>
+                                    @endif
+                                    @if(auth()->user()->hasPermission('items.delete'))
                                     <form method="POST" action="{{ route('services.destroy', $service['record_id']) }}"
                                         class="d-inline service-delete-form" data-name="{{ $service['name'] }}">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="bg04 color04">Delete</button>
                                     </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

@@ -7,10 +7,12 @@
         <i class="fas fa-calendar-times btn-icon"></i> Expiry List
     </a>
 
+    @if(auth()->user()->hasPermission('invoices.create'))
     <a href="{{ route('invoices.create', $selectedClientId ? ['c' => $selectedClientId] : []) }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
         Create Invoice <i class="fas fa-arrow-right btn-icon"></i>
     </a>
+    @endif
 </div>
 @endsection
 
@@ -248,6 +250,7 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                             <td class="text-end">
                                 <div class="tableActionButton d-inline-flex gap-1">
                                     @if (($invoice->status ?? '') === 'cancelled')
+                                    @if(auth()->user()->hasPermission('invoices.cancel'))
                                     <form method="POST"
                                         action="{{ route('invoices.restore', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
                                         class="d-inline" onsubmit="return confirm('Restore this invoice?')">
@@ -255,9 +258,13 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                                         @method('PATCH')
                                         <button type="submit" class="bg02 color02">Restore</button>
                                     </form>
+                                    @endif
                                     @elseif (strtolower($invoice->status ?? '') === 'draft')
+                                    @if(auth()->user()->hasPermission('invoices.edit'))
                                     <a href="{{ route('invoices.edit', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
                                         class="bg02 color02">Continue</a>
+                                    @endif
+                                    @if(auth()->user()->hasPermission('invoices.cancel'))
                                     <form method="POST"
                                         action="{{ route('invoices.destroy', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
                                         class="d-inline" onsubmit="return confirm('Delete this draft?')">
@@ -265,15 +272,21 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                                         @method('DELETE')
                                         <button type="submit" class="bg04 color04">Delete</button>
                                     </form>
+                                    @endif
                                     @else
+                                    @if(auth()->user()->hasPermission('invoices.view'))
                                     <button type="button" class="bg01 color01 border-0 view-pdf-btn"
                                         data-pdf-url="{{ route('invoices.pdf', $invoice) }}">
                                         View
                                     </button>
                                     <a href="{{ route('invoices.email-compose', $invoice->invoiceid) }}"
                                         class="bg03 color03">Send</a>
+                                    @endif
+                                    @if(auth()->user()->hasPermission('invoices.edit'))
                                     <a href="{{ route('invoices.edit', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
                                         class="bg03 color03">Edit</a>
+                                    @endif
+                                    @if(auth()->user()->hasPermission('invoices.cancel'))
                                     <form method="POST"
                                         action="{{ route('invoices.destroy', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
                                         class="d-inline" onsubmit="return confirm('Cancel this invoice?')">
@@ -281,6 +294,7 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                                         @method('DELETE')
                                         <button type="submit" class="bg04 color04">Cancel</button>
                                     </form>
+                                    @endif
                                     @endif
                                 </div>
                             </td>
@@ -404,6 +418,7 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                         <!-- Action Buttons -->
                         <div class="tableActionButton d-flex flex-wrap gap-1 mt-2">
                             @if (($invoice->status ?? '') === 'cancelled')
+                            @if(auth()->user()->hasPermission('invoices.cancel'))
                             <form method="POST"
                                 action="{{ route('invoices.restore', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
                                 class="d-inline flex-grow-1" onsubmit="return confirm('Restore this invoice?')">
@@ -411,9 +426,13 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                                 @method('PATCH')
                                 <button type="submit" class="bg02 color02 w-100 text-center">Restore</button>
                             </form>
+                            @endif
                             @elseif (strtolower($invoice->status ?? '') === 'draft')
+                            @if(auth()->user()->hasPermission('invoices.edit'))
                             <a href="{{ route('invoices.edit', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
                                 class="bg02 color02 flex-grow-1 text-center">Continue</a>
+                            @endif
+                            @if(auth()->user()->hasPermission('invoices.cancel'))
                             <form method="POST"
                                 action="{{ route('invoices.destroy', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
                                 class="d-inline flex-grow-1" onsubmit="return confirm('Delete this draft?')">
@@ -421,15 +440,21 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                                 @method('DELETE')
                                 <button type="submit" class="bg04 color04 w-100 text-center">Delete</button>
                             </form>
+                            @endif
                             @else
+                            @if(auth()->user()->hasPermission('invoices.view'))
                             <button type="button" class="bg01 color01 border-0 view-pdf-btn flex-grow-1 text-center"
                                 data-pdf-url="{{ route('invoices.pdf', $invoice) }}">
                                 View
                             </button>
                             <a href="{{ route('invoices.email-compose', $invoice->invoiceid) }}"
                                 class="bg03 color03 flex-grow-1 text-center">Send</a>
+                            @endif
+                            @if(auth()->user()->hasPermission('invoices.edit'))
                             <a href="{{ route('invoices.edit', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
                                 class="bg03 color03 flex-grow-1 text-center">Edit</a>
+                            @endif
+                            @if(auth()->user()->hasPermission('invoices.cancel'))
                             <form method="POST"
                                 action="{{ route('invoices.destroy', array_filter(['invoice' => $documentId, 'c' => $selectedClientId])) }}"
                                 class="d-inline flex-grow-1" onsubmit="return confirm('Cancel this invoice?')">
@@ -437,6 +462,7 @@ $currentTab = in_array($selectedTab ?? 'invoices', ['invoices', 'outstanding', '
                                 @method('DELETE')
                                 <button type="submit" class="bg04 color04 w-100 text-center">Cancel</button>
                             </form>
+                            @endif
                             @endif
                         </div>
                     </div>

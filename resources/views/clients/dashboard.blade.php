@@ -185,34 +185,46 @@ $title = 'Client Dashboard';
 
                     <div class="d-flex flex-wrap gap-2 justify-content-xl-end">
 
+                        @if(auth()->user()->hasPermission('orders.create'))
                         <a href="{{ route('orders.create', ['c' => $client->clientid]) }}"
                             class="btn btn-outline-primary">
                             Add Order
                         </a>
+                        @endif
 
+                        @if(auth()->user()->hasPermission('quotations.create'))
                         <a href="{{ route('quotations.create', ['c' => $client->clientid, 'step' => 2]) }}"
                             class="btn btn-outline-primary">
 
                             Add Quotation
                         </a>
+                        @endif
 
+                        @if(auth()->user()->hasPermission('invoices.create'))
                         <a href="{{ route('invoices.create', ['c' => $client->clientid, 'step' => 2]) }}"
                             class="btn btn-outline-primary">
 
                             Add Invoice
                         </a>
+                        @endif
 
+                        @if(auth()->user()->hasPermission('payments.create'))
                         <a href="{{ route('payments.create', ['clientid' => $client->clientid]) }}"
                             class="btn btn-outline-primary">
 
                             Add Payment
                         </a>
+                        @endif
 
+                        @if(auth()->user()->hasPermission('documents.create'))
                         <a href="#" class="btn btn-outline-primary open-documents-modal" data-bs-toggle="modal" data-bs-target="#documentsModal" data-client-id="{{ $client->clientid }}" data-client-name="{{ $client->business_name ?? $client->contact_name }}">Add PO</a>
+                        @endif
 
+                        @if(auth()->user()->hasPermission('clients.edit'))
                         <a href="{{ route('clients.edit', $client) }}" class="btn btn-primary ">
                             Edit Profile <i class="fas fa-arrow-right btn-icon ms-1"></i>
                         </a>
+                        @endif
 
                     </div>
 

@@ -174,11 +174,16 @@
                         </td>
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1">
+                                @if(auth()->user()->hasPermission('orders.view'))
                                 <button type="button" class="bg01 color01 border-0 js-view-orders-btn"
                                     data-client-record-id="{{ $client['record_id'] }}">View Orders</button>
+                                @endif
+                                @if(auth()->user()->hasPermission('quotations.create'))
                                 <a href="{{ route('quotations.create', ['step' => 2, 'c' => $client['record_id']]) }}"
                                     class="bg03 color03">Create
                                     Quotation</a>
+                                @endif
+                                @if(auth()->user()->hasPermission('clients.edit'))
                                 <form method="POST"
                                     action="{{ route('clients.convert-to-regular', $client['record_id']) }}"
                                     class="d-inline" data-name="{{ $client['name'] }}"
@@ -187,6 +192,7 @@
                                     @method('PATCH')
                                     <button type="submit" class="bg02 color02">Prospect to Regular</button>
                                 </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -304,10 +310,15 @@
 
                     <!-- Action Buttons -->
                     <div class="tableActionButton d-flex flex-wrap gap-1 mt-2">
+                        @if(auth()->user()->hasPermission('orders.view'))
                         <button type="button" class="bg01 color01 text-center border-0 js-view-orders-btn"
                             data-client-record-id="{{ $client['record_id'] }}">View Orders</button>
+                        @endif
+                        @if(auth()->user()->hasPermission('quotations.create'))
                         <a href="{{ route('quotations.create', ['step' => 2, 'c' => $client['record_id']]) }}"
                             class="bg03 color03 text-center">Create Quotation</a>
+                        @endif
+                        @if(auth()->user()->hasPermission('clients.edit'))
                         <form method="POST" action="{{ route('clients.convert-to-regular', $client['record_id']) }}"
                             class="d-inline" data-name="{{ $client['name'] }}"
                             onsubmit="return confirm('Convert ' + this.dataset.name + ' to regular client?')">
@@ -315,6 +326,7 @@
                             @method('PATCH')
                             <button type="submit" class="bg02 color02 text-center">Convert to Regular</button>
                         </form>
+                        @endif
                     </div>
                 </div>
             </div>

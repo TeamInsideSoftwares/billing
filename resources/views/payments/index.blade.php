@@ -2,16 +2,20 @@
 
 @section('header_actions')
 <div class="d-flex align-items-center gap-2 flex-wrap">
-    @if ($clientId && $clientId !== 'all')
+    @if(auth()->user()->hasPermission('payments.view'))
     <a href="{{ route('payments.ledger', ['c' => $clientId]) }}"
         class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
         <i class="fas fa-receipt btn-icon"></i> View Ledger
     </a>
     @endif
+    <!-- @if ($clientId && $clientId !== 'all')
+    @endif -->
+    @if(auth()->user()->hasPermission('payments.create'))
     <a href="{{ route('payments.create', $clientId && $clientId !== 'all' ? ['c' => $clientId] : []) }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
         Record Payment <i class="fas fa-arrow-right btn-icon ms-1"></i>
     </a>
+    @endif
 </div>
 @endsection
 
@@ -144,15 +148,20 @@ return (float) ($paymentRow['tds_amount'] ?? 0);
                         </td>
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1">
+                                @if(auth()->user()->hasPermission('payments.view'))
                                 <button type="button" class="bg01 color01 border-0 view-pdf-btn"
                                     data-pdf-url="{{ route('payments.show', $payment['record_id']) }}">
                                     View
                                 </button>
+                                @endif
                                 @if (($payment['status'] ?? 'active') !== 'cancelled')
+                                @if(auth()->user()->hasPermission('payments.edit'))
                                 <a href="{{ route('payments.edit', $payment['record_id']) }}"
                                     class="bg03 color03">Edit</a>
                                 @endif
+                                @endif
                                 @if (($payment['status'] ?? 'active') !== 'cancelled')
+                                @if(auth()->user()->hasPermission('payments.cancel'))
                                 <form method="POST" action="{{ route('payments.destroy', $payment['record_id']) }}"
                                     class="d-inline" data-name="{{ $payment['number'] }}"
                                     onsubmit="return confirm('Cancel ' + this.dataset.name + '?')">
@@ -160,7 +169,9 @@ return (float) ($paymentRow['tds_amount'] ?? 0);
                                     @method('DELETE')
                                     <button type="submit" class="bg04 color04">Cancel</button>
                                 </form>
+                                @endif
                                 @else
+                                @if(auth()->user()->hasPermission('payments.cancel'))
                                 <form method="POST" action="{{ route('payments.restore', $payment['record_id']) }}"
                                     class="d-inline" data-name="{{ $payment['number'] }}"
                                     onsubmit="return confirm('Restore ' + this.dataset.name + '?')">
@@ -168,6 +179,7 @@ return (float) ($paymentRow['tds_amount'] ?? 0);
                                     @method('PATCH')
                                     <button type="submit" class="bg02 color02">Restore</button>
                                 </form>
+                                @endif
                                 @endif
                             </div>
                         </td>
@@ -298,15 +310,20 @@ return (float) ($paymentRow['tds_amount'] ?? 0);
 
                     <!-- Action Buttons -->
                     <div class="tableActionButton d-flex flex-wrap gap-1 mt-2">
+                        @if(auth()->user()->hasPermission('payments.view'))
                         <button type="button" class="bg01 color01 flex-grow-1 text-center border-0 view-pdf-btn"
                             data-pdf-url="{{ route('payments.show', $payment['record_id']) }}">
                             View
                         </button>
+                        @endif
                         @if (($payment['status'] ?? 'active') !== 'cancelled')
+                        @if(auth()->user()->hasPermission('payments.edit'))
                         <a href="{{ route('payments.edit', $payment['record_id']) }}"
                             class="bg03 color03 flex-grow-1 text-center">Edit</a>
                         @endif
+                        @endif
                         @if (($payment['status'] ?? 'active') !== 'cancelled')
+                        @if(auth()->user()->hasPermission('payments.cancel'))
                         <form method="POST" action="{{ route('payments.destroy', $payment['record_id']) }}"
                             class="d-inline flex-grow-1" data-name="{{ $payment['number'] }}"
                             onsubmit="return confirm('Cancel ' + this.dataset.name + '?')">
@@ -314,7 +331,9 @@ return (float) ($paymentRow['tds_amount'] ?? 0);
                             @method('DELETE')
                             <button type="submit" class="bg04 color04 w-100 text-center border-0">Cancel</button>
                         </form>
+                        @endif
                         @else
+                        @if(auth()->user()->hasPermission('payments.cancel'))
                         <form method="POST" action="{{ route('payments.restore', $payment['record_id']) }}"
                             class="d-inline flex-grow-1" data-name="{{ $payment['number'] }}"
                             onsubmit="return confirm('Restore ' + this.dataset.name + '?')">
@@ -322,6 +341,7 @@ return (float) ($paymentRow['tds_amount'] ?? 0);
                             @method('PATCH')
                             <button type="submit" class="bg02 color02 w-100 text-center border-0">Restore</button>
                         </form>
+                        @endif
                         @endif
                     </div>
                 </div>

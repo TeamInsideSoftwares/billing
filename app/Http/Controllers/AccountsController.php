@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\AccountRole;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -118,12 +119,20 @@ class AccountsController extends Controller
                 'expires_at' => $draft['expires_at'],
             ]);
 
+            // Create an Admin role for this account
+            $adminRole = AccountRole::create([
+                'accountid' => $account->accountid,
+                'name' => 'Admin',
+                'status' => 'active',
+            ]);
+
             User::create([
                 'accountid' => $account->accountid,
                 'name' => $account->name,
                 'email' => $loginEmail,
                 'password' => $validated['password'],
-                'role' => 'admin',
+                'roleid' => $adminRole->roleid,
+                'permissions' => UsersController::AVAILABLE_PERMISSIONS,
                 'is_active' => true,
             ]);
         });
@@ -186,9 +195,21 @@ class AccountsController extends Controller
 
             $accountUser = $account->credential;
             if ($accountUser) {
+                // Create or get Admin role for this account
+                $adminRole = AccountRole::firstOrCreate([
+                    'accountid' => $account->accountid,
+                    'name' => 'Admin',
+                    'status' => 'active',
+                ], [
+                    'accountid' => $account->accountid,
+                    'name' => 'Admin',
+                    'status' => 'active',
+                ]);
+
                 $accountUser->name = $validated['name'];
                 $accountUser->email = $newLoginEmail;
-                $accountUser->role = 'admin';
+                $accountUser->roleid = $adminRole->roleid;
+                $accountUser->permissions = UsersController::AVAILABLE_PERMISSIONS;
                 $accountUser->is_active = true;
 
                 if (! empty($validated['password'])) {
@@ -197,12 +218,20 @@ class AccountsController extends Controller
 
                 $accountUser->save();
             } else {
+                // Create an Admin role for this account
+                $adminRole = AccountRole::create([
+                    'accountid' => $account->accountid,
+                    'name' => 'Admin',
+                    'status' => 'active',
+                ]);
+
                 User::create([
                     'accountid' => $account->accountid,
                     'name' => $validated['name'],
                     'email' => $newLoginEmail,
                     'password' => $validated['password'] ?? Str::random(16),
-                    'role' => 'admin',
+                    'roleid' => $adminRole->roleid,
+                    'permissions' => UsersController::AVAILABLE_PERMISSIONS,
                     'is_active' => true,
                 ]);
             }

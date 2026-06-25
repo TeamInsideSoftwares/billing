@@ -20,12 +20,12 @@ use Illuminate\Support\Str;
     'name',
     'email',
     'profile_image',
-    'department',
+    'depid',
     'phone',
     'designation',
     'notes',
     'password',
-    'role',
+    'roleid',
     'permissions',
     'is_active',
 ])]
@@ -64,6 +64,16 @@ class User extends Authenticatable
         return $this->belongsTo(Account::class, 'accountid', 'accountid');
     }
 
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(AccountRole::class, 'roleid', 'roleid');
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(AccountDepartment::class, 'depid', 'depid');
+    }
+
     public function getSlugAttribute(): string
     {
         $accountSlug = (string) ($this->account?->slug ?? '');
@@ -82,5 +92,12 @@ class User extends Authenticatable
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new ResetPasswordNotification($token));
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        $perms = $this->permissions ?? [];
+
+        return in_array($permission, $perms, true);
     }
 }

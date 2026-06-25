@@ -10,6 +10,8 @@ use App\Models\Tax;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class ServicesController extends Controller
@@ -479,20 +481,25 @@ class ServicesController extends Controller
     private function syncWithSuperadmin(Service $item): void
     {
         if ($item->sync === 'yes') {
-            $exists = DB::table('isplayhr_account_auth.products')->where('productid', $item->itemid)->exists();
-            if (! $exists) {
-                DB::table('isplayhr_account_auth.products')->insert([
+            $apiUrl = str_replace('/accounts', '/products', config('services.superadmin_api.url'));
+            $apiKey = config('services.superadmin_api.key');
+
+            $payload = [
+                'productid' => $item->itemid,
+                'name' => $item->name,
+            ];
+
+            try {
+                Http::acceptJson()
+                    ->timeout(10)
+                    ->connectTimeout(5)
+                    ->withHeaders([
+                        'X-API-KEY' => $apiKey,
+                    ])->post($apiUrl, $payload);
+            } catch (\Throwable $e) {
+                Log::error('Superadmin Product Sync Failed', [
+                    'message' => $e->getMessage(),
                     'productid' => $item->itemid,
-                    'product_name' => $item->name,
-                    'url' => '',
-                    'svg_icons' => '',
-                    'db_connection' => null,
-                    'status' => $item->is_active ? 'active' : 'inactive',
-                ]);
-            } else {
-                DB::table('isplayhr_account_auth.products')->where('productid', $item->itemid)->update([
-                    'product_name' => $item->name,
-                    'status' => $item->is_active ? 'active' : 'inactive',
                 ]);
             }
         } else {

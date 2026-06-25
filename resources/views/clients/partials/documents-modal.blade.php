@@ -218,17 +218,21 @@
             '<td class="text-end">' +
             '<div class="tableActionButton d-inline-flex gap-1">' +
             fileLink +
+            @if(auth()->user()->hasPermission('clients.edit'))
             '<button type="button" class="bg03 color03 border-0" onclick="editDocument(this)"' +
             ' data-id="' + doc.client_docid + '"' +
             ' data-type="' + doc.type + '"' +
             ' data-title="' + (doc.title || '').replace(/"/g, '&quot;') + '"' +
             ' data-number="' + (doc.document_number || '').replace(/"/g, '&quot;') + '"' +
             ' data-date="' + (doc.document_date || '') + '">Edit</button>' +
+            @endif
+            @if(auth()->user()->hasPermission('clients.delete'))
             '<form class="d-inline document-delete-form" onsubmit="return false;">' +
             '<input type="hidden" name="_token" value="' + csrf + '">' +
             '<input type="hidden" name="_method" value="DELETE">' +
             '<button type="button" class="bg04 color04 border-0" onclick="deleteDocument(\'' + doc.client_docid + '\', this)">Delete</button>' +
             '</form>' +
+            @endif
             '</div>' +
             '</td>' +
             '</tr>';
@@ -281,16 +285,26 @@
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
         })
-            .then(function (res) { return res.json(); })
+            .then(function (res) {
+                if (!res.ok) {
+                    if (res.status === 403) {
+                        return res.json().then(function (data) { throw new Error(data.message || 'Unauthorized action.'); });
+                    }
+                    throw new Error('Server error');
+                }
+                return res.json();
+            })
             .then(function (data) {
                 if (data.success) {
                     docChanged = true;
                     refreshDocumentsTable(data.documents);
                     showDocToast(data.message);
+                } else {
+                    showDocToast(data.message || 'Something went wrong.', 'danger');
                 }
             })
-            .catch(function () {
-                showDocToast('Something went wrong. Please try again.', 'danger');
+            .catch(function (err) {
+                showDocToast(err.message || 'Something went wrong. Please try again.', 'danger');
             });
     }
 
@@ -345,7 +359,12 @@
                 if (res.status === 422) {
                     return res.json().then(function (data) { throw data; });
                 }
-                if (!res.ok) throw new Error('Server error');
+                if (!res.ok) {
+                    if (res.status === 403) {
+                        return res.json().then(function (data) { throw new Error(data.message || 'Unauthorized action.'); });
+                    }
+                    throw new Error('Server error');
+                }
                 return res.json();
             })
             .then(function (data) {
@@ -354,13 +373,15 @@
                     refreshDocumentsTable(data.documents);
                     resetDocumentForm();
                     showDocToast(data.message);
+                } else {
+                    showDocToast(data.message || 'Something went wrong.', 'danger');
                 }
             })
             .catch(function (err) {
                 if (err && err.errors) {
                     showDocFormErrors(err.errors);
                 } else {
-                    showDocToast('Something went wrong. Please try again.', 'danger');
+                    showDocToast(err.message || 'Something went wrong. Please try again.', 'danger');
                 }
             })
             .finally(function () {

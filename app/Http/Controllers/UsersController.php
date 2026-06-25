@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountDepartment;
+use App\Models\AccountRole;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -12,7 +14,7 @@ use Illuminate\Validation\Rule;
 
 class UsersController extends Controller
 {
-    private const AVAILABLE_PERMISSIONS = [
+    public const AVAILABLE_PERMISSIONS = [
         'dashboard.view',
         'clients.view', 'clients.create', 'clients.edit', 'clients.delete',
         'orders.view', 'orders.create', 'orders.edit', 'orders.cancel',
@@ -31,31 +33,40 @@ class UsersController extends Controller
 
         $query = User::query()
             ->where('accountid', $accountId)
+            ->with(['role', 'department'])
             ->orderByDesc('created_at');
 
         if ($searchTerm !== '') {
             $query->where(function ($q) use ($searchTerm): void {
                 $q->where('name', 'like', '%'.$searchTerm.'%')
-                    ->orWhere('email', 'like', '%'.$searchTerm.'%')
-                    ->orWhere('department', 'like', '%'.$searchTerm.'%')
-                    ->orWhere('designation', 'like', '%'.$searchTerm.'%')
-                    ->orWhere('role', 'like', '%'.$searchTerm.'%');
+                    ->orWhere('email', 'like', '%'.$searchTerm.'%');
             });
         }
+
+        $roles = AccountRole::where('accountid', $accountId)->orderBy('name')->get();
+        $departments = AccountDepartment::where('accountid', $accountId)->orderBy('name')->get();
 
         return view('users.index', [
             'title' => 'Users',
             'users' => $query->get(),
             'searchTerm' => $searchTerm,
+            'roles' => $roles,
+            'departments' => $departments,
         ]);
     }
 
     public function usersCreate(): View
     {
+        $accountId = $this->resolveAccountId();
+        $roles = AccountRole::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
+        $departments = AccountDepartment::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
+
         return view('users.form', [
             'title' => 'Add User',
             'availablePermissions' => self::AVAILABLE_PERMISSIONS,
             'groupedPermissions' => $this->groupPermissions(self::AVAILABLE_PERMISSIONS),
+            'roles' => $roles,
+            'departments' => $departments,
         ]);
     }
 
@@ -68,11 +79,8 @@ class UsersController extends Controller
             'email' => ['required', 'email', 'max:150', Rule::unique('account_users', 'email')],
             'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'cropped_image_data' => ['nullable', 'string'],
-            'department' => ['required', 'string', 'max:100'],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'designation' => ['nullable', 'string', 'max:100'],
-            'notes' => ['nullable', 'string'],
-            'role' => ['required', Rule::in(['admin', 'manager', 'staff'])],
+            'roleid' => ['required', 'string'],
+            'depid' => ['required', 'string'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(self::AVAILABLE_PERMISSIONS)],
             'is_active' => ['nullable', 'boolean'],
@@ -91,11 +99,10 @@ class UsersController extends Controller
             'name' => $validated['name'],
             'email' => strtolower((string) $validated['email']),
             'profile_image' => $profileImagePath,
-            'department' => $validated['department'],
+            'roleid' => $validated['roleid'],
+            'depid' => $validated['depid'],
             'phone' => $validated['phone'] ?? null,
-            'designation' => $validated['designation'] ?? null,
             'notes' => $validated['notes'] ?? null,
-            'role' => $validated['role'],
             'permissions' => array_values($validated['permissions'] ?? []),
             'is_active' => (bool) ($validated['is_active'] ?? false),
             'password' => $validated['password'],
@@ -110,11 +117,17 @@ class UsersController extends Controller
             abort(403);
         }
 
+        $accountId = $this->resolveAccountId();
+        $roles = AccountRole::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
+        $departments = AccountDepartment::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
+
         return view('users.form', [
             'title' => 'Edit User',
             'userModel' => $user,
             'availablePermissions' => self::AVAILABLE_PERMISSIONS,
             'groupedPermissions' => $this->groupPermissions(self::AVAILABLE_PERMISSIONS),
+            'roles' => $roles,
+            'departments' => $departments,
         ]);
     }
 
@@ -129,11 +142,8 @@ class UsersController extends Controller
             'email' => ['required', 'email', 'max:150', Rule::unique('account_users', 'email')->ignore($user->userid, 'userid')],
             'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'cropped_image_data' => ['nullable', 'string'],
-            'department' => ['required', 'string', 'max:100'],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'designation' => ['nullable', 'string', 'max:100'],
-            'notes' => ['nullable', 'string'],
-            'role' => ['required', Rule::in(['admin', 'manager', 'staff'])],
+            'roleid' => ['required', 'string'],
+            'depid' => ['required', 'string'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(self::AVAILABLE_PERMISSIONS)],
             'is_active' => ['nullable', 'boolean'],
@@ -143,11 +153,10 @@ class UsersController extends Controller
         $payload = [
             'name' => $validated['name'],
             'email' => strtolower((string) $validated['email']),
-            'department' => $validated['department'],
+            'roleid' => $validated['roleid'],
+            'depid' => $validated['depid'],
             'phone' => $validated['phone'] ?? null,
-            'designation' => $validated['designation'] ?? null,
             'notes' => $validated['notes'] ?? null,
-            'role' => $validated['role'],
             'permissions' => array_values($validated['permissions'] ?? []),
             'is_active' => (bool) ($validated['is_active'] ?? false),
         ];

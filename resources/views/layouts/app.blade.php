@@ -52,18 +52,18 @@
     <!-- ['label' => 'Subscriptions', 'route' => 'subscriptions.index'], -->
     @php
     $navItems = [
-    ['label' => 'Dashboard', 'route' => 'dashboard'],
-    ['label' => 'Client Dashboard', 'route' => 'clients.dashboard'],
-    ['label' => 'Clients', 'route' => 'clients.index'],
-    ['label' => 'Orders', 'route' => 'orders.index'],
-    ['label' => 'Quotations', 'route' => 'quotations.index'],
-    ['label' => 'Invoices', 'route' => 'invoices.index'],
-    ['label' => 'Expiry List', 'route' => 'invoices.expiry-list'],
-    ['label' => 'Payments', 'route' => 'payments.index'],
-    ['label' => 'GST Report', 'route' => 'gst-report.index'],
-    ['label' => 'Items', 'route' => 'services.index'],
-    // ['label' => 'Users', 'route' => 'users.index'],
-    ['label' => 'Settings', 'route' => 'settings.index'],
+    ['label' => 'Dashboard', 'route' => 'dashboard', 'permission' => 'dashboard.view'],
+    ['label' => 'Client Dashboard', 'route' => 'clients.dashboard', 'permission' => 'clients.view'],
+    ['label' => 'Clients', 'route' => 'clients.index', 'permission' => 'clients.view'],
+    ['label' => 'Orders', 'route' => 'orders.index', 'permission' => 'orders.view'],
+    ['label' => 'Quotations', 'route' => 'quotations.index', 'permission' => 'quotations.view'],
+    ['label' => 'Invoices', 'route' => 'invoices.index', 'permission' => 'invoices.view'],
+    ['label' => 'Expiry List', 'route' => 'invoices.expiry-list', 'permission' => 'invoices.view'],
+    ['label' => 'Payments', 'route' => 'payments.index', 'permission' => 'payments.view'],
+    ['label' => 'GST Report', 'route' => 'gst-report.index', 'permission' => 'payments.view'],
+    ['label' => 'Items', 'route' => 'services.index', 'permission' => 'items.view'],
+    ['label' => 'Users', 'route' => 'users.index', 'permission' => 'users.view'],
+    ['label' => 'Settings', 'route' => 'settings.index', 'permission' => 'settings.view'],
     ];
     @endphp
 
@@ -95,11 +95,14 @@
                 'invoices.expiry-list' => 'fa-calendar-times',
                 'payments' => 'fa-credit-card',
                 'gst-report' => 'fa-newspaper',
-                // 'users' => 'fa-user-tie',
+                'users' => 'fas fa-user-tie',
                 'settings' => 'fa-compass',
                 ];
                 @endphp
                 @foreach ($navItems as $item)
+                @if(isset($item['permission']) && auth()->check() && !auth()->user()->hasPermission($item['permission']))
+                    @continue
+                @endif
                 @php
                 // Extract the base route name (e.g., 'services' from 'services.index')
                 $baseRoute = explode('.', $item['route'])[0];

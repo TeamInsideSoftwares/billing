@@ -368,9 +368,11 @@ $activeSettingsTab = 'billing-details';
                     </div>
                     <div class="col-12 col-md-12">
                         <div class="text-end mt-1">
+                            @if(auth()->user()->hasPermission('settings.edit'))
                             <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
                                 Update Settings <i class="fas fa-arrow-right btn-icon ms-1"></i>
                             </button>
+                            @endif
                         </div>
                     </div>
                 </div> 
@@ -548,9 +550,11 @@ $activeSettingsTab = 'billing-details';
                                 <i class="fas fa-times btn-icon me-1"></i> Cancel
                             </a>
                             @endif
+                            @if(auth()->user()->hasPermission('settings.edit'))
                             <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
                                 Save Billing Detail <i class="fas fa-arrow-right btn-icon ms-1"></i>
                             </button>
+                            @endif
                         </div>
                     </div>
 
@@ -600,10 +604,12 @@ $activeSettingsTab = 'billing-details';
                                 </div>
                                 <div class="col-12 col-md-3">
                                     <div class="text-end">
+                                        @if(auth()->user()->hasPermission('settings.edit'))
                                         <button type="submit"
                                             class="btn btn-outline-primary btn-primary text-white fw-medium">
                                              Add FY <i class="fas fa-arrow-right btn-icon ms-1"></i>
                                         </button>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -646,9 +652,11 @@ $activeSettingsTab = 'billing-details';
                                                             class="d-inline">
                                                             @csrf
                                                             @method('PUT')
+                                                            @if(auth()->user()->hasPermission('settings.edit'))
                                                             <button type="submit" class="bg03 color03" title="Set Default">
                                                                 Set Default
                                                             </button>
+                                                            @endif
                                                         </form>
                                                     </div>
                                                     @endif
@@ -735,9 +743,11 @@ $activeSettingsTab = 'billing-details';
                                     placeholder="Enter value" required class="form-control">
                             </div>
                             <div class="col-12 col-md-3 text-end">
+                                @if(auth()->user()->hasPermission('settings.edit'))
                                 <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
                                     {{ $editingSetting ? 'Update Key' : 'Add Key' }} <i class="fas fa-arrow-right btn-icon ms-1"></i>
                                 </button>
+                                @endif
                                
                                 @if ($editingSetting)
                                  <a href="{{ route('settings.index') }}#config"
@@ -778,9 +788,11 @@ $activeSettingsTab = 'billing-details';
                                                         action="{{ route('settings.destroy', $setting['record_id']) }}"
                                                         class="d-inline" onsubmit="return confirm('Delete this setting?')">
                                                         @csrf @method('DELETE')
+                                                        @if(auth()->user()->hasPermission('settings.edit'))
                                                         <button type="submit" class="bg04 color04" title="Delete">
                                                             Delete
                                                         </button>
+                                                        @endif
                                                     </form>
                                                 </div>
                                             </td>
@@ -873,10 +885,12 @@ $activeSettingsTab = 'billing-details';
                                             <div class="mb-3 border-bottom rounded-3 bg-light p-2 d-flex justify-content-between align-items-center">
                                                 <h5 class="fw-semibold text-primary small lh-sm mb-0"><i
                                                         class="fas fa-envelope fs-6 lh-sm me-1"></i> Email Template <span class="text-dark fw-normal">(One template per type)</span></h5>
+                                                @if(auth()->user()->hasPermission('settings.edit'))
                                                 <button type="submit"
                                                     class="btn btn-primary text-white fw-medium template-submit-btn h-auto">
                                                     Save Email Template <i class="fas fa-arrow-right btn-icon ms-1"></i>
                                                 </button>
+                                                @endif
                                             </div> 
                                             <div class="d-flex flex-column grow">
                                                 <div class="row g-2 mb-2">
@@ -926,10 +940,12 @@ $activeSettingsTab = 'billing-details';
                                             <div class="mb-3 border-bottom rounded-3 bg-light p-2 d-flex justify-content-between align-items-center">
                                                 <h5 class="fw-semibold text-success small lh-sm mb-0"><i
                                                         class="fab fa-whatsapp fs-6 lh-sm me-1"></i> WhatsApp Template <span class="text-dark fw-normal">(One template per type)</span></h5>
+                                                @if(auth()->user()->hasPermission('settings.edit'))
                                                 <button type="submit"
                                                     class="btn btn-primary text-white fw-medium template-submit-btn h-auto">
                                                     Save WhatsApp Template <i class="fas fa-arrow-right btn-icon ms-1"></i>
                                                 </button>
+                                                @endif
                                             </div>
                                             <div class="d-flex flex-column grow">
                                                 <div class="row g-2 mb-2">
@@ -982,10 +998,12 @@ $activeSettingsTab = 'billing-details';
                                             <div class="mb-3 border-bottom rounded-3 bg-light p-2 d-flex justify-content-between align-items-center">
                                                 <h5 class="fw-semibold small lh-sm mb-0" style="    color: #1179c5;"><i
                                                         class="fas fa-sms fs-6 lh-sm me-1"></i> SMS Template <span class="text-dark fw-normal">(One template per type)</span></h5>
+                                                @if(auth()->user()->hasPermission('settings.edit'))
                                                 <button type="submit"
                                                     class="btn btn-primary text-white fw-medium template-submit-btn h-auto">
                                                     Save SMS Template <i class="fas fa-arrow-right btn-icon ms-1"></i>
                                                 </button>
+                                                @endif
                                             </div>
                                             <div class="d-flex flex-column grow">
                                                 <div class="form-group mb-2">
@@ -1120,10 +1138,12 @@ $activeSettingsTab = 'billing-details';
                                         @endif
                                         </div>  
                                         <div>
+                                        @if(auth()->user()->hasPermission('settings.edit'))
                                         <button type="submit"
                                             class="btn btn-outline-primary btn-primary text-white fw-medium btn-sm">
                                             {{ $editingTerm ? 'Update Terms & Conditions' : 'Add Terms & Conditions' }} <i class="fas fa-arrow-right btn-icon ms-1"></i>
                                         </button>
+                                        @endif
                                         </div>
                                     </div>                           
                                 </div>
@@ -1185,7 +1205,7 @@ $activeSettingsTab = 'billing-details';
                                                     class="settings-sequence-form">
                                                     @csrf @method('PATCH')
                                                     <select name="sequence" onchange="this.form.submit()"
-                                                        class="form-select form-select-sm" style="width: 70px;">
+                                                        class="form-select form-select-sm" style="width: 70px;" {{ !auth()->user()->hasPermission('settings.edit') ? 'disabled' : '' }}>
                                                         @for ($i = 1; $i <= $billingTerms->count(); $i++)
                                                             <option value="{{ $i }}" {{ ($term->sequence ?? $index + 1)
                                                                 ==
@@ -1207,6 +1227,7 @@ $activeSettingsTab = 'billing-details';
                                             </td>
                                             <td class="text-end">
                                                 <div class="tableActionButton d-inline-flex gap-1">
+                                                    @if(auth()->user()->hasPermission('settings.edit'))
                                                     <button type="button"
                                                         class="js-term-status-badge {{ $term->is_active ? 'bg02 color02' : 'bg-secondary text-white' }}"
                                                         data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
@@ -1223,6 +1244,7 @@ $activeSettingsTab = 'billing-details';
                                                         <button type="submit" class="bg04 color04"
                                                             title="Delete">Delete</button>
                                                     </form>
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>
@@ -1264,7 +1286,7 @@ $activeSettingsTab = 'billing-details';
                                                     class="settings-sequence-form">
                                                     @csrf @method('PATCH')
                                                     <select name="sequence" onchange="this.form.submit()"
-                                                        class="form-select form-select-sm" style="width: 70px;">
+                                                        class="form-select form-select-sm" style="width: 70px;" {{ !auth()->user()->hasPermission('settings.edit') ? 'disabled' : '' }}>
                                                         @for ($i = 1; $i <= $quotationTerms->count(); $i++)
                                                             <option value="{{ $i }}" {{ ($term->sequence ?? $index + 1)
                                                                 ==
@@ -1286,6 +1308,7 @@ $activeSettingsTab = 'billing-details';
                                             </td>
                                             <td class="text-end">
                                                 <div class="tableActionButton d-inline-flex gap-1">
+                                                    @if(auth()->user()->hasPermission('settings.edit'))
                                                     <button type="button"
                                                         class="js-term-status-badge {{ $term->is_active ? 'bg02 color02' : 'bg-secondary text-white' }}"
                                                         data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
@@ -1302,6 +1325,7 @@ $activeSettingsTab = 'billing-details';
                                                         <button type="submit" class="bg04 color04"
                                                             title="Delete">Delete</button>
                                                     </form>
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>
@@ -1343,7 +1367,7 @@ $activeSettingsTab = 'billing-details';
                                                     class="settings-sequence-form">
                                                     @csrf @method('PATCH')
                                                     <select name="sequence" onchange="this.form.submit()"
-                                                        class="form-select form-select-sm" style="width: 70px;">
+                                                        class="form-select form-select-sm" style="width: 70px;" {{ !auth()->user()->hasPermission('settings.edit') ? 'disabled' : '' }}>
                                                         @for ($i = 1; $i <= $proformaTerms->count(); $i++)
                                                             <option value="{{ $i }}" {{ ($term->sequence ?? $index + 1)
                                                                 ==
@@ -1365,6 +1389,7 @@ $activeSettingsTab = 'billing-details';
                                             </td>
                                             <td class="text-end">
                                                 <div class="tableActionButton d-inline-flex gap-1">
+                                                    @if(auth()->user()->hasPermission('settings.edit'))
                                                     <button type="button"
                                                         class="js-term-status-badge {{ $term->is_active ? 'bg02 color02' : 'bg-secondary text-white' }}"
                                                         data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
@@ -1381,6 +1406,7 @@ $activeSettingsTab = 'billing-details';
                                                         <button type="submit" class="bg04 color04"
                                                             title="Delete">Delete</button>
                                                     </form>
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>
@@ -1442,10 +1468,12 @@ $activeSettingsTab = 'billing-details';
                                                 onclick="cancelEditTax()"><i class="fas fa-times btn-icon me-1"></i> Cancel</button>
                                         </div>
                                         <div>
+                                            @if(auth()->user()->hasPermission('settings.edit'))
                                             <button type="submit" id="tax-form-btn"
                                                 class="btn btn-outline-primary btn-primary text-white fw-medium btn-sm">
                                                 Add Tax <i class="fas fa-arrow-right btn-icon ms-1"></i>
                                             </button>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -1510,14 +1538,18 @@ $activeSettingsTab = 'billing-details';
                                                     </td>
                                                     <td class="text-end pe-3">
                                                         <div class="tableActionButton d-inline-flex gap-1">
+                                                            @if(auth()->user()->hasPermission('settings.edit'))
                                                             <a href="javascript:void(0)" class="bg03 color03"
                                                                 data-id="{{ $tax->taxid }}" data-rate="{{ $tax->rate }}"
                                                                 data-type="{{ $tax->type }}" data-name="{{ $tax->tax_name }}"
                                                                 onclick="startEditTax(this)">Edit</a>
+                                                            @endif
                                                             <form method="POST" action="{{ route('taxes.destroy', $tax) }}"
                                                                 class="d-inline" onsubmit="return confirm('Delete this tax?')">
                                                                 @csrf @method('DELETE')
+                                                                @if(auth()->user()->hasPermission('settings.edit'))
                                                                 <button type="submit" class="bg04 color04">Delete</button>
+                                                                @endif
                                                             </form>
                                                         </div>
                                                     </td>
@@ -1576,9 +1608,11 @@ $activeSettingsTab = 'billing-details';
                                     data-bs-dismiss="modal">
                                     <i class="fas fa-times btn-icon me-1"></i> Cancel
                                 </button>
+                                @if(auth()->user()->hasPermission('settings.edit'))
                                 <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
                                     Save <i class="fas fa-arrow-right btn-icon ms-1"></i>
                                 </button>
+                                @endif
                             </div>
                         </div>
                     </form>

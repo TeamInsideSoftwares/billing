@@ -6,10 +6,12 @@
         class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
         <i class="fas fa-list btn-icon"></i> Payment List
     </a>
+    @if(auth()->user()->hasPermission('payments.create'))
     <a href="{{ route('payments.create', $selectedClientId !== '' ? ['c' => $selectedClientId] : []) }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
         Record Payment <i class="fas fa-arrow-right btn-icon ms-1"></i>
     </a>
+    @endif
 </div>
 @endsection
 

@@ -14,10 +14,12 @@ $subtitle = null;
         <i class="fas fa-list btn-icon"></i> Order List
     </a>
     @else
+    @if(auth()->user()->hasPermission('orders.create'))
     <a href="{{ route('orders.create', array_filter(['c' => $clientId])) }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
         Create Orders <i class="fas fa-arrow-right btn-icon ms-1"></i>
     </a>
+    @endif
     @endif
 </div>
 @endsection
@@ -55,12 +57,14 @@ $subtitle = null;
                                 </select>
                             </div>
                         </div>
+                        @if(auth()->user()->hasPermission('orders.create'))
                         <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
                             <button type="button" id="btnCreateOrderFromPicker"
                                 class="btn btn-outline-primary btn-primary text-white fw-medium">
                                 Create Order <i class="fas fa-arrow-right btn-icon ms-1"></i>
                             </button>
                         </div>
+                        @endif
                     </form>
                 </div>
             </div>
@@ -248,6 +252,7 @@ $subtitle = null;
                                     data-order-number="{{ $order['number'] }}">
                                     Timeline
                                 </button>
+                                @if(auth()->user()->hasPermission('orders.edit'))
                                 @if(!empty($order['items'][0]['end_date']) &&
                                 \Carbon\Carbon::parse($order['items'][0]['end_date'])->isPast())
                                 <button type="button" class="bg02 color02 border-0 js-renew-order-btn"
@@ -266,37 +271,45 @@ $subtitle = null;
                                     Renew
                                 </button>
                                 @endif
-                                @if(($order['status'] ?? '') !== 'cancelled')
-                                <button type="button" class="bg03 color03 border-0 js-edit-order-btn"
-                                    data-order-id="{{ $order['record_id'] }}" data-order-number="{{ $order['number'] }}"
-                                    data-client-id="{{ $order['clientid'] }}" data-client-name="{{ $order['client'] }}"
-                                    data-item-id="{{ $order['itemid'] ?? '' }}"
-                                    data-item-name="{{ $order['items'][0]['item_name'] ?? '' }}"
-                                    data-item-description="{{ $order['items'][0]['item_description'] ?? '' }}"
-                                    data-quantity="{{ $order['items'][0]['quantity'] ?? 1 }}"
-                                    data-no-of-users="{{ $order['items'][0]['no_of_users'] ?? '' }}"
-                                    data-start-date="{{ $order['items'][0]['start_date'] ?? '' }}"
-                                    data-end-date="{{ $order['items'][0]['end_date'] ?? '' }}"
-                                    data-delivery-date="{{ $order['items'][0]['delivery_date'] ?? '' }}"
-                                    data-client-docid="{{ $order['client_docid'] ?? '' }}">
-                                    Edit
-                                </button>
-                                <form method="POST"
-                                    action="{{ route('orders.destroy', ['order' => $order['record_id']]) }}"
-                                    class="d-inline" onsubmit="return confirm('Cancel this order?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="bg04 color04">Cancel</button>
-                                </form>
-                                @else
-                                <form method="POST"
-                                    action="{{ route('orders.restore', ['order' => $order['record_id']]) }}"
-                                    class="d-inline" onsubmit="return confirm('Restore this order?')">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="bg01 color01">Restore</button>
-                                </form>
                                 @endif
+                                @if(($order['status'] ?? '') !== 'cancelled')
+                                    @if(auth()->user()->hasPermission('orders.edit'))
+                                        <button type="button" class="bg03 color03 border-0 text-center js-edit-order-btn"
+                                            data-order-id="{{ $order['record_id'] }}" data-order-number="{{ $order['number'] }}"
+                                            data-client-id="{{ $order['clientid'] }}" data-client-name="{{ $order['client'] }}"
+                                            data-item-id="{{ $order['itemid'] ?? '' }}"
+                                            data-item-name="{{ $order['items'][0]['item_name'] ?? '' }}"
+                                            data-item-description="{{ $order['items'][0]['item_description'] ?? '' }}"
+                                            data-quantity="{{ $order['items'][0]['quantity'] ?? 1 }}"
+                                            data-no-of-users="{{ $order['items'][0]['no_of_users'] ?? '' }}"
+                                            data-start-date="{{ $order['items'][0]['start_date'] ?? '' }}"
+                                            data-end-date="{{ $order['items'][0]['end_date'] ?? '' }}"
+                                            data-delivery-date="{{ $order['items'][0]['delivery_date'] ?? '' }}"
+                                            data-client-docid="{{ $order['client_docid'] ?? '' }}">
+                                            Edit
+                                        </button>
+                                    @endif
+                                    @if(auth()->user()->hasPermission('orders.cancel'))
+                                        <form method="POST"
+                                            action="{{ route('orders.destroy', ['order' => $order['record_id']]) }}"
+                                            class="d-inline" onsubmit="return confirm('Cancel this order?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="bg04 color04">Cancel</button>
+                                        </form>
+                                    @endif
+                                @else
+                                    @if(auth()->user()->hasPermission('orders.cancel'))
+                                        <form method="POST"
+                                            action="{{ route('orders.restore', ['order' => $order['record_id']]) }}"
+                                            class="d-inline" onsubmit="return confirm('Restore this order?')">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="bg01 color01">Restore</button>
+                                        </form>
+                                    @endif
+                                @endif
+                                @if(auth()->user()->hasPermission('orders.cancel'))
                                 <form method="POST"
                                     action="{{ route('orders.force-delete', ['order' => $order['record_id']]) }}"
                                     class="d-inline" onsubmit="return confirm('Permanently delete this order?')">
@@ -304,6 +317,7 @@ $subtitle = null;
                                     @method('DELETE')
                                     <button type="submit" class="bg04 color04">Delete</button>
                                 </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -421,63 +435,73 @@ $subtitle = null;
                                 data-order-id="{{ $order['record_id'] }}" data-order-number="{{ $order['number'] }}">
                                 Timeline
                             </button>
-                            @if(!empty($order['items'][0]['end_date']) &&
-                            \Carbon\Carbon::parse($order['items'][0]['end_date'])->isPast())
-                            <button type="button"
-                                class="bg02 color02 border-0 text-center js-renew-order-btn flex-grow-1"
-                                data-order-id="{{ $order['record_id'] }}" data-order-number="{{ $order['number'] }}"
-                                data-client-name="{{ $order['client'] }}" data-invoice-number="-"
-                                data-item-name="{{ $order['items'][0]['item_name'] ?? 'Item' }}"
-                                data-item-description="{{ $order['items'][0]['item_description'] ?? '' }}"
-                                data-start-date="{{ $order['items'][0]['start_date'] ?? '-' }}"
-                                data-end-date-display="{{ $order['items'][0]['end_date'] ?? '-' }}"
-                                data-days-left="{{ !empty($order['items'][0]['end_date']) ? \Carbon\Carbon::now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($order['items'][0]['end_date'])->startOfDay(), false) : '' }}"
-                                data-status="{{ ($order['status'] ?? '') === 'running' ? 'Active' : ucfirst($order['status'] ?? 'active') }}"
-                                data-end-date="{{ $order['items'][0]['end_date'] ?? '' }}"
-                                data-client-id="{{ $order['clientid'] }}"
-                                data-frequency="{{ $order['items'][0]['frequency'] ?? '' }}"
-                                data-duration="{{ $order['items'][0]['duration'] ?? 1 }}">
-                                Renew
-                            </button>
+                            @if(auth()->user()->hasPermission('orders.edit'))
+                                @if(!empty($order['items'][0]['end_date']) &&
+                                \Carbon\Carbon::parse($order['items'][0]['end_date'])->isPast())
+                                <button type="button"
+                                    class="bg02 color02 border-0 text-center js-renew-order-btn flex-grow-1"
+                                    data-order-id="{{ $order['record_id'] }}" data-order-number="{{ $order['number'] }}"
+                                    data-client-name="{{ $order['client'] }}" data-invoice-number="-"
+                                    data-item-name="{{ $order['items'][0]['item_name'] ?? 'Item' }}"
+                                    data-item-description="{{ $order['items'][0]['item_description'] ?? '' }}"
+                                    data-start-date="{{ $order['items'][0]['start_date'] ?? '-' }}"
+                                    data-end-date-display="{{ $order['items'][0]['end_date'] ?? '-' }}"
+                                    data-days-left="{{ !empty($order['items'][0]['end_date']) ? \Carbon\Carbon::now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($order['items'][0]['end_date'])->startOfDay(), false) : '' }}"
+                                    data-status="{{ ($order['status'] ?? '') === 'running' ? 'Active' : ucfirst($order['status'] ?? 'active') }}"
+                                    data-end-date="{{ $order['items'][0]['end_date'] ?? '' }}"
+                                    data-client-id="{{ $order['clientid'] }}"
+                                    data-frequency="{{ $order['items'][0]['frequency'] ?? '' }}"
+                                    data-duration="{{ $order['items'][0]['duration'] ?? 1 }}">
+                                    Renew
+                                </button>
+                                @endif
                             @endif
                             @if(($order['status'] ?? '') !== 'cancelled')
-                            <button type="button"
-                                class="bg03 color03 border-0 text-center js-edit-order-btn flex-grow-1"
-                                data-order-id="{{ $order['record_id'] }}" data-order-number="{{ $order['number'] }}"
-                                data-client-id="{{ $order['clientid'] }}" data-client-name="{{ $order['client'] }}"
-                                data-item-id="{{ $order['itemid'] ?? '' }}"
-                                data-item-name="{{ $order['items'][0]['item_name'] ?? '' }}"
-                                data-item-description="{{ $order['items'][0]['item_description'] ?? '' }}"
-                                data-quantity="{{ $order['items'][0]['quantity'] ?? 1 }}"
-                                data-no-of-users="{{ $order['items'][0]['no_of_users'] ?? '' }}"
-                                data-start-date="{{ $order['items'][0]['start_date'] ?? '' }}"
-                                data-end-date="{{ $order['items'][0]['end_date'] ?? '' }}"
-                                data-delivery-date="{{ $order['items'][0]['delivery_date'] ?? '' }}"
-                                data-client-docid="{{ $order['client_docid'] ?? '' }}">
-                                Edit
-                            </button>
-                            <form method="POST" action="{{ route('orders.destroy', ['order' => $order['record_id']]) }}"
-                                class="d-inline flex-grow-1" onsubmit="return confirm('Cancel this order?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="bg04 color04 text-center">Cancel</button>
-                            </form>
+                                @if(auth()->user()->hasPermission('orders.edit'))
+                                <button type="button"
+                                    class="bg03 color03 border-0 text-center js-edit-order-btn flex-grow-1"
+                                    data-order-id="{{ $order['record_id'] }}" data-order-number="{{ $order['number'] }}"
+                                    data-client-id="{{ $order['clientid'] }}" data-client-name="{{ $order['client'] }}"
+                                    data-item-id="{{ $order['itemid'] ?? '' }}"
+                                    data-item-name="{{ $order['items'][0]['item_name'] ?? '' }}"
+                                    data-item-description="{{ $order['items'][0]['item_description'] ?? '' }}"
+                                    data-quantity="{{ $order['items'][0]['quantity'] ?? 1 }}"
+                                    data-no-of-users="{{ $order['items'][0]['no_of_users'] ?? '' }}"
+                                    data-start-date="{{ $order['items'][0]['start_date'] ?? '' }}"
+                                    data-end-date="{{ $order['items'][0]['end_date'] ?? '' }}"
+                                    data-delivery-date="{{ $order['items'][0]['delivery_date'] ?? '' }}"
+                                    data-client-docid="{{ $order['client_docid'] ?? '' }}">
+                                    Edit
+                                </button>
+                                @endif
+                                @if(auth()->user()->hasPermission('orders.cancel'))
+                                <form method="POST" action="{{ route('orders.destroy', ['order' => $order['record_id']]) }}"
+                                    class="d-inline flex-grow-1" onsubmit="return confirm('Cancel this order?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="bg04 color04 text-center w-100">Cancel</button>
+                                </form>
+                                @endif
                             @else
-                            <form method="POST" action="{{ route('orders.restore', ['order' => $order['record_id']]) }}"
-                                class="d-inline flex-grow-1" onsubmit="return confirm('Restore this order?')">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="bg02 color02 text-center w-100">Restore</button>
-                            </form>
+                                @if(auth()->user()->hasPermission('orders.cancel'))
+                                <form method="POST" action="{{ route('orders.restore', ['order' => $order['record_id']]) }}"
+                                    class="d-inline flex-grow-1" onsubmit="return confirm('Restore this order?')">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="bg01 color01 text-center w-100">Restore</button>
+                                </form>
+                                @endif
                             @endif
+                            @if(auth()->user()->hasPermission('orders.cancel'))
                             <form method="POST"
                                 action="{{ route('orders.force-delete', ['order' => $order['record_id']]) }}"
                                 class="d-inline flex-grow-1"
                                 onsubmit="return confirm('Permanently delete this order?')">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="bg04 color04 text-center">Delete</button>
+                                <button type="submit" class="bg04 color04 text-center w-100">Delete</button>
                             </form>
+                            @endif
                         </div>
                     </div>
                 </div>

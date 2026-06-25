@@ -12,10 +12,12 @@
         data-bs-toggle="modal" data-bs-target="#manageCategoriesModal">
         <i class="fas fa-tags btn-icon"></i> Client Categories
     </button>
+    @if(auth()->user()->hasPermission('clients.create'))
     <a href="{{ route('clients.create') }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
         <i class="fas fa-plus btn-icon"></i> Add Client
     </a>
+    @endif
 </div>
 @endsection
 
@@ -81,7 +83,7 @@
                             style="left: 14px; top: 50%; transform: translateY(-50%); font-size: 15px;"></i>
                         <input type="text" name="search" id="clients_search_filter" class="form-control"
                             value="{{ $searchTerm ?? '' }}" placeholder="Search Client Name or Contact Person"
-                            style="padding-left: 38px;" onchange="this.form.submit()">
+                            style="padding-left: 38px;">
                     </div>
                 </div>
             </div>
@@ -173,6 +175,7 @@
                         </td>
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1 align-items-center">
+                                @if(auth()->user()->hasPermission('clients.edit'))
                                 <div class="form-check form-switch mb-0 d-inline-flex align-items-center me-1"
                                     style="padding-left: 2.5em; min-height: auto;">
                                     <input class="form-check-input client-status-toggle border-primary" type="checkbox" role="switch"
@@ -180,14 +183,19 @@
                                         ? 'checked' : '' }} style="cursor: pointer; height: 1.15em; width: 2.1em;"
                                         title="Toggle Status">
                                 </div>
+                                @endif
+                                @if(auth()->user()->hasPermission('clients.view'))
                                 <a href="{{ route('clients.dashboard', $client['record_id']) }}"
                                     data-client-id="{{ $client['record_id'] }}" class="bg01 color01">View</a>
                                 <a href="#" class="bg02 color02 open-documents-modal" data-bs-toggle="modal"
                                     data-bs-target="#documentsModal" data-client-id="{{ $client['record_id'] }}"
                                     data-client-name="{{ $client['name'] }}">PO &
                                     Agreement</a>
+                                @endif
+                                @if(auth()->user()->hasPermission('clients.edit'))
                                 <a href="{{ route('clients.edit', $client['record_id']) }}"
                                     class="bg03 color03">Edit</a>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -277,15 +285,20 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="tableActionButton d-flex flex-wrap gap-1 mt-2">
+                    <div class="tableActionButton d-flex flex-wrap gap-1 mt-auto">
+                        @if(auth()->user()->hasPermission('clients.view'))
                         <a href="{{ route('clients.dashboard', $client['record_id']) }}"
                             class="bg01 color01 flex-grow-1 text-center">View</a>
                         <a href="#" class="bg02 color02 flex-grow-1 text-center open-documents-modal"
                             data-bs-toggle="modal" data-bs-target="#documentsModal"
                             data-client-id="{{ $client['record_id'] }}" data-client-name="{{ $client['name'] }}">PO &
                             Agreement</a>
+                        @endif
+                        @if(auth()->user()->hasPermission('clients.edit'))
                         <a href="{{ route('clients.edit', $client['record_id']) }}"
                             class="bg03 color03 flex-grow-1 text-center">Edit</a>
+                        @endif
+                        @if(auth()->user()->hasPermission('clients.edit'))
                         <div class="form-check form-switch mb-0 d-inline-flex align-items-center justify-content-center flex-grow-1"
                             style="padding-left: 2.5em; min-height: 30px;">
                             <input class="form-check-input client-status-toggle border-primary" type="checkbox" role="switch"
@@ -293,6 +306,7 @@
                                 ? 'checked' : '' }} style="cursor: pointer; height: 1.15em; width: 2.1em;"
                                 title="Toggle Status">
                         </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -519,9 +533,12 @@
                                             $group->business_country, $group->business_postal_code])) ?: '—' }}</td>
                                         <td class="text-end">
                                             <div class="tableActionButton d-inline-flex gap-1">
+                                                @if(auth()->user()->hasPermission('clients.view'))
                                                 <a href="{{ route('clients.index') }}?groupid={{ $group->groupid }}"
                                                     class="bg01 color01 border-0"
                                                     title="View clients in this group">View Clients</a>
+                                                @endif
+                                                @if(auth()->user()->hasPermission('clients.edit'))
                                                 <button type="button" class="bg03 color03 border-0"
                                                     onclick="editGroup(this)" data-id="{{ $group->groupid }}"
                                                     data-name="{{ $group->group_name }}"
@@ -535,6 +552,8 @@
                                                     data-business-state="{{ $group->business_state }}"
                                                     data-business-postal="{{ $group->business_postal_code }}"
                                                     data-business-country="{{ $group->business_country }}">Edit</button>
+                                                @endif
+                                                @if(auth()->user()->hasPermission('clients.delete'))
                                                 <form method="POST"
                                                     action="{{ route('groups.destroy', $group->groupid) }}"
                                                     class="d-inline group-delete-form"
@@ -543,6 +562,7 @@
                                                     @method('DELETE')
                                                     <button type="submit" class="bg04 color04 border-0">Delete</button>
                                                 </form>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
@@ -635,14 +655,18 @@
                                         </td>
                                         <td class="text-end">
                                             <div class="tableActionButton d-inline-flex gap-1">
+                                                @if(auth()->user()->hasPermission('clients.edit'))
                                                 <button type="button" class="bg03 color03 border-0"
                                                     onclick="editCategory(this)" data-id="{{ $category->categoryid }}"
                                                     data-name="{{ $category->name }}">Edit</button>
+                                                @endif
+                                                @if(auth()->user()->hasPermission('clients.delete'))
                                                 <form method="POST" action="{{ route('client-categories.destroy', $category->categoryid) }}" class="d-inline category-delete-form">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="bg04 color04 border-0">Delete</button>
                                                 </form>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
@@ -894,12 +918,16 @@
             '</td>' +
             '<td class="text-end">' +
             '<div class="tableActionButton d-inline-flex gap-1">' +
+            @if(auth()->user()->hasPermission('clients.edit'))
             '<button type="button" class="bg03 color03 border-0" onclick="editCategory(this)" data-id="' + category.categoryid + '" data-name="' + (category.name || '').replace(/"/g, '&quot;') + '" data-sequence="' + category.sequence + '">Edit</button>' +
+            @endif
+            @if(auth()->user()->hasPermission('clients.delete'))
             '<form method="POST" action="client-categories/' + category.categoryid + '" class="d-inline category-delete-form">' +
             '<input type="hidden" name="_token" value="' + csrf + '">' +
             '<input type="hidden" name="_method" value="DELETE">' +
             '<button type="submit" class="bg04 color04 border-0">Delete</button>' +
             '</form>' +
+            @endif
             '</div>' +
             '</td>' +
             '</tr>';
@@ -995,7 +1023,10 @@
             '<td>' + business_address + '</td>' +
             '<td class="text-end">' +
             '<div class="tableActionButton d-inline-flex gap-1">' +
+            @if(auth()->user()->hasPermission('clients.view'))
             '<a href="' + clientsIndexUrl + '?groupid=' + group.groupid + '" class="bg01 color01 border-0" title="View clients in this group">View Clients</a>' +
+            @endif
+            @if(auth()->user()->hasPermission('clients.edit'))
             '<button type="button" class="bg03 color03 border-0" onclick="editGroup(this)"' +
             ' data-id="' + group.groupid + '"' +
             ' data-name="' + (group.group_name || '').replace(/"/g, '&quot;') + '"' +
@@ -1010,11 +1041,14 @@
             ' data-business-state="' + (group.business_state || '').replace(/"/g, '&quot;') + '"' +
             ' data-business-postal="' + (group.business_postal_code || '').replace(/"/g, '&quot;') + '"' +
             ' data-business-country="' + (group.business_country || '').replace(/"/g, '&quot;') + '">Edit</button>' +
+            @endif
+            @if(auth()->user()->hasPermission('clients.delete'))
             '<form method="POST" action="groups/' + group.groupid + '" class="d-inline group-delete-form" data-group-name="' + (group.group_name || '').replace(/"/g, '&quot;') + '">' +
             '<input type="hidden" name="_token" value="' + csrf + '">' +
             '<input type="hidden" name="_method" value="DELETE">' +
             '<button type="submit" class="bg04 color04 border-0">Delete</button>' +
             '</form>' +
+            @endif
             '</div>' +
             '</td>' +
             '</tr>';

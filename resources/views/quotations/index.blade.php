@@ -2,10 +2,12 @@
 
 @section('header_actions')
 <div class="d-flex align-items-center gap-2 flex-wrap">
+    @if(auth()->user()->hasPermission('quotations.create'))
     <a href="{{ route('quotations.create', $selectedClientId ? ['c' => $selectedClientId] : []) }}"
         class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
         Create Quotation <i class="fas fa-arrow-right btn-icon"></i>
     </a>
+    @endif
 </div>
 @endsection
 
@@ -109,18 +111,27 @@
                         </td>
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1 align-items-center">
+                                @if(auth()->user()->hasPermission('quotations.view'))
                                 <button type="button" class="bg01 color01 border-0 view-pdf-btn"
                                     data-pdf-url="{{ route('quotations.pdf', $quotation['record_id']) }}">
                                     View
                                 </button>
+                                @endif
+                                @if(auth()->user()->hasPermission('quotations.edit'))
                                 <a href="{{ route('quotations.create', ['step' => 2, 'c' => $quotation['client_id'] ?? $selectedClientId, 'd' => $quotation['record_id']]) }}"
                                     class="bg03 color03">Edit</a>
+                                @endif
+                                @if(auth()->user()->hasPermission('quotations.create'))
                                 <button type="button" class="bg02 color02 border-0 js-open-quotation-copy"
                                     data-copy-url="{{ route('quotations.copy', ['quotation' => $quotation['record_id']]) }}"
                                     data-copy-client-id="{{ $quotation['client_id'] ?? $selectedClientId }}"
                                     data-copy-client-name="{{ $quotation['client'] }}">Copy</button>
+                                @endif
+                                @if(auth()->user()->hasPermission('quotations.view'))
                                 <a href="{{ route('quotations.email-compose', $quotation['record_id']) }}"
                                     class="bg03 color03">Send</a>
+                                @endif
+                                @if(auth()->user()->hasPermission('quotations.cancel'))
                                 <form method="POST" class="d-inline"
                                     action="{{ route('quotations.destroy', ['quotation' => $quotation['record_id'], 'c' => $selectedClientId]) }}"
                                     onsubmit="return confirm(@js('Cancel ' . $quotation['number'] . '?'))">
@@ -128,6 +139,7 @@
                                     @method('DELETE')
                                     <button type="submit" class="bg04 color04 border-0">Cancel</button>
                                 </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -212,18 +224,27 @@
 
                     <!-- Action Buttons -->
                     <div class="tableActionButton d-flex flex-wrap gap-1 mt-2">
+                        @if(auth()->user()->hasPermission('quotations.view'))
                         <button type="button" class="bg01 color01 flex-grow-1 text-center border-0 view-pdf-btn"
                             data-pdf-url="{{ route('quotations.pdf', $quotation['record_id']) }}">
                             View
                         </button>
+                        @endif
+                        @if(auth()->user()->hasPermission('quotations.edit'))
                         <a href="{{ route('quotations.create', ['step' => 2, 'c' => $quotation['client_id'] ?? $selectedClientId, 'd' => $quotation['record_id']]) }}"
                             class="bg03 color03 flex-grow-1 text-center">Edit</a>
+                        @endif
+                        @if(auth()->user()->hasPermission('quotations.create'))
                         <button type="button" class="bg02 color02 flex-grow-1 text-center border-0 js-open-quotation-copy"
                             data-copy-url="{{ route('quotations.copy', ['quotation' => $quotation['record_id']]) }}"
                             data-copy-client-id="{{ $quotation['client_id'] ?? $selectedClientId }}"
                             data-copy-client-name="{{ $quotation['client'] }}">Copy</button>
+                        @endif
+                        @if(auth()->user()->hasPermission('quotations.view'))
                         <a href="{{ route('quotations.email-compose', $quotation['record_id']) }}"
                             class="bg03 color03 flex-grow-1 text-center">Send</a>
+                        @endif
+                        @if(auth()->user()->hasPermission('quotations.cancel'))
                         <form method="POST" class="d-inline flex-grow-1"
                             action="{{ route('quotations.destroy', ['quotation' => $quotation['record_id'], 'c' => $selectedClientId]) }}"
                             onsubmit="return confirm(@js('Cancel ' . $quotation['number'] . '?'))">
@@ -231,6 +252,7 @@
                             @method('DELETE')
                             <button type="submit" class="bg04 color04 w-100 text-center border-0">Cancel</button>
                         </form>
+                        @endif
                     </div>
                 </div>
             </div>
