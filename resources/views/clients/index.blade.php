@@ -708,6 +708,9 @@
 </div>
 
 <script>
+    const canViewClients = "{{ auth()->user()->hasPermission('clients.view') ? '1' : '' }}" === "1";
+    const canEditClients = "{{ auth()->user()->hasPermission('clients.edit') ? '1' : '' }}" === "1";
+    const canDeleteClients = "{{ auth()->user()->hasPermission('clients.delete') ? '1' : '' }}" === "1";
     document.getElementById('groupSameAsRegistered').addEventListener('change', function () {
         if (!this.checked) return;
 
@@ -918,16 +921,12 @@
             '</td>' +
             '<td class="text-end">' +
             '<div class="tableActionButton d-inline-flex gap-1">' +
-            @if(auth()->user()->hasPermission('clients.edit'))
-            '<button type="button" class="bg03 color03 border-0" onclick="editCategory(this)" data-id="' + category.categoryid + '" data-name="' + (category.name || '').replace(/"/g, '&quot;') + '" data-sequence="' + category.sequence + '">Edit</button>' +
-            @endif
-            @if(auth()->user()->hasPermission('clients.delete'))
-            '<form method="POST" action="client-categories/' + category.categoryid + '" class="d-inline category-delete-form">' +
+            (canEditClients ? '<button type="button" class="bg03 color03 border-0" onclick="editCategory(this)" data-id="' + category.categoryid + '" data-name="' + (category.name || '').replace(/"/g, '&quot;') + '" data-sequence="' + category.sequence + '">Edit</button>' : '') +
+            (canDeleteClients ? '<form method="POST" action="client-categories/' + category.categoryid + '" class="d-inline category-delete-form">' +
             '<input type="hidden" name="_token" value="' + csrf + '">' +
             '<input type="hidden" name="_method" value="DELETE">' +
             '<button type="submit" class="bg04 color04 border-0">Delete</button>' +
-            '</form>' +
-            @endif
+            '</form>' : '') +
             '</div>' +
             '</td>' +
             '</tr>';
@@ -1026,11 +1025,8 @@
             '<td>' + business_address + '</td>' +
             '<td class="text-end">' +
             '<div class="tableActionButton d-inline-flex gap-1">' +
-            @if(auth()->user()->hasPermission('clients.view'))
-            '<a href="' + clientsIndexUrl + '?groupid=' + group.groupid + '" class="bg01 color01 border-0" title="View clients in this group">View Clients</a>' +
-            @endif
-            @if(auth()->user()->hasPermission('clients.edit'))
-            '<button type="button" class="bg03 color03 border-0" onclick="editGroup(this)"' +
+            (canViewClients ? '<a href="' + clientsIndexUrl + '?groupid=' + group.groupid + '" class="bg01 color01 border-0" title="View clients in this group">View Clients</a>' : '') +
+            (canEditClients ? '<button type="button" class="bg03 color03 border-0" onclick="editGroup(this)"' +
             ' data-id="' + group.groupid + '"' +
             ' data-name="' + (group.group_name || '').replace(/"/g, '&quot;') + '"' +
             ' data-email="' + (group.email || '').replace(/"/g, '&quot;') + '"' +
@@ -1043,15 +1039,12 @@
             ' data-business-city="' + (group.business_city || '').replace(/"/g, '&quot;') + '"' +
             ' data-business-state="' + (group.business_state || '').replace(/"/g, '&quot;') + '"' +
             ' data-business-postal="' + (group.business_postal_code || '').replace(/"/g, '&quot;') + '"' +
-            ' data-business-country="' + (group.business_country || '').replace(/"/g, '&quot;') + '">Edit</button>' +
-            @endif
-            @if(auth()->user()->hasPermission('clients.delete'))
-            '<form method="POST" action="groups/' + group.groupid + '" class="d-inline group-delete-form" data-group-name="' + (group.group_name || '').replace(/"/g, '&quot;') + '">' +
+            ' data-business-country="' + (group.business_country || '').replace(/"/g, '&quot;') + '">Edit</button>' : '') +
+            (canDeleteClients ? '<form method="POST" action="groups/' + group.groupid + '" class="d-inline group-delete-form" data-group-name="' + (group.group_name || '').replace(/"/g, '&quot;') + '">' +
             '<input type="hidden" name="_token" value="' + csrf + '">' +
             '<input type="hidden" name="_method" value="DELETE">' +
             '<button type="submit" class="bg04 color04 border-0">Delete</button>' +
-            '</form>' +
-            @endif
+            '</form>' : '') +
             '</div>' +
             '</td>' +
             '</tr>';
