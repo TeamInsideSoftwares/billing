@@ -19,7 +19,7 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
 @extends('layouts.app')
 
 @section('header_actions')
-<a href="{{ route('quotations.index', [], false) }}"
+<a href="{{ route('quotations.index') }}"
     class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
     <i class="fas fa-list btn-icon"></i> Quotation List
 </a>

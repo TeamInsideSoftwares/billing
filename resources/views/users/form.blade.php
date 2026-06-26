@@ -78,9 +78,9 @@
                         </div>
                         
                         <div class="col-12">
-                            <label for="depid" class="form-label small lh-sm fw-semibold text-dark mb-1">Department<span class="text-danger">*</span></label>
-                            <select id="depid" name="depid" class="form-select" required>
-                                <option value="" disabled {{ old('depid', $userModel->depid ?? '') ? '' : 'selected' }}>Select Department</option>
+                            <label for="depid" class="form-label small lh-sm fw-semibold text-dark mb-1">Department</label>
+                            <select id="depid" name="depid" class="form-select">
+                                <option value="" {{ old('depid', $userModel->depid ?? '') ? '' : 'selected' }}>Select Department</option>
                                 @foreach($departments as $dept)
                                     <option value="{{ $dept->depid }}" {{ old('depid', $userModel->depid ?? '') == $dept->depid ? 'selected' : '' }}>{{ $dept->name }}</option>
                                 @endforeach

@@ -169,6 +169,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/users', 'usersStore')->name('users.store');
         Route::get('/users/{user}/edit', 'usersEdit')->name('users.edit');
         Route::put('/users/{user}', 'usersUpdate')->name('users.update');
+        Route::patch('/users/{user}/toggle-status', 'usersToggleStatus')->name('users.toggle-status');
         Route::delete('/users/{user}', 'usersDestroy')->name('users.destroy');
     });
 
@@ -251,4 +252,5 @@ Route::middleware(['superadmin.auth'])->prefix('superadmin')->name('superadmin.'
     Route::post('/', 'store')->name('store');
     Route::get('/{account}/edit', 'edit')->name('edit');
     Route::put('/{account}', 'update')->name('update');
+    Route::patch('/{account}/toggle', 'toggleStatus')->name('toggle-status');
 });

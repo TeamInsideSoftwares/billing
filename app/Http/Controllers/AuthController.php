@@ -28,13 +28,30 @@ class AuthController extends Controller
         $password = (string) $validated['password'];
         $remember = $request->boolean('remember');
 
-        $superadminValid = $this->isSuperadminCredentialValid($email, $password);
+        $superadminStatus = $this->validateSuperadminCredential($email, $password);
+        $superadminValid = $superadminStatus === 'valid';
+        
         $panelUser = User::query()
+            ->with('account')
             ->where('email', $email)
-            ->where('is_active', true)
             ->first();
-        $panelValid = $panelUser instanceof User
+
+        $panelPasswordValid = $panelUser instanceof User
             && Hash::check($password, (string) $panelUser->password);
+
+        $panelValid = false;
+
+        if ($panelPasswordValid) {
+            if (!$panelUser->is_active || ($panelUser->account && $panelUser->account->status !== 'active')) {
+                if (!$superadminValid) {
+                    return back()->withErrors([
+                        'email' => 'Your account is inactive. Please contact support.',
+                    ])->onlyInput('email');
+                }
+            } else {
+                $panelValid = true;
+            }
+        }
 
         if ($superadminValid && $panelValid && $panelUser) {
             $request->session()->put('login_choice', [
@@ -95,9 +112,16 @@ class AuthController extends Controller
             return redirect()->route('superadmin.index')->with('success', 'Superadmin login successful.');
         }
 
-        $user = User::query()->find($userId);
+        $user = User::query()
+            ->with('account')
+            ->find($userId);
+
         if (! $user) {
             return redirect()->route('login')->withErrors(['email' => 'Panel account no longer exists.']);
+        }
+
+        if (!$user->is_active || ($user->account && $user->account->status !== 'active')) {
+            return redirect()->route('login')->withErrors(['email' => 'Your account is inactive. Please contact support.']);
         }
 
         return $this->loginToPanel($request, $user, $remember);
@@ -199,7 +223,7 @@ class AuthController extends Controller
         return back()->with('success', 'Password changed successfully.');
     }
 
-    private function isSuperadminCredentialValid(string $email, string $plainPassword): bool
+    private function validateSuperadminCredential(string $email, string $plainPassword): string
     {
         $connection = (string) env('ADMIN_DB_CONNECTION', 'admin_mysql');
         $table = (string) env('ADMIN_LOGIN_TABLE', 'adminlogin');
@@ -212,16 +236,16 @@ class AuthController extends Controller
                 ->where($userColumn, $email)
                 ->first();
         } catch (\Throwable) {
-            return false;
+            return 'invalid';
         }
 
         if (! $record) {
-            return false;
+            return 'invalid';
         }
 
         $storedPassword = (string) data_get($record, $passwordColumn, '');
         if ($storedPassword === '') {
-            return false;
+            return 'invalid';
         }
 
         // Support both password_hash() and legacy SHA-512 hex storage.
@@ -229,10 +253,14 @@ class AuthController extends Controller
         $legacySha512Valid = hash_equals(strtolower($storedPassword), strtolower(hash('sha512', $plainPassword)));
 
         if (! $phpPasswordHashValid && ! $legacySha512Valid) {
-            return false;
+            return 'invalid';
         }
 
-        return true;
+        if (isset($record->status) && strtolower($record->status) !== 'active') {
+            return 'inactive';
+        }
+
+        return 'valid';
     }
 
     private function markSuperadminSession(Request $request, string $email): void

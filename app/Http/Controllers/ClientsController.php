@@ -206,7 +206,7 @@ class ClientsController extends Controller
 
         $client = null;
         $order = null;
-        $temporaryPassword = trim((string) env('TRIAL_DEFAULT_PASSWORD', '123456'));
+        $temporaryPassword = \Illuminate\Support\Str::random(6);
         $welcomeEmailSent = false;
         try {
             DB::transaction(function () use (&$client, &$order, $validated, $service, $businessName, $startDate, $endDate, $addressLine1) {
@@ -258,7 +258,7 @@ class ClientsController extends Controller
                 ]);
             });
 
-            $this->syncWithSuperadmin($client, $validated['domain'] ?? null);
+            $this->syncWithSuperadmin($client, $validated['domain'] ?? null, $temporaryPassword);
 
             if (strtolower((string) $client->type) === 'trial') {
                 $welcomeEmailSent = $this->sendTrialWelcomeEmail(
@@ -1327,7 +1327,7 @@ class ClientsController extends Controller
         ]);
     }
 
-    private function syncWithSuperadmin(Client $client, ?string $domain = null): void
+    private function syncWithSuperadmin(Client $client, ?string $domain = null, ?string $password = null): void
     {
         $account = Account::find($client->accountid);
         if ($account && $account->allow_sync) {
@@ -1351,7 +1351,7 @@ class ClientsController extends Controller
                 'status' => $client->status ?: 'active',
                 'user_name' => $contactName,
                 'user_email' => $client->primary_email ?: ($client->email ?: ''),
-                'user_password' => '123456',
+                'user_password' => $password ?: '123456',
                 'user_mobile' => $client->phone ?: '',
             ];
 

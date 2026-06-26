@@ -100,9 +100,7 @@
                 ];
                 @endphp
                 @foreach ($navItems as $item)
-                @if(isset($item['permission']) && auth()->check() && !auth()->user()->hasPermission($item['permission']))
-                    @continue
-                @endif
+
                 @php
                 // Extract the base route name (e.g., 'services' from 'services.index')
                 $baseRoute = explode('.', $item['route'])[0];
@@ -194,7 +192,7 @@
                         </div>
                     </div>
                     <div class="user-info">
-                        <strong class="user-name text-capitalize">{{ auth()->user()->slug }}</strong>
+                        <strong class="user-name text-capitalize">{{ auth()->user()->account->name ?? auth()->user()->name }}</strong>
                         <span class="user-email">{{ auth()->user()->email }}</span>
                     </div>
                 </div>

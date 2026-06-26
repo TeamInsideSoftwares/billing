@@ -80,7 +80,7 @@ class UsersController extends Controller
             'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'cropped_image_data' => ['nullable', 'string'],
             'roleid' => ['required', 'string'],
-            'depid' => ['required', 'string'],
+            'depid' => ['nullable', 'string'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(self::AVAILABLE_PERMISSIONS)],
             'is_active' => ['nullable', 'boolean'],
@@ -100,7 +100,7 @@ class UsersController extends Controller
             'email' => strtolower((string) $validated['email']),
             'profile_image' => $profileImagePath,
             'roleid' => $validated['roleid'],
-            'depid' => $validated['depid'],
+            'depid' => $validated['depid'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'permissions' => array_values($validated['permissions'] ?? []),
@@ -143,7 +143,7 @@ class UsersController extends Controller
             'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'cropped_image_data' => ['nullable', 'string'],
             'roleid' => ['required', 'string'],
-            'depid' => ['required', 'string'],
+            'depid' => ['nullable', 'string'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(self::AVAILABLE_PERMISSIONS)],
             'is_active' => ['nullable', 'boolean'],
@@ -154,7 +154,7 @@ class UsersController extends Controller
             'name' => $validated['name'],
             'email' => strtolower((string) $validated['email']),
             'roleid' => $validated['roleid'],
-            'depid' => $validated['depid'],
+            'depid' => $validated['depid'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'permissions' => array_values($validated['permissions'] ?? []),
@@ -195,6 +195,19 @@ class UsersController extends Controller
         ]);
 
         return redirect()->route('users.index')->with('success', 'User cancelled successfully.');
+    }
+
+    public function usersToggleStatus(User $user): RedirectResponse
+    {
+        if ((string) $user->accountid !== $this->resolveAccountId()) {
+            abort(403);
+        }
+
+        $user->update([
+            'is_active' => ! $user->is_active,
+        ]);
+
+        return redirect()->back()->with('success', 'User status toggled successfully.');
     }
 
     private function groupPermissions(array $permissions): array

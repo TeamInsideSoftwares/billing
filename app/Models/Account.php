@@ -21,10 +21,14 @@ class Account extends Model
     // 3. Tell Laravel the key type is a string
     protected $keyType = 'string';
 
+    protected function idLength(): int
+    {
+        return 10;
+    }
+
     protected $fillable = [
         'accountid',
         'name',
-        'slug',
         'status',
         'allow_sync',
         'expires_at',
@@ -77,7 +81,9 @@ class Account extends Model
 
     public function credential(): HasOne
     {
-        return $this->hasOne(User::class, 'accountid', 'accountid')->where('role', 'admin');
+        return $this->hasOne(User::class, 'accountid', 'accountid')->whereHas('role', function ($query) {
+            $query->where('name', 'Admin');
+        });
     }
 
     public function financialYears(): HasMany

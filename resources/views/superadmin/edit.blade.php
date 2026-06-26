@@ -88,7 +88,7 @@
                     <div class="col-md-6">
                         <label for="status" class="form-label">Membership Status *</label>
                         <select id="status" name="status" class="form-select" required>
-                            @foreach (['pending' => 'Pending Approval', 'active' => 'Active', 'inactive' => 'Inactive'] as $value => $label)
+                            @foreach (['active' => 'Active', 'inactive' => 'Inactive'] as $value => $label)
                                 <option value="{{ $value }}"
                                     {{ old('status', $account->status) === $value ? 'selected' : '' }}>{{ $label }}
                                 </option>

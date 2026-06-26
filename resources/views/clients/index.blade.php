@@ -976,6 +976,9 @@
                     return res.json().then(function (data) { throw data; });
                 }
                 if (!res.ok) {
+                    if (res.status === 403) {
+                        return res.json().then(function (data) { throw new Error(data.message || 'Unauthorized action.'); });
+                    }
                     throw new Error('Server error');
                 }
                 return res.json();
@@ -988,7 +991,7 @@
                 }
             })
             .catch(function (err) {
-                showGroupToast('Something went wrong. Please try again.', 'danger');
+                showGroupToast(err.message || 'Something went wrong. Please try again.', 'danger');
             })
             .finally(function () {
                 document.getElementById('categorySubmitBtn').disabled = false;
@@ -1096,6 +1099,9 @@
                     return res.json().then(function (data) { throw data; });
                 }
                 if (!res.ok) {
+                    if (res.status === 403) {
+                        return res.json().then(function (data) { throw new Error(data.message || 'Unauthorized action.'); });
+                    }
                     throw new Error('Server error');
                 }
                 return res.json();
@@ -1111,7 +1117,7 @@
                 if (err && err.errors) {
                     showGroupFormErrors(err.errors);
                 } else {
-                    showGroupToast('Something went wrong. Please try again.', 'danger');
+                    showGroupToast(err.message || 'Something went wrong. Please try again.', 'danger');
                 }
             })
             .finally(function () {
@@ -1171,7 +1177,12 @@
                 },
             })
                 .then(function (res) {
-                    if (!res.ok) throw new Error('Server error');
+                    if (!res.ok) {
+                        if (res.status === 403) {
+                            return res.json().then(function (data) { throw new Error(data.message || 'Unauthorized action.'); });
+                        }
+                        throw new Error('Server error');
+                    }
                     return res.json();
                 })
                 .then(function (data) {
@@ -1180,8 +1191,8 @@
                         showGroupToast(data.message);
                     }
                 })
-                .catch(function () {
-                    showGroupToast('Something went wrong. Please try again.', 'danger');
+                .catch(function (err) {
+                    showGroupToast(err.message || 'Something went wrong. Please try again.', 'danger');
                 });
         });
 
@@ -1211,7 +1222,12 @@
                 },
             })
                 .then(function (res) {
-                    if (!res.ok) throw new Error('Server error');
+                    if (!res.ok) {
+                        if (res.status === 403) {
+                            return res.json().then(function (data) { throw new Error(data.message || 'Unauthorized action.'); });
+                        }
+                        throw new Error('Server error');
+                    }
                     return res.json();
                 })
                 .then(function (data) {
@@ -1220,8 +1236,8 @@
                         showGroupToast(data.message);
                     }
                 })
-                .catch(function () {
-                    showGroupToast('Something went wrong. Please try again.', 'danger');
+                .catch(function (err) {
+                    showGroupToast(err.message || 'Something went wrong. Please try again.', 'danger');
                 });
         });
 
@@ -1242,17 +1258,22 @@
                     },
                 })
                     .then(function (res) {
-                        if (!res.ok) throw new Error('Server error');
-                        return res.json();
-                    })
+                    if (!res.ok) {
+                        if (res.status === 403) {
+                            return res.json().then(function (data) { throw new Error(data.message || 'Unauthorized action.'); });
+                        }
+                        throw new Error('Server error');
+                    }
+                    return res.json();
+                })
                     .then(function (data) {
                         if (data.success) {
                             refreshCategoriesTable(data.categories);
                             showGroupToast(data.message);
                         }
                     })
-                    .catch(function () {
-                        showGroupToast('Something went wrong updating sequence.', 'danger');
+                    .catch(function (err) {
+                        showGroupToast(err.message || 'Something went wrong updating sequence.', 'danger');
                     });
             }
         });
@@ -1362,9 +1383,13 @@
                         });
 
                         showGroupToast(result.message || 'Status updated successfully.');
+                    } else if (response.status === 403) {
+                        const errData = await response.json();
+                        toggles.forEach(cb => cb.checked = !isChecked);
+                        showGroupToast(errData.message || 'Unauthorized action.', 'danger');
                     } else {
                         toggles.forEach(cb => cb.checked = !isChecked);
-                        alert('Failed to update status.');
+                        showGroupToast('Failed to update status.', 'danger');
                     }
                 } catch (error) {
                     console.error('Failed to toggle status', error);

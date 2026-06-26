@@ -94,19 +94,20 @@
                             <span class="badge bg-light text-dark border">{{ is_array($member->permissions) ? count($member->permissions) : 0 }}</span>
                         </td>
                         <td class="text-end">
-                            <div class="tableActionButton d-inline-flex gap-1">
+                            <div class="tableActionButton d-inline-flex gap-1 align-items-center">
                                 @if(auth()->user()->hasPermission('users.edit'))
                                 <a href="{{ route('users.edit', $member) }}" class="bg03 color03" title="Edit User">Edit</a>
                                 @endif
                                 @if(auth()->user()->hasPermission('users.cancel'))
-                                <form method="POST" action="{{ route('users.destroy', $member) }}" class="d-inline"
-                                    onsubmit="return confirm('Cancel this user?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="bg02 color02 border-0" title="Cancel User">Cancel</button>
+                                <form method="POST" action="{{ route('users.toggle-status', $member) }}" class="m-0 p-0 d-inline" title="Toggle Status">
+                                    @csrf @method('PATCH')
+                                    <div class="form-check form-switch mb-0 d-inline-flex align-items-center me-1" style="padding-left: 2.5em; min-height: auto;">
+                                        <input class="form-check-input border-primary" type="checkbox" role="switch" onchange="this.form.submit()"
+                                            {{ $member->is_active ? 'checked' : '' }} style="cursor: pointer; height: 1.15em; width: 2.1em;">
+                                    </div>
                                 </form>
                                 @endif
-                                <a href="#" class="bg01 color01" title="Login As User">Login As</a>
+                                <!-- <a href="#" class="bg01 color01" title="Login As User">Login As</a>  -->
                             </div>
                         </td>
                     </tr>

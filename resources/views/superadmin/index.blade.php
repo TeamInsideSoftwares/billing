@@ -38,13 +38,12 @@
                                 <td>{{ $acc->allow_sync ? 'Yes' : 'No' }}</td>
                                 <td>{{ $acc->expires_at ? $acc->expires_at->format('d M Y') : 'No Expiry' }}</td>
                                 <td>
-                                    @if($acc->status === 'active')
-                                        <span class="badge rounded-pill text-bg-success">{{ ucfirst($acc->status) }}</span>
-                                    @elseif($acc->status === 'pending')
-                                        <span class="badge rounded-pill text-bg-warning text-dark">{{ ucfirst($acc->status) }}</span>
-                                    @else
-                                        <span class="badge rounded-pill text-bg-secondary">{{ ucfirst($acc->status) }}</span>
-                                    @endif
+                                    <form method="POST" action="{{ route('superadmin.toggle-status', $acc->accountid) }}" class="m-0 p-0 d-inline" title="{{ ucfirst($acc->status) }}">
+                                        @csrf @method('PATCH')
+                                        <div class="form-check form-switch m-0 p-0 ps-5">
+                                            <input class="form-check-input m-0" type="checkbox" role="switch" onchange="this.form.submit()" {{ $acc->status === 'active' ? 'checked' : '' }} style="cursor: pointer;">
+                                        </div>
+                                    </form>
                                 </td>
                                 <td class="pe-4 text-end">
                                     <a href="{{ route('superadmin.edit', $acc) }}" class="btn btn-sm btn-outline-primary" title="Manage">

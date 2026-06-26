@@ -67,8 +67,7 @@
                     <div class="col-md-6">
                         <label for="status" class="form-label">Membership Status *</label>
                         <select id="status" name="status" class="form-select">
-                            <option value="pending" {{ old('status') == 'pending' ? 'selected' : '' }}>Pending Approval</option>
-                            <option value="active" {{ old('status') == 'active' ? 'selected' : '' }}>Active</option>
+                            <option value="active" {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Active</option>
                             <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
                         </select>
                         @error('status') <div class="text-danger small mt-1">{{ $message }}</div> @enderror

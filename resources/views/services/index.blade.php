@@ -2,7 +2,7 @@
 
 @section('header_actions')
 <div class="d-flex align-items-center gap-2 flex-wrap">
-    @if(auth()->user()->hasPermission('items.edit'))
+    @if(auth()->user()->hasPermission('items.view'))
     <button type="button"
         class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium"
         data-bs-toggle="modal" data-bs-target="#productCategoriesModal">
@@ -483,6 +483,9 @@
                     return res.json().then(function (data) { throw data; });
                 }
                 if (!res.ok) {
+                    if (res.status === 403) {
+                        return res.json().then(function (data) { throw new Error(data.message || 'Unauthorized action.'); });
+                    }
                     throw new Error('Server error');
                 }
                 return res.json();
@@ -498,7 +501,7 @@
                 if (err && err.errors) {
                     showCatFormErrors(err.errors);
                 } else {
-                    showCatToast('Something went wrong. Please try again.', 'danger');
+                    showCatToast(err.message || 'Something went wrong. Please try again.', 'danger');
                 }
             })
             .finally(function () {
@@ -560,7 +563,12 @@
                 },
             })
                 .then(function (res) {
-                    if (!res.ok) throw new Error('Server error');
+                    if (!res.ok) {
+                        if (res.status === 403) {
+                            return res.json().then(function (data) { throw new Error(data.message || 'Unauthorized action.'); });
+                        }
+                        throw new Error('Server error');
+                    }
                     return res.json();
                 })
                 .then(function (data) {
@@ -569,8 +577,8 @@
                         showCatToast(data.message);
                     }
                 })
-                .catch(function () {
-                    showCatToast('Something went wrong. Please try again.', 'danger');
+                .catch(function (err) {
+                    showCatToast(err.message || 'Something went wrong. Please try again.', 'danger');
                 });
         });
 

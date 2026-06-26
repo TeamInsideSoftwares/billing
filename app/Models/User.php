@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Str;
 
 #[Fillable([
     'userid',
@@ -72,21 +71,6 @@ class User extends Authenticatable
     public function department(): BelongsTo
     {
         return $this->belongsTo(AccountDepartment::class, 'depid', 'depid');
-    }
-
-    public function getSlugAttribute(): string
-    {
-        $accountSlug = (string) ($this->account?->slug ?? '');
-        if ($accountSlug !== '') {
-            return $accountSlug;
-        }
-
-        $base = trim((string) ($this->name ?? ''));
-        if ($base === '') {
-            $base = (string) ($this->email ?? 'account-user');
-        }
-
-        return (string) Str::of($base)->slug('-');
     }
 
     public function sendPasswordResetNotification($token): void

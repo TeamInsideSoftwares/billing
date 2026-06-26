@@ -216,7 +216,7 @@ $title = 'Client Dashboard';
                         </a>
                         @endif
 
-                        @if(auth()->user()->hasPermission('documents.create'))
+                        @if(auth()->user()->hasPermission('clients.edit'))
                         <a href="#" class="btn btn-outline-primary open-documents-modal" data-bs-toggle="modal" data-bs-target="#documentsModal" data-client-id="{{ $client->clientid }}" data-client-name="{{ $client->business_name ?? $client->contact_name }}">Add PO</a>
                         @endif
 

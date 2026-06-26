@@ -47,7 +47,7 @@ class AccountsController extends Controller
             'website' => ['nullable', 'url', 'max:150'],
             'currency_code' => ['required', 'string', 'size:3'],
             'timezone' => ['required', 'string', 'max:64'],
-            'status' => ['required', Rule::in(['pending', 'active', 'inactive'])],
+            'status' => ['required', Rule::in(['active', 'inactive'])],
             'allow_sync' => ['nullable', 'boolean'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:today'],
         ]);
@@ -107,7 +107,6 @@ class AccountsController extends Controller
         DB::transaction(function () use ($draft, $validated, $loginEmail) {
             $account = Account::create([
                 'name' => $draft['name'],
-                'slug' => $this->buildUniqueSlug($draft['name']),
                 'status' => $draft['status'],
                 'legal_name' => $draft['legal_name'],
                 'email' => $draft['account_email'],
@@ -170,7 +169,7 @@ class AccountsController extends Controller
             'website' => ['nullable', 'url', 'max:150'],
             'currency_code' => ['required', 'string', 'size:3'],
             'timezone' => ['required', 'string', 'max:64'],
-            'status' => ['required', Rule::in(['pending', 'active', 'inactive'])],
+            'status' => ['required', Rule::in(['active', 'inactive'])],
             'allow_sync' => ['nullable', 'boolean'],
             'expires_at' => ['nullable', 'date'],
             'password' => ['nullable', 'string', 'min:6', 'max:100', 'confirmed'],
@@ -240,19 +239,12 @@ class AccountsController extends Controller
         return redirect()->route('superadmin.index')->with('success', 'Account updated successfully.');
     }
 
-    private function buildUniqueSlug(string $name): string
+    public function toggleStatus(Account $account): RedirectResponse
     {
-        $base = Str::of($name)->trim()->lower()->slug('-')->limit(150, '');
-        $slug = $base !== '' ? (string) $base : 'account';
-        $counter = 1;
+        $account->update([
+            'status' => $account->status === 'active' ? 'inactive' : 'active',
+        ]);
 
-        while (Account::query()->where('slug', $slug)->exists()) {
-            $suffix = '-'.$counter;
-            $maxBaseLength = 150 - strlen($suffix);
-            $slug = substr((string) ($base !== '' ? $base : 'account'), 0, max(1, $maxBaseLength)).$suffix;
-            $counter++;
-        }
-
-        return $slug;
+        return redirect()->back()->with('success', 'Account status toggled successfully.');
     }
 }
