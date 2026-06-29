@@ -138,7 +138,7 @@
                                             @endforeach
                                         </select>
                                         @else
-                                        <input type="hidden" name="clientid" value="{{ $defaultClientId }}">
+                                        <input type="hidden" id="clientid" name="clientid" value="{{ $defaultClientId }}">
                                         <select class="form-select" disabled>
                                             <option value="">Select Client</option>
                                             @foreach ($clients ?? [] as $client)

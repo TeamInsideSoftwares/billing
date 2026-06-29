@@ -341,6 +341,15 @@ class PaymentsController extends Controller
                 : ($paymentDescription !== '' ? $paymentDescription : 'Payment');
             $paymentStatus = strtolower(trim((string) ($payment->status ?? 'active')));
 
+            $tdsInputType = $this->resolvePaymentTdsInputType($payment);
+            $tdsDisplayValue = $this->resolvePaymentTdsDisplayValue($payment, $tdsInputType);
+            
+            if ($tdsInputType === 'percent' && $tdsDisplayValue !== '') {
+                $tdsDisplayLabel = $tdsDisplayValue . '%';
+            } else {
+                $tdsDisplayLabel = number_format($tdsAmount, 0);
+            }
+
             return [
                 'record_id' => $payment->paymentid,
                 'number' => $displayTitle,
@@ -356,6 +365,7 @@ class PaymentsController extends Controller
                 'description' => (string) ($payment->description ?? ''),
                 'reference_number' => (string) ($payment->reference_number ?? ''),
                 'status' => $paymentStatus,
+                'tds_display_label' => $tdsDisplayLabel,
             ];
         });
 
@@ -892,10 +902,13 @@ class PaymentsController extends Controller
             'title' => 'Edit '.$displayTitle,
             'payment' => $payment,
             'clients' => Client::query()->where('accountid', $payment->accountid)->regular()->active()->get(),
-            'invoices' => $this->filterDueInvoices(
-                Invoice::query()->where('accountid', $payment->accountid)->with(['client', 'invoiceItems'])
-                    ->get(),
-            ),
+            'invoices' => Invoice::query()
+                ->where('accountid', $payment->accountid)
+                ->with(['client', 'invoiceItems'])
+                ->get()
+                ->filter(function ($invoice) use ($payment) {
+                    return ((float) ($invoice->balance_due ?? 0) > 0) || $payment->invoices->contains('invoiceid', $invoice->invoiceid);
+                })->values(),
             'selectedClientId' => $payment->clientid,
             'selectedInvoiceIds' => $payment->invoices->pluck('invoiceid')->filter()->values()->all(),
             'selectedCurrency' => $payment->client?->currency ?? 'INR',

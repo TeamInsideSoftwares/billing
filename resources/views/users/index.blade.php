@@ -2,10 +2,10 @@
 
 @section('header_actions')
 <div class="d-flex align-items-center gap-2 flex-wrap">
-    <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1 fw-medium" data-bs-toggle="modal" data-bs-target="#manageRolesModal">
+    <button type="button" class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium" data-bs-toggle="modal" data-bs-target="#manageRolesModal">
         <i class="fas fa-user-shield btn-icon"></i> Manage Roles
     </button>
-    <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1 fw-medium" data-bs-toggle="modal" data-bs-target="#manageDepartmentsModal">
+    <button type="button" class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium" data-bs-toggle="modal" data-bs-target="#manageDepartmentsModal">
         <i class="fas fa-sitemap btn-icon"></i> Manage Departments
     </button>
     <a href="{{ route('users.create') }}"
@@ -160,7 +160,6 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th width="50%">Role Name</th>
-                                        <th width="20%">Status</th>
                                         <th class="text-end" width="30%">Actions</th>
                                     </tr>
                                 </thead>
@@ -168,16 +167,14 @@
                                     @forelse($roles as $roleObj)
                                     <tr>
                                         <td><span class="d-block fw-semibold">{{ $roleObj->name }}</span></td>
-                                        <td>
-                                            <form method="POST" action="{{ route('roles.toggle-status', $roleObj->roleid) }}" class="d-inline role-ajax-form">
-                                                @csrf @method('PATCH')
-                                                <button type="submit" class="btn btn-sm btn-link text-decoration-none p-0 {{ $roleObj->status === 'active' ? 'text-success' : 'text-danger' }}">
-                                                    {{ ucfirst($roleObj->status) }}
-                                                </button>
-                                            </form>
-                                        </td>
                                         <td class="text-end">
                                             <div class="tableActionButton d-inline-flex gap-1">
+                                                <form method="POST" action="{{ route('roles.toggle-status', $roleObj->roleid) }}" class="d-inline role-ajax-form">
+                                                    @csrf @method('PATCH')
+                                                    <button type="submit" class="{{ $roleObj->status === 'active' ? 'bg02 color02' : 'bg-secondary text-white' }}">
+                                                        {{ ucfirst($roleObj->status) }}
+                                                    </button>
+                                                </form>
                                                 <button type="button" class="bg03 color03 border-0" onclick="editRole(this)" data-id="{{ $roleObj->roleid }}" data-name="{{ $roleObj->name }}">Edit</button>
                                                 <form method="POST" action="{{ route('roles.destroy', $roleObj->roleid) }}" class="d-inline role-ajax-form">
                                                     @csrf @method('DELETE')
@@ -233,7 +230,6 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th width="50%">Department Name</th>
-                                        <th width="20%">Status</th>
                                         <th class="text-end" width="30%">Actions</th>
                                     </tr>
                                 </thead>
@@ -241,16 +237,14 @@
                                     @forelse($departments as $dept)
                                     <tr>
                                         <td><span class="d-block fw-semibold">{{ $dept->name }}</span></td>
-                                        <td>
-                                            <form method="POST" action="{{ route('departments.toggle-status', $dept->depid) }}" class="d-inline dept-ajax-form">
-                                                @csrf @method('PATCH')
-                                                <button type="submit" class="btn btn-sm btn-link text-decoration-none p-0 {{ $dept->status === 'active' ? 'text-success' : 'text-danger' }}">
-                                                    {{ ucfirst($dept->status) }}
-                                                </button>
-                                            </form>
-                                        </td>
                                         <td class="text-end">
                                             <div class="tableActionButton d-inline-flex gap-1">
+                                                <form method="POST" action="{{ route('departments.toggle-status', $dept->depid) }}" class="d-inline dept-ajax-form">
+                                                    @csrf @method('PATCH')
+                                                    <button type="submit" class=" {{ $dept->status === 'active' ? 'bg02 color02' : 'bg-secondary text-white' }}">
+                                                        {{ ucfirst($dept->status) }}
+                                                    </button>
+                                                </form>
                                                 <button type="button" class="bg03 color03 border-0" onclick="editDepartment(this)" data-id="{{ $dept->depid }}" data-name="{{ $dept->name }}">Edit</button>
                                                 <form method="POST" action="{{ route('departments.destroy', $dept->depid) }}" class="d-inline dept-ajax-form">
                                                     @csrf @method('DELETE')
@@ -306,19 +300,17 @@
     }
 
     function buildRoleRow(roleObj, csrf) {
-        let statusColor = roleObj.status === 'active' ? 'text-success' : 'text-danger';
+        let statusColor = roleObj.status === 'active' ? 'bg02 color02' : 'bg-secondary text-white';
         let statusText = roleObj.status.charAt(0).toUpperCase() + roleObj.status.slice(1);
         return `<tr>
             <td><span class="d-block fw-semibold">${roleObj.name}</span></td>
-            <td>
-                <form method="POST" action="{{ url('roles') }}/${roleObj.roleid}/toggle" class="d-inline role-ajax-form">
-                    <input type="hidden" name="_token" value="${csrf}">
-                    <input type="hidden" name="_method" value="PATCH">
-                    <button type="submit" class="btn btn-sm btn-link text-decoration-none p-0 ${statusColor}">${statusText}</button>
-                </form>
-            </td>
             <td class="text-end">
                 <div class="tableActionButton d-inline-flex gap-1">
+                    <form method="POST" action="{{ url('roles') }}/${roleObj.roleid}/toggle" class="d-inline role-ajax-form">
+                        <input type="hidden" name="_token" value="${csrf}">
+                        <input type="hidden" name="_method" value="PATCH">
+                        <button type="submit" class="${statusColor}">${statusText}</button>
+                    </form>
                     <button type="button" class="bg03 color03 border-0" onclick="editRole(this)" data-id="${roleObj.roleid}" data-name="${roleObj.name}">Edit</button>
                     <form method="POST" action="{{ url('roles') }}/${roleObj.roleid}" class="d-inline role-ajax-form">
                         <input type="hidden" name="_token" value="${csrf}">
@@ -331,20 +323,18 @@
     }
 
     function buildDepartmentRow(dept, csrf) {
-        let statusColor = dept.status === 'active' ? 'text-success' : 'text-danger';
+        let statusColor = dept.status === 'active' ? 'bg02 color02' : 'bg-secondary text-white';
         let statusText = dept.status.charAt(0).toUpperCase() + dept.status.slice(1);
         return `<tr>
             <td><span class="d-block fw-semibold">${dept.name}</span></td>
-            <td>
-                <form method="POST" action="{{ url('departments') }}/${dept.depid}/toggle" class="d-inline dept-ajax-form">
-                    <input type="hidden" name="_token" value="${csrf}">
-                    <input type="hidden" name="_method" value="PATCH">
-                    <button type="submit" class="btn btn-sm btn-link text-decoration-none p-0 ${statusColor}">${statusText}</button>
-                </form>
-            </td>
             <td class="text-end">
                 <div class="tableActionButton d-inline-flex gap-1">
-                    <button type="button" class="bg03 color03 border-0" onclick="editDepartment(this)" data-id="${dept.depid}" data-name="${dept.name}">Edit</button>
+                    <form method="POST" action="{{ url('departments') }}/${dept.depid}/toggle" class="d-inline dept-ajax-form">
+                        <input type="hidden" name="_token" value="${csrf}">
+                        <input type="hidden" name="_method" value="PATCH">
+                        <button type="submit" class="${statusColor}">${statusText}</button>
+                    </form>
+                <button type="button" class="bg03 color03 border-0" onclick="editDepartment(this)" data-id="${dept.depid}" data-name="${dept.name}">Edit</button>
                     <form method="POST" action="{{ url('departments') }}/${dept.depid}" class="d-inline dept-ajax-form">
                         <input type="hidden" name="_token" value="${csrf}">
                         <input type="hidden" name="_method" value="DELETE">
@@ -359,7 +349,7 @@
         const tbody = document.querySelector('#rolesTable tbody');
         const csrf = document.querySelector('input[name="_token"]').value;
         if (roles.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">No roles found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center py-4 text-muted">No roles found.</td></tr>';
         } else {
             tbody.innerHTML = roles.map(r => buildRoleRow(r, csrf)).join('');
         }
@@ -369,7 +359,7 @@
         const tbody = document.querySelector('#departmentsTable tbody');
         const csrf = document.querySelector('input[name="_token"]').value;
         if (departments.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">No departments found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center py-4 text-muted">No departments found.</td></tr>';
         } else {
             tbody.innerHTML = departments.map(d => buildDepartmentRow(d, csrf)).join('');
         }

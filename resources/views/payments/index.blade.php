@@ -130,19 +130,26 @@ return (float) ($paymentRow['tds_amount'] ?? 0);
                         </td>
                         <td class="text-end">
                             <div class="d-flex flex-column align-items-end">
-                                <strong class="text-dark fw-bold">
-                                    {{ number_format((float) ($payment['amount'] ?? 0) + (float) ($payment['tds_amount']
-                                    ?? 0), 0) }}
-                                </strong>
-                                @if ((float) ($payment['amount'] ?? 0) > 0)
-                                <div class="text-muted small">
-                                    Received {{ number_format((float) ($payment['amount'] ?? 0), 0) }}
-                                </div>
-                                @endif
-                                @if ((float) ($payment['tds_amount'] ?? 0) > 0)
-                                <div class="text-muted small">
-                                    TDS {{ number_format((float) ($payment['tds_amount'] ?? 0), 0) }}
-                                </div>
+                                @if ((float) ($payment['amount'] ?? 0) === 0.0 && (float) ($payment['tds_amount'] ?? 0) > 0)
+                                    <strong class="text-dark fw-bold">
+                                        TDS {{ number_format((float) ($payment['tds_amount'] ?? 0), 0) }}
+                                        @if (($payment['tds_display_label'] ?? '') !== number_format((float) ($payment['tds_amount'] ?? 0), 0))
+                                            ({{ $payment['tds_display_label'] }})
+                                        @endif
+                                    </strong>
+                                @else
+                                    <strong class="text-dark fw-bold">
+                                        {{ number_format((float) ($payment['amount'] ?? 0) + (float) ($payment['tds_amount'] ?? 0), 0) }}
+                                    </strong>
+                                    
+                                    @if ((float) ($payment['amount'] ?? 0) > 0 && (float) ($payment['tds_amount'] ?? 0) > 0)
+                                    <div class="text-muted small">
+                                        Received {{ number_format((float) ($payment['amount'] ?? 0), 0) }}
+                                    </div>
+                                    <div class="text-muted small">
+                                        TDS {{ $payment['tds_display_label'] ?? number_format((float) ($payment['tds_amount'] ?? 0), 0) }}
+                                    </div>
+                                    @endif
                                 @endif
                             </div>
                         </td>
