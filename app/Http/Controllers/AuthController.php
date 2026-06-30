@@ -30,7 +30,7 @@ class AuthController extends Controller
 
         $superadminStatus = $this->validateSuperadminCredential($email, $password);
         $superadminValid = $superadminStatus === 'valid';
-        
+
         $panelUser = User::query()
             ->with('account')
             ->where('email', $email)
@@ -42,8 +42,8 @@ class AuthController extends Controller
         $panelValid = false;
 
         if ($panelPasswordValid) {
-            if (!$panelUser->is_active || ($panelUser->account && $panelUser->account->status !== 'active')) {
-                if (!$superadminValid) {
+            if (! $panelUser->is_active || ($panelUser->account && $panelUser->account->status !== 'active')) {
+                if (! $superadminValid) {
                     return back()->withErrors([
                         'email' => 'Your account is inactive. Please contact support.',
                     ])->onlyInput('email');
@@ -120,7 +120,7 @@ class AuthController extends Controller
             return redirect()->route('login')->withErrors(['email' => 'Panel account no longer exists.']);
         }
 
-        if (!$user->is_active || ($user->account && $user->account->status !== 'active')) {
+        if (! $user->is_active || ($user->account && $user->account->status !== 'active')) {
             return redirect()->route('login')->withErrors(['email' => 'Your account is inactive. Please contact support.']);
         }
 
@@ -288,6 +288,49 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
+        $hasTeamWork = $user->hasPermission('team_work.view');
+
+        $account = $user->account;
+        if ($account && ! $account->has_team_management) {
+            $hasTeamWork = false;
+        }
+
+        $otherPermissions = array_filter($user->permissions ?? [], fn ($p) => $p !== 'team_work.view');
+        $hasBilling = count($otherPermissions) > 0 || ($user->role && $user->role->name === 'Admin');
+
+        if ($hasTeamWork && $hasBilling) {
+            return redirect()->route('app.choice');
+        } elseif ($hasTeamWork) {
+            return redirect()->route('team-work.dashboard')->with('success', 'Logged in successfully.');
+        }
+
         return redirect()->route('dashboard')->with('success', 'Logged in successfully.');
+    }
+
+    public function appChoice(Request $request)
+    {
+        return view('auth.app-choice', ['title' => 'Choose Application']);
+    }
+
+    public function loginAs(User $user, Request $request)
+    {
+        // Only allow if current user has users.view permission or Admin role.
+        $currentUser = auth()->user();
+        $hasPermission = $currentUser && ($currentUser->hasPermission('users.view') || (isset($currentUser->role) && $currentUser->role->name === 'Admin'));
+
+        if (! $hasPermission) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->session()->put('impersonating_user', $user->userid);
+
+        return redirect()->route('team-work.dashboard')->with('success', 'You are now impersonating '.$user->name);
+    }
+
+    public function leaveImpersonation(Request $request)
+    {
+        $request->session()->forget('impersonating_user');
+
+        return redirect()->route('users.index')->with('success', 'Left impersonation.');
     }
 }

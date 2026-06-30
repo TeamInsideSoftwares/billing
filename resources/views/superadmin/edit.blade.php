@@ -116,6 +116,15 @@
                                 <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror
                         </div>
+                        <div class="form-check form-switch mb-2">
+                            <input type="hidden" name="has_team_management" value="0">
+                            <input class="form-check-input" type="checkbox" name="has_team_management" value="1" id="has_team_management"
+                                {{ old('has_team_management', $account->has_team_management) ? 'checked' : '' }}>
+                            <label class="form-check-label fw-semibold" for="has_team_management">Allow Team Management</label>
+                            @error('has_team_management')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
                 </div>
 

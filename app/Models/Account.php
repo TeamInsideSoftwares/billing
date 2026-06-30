@@ -49,6 +49,7 @@ class Account extends Model
         'logo_path',
         'allow_multi_taxation',
         'have_users',
+        'has_team_management',
         'fixed_tax_rate',
         'fixed_tax_type',
     ];
@@ -58,6 +59,7 @@ class Account extends Model
         return [
             'allow_multi_taxation' => 'boolean',
             'have_users' => 'boolean',
+            'has_team_management' => 'boolean',
             'allow_sync' => 'boolean',
             'expires_at' => 'date',
             'fixed_tax_rate' => 'decimal:2',

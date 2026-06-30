@@ -2,12 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Models\AccountDepartment;
 use App\Models\AccountRole;
+use App\Models\AttendancePolicy;
+use App\Models\LeavePolicy;
+use App\Models\LeaveType;
+use App\Models\Shift;
 use App\Models\User;
+use App\Models\UserDoc;
+use App\Models\UserProfile;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -24,6 +32,7 @@ class UsersController extends Controller
         'items.view', 'items.create', 'items.edit', 'items.delete',
         'users.view', 'users.create', 'users.edit', 'users.cancel',
         'settings.view', 'settings.edit',
+        'team_work.view',
     ];
 
     public function users(Request $request): View
@@ -45,6 +54,7 @@ class UsersController extends Controller
 
         $roles = AccountRole::where('accountid', $accountId)->orderBy('name')->get();
         $departments = AccountDepartment::where('accountid', $accountId)->orderBy('name')->get();
+        $leaveTypes = LeaveType::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
 
         return view('users.index', [
             'title' => 'Users',
@@ -52,6 +62,7 @@ class UsersController extends Controller
             'searchTerm' => $searchTerm,
             'roles' => $roles,
             'departments' => $departments,
+            'leaveTypes' => $leaveTypes,
         ]);
     }
 
@@ -60,6 +71,10 @@ class UsersController extends Controller
         $accountId = $this->resolveAccountId();
         $roles = AccountRole::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
         $departments = AccountDepartment::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
+        $shifts = Shift::where('accountid', $accountId)->where('status', 'active')->orderBy('shift_name')->get();
+        $policies = AttendancePolicy::where('accountid', $accountId)->where('status', 'active')->orderBy('policy_name')->get();
+        $leavePolicies = LeavePolicy::where('accountid', $accountId)->where('status', 'active')->orderBy('policy_name')->get();
+        $account = Account::find($accountId);
 
         return view('users.form', [
             'title' => 'Add User',
@@ -67,6 +82,10 @@ class UsersController extends Controller
             'groupedPermissions' => $this->groupPermissions(self::AVAILABLE_PERMISSIONS),
             'roles' => $roles,
             'departments' => $departments,
+            'shifts' => $shifts,
+            'policies' => $policies,
+            'leavePolicies' => $leavePolicies,
+            'hasTeamManagement' => $account ? $account->has_team_management : false,
         ]);
     }
 
@@ -77,36 +96,89 @@ class UsersController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'email', 'max:150', Rule::unique('account_users', 'email')],
-            'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'cropped_image_data' => ['nullable', 'string'],
             'roleid' => ['required', 'string'],
             'depid' => ['nullable', 'string'],
+            'shiftid' => ['nullable', 'string'],
+            'att_policyid' => ['nullable', 'string'],
+            'leave_policyid' => ['nullable', 'string'],
+            'designation' => ['nullable', 'string', 'max:255'],
+            'gender' => ['nullable', 'string', 'in:Male,Female,Other'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(self::AVAILABLE_PERMISSIONS)],
-            'is_active' => ['nullable', 'boolean'],
+
             'password' => ['required', 'string', 'min:6', 'max:100', 'confirmed'],
+            'documents' => ['nullable', 'array'],
+            'documents.*.type' => ['required_with:documents', 'string', 'in:Photo,PAN,Identity proof,Bank details'],
+            'documents.*.file' => ['required_with:documents', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+
+            'address' => 'nullable|string|max:500',
+            'city' => 'nullable|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'country' => 'nullable|string|max:100',
+            'zip_code' => 'nullable|string|max:50',
+
+            'bank_name' => 'nullable|string|max:200',
+            'account_name' => 'nullable|string|max:200',
+            'account_number' => 'nullable|string|max:100',
+            'routing_code' => 'nullable|string|max:50',
+            'bank_branch' => 'nullable|string|max:200',
         ]);
 
-        $profileImagePath = null;
-        if (! empty($validated['cropped_image_data'])) {
-            $profileImagePath = $this->storeCroppedImage((string) $validated['cropped_image_data']);
-        } elseif ($request->hasFile('profile_image')) {
-            $profileImagePath = $request->file('profile_image')->store('users/profile-images', 'public');
-        }
-
-        User::create([
+        $user = User::create([
             'accountid' => $accountId,
             'name' => $validated['name'],
             'email' => strtolower((string) $validated['email']),
-            'profile_image' => $profileImagePath,
             'roleid' => $validated['roleid'],
             'depid' => $validated['depid'] ?? null,
+            'shiftid' => $validated['shiftid'] ?? null,
+            'att_policyid' => $validated['att_policyid'] ?? null,
+            'leave_policyid' => $validated['leave_policyid'] ?? null,
+            'designation' => $validated['designation'] ?? null,
+            'gender' => $validated['gender'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'permissions' => array_values($validated['permissions'] ?? []),
-            'is_active' => (bool) ($validated['is_active'] ?? false),
+            'is_active' => true,
             'password' => $validated['password'],
         ]);
+
+        if (! empty($validated['documents'])) {
+            $profile = UserProfile::firstOrCreate([
+                'userid' => $user->userid,
+            ], [
+                'accountid' => $accountId,
+                'status' => 'pending',
+            ]);
+
+            foreach ($validated['documents'] as $doc) {
+                if (isset($doc['file']) && $doc['file'] instanceof UploadedFile) {
+                    $path = $doc['file']->store('users/documents', 'public');
+                    UserDoc::create([
+                        'profileid' => $profile->profileid,
+                        'doc_type' => $doc['type'],
+                        'doc_path' => $path,
+                    ]);
+                    if ($doc['type'] === 'Photo') {
+                        $user->update(['profile_image' => $path]);
+                    }
+                }
+            }
+        }
+
+        $profileData = $request->only([
+            'address', 'city', 'state', 'country', 'zip_code',
+            'bank_name', 'account_name', 'account_number', 'routing_code', 'bank_branch',
+        ]);
+
+        if (array_filter($profileData)) {
+            $profile = UserProfile::firstOrCreate([
+                'userid' => $user->userid,
+            ], [
+                'accountid' => $accountId,
+                'status' => 'approved', // Created by admin, so defaults to approved or pending? Usually admin editing means approved. We can leave it or set it based on current status.
+            ]);
+            $profile->update($profileData);
+        }
 
         return redirect()->route('users.index')->with('success', 'User created successfully.');
     }
@@ -120,6 +192,10 @@ class UsersController extends Controller
         $accountId = $this->resolveAccountId();
         $roles = AccountRole::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
         $departments = AccountDepartment::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
+        $shifts = Shift::where('accountid', $accountId)->where('status', 'active')->orderBy('shift_name')->get();
+        $policies = AttendancePolicy::where('accountid', $accountId)->where('status', 'active')->orderBy('policy_name')->get();
+        $leavePolicies = LeavePolicy::where('accountid', $accountId)->where('status', 'active')->orderBy('policy_name')->get();
+        $account = Account::find($accountId);
 
         return view('users.form', [
             'title' => 'Edit User',
@@ -128,6 +204,10 @@ class UsersController extends Controller
             'groupedPermissions' => $this->groupPermissions(self::AVAILABLE_PERMISSIONS),
             'roles' => $roles,
             'departments' => $departments,
+            'shifts' => $shifts,
+            'policies' => $policies,
+            'leavePolicies' => $leavePolicies,
+            'hasTeamManagement' => $account ? $account->has_team_management : false,
         ]);
     }
 
@@ -140,14 +220,33 @@ class UsersController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'email', 'max:150', Rule::unique('account_users', 'email')->ignore($user->userid, 'userid')],
-            'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'cropped_image_data' => ['nullable', 'string'],
             'roleid' => ['required', 'string'],
             'depid' => ['nullable', 'string'],
-            'permissions' => ['nullable', 'array'],
-            'permissions.*' => ['string', Rule::in(self::AVAILABLE_PERMISSIONS)],
-            'is_active' => ['nullable', 'boolean'],
+            'shiftid' => ['nullable', 'string'],
+            'att_policyid' => ['nullable', 'string'],
+            'leave_policyid' => ['nullable', 'string'],
+            'designation' => ['nullable', 'string', 'max:255'],
+            'gender' => ['nullable', 'string', 'in:Male,Female,Other'],
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'string',
             'password' => ['nullable', 'string', 'min:6', 'max:100', 'confirmed'],
+            'documents' => 'nullable|array',
+            'documents.*.type' => 'required_with:documents|string|in:Photo,PAN,Identity proof,Bank details',
+            'documents.*.file' => 'required_with:documents|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
+            'delete_documents' => 'nullable|array',
+            'delete_documents.*' => 'integer',
+
+            'address' => 'nullable|string|max:500',
+            'city' => 'nullable|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'country' => 'nullable|string|max:100',
+            'zip_code' => 'nullable|string|max:50',
+
+            'bank_name' => 'nullable|string|max:200',
+            'account_name' => 'nullable|string|max:200',
+            'account_number' => 'nullable|string|max:100',
+            'routing_code' => 'nullable|string|max:50',
+            'bank_branch' => 'nullable|string|max:200',
         ]);
 
         $payload = [
@@ -155,31 +254,71 @@ class UsersController extends Controller
             'email' => strtolower((string) $validated['email']),
             'roleid' => $validated['roleid'],
             'depid' => $validated['depid'] ?? null,
+            'shiftid' => $validated['shiftid'] ?? null,
+            'att_policyid' => $validated['att_policyid'] ?? null,
+            'leave_policyid' => $validated['leave_policyid'] ?? null,
+            'designation' => $validated['designation'] ?? null,
+            'gender' => $validated['gender'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'permissions' => array_values($validated['permissions'] ?? []),
-            'is_active' => (bool) ($validated['is_active'] ?? false),
-        ];
 
-        if (! empty($validated['cropped_image_data'])) {
-            $newPath = $this->storeCroppedImage((string) $validated['cropped_image_data']);
-            if (! empty($user->profile_image)) {
-                Storage::disk('public')->delete($user->profile_image);
-            }
-            $payload['profile_image'] = $newPath;
-        } elseif ($request->hasFile('profile_image')) {
-            $newPath = $request->file('profile_image')->store('users/profile-images', 'public');
-            if (! empty($user->profile_image)) {
-                Storage::disk('public')->delete($user->profile_image);
-            }
-            $payload['profile_image'] = $newPath;
-        }
+        ];
 
         if (! empty($validated['password'])) {
             $payload['password'] = $validated['password'];
         }
 
         $user->update($payload);
+
+        if (! empty($validated['documents'])) {
+            $profile = UserProfile::firstOrCreate([
+                'userid' => $user->userid,
+            ], [
+                'accountid' => $this->resolveAccountId(),
+                'status' => 'pending',
+            ]);
+
+            if (! empty($validated['delete_documents'])) {
+                $docsToDelete = UserDoc::whereIn('docid', $validated['delete_documents'])
+                    ->where('profileid', $profile->profileid)
+                    ->get();
+
+                foreach ($docsToDelete as $docToDelete) {
+                    Storage::disk('public')->delete($docToDelete->doc_path);
+                    $docToDelete->delete();
+                }
+            }
+
+            foreach ($validated['documents'] as $doc) {
+                if (isset($doc['file']) && $doc['file'] instanceof UploadedFile) {
+                    $path = $doc['file']->store('users/documents', 'public');
+                    UserDoc::create([
+                        'profileid' => $profile->profileid,
+                        'doc_type' => $doc['type'],
+                        'doc_path' => $path,
+                    ]);
+                    if ($doc['type'] === 'Photo') {
+                        $user->update(['profile_image' => $path]);
+                    }
+                }
+            }
+        }
+
+        $profileData = $request->only([
+            'address', 'city', 'state', 'country', 'zip_code',
+            'bank_name', 'account_name', 'account_number', 'routing_code', 'bank_branch',
+        ]);
+
+        if (array_filter($profileData)) {
+            $profile = UserProfile::firstOrCreate([
+                'userid' => $user->userid,
+            ], [
+                'accountid' => $this->resolveAccountId(),
+                'status' => 'pending',
+            ]);
+            $profile->update($profileData);
+        }
 
         return redirect()->route('users.index')->with('success', 'User updated successfully.');
     }

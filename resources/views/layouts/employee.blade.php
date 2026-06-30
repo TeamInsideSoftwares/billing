@@ -52,25 +52,13 @@
     <!-- ['label' => 'Subscriptions', 'route' => 'subscriptions.index'], -->
     @php
     $navItems = [
-    ['label' => 'Dashboard', 'route' => 'dashboard', 'permission' => 'dashboard.view'],
-    ['label' => 'Client Dashboard', 'route' => 'clients.dashboard', 'permission' => 'clients.view'],
-    ['label' => 'Clients', 'route' => 'clients.index', 'permission' => 'clients.view'],
-    ['label' => 'Orders', 'route' => 'orders.index', 'permission' => 'orders.view'],
-    ['label' => 'Quotations', 'route' => 'quotations.index', 'permission' => 'quotations.view'],
-    ['label' => 'Invoices', 'route' => 'invoices.index', 'permission' => 'invoices.view'],
-    ['label' => 'Expiry List', 'route' => 'invoices.expiry-list', 'permission' => 'invoices.view'],
-    ['label' => 'Payments', 'route' => 'payments.index', 'permission' => 'payments.view'],
-    ['label' => 'GST Report', 'route' => 'gst-report.index', 'permission' => 'payments.view'],
-    ['label' => 'Items', 'route' => 'services.index', 'permission' => 'items.view'],
-    ['label' => 'Users', 'route' => 'users.index', 'permission' => 'users.view'],
-    ['label' => 'Settings', 'route' => 'settings.index', 'permission' => 'settings.view'],
+        ['label' => 'Team Work', 'route' => 'team-work.dashboard', 'permission' => 'team_work.view'],
+        ['label' => 'My Profile', 'route' => 'team-work.profile.edit', 'permission' => 'team_work.view']
     ];
-
-
     @endphp
     <div class="layout-grid">
         <aside class="sidebar" id="app-sidebar" data-sidebar>
-            <a href="{{ route('clients.dashboard') }}" class="brand-block"
+            <a href="{{ route('team-work.dashboard') }}" class="brand-block"
                 style="text-decoration: none; color: inherit;">
                 <div class="brand-mark-wrap">
                     <div class="brand-mark bg-primary rounded-circle">
@@ -86,42 +74,26 @@
             <nav class="nav-list">
                 @php
                 $navIcons = [
-                'dashboard' => 'fa-chart-bar',
-                'clients.dashboard' => 'fa-address-card',
-                'clients' => 'fa-user',
-                'services' => 'fa-list-alt',
-                'orders' => 'fa-clipboard',
-                'quotations' => 'fa-file-alt',
-                'invoices' => 'fa-file',
-                'invoices.expiry-list' => 'fa-calendar-times',
-                'payments' => 'fa-credit-card',
-                'gst-report' => 'fa-newspaper',
-                'users' => 'fas fa-user-tie',
-                'team' => 'fas fa-users-cog',
-                'settings' => 'fa-compass',
+                    'team-work.dashboard' => 'fa-chart-bar',
+                    'team-work.profile.edit' => 'fa-user-circle',
                 ];
                 @endphp
                 @foreach ($navItems as $item)
 
                 @php
-                // Extract the base route name (e.g., 'services' from 'services.index')
-                $baseRoute = explode('.', $item['route'])[0];
-                // Highlight the whole module for nested routes like create/show/edit/pdf.
-                if ($item['route'] === 'clients.dashboard') {
-                $isActive = request()->routeIs('clients.dashboard');
-                } elseif ($item['route'] === 'clients.index') {
-                $isActive = (request()->routeIs('clients.*') || request()->routeIs($item['route'])) &&
-                !request()->routeIs('clients.dashboard');
-                } elseif ($item['route'] === 'invoices.expiry-list') {
-                $isActive = request()->routeIs('invoices.expiry-list');
-                } elseif ($item['route'] === 'invoices.index') {
-                $isActive = (request()->routeIs('invoices.*') || request()->routeIs($item['route'])) &&
-                !request()->routeIs('invoices.expiry-list');
+                // Check if the current route is exactly this item's route, or is a child of it (but not matching siblings)
+                // For team-work.dashboard, only active if exactly team-work.dashboard
+                // For team-work.profile.edit, active if it's team-work.profile.*
+                if ($item['route'] === 'team-work.dashboard') {
+                    $isActive = request()->routeIs('team-work.dashboard');
                 } else {
-                $isActive = request()->routeIs($baseRoute . '.*') || request()->routeIs($item['route']);
+                    $routePrefix = explode('.', $item['route']);
+                    array_pop($routePrefix); // remove 'index' or 'edit'
+                    $routePrefix = implode('.', $routePrefix);
+                    $isActive = request()->routeIs($item['route']) || request()->routeIs($routePrefix . '.*');
                 }
-
-                $icon = $navIcons[$item['route']] ?? ($navIcons[$baseRoute] ?? 'fa-circle');
+                
+                $icon = $navIcons[$item['route']] ?? 'fa-circle';
                 @endphp
                 <a href="{{ route($item['route']) }}" class="nav-link {{ $isActive ? 'is-active' : '' }}"
                      data-tooltip="{{ $item['label'] }}">
@@ -146,12 +118,12 @@
                         <div class="dropdown">
                             <button type="button" class="icon-btn profile-btn bg-transparent" data-bs-toggle="dropdown"
                                 aria-expanded="false" title="Account">
-                                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                                {{ strtoupper(substr(auth()->user()?->name ?? $employee?->first_name ?? 'U', 0, 1)) }}
                             </button>
                             <ul class="dropdown-menu profile-dropdown">
                                 <li class="profile-header">
-                                    <h6 class="profile-name">{{ auth()->user()->name }}</h6>
-                                    <p class="profile-email">{{ auth()->user()->email }}</p>
+                                    <h6 class="profile-name">{{ auth()->user()?->name ?? ($employee?->name ?? 'User') }}</h6>
+                                    <p class="profile-email">{{ auth()->user()?->email ?? $employee?->email }}</p>
                                 </li>
                                 <li><a class="dropdown-item profile-settings-link"
                                         href="{{ route('settings.index') }}#personal">Profile Settings</a></li>
@@ -169,12 +141,12 @@
                         </div>
                     </div>
                     <div class="user-info">
-                        <strong class="user-name text-capitalize">{{ auth()->user()->account->name ?? auth()->user()->name }}</strong>
-                        <span class="user-email">{{ auth()->user()->email }}</span>
+                        <strong class="user-name text-capitalize">{{ isset($employee) ? $employee->name : auth()->user()?->name }}</strong>
+                        <span class="user-email">{{ isset($employee) ? $employee->email : auth()->user()?->email }}</span>
                     </div>
                 </div>
 
-                <a href="{{ route('password.change') }}" class="sidebar-user-item"
+                <a href="#" class="sidebar-user-item"
                     style="text-decoration: none; color: inherit;">
                     <div class="sidebar-icon-area">
                         <span class="icon-btn" title="Change Password">
@@ -201,6 +173,15 @@
         <div class="sidebar-backdrop" data-sidebar-backdrop aria-hidden="true"></div>
 
         <div class="main-panel">
+            @if(session()->has('impersonating_user') && isset($employee))
+            <div class="bg-warning text-dark text-center py-2 fw-medium shadow-sm sticky-top" style="z-index: 1040;">
+                <i class="fas fa-user-secret me-2"></i> You are currently viewing as <strong>{{ $employee->name ?? $employee->first_name }}</strong>.
+                <form action="{{ route('leave-impersonation') }}" method="POST" class="d-inline ms-3">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-dark fw-bold">Leave Impersonation</button>
+                </form>
+            </div>
+            @endif
             <header class="topbar">
                 <div class="topbar-title-wrap">
                     <button type="button" class="sidebar-toggle-btn" data-sidebar-toggle aria-label="Open navigation"
@@ -215,7 +196,7 @@
                     </div>
                 </div>
 
-                <div class="topbar-actions">
+                <!-- <div class="topbar-actions">
                     @if (!empty($sharedFinancialYears) && $sharedFinancialYears->count() > 0)
                     <form method="POST" action="{{ route('financial-year.select') }}" class="m-0">
                         @csrf
@@ -230,7 +211,7 @@
                     </form>
                     @endif
                     @yield('header_actions')
-                </div>
+                </div> -->
             </header>
 
             <main class="content-panel">

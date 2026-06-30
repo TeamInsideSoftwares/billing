@@ -49,6 +49,7 @@ class AccountsController extends Controller
             'timezone' => ['required', 'string', 'max:64'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'allow_sync' => ['nullable', 'boolean'],
+            'has_team_management' => ['nullable', 'boolean'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:today'],
         ]);
 
@@ -62,6 +63,7 @@ class AccountsController extends Controller
             'timezone' => $validated['timezone'],
             'status' => $validated['status'],
             'allow_sync' => (bool) ($validated['allow_sync'] ?? false),
+            'has_team_management' => (bool) ($validated['has_team_management'] ?? false),
             'expires_at' => $validated['expires_at'] ?? null,
         ]);
 
@@ -115,6 +117,7 @@ class AccountsController extends Controller
                 'currency_code' => $draft['currency_code'],
                 'timezone' => $draft['timezone'],
                 'allow_sync' => $draft['allow_sync'],
+                'has_team_management' => $draft['has_team_management'] ?? false,
                 'expires_at' => $draft['expires_at'],
             ]);
 
@@ -125,13 +128,18 @@ class AccountsController extends Controller
                 'status' => 'active',
             ]);
 
+            $permissions = array_values(array_filter(
+                UsersController::AVAILABLE_PERMISSIONS,
+                fn ($p) => $p !== 'team_work.view'
+            ));
+
             User::create([
                 'accountid' => $account->accountid,
                 'name' => $account->name,
                 'email' => $loginEmail,
                 'password' => $validated['password'],
                 'roleid' => $adminRole->roleid,
-                'permissions' => UsersController::AVAILABLE_PERMISSIONS,
+                'permissions' => $permissions,
                 'is_active' => true,
             ]);
         });
@@ -171,6 +179,7 @@ class AccountsController extends Controller
             'timezone' => ['required', 'string', 'max:64'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'allow_sync' => ['nullable', 'boolean'],
+            'has_team_management' => ['nullable', 'boolean'],
             'expires_at' => ['nullable', 'date'],
             'password' => ['nullable', 'string', 'min:6', 'max:100', 'confirmed'],
         ]);
@@ -189,26 +198,14 @@ class AccountsController extends Controller
                 'timezone' => $validated['timezone'],
                 'status' => $validated['status'],
                 'allow_sync' => (bool) ($validated['allow_sync'] ?? false),
+                'has_team_management' => (bool) ($validated['has_team_management'] ?? false),
                 'expires_at' => $validated['expires_at'] ?? null,
             ]);
 
             $accountUser = $account->credential;
             if ($accountUser) {
-                // Create or get Admin role for this account
-                $adminRole = AccountRole::firstOrCreate([
-                    'accountid' => $account->accountid,
-                    'name' => 'Admin',
-                    'status' => 'active',
-                ], [
-                    'accountid' => $account->accountid,
-                    'name' => 'Admin',
-                    'status' => 'active',
-                ]);
-
                 $accountUser->name = $validated['name'];
                 $accountUser->email = $newLoginEmail;
-                $accountUser->roleid = $adminRole->roleid;
-                $accountUser->permissions = UsersController::AVAILABLE_PERMISSIONS;
                 $accountUser->is_active = true;
 
                 if (! empty($validated['password'])) {
@@ -224,13 +221,18 @@ class AccountsController extends Controller
                     'status' => 'active',
                 ]);
 
+                $permissions = array_values(array_filter(
+                    UsersController::AVAILABLE_PERMISSIONS,
+                    fn ($p) => $p !== 'team_work.view'
+                ));
+
                 User::create([
                     'accountid' => $account->accountid,
                     'name' => $validated['name'],
                     'email' => $newLoginEmail,
                     'password' => $validated['password'] ?? Str::random(16),
                     'roleid' => $adminRole->roleid,
-                    'permissions' => UsersController::AVAILABLE_PERMISSIONS,
+                    'permissions' => $permissions,
                     'is_active' => true,
                 ]);
             }

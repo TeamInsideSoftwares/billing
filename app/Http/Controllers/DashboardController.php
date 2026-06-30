@@ -6,12 +6,25 @@ use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\User;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 
 class DashboardController extends Controller
 {
-    public function dashboard(): View
+    public function dashboard(): View|RedirectResponse
     {
+        $user = auth()->user();
+        if ($user) {
+            $hasTeamWork = $user->hasPermission('team_work.view');
+            $otherPermissions = array_filter($user->permissions ?? [], fn ($p) => $p !== 'team_work.view');
+            $hasBilling = count($otherPermissions) > 0 || ($user->role && $user->role->name === 'Admin');
+
+            if ($hasTeamWork && ! $hasBilling) {
+                return redirect()->route('team-work.dashboard');
+            }
+        }
+
         $accountid = $this->resolveAccountId();
 
         $payments = Payment::query()
@@ -194,6 +207,26 @@ class DashboardController extends Controller
             'expiredRenewals' => $expiredRenewals->take(5)->values(),
             'recentRevenue' => $recentRevenue,
             'outstandingInvoices' => $outstandingInvoices,
+        ]);
+    }
+
+    public function employeeDashboard(): View|RedirectResponse
+    {
+        $employeeId = session('impersonating_user');
+
+        if (! $employeeId && auth()->check()) {
+            $employeeId = auth()->user()->userid;
+        }
+
+        if (! $employeeId) {
+            return redirect()->route('login')->with('error', 'You must be logged in to view this dashboard.');
+        }
+
+        $employee = User::findOrFail($employeeId);
+
+        return view('team-work.dashboard', [
+            'title' => 'Team Work Dashboard',
+            'employee' => $employee,
         ]);
     }
 }

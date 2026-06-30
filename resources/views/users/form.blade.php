@@ -18,66 +18,49 @@
 
         <div class="row g-2 align-items-stretch">
             <!-- Column 1: User Information -->
-            <div class="col-12 col-lg-3">
+            <div class="col-12 col-lg-4">
                 <div class="bg-light p-2 rounded-3 h-100">
                     <div class="mb-2">
                         <h5 class="fw-semibold text-primary small lh-sm mb-0">User Information</h5>
                     </div>
 
                     <div class="row g-2">
-                        <div class="col-12">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">User Image</label>
-                            <div class="d-flex flex-column align-items-center gap-2">
-                                <div class="flex-shrink-0">
-                                    <img id="avatarPreview"
-                                        class="rounded-circle border border-primary-subtle img-thumbnail"
-                                        src="{{ !empty($userModel?->profile_image) ? asset('storage/' . $userModel->profile_image) : 'https://ui-avatars.com/api/?name=' . urlencode(old('name', $userModel->name ?? 'User')) . '&background=eff6ff&color=1e3a8a' }}"
-                                        alt="User image" style="width: 80px; height: 80px; object-fit: cover;">
-                                </div>
-                                <div class="w-100">
-                                    <div class="logo-drag-drop-zone border border-dashed rounded-3 text-center bg-white position-relative py-2"
-                                        style="cursor:pointer;" id="profile-drop-zone">
-                                        <input type="file" id="profile_image" name="profile_image"
-                                            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                                            class="position-absolute top-0 start-0 w-100 h-100 opacity-0">
-
-                                        <div class="drop-zone-prompt d-flex align-items-center justify-content-center"
-                                            id="drop-zone-prompt">
-                                            <i class="far fa-file text-secondary mb-2 fs-4"></i>
-                                            <span class="small text-muted fw-medium ms-2">Drag and drop or <span
-                                                    class="text-primary fw-semibold">browse files</span></span>
-                                        </div>
-                                    </div>
-                                    <input type="hidden" id="cropped_image_data" name="cropped_image_data" value="">
-                                    <small class="text-muted d-block mt-1 text-center">Upload and crop square profile
-                                        image</small>
-                                    @error('profile_image') <div class="text-danger small mt-1">{{ $message }}</div>
-                                    @enderror
-                                    @error('cropped_image_data') <div class="text-danger small mt-1">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-12">
+                        <div class="col-12 col-md-12">
                             <label for="name" class="form-label small lh-sm fw-semibold text-dark mb-1">Full Name<span class="text-danger">*</span></label>
                             <input type="text" id="name" name="name" class="form-control" value="{{ old('name', $userModel->name ?? '') }}" required>
                             @error('name') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                         </div>
 
-                        <div class="col-12">
+                        <div class="col-12 col-md-12">
                             <label for="email" class="form-label small lh-sm fw-semibold text-dark mb-1">Email<span class="text-danger">*</span></label>
                             <input type="email" id="email" name="email" class="form-control" value="{{ old('email', $userModel->email ?? '') }}" required>
                             @error('email') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                         </div>
                         
-                        <div class="col-12">
+                        <div class="col-12 col-md-12">
                             <label for="phone" class="form-label small lh-sm fw-semibold text-dark mb-1">Phone</label>
                             <input type="text" id="phone" name="phone" class="form-control" value="{{ old('phone', $userModel->phone ?? '') }}" placeholder="e.g. +91 98xxxxxx">
                             @error('phone') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                         </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="designation" class="form-label small lh-sm fw-semibold text-dark mb-1">Designation</label>
+                            <input type="text" id="designation" name="designation" class="form-control" value="{{ old('designation', $userModel->designation ?? '') }}" placeholder="e.g. Software Engineer">
+                            @error('designation') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="gender" class="form-label small lh-sm fw-semibold text-dark mb-1">Gender</label>
+                            <select id="gender" name="gender" class="form-select">
+                                <option value="" {{ old('gender', $userModel->gender ?? '') == '' ? 'selected' : '' }}>Select Gender</option>
+                                <option value="Male" {{ old('gender', $userModel->gender ?? '') == 'Male' ? 'selected' : '' }}>Male</option>
+                                <option value="Female" {{ old('gender', $userModel->gender ?? '') == 'Female' ? 'selected' : '' }}>Female</option>
+                                <option value="Other" {{ old('gender', $userModel->gender ?? '') == 'Other' ? 'selected' : '' }}>Other</option>
+                            </select>
+                            @error('gender') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
                         
-                        <div class="col-12">
+                        <div class="col-12 col-md-6">
                             <label for="depid" class="form-label small lh-sm fw-semibold text-dark mb-1">Department</label>
                             <select id="depid" name="depid" class="form-select">
                                 <option value="" {{ old('depid', $userModel->depid ?? '') ? '' : 'selected' }}>Select Department</option>
@@ -88,7 +71,7 @@
                             @error('depid') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                         </div>
 
-                        <div class="col-12">
+                        <div class="col-12 col-md-6">
                             <label for="roleid" class="form-label small lh-sm fw-semibold text-dark mb-1">Role<span class="text-danger">*</span></label>
                             <select id="roleid" name="roleid" class="form-select" required>
                                 <option value="" disabled {{ old('roleid', $userModel->roleid ?? '') ? '' : 'selected' }}>Select Role</option>
@@ -98,13 +81,71 @@
                             </select>
                             @error('roleid') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                         </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="shiftid" class="form-label small lh-sm fw-semibold text-dark mb-1">Shift</label>
+                            <select id="shiftid" name="shiftid" class="form-select">
+                                <option value="" {{ old('shiftid', $userModel->shiftid ?? '') ? '' : 'selected' }}>Select Shift</option>
+                                @foreach($shifts as $shift)
+                                    @php
+                                        $timing = $shift->start_time && $shift->end_time 
+                                            ? \Carbon\Carbon::parse($shift->start_time)->format('h:i A') . ' - ' . \Carbon\Carbon::parse($shift->end_time)->format('h:i A')
+                                            : '';
+                                    @endphp
+                                    <option value="{{ $shift->shiftid }}" {{ old('shiftid', $userModel->shiftid ?? '') == $shift->shiftid ? 'selected' : '' }}>
+                                        {{ $shift->shift_name }} {{ $timing ? "($timing)" : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('shiftid') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="att_policyid" class="form-label small lh-sm fw-semibold text-dark mb-1">Attendance Policy</label>
+                            <select id="att_policyid" name="att_policyid" class="form-select">
+                                <option value="" {{ old('att_policyid', $userModel->att_policyid ?? '') ? '' : 'selected' }}>Select Policy</option>
+                                @foreach($policies as $policy)
+                                    <option value="{{ $policy->att_policyid }}" {{ old('att_policyid', $userModel->att_policyid ?? '') == $policy->att_policyid ? 'selected' : '' }}>{{ $policy->policy_name }}</option>
+                                @endforeach
+                            </select>
+                            @error('att_policyid') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-12 col-md-12">
+                            <label for="leave_policyid" class="form-label small lh-sm fw-semibold text-dark mb-1">Leave Policy</label>
+                            <select id="leave_policyid" name="leave_policyid" class="form-select">
+                                <option value="" {{ old('leave_policyid', $userModel->leave_policyid ?? '') ? '' : 'selected' }}>Select Policy</option>
+                                @foreach($leavePolicies as $policy)
+                                    <option value="{{ $policy->leave_policyid }}" {{ old('leave_policyid', $userModel->leave_policyid ?? '') == $policy->leave_policyid ? 'selected' : '' }}>{{ $policy->policy_name }}</option>
+                                @endforeach
+                            </select>
+                            @error('leave_policyid') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
                         
-                        <div class="col-12">
-                            <div class="form-check form-switch mt-2">
-                                <input type="hidden" name="is_active" value="0">
-                                <input class="form-check-input" type="checkbox" name="is_active" value="1" id="is_active" {{ old('is_active', $userModel->is_active ?? true) ? 'checked' : '' }}>
-                                <label class="form-check-label small fw-semibold text-dark" for="is_active">Active User</label>
-                                @error('is_active') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        <div class="col-12 col-md-12">
+                            <div class="d-flex justify-content-between align-items-center mb-2 mt-2">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-0">Documents</label>
+                                <button type="button" class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium" id="addDocumentBtn"><i class="fas fa-plus btn-icon"></i> Add</button>
+                            </div>
+                            
+                            <div id="documentsContainer" class="d-flex flex-column gap-2">
+                                @php
+                                    $documents = isset($userModel) && $userModel->profile ? $userModel->profile->documents : collect([]);
+                                @endphp
+                                @if($documents->count() > 0)
+                                    @foreach($documents as $doc)
+                                        <div class="border rounded-2 p-2 bg-white d-flex justify-content-between align-items-center" id="existingDoc_{{ $doc->docid }}">
+                                            <div class="text-truncate" style="max-width: 150px;">
+                                                <small class="fw-semibold d-block text-dark lh-sm doc-type-label">{{ $doc->doc_type }}</small>
+                                                <small class="text-muted" style="font-size: 0.7rem;"><a href="{{ asset('storage/' . $doc->doc_path) }}" target="_blank">View File</a></small>
+                                            </div>
+                                            <div class="tableActionButton">
+                                                <button type="button" class="bg04 color04 border-0 remove-existing-doc" data-target="existingDoc_{{ $doc->docid }}" data-id="{{ $doc->docid }}">Delete</button>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                @endif
+                                <!-- New documents will be appended here via JS -->
                             </div>
                         </div>
                     </div>
@@ -112,29 +153,37 @@
             </div>
 
             <!-- Column 2: Additional Details -->
-            <div class="col-12 col-lg-9">
+            <div class="col-12 col-lg-8">
                 <div class="bg-light p-2 rounded-3 h-100">
                     <div class="mb-2">
                         <h5 class="fw-semibold text-primary small lh-sm mb-0">Permissions & Security</h5>
                     </div>
 
                     <div class="row g-2">
-                        @php($selectedPermissions = old('permissions', $userModel->permissions ?? []))
+                        @php
+                            $selectedPermissions = old('permissions', $userModel->permissions ?? []);
+                        @endphp
                         <div class="col-12">
                             <label class="form-label small lh-sm fw-semibold text-dark mb-1">Module Permissions</label>
                             <div class="bg-white p-2 border rounded-3">
                                 <div class="row g-3">
                                     @foreach(($groupedPermissions ?? []) as $module => $permissions)
+                                        @if($module === 'Team work' && !($hasTeamManagement ?? false))
+                                            @continue
+                                        @endif
                                         <div class="col-12 col-md-6 col-lg-4">
+                                            @php
+                                                $moduleSlug = \Illuminate\Support\Str::slug($module);
+                                            @endphp
                                             <h6 class="text-uppercase text-muted small fw-bold mb-2">{{ $module }} Module</h6>
-                                            <select class="form-select form-select-sm module-permission-select" data-module="{{ $module }}">
+                                            <select class="form-select form-select-sm module-permission-select" data-module="{{ $moduleSlug }}">
                                                 <option value="none">No Permission</option>
                                                 <option value="read">Read Only</option>
                                                 <option value="full">Full Permission</option>
                                             </select>
                                             <div class="d-none">
                                                 @foreach($permissions as $permission)
-                                                    <input type="checkbox" name="permissions[]" value="{{ $permission }}" class="perm-checkbox perm-checkbox-{{ $module }}" data-module="{{ $module }}" {{ in_array($permission, $selectedPermissions, true) ? 'checked' : '' }}>
+                                                    <input type="checkbox" name="permissions[]" value="{{ $permission }}" class="perm-checkbox perm-checkbox-{{ $moduleSlug }}" data-module="{{ $moduleSlug }}" {{ in_array($permission, $selectedPermissions, true) ? 'checked' : '' }}>
                                                 @endforeach
                                             </div>
                                         </div>
@@ -164,6 +213,83 @@
                 </div>
             </div>
         </div>
+        
+        @php
+            $profile = $userModel->profile ?? null;
+        @endphp
+        @if(isset($profile) && $profile->status === 'approved')
+        <div class="row g-2 align-items-stretch mt-2">
+            <div class="col-12 col-lg-6">
+                <div class="bg-light p-2 rounded-3 h-100">
+                    <div class="mb-2">
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Profile Address (Optional)</h5>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label for="address" class="form-label small lh-sm fw-semibold text-dark mb-1">Street Address</label>
+                            <input type="text" id="address" name="address" class="form-control" value="{{ old('address', $profile->address ?? '') }}">
+                            @error('address') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-6">
+                            <label for="city" class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
+                            <input type="text" id="city" name="city" class="form-control" value="{{ old('city', $profile->city ?? '') }}">
+                            @error('city') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-6">
+                            <label for="state" class="form-label small lh-sm fw-semibold text-dark mb-1">State</label>
+                            <input type="text" id="state" name="state" class="form-control" value="{{ old('state', $profile->state ?? '') }}">
+                            @error('state') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-6">
+                            <label for="country" class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
+                            <input type="text" id="country" name="country" class="form-control" value="{{ old('country', $profile->country ?? '') }}">
+                            @error('country') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-6">
+                            <label for="zip_code" class="form-label small lh-sm fw-semibold text-dark mb-1">Zip Code</label>
+                            <input type="text" id="zip_code" name="zip_code" class="form-control" value="{{ old('zip_code', $profile->zip_code ?? '') }}">
+                            @error('zip_code') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-6">
+                <div class="bg-light p-2 rounded-3 h-100">
+                    <div class="mb-2">
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Bank Details (Optional)</h5>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label for="bank_name" class="form-label small lh-sm fw-semibold text-dark mb-1">Bank Name</label>
+                            <input type="text" id="bank_name" name="bank_name" class="form-control" value="{{ old('bank_name', $profile->bank_name ?? '') }}">
+                            @error('bank_name') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-12">
+                            <label for="account_name" class="form-label small lh-sm fw-semibold text-dark mb-1">Account Holder Name</label>
+                            <input type="text" id="account_name" name="account_name" class="form-control" value="{{ old('account_name', $profile->account_name ?? '') }}">
+                            @error('account_name') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-12">
+                            <label for="account_number" class="form-label small lh-sm fw-semibold text-dark mb-1">Account Number</label>
+                            <input type="text" id="account_number" name="account_number" class="form-control" value="{{ old('account_number', $profile->account_number ?? '') }}">
+                            @error('account_number') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-6">
+                            <label for="routing_code" class="form-label small lh-sm fw-semibold text-dark mb-1">IFSC / Routing Code</label>
+                            <input type="text" id="routing_code" name="routing_code" class="form-control" value="{{ old('routing_code', $profile->routing_code ?? '') }}">
+                            @error('routing_code') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-6">
+                            <label for="bank_branch" class="form-label small lh-sm fw-semibold text-dark mb-1">Branch</label>
+                            <input type="text" id="bank_branch" name="bank_branch" class="form-control" value="{{ old('bank_branch', $profile->bank_branch ?? '') }}">
+                            @error('bank_branch') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
 
         <div class="mt-2 d-flex justify-content-end gap-2">
             <a href="{{ route('users.index') }}"
@@ -173,126 +299,87 @@
         </div>
     </form>
 </div>
-<div class="modal fade" id="cropperModal" tabindex="-1" aria-labelledby="cropperModalTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-white border-bottom">
-                <h5 class="modal-title fw-semibold" id="cropperModalTitle">Crop User Image</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body bg-light p-4">
-                <div class="img-container mb-3" style="max-height: 450px; overflow: hidden; background-color: #f1f5f9; border-radius: 8px;">
-                    <img id="cropperImage" src="" alt="Crop target" style="max-width: 100%; display: block;">
-                </div>
-                <div class="d-flex align-items-center justify-content-between mt-3">
-                    <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium" id="cancelCropBtn" data-bs-dismiss="modal">
-                        <i class="fas fa-times btn-icon me-1"></i> Cancel
-                    </button>
-                    <button type="button" class="btn btn-outline-primary btn-primary text-white fw-medium" id="applyCropBtn">
-                        Apply Crop <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
-<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const fileInput = document.getElementById('profile_image');
-    const hiddenInput = document.getElementById('cropped_image_data');
-    const preview = document.getElementById('avatarPreview');
-    const cropperModalEl = document.getElementById('cropperModal');
-    const cropperImage = document.getElementById('cropperImage');
-    const applyBtn = document.getElementById('applyCropBtn');
-    let cropper = null;
-    let objectUrl = null;
-    let bsModal = null;
+    const addDocumentBtn = document.getElementById('addDocumentBtn');
+    const documentsContainer = document.getElementById('documentsContainer');
+    let docIndex = 0;
 
-    if (cropperModalEl && typeof bootstrap !== 'undefined') {
-        bsModal = new bootstrap.Modal(cropperModalEl);
+    addDocumentBtn?.addEventListener('click', function() {
+        const docHtml = `
+            <div class="border rounded-2 p-2 bg-white d-flex align-items-center gap-2" id="docBlock_${docIndex}">
+                <select name="documents[${docIndex}][type]" class="form-select form-select-sm m-0 dynamic-doc-select" required style="width: auto;">
+                    <option value="" disabled selected>Select Type</option>
+                    <option value="Photo">Photo</option>
+                    <option value="PAN">PAN</option>
+                    <option value="Identity proof">Identity proof/Aadhaar</option>
+                    <option value="Bank details">Bank details</option>
+                </select>
+                <input type="file" name="documents[${docIndex}][file]" class="form-control form-control-sm m-0" required accept=".jpg,.jpeg,.png,.webp,.pdf">
+                <div class="tableActionButton">
+                    <button type="button" class="bg04 color04 border-0 m-0 remove-doc-btn" data-target="docBlock_${docIndex}">Delete</button>
+                </div>
+            </div>
+        `;
+        documentsContainer.insertAdjacentHTML('beforeend', docHtml);
+        docIndex++;
+        updateAvailableDocumentTypes();
+    });
+
+    documentsContainer?.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-doc-btn')) {
+            const btn = e.target.closest('.remove-doc-btn');
+            const targetId = btn.getAttribute('data-target');
+            document.getElementById(targetId)?.remove();
+            updateAvailableDocumentTypes();
+        }
+    });
+
+    documentsContainer?.addEventListener('change', function(e) {
+        if (e.target.classList.contains('dynamic-doc-select')) {
+            updateAvailableDocumentTypes();
+        }
+    });
+
+    document.querySelectorAll('.remove-existing-doc').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const docId = this.getAttribute('data-id');
+            // Add hidden input to form
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'delete_documents[]';
+            hiddenInput.value = docId;
+            document.querySelector('.mainForm').appendChild(hiddenInput);
+            
+            // Remove the block
+            document.getElementById(targetId)?.remove();
+            updateAvailableDocumentTypes();
+        });
+    });
+
+    function updateAvailableDocumentTypes() {
+        const existingTypes = Array.from(document.querySelectorAll('.doc-type-label')).map(el => el.textContent.trim());
+        const selects = document.querySelectorAll('.dynamic-doc-select');
+        const selectedValues = Array.from(selects).map(s => s.value).filter(v => v !== '');
+
+        const allSelected = [...existingTypes, ...selectedValues];
+
+        selects.forEach(select => {
+            const currentValue = select.value;
+            Array.from(select.options).forEach(option => {
+                if (option.value === '') return;
+                if (allSelected.includes(option.value) && option.value !== currentValue) {
+                    option.disabled = true;
+                } else {
+                    option.disabled = false;
+                }
+            });
+        });
     }
 
-    const profileDropZone = document.getElementById('profile-drop-zone');
-    if (profileDropZone && fileInput) {
-        ['dragenter', 'dragover'].forEach(eventName => {
-            profileDropZone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                profileDropZone.classList.add('dragover');
-            }, false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            profileDropZone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                profileDropZone.classList.remove('dragover');
-            }, false);
-        });
-
-        profileDropZone.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            if (files && files[0]) {
-                fileInput.files = files;
-                fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        });
-    }
-
-    fileInput?.addEventListener('change', function (event) {
-        const file = event.target.files && event.target.files[0];
-        if (!file) return;
-
-        objectUrl = URL.createObjectURL(file);
-        cropperImage.src = objectUrl;
-        
-        if (bsModal) {
-            bsModal.show();
-        }
-    });
-
-    cropperModalEl?.addEventListener('shown.bs.modal', function () {
-        if (cropper) cropper.destroy();
-        cropper = new Cropper(cropperImage, {
-            aspectRatio: 1,
-            viewMode: 1,
-            autoCropArea: 1,
-            background: false
-        });
-    });
-
-    cropperModalEl?.addEventListener('hidden.bs.modal', function () {
-        if (cropper) {
-            cropper.destroy();
-            cropper = null;
-        }
-        if (objectUrl) {
-            URL.revokeObjectURL(objectUrl);
-            objectUrl = null;
-        }
-        fileInput.value = '';
-    });
-
-    applyBtn?.addEventListener('click', function () {
-        if (!cropper) return;
-        const canvas = cropper.getCroppedCanvas({
-            width: 320,
-            height: 320,
-            imageSmoothingEnabled: true,
-            imageSmoothingQuality: 'high'
-        });
-        const dataUrl = canvas.toDataURL('image/png', 0.92);
-        hiddenInput.value = dataUrl;
-        preview.src = dataUrl;
-        
-        if (bsModal) {
-            bsModal.hide();
-        }
-    });
+    // Run on initial load
+    updateAvailableDocumentTypes();
 
     // 3-Tier Module Permissions Logic
     document.querySelectorAll('.module-permission-select').forEach(select => {

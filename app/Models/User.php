@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -22,7 +23,11 @@ use Illuminate\Notifications\Notifiable;
     'depid',
     'phone',
     'designation',
+    'gender',
     'notes',
+    'shiftid',
+    'att_policyid',
+    'leave_policyid',
     'password',
     'roleid',
     'permissions',
@@ -68,9 +73,29 @@ class User extends Authenticatable
         return $this->belongsTo(AccountRole::class, 'roleid', 'roleid');
     }
 
+    public function profile(): HasOne
+    {
+        return $this->hasOne(UserProfile::class, 'userid', 'userid');
+    }
+
     public function department(): BelongsTo
     {
         return $this->belongsTo(AccountDepartment::class, 'depid', 'depid');
+    }
+
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class, 'shiftid', 'shiftid');
+    }
+
+    public function attendancePolicy(): BelongsTo
+    {
+        return $this->belongsTo(AttendancePolicy::class, 'att_policyid', 'att_policyid');
+    }
+
+    public function leavePolicy(): BelongsTo
+    {
+        return $this->belongsTo(LeavePolicy::class, 'leave_policyid', 'leave_policyid');
     }
 
     public function sendPasswordResetNotification($token): void

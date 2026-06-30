@@ -343,9 +343,9 @@ class PaymentsController extends Controller
 
             $tdsInputType = $this->resolvePaymentTdsInputType($payment);
             $tdsDisplayValue = $this->resolvePaymentTdsDisplayValue($payment, $tdsInputType);
-            
+
             if ($tdsInputType === 'percent' && $tdsDisplayValue !== '') {
-                $tdsDisplayLabel = $tdsDisplayValue . '%';
+                $tdsDisplayLabel = $tdsDisplayValue.'%';
             } else {
                 $tdsDisplayLabel = number_format($tdsAmount, 0);
             }

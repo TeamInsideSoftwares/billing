@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,7 +16,22 @@ class CheckPermission
      */
     public function handle(Request $request, Closure $next, string $permission): Response
     {
-        if (! auth()->check() || ! auth()->user()->hasPermission($permission)) {
+        if (! auth()->check()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $user = auth()->user();
+
+        if (session()->has('impersonating_user')) {
+            // When impersonating, check the employee's permissions only for the employee dashboard.
+            // For all other routes (like the Users module), keep using the Admin's own permissions.
+            if ($request->routeIs('team-work.*')) {
+                $impersonatedId = session('impersonating_user');
+                $user = User::find($impersonatedId) ?? $user;
+            }
+        }
+
+        if (! $user->hasPermission($permission)) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -47,9 +63,10 @@ class CheckPermission
 
                 // Map sub-resources back to their parent module's permissions
                 $moduleAliases = [
+                    'services' => 'items',
                     'groups' => 'clients',
                     'client-categories' => 'clients',
-                    'service-categories' => 'services',
+                    'service-categories' => 'items',
                     'product-categories' => 'items',
                     'roles' => 'users',
                     'departments' => 'users',
@@ -65,7 +82,11 @@ class CheckPermission
                     $module = $moduleAliases[$module];
                 }
 
-                $user = auth()->user();
+                // Skip granular checks for team-work since it's controlled by team_work.view
+                if ($module === 'team-work') {
+                    return $next($request);
+                }
+
                 $hasGranularAccess = false;
 
                 foreach ($actionMap[$action] as $mappedAction) {

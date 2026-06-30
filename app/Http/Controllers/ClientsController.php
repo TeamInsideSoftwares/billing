@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -206,7 +207,7 @@ class ClientsController extends Controller
 
         $client = null;
         $order = null;
-        $temporaryPassword = \Illuminate\Support\Str::random(6);
+        $temporaryPassword = Str::random(6);
         $welcomeEmailSent = false;
         try {
             DB::transaction(function () use (&$client, &$order, $validated, $service, $businessName, $startDate, $endDate, $addressLine1) {
