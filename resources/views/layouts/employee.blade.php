@@ -55,6 +55,8 @@
         ['label' => 'Team Work', 'route' => 'team-work.dashboard', 'permission' => 'team_work.view'],
         ['label' => 'My Profile', 'route' => 'team-work.profile.edit', 'permission' => 'team_work.view']
     ];
+    // ['label' => 'My Leaves', 'route' => 'team-work.leaves.index', 'permission' => 'team_work.view'],
+    // ['label' => 'My Attendance', 'route' => 'team-work.attendance.index', 'permission' => 'team_work.view']
     @endphp
     <div class="layout-grid">
         <aside class="sidebar" id="app-sidebar" data-sidebar>
@@ -76,6 +78,8 @@
                 $navIcons = [
                     'team-work.dashboard' => 'fa-chart-bar',
                     'team-work.profile.edit' => 'fa-user-circle',
+                    // 'team-work.leaves.index' => 'fa-calendar-times',
+                    // 'team-work.attendance.index' => 'fa-clock',
                 ];
                 @endphp
                 @foreach ($navItems as $item)

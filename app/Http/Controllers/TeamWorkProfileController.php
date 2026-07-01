@@ -14,17 +14,27 @@ class TeamWorkProfileController extends Controller
     public function edit()
     {
         $user = Auth::user();
+        if (session()->has('impersonating_user')) {
+            $impersonatedId = session('impersonating_user');
+            $user = \App\Models\User::where('userid', $impersonatedId)->first() ?? $user;
+        }
+
         $profile = UserProfile::where('userid', $user->userid)->first();
 
         return view('team-work.profile.edit', [
             'profile' => $profile,
             'title' => 'My Profile',
+            'employee' => $user,
         ]);
     }
 
     public function store(Request $request)
     {
         $user = Auth::user();
+        if (session()->has('impersonating_user')) {
+            $impersonatedId = session('impersonating_user');
+            $user = \App\Models\User::where('userid', $impersonatedId)->first() ?? $user;
+        }
 
         $validated = $request->validate([
             'address' => 'nullable|string|max:500',

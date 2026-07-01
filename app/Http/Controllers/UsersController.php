@@ -103,6 +103,7 @@ class UsersController extends Controller
             'leave_policyid' => ['nullable', 'string'],
             'designation' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', 'string', 'in:Male,Female,Other'],
+            'phone' => ['nullable', 'string', 'max:20'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(self::AVAILABLE_PERMISSIONS)],
 
@@ -227,6 +228,7 @@ class UsersController extends Controller
             'leave_policyid' => ['nullable', 'string'],
             'designation' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', 'string', 'in:Male,Female,Other'],
+            'phone' => ['nullable', 'string', 'max:20'],
             'permissions' => 'nullable|array',
             'permissions.*' => 'string',
             'password' => ['nullable', 'string', 'min:6', 'max:100', 'confirmed'],
