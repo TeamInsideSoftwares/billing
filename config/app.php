@@ -54,6 +54,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'team_url' => env('TEAM_URL', 'http://alpha.skoolready.com/team'),
+
     'asset_url' => env('ASSET_URL'),
 
     /*

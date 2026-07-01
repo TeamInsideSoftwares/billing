@@ -28,16 +28,12 @@ use App\Http\Controllers\TeamWorkProfileController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login')->middleware('guest');
-Route::post('/login', [AuthController::class, 'login'])->name('login.post')->middleware('guest');
-Route::get('/login/choice', [AuthController::class, 'showLoginChoice'])->name('login.choice')->middleware('guest');
-Route::post('/login/choice', [AuthController::class, 'loginChoice'])->name('login.choice.post')->middleware('guest');
-Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
-Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request')->middleware('guest');
-Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email')->middleware('guest');
-Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset')->middleware('guest');
-Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.store')->middleware('guest');
-
+Route::get('/login', function () {
+    return redirect(config('app.team_url') . '/login');
+})->name('login')->middleware('guest');
+Route::match(['get', 'post'], '/logout', function () {
+    return redirect(config('app.team_url') . '/logout');
+})->name('logout')->middleware('auth');
 // AJAX routes without auth
 
 Route::middleware(['auth'])->group(function () {
@@ -275,11 +271,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/leave-impersonation', [AuthController::class, 'leaveImpersonation'])->name('leave-impersonation');
 });
 
-Route::middleware(['auth', 'permission:team_work.view'])->prefix('team-work')->name('team-work.')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'employeeDashboard'])->name('dashboard');
-    Route::get('/profile', [TeamWorkProfileController::class, 'edit'])->name('profile.edit');
-    Route::post('/profile', [TeamWorkProfileController::class, 'store'])->name('profile.store');
-});
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/app-choice', [AuthController::class, 'appChoice'])->name('app.choice');

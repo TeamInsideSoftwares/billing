@@ -299,12 +299,12 @@ class AuthController extends Controller
         $hasBilling = count($otherPermissions) > 0 || ($user->role && $user->role->name === 'Admin');
 
         if ($hasTeamWork && $hasBilling) {
-            return redirect()->route('app.choice');
+            return redirect('http://alpha.skoolready.com/billing/app-choice');
         } elseif ($hasTeamWork) {
-            return redirect()->route('team-work.dashboard')->with('success', 'Logged in successfully.');
+            return redirect(config('app.team_url') . '/dashboard')->with('success', 'Logged in successfully.');
         }
 
-        return redirect()->route('dashboard')->with('success', 'Logged in successfully.');
+        return redirect('http://alpha.skoolready.com/billing')->with('success', 'Logged in successfully.');
     }
 
     public function appChoice(Request $request)
@@ -324,7 +324,7 @@ class AuthController extends Controller
 
         $request->session()->put('impersonating_user', $user->userid);
 
-        return redirect()->route('team-work.dashboard')->with('success', 'You are now impersonating '.$user->name);
+        return redirect(config('app.team_url') . '/dashboard')->with('success', 'You are now impersonating '.$user->name);
     }
 
     public function leaveImpersonation(Request $request)
