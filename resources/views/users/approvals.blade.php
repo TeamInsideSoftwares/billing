@@ -10,15 +10,9 @@
 <div class="bg-white p-3 rounded-3 shadow-sm">
     <h5 class="fw-semibold text-dark mb-3">Pending Profile Approvals</h5>
 
-    @if($pendingProfiles->isEmpty())
-        <div class="text-center py-5 text-muted">
-            <i class="fas fa-check-circle fs-1 mb-3 text-success opacity-50"></i>
-            <h6>All caught up!</h6>
-            <p class="small">There are no pending profile updates to review.</p>
-        </div>
-    @else
+    <div class="card overflow-hidden p-2 border-0 bg-DarkLight rounded-3">
         <div class="table-responsive">
-            <table class="table table-hover align-middle">
+            <table class="table table-striped mainTable align-middle mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>User</th>
@@ -28,7 +22,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($pendingProfiles as $profile)
+                    @forelse($pendingProfiles as $profile)
                     <tr>
                         <td>
                             <div class="d-flex align-items-center gap-2">
@@ -125,7 +119,7 @@
                                                             <div class="col-6 col-md-4 col-lg-3">
                                                                 <div class="border rounded-2 p-2 bg-white text-center shadow-sm">
                                                                     <small class="fw-semibold d-block text-dark mb-2 text-truncate" title="{{ $doc->doc_type }}">{{ $doc->doc_type }}</small>
-                                                                    <a href="{{ asset('storage/' . $doc->doc_path) }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 w-100" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt me-1"></i>View File</a>
+                                                                    <a href="{{ $doc->full_url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 w-100" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt me-1"></i>View File</a>
                                                                 </div>
                                                             </div>
                                                         @endforeach
@@ -151,10 +145,18 @@
                             </div>
                         </div>
                     </div>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="4" class="text-center py-5 text-muted bg-white">
+                                <i class="fas fa-check-circle fs-1 mb-3 text-success opacity-50"></i>
+                                <h6>All caught up!</h6>
+                                <p class="small">There are no pending profile updates to review.</p>
+                            </td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
-    @endif
+    </div>
 </div>
 @endsection

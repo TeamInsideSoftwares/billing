@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -27,17 +28,23 @@ use Illuminate\Notifications\Notifiable;
     'notes',
     'shiftid',
     'att_policyid',
-    'leave_policyid',
+    'paid_leaves_pm',
+    'carry_forward',
+    'probation_months',
     'password',
     'roleid',
     'permissions',
+    'assigned_users',
     'is_active',
+    'can_assign_clients',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasAlphaNumericId, HasFactory, Notifiable;
+
+    protected $connection = 'mysql';
 
     protected $table = 'account_users';
 
@@ -59,7 +66,9 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'is_active' => 'boolean',
             'permissions' => 'array',
+            'assigned_users' => 'array',
             'password' => 'hashed',
+            'can_assign_clients' => 'boolean',
         ];
     }
 
@@ -88,14 +97,24 @@ class User extends Authenticatable
         return $this->belongsTo(Shift::class, 'shiftid', 'shiftid');
     }
 
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class, 'userid', 'userid');
+    }
+
     public function attendancePolicy(): BelongsTo
     {
         return $this->belongsTo(AttendancePolicy::class, 'att_policyid', 'att_policyid');
     }
 
-    public function leavePolicy(): BelongsTo
+    public function leaveRequests(): HasMany
     {
-        return $this->belongsTo(LeavePolicy::class, 'leave_policyid', 'leave_policyid');
+        return $this->hasMany(LeaveRequest::class, 'userid', 'userid');
+    }
+
+    public function userLeavePolicies(): HasMany
+    {
+        return $this->hasMany(UserLeavePolicy::class, 'userid', 'userid');
     }
 
     public function sendPasswordResetNotification($token): void
@@ -108,5 +127,15 @@ class User extends Authenticatable
         $perms = $this->permissions ?? [];
 
         return in_array($permission, $perms, true);
+    }
+
+    /**
+     * Returns the list of userids this user is allowed to manage in Team Work.
+     *
+     * @return array<int, string>
+     */
+    public function assignedUserIds(): array
+    {
+        return array_values(array_filter((array) ($this->assigned_users ?? [])));
     }
 }

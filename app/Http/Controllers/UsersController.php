@@ -6,8 +6,7 @@ use App\Models\Account;
 use App\Models\AccountDepartment;
 use App\Models\AccountRole;
 use App\Models\AttendancePolicy;
-use App\Models\LeavePolicy;
-use App\Models\LeaveType;
+use App\Models\LeaveRequest;
 use App\Models\Shift;
 use App\Models\User;
 use App\Models\UserDoc;
@@ -17,6 +16,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\UserCredentialsMail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -45,6 +46,15 @@ class UsersController extends Controller
             ->with(['role', 'department'])
             ->orderByDesc('created_at');
 
+        $maxLevel = \App\Models\RoleLevel::max('level_value');
+        $currentUserLevel = auth()->user()->role?->roleLevel?->level_value ?? 0;
+
+        if ($currentUserLevel < $maxLevel) {
+            $query->whereHas('role.roleLevel', function ($q) use ($currentUserLevel) {
+                $q->where('level_value', '<', $currentUserLevel);
+            });
+        }
+
         if ($searchTerm !== '') {
             $query->where(function ($q) use ($searchTerm): void {
                 $q->where('name', 'like', '%'.$searchTerm.'%')
@@ -52,29 +62,46 @@ class UsersController extends Controller
             });
         }
 
-        $roles = AccountRole::where('accountid', $accountId)->orderBy('name')->get();
+        $roles = AccountRole::with('roleLevel')
+            ->select('account_roles.*')
+            ->leftJoin('roles_level', 'account_roles.levelid', '=', 'roles_level.levelid')
+            ->where('account_roles.accountid', $accountId)
+            ->orderByDesc('roles_level.level_value')
+            ->orderBy('account_roles.name')
+            ->get();
         $departments = AccountDepartment::where('accountid', $accountId)->orderBy('name')->get();
-        $leaveTypes = LeaveType::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
+        $roleLevels = \App\Models\RoleLevel::where('status', 'active')->orderByDesc('level_value')->get();
+        $allUsersMap = User::where('accountid', $accountId)->pluck('name', 'userid');
 
         return view('users.index', [
-            'title' => 'Users',
+            'title' => 'Employees',
             'users' => $query->get(),
             'searchTerm' => $searchTerm,
             'roles' => $roles,
             'departments' => $departments,
-            'leaveTypes' => $leaveTypes,
+            'roleLevels' => $roleLevels,
+            'allUsersMap' => $allUsersMap,
         ]);
     }
 
     public function usersCreate(): View
     {
         $accountId = $this->resolveAccountId();
-        $roles = AccountRole::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
+        $roles = AccountRole::with('roleLevel')
+            ->select('account_roles.*')
+            ->leftJoin('roles_level', 'account_roles.levelid', '=', 'roles_level.levelid')
+            ->where('account_roles.accountid', $accountId)
+            ->where('account_roles.status', 'active')
+            ->orderByDesc('roles_level.level_value')
+            ->orderBy('account_roles.name')
+            ->get();
         $departments = AccountDepartment::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
         $shifts = Shift::where('accountid', $accountId)->where('status', 'active')->orderBy('shift_name')->get();
         $policies = AttendancePolicy::where('accountid', $accountId)->where('status', 'active')->orderBy('policy_name')->get();
-        $leavePolicies = LeavePolicy::where('accountid', $accountId)->where('status', 'active')->orderBy('policy_name')->get();
         $account = Account::find($accountId);
+        $allAccountUsers = User::with('role.roleLevel')->where('accountid', $accountId)->where('is_active', true)->orderBy('name')->get(['userid', 'name', 'email', 'roleid']);
+        $maxLevel = \App\Models\RoleLevel::max('level_value');
+        $paidLeaveTypes = \App\Models\LeaveType::where('accountid', $accountId)->where('is_paid_accrued', true)->where('status', 'active')->orderBy('name')->get();
 
         return view('users.form', [
             'title' => 'Add User',
@@ -84,8 +111,10 @@ class UsersController extends Controller
             'departments' => $departments,
             'shifts' => $shifts,
             'policies' => $policies,
-            'leavePolicies' => $leavePolicies,
             'hasTeamManagement' => $account ? $account->has_team_management : false,
+            'allAccountUsers' => $allAccountUsers,
+            'maxLevel' => $maxLevel,
+            'paidLeaveTypes' => $paidLeaveTypes,
         ]);
     }
 
@@ -95,17 +124,23 @@ class UsersController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:150'],
-            'email' => ['required', 'email', 'max:150', Rule::unique('account_users', 'email')],
+            'email' => ['required', 'email', 'max:150', Rule::unique('account_users', 'email')->where('accountid', $accountId)],
             'roleid' => ['required', 'string'],
             'depid' => ['nullable', 'string'],
             'shiftid' => ['nullable', 'string'],
             'att_policyid' => ['nullable', 'string'],
-            'leave_policyid' => ['nullable', 'string'],
+            'leave_typeid' => ['nullable', 'string'],
+            'paid_leaves_pm' => ['nullable', 'numeric', 'min:0'],
+            'probation_months' => ['nullable', 'integer', 'min:0'],
+            'carry_forward' => ['nullable', 'boolean'],
             'designation' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', 'string', 'in:Male,Female,Other'],
             'phone' => ['nullable', 'string', 'max:20'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(self::AVAILABLE_PERMISSIONS)],
+            'assigned_users' => ['nullable', 'array'],
+            'assigned_users.*' => ['string'],
+            'can_assign_clients' => ['nullable', 'boolean'],
 
             'password' => ['required', 'string', 'min:6', 'max:100', 'confirmed'],
             'documents' => ['nullable', 'array'],
@@ -133,15 +168,27 @@ class UsersController extends Controller
             'depid' => $validated['depid'] ?? null,
             'shiftid' => $validated['shiftid'] ?? null,
             'att_policyid' => $validated['att_policyid'] ?? null,
-            'leave_policyid' => $validated['leave_policyid'] ?? null,
             'designation' => $validated['designation'] ?? null,
             'gender' => $validated['gender'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'permissions' => array_values($validated['permissions'] ?? []),
+            'assigned_users' => array_values($validated['assigned_users'] ?? []),
             'is_active' => true,
+            'can_assign_clients' => $request->has('can_assign_clients') ? 1 : 0,
             'password' => $validated['password'],
         ]);
+
+        if (!empty($validated['leave_typeid'])) {
+            \App\Models\UserLeavePolicy::create([
+                'accountid' => $accountId,
+                'userid' => $user->userid,
+                'typeid' => $validated['leave_typeid'],
+                'leave_per_month' => $validated['paid_leaves_pm'] ?? 0,
+                'carry_forward' => $request->has('carry_forward') ? 1 : 0,
+                'probation_months' => $validated['probation_months'] ?? 0,
+            ]);
+        }
 
         if (! empty($validated['documents'])) {
             $profile = UserProfile::firstOrCreate([
@@ -181,6 +228,12 @@ class UsersController extends Controller
             $profile->update($profileData);
         }
 
+        try {
+            Mail::to($user->email)->send(new UserCredentialsMail($user, $validated['password']));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send credentials email: ' . $e->getMessage());
+        }
+
         return redirect()->route('users.index')->with('success', 'User created successfully.');
     }
 
@@ -191,12 +244,26 @@ class UsersController extends Controller
         }
 
         $accountId = $this->resolveAccountId();
-        $roles = AccountRole::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
+        $roles = AccountRole::with('roleLevel')
+            ->select('account_roles.*')
+            ->leftJoin('roles_level', 'account_roles.levelid', '=', 'roles_level.levelid')
+            ->where('account_roles.accountid', $accountId)
+            ->where('account_roles.status', 'active')
+            ->orderByDesc('roles_level.level_value')
+            ->orderBy('account_roles.name')
+            ->get();
         $departments = AccountDepartment::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
         $shifts = Shift::where('accountid', $accountId)->where('status', 'active')->orderBy('shift_name')->get();
         $policies = AttendancePolicy::where('accountid', $accountId)->where('status', 'active')->orderBy('policy_name')->get();
-        $leavePolicies = LeavePolicy::where('accountid', $accountId)->where('status', 'active')->orderBy('policy_name')->get();
         $account = Account::find($accountId);
+        $allAccountUsers = User::with('role.roleLevel')->where('accountid', $accountId)
+            ->where('is_active', true)
+            ->where('userid', '!=', $user->userid)
+            ->orderBy('name')
+            ->get(['userid', 'name', 'email', 'roleid']);
+        $maxLevel = \App\Models\RoleLevel::max('level_value');
+        $paidLeaveTypes = \App\Models\LeaveType::where('accountid', $accountId)->where('is_paid_accrued', true)->where('status', 'active')->orderBy('name')->get();
+        $user->load('userLeavePolicies');
 
         return view('users.form', [
             'title' => 'Edit User',
@@ -207,36 +274,45 @@ class UsersController extends Controller
             'departments' => $departments,
             'shifts' => $shifts,
             'policies' => $policies,
-            'leavePolicies' => $leavePolicies,
             'hasTeamManagement' => $account ? $account->has_team_management : false,
+            'allAccountUsers' => $allAccountUsers,
+            'maxLevel' => $maxLevel,
+            'paidLeaveTypes' => $paidLeaveTypes,
         ]);
     }
 
     public function usersUpdate(Request $request, User $user): RedirectResponse
     {
-        if ((string) $user->accountid !== $this->resolveAccountId()) {
+        $accountId = $this->resolveAccountId();
+        if ((string) $user->accountid !== $accountId) {
             abort(403);
         }
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:150'],
-            'email' => ['required', 'email', 'max:150', Rule::unique('account_users', 'email')->ignore($user->userid, 'userid')],
+            'email' => ['required', 'email', 'max:150', Rule::unique('account_users', 'email')->where('accountid', $accountId)->ignore($user->userid, 'userid')],
             'roleid' => ['required', 'string'],
             'depid' => ['nullable', 'string'],
             'shiftid' => ['nullable', 'string'],
             'att_policyid' => ['nullable', 'string'],
-            'leave_policyid' => ['nullable', 'string'],
+            'leave_typeid' => ['nullable', 'string'],
+            'paid_leaves_pm' => ['nullable', 'numeric', 'min:0'],
+            'probation_months' => ['nullable', 'integer', 'min:0'],
+            'carry_forward' => ['nullable', 'boolean'],
             'designation' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', 'string', 'in:Male,Female,Other'],
             'phone' => ['nullable', 'string', 'max:20'],
             'permissions' => 'nullable|array',
             'permissions.*' => 'string',
+            'assigned_users' => 'nullable|array',
+            'assigned_users.*' => 'string',
+            'can_assign_clients' => 'nullable|boolean',
             'password' => ['nullable', 'string', 'min:6', 'max:100', 'confirmed'],
             'documents' => 'nullable|array',
             'documents.*.type' => 'required_with:documents|string|in:Photo,PAN,Identity proof,Bank details',
             'documents.*.file' => 'required_with:documents|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
             'delete_documents' => 'nullable|array',
-            'delete_documents.*' => 'integer',
+            'delete_documents.*' => 'string',
 
             'address' => 'nullable|string|max:500',
             'city' => 'nullable|string|max:100',
@@ -258,13 +334,13 @@ class UsersController extends Controller
             'depid' => $validated['depid'] ?? null,
             'shiftid' => $validated['shiftid'] ?? null,
             'att_policyid' => $validated['att_policyid'] ?? null,
-            'leave_policyid' => $validated['leave_policyid'] ?? null,
             'designation' => $validated['designation'] ?? null,
             'gender' => $validated['gender'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'permissions' => array_values($validated['permissions'] ?? []),
-
+            'assigned_users' => array_values($validated['assigned_users'] ?? []),
+            'can_assign_clients' => $request->has('can_assign_clients') ? 1 : 0,
         ];
 
         if (! empty($validated['password'])) {
@@ -272,6 +348,18 @@ class UsersController extends Controller
         }
 
         $user->update($payload);
+
+        \App\Models\UserLeavePolicy::where('userid', $user->userid)->delete();
+        if (!empty($validated['leave_typeid'])) {
+            \App\Models\UserLeavePolicy::create([
+                'accountid' => $accountId,
+                'userid' => $user->userid,
+                'typeid' => $validated['leave_typeid'],
+                'leave_per_month' => $validated['paid_leaves_pm'] ?? 0,
+                'carry_forward' => $request->has('carry_forward') ? 1 : 0,
+                'probation_months' => $validated['probation_months'] ?? 0,
+            ]);
+        }
 
         if (! empty($validated['documents'])) {
             $profile = UserProfile::firstOrCreate([
@@ -383,5 +471,65 @@ class UsersController extends Controller
         Storage::disk('public')->put($fileName, $binary);
 
         return $fileName;
+    }
+
+    public function unassignedLeaves(Request $request): View
+    {
+        $accountId = $this->resolveAccountId();
+
+        // Get all userids that are assigned to any manager
+        $assignedUserids = User::where('accountid', $accountId)
+            ->whereNotNull('assigned_users')
+            ->get()
+            ->flatMap(function ($user) {
+                return is_array($user->assigned_users) ? $user->assigned_users : [];
+            })
+            ->unique()
+            ->filter()
+            ->values()
+            ->all();
+
+        // Unassigned users are all other active users in the current account
+        $unassignedUserids = User::where('accountid', $accountId)
+            ->where('is_active', true)
+            ->whereNotIn('userid', $assignedUserids)
+            ->pluck('userid')
+            ->all();
+
+        $leaves = LeaveRequest::whereIn('userid', $unassignedUserids)
+            ->with(['user', 'leaveType'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('users.leaves', [
+            'title' => 'Unassigned Leave Approvals',
+            'leaves' => $leaves,
+        ]);
+    }
+
+    public function approveRejectLeave(Request $request, LeaveRequest $leave): RedirectResponse
+    {
+        $accountId = $this->resolveAccountId();
+
+        // Safety check: ensure target leave belongs to the current account
+        if ($leave->accountid !== $accountId) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'action' => 'required|in:approve,reject',
+            'rejection_reason' => 'required_if:action,reject|nullable|string|max:1000',
+        ]);
+
+        $leave->status = $validated['action'] === 'approve' ? 'approved' : 'rejected';
+        $leave->approved_by = auth()->user()->userid;
+        if ($validated['action'] === 'reject') {
+            $leave->rejection_reason = $validated['rejection_reason'];
+        } else {
+            $leave->rejection_reason = null;
+        }
+        $leave->save();
+
+        return redirect()->route('users.leaves.index')->with('success', 'Leave request updated successfully.');
     }
 }

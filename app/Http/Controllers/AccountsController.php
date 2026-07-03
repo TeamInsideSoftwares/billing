@@ -121,11 +121,14 @@ class AccountsController extends Controller
                 'expires_at' => $draft['expires_at'],
             ]);
 
+            $topLevel = \App\Models\RoleLevel::orderByDesc('level_value')->first();
+
             // Create an Admin role for this account
             $adminRole = AccountRole::create([
                 'accountid' => $account->accountid,
                 'name' => 'Admin',
                 'status' => 'active',
+                'levelid' => $topLevel ? $topLevel->levelid : null,
             ]);
 
             $permissions = array_values(array_filter(
@@ -214,11 +217,14 @@ class AccountsController extends Controller
 
                 $accountUser->save();
             } else {
+                $topLevel = \App\Models\RoleLevel::orderByDesc('level_value')->first();
+
                 // Create an Admin role for this account
                 $adminRole = AccountRole::create([
                     'accountid' => $account->accountid,
                     'name' => 'Admin',
                     'status' => 'active',
+                    'levelid' => $topLevel ? $topLevel->levelid : null,
                 ]);
 
                 $permissions = array_values(array_filter(

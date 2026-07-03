@@ -126,6 +126,7 @@ CREATE TABLE `account_users` (
   `userid` varchar(6) NOT NULL,
   `shiftid` varchar(6) DEFAULT NULL,
   `att_policyid` varchar(6) DEFAULT NULL,
+  `leave_policyid` varchar(10) DEFAULT NULL,
   `accountid` varchar(10) DEFAULT NULL,
   `name` varchar(255) NOT NULL,
   `email` varchar(255) NOT NULL,
@@ -137,6 +138,8 @@ CREATE TABLE `account_users` (
   `roleid` varchar(10) DEFAULT NULL,
   `permissions` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`permissions`)),
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `designation` varchar(255) DEFAULT NULL,
+  `gender` varchar(255) DEFAULT NULL,
   `remember_token` varchar(100) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -556,6 +559,39 @@ CREATE TABLE `jobs` (
   KEY `jobs_queue_index` (`queue`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `leave_policies`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leave_policies` (
+  `leave_policyid` varchar(10) NOT NULL,
+  `accountid` varchar(10) NOT NULL,
+  `typeid` varchar(10) DEFAULT NULL,
+  `policy_name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `carry_forward_limit` int(11) NOT NULL DEFAULT 0,
+  `min_days_per_application` int(11) NOT NULL DEFAULT 1,
+  `max_days_per_application` int(11) NOT NULL DEFAULT 0,
+  `status` varchar(20) NOT NULL DEFAULT 'active',
+  `is_paid` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`leave_policyid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `leave_types`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leave_types` (
+  `typeid` varchar(10) NOT NULL,
+  `accountid` varchar(10) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'active',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`typeid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `ledger`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -867,6 +903,19 @@ CREATE TABLE `terms_conditions` (
   KEY `terms_account_type_default_idx` (`accountid`,`type`,`is_default`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `users_doc`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `users_doc` (
+  `docid` varchar(6) NOT NULL,
+  `profileid` varchar(6) NOT NULL,
+  `doc_type` varchar(255) NOT NULL,
+  `doc_path` varchar(255) NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`docid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `users_profile`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1074,5 +1123,19 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (181,'2026_06_30_09
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (182,'2026_06_30_100323_add_shift_and_policy_to_account_users_table',136);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (183,'2026_06_30_100324_drop_team_employees_table',136);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (184,'2026_06_30_121941_create_user_profiles_table',137);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (185,'2026_06_30_131812_create_users_doc_table',138);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (186,'2026_06_30_143529_rename_id_to_docid_in_users_doc_table',139);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (187,'2026_06_30_143859_change_docid_to_string_in_users_doc_table',140);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (188,'2026_06_30_155644_create_leave_policies_table',141);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (189,'2026_06_30_162647_create_leave_applications_table',142);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (190,'2026_06_30_162648_create_attendance_logs_table',142);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (191,'2026_06_30_162952_alter_columns_in_leave_and_attendance_tables',143);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (192,'2026_06_30_163552_add_leave_policyid_to_account_users_table',144);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (193,'2026_06_30_164238_drop_leave_policyid_columns',145);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (194,'2026_06_30_173442_create_leave_types_table',146);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (195,'2026_06_30_173525_add_typeid_to_leave_policies_table',146);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (196,'2026_06_30_173558_add_leave_policyid_to_account_users_table',146);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (197,'2026_06_30_174509_add_is_paid_to_leave_policies_table',147);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (198,'2026_06_30_175333_add_designation_and_gender_to_account_users_table',148);
 COMMIT;
 SET AUTOCOMMIT=@OLD_AUTOCOMMIT;

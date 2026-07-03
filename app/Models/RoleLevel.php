@@ -2,19 +2,15 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\HasAlphaNumericId;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\HasAlphaNumericId;
 
-class LeaveType extends Model
+class RoleLevel extends Model
 {
-    use HasAlphaNumericId;
-    use HasFactory;
-
-    protected $primaryKey = 'typeid';
+    use HasFactory, HasAlphaNumericId;
 
     public $incrementing = false;
-
     protected $keyType = 'string';
 
     protected function idLength(): int
@@ -22,10 +18,12 @@ class LeaveType extends Model
         return 6;
     }
 
+    protected $table = 'roles_level';
+    protected $primaryKey = 'levelid';
+
     protected $fillable = [
-        'accountid',
-        'name',
-        'description',
-        'status',
+        'level_name',
+        'level_value',
+        'status'
     ];
 }
