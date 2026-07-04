@@ -2,22 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\UserCredentialsMail;
 use App\Models\Account;
 use App\Models\AccountDepartment;
 use App\Models\AccountRole;
 use App\Models\AttendancePolicy;
 use App\Models\LeaveRequest;
+use App\Models\LeaveType;
+use App\Models\RoleLevel;
 use App\Models\Shift;
 use App\Models\User;
 use App\Models\UserDoc;
+use App\Models\UserLeavePolicy;
 use App\Models\UserProfile;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\UserCredentialsMail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -46,7 +49,7 @@ class UsersController extends Controller
             ->with(['role', 'department'])
             ->orderByDesc('created_at');
 
-        $maxLevel = \App\Models\RoleLevel::max('level_value');
+        $maxLevel = RoleLevel::max('level_value');
         $currentUserLevel = auth()->user()->role?->roleLevel?->level_value ?? 0;
 
         if ($currentUserLevel < $maxLevel) {
@@ -70,7 +73,7 @@ class UsersController extends Controller
             ->orderBy('account_roles.name')
             ->get();
         $departments = AccountDepartment::where('accountid', $accountId)->orderBy('name')->get();
-        $roleLevels = \App\Models\RoleLevel::where('status', 'active')->orderByDesc('level_value')->get();
+        $roleLevels = RoleLevel::where('status', 'active')->orderByDesc('level_value')->get();
         $allUsersMap = User::where('accountid', $accountId)->pluck('name', 'userid');
 
         return view('users.index', [
@@ -100,8 +103,8 @@ class UsersController extends Controller
         $policies = AttendancePolicy::where('accountid', $accountId)->where('status', 'active')->orderBy('policy_name')->get();
         $account = Account::find($accountId);
         $allAccountUsers = User::with('role.roleLevel')->where('accountid', $accountId)->where('is_active', true)->orderBy('name')->get(['userid', 'name', 'email', 'roleid']);
-        $maxLevel = \App\Models\RoleLevel::max('level_value');
-        $paidLeaveTypes = \App\Models\LeaveType::where('accountid', $accountId)->where('is_paid_accrued', true)->where('status', 'active')->orderBy('name')->get();
+        $maxLevel = RoleLevel::max('level_value');
+        $paidLeaveTypes = LeaveType::where('accountid', $accountId)->where('is_paid_accrued', true)->where('status', 'active')->orderBy('name')->get();
 
         return view('users.form', [
             'title' => 'Add User',
@@ -179,8 +182,8 @@ class UsersController extends Controller
             'password' => $validated['password'],
         ]);
 
-        if (!empty($validated['leave_typeid'])) {
-            \App\Models\UserLeavePolicy::create([
+        if (! empty($validated['leave_typeid'])) {
+            UserLeavePolicy::create([
                 'accountid' => $accountId,
                 'userid' => $user->userid,
                 'typeid' => $validated['leave_typeid'],
@@ -231,7 +234,7 @@ class UsersController extends Controller
         try {
             Mail::to($user->email)->send(new UserCredentialsMail($user, $validated['password']));
         } catch (\Exception $e) {
-            \Log::error('Failed to send credentials email: ' . $e->getMessage());
+            \Log::error('Failed to send credentials email: '.$e->getMessage());
         }
 
         return redirect()->route('users.index')->with('success', 'User created successfully.');
@@ -261,8 +264,8 @@ class UsersController extends Controller
             ->where('userid', '!=', $user->userid)
             ->orderBy('name')
             ->get(['userid', 'name', 'email', 'roleid']);
-        $maxLevel = \App\Models\RoleLevel::max('level_value');
-        $paidLeaveTypes = \App\Models\LeaveType::where('accountid', $accountId)->where('is_paid_accrued', true)->where('status', 'active')->orderBy('name')->get();
+        $maxLevel = RoleLevel::max('level_value');
+        $paidLeaveTypes = LeaveType::where('accountid', $accountId)->where('is_paid_accrued', true)->where('status', 'active')->orderBy('name')->get();
         $user->load('userLeavePolicies');
 
         return view('users.form', [
@@ -349,9 +352,9 @@ class UsersController extends Controller
 
         $user->update($payload);
 
-        \App\Models\UserLeavePolicy::where('userid', $user->userid)->delete();
-        if (!empty($validated['leave_typeid'])) {
-            \App\Models\UserLeavePolicy::create([
+        UserLeavePolicy::where('userid', $user->userid)->delete();
+        if (! empty($validated['leave_typeid'])) {
+            UserLeavePolicy::create([
                 'accountid' => $accountId,
                 'userid' => $user->userid,
                 'typeid' => $validated['leave_typeid'],
@@ -496,14 +499,39 @@ class UsersController extends Controller
             ->pluck('userid')
             ->all();
 
-        $leaves = LeaveRequest::whereIn('userid', $unassignedUserids)
-            ->with(['user', 'leaveType'])
-            ->orderByDesc('created_at')
+        $unassignedUsers = User::whereIn('userid', $unassignedUserids)->orderBy('name')->get();
+
+        $leaveTypes = LeaveType::where('status', 'active')
+            ->where('accountid', $accountId)
+            ->orderBy('name')
             ->get();
+
+        $query = LeaveRequest::whereIn('userid', $unassignedUserids)
+            ->with(['user', 'leaveType']);
+
+        if ($request->filled('typeid')) {
+            $query->where('typeid', $request->typeid);
+        }
+
+        if ($request->filled('month')) {
+            $query->whereMonth('start_date', $request->month);
+        }
+
+        if ($request->filled('date')) {
+            $query->whereDate('start_date', $request->date);
+        }
+
+        if ($request->filled('employee_id')) {
+            $query->where('userid', $request->employee_id);
+        }
+
+        $leaves = $query->orderByDesc('created_at')->get();
 
         return view('users.leaves', [
             'title' => 'Unassigned Leave Approvals',
             'leaves' => $leaves,
+            'employees' => $unassignedUsers,
+            'leaveTypes' => $leaveTypes,
         ]);
     }
 

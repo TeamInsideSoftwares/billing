@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'billing_email',
     'tax_number',
     'status',
+    'maintenance_duration',
     'currency',
     'address_line_1',
     'address_line_2',

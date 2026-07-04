@@ -11,6 +11,8 @@ class LeaveType extends Model
     use HasAlphaNumericId;
     use HasFactory;
 
+    protected $connection = 'mysql';
+
     protected $primaryKey = 'typeid';
 
     public $incrementing = false;

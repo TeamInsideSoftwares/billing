@@ -831,6 +831,7 @@ class ClientsController extends Controller
             'whatsapp_number' => 'nullable|string|max:50',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'status' => 'in:active,review,inactive',
+            'maintenance_duration' => 'nullable|numeric|min:0|max:9999',
             'currency' => 'required|string|size:3|exists:currency,iso',
             'country' => 'nullable|string',
             'state' => 'nullable|string',
