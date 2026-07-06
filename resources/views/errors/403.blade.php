@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends(auth()->check() ? 'layouts.app' : 'layouts.error')
 
 @section('content')
 <div class="card border-0 shadow-sm rounded-4 mt-4">

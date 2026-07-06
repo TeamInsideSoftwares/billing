@@ -120,9 +120,14 @@
                             <div class="d-flex align-items-center gap-3">
                                 <div class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold">
                                     @if(!empty($member->profile_image))
-                                        <img src="{{ asset('storage/' . $member->profile_image) }}" onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name={{ urlencode($member->name ?? \'User\') }}&background=eff6ff&color=1e3a8a';" alt="{{ $member->name }}" class="position-absolute rounded-circle" style="width:40px;height:40px;object-fit:cover;top:0;left:0;border:2px solid #fff;">
+                                        <span class="d-none position-absolute">{{ strtoupper(substr($member->name ?? 'U', 0, 2)) }}</span>
+                                        <img src="{{ asset('storage/' . $member->profile_image) }}" 
+                                             onerror="this.style.display='none'; this.previousElementSibling.classList.replace('d-none', 'd-block');"
+                                             alt="{{ $member->name }}" 
+                                             class="position-absolute rounded-circle bg-white" 
+                                             style="width:40px;height:40px;object-fit:cover;top:0;left:0;border:2px solid #fff;">
                                     @else
-                                        <span class="d-block position-absolute">{{ strtoupper(substr($member->name, 0, 2)) }}</span>
+                                        <span class="d-block position-absolute">{{ strtoupper(substr($member->name ?? 'U', 0, 2)) }}</span>
                                     @endif
                                     <div class="status-dot {{ $member->is_active ? 'active' : 'inactive' }}"
                                         title="{{ $member->is_active ? 'Active' : 'Inactive' }}"></div>
