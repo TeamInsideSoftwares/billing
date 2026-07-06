@@ -21,20 +21,25 @@
             padding: 20px;
         }
 
+        .layout-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .layout-table td {
+            border: none;
+            padding: 0;
+            vertical-align: top;
+        }
+
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 9pt;
             margin-bottom: 6pt;
             padding-bottom: 5pt;
             border-bottom: 2px solid #000;
         }
 
         .from-block {
-            flex: 1 1 auto;
-            min-width: 0;
-            max-width: 56%;
+            width: 56%;
         }
 
         .company-name {
@@ -58,12 +63,7 @@
         }
 
         .right-block {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 4pt;
-            min-width: 240px;
-            margin-left: auto;
+            width: 44%;
             text-align: right;
         }
 
@@ -80,8 +80,6 @@
             max-width: 160px;
             max-height: 64px;
             margin-bottom: 8pt;
-            object-fit: contain;
-            display: block;
         }
 
         .meta-box {
@@ -94,15 +92,10 @@
         }
 
         .bill-to-section {
-            display: flex;
-            align-items: flex-start;
-            gap: 9pt;
             margin-bottom: 9pt;
         }
 
         .bill-to-block {
-            flex: 1;
-            min-width: 0;
             padding: 0pt 9pt 2pt 0;
         }
 
@@ -135,8 +128,7 @@
         }
 
         .invoice-title-note {
-            flex-shrink: 0;
-            max-width: 45%;
+            width: 45%;
             padding-top: 2pt;
             font-size: 10pt;
             font-weight: 700;
@@ -218,8 +210,7 @@
         }
 
         .totals-wrap {
-            display: flex;
-            justify-content: flex-end;
+            text-align: right;
         }
 
         .totals-box {
@@ -283,24 +274,18 @@
         }
 
         .signatory {
-            display: flex;
-            justify-content: flex-end;
+            text-align: right;
         }
 
         .signatory-box {
             min-width: 220px;
             text-align: right;
-            display: inline-block;
-
         }
 
         .sig-img {
-            display: block;
             max-width: 130px;
             max-height: 52px;
-            margin-left: auto;
             margin-bottom: 0.25rem;
-            object-fit: contain;
         }
 
         .sig-line {
@@ -308,7 +293,6 @@
             padding-top: 0.45rem;
             font-size: 9pt;
             color: #000;
-            /* text-align: center; */
         }
 
         .sig-line::before {
@@ -317,9 +301,7 @@
             top: 0;
             left: 66%;
             width: 150px;
-            /* line width */
             height: 0.6px;
-            /* line thickness */
             background: #000;
             transform: translateX(-50%);
         }
@@ -328,7 +310,9 @@
 
 <body>
     <div class="header">
-        <div class="from-block">
+        <table class="layout-table">
+            <tr>
+                <td class="from-block">
             @if ($account->logo_path)
                 @php
                     $logoSrc =
@@ -371,9 +355,8 @@
                     <strong>GSTIN:</strong> {{ $accountBillingDetail->gstin }}
                 </div>
             @endif
-        </div>
-
-        <div class="right-block">
+                </td>
+                <td class="right-block">
             <div class="doc-title">
                 {{ $documentType }}
             </div>
@@ -408,11 +391,15 @@
                     </div>
                 @endif
             </div>
-        </div>
+                </td>
+            </tr>
+        </table>
     </div>
 
     <div class="bill-to-section">
-        <div class="bill-to-block">
+        <table class="layout-table">
+            <tr>
+                <td class="bill-to-block">
             <div class="bill-to-label">
                 Bill To
             </div>
@@ -443,7 +430,7 @@
                     <strong>GSTIN:</strong> {{ $cb->gstin }}
                 </div>
             @endif
-        </div>
+                </td>
 
         @php
             $qrGrandTotal = (float) ($invoice->grand_total ?? 0);
@@ -462,7 +449,7 @@
         @endphp
 
         @if (!empty($invoice->invoice_title) || !empty($qrCodeUrl))
-            <div class="invoice-title-note">
+                <td class="invoice-title-note">
                 @if (!empty($invoice->invoice_title))
                     <div class="invoice-title-text">{{ $invoice->invoice_title }}</div>
                 @endif
@@ -473,8 +460,10 @@
                         <div class="invoice-qr-caption">Scan • {{ number_format($qrGrandTotal, 0) }}</div>
                     </div> --}}
                 @endif
-            </div>
+                </td>
         @endif
+            </tr>
+        </table>
     </div>
 
     @php

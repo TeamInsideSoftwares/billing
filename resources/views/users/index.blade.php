@@ -14,12 +14,9 @@
     <button type="button" class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium" data-bs-toggle="modal" data-bs-target="#attendancePoliciesModal">
         <i class="fas fa-clock btn-icon"></i> Att. Policies
     </button>
-    <button type="button" class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium" data-bs-toggle="modal" data-bs-target="#leavePoliciesModal">
-        <i class="fas fa-calendar-times btn-icon"></i> Leave Policies
-    </button>
-    <button type="button" class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium" data-bs-toggle="modal" data-bs-target="#leaveTypesModal">
-        <i class="fas fa-list-alt btn-icon"></i> Leave Types
-    </button>
+
+
+    @if(auth()->check() && auth()->user()->account?->has_team_management)
     <a href="{{ route('users.approvals') }}"
         class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium position-relative">
         <i class="fas fa-user-check btn-icon"></i> Profile Approvals
@@ -32,10 +29,35 @@
         </span>
         @endif
     </a>
-    <a href="{{ route('users.create') }}"
-        class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-        <i class="fas fa-plus btn-icon"></i> Add User
+    <a href="{{ route('users.leaves.index') }}"
+        class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium position-relative">
+        <i class="fas fa-calendar-check btn-icon"></i> Leave Approvals
+        @php
+            $assignedUserids = \App\Models\User::whereNotNull('assigned_users')
+                ->get()
+                ->flatMap(function ($user) {
+                    return is_array($user->assigned_users) ? $user->assigned_users : [];
+                })
+                ->unique()
+                ->filter()
+                ->values()
+                ->all();
+            
+            $unassignedUserids = \App\Models\User::whereNotIn('userid', $assignedUserids)
+                ->pluck('userid')
+                ->all();
+
+            $pendingLeavesCount = \App\Models\LeaveRequest::whereIn('userid', $unassignedUserids)
+                ->where('status', 'pending')
+                ->count();
+        @endphp
+        @if($pendingLeavesCount > 0)
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+            {{ $pendingLeavesCount }}
+        </span>
+        @endif
     </a>
+    @endif
 </div>
 @endsection
 
@@ -68,6 +90,12 @@
                 <span class="status-dot legend-dot inactive"></span> Inactive
             </div>
         </div>
+         <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('users.create') }}"
+                class="btn btn-sm btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
+                <i class="fas fa-plus btn-icon"></i> Add User
+            </a>
+        </div>
     </div>
 
     <!-- Users List View (Table View) -->
@@ -80,6 +108,7 @@
                         <th>Department</th>
 
                         <th>Role</th>
+                        <th>Assigned Users</th>
                         <th>Permissions</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -115,6 +144,28 @@
                             <span class="badge bg-light text-dark border">{{ ucfirst($member->role ? $member->role->name : '') }}</span>
                         </td>
                         <td>
+                            @if(!empty($member->assigned_users))
+                                @php
+                                    $assignedIds = is_array($member->assigned_users) ? $member->assigned_users : [];
+                                    $assignedNames = collect($assignedIds)->map(fn($id) => $allUsersMap[$id] ?? null)->filter();
+                                @endphp
+                                @if($assignedNames->isEmpty())
+                                    <span class="text-muted small">-</span>
+                                @else
+                                    <div class="d-flex flex-wrap gap-1" title="{{ $assignedNames->implode(', ') }}">
+                                        @foreach($assignedNames->take(2) as $name)
+                                            <span class="badge bg-light text-dark border">{{ $name }}</span>
+                                        @endforeach
+                                        @if($assignedNames->count() > 2)
+                                            <span class="badge bg-light text-dark border" data-bs-toggle="tooltip" title="{{ $assignedNames->slice(2)->implode(', ') }}">+{{ $assignedNames->count() - 2 }}</span>
+                                        @endif
+                                    </div>
+                                @endif
+                            @else
+                                <span class="text-muted small">-</span>
+                            @endif
+                        </td>
+                        <td>
                             @php
                                 $modules = collect(is_array($member->permissions) ? $member->permissions : [])
                                     ->map(fn($p) => ucfirst(str_replace('_', ' ', explode('.', $p)[0])))
@@ -137,7 +188,15 @@
                         </td>
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1 align-items-center">
-                                @if($member->hasPermission('team_work.view'))
+                                @php
+                                    $currentUser = auth()->user();
+                                    $canLoginAs = false;
+                                    if ($currentUser) {
+                                        $isAssigned = is_array($currentUser->assigned_users) && in_array($member->userid, $currentUser->assigned_users, true);
+                                        $canLoginAs = $isAssigned && $member->hasPermission('team_work.view');
+                                    }
+                                @endphp
+                                @if($canLoginAs)
                                 <form action="{{ route('login.as', $member) }}" method="POST" class="d-inline" target="_blank">
                                     @csrf
                                     <button type="submit" class="bg01 color01 border-0" title="Login As User">Login As</button>
@@ -187,11 +246,20 @@
                         @csrf
                         <div id="roleMethodField"></div>
                         <div class="row g-2 align-items-end">
-                            <div class="col-12 col-md-8">
+                            <div class="col-12 col-md-5">
                                 <label for="roleName" class="form-label small lh-sm fw-semibold text-dark mb-1">Role Name<span class="text-danger">*</span></label>
                                 <input type="text" name="name" id="roleName" class="form-control" value="{{ old('name') }}" required>
                             </div>
-                            <div class="col-12 col-md-4 d-flex">
+                            <div class="col-12 col-md-4">
+                                <label for="roleLevelId" class="form-label small lh-sm fw-semibold text-dark mb-1">Role Level</label>
+                                <select name="levelid" id="roleLevelId" class="form-select">
+                                    <option value="">No Level</option>
+                                    @foreach($roleLevels ?? [] as $rl)
+                                        <option value="{{ $rl->levelid }}">{{ $rl->level_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-3 d-flex">
                                 <button type="submit" id="roleSubmitBtn" class="btn btn-outline-primary btn-primary text-white fw-medium w-100">
                                     Save Role <i class="fas fa-arrow-right btn-icon ms-1"></i>
                                 </button>
@@ -206,7 +274,8 @@
                             <table class="table table-striped mainTable border align-middle mb-0" id="rolesTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th width="50%">Role Name</th>
+                                        <th width="40%">Role Name</th>
+                                        <th width="30%">Level</th>
                                         <th class="text-end" width="30%">Actions</th>
                                     </tr>
                                 </thead>
@@ -214,6 +283,7 @@
                                     @forelse($roles as $roleObj)
                                     <tr>
                                         <td><span class="d-block fw-semibold">{{ $roleObj->name }}</span></td>
+                                        <td><span class="badge bg-light text-dark border">{{ $roleObj->roleLevel ? $roleObj->roleLevel->level_name : 'None' }}</span></td>
                                         <td class="text-end">
                                             <div class="tableActionButton d-inline-flex gap-1">
                                                 <form method="POST" action="{{ route('roles.toggle-status', $roleObj->roleid) }}" class="d-inline role-ajax-form">
@@ -222,7 +292,7 @@
                                                         {{ ucfirst($roleObj->status) }}
                                                     </button>
                                                 </form>
-                                                <button type="button" class="bg03 color03 border-0" onclick="editRole(this)" data-id="{{ $roleObj->roleid }}" data-name="{{ $roleObj->name }}">Edit</button>
+                                                <button type="button" class="bg03 color03 border-0" onclick="editRole(this)" data-id="{{ $roleObj->roleid }}" data-name="{{ $roleObj->name }}" data-levelid="{{ $roleObj->levelid }}">Edit</button>
                                                 <form method="POST" action="{{ route('roles.destroy', $roleObj->roleid) }}" class="d-inline role-ajax-form">
                                                     @csrf @method('DELETE')
                                                     <button type="submit" class="bg04 color04 border-0">Delete</button>
@@ -468,162 +538,16 @@
         </div>
     </div>
 </div>
-<!-- Leave Policies Modal -->
-<div class="modal fade" id="leavePoliciesModal" tabindex="-1" aria-labelledby="leavePoliciesModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0">
-            <div class="modal-header bg-DarkLight py-2 border-0">
-                <h5 class="modal-title fw-semibold" id="leavePoliciesModalLabel">Manage Leave Policies</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body bg-white p-2">
-                <div class="bg-DarkLight p-2 rounded-3 mb-3">
-                    <form id="leavePolicyForm" action="{{ route('leave-policies.store') }}" method="POST" class="mainForm">
-                        @csrf
-                        <input type="hidden" name="_method" value="POST" id="leavePolicyMethod">
-                        
-                        <div class="row g-2 mb-3">
-                            <div class="col-12 col-md-6">
-                                <label for="typeid" class="form-label small lh-sm fw-semibold text-dark mb-1">Leave Type <span class="text-danger">*</span></label>
-                                <select id="typeid" name="typeid" class="form-select" required>
-                                    <option value="" disabled selected>Select Leave Type</option>
-                                    @foreach($leaveTypes as $leaveType)
-                                        <option value="{{ $leaveType->typeid }}">{{ $leaveType->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
 
-                            <div class="col-12 col-md-6">
-                                <label for="leave_policy_name" class="form-label small lh-sm fw-semibold text-dark mb-1">Policy Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="leave_policy_name" name="policy_name" placeholder="e.g. Annual Leave Policy" required>
-                            </div>
-                            
-                            <div class="col-12 col-md-12">
-                                <label for="leave_description" class="form-label small lh-sm fw-semibold text-dark mb-1">Description</label>
-                                <textarea class="form-control" id="leave_description" name="description" rows="2" placeholder="e.g. Standard annual leave policy..."></textarea>
-                            </div>
 
-                            <div class="col-12 col-md-4">
-                                <label for="carry_forward_limit" class="form-label small lh-sm fw-semibold text-dark mb-1">Carry Forward Limit (Days) <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="carry_forward_limit" name="carry_forward_limit" value="0" min="0" required>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <label for="min_days_per_application" class="form-label small lh-sm fw-semibold text-dark mb-1">Min Days Per Application <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="min_days_per_application" name="min_days_per_application" value="1" min="0" required>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <label for="max_days_per_application" class="form-label small lh-sm fw-semibold text-dark mb-1">Max Days Per Application <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="max_days_per_application" name="max_days_per_application" value="0" min="0" required>
-                            </div>
-
-                            <div class="col-12 col-md-12 mt-2">
-                                <div class="mb-0 bg-white border rounded-1 px-2 py-1">
-                                    <div class="form-check mb-0 form-check-large">
-                                        <input type="hidden" name="is_paid" value="0">
-                                        <input type="checkbox" name="is_paid" value="1" class="form-check-input" id="leave_policy_is_paid">
-                                        <label class="form-check-label small lh-sm fw-normal text-dark mt-1 ms-1" style="cursor: pointer" for="leave_policy_is_paid">
-                                            This is a Paid Leave
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-12 col-md-12 d-flex justify-content-end gap-2 mt-3">
-                                <button type="button" class="btn btn-light" id="btnCancelLeavePolicyEdit" style="display: none;">Cancel</button>
-                                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium" id="btnSaveLeavePolicy">Save Policy <i class="fas fa-arrow-right btn-icon ms-1"></i></button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                
-                <div class="position-relative bg-DarkLight p-2 rounded-3" style="max-height: 300px; overflow-y: auto;">
-                    <h6 class="fw-semibold text-dark mb-2 px-1">
-                        <span>Existing Leave Policies</span>
-                    </h6>
-                    <div class="card border-0 overflow-hidden">
-                        <div class="table-responsive">
-                            <table class="table table-striped mainTable border align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th width="45%">Policy Name</th>
-                                        <th class="text-end" width="20%">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="leavePoliciesList">
-                                    <tr><td colspan="2" class="text-center py-3 text-muted small" id="leavePoliciesLoading">Loading...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Leave Types Modal -->
-<div class="modal fade" id="leaveTypesModal" tabindex="-1" aria-labelledby="leaveTypesModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0">
-            <div class="modal-header bg-DarkLight py-2 border-0">
-                <h5 class="modal-title fw-semibold" id="leaveTypesModalLabel">Manage Leave Types</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body bg-white p-2">
-                <div class="bg-DarkLight p-2 rounded-3 mb-3">
-                    <form id="leaveTypeForm" action="{{ route('leave-types.store') }}" method="POST" class="mainForm">
-                        @csrf
-                        <input type="hidden" name="_method" value="POST" id="leaveTypeMethod">
-                        
-                        <div class="row g-2 mb-3">
-                            <div class="col-12 col-md-12">
-                                <label for="leave_type_name" class="form-label small lh-sm fw-semibold text-dark mb-1">Type Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="leave_type_name" name="name" placeholder="e.g. Annual Leave" required>
-                            </div>
-                            
-                            <div class="col-12 col-md-12">
-                                <label for="leave_type_description" class="form-label small lh-sm fw-semibold text-dark mb-1">Description</label>
-                                <textarea class="form-control" id="leave_type_description" name="description" rows="2" placeholder="e.g. Standard annual leave..."></textarea>
-                            </div>
-
-                            <div class="col-12 col-md-12 d-flex justify-content-end gap-2 mt-3">
-                                <button type="button" class="btn btn-light" id="btnCancelLeaveTypeEdit" style="display: none;">Cancel</button>
-                                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium" id="btnSaveLeaveType">Save Type <i class="fas fa-arrow-right btn-icon ms-1"></i></button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                
-                <div class="position-relative bg-DarkLight p-2 rounded-3" style="max-height: 300px; overflow-y: auto;">
-                    <h6 class="fw-semibold text-dark mb-2 px-1">
-                        <span>Existing Leave Types</span>
-                    </h6>
-                    <div class="card border-0 overflow-hidden">
-                        <div class="table-responsive">
-                            <table class="table table-striped mainTable border align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th width="45%">Type Name</th>
-                                        <th class="text-end" width="20%">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="leaveTypesList">
-                                    <tr><td colspan="2" class="text-center py-3 text-muted small" id="leaveTypesLoading">Loading...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <script>
     function editRole(btn) {
         const id = btn.getAttribute('data-id');
         const name = btn.getAttribute('data-name');
+        const levelid = btn.getAttribute('data-levelid') || '';
         document.getElementById('roleName').value = name;
+        document.getElementById('roleLevelId').value = levelid;
         document.getElementById('roleForm').action = '{{ url("roles") }}/' + id;
         document.getElementById('roleMethodField').innerHTML = '<input type="hidden" name="_method" value="PUT">';
         document.getElementById('roleSubmitBtn').innerHTML = 'Update Role <i class="fas fa-arrow-right btn-icon ms-1"></i>';
@@ -640,6 +564,7 @@
 
     function resetRoleForm() {
         document.getElementById('roleName').value = '';
+        document.getElementById('roleLevelId').value = '';
         document.getElementById('roleForm').action = '{{ route("roles.store") }}';
         document.getElementById('roleMethodField').innerHTML = '';
         document.getElementById('roleSubmitBtn').innerHTML = 'Save Role <i class="fas fa-arrow-right btn-icon ms-1"></i>';
@@ -655,8 +580,12 @@
     function buildRoleRow(roleObj, csrf) {
         let statusColor = roleObj.status === 'active' ? 'bg02 color02' : 'bg-secondary text-white';
         let statusText = roleObj.status.charAt(0).toUpperCase() + roleObj.status.slice(1);
+        let levelText = (roleObj.role_level && roleObj.role_level.level_name) ? roleObj.role_level.level_name : 'None';
+        let levelId = roleObj.levelid || '';
+        
         return `<tr>
             <td><span class="d-block fw-semibold">${roleObj.name}</span></td>
+            <td><span class="badge bg-light text-dark border">${levelText}</span></td>
             <td class="text-end">
                 <div class="tableActionButton d-inline-flex gap-1">
                     <form method="POST" action="{{ url('roles') }}/${roleObj.roleid}/toggle" class="d-inline role-ajax-form">
@@ -664,7 +593,7 @@
                         <input type="hidden" name="_method" value="PATCH">
                         <button type="submit" class="${statusColor}">${statusText}</button>
                     </form>
-                    <button type="button" class="bg03 color03 border-0" onclick="editRole(this)" data-id="${roleObj.roleid}" data-name="${roleObj.name}">Edit</button>
+                    <button type="button" class="bg03 color03 border-0" onclick="editRole(this)" data-id="${roleObj.roleid}" data-name="${roleObj.name}" data-levelid="${levelId}">Edit</button>
                     <form method="POST" action="{{ url('roles') }}/${roleObj.roleid}" class="d-inline role-ajax-form">
                         <input type="hidden" name="_token" value="${csrf}">
                         <input type="hidden" name="_method" value="DELETE">
@@ -1161,393 +1090,7 @@
             @endif
         }
 
-        // Leave Policies Logic
-        const leavePolicyModal = document.getElementById('leavePoliciesModal');
-        if (leavePolicyModal) {
-            const leavePolicyForm = document.getElementById('leavePolicyForm');
-            const leavePoliciesList = document.getElementById('leavePoliciesList');
-            const btnCancelLeavePolicyEdit = document.getElementById('btnCancelLeavePolicyEdit');
-            const btnSaveLeavePolicy = document.getElementById('btnSaveLeavePolicy');
-            const leavePolicyMethodInput = document.getElementById('leavePolicyMethod');
-            
-            let editingLeavePolicyId = null;
 
-            function loadLeavePolicies() {
-                leavePoliciesList.innerHTML = '<tr><td colspan="2" class="text-center py-3 text-muted small">Loading...</td></tr>';
-                
-                fetch("{{ route('leave-policies.index') }}", {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        renderLeavePolicies(data.policies);
-                    }
-                })
-                .catch(err => {
-                    leavePoliciesList.innerHTML = '<tr><td colspan="2" class="text-center py-3 text-danger small">Failed to load leave policies.</td></tr>';
-                });
-            }
-
-            function renderLeavePolicies(policies) {
-                if (!policies || policies.length === 0) {
-                    leavePoliciesList.innerHTML = '<tr><td colspan="2" class="text-center py-3 text-muted small">No leave policies found.</td></tr>';
-                    return;
-                }
-                
-                let html = '';
-                policies.forEach(policy => {
-                    html += `
-                        <tr>
-                            <td>
-                                <span class="d-block fw-semibold">${policy.policy_name}</span>
-                                <span class="d-block text-muted small">
-                                    <span class="badge bg-secondary-subtle text-secondary me-1">${policy.leave_type_name || 'N/A'}</span>
-                                    <span class="badge ${policy.is_paid ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} me-1">${policy.is_paid ? 'Paid' : 'Unpaid'}</span>
-                                    <span class="text-truncate d-inline-block align-bottom" style="max-width: 200px;">${policy.description || 'No description'}</span>
-                                </span>
-                            </td>
-                                <td class="text-end">
-                                    <div class="tableActionButton d-inline-flex gap-1">
-                                        <button type="button" class="btn-toggle-leave-policy badge ${policy.status === 'active' ? 'bg02 color02' : 'bg-secondary text-white'} border-0" data-id="${policy.leave_policyid}">
-                                            ${policy.status.charAt(0).toUpperCase() + policy.status.slice(1)}
-                                        </button>
-                                    <button type="button" class="bg03 color03 border-0 btn-edit-leave-policy" 
-                                        data-id="${policy.leave_policyid}" 
-                                        data-policy='${JSON.stringify(policy).replace(/'/g, "&apos;")}'>
-                                        Edit
-                                    </button>
-                                    <button type="button" class="bg04 color04 border-0 btn-delete-leave-policy" data-id="${policy.leave_policyid}">
-                                        Delete
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                });
-                leavePoliciesList.innerHTML = html;
-                
-                document.querySelectorAll('.btn-edit-leave-policy').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const policy = JSON.parse(this.dataset.policy);
-                        editLeavePolicy(policy);
-                    });
-                });
-                
-                document.querySelectorAll('.btn-toggle-leave-policy').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        toggleLeavePolicy(this.dataset.id);
-                    });
-                });
-                
-                document.querySelectorAll('.btn-delete-leave-policy').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        deleteLeavePolicy(this.dataset.id);
-                    });
-                });
-            }
-
-            function resetLeavePolicyForm() {
-                leavePolicyForm.reset();
-                leavePolicyForm.action = "{{ route('leave-policies.store') }}";
-                leavePolicyMethodInput.value = 'POST';
-                editingLeavePolicyId = null;
-                btnSaveLeavePolicy.innerHTML = 'Save Policy <i class="fas fa-arrow-right btn-icon ms-1"></i>';
-                btnCancelLeavePolicyEdit.style.display = 'none';
-            }
-
-            function editLeavePolicy(policy) {
-                editingLeavePolicyId = policy.leave_policyid;
-                leavePolicyForm.action = `{{ route('leave-policies.index') }}/${policy.leave_policyid}`;
-                leavePolicyMethodInput.value = 'PUT';
-                
-                document.getElementById('typeid').value = policy.typeid;
-                document.getElementById('leave_policy_name').value = policy.policy_name;
-                document.getElementById('leave_description').value = policy.description || '';
-                document.getElementById('carry_forward_limit').value = policy.carry_forward_limit;
-                document.getElementById('min_days_per_application').value = policy.min_days_per_application;
-                document.getElementById('max_days_per_application').value = policy.max_days_per_application;
-                document.getElementById('leave_policy_is_paid').checked = policy.is_paid ? true : false;
-                
-                if (document.getElementById('leave_policy_status')) {
-                    document.getElementById('leave_policy_status').value = policy.status;
-                }
-                
-                btnSaveLeavePolicy.innerHTML = 'Update Policy <i class="fas fa-arrow-right btn-icon ms-1"></i>';
-                btnCancelLeavePolicyEdit.style.display = 'inline-block';
-            }
-
-            async function deleteLeavePolicy(id) {
-                const confirmed = await window.appConfirm('Are you sure you want to delete this leave policy?');
-                if (!confirmed) return;
-                
-                fetch(`{{ route('leave-policies.index') }}/${id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        renderLeavePolicies(data.policies);
-                        if (editingLeavePolicyId == id) resetLeavePolicyForm();
-                    }
-                });
-            }
-            
-            function toggleLeavePolicy(id) {
-                fetch(`{{ url('leave-policies') }}/${id}/toggle`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        renderLeavePolicies(data.policies);
-                    }
-                });
-            }
-
-            btnCancelLeavePolicyEdit.addEventListener('click', resetLeavePolicyForm);
-
-            leavePolicyForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const formData = new FormData(this);
-                const url = this.action;
-                const method = leavePolicyMethodInput.value;
-                const plainFormData = Object.fromEntries(formData.entries());
-                
-                fetch(url, {
-                    method: method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify(plainFormData)
-                })
-                .then(async res => {
-                    const data = await res.json();
-                    if (res.ok && data.success) {
-                        renderLeavePolicies(data.policies);
-                        resetLeavePolicyForm();
-                    } else {
-                        alert(data.message || 'Validation error occurred.');
-                    }
-                })
-                .catch(err => {
-                    alert('An error occurred while saving.');
-                });
-            });
-
-            leavePolicyModal.addEventListener('show.bs.modal', function() {
-                resetLeavePolicyForm();
-                loadLeavePolicies();
-            });
-            
-            @if(session('open_leave_policy_modal'))
-                var bsLeavePolicyModal = new bootstrap.Modal(leavePolicyModal);
-                bsLeavePolicyModal.show();
-            @endif
-        }
-
-        // Leave Types Logic
-        const leaveTypeModal = document.getElementById('leaveTypesModal');
-        if (leaveTypeModal) {
-            const leaveTypeForm = document.getElementById('leaveTypeForm');
-            const leaveTypesList = document.getElementById('leaveTypesList');
-            const btnCancelLeaveTypeEdit = document.getElementById('btnCancelLeaveTypeEdit');
-            const btnSaveLeaveType = document.getElementById('btnSaveLeaveType');
-            const leaveTypeMethodInput = document.getElementById('leaveTypeMethod');
-            
-            let editingLeaveTypeId = null;
-
-            function loadLeaveTypes() {
-                leaveTypesList.innerHTML = '<tr><td colspan="2" class="text-center py-3 text-muted small">Loading...</td></tr>';
-                
-                fetch("{{ route('leave-types.index') }}", {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        renderLeaveTypes(data.leaveTypes);
-                    }
-                })
-                .catch(err => {
-                    leaveTypesList.innerHTML = '<tr><td colspan="2" class="text-center py-3 text-danger small">Failed to load leave types.</td></tr>';
-                });
-            }
-
-            function renderLeaveTypes(types) {
-                if (!types || types.length === 0) {
-                    leaveTypesList.innerHTML = '<tr><td colspan="2" class="text-center py-3 text-muted small">No leave types found.</td></tr>';
-                    return;
-                }
-                
-                let html = '';
-                types.forEach(type => {
-                    html += `
-                        <tr>
-                            <td>
-                                <span class="d-block fw-semibold">${type.name}</span>
-                                <span class="d-block text-muted small text-truncate" style="max-width: 200px;">${type.description || 'No description'}</span>
-                            </td>
-                                <td class="text-end">
-                                    <div class="tableActionButton d-inline-flex gap-1">
-                                        <button type="button" class="btn-toggle-leave-type badge ${type.status === 'active' ? 'bg02 color02' : 'bg-secondary text-white'} border-0" data-id="${type.typeid}">
-                                            ${type.status.charAt(0).toUpperCase() + type.status.slice(1)}
-                                        </button>
-                                    <button type="button" class="bg03 color03 border-0 btn-edit-leave-type" 
-                                        data-id="${type.typeid}" 
-                                        data-type='${JSON.stringify(type).replace(/'/g, "&apos;")}'>
-                                        Edit
-                                    </button>
-                                    <button type="button" class="bg04 color04 border-0 btn-delete-leave-type" data-id="${type.typeid}">
-                                        Delete
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                });
-                leaveTypesList.innerHTML = html;
-                
-                document.querySelectorAll('.btn-edit-leave-type').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const type = JSON.parse(this.dataset.type);
-                        editLeaveType(type);
-                    });
-                });
-                
-                document.querySelectorAll('.btn-toggle-leave-type').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        toggleLeaveType(this.dataset.id);
-                    });
-                });
-                
-                document.querySelectorAll('.btn-delete-leave-type').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        deleteLeaveType(this.dataset.id);
-                    });
-                });
-            }
-
-            function resetLeaveTypeForm() {
-                leaveTypeForm.reset();
-                leaveTypeForm.action = "{{ route('leave-types.store') }}";
-                leaveTypeMethodInput.value = 'POST';
-                editingLeaveTypeId = null;
-                btnSaveLeaveType.innerHTML = 'Save Type <i class="fas fa-arrow-right btn-icon ms-1"></i>';
-                btnCancelLeaveTypeEdit.style.display = 'none';
-            }
-
-            function editLeaveType(type) {
-                editingLeaveTypeId = type.typeid;
-                leaveTypeForm.action = `{{ route('leave-types.index') }}/${type.typeid}`;
-                leaveTypeMethodInput.value = 'PUT';
-                
-                document.getElementById('leave_type_name').value = type.name;
-                document.getElementById('leave_type_description').value = type.description || '';
-                
-                btnSaveLeaveType.innerHTML = 'Update Type <i class="fas fa-arrow-right btn-icon ms-1"></i>';
-                btnCancelLeaveTypeEdit.style.display = 'inline-block';
-            }
-
-            async function deleteLeaveType(id) {
-                const confirmed = await window.appConfirm('Are you sure you want to delete this leave type?');
-                if (!confirmed) return;
-                
-                fetch(`{{ route('leave-types.index') }}/${id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        renderLeaveTypes(data.leaveTypes);
-                        if (editingLeaveTypeId == id) resetLeaveTypeForm();
-                    }
-                });
-            }
-            
-            function toggleLeaveType(id) {
-                fetch(`{{ url('leave-types') }}/${id}/toggle`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        renderLeaveTypes(data.leaveTypes);
-                    }
-                });
-            }
-
-            btnCancelLeaveTypeEdit.addEventListener('click', resetLeaveTypeForm);
-
-            leaveTypeForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const formData = new FormData(this);
-                const url = this.action;
-                const method = leaveTypeMethodInput.value;
-                const plainFormData = Object.fromEntries(formData.entries());
-                
-                fetch(url, {
-                    method: method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify(plainFormData)
-                })
-                .then(async res => {
-                    const data = await res.json();
-                    if (res.ok && data.success) {
-                        renderLeaveTypes(data.leaveTypes);
-                        resetLeaveTypeForm();
-                        
-                        // If leave policy modal also has the select box, we should technically reload it
-                        // or add the new option, but reloading the page on close is safer if it affects other things.
-                    } else {
-                        alert(data.message || 'Validation error occurred.');
-                    }
-                })
-                .catch(err => {
-                    alert('An error occurred while saving.');
-                });
-            });
-
-            leaveTypeModal.addEventListener('show.bs.modal', function() {
-                resetLeaveTypeForm();
-                loadLeaveTypes();
-            });
-            
-            @if(session('open_leave_type_modal'))
-                var bsLeaveTypeModal = new bootstrap.Modal(leaveTypeModal);
-                bsLeaveTypeModal.show();
-            @endif
-        }
     });
 </script>
 @endsection

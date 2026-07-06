@@ -10,7 +10,13 @@ class AccountRoleController extends Controller
 {
     private function rolesJsonResponse(string $accountId, string $message): JsonResponse
     {
-        $roles = AccountRole::where('accountid', $accountId)->orderBy('name')->get();
+        $roles = AccountRole::with('roleLevel')
+            ->select('account_roles.*')
+            ->leftJoin('roles_level', 'account_roles.levelid', '=', 'roles_level.levelid')
+            ->where('account_roles.accountid', $accountId)
+            ->orderByDesc('roles_level.level_value')
+            ->orderBy('account_roles.name')
+            ->get();
 
         return response()->json([
             'success' => true,
@@ -20,6 +26,8 @@ class AccountRoleController extends Controller
                     'roleid' => $r->roleid,
                     'name' => $r->name,
                     'status' => $r->status,
+                    'levelid' => $r->levelid,
+                    'role_level' => $r->roleLevel,
                 ];
             }),
         ]);
@@ -29,6 +37,7 @@ class AccountRoleController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:50',
+            'levelid' => 'nullable|string|size:6|exists:roles_level,levelid',
         ]);
 
         $accountId = $this->resolveAccountId();
@@ -51,6 +60,7 @@ class AccountRoleController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:50',
+            'levelid' => 'nullable|string|size:6|exists:roles_level,levelid',
         ]);
 
         $role->update($validated);

@@ -169,7 +169,22 @@
 
                             <p>Please change your password after your first login for better security.</p>
 
-                            <p>Thanks,<br>SkoolReady Team</p>
+                            <div style="margin-top: 35px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 13px; color: #475569;">
+                                <p style="margin: 0; font-weight: 600; color: #1e293b;">Best regards,</p>
+                                <p style="margin: 3px 0 10px 0; font-weight: 600; color: #0f172a; font-size: 14px;">{{ $senderName ?? 'SkoolReady Team' }}
+                                </p>
+
+                                @if (!empty($senderAddressLine))
+                                    <div style="margin-bottom: 3px; font-size: 12px;">{{ $senderAddressLine }}</div>
+                                @endif
+                                @if (!empty($senderPhone))
+                                    <div style="margin-bottom: 3px; font-size: 12px;"><strong>Mob:</strong> {{ $senderPhone }}</div>
+                                @endif
+                                @if (!empty($senderEmail))
+                                    <div style="font-size: 12px;"><strong>E-mail:</strong> <a href="mailto:{{ $senderEmail }}"
+                                            style="color: #2563eb; text-decoration: none;">{{ $senderEmail }}</a></div>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 </table>

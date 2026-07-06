@@ -145,6 +145,16 @@ $showDetails = isset($client) || old('business_name') !== null || $errors->any()
                             @error('currency') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                             <div class="text-danger small mt-1 ajax-error" id="ajax-error-currency"></div>
                         </div>
+                        <div class="col-12 col-md-12 mt-2">
+                            @isset($client)
+                            <label for="maintenance_duration" class="form-label small lh-sm fw-semibold text-dark mb-1">AMC Hours <span class="fw-normal">(Optional)</span></label>
+                            <input type="number" id="maintenance_duration" name="maintenance_duration" class="form-control" step="0.5" min="0" max="9999" placeholder="e.g. 40"
+                                value="{{ old('maintenance_duration', $client->maintenance_duration ?? '') }}">
+                            <small class="text-dark small">Total contracted support hours per year for this client</small>
+                            @error('maintenance_duration') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                            <div class="text-danger small mt-1 ajax-error" id="ajax-error-maintenance_duration"></div>
+                            @endisset
+                        </div>
                         <div class="col-12 mt-2">
                             <label class="form-label small lh-sm fw-semibold text-dark mb-1">Business Logo</label>
                             @php

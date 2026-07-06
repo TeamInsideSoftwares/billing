@@ -13,8 +13,6 @@ use App\Http\Controllers\ClientsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GroupsController;
 use App\Http\Controllers\InvoicesController;
-use App\Http\Controllers\LeavePolicyController;
-use App\Http\Controllers\LeaveTypeController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\PaymentsController;
 use App\Http\Controllers\ProductCategoriesController;
@@ -23,21 +21,16 @@ use App\Http\Controllers\QuotationsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ShiftController;
-use App\Http\Controllers\TeamManagementController;
-use App\Http\Controllers\TeamWorkProfileController;
+// use App\Http\Controllers\TeamManagementController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login')->middleware('guest');
-Route::post('/login', [AuthController::class, 'login'])->name('login.post')->middleware('guest');
-Route::get('/login/choice', [AuthController::class, 'showLoginChoice'])->name('login.choice')->middleware('guest');
-Route::post('/login/choice', [AuthController::class, 'loginChoice'])->name('login.choice.post')->middleware('guest');
-Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
-Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request')->middleware('guest');
-Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email')->middleware('guest');
-Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset')->middleware('guest');
-Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.store')->middleware('guest');
-
+Route::get('/login', function () {
+    return redirect(config('app.team_url').'/login');
+})->name('login')->middleware('guest');
+Route::match(['get', 'post'], '/logout', function () {
+    return redirect(config('app.team_url').'/logout');
+})->name('logout')->middleware('auth');
 // AJAX routes without auth
 
 Route::middleware(['auth'])->group(function () {
@@ -46,7 +39,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::controller(DashboardController::class)->group(function () {
-        Route::get('/dashboard', 'dashboard')->name('dashboard');
+        Route::get('/dashboard', 'dashboard')->name('dashboard')->middleware('permission:dashboard.view');
     });
 
     Route::controller(ClientsController::class)->middleware('permission:clients.view')->group(function () {
@@ -174,6 +167,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/users', 'users')->name('users.index');
         Route::get('/users/create', 'usersCreate')->name('users.create');
         Route::post('/users', 'usersStore')->name('users.store');
+        Route::get('/users/leaves', 'unassignedLeaves')->name('users.leaves.index');
+        Route::post('/users/leaves/{leave}/action', 'approveRejectLeave')->name('users.leaves.action');
         Route::get('/users/{user}/edit', 'usersEdit')->name('users.edit');
         Route::put('/users/{user}', 'usersUpdate')->name('users.update');
         Route::patch('/users/{user}/toggle-status', 'usersToggleStatus')->name('users.toggle-status');
@@ -186,18 +181,12 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/users/approvals/{profileid}/reject', 'reject')->name('users.approvals.reject');
     });
 
-    Route::post('team/{employee}/login-as', [TeamManagementController::class, 'loginAs'])->name('team.loginAs');
+    // Route::post('team/{employee}/login-as', [TeamManagementController::class, 'loginAs'])->name('team.loginAs');
 
-    Route::resource('team', TeamManagementController::class)->except(['show']);
+    // Route::resource('team', TeamManagementController::class)->except(['show']);
 
     Route::resource('shifts', ShiftController::class)->except(['create', 'show', 'edit']);
     Route::patch('/shifts/{shift}/toggle', [ShiftController::class, 'toggleStatus'])->name('shifts.toggle-status');
-
-    Route::resource('leave-policies', LeavePolicyController::class)->except(['create', 'show', 'edit']);
-    Route::patch('/leave-policies/{policy}/toggle', [LeavePolicyController::class, 'toggleStatus'])->name('leave-policies.toggle-status');
-
-    Route::resource('leave-types', LeaveTypeController::class)->except(['create', 'show', 'edit']);
-    Route::patch('/leave-types/{type}/toggle', [LeaveTypeController::class, 'toggleStatus'])->name('leave-types.toggle-status');
 
     Route::resource('attendance-policies', AttendancePolicyController::class)->except(['create', 'show', 'edit']);
     Route::patch('/attendance-policies/{policy}/toggle', [AttendancePolicyController::class, 'toggleStatus'])->name('attendance-policies.toggle-status');
@@ -273,12 +262,6 @@ Route::middleware(['auth'])->group(function () {
     // });
     Route::post('/login-as/{user}', [AuthController::class, 'loginAs'])->name('login.as');
     Route::post('/leave-impersonation', [AuthController::class, 'leaveImpersonation'])->name('leave-impersonation');
-});
-
-Route::middleware(['auth', 'permission:team_work.view'])->prefix('team-work')->name('team-work.')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'employeeDashboard'])->name('dashboard');
-    Route::get('/profile', [TeamWorkProfileController::class, 'edit'])->name('profile.edit');
-    Route::post('/profile', [TeamWorkProfileController::class, 'store'])->name('profile.store');
 });
 
 Route::middleware(['auth'])->group(function () {

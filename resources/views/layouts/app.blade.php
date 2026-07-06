@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Billing Software' }}</title>
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -146,12 +147,12 @@
                         <div class="dropdown">
                             <button type="button" class="icon-btn profile-btn bg-transparent" data-bs-toggle="dropdown"
                                 aria-expanded="false" title="Account">
-                                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                                {{ auth()->check() ? strtoupper(substr(auth()->user()->name, 0, 1)) : 'U' }}
                             </button>
                             <ul class="dropdown-menu profile-dropdown">
                                 <li class="profile-header">
-                                    <h6 class="profile-name">{{ auth()->user()->name }}</h6>
-                                    <p class="profile-email">{{ auth()->user()->email }}</p>
+                                    <h6 class="profile-name">{{ auth()->check() ? auth()->user()->name : 'Guest' }}</h6>
+                                    <p class="profile-email">{{ auth()->check() ? auth()->user()->email : '' }}</p>
                                 </li>
                                 <li><a class="dropdown-item profile-settings-link"
                                         href="{{ route('settings.index') }}#personal">Profile Settings</a></li>
@@ -169,8 +170,8 @@
                         </div>
                     </div>
                     <div class="user-info">
-                        <strong class="user-name text-capitalize">{{ auth()->user()->account->name ?? auth()->user()->name }}</strong>
-                        <span class="user-email">{{ auth()->user()->email }}</span>
+                        <strong class="user-name text-capitalize">{{ auth()->check() ? (auth()->user()->account->name ?? auth()->user()->name) : 'Guest' }}</strong>
+                        <span class="user-email">{{ auth()->check() ? auth()->user()->email : '' }}</span>
                     </div>
                 </div>
 

@@ -25,5 +25,11 @@ class AccountRole extends Model
         'accountid',
         'name',
         'status',
+        'levelid',
     ];
+
+    public function roleLevel()
+    {
+        return $this->belongsTo(RoleLevel::class, 'levelid', 'levelid');
+    }
 }

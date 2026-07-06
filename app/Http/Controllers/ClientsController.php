@@ -51,6 +51,7 @@ class ClientsController extends Controller
             'groupid' => 'nullable|exists:groups,groupid',
             'categoryid' => 'nullable|string|exists:client_categories,categoryid',
             'domain' => 'nullable|string|max:150',
+            'password' => 'nullable|string|min:4|max:50',
         ]);
 
         $validated['primary_email'] = strtolower(trim((string) ($validated['primary_email'] ?? '')));
@@ -207,7 +208,7 @@ class ClientsController extends Controller
 
         $client = null;
         $order = null;
-        $temporaryPassword = Str::random(6);
+        $temporaryPassword = (string) ($validated['password'] ?? Str::random(6));
         $welcomeEmailSent = false;
         try {
             DB::transaction(function () use (&$client, &$order, $validated, $service, $businessName, $startDate, $endDate, $addressLine1) {
@@ -830,6 +831,7 @@ class ClientsController extends Controller
             'whatsapp_number' => 'nullable|string|max:50',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'status' => 'in:active,review,inactive',
+            'maintenance_duration' => 'nullable|numeric|min:0|max:9999',
             'currency' => 'required|string|size:3|exists:currency,iso',
             'country' => 'nullable|string',
             'state' => 'nullable|string',
@@ -1337,10 +1339,17 @@ class ClientsController extends Controller
 
             $contactName = $client->contact_name ?: ($client->business_name ?: 'Client User');
 
+            $categoryName = $client->category ? $client->category->name : 'Client';
+
+            $accountType = match ($categoryName) {
+                'Day-Boarding', 'Boarding' => 'School',
+                default => $categoryName,
+            };
+
             $payload = [
                 'accountid' => $client->clientid,
                 'groupid' => $client->groupid ?: $client->clientid,
-                'account_type' => $client->category ? $client->category->name : 'Client',
+                'account_type' => $accountType,
                 'account_business_name' => $client->business_name ?: '',
                 'account_contact_person_name' => $contactName,
                 'account_domain' => $domain,

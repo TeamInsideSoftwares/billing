@@ -6,14 +6,9 @@ use App\Models\Concerns\HasAlphaNumericId;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class LeaveType extends Model
+class RoleLevel extends Model
 {
-    use HasAlphaNumericId;
-    use HasFactory;
-
-    protected $connection = 'mysql';
-
-    protected $primaryKey = 'typeid';
+    use HasAlphaNumericId, HasFactory;
 
     public $incrementing = false;
 
@@ -24,10 +19,13 @@ class LeaveType extends Model
         return 6;
     }
 
+    protected $table = 'roles_level';
+
+    protected $primaryKey = 'levelid';
+
     protected $fillable = [
-        'accountid',
-        'name',
-        'description',
+        'level_name',
+        'level_value',
         'status',
     ];
 }

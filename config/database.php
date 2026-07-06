@@ -134,6 +134,22 @@ return [
             ]) : [],
         ],
 
+        'team' => [
+            'driver' => 'mysql',
+            'host' => env('TEAM_DB_HOST', '127.0.0.1'),
+            'port' => env('TEAM_DB_PORT', '3306'),
+            'database' => env('TEAM_DB_DATABASE', 'team'),
+            'username' => env('TEAM_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('TEAM_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'unix_socket' => env('TEAM_DB_SOCKET', ''),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+        ],
+
     ],
 
     /*

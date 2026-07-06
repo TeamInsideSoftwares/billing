@@ -1076,7 +1076,7 @@ class QuotationsController extends Controller
 
         return [
             'filename' => 'Quotation - '.($quotation->quo_number ?: $quotation->quotationid).'.pdf',
-            'binary' => $this->getBrowsershot($html)->pdf(),
+            'binary' => $this->getPdf($html),
         ];
     }
 
