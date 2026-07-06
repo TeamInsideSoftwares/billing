@@ -25,9 +25,28 @@
                     @forelse($pendingProfiles as $profile)
                     <tr>
                         <td>
-                            <div class="d-flex align-items-center gap-2">
-                                <img src="{{ !empty($profile->user?->profile_image) ? asset('storage/' . $profile->user->profile_image) : 'https://ui-avatars.com/api/?name=' . urlencode($profile->user->name ?? 'User') . '&background=eff6ff&color=1e3a8a' }}" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
-                                <span class="fw-medium text-dark">{{ $profile->user->name ?? 'Unknown User' }}</span>
+                            <div class="d-flex align-items-center gap-3">
+                                @php
+                                    $photoDoc = $profile->documents->firstWhere('doc_type', 'Photo');
+                                    $profileImage = $photoDoc ? $photoDoc->doc_path : $profile->user?->profile_image;
+                                @endphp
+                                <div class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold">
+                                    @if(!empty($profileImage))
+                                        <span class="d-none position-absolute">{{ strtoupper(substr($profile->user->name ?? 'U', 0, 2)) }}</span>
+                                        <img src="{{ asset('storage/' . $profileImage) }}" 
+                                             onerror="this.style.display='none'; this.previousElementSibling.classList.replace('d-none', 'd-block');"
+                                             alt="{{ $profile->user->name }}" 
+                                             class="position-absolute rounded-circle bg-white" 
+                                             style="width:40px;height:40px;object-fit:cover;top:0;left:0;border:2px solid #fff;">
+                                    @else
+                                        <span class="d-block position-absolute">{{ strtoupper(substr($profile->user->name ?? 'U', 0, 2)) }}</span>
+                                    @endif
+                                    <div class="status-dot {{ $profile->user?->is_active ? 'active' : 'inactive' }}"
+                                         title="{{ $profile->user?->is_active ? 'Active' : 'Inactive' }}"></div>
+                                </div>
+                                <div>
+                                    <span class="fw-medium text-dark d-block">{{ $profile->user->name ?? 'Unknown User' }}</span>
+                                </div>
                             </div>
                         </td>
                         <td class="text-muted small">{{ $profile->user->email ?? 'N/A' }}</td>
