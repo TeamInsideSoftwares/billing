@@ -360,7 +360,7 @@ class ServicesController extends Controller
             $service->costings()->delete();
             $service->delete();
 
-            DB::table('isplayhr_account_auth.products')->where('productid', $service->itemid)->delete();
+            DB::connection('admin_mysql')->table('products')->where('productid', $service->itemid)->delete();
         });
 
         return redirect()->route('services.index')->with('success', 'Item deleted successfully.');
@@ -503,7 +503,7 @@ class ServicesController extends Controller
                 ]);
             }
         } else {
-            DB::table('isplayhr_account_auth.products')->where('productid', $item->itemid)->delete();
+            DB::connection('admin_mysql')->table('products')->where('productid', $item->itemid)->delete();
         }
     }
 }
