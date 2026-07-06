@@ -7,6 +7,10 @@
     <title>{{ $documentType }} - {{ $invoice->invoice_number }}</title>
 
     <style>
+        @page {
+            margin: 40px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -14,11 +18,11 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 10pt;
+            font-family: Helvetica, sans-serif;
+            font-size: 9pt;
             color: #000;
             background: #fff;
-            padding: 20px;
+            padding: 40px;
         }
 
         .layout-table {
@@ -160,22 +164,24 @@
             color: #000;
         }
 
-        table {
+        table.items-table {
             width: 100%;
             margin-bottom: 8pt;
             border-collapse: collapse;
+            border: 2pt solid #000;
         }
 
-        thead {
+        table.items-table thead {
             color: #000;
             background: #fff;
         }
 
-        th {
-            padding: 5pt 5pt;
-            border: 1px solid #000;
-            font-size: 9pt;
-            font-weight: 600;
+        table.items-table th {
+            padding: 3pt 4pt;
+            border: 1pt solid #000;
+            border-bottom: 1pt solid #000;
+            font-size: 8.5pt;
+            font-weight: bold;
             text-align: left;
         }
 
@@ -189,10 +195,10 @@
             text-align: right;
         }
 
-        td {
-            padding: 5pt 5pt;
-            border: 1px solid #000;
-            font-size: 10pt;
+        table.items-table td {
+            padding: 3pt 4pt;
+            border: 1pt solid #000;
+            font-size: 9pt;
             color: #000;
             vertical-align: top;
         }
@@ -246,31 +252,39 @@
         }
 
         .terms-section {
-            margin-top: 9pt;
-            padding: 7pt 0;
-            border-top: 1px solid #000;
+            margin-top: 0;
+            padding: 2pt 0;
         }
 
         .terms-title {
-            margin: 0 0 3pt 0;
-            font-size: 9pt;
-            font-weight: 600;
+            margin: 0;
+            font-size: 10pt;
+            font-weight: bold;
             color: #000;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
+            letter-spacing: 0.05em;
         }
 
         .terms-list {
             margin: 0;
-            padding-left: 11pt;
             font-size: 9pt;
-            line-height: 1;
+            line-height: 1.1;
             color: #000;
-            list-style: disc;
+        }
+
+        .terms-list ul, 
+        .terms-list ol {
+            margin-top: 2px;
+            margin-bottom: 2px;
+            padding-left: 14px;
         }
 
         .terms-list li {
-            margin-bottom: 2pt;
+            margin-bottom: 1px;
+        }
+
+        .terms-list p {
+            margin: 2px 0;
         }
 
         .signatory {
@@ -289,21 +303,14 @@
         }
 
         .sig-line {
-            position: relative;
-            padding-top: 0.45rem;
+            padding-top: 5pt;
+            margin-top: 5pt;
+            border-top: 1px solid #000;
             font-size: 9pt;
             color: #000;
-        }
-
-        .sig-line::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 66%;
-            width: 150px;
-            height: 0.6px;
-            background: #000;
-            transform: translateX(-50%);
+            display: inline-block;
+            min-width: 150px;
+            text-align: center;
         }
     </style>
 </head>
@@ -397,15 +404,16 @@
     </div>
 
     <div class="bill-to-section">
-        <table class="layout-table">
+        <table class="layout-table" style="width: 100%;">
             <tr>
-                <td class="bill-to-block">
+                <td class="bill-to-block" style="width: 60%; vertical-align: top;">
             <div class="bill-to-label">
                 Bill To
             </div>
 
-            <div class="client-name">
+            <div><b>
                 {{ $invoice->client->business_name ?? ($invoice->client->contact_name ?? 'Client') }}
+            </b>
             </div>
 
             @php
@@ -442,26 +450,25 @@
                     'CUR:' . ($invoice->client->currency ?? 'INR'),
                 ]),
             );
-            $qrCodeUrl =
-                $qrPayload !== ''
+            $qrCodeUrl = $qrPayload !== ''
                     ? 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' . urlencode($qrPayload)
                     : null;
         @endphp
 
-        @if (!empty($invoice->invoice_title) || !empty($qrCodeUrl))
-                <td class="invoice-title-note">
-                @if (!empty($invoice->invoice_title))
-                    <div class="invoice-title-text">{{ $invoice->invoice_title }}</div>
-                @endif
+                <td class="invoice-title-note" style="width: 40%; text-align: right; vertical-align: top;">
+                @if (!empty($invoice->invoice_title) || !empty($qrCodeUrl))
+                    @if (!empty($invoice->invoice_title))
+                        <div class="invoice-title-text">{{ $invoice->invoice_title }}</div>
+                    @endif
 
-                @if (!empty($qrCodeUrl))
-                    {{-- <div class="invoice-qr-wrap">
-                        <img src="{{ $qrCodeUrl }}" class="invoice-qr-img" alt="Invoice QR">
-                        <div class="invoice-qr-caption">Scan • {{ number_format($qrGrandTotal, 0) }}</div>
-                    </div> --}}
+                    @if (!empty($qrCodeUrl))
+                        {{-- <div class="invoice-qr-wrap">
+                            <img src="{{ $qrCodeUrl }}" class="invoice-qr-img" alt="Invoice QR">
+                            <div class="invoice-qr-caption">Scan • {{ number_format($qrGrandTotal, 0) }}</div>
+                        </div> --}}
+                    @endif
                 @endif
                 </td>
-        @endif
             </tr>
         </table>
     </div>
@@ -503,15 +510,15 @@
         $igst = $sameStateGst ? 0 : $taxTotal;
     @endphp
 
-    <table>
+    <table class="items-table">
         <thead>
             <tr>
-                <th style="width:2%">#</th>
-                <th style="width:50%">Description</th>
+                <th style="width:5%">#</th>
+                <th style="width:45%">Description</th>
                 <th class="center" style="width:20%">Duration</th>
 
                 @if ($hasUsersColumn)
-                    <th class="center" style="width:5%">User</th>
+                    <th class="center" style="width:7%">User</th>
                 @endif
 
                 <th class="center" style="width:5%">Qty</th>
@@ -537,20 +544,17 @@
                 <tr>
                     <td>{{ $idx + 1 }}</td>
 
-                    <td>
-                        <div class="item-name">
-                            {{ $item->item_name }}
-                        </div>
-
+                    <td style="padding-left: 5px;">
+                        <div><b>{{ $item->item_name }}</b></div>
                         @if (!empty($item->item_description))
                             <div class="item-desc">{{ trim($item->item_description) }}</div>
                         @endif
                     </td>
 
-                    <td class="center" style="vertical-align: middle;">
-                        <b>{{ $durationLabel }}</b>
+                    <td class="center">
+                        <div><b>{{ $durationLabel }}</b></div>
                         @if (!empty($item->start_date) && !empty($item->end_date))
-                            <div style="font-size: 7pt; color: #000; margin-top: 2pt;">
+                            <div style="font-size: 7pt; color: #555; margin-top: 2pt;">
                                 {{ $item->start_date->format('d M Y') }} - {{ $item->end_date->format('d M Y') }}
                             </div>
                         @endif
@@ -580,13 +584,13 @@
                     <b>Total</b>
                 </td>
 
-                <td class="right" style="vertical-align: middle;">
+                <td class="right" style="padding-right: 5px;">
                     <b>{{ number_format($discountedSubtotal, 0) }}</b>
                 </td>
             </tr>
             <tr style="font-size: 8.5pt; background: #fff;">
                 <td class="right" colspan="{{ $hasUsersColumn ? 5 : 4 }}"
-                    style="width: 12.5%; padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
+                    style="padding: 3pt 4pt; vertical-align: middle; border-top: 1px solid #000;">
                     <strong>CGST</strong>
 
                     {{ $cgst > 0 ? number_format($cgst, 0) : '0' }}
@@ -597,24 +601,24 @@
 
                     {{ $igst > 0 ? number_format($igst, 0) : '0' }}
                 </td>
-                <td class="right" style="padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
+                <td class="right" style="padding: 3pt 4pt; vertical-align: middle; border-top: 1px solid #000;">
                     <strong>GST</strong>
                 </td>
-                <td class="right" style="padding: 4pt 5pt; vertical-align: middle; border-top: 1px solid #000;">
+                <td class="right" style="padding: 3pt 4pt; vertical-align: middle; border-top: 1px solid #000;">
                     <b> {{ number_format($taxTotal, 0) }}</b>
                 </td>
             </tr>
         </tbody>
     </table>
 
-    <div class="totals-wrap">
-        <div class="totals-box">
-            <div class="total-row total-grand" style="font-size: 14pt;">
-                <span>Total Payable: </span>
-                <span>{{ number_format($grandTotal, 0) }}</span>
-            </div>
-        </div>
-    </div>
+    <table style="width: 100%; margin-top: 5px;">
+        <tr>
+            <td style="text-align: right; font-size: 14pt; font-weight: bold; border: none; padding: 5px 0;">
+                Total Payable: {{ number_format($grandTotal, 0) }}
+            </td>
+        </tr>
+    </table>
+    <div style="border-top: 2px solid #000; width: 100%; margin: 5px 0 2px 0;"></div>
 
     @if (!empty($invoice->notes))
         <div class="notes-section">{{ trim($invoice->notes) }}</div>
@@ -634,20 +638,28 @@
         </div>
     @endif
 
-    <div class="signatory">
-        <div class="signatory-box">
-            @if (!empty($signatureUrl))
-                <img src="{{ $signatureUrl }}" class="sig-img" alt="Signature">
-            @endif
-
-            <div class="sig-line">
-                {{ $accountBillingDetail->authorize_signatory ?? '' }}
-            </div>
-            <div>
-                {{ $accountBillingDetail->billing_name ?? $account->name }}
-            </div>
-        </div>
-    </div>
+    <table style="width: 100%; margin-top: 20px;">
+        <tr>
+            <td style="width: 60%; border: none;"></td>
+            <td style="width: 40%; border: none;" align="right">
+                <table style="width: 160px; text-align: center; border: none;">
+                    <tr>
+                        <td style="border: none; border-bottom: 1px solid #000; padding-bottom: 5px; height: 60px; vertical-align: bottom;">
+                            @if (!empty($signatureUrl))
+                                <img src="{{ $signatureUrl }}" style="max-width: 130px; max-height: 52px;" alt="Signature">
+                            @endif
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: none; padding-top: 5px; font-size: 9pt;">
+                            {{ $accountBillingDetail->authorize_signatory ?? '' }}<br>
+                            {{ $accountBillingDetail->billing_name ?? $account->name }}
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 
 </html>
