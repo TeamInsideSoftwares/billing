@@ -2,8 +2,9 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 return new class extends Migration
 {
@@ -24,8 +25,8 @@ return new class extends Migration
         $levels = [];
         for ($i = 1; $i <= 6; $i++) {
             $levels[] = [
-                'levelid' => (string) \Illuminate\Support\Str::uuid(),
-                'level_name' => "Level {$i}" . ($i === 6 ? ' (Top)' : ''),
+                'levelid' => (string) Str::uuid(),
+                'level_name' => "Level {$i}".($i === 6 ? ' (Top)' : ''),
                 'level_value' => $i,
                 'status' => 'active',
                 'created_at' => now(),

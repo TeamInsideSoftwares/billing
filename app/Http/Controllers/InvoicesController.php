@@ -386,7 +386,7 @@ class InvoicesController extends Controller
         $docNumber = $isTaxInvoice ? $invoice->ti_number : $invoice->pi_number;
         $filename = $documentType.' - '.($docNumber ?: $invoice->invoice_number).'.pdf';
 
-        $pdfBinary = $this->getBrowsershot($html)->pdf();
+        $pdfBinary = $this->getPdf($html);
 
         return [
             'filename' => $filename,

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\AccountRole;
+use App\Models\RoleLevel;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -121,7 +122,7 @@ class AccountsController extends Controller
                 'expires_at' => $draft['expires_at'],
             ]);
 
-            $topLevel = \App\Models\RoleLevel::orderByDesc('level_value')->first();
+            $topLevel = RoleLevel::orderByDesc('level_value')->first();
 
             // Create an Admin role for this account
             $adminRole = AccountRole::create([
@@ -217,7 +218,7 @@ class AccountsController extends Controller
 
                 $accountUser->save();
             } else {
-                $topLevel = \App\Models\RoleLevel::orderByDesc('level_value')->first();
+                $topLevel = RoleLevel::orderByDesc('level_value')->first();
 
                 // Create an Admin role for this account
                 $adminRole = AccountRole::create([

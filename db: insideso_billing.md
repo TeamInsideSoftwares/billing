@@ -1,6 +1,6 @@
 db: insideso_billing
 username: insideso_billing
-password: ^lzeQe$jb4%$
+password: myoyM9X@cMA$L4^^
 hostname: localhost
 
 db: insideso_team

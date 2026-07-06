@@ -2,22 +2,25 @@
 
 namespace App\Traits;
 
-use Spatie\Browsershot\Browsershot;
+use Mpdf\Mpdf;
+use Mpdf\Output\Destination;
 
 trait ConfiguresBrowsershot
 {
-    /**
-     * Get a pre-configured Browsershot instance.
-     */
-    protected function getBrowsershot(string $html): Browsershot
+    protected function getPdf(string $html): string
     {
-        return Browsershot::html($html)
-            ->setNodeBinary(config('browsershot.node_binary'))
-            ->setNpmBinary(config('browsershot.npm_binary'))
-            ->setChromePath(config('browsershot.chrome_path'))
-            ->noSandbox()
-            ->format('A4')
-            ->margins(5, 5, 5, 5)
-            ->showBackground();
+        $mpdf = new Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'margin_left' => 5,
+            'margin_right' => 5,
+            'margin_top' => 5,
+            'margin_bottom' => 5,
+            'tempDir' => storage_path('app/temp'),
+        ]);
+
+        $mpdf->WriteHTML($html);
+
+        return $mpdf->Output('', Destination::STRING_RETURN);
     }
 }

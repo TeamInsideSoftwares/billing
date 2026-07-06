@@ -21,20 +21,25 @@
             padding: 20px;
         }
 
+        .layout-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .layout-table td {
+            border: none;
+            padding: 0;
+            vertical-align: top;
+        }
+
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 9pt;
             margin-bottom: 6pt;
             padding-bottom: 5pt;
             border-bottom: 2px solid #000;
         }
 
         .from-block {
-            flex: 1 1 auto;
-            min-width: 0;
-            max-width: 56%;
+            width: 56%;
         }
 
         .company-name {
@@ -58,12 +63,7 @@
         }
 
         .right-block {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 4pt;
-            min-width: 240px;
-            margin-left: auto;
+            width: 44%;
             text-align: right;
         }
 
@@ -80,8 +80,6 @@
             max-width: 160px;
             max-height: 64px;
             margin-bottom: 8pt;
-            object-fit: contain;
-            display: block;
         }
 
         .meta-box {
@@ -94,15 +92,10 @@
         }
 
         .bill-to-section {
-            display: flex;
-            align-items: flex-start;
-            gap: 9pt;
             margin-bottom: 9pt;
         }
 
         .bill-to-block {
-            flex: 1;
-            min-width: 0;
             padding: 0pt 9pt 2pt 0;
         }
 
@@ -135,8 +128,7 @@
         }
 
         .invoice-title-note {
-            flex-shrink: 0;
-            max-width: 45%;
+            width: 45%;
             padding-top: 2pt;
             font-size: 10pt;
             font-weight: 700;
@@ -198,8 +190,7 @@
         }
 
         .totals-wrap {
-            display: flex;
-            justify-content: flex-end;
+            text-align: right;
         }
 
         .totals-box {
@@ -238,7 +229,6 @@
             margin-top: 9pt;
             padding: 7pt 0;
             border-top: 1px solid #000;
-            border-top: 1px solid #000;
         }
 
         .terms-title {
@@ -264,24 +254,18 @@
         }
 
         .signatory {
-            display: flex;
-            justify-content: flex-end;
+            text-align: right;
         }
 
         .signatory-box {
             min-width: 220px;
             text-align: right;
-            display: inline-block;
-
         }
 
         .sig-img {
-            display: block;
             max-width: 130px;
             max-height: 52px;
-            margin-left: auto;
             margin-bottom: 0.25rem;
-            object-fit: contain;
         }
 
         .sig-line {
@@ -306,7 +290,9 @@
 
 <body>
     <div class="header">
-        <div class="from-block">
+        <table class="layout-table">
+            <tr>
+                <td class="from-block">
             @if ($account->logo_path)
                 @php
                     $logoSrc =
@@ -349,9 +335,8 @@
                     <strong>GSTIN:</strong> {{ $accountBillingDetail->gstin }}
                 </div>
             @endif
-        </div>
-
-        <div class="right-block">
+                </td>
+                <td class="right-block">
             <div class="doc-title">
                 QUOTATION
             </div>
@@ -372,11 +357,15 @@
                     {{ optional($quotation->due_date)->format('d M Y') ?? '-' }}
                 </div>
             </div>
-        </div>
+                </td>
+            </tr>
+        </table>
     </div>
 
     <div class="bill-to-section">
-        <div class="bill-to-block">
+        <table class="layout-table">
+            <tr>
+                <td class="bill-to-block">
             <div class="bill-to-label">
                 Bill To
             </div>
@@ -407,13 +396,15 @@
                     <strong>GSTIN:</strong> {{ $cb->gstin }}
                 </div>
             @endif
-        </div>
+                </td>
 
         @if (!empty($quotation->quo_title))
-            <div class="invoice-title-note">
+                <td class="invoice-title-note">
                 <div class="invoice-title-text">{{ $quotation->quo_title }}</div>
-            </div>
+                </td>
         @endif
+            </tr>
+        </table>
     </div>
 
     @php

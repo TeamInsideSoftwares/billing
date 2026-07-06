@@ -21,7 +21,7 @@ class DashboardController extends Controller
             $hasBilling = count($otherPermissions) > 0 || ($user->role && $user->role->name === 'Admin');
 
             if ($hasTeamWork && ! $hasBilling) {
-                return redirect(config('app.team_url') . '/dashboard');
+                return redirect(config('app.team_url').'/dashboard');
             }
         }
 

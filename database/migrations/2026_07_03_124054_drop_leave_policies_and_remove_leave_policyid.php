@@ -39,7 +39,7 @@ return new class extends Migration
         });
 
         Schema::table('account_users', function (Blueprint $table) {
-            if (!Schema::hasColumn('account_users', 'leave_policyid')) {
+            if (! Schema::hasColumn('account_users', 'leave_policyid')) {
                 $table->string('leave_policyid', 10)->nullable()->after('att_policyid');
             }
         });
