@@ -48,7 +48,7 @@ class UsersController extends Controller
 
         $query = User::query()
             ->where('accountid', $accountId)
-            ->with(['role', 'department'])
+            ->with(['role', 'department', 'teamMembers'])
             ->orderByDesc('created_at');
 
         $maxLevel = RoleLevel::max('level_value');
@@ -157,8 +157,6 @@ class UsersController extends Controller
             'phone' => ['nullable', 'string', 'max:20'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(self::AVAILABLE_PERMISSIONS)],
-            'assigned_users' => ['nullable', 'array'],
-            'assigned_users.*' => ['string'],
             'can_assign_clients' => ['nullable', 'boolean'],
 
             'password' => ['required', 'string', 'min:6', 'max:100', 'confirmed'],
@@ -192,7 +190,6 @@ class UsersController extends Controller
             'phone' => $validated['phone'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'permissions' => array_values($validated['permissions'] ?? []),
-            'assigned_users' => array_values($validated['assigned_users'] ?? []),
             'is_active' => true,
             'can_assign_clients' => $request->has('can_assign_clients') ? 1 : 0,
             'password' => $validated['password'],
@@ -349,8 +346,6 @@ class UsersController extends Controller
             'phone' => ['nullable', 'string', 'max:20'],
             'permissions' => 'nullable|array',
             'permissions.*' => 'string',
-            'assigned_users' => 'nullable|array',
-            'assigned_users.*' => 'string',
             'can_assign_clients' => 'nullable|boolean',
             'password' => ['nullable', 'string', 'min:6', 'max:100', 'confirmed'],
             'documents' => 'nullable|array',
@@ -384,7 +379,6 @@ class UsersController extends Controller
             'phone' => $validated['phone'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'permissions' => array_values($validated['permissions'] ?? []),
-            'assigned_users' => array_values($validated['assigned_users'] ?? []),
             'can_assign_clients' => $request->has('can_assign_clients') ? 1 : 0,
         ];
 
@@ -535,14 +529,9 @@ class UsersController extends Controller
         $accountId = $this->resolveAccountId();
 
         // Get all userids that are assigned to any manager
-        $assignedUserids = User::where('accountid', $accountId)
-            ->whereNotNull('assigned_users')
-            ->get()
-            ->flatMap(function ($user) {
-                return is_array($user->assigned_users) ? $user->assigned_users : [];
-            })
+        $assignedUserids = \Illuminate\Support\Facades\DB::table('user_assignments')
+            ->pluck('assigned_userid')
             ->unique()
-            ->filter()
             ->values()
             ->all();
 
@@ -613,5 +602,74 @@ class UsersController extends Controller
         $leave->save();
 
         return redirect()->route('users.leaves.index')->with('success', 'Leave request updated successfully.');
+    }
+
+    public function getAssignments(User $user)
+    {
+        $accountId = $this->resolveAccountId();
+        abort_if($user->accountid !== $accountId, 403);
+
+        $targetUserLevel = $user->role?->roleLevel?->level_value ?? 0;
+
+        // All active users in this account except the manager, filtered by role level
+        $allUsers = User::with('role.roleLevel')
+            ->where('accountid', $accountId)
+            ->where('is_active', true)
+            ->where('userid', '!=', $user->userid)
+            ->get(['userid', 'name', 'roleid'])
+            ->filter(function ($u) use ($targetUserLevel) {
+                $userLevel = $u->role?->roleLevel?->level_value ?? 0;
+                return $userLevel > 0 && $userLevel <= $targetUserLevel;
+            })
+            ->map(function ($u) {
+                return [
+                    'userid' => $u->userid,
+                    'name' => $u->name,
+                    'role_name' => $u->role ? $u->role->name : 'No Role',
+                ];
+            })
+            ->values();
+        // Current assignments
+        $assignedUserIds = $user->teamMembers()->pluck('account_users.userid')->toArray();
+        
+        // Get the team name from pivot if exists, otherwise default
+        $firstMember = $user->teamMembers()->first();
+        $teamName = $firstMember ? $firstMember->pivot->team_name : ($user->name . "'s Team");
+
+        return response()->json([
+            'allUsers' => $allUsers,
+            'assignedUserIds' => $assignedUserIds,
+            'teamName' => $teamName,
+        ]);
+    }
+
+    public function updateAssignments(Request $request, User $user)
+    {
+        $accountId = $this->resolveAccountId();
+        abort_if($user->accountid !== $accountId, 403);
+
+        $validated = $request->validate([
+            'assigned_users' => 'nullable|array',
+            'assigned_users.*' => 'string',
+            'team_name' => 'nullable|string|max:255',
+        ]);
+
+        $teamName = $validated['team_name'] ?: ($user->name . "'s Team");
+        $assignedUsers = $validated['assigned_users'] ?? [];
+
+        // Ensure we only assign users that belong to the same account
+        $validUsers = User::where('accountid', $accountId)
+            ->whereIn('userid', $assignedUsers)
+            ->pluck('userid')
+            ->toArray();
+            
+        $syncData = [];
+        foreach ($validUsers as $uid) {
+            $syncData[$uid] = ['team_name' => $teamName];
+        }
+
+        $user->teamMembers()->sync($syncData);
+
+        return response()->json(['success' => true]);
     }
 }

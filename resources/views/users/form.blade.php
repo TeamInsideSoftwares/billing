@@ -235,33 +235,7 @@
                             </div>
                         </div>
 
-                        @if(count($allAccountUsers ?? []) > 0)
-                        <div class="col-12">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Assign Employee</label>
-                            <div class="mb-0 bg-white border rounded-1 px-2 py-1 ms-1" style="max-height: 200px; overflow-y: auto;">
-                                <div class="row g-2">
-                                    @php
-                                        $selectedAssignedUsers = old('assigned_users', $userModel->assigned_users ?? []);
-                                    @endphp
-                                    @foreach(($allAccountUsers ?? []) as $accUser)
-                                        <div class="col-12 col-md-6 col-lg-6 assign-user-col" data-level-value="{{ $accUser->role?->roleLevel?->level_value ?? 0 }}">
-                                            <div class="form-check mb-0 form-check-large">
-                                                <input class="form-check-input border-primary border-2" type="checkbox" name="assigned_users[]" value="{{ $accUser->userid }}" id="assign_user_{{ $accUser->userid }}" {{ in_array($accUser->userid, $selectedAssignedUsers, true) ? 'checked' : '' }}>
-                                                <label class="form-check-label small lh-sm fw-normal text-dark" for="assign_user_{{ $accUser->userid }}">
-                                                    {{ $accUser->name }} ({{ $accUser->email }})
-                                                </label>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                    <div id="no_assignable_users_msg" class="col-12 text-muted" style="display: none;">
-                                        No employees available to assign based on the selected role's level.
-                                    </div>
-                                </div>
-                                @error('assigned_users') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                                @error('assigned_users.*') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                            </div>
-                        </div>
-                        @endif
+
 
                         <div class="col-12 col-md-6">
                             <label for="password" class="form-label small lh-sm fw-semibold text-dark mb-1">{{ isset($userModel) ? 'New Password' : 'Password' }}<span class="text-danger">{{ isset($userModel) ? '' : '*' }}</span></label>
@@ -493,49 +467,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const roleSelect = document.getElementById('roleid');
-        const assignUserCols = document.querySelectorAll('.assign-user-col');
-        
-        if (roleSelect && assignUserCols.length > 0) {
-            const maxLevel = parseInt(roleSelect.getAttribute('data-max-level')) || 6;
-            const noUsersMsg = document.getElementById('no_assignable_users_msg');
 
-            function updateAssignedUsersVisibility() {
-                if (!roleSelect.value) return;
-                
-                const selectedOption = roleSelect.options[roleSelect.selectedIndex];
-                const selectedLevel = parseInt(selectedOption.getAttribute('data-level-value')) || 0;
-                let visibleCount = 0;
-                
-                assignUserCols.forEach(col => {
-                    const userLevel = parseInt(col.getAttribute('data-level-value')) || 0;
-                    const checkbox = col.querySelector('.form-check-input');
-                    
-                    if (selectedLevel >= maxLevel) {
-                        col.style.display = 'block';
-                        visibleCount++;
-                    } else {
-                        if (userLevel > 0 && userLevel < selectedLevel) {
-                            col.style.display = 'block';
-                            visibleCount++;
-                        } else {
-                            col.style.display = 'none';
-                            if (checkbox) checkbox.checked = false;
-                        }
-                    }
-                });
-
-                if (noUsersMsg) {
-                    noUsersMsg.style.display = visibleCount === 0 ? 'block' : 'none';
-                }
-            }
-
-            roleSelect.addEventListener('change', updateAssignedUsersVisibility);
-            updateAssignedUsersVisibility();
-        }
-    });
-</script>
 
 @endsection

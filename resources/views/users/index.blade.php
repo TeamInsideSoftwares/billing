@@ -36,13 +36,9 @@
         class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium position-relative">
         <i class="fas fa-calendar-check btn-icon"></i> Leave Approvals
         @php
-            $assignedUserids = \App\Models\User::whereNotNull('assigned_users')
-                ->get()
-                ->flatMap(function ($user) {
-                    return is_array($user->assigned_users) ? $user->assigned_users : [];
-                })
+            $assignedUserids = \Illuminate\Support\Facades\DB::table('user_assignments')
+                ->pluck('assigned_userid')
                 ->unique()
-                ->filter()
                 ->values()
                 ->all();
             
@@ -152,23 +148,20 @@
                             <span class="badge bg-light text-dark border">{{ ucfirst($member->role ? $member->role->name : '') }}</span>
                         </td>
                         <td>
-                            @if(!empty($member->assigned_users))
+                            @if($member->teamMembers->isNotEmpty())
                                 @php
-                                    $assignedIds = is_array($member->assigned_users) ? $member->assigned_users : [];
-                                    $assignedNames = collect($assignedIds)->map(fn($id) => $allUsersMap[$id] ?? null)->filter();
+                                    $assignedNames = $member->teamMembers->pluck('name');
+                                    $count = $assignedNames->count();
+                                    $firstTeam = $member->teamMembers->first()->pivot->team_name ?? 'My Team';
                                 @endphp
-                                @if($assignedNames->isEmpty())
-                                    <span class="text-muted small">-</span>
-                                @else
-                                    <div class="d-flex flex-wrap gap-1" title="{{ $assignedNames->implode(', ') }}">
-                                        @foreach($assignedNames->take(2) as $name)
-                                            <span class="badge bg-light text-dark border">{{ $name }}</span>
-                                        @endforeach
-                                        @if($assignedNames->count() > 2)
-                                            <span class="badge bg-light text-dark border" data-bs-toggle="tooltip" title="{{ $assignedNames->slice(2)->implode(', ') }}">+{{ $assignedNames->count() - 2 }}</span>
-                                        @endif
+                                <div class="d-flex flex-column" data-bs-toggle="tooltip" title="{{ $assignedNames->implode(', ') }}">
+                                    <span class="text-dark fw-semibold small mb-1">{{ $firstTeam }}</span>
+                                    <div>
+                                        <span class="badge bg-primary text-white px-2 py-1" style="font-size: 0.75rem;">
+                                            <i class="bi bi-people-fill me-1"></i> {{ $count }} Member{{ $count > 1 ? 's' : '' }}
+                                        </span>
                                     </div>
-                                @endif
+                                </div>
                             @else
                                 <span class="text-muted small">-</span>
                             @endif
@@ -196,19 +189,8 @@
                         </td>
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1 align-items-center">
-                                @php
-                                    $currentUser = auth()->user();
-                                    $canLoginAs = false;
-                                    if ($currentUser) {
-                                        $isAssigned = is_array($currentUser->assigned_users) && in_array($member->userid, $currentUser->assigned_users, true);
-                                        $canLoginAs = $isAssigned && $member->hasPermission('team_work.view');
-                                    }
-                                @endphp
-                                @if($canLoginAs)
-                                <form action="{{ route('login.as', $member) }}" method="POST" class="d-inline" target="_blank">
-                                    @csrf
-                                    <button type="submit" class="bg01 color01 border-0" title="Login As User">Login As</button>
-                                </form>
+                                @if(auth()->user()->hasPermission('users.edit'))
+                                <button type="button" class="bg01 color01 border-0" onclick="openAssignTeamModal('{{ $member->userid }}', '{{ addslashes($member->name) }}')" title="Assign Team">Assign Team</button>
                                 @endif
                                 @if(auth()->user()->hasPermission('users.edit'))
                                 <a href="{{ route('users.edit', $member) }}" class="bg03 color03" title="Edit User">Edit</a>
@@ -1276,7 +1258,137 @@ const shiftModal = document.getElementById('shiftsModal');
             @endif
         }
 
+    });
+</script>
 
+<!-- Assign Team Modal -->
+<div class="modal fade" id="assignTeamModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-DarkLight py-2 border-0">
+                <h5 class="modal-title fw-semibold" id="assignTeamModalTitle">Assign Team</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-white p-2">
+                <div class="bg-DarkLight p-2 rounded-3 mb-2">
+                    <form id="assignTeamForm" class="mainForm">
+                        @csrf
+                        <input type="hidden" id="assign_team_manager_id" name="manager_id">
+                        
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-md-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Team Name</label>
+                                <input type="text" id="assign_team_name" name="team_name" class="form-control" placeholder="Enter team name">
+                            </div>
+                        </div>
+                        
+                        <div class="row g-2 mb-3">
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Select Employees</label>
+                                <div class="bg-white border rounded px-2 py-2" style="max-height: 200px; overflow-y: auto;" id="assign_team_users_list">
+                                    <!-- Populated via Ajax -->
+                                    <div class="text-center text-muted small py-2">Loading...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-primary btn-primary text-white fw-medium" id="btnSaveTeamAssignments">
+                                Save Team <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentAssignManagerId = null;
+
+    function openAssignTeamModal(userId, userName) {
+        currentAssignManagerId = userId;
+        document.getElementById('assignTeamModalTitle').innerText = 'Assign Team for ' + userName;
+        document.getElementById('assign_team_manager_id').value = userId;
+        
+        const listContainer = document.getElementById('assign_team_users_list');
+        listContainer.innerHTML = '<div class="text-center text-muted small py-2">Loading...</div>';
+        
+        const modal = new bootstrap.Modal(document.getElementById('assignTeamModal'));
+        modal.show();
+        
+        // Fetch assignable users
+        let getUrl = '{{ route("users.assignments.get", ["user" => "__USERID__"]) }}'.replace('__USERID__', userId);
+        fetch(getUrl)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('assign_team_name').value = data.teamName || '';
+                
+                if (data.allUsers.length === 0) {
+                    listContainer.innerHTML = '<div class="text-center text-muted small py-2">No users available to assign.</div>';
+                    return;
+                }
+                
+                let html = '<div class="row g-2">';
+                data.allUsers.forEach(u => {
+                    const checked = data.assignedUserIds.includes(u.userid) ? 'checked' : '';
+                    html += `
+                        <div class="col-12 col-md-6">
+                            <div class="form-check mb-0 form-check-large">
+                                <input class="form-check-input border-primary border-2" type="checkbox" name="assigned_users[]" value="${u.userid}" id="assign_tu_${u.userid}" ${checked}>
+                                <label class="form-check-label small lh-sm fw-normal text-dark" for="assign_tu_${u.userid}">
+                                    <strong>${u.name}</strong> <span class="text-muted">(${u.role_name})</span>
+                                </label>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                listContainer.innerHTML = html;
+            })
+            .catch(err => {
+                listContainer.innerHTML = '<div class="text-center text-danger small py-2">Failed to load data.</div>';
+            });
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnSave = document.getElementById('btnSaveTeamAssignments');
+        if (btnSave) {
+            btnSave.addEventListener('click', function() {
+                if (!currentAssignManagerId) return;
+                
+                btnSave.disabled = true;
+                btnSave.innerText = 'Saving...';
+                
+                const form = document.getElementById('assignTeamForm');
+                const formData = new FormData(form);
+                
+                let postUrl = '{{ route("users.assignments.update", ["user" => "__USERID__"]) }}'.replace('__USERID__', currentAssignManagerId);
+                fetch(postUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert('Failed to save assignments.');
+                        btnSave.disabled = false;
+                        btnSave.innerText = 'Save Changes';
+                    }
+                })
+                .catch(err => {
+                    alert('An error occurred.');
+                    btnSave.disabled = false;
+                    btnSave.innerText = 'Save Changes';
+                });
+            });
+        }
     });
 </script>
 @endsection

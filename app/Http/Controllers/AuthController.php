@@ -322,8 +322,8 @@ class AuthController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        // Target user must be explicitly in the logged-in user's assigned_users list.
-        $assignedUsers = is_array($currentUser->assigned_users) ? $currentUser->assigned_users : [];
+        // Target user must be explicitly in the logged-in user's assigned users list.
+        $assignedUsers = $currentUser->assignedUserIds();
         if (! in_array($user->userid, $assignedUsers, true)) {
             abort(403, 'Unauthorized action.');
         }
@@ -337,6 +337,6 @@ class AuthController extends Controller
     {
         $request->session()->forget('impersonating_user');
 
-        return redirect()->route('users.index')->with('success', 'Left impersonation.');
+        return redirect()->route('team.index')->with('success', 'Left impersonation.');
     }
 }

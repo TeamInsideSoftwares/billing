@@ -22,7 +22,7 @@ use App\Http\Controllers\QuotationsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ShiftController;
-// use App\Http\Controllers\TeamManagementController;
+use App\Http\Controllers\TeamManagementController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
@@ -174,6 +174,8 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/users/{user}', 'usersUpdate')->name('users.update');
         Route::patch('/users/{user}/toggle-status', 'usersToggleStatus')->name('users.toggle-status');
         Route::delete('/users/{user}', 'usersDestroy')->name('users.destroy');
+        Route::get('/users/{user}/assignments', 'getAssignments')->name('users.assignments.get');
+        Route::post('/users/{user}/assignments', 'updateAssignments')->name('users.assignments.update');
     });
 
     Route::controller(ProfileApprovalsController::class)->middleware('permission:users.view')->group(function () {
@@ -184,7 +186,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Route::post('team/{employee}/login-as', [TeamManagementController::class, 'loginAs'])->name('team.loginAs');
 
-    // Route::resource('team', TeamManagementController::class)->except(['show']);
+    Route::get('team', [TeamManagementController::class, 'index'])->name('team.index');
 
     Route::resource('shifts', ShiftController::class)->except(['create', 'show', 'edit']);
     Route::patch('/shifts/{shift}/toggle', [ShiftController::class, 'toggleStatus'])->name('shifts.toggle-status');

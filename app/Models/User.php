@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -35,7 +36,6 @@ use Illuminate\Notifications\Notifiable;
     'password',
     'roleid',
     'permissions',
-    'assigned_users',
     'is_active',
     'can_assign_clients',
 ])]
@@ -67,7 +67,6 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'is_active' => 'boolean',
             'permissions' => 'array',
-            'assigned_users' => 'array',
             'password' => 'hashed',
             'can_assign_clients' => 'boolean',
         ];
@@ -135,6 +134,13 @@ class User extends Authenticatable
         return in_array($permission, $perms, true);
     }
 
+    public function teamMembers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_assignments', 'userid', 'assigned_userid')
+                    ->withPivot('team_name')
+                    ->withTimestamps();
+    }
+
     /**
      * Returns the list of userids this user is allowed to manage in Team Work.
      *
@@ -142,6 +148,6 @@ class User extends Authenticatable
      */
     public function assignedUserIds(): array
     {
-        return array_values(array_filter((array) ($this->assigned_users ?? [])));
+        return $this->teamMembers()->pluck('account_users.userid')->toArray();
     }
 }
