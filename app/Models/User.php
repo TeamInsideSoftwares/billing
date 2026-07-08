@@ -134,11 +134,12 @@ class User extends Authenticatable
         return in_array($permission, $perms, true);
     }
 
-    public function teamMembers(): BelongsToMany
+    public function teamMembers()
     {
         return $this->belongsToMany(User::class, 'user_assignments', 'userid', 'assigned_userid')
-                    ->withPivot('team_name')
-                    ->withTimestamps();
+            ->using(UserAssignment::class)
+            ->withPivot('user_assignid', 'team_name')
+            ->withTimestamps();
     }
 
     /**
