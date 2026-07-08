@@ -11,8 +11,11 @@
     <button type="button" class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium" data-bs-toggle="modal" data-bs-target="#shiftsModal">
         <i class="fas fa-calendar-alt btn-icon"></i> Shifts
     </button>
-    <button type="button" class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium" data-bs-toggle="modal" data-bs-target="#attendancePoliciesModal">
-        <i class="fas fa-clock btn-icon"></i> Att. Policies
+    <button type="button" class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium" data-bs-toggle="modal" data-bs-target="#componentsModal">
+        <i class="fas fa-coins btn-icon"></i> Payroll Components
+    </button>
+    <button type="button" class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium" data-bs-toggle="modal" data-bs-target="#policiesModal">
+        <i class="fas fa-file-contract btn-icon"></i> Account Policies
     </button>
 
 
@@ -388,69 +391,80 @@
     </div>
 </div>
 
-<!-- Attendance Policies Modal -->
-<div class="modal fade" id="attendancePoliciesModal" tabindex="-1" aria-labelledby="attendancePoliciesModalLabel" aria-hidden="true">
+<!-- Payroll Components Modal -->
+<div class="modal fade" id="componentsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0">
             <div class="modal-header bg-DarkLight py-2 border-0">
-                <h5 class="modal-title fw-semibold" id="attendancePoliciesModalLabel">Manage Attendance Policies</h5>
+                <h5 class="modal-title fw-semibold">Manage Payroll Components</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body bg-white p-2">
                 <div class="bg-DarkLight p-2 rounded-3 mb-3">
-                    <form id="attendancePolicyForm" action="{{ route('attendance-policies.store') }}" method="POST" class="mainForm">
+                    <form id="componentForm" action="{{ route('payroll-components.store') }}" method="POST" class="mainForm">
                         @csrf
-                        <input type="hidden" name="_method" value="POST" id="attendancePolicyMethod">
+                        <input type="hidden" name="_method" value="POST" id="componentMethod">
                         
                         <div class="row g-2 mb-3">
-                            <div class="col-12 col-md-12">
-                                <label for="policy_name" class="form-label small lh-sm fw-semibold text-dark mb-1">Policy Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="policy_name" name="policy_name" placeholder="e.g. Standard Attendance Policy" required>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Component Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="comp_name" name="name" required>
                             </div>
-                            
-                            <div class="col-12 col-md-12">
-                                <label for="description" class="form-label small lh-sm fw-semibold text-dark mb-1">Description</label>
-                                <textarea class="form-control" id="description" name="description" rows="2" placeholder="e.g. Default attendance policy for all employees..."></textarea>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Category Type <span class="text-danger">*</span></label>
+                                <select class="form-select" id="comp_category_type" name="category_type" required>
+                                    <option value="attendance">Attendance</option>
+                                    <option value="leave">Leave</option>
+                                    <option value="security_deposit">Security Deposit</option>
+                                    <option value="general_earning">General Earning</option>
+                                    <option value="general_deduction">General Deduction</option>
+                                </select>
                             </div>
-
-                            <div class="col-6">
-                                <label for="late_arrival_grace" class="form-label small fw-semibold text-dark">Late Arrival Grace (mins)<span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="late_arrival_grace" name="late_arrival_grace" min="0" required>
+                            <div class="col-12 col-md-6" id="comp_type_col">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Type <span class="text-danger">*</span></label>
+                                <select class="form-select" id="comp_type" name="type" required>
+                                    <option value="earning">Earning</option>
+                                    <option value="deduction">Deduction</option>
+                                </select>
                             </div>
-                            <div class="col-6">
-                                <label for="early_departure_grace" class="form-label small fw-semibold text-dark">Early Departure Grace (mins)<span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="early_departure_grace" name="early_departure_grace" min="0" required>
+                            <div class="col-12 col-md-6" id="comp_calc_type_col">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Calculation Type</label>
+                                <select class="form-select" id="comp_calculation_type" name="calculation_type">
+                                    <option value="">Select Type</option>
+                                    <option value="fixed">Fixed Amount</option>
+                                    <option value="percentage">Percentage</option>
+                                </select>
                             </div>
-
-                            <!-- <div class="col-6">
-                                <label for="overtime_rate" class="form-label small fw-semibold text-dark">Overtime Rate (%)<span class="text-danger">*</span></label>
-                                <input type="number" step="0.01" class="form-control" id="overtime_rate" name="overtime_rate" min="0" required>
-                            </div> -->
+                            <div class="col-12 col-md-4" id="calc_value_container" style="display: none;">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1" id="calc_value_label">Value</label>
+                                <input type="number" step="0.01" class="form-control" id="comp_calculation_value" name="calculation_value">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Description</label>
+                                <textarea class="form-control" id="comp_description" name="description" rows="2"></textarea>
+                            </div>
                         </div>
 
                         <div class="d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-light" id="btnCancelPolicyEdit" style="display: none;">Cancel</button>
-                            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium" id="btnSavePolicy">Save Policy <i class="fas fa-arrow-right btn-icon ms-1"></i></button>
+                            <button type="button" class="btn btn-light" id="btnCancelCompEdit" style="display: none;">Cancel</button>
+                            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium" id="btnSaveComp">Save Component</button>
                         </div>
                     </form>
                 </div>
                 
                 <div class="position-relative bg-DarkLight p-2 rounded-3" style="max-height: 300px; overflow-y: auto;">
-                    <h6 class="fw-semibold text-dark mb-2 px-1">
-                        <span>Existing Policies</span>
-                    </h6>
+                    <h6 class="fw-semibold text-dark mb-2 px-1">Existing Components</h6>
                     <div class="card border-0 overflow-hidden">
                         <div class="table-responsive">
                             <table class="table table-striped mainTable border align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th width="45%">Policy Name</th>
-                                        <th class="text-end" width="20%">Actions</th>
+                                        <th width="40%">Name</th>
+                                        <th width="30%">Type</th>
+                                        <th class="text-end" width="30%">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="attendancePoliciesList">
-                                    <tr><td colspan="2" class="text-center py-3 text-muted small" id="attendancePoliciesLoading">Loading...</td></tr>
-                                </tbody>
+                                <tbody id="componentsList"></tbody>
                             </table>
                         </div>
                     </div>
@@ -460,6 +474,79 @@
     </div>
 </div>
 
+<!-- Account Policies Modal -->
+<div class="modal fade" id="policiesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-DarkLight py-2 border-0">
+                <h5 class="modal-title fw-semibold">Manage Account Policies</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-white p-2">
+                <div class="bg-DarkLight p-2 rounded-3 mb-3">
+                    <form id="policyForm" action="{{ route('account-policies.store') }}" method="POST" class="mainForm">
+                        @csrf
+                        <input type="hidden" name="_method" value="POST" id="policyMethod">
+                        
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Policy Title <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="pol_title" name="title" required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Policy Type <span class="text-danger">*</span></label>
+                                <select class="form-select" id="pol_componentid" name="componentid" required>
+                                    <option value="">Select a Policy Type...</option>
+                                    @foreach($payrollComponents as $comp)
+                                        <option value="{{ $comp->componentid }}">{{ $comp->name }} ({{ $comp->type }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Description</label>
+                                <textarea class="form-control" id="pol_description" name="description" rows="2"></textarea>
+                            </div>
+                            <!-- Dynamic Rules Builder -->
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Policy Rules <span class="text-muted fw-normal">(Optional)</span></label>
+                                <div id="rulesBuilderContainer" class="d-flex flex-column gap-2 mb-2">
+                                    <!-- Rules will be appended here -->
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium" id="btnAddRule">
+                                    <i class="fas fa-plus btn-icon"></i> Add Rule
+                                </button>
+                                <input type="hidden" id="pol_rules_hidden" name="rules">
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-light" id="btnCancelPolicyEdit" style="display: none;">Cancel</button>
+                            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium" id="btnSavePolicy">Save Policy</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="position-relative bg-DarkLight p-2 rounded-3" style="max-height: 300px; overflow-y: auto;">
+                    <h6 class="fw-semibold text-dark mb-2 px-1">Existing Policies</h6>
+                    <div class="card border-0 overflow-hidden">
+                        <div class="table-responsive">
+                            <table class="table table-striped mainTable border align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="45%">Title</th>
+                                        <th width="35%">Component</th>
+                                        <th class="text-end" width="20%">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="policiesList"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- Shifts Modal -->
 <div class="modal fade" id="shiftsModal" tabindex="-1" aria-labelledby="shiftsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -702,202 +789,296 @@
         document.getElementById('manageDepartmentsModal').addEventListener('hidden.bs.modal', resetDepartmentForm);
 
         // Attendance Policies Logic
-        const policyModal = document.getElementById('attendancePoliciesModal');
-        if(policyModal) {
-            const policyForm = document.getElementById('attendancePolicyForm');
-            const policyList = document.getElementById('attendancePoliciesList');
-            const btnCancelEdit = document.getElementById('btnCancelPolicyEdit');
-            const btnSave = document.getElementById('btnSavePolicy');
-            const methodInput = document.getElementById('attendancePolicyMethod');
-            
-            let editingPolicyId = null;
+                const componentsModal = document.getElementById('componentsModal');
+        if (componentsModal) {
+            const form = document.getElementById('componentForm');
+            const methodInput = document.getElementById('componentMethod');
+            const list = document.getElementById('componentsList');
+            const btnSave = document.getElementById('btnSaveComp');
+            const btnCancel = document.getElementById('btnCancelCompEdit');
+            let editingId = null;
 
-            function loadPolicies() {
-                policyList.innerHTML = '<tr><td colspan="2" class="text-center py-3 text-muted small">Loading...</td></tr>';
+            function loadComponents() {
+                fetch("{{ route('payroll-components.index') }}", {
+                    headers: { 'Accept': 'application/json' }
+                }).then(res => res.json()).then(data => {
+                    if (data.success) renderComponents(data.components);
+                });
+            }
+
+            function renderComponents(comps) {
+                let html = '';
+                comps.forEach(c => {
+                    html += `<tr>
+                        <td><span class="d-block fw-semibold">${c.name}</span></td>
+                        <td>${c.type} ${c.calculation_type ? '(' + c.calculation_type + ')' : ''} <br> <small class="text-muted">${c.calculation_value ? (c.calculation_type === 'percentage' ? c.calculation_value + '%' : '₹' + c.calculation_value) : ''}</small></td>
+                        <td class="text-end">
+                            <div class="tableActionButton d-inline-flex gap-1">
+                                <button type="button" class="bg03 color03 border-0 btn-edit-comp" data-comp='${JSON.stringify(c).replace(/'/g, "&apos;")}'>Edit</button>
+                                <button type="button" class="bg04 color04 border-0 btn-delete-comp" data-id="${c.componentid}">Delete</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+                list.innerHTML = html;
                 
-                fetch("{{ route('attendance-policies.index') }}", {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
+                document.querySelectorAll('.btn-edit-comp').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const c = JSON.parse(this.dataset.comp);
+                        editingId = c.componentid;
+                        form.action = `{{ route('payroll-components.index') }}/${c.componentid}`;
+                        methodInput.value = 'PUT';
+                        document.getElementById('comp_name').value = c.name;
+                        document.getElementById('comp_category_type').value = c.category_type;
+                        document.getElementById('comp_type').value = c.type;
+                        document.getElementById('comp_calculation_type').value = c.calculation_type;
+                        document.getElementById('comp_calculation_value').value = c.calculation_value || '';
+                        document.getElementById('comp_description').value = c.description || '';
+                        
+                        // trigger change to show/hide value field
+                        document.getElementById('comp_calculation_type').dispatchEvent(new Event('change'));
+                        
+                        btnSave.textContent = 'Update Component';
+                        btnCancel.style.display = 'inline-block';
+                    });
+                });
+                
+                document.querySelectorAll('.btn-delete-comp').forEach(btn => {
+                    btn.addEventListener('click', async function() {
+                        if (!await window.appConfirm('Delete this component?')) return;
+                        fetch(`{{ route('payroll-components.index') }}/${this.dataset.id}`, {
+                            method: 'DELETE',
+                            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                        }).then(res => res.json()).then(data => {
+                            if (data.success) renderComponents(data.components);
+                        });
+                    });
+                });
+            }
+
+            function resetForm() {
+                editingId = null;
+                form.action = "{{ route('payroll-components.store') }}";
+                methodInput.value = 'POST';
+                form.reset();
+                document.getElementById('comp_calculation_type').dispatchEvent(new Event('change'));
+                btnSave.textContent = 'Save Component';
+                btnCancel.style.display = 'none';
+            }
+            
+            document.getElementById('comp_calculation_type').addEventListener('change', function() {
+                const container = document.getElementById('calc_value_container');
+                const label = document.getElementById('calc_value_label');
+                const typeCol = document.getElementById('comp_type_col');
+                const calcTypeCol = document.getElementById('comp_calc_type_col');
+                const val = this.value;
+                if (val === 'fixed') {
+                    container.style.display = 'block';
+                    label.textContent = 'Fixed Amount';
+                    typeCol.className = 'col-12 col-md-4';
+                    calcTypeCol.className = 'col-12 col-md-4';
+                } else if (val === 'percentage') {
+                    container.style.display = 'block';
+                    label.textContent = 'Percentage Value (%)';
+                    typeCol.className = 'col-12 col-md-4';
+                    calcTypeCol.className = 'col-12 col-md-4';
+                } else {
+                    container.style.display = 'none';
+                    typeCol.className = 'col-12 col-md-6';
+                    calcTypeCol.className = 'col-12 col-md-6';
+                }
+            });
+
+            btnCancel.addEventListener('click', resetForm);
+            componentsModal.addEventListener('show.bs.modal', function() { resetForm(); loadComponents(); });
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                fetch(this.action, {
+                    method: methodInput.value,
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                    body: JSON.stringify(Object.fromEntries(new FormData(this)))
+                }).then(res => res.json()).then(data => {
+                    if (data.success) { renderComponents(data.components); resetForm(); }
+                    else { alert(data.message || 'Error'); }
+                });
+            });
+        }
+
+        const policiesModal = document.getElementById('policiesModal');
+        if (policiesModal) {
+            const form = document.getElementById('policyForm');
+            const methodInput = document.getElementById('policyMethod');
+            const list = document.getElementById('policiesList');
+            const btnSavePol = document.getElementById('btnSavePolicy');
+            const btnCancel = document.getElementById('btnCancelPolicyEdit');
+            const compSelect = document.getElementById('pol_componentid');
+            const rulesContainer = document.getElementById('rulesBuilderContainer');
+            const btnAddRule = document.getElementById('btnAddRule');
+            const rulesHidden = document.getElementById('pol_rules_hidden');
+            let editingId = null;
+
+            function createRuleRow(key = '', value = '') {
+                const row = document.createElement('div');
+                row.className = 'd-flex gap-2 align-items-center rule-row';
+                
+                // Define all available predefined rules
+                const ruleOptions = [
+                    { value: '', label: 'Select a Rule...' },
+                    { group: 'Attendance Rules' },
+                    { value: 'late_grace_mins', label: 'Late Grace Minutes' },
+                    { value: 'half_day_late_mins', label: 'Half-Day Late Minutes' },
+                    { value: 'early_leave_grace_mins', label: 'Early Leave Grace Minutes' },
+                    { value: 'deduction_per_late', label: 'Deduction per Late Entry' },
+                    { value: 'min_hours_full_day', label: 'Min Hours for Full Day' },
+                    { value: 'min_hours_half_day', label: 'Min Hours for Half Day' },
+                    { value: 'overtime_multiplier', label: 'Overtime Multiplier (e.g., 1.5)' },
+                    { group: 'Leave Rules' },
+                    { value: 'probation_months', label: 'Probation Months (No Leave Period)' },
+                    { value: 'leave_carry_forward', label: 'Max Leave Carry Forward' },
+                    { value: 'max_leaves_per_month', label: 'Max Leaves Per Month' },
+                    { group: 'Security Deposit Rules' },
+                    { value: 'deduction_months', label: 'Number of Months for Deduction' },
+                    { value: 'refundable_after_months', label: 'Refundable After X Months' },
+                    { group: 'General Rules' },
+                    { value: 'custom', label: 'Custom Rule (Advanced)' }
+                ];
+
+                let optionsHtml = '';
+                ruleOptions.forEach(opt => {
+                    if (opt.group) {
+                        optionsHtml += `<optgroup label="${opt.group}"></optgroup>`;
+                    } else {
+                        const selected = key === opt.value ? 'selected' : '';
+                        optionsHtml += `<option value="${opt.value}" ${selected}>${opt.label}</option>`;
                     }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        renderPolicies(data.policies);
-                    }
-                })
-                .catch(err => {
-                    policyList.innerHTML = '<tr><td colspan="2" class="text-center py-3 text-danger small">Failed to load policies.</td></tr>';
+                });
+
+                // If a key was provided that isn't in our predefined list, we need to add it so it doesn't get lost
+                const keyExists = ruleOptions.some(opt => opt.value === key);
+                if (key && !keyExists) {
+                    optionsHtml += `<option value="${key}" selected>${key} (Legacy/Custom)</option>`;
+                }
+
+                row.innerHTML = `
+                    <select class="form-select form-select-sm rule-key" style="flex: 2;">
+                        ${optionsHtml}
+                    </select>
+                    <input type="text" class="form-control form-control-sm rule-val" placeholder="Value (e.g. 15)" value="${value}" style="flex: 1;">
+                    <button type="button" class="btn btn-sm btn-danger btn-remove-rule"><i class="fas fa-times"></i></button>
+                `;
+                row.querySelector('.btn-remove-rule').addEventListener('click', function() { row.remove(); });
+                return row;
+            }
+
+            btnAddRule.addEventListener('click', function() {
+                rulesContainer.appendChild(createRuleRow());
+            });
+            function loadPolicies() {
+                fetch("{{ route('account-policies.index') }}", { headers: { 'Accept': 'application/json' } })
+                .then(res => res.json()).then(data => {
+                    if (data.success) renderPolicies(data.policies);
                 });
             }
 
             function renderPolicies(policies) {
-                if (!policies || policies.length === 0) {
-                    policyList.innerHTML = '<tr><td colspan="2" class="text-center py-3 text-muted small">No policies found.</td></tr>';
-                    return;
-                }
-                
                 let html = '';
-                policies.forEach(policy => {
-                    html += `
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold">
-                                        <span class="d-block position-absolute">${policy.policy_name.substring(0, 2).toUpperCase()}</span>
-                                    </div>
-                                    <div>
-                                        <span class="d-block fw-semibold">${policy.policy_name}</span>
-                                    </div>
-                                </div>
-                            </td>
-                                <td class="text-end">
-                                    <div class="tableActionButton d-inline-flex gap-1">
-                                        <button type="button" class="btn-toggle-policy badge ${policy.status === 'active' ? 'bg02 color02' : 'bg-secondary text-white'} border-0" data-id="${policy.att_policyid}">
-                                            ${policy.status.charAt(0).toUpperCase() + policy.status.slice(1)}
-                                        </button>
-                                    <button type="button" class="bg03 color03 border-0 btn-edit-policy" 
-                                        data-id="${policy.att_policyid}" 
-                                        data-policy='${JSON.stringify(policy).replace(/'/g, "&apos;")}'>
-                                        Edit
-                                    </button>
-                                    <button type="button" class="bg04 color04 border-0 btn-delete-policy" data-id="${policy.att_policyid}">
-                                        Delete
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
+                policies.forEach(p => {
+                    html += `<tr>
+                        <td><span class="d-block fw-semibold">${p.title}</span></td>
+                        <td>${p.component ? p.component.name : '-'}</td>
+                        <td class="text-end">
+                            <div class="tableActionButton d-inline-flex gap-1">
+                                <button type="button" class="bg03 color03 border-0 btn-edit-pol" data-pol='${JSON.stringify(p).replace(/'/g, "&apos;")}'>Edit</button>
+                                <button type="button" class="bg04 color04 border-0 btn-delete-pol" data-id="${p.policyid}">Delete</button>
+                            </div>
+                        </td>
+                    </tr>`;
                 });
-                policyList.innerHTML = html;
+                list.innerHTML = html;
                 
-                document.querySelectorAll('.btn-edit-policy').forEach(btn => {
+                document.querySelectorAll('.btn-edit-pol').forEach(btn => {
                     btn.addEventListener('click', function() {
-                        const policy = JSON.parse(this.dataset.policy);
-                        editPolicy(policy);
+                        const p = JSON.parse(this.dataset.pol);
+                        editingId = p.policyid;
+                        editingPolId = p.policyid;
+                        policyForm.action = `{{ route('account-policies.index') }}/${p.policyid}`;
+                        methodInput.value = 'PUT';
+                        document.getElementById('pol_title').value = p.title;
+                        compSelect.dataset.pendingVal = p.componentid;
+                        compSelect.value = p.componentid;
+                        document.getElementById('pol_description').value = p.description || '';
+                        
+                        rulesContainer.innerHTML = '';
+                        if (p.rules) {
+                            try {
+                                const rulesObj = typeof p.rules === 'string' ? JSON.parse(p.rules) : p.rules;
+                                Object.entries(rulesObj).forEach(([k, v]) => {
+                                    rulesContainer.appendChild(createRuleRow(k, v));
+                                });
+                            } catch (e) {}
+                        }
+                        
+                        btnSavePol.textContent = 'Update Policy';
+                        btnCancel.style.display = 'inline-block';
                     });
                 });
                 
-                document.querySelectorAll('.btn-toggle-policy').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        togglePolicy(this.dataset.id);
-                    });
-                });
-                
-                document.querySelectorAll('.btn-delete-policy').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        deletePolicy(this.dataset.id);
+                document.querySelectorAll('.btn-delete-pol').forEach(btn => {
+                    btn.addEventListener('click', async function() {
+                        if (!await window.appConfirm('Delete this policy?')) return;
+                        fetch(`{{ route('account-policies.index') }}/${this.dataset.id}`, {
+                            method: 'DELETE',
+                            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                        }).then(res => res.json()).then(data => {
+                            if (data.success) renderPolicies(data.policies);
+                        });
                     });
                 });
             }
 
-            function resetPolicyForm() {
-                policyForm.reset();
-                policyForm.action = "{{ route('attendance-policies.store') }}";
+            function resetForm() {
+                editingPolId = null;
+                policyForm.action = "{{ route('account-policies.store') }}";
                 methodInput.value = 'POST';
-                editingPolicyId = null;
-                btnSave.innerHTML = 'Save Policy <i class="fas fa-arrow-right btn-icon ms-1"></i>';
-                btnCancelEdit.style.display = 'none';
+                policyForm.reset();
+                compSelect.dataset.pendingVal = '';
+                rulesContainer.innerHTML = ''; // Clear dynamic rules
+                btnSavePol.textContent = 'Save Policy';
+                btnCancel.style.display = 'none';
             }
 
-            function editPolicy(policy) {
-                editingPolicyId = policy.att_policyid;
-                policyForm.action = `{{ route('attendance-policies.index') }}/${policy.att_policyid}`;
-                methodInput.value = 'PUT';
-                
-                document.getElementById('policy_name').value = policy.policy_name;
-                document.getElementById('description').value = policy.description || '';
-                document.getElementById('late_arrival_grace').value = policy.late_arrival_grace;
-                document.getElementById('early_departure_grace').value = policy.early_departure_grace;
-                // document.getElementById('overtime_rate').value = policy.overtime_rate;
-                
-                btnSave.innerHTML = 'Update Policy <i class="fas fa-arrow-right btn-icon ms-1"></i>';
-                btnCancelEdit.style.display = 'inline-block';
-            }
-
-            async function deletePolicy(id) {
-                const confirmed = await window.appConfirm('Are you sure you want to delete this policy?');
-                if (!confirmed) return;
-                
-                fetch(`{{ route('attendance-policies.index') }}/${id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        renderPolicies(data.policies);
-                        if (editingPolicyId == id) resetPolicyForm();
-                    }
-                });
-            }
+            btnCancel.addEventListener('click', resetForm);
+            policiesModal.addEventListener('show.bs.modal', function() { resetForm(); loadPolicies(); });
             
-            function togglePolicy(id) {
-                fetch(`{{ url('attendance-policies') }}/${id}/toggle`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        renderPolicies(data.policies);
-                    }
-                });
-            }
-
-            btnCancelEdit.addEventListener('click', resetPolicyForm);
-
-            policyForm.addEventListener('submit', function(e) {
+            form.addEventListener('submit', function(e) {
                 e.preventDefault();
+                let formData = Object.fromEntries(new FormData(this));
                 
-                const formData = new FormData(this);
-                const url = this.action;
-                const method = methodInput.value;
-                const plainFormData = Object.fromEntries(formData.entries());
+                const rulesObj = {};
+                rulesContainer.querySelectorAll('.rule-row').forEach(row => {
+                    const k = row.querySelector('.rule-key').value.trim();
+                    const v = row.querySelector('.rule-val').value.trim();
+                    if (k) rulesObj[k] = isNaN(v) || v === '' ? v : Number(v);
+                });
                 
-                fetch(url, {
-                    method: method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify(plainFormData)
-                })
-                .then(async res => {
-                    const data = await res.json();
-                    if (res.ok && data.success) {
-                        renderPolicies(data.policies);
-                        resetPolicyForm();
-                    } else {
-                        alert(data.message || 'Validation error occurred.');
-                    }
-                })
-                .catch(err => {
-                    alert('An error occurred while saving.');
+                if (Object.keys(rulesObj).length > 0) {
+                    formData.rules = rulesObj; // We can send it as an object directly
+                } else {
+                    formData.rules = null;
+                }
+
+                fetch(this.action, {
+                    method: methodInput.value,
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                    body: JSON.stringify(formData)
+                }).then(res => res.json()).then(data => {
+                    if (data.success) { renderPolicies(data.policies); resetForm(); }
+                    else { alert(data.message || 'Error'); }
                 });
             });
-
-            policyModal.addEventListener('show.bs.modal', function() {
-                resetPolicyForm();
-                loadPolicies();
-            });
-            
-            @if(session('open_policy_modal'))
-                var bsModal = new bootstrap.Modal(policyModal);
-                bsModal.show();
-            @endif
         }
-
-        // Shifts Logic
-        const shiftModal = document.getElementById('shiftsModal');
+const shiftModal = document.getElementById('shiftsModal');
         if (shiftModal) {
             const shiftForm = document.getElementById('shiftForm');
             const shiftList = document.getElementById('shiftsList');

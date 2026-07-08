@@ -1,9 +1,9 @@
 <?php
 
 use App\Http\Controllers\AccountDepartmentController;
+use App\Http\Controllers\AccountPolicyController;
 use App\Http\Controllers\AccountRoleController;
 use App\Http\Controllers\AccountsController;
-use App\Http\Controllers\AttendancePolicyController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingUiController;
 use App\Http\Controllers\ClientCategoriesController;
@@ -15,6 +15,7 @@ use App\Http\Controllers\GroupsController;
 use App\Http\Controllers\InvoicesController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\PaymentsController;
+use App\Http\Controllers\PayrollComponentController;
 use App\Http\Controllers\ProductCategoriesController;
 use App\Http\Controllers\ProfileApprovalsController;
 use App\Http\Controllers\QuotationsController;
@@ -188,8 +189,11 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('shifts', ShiftController::class)->except(['create', 'show', 'edit']);
     Route::patch('/shifts/{shift}/toggle', [ShiftController::class, 'toggleStatus'])->name('shifts.toggle-status');
 
-    Route::resource('attendance-policies', AttendancePolicyController::class)->except(['create', 'show', 'edit']);
-    Route::patch('/attendance-policies/{policy}/toggle', [AttendancePolicyController::class, 'toggleStatus'])->name('attendance-policies.toggle-status');
+    Route::resource('payroll-components', PayrollComponentController::class)->except(['create', 'show', 'edit']);
+    Route::patch('/payroll-components/{component}/toggle', [PayrollComponentController::class, 'toggleStatus'])->name('payroll-components.toggle-status');
+
+    Route::resource('account-policies', AccountPolicyController::class)->except(['create', 'show', 'edit']);
+    Route::patch('/account-policies/{policy}/toggle', [AccountPolicyController::class, 'toggleStatus'])->name('account-policies.toggle-status');
 
     Route::controller(AccountRoleController::class)->middleware('permission:users.view')->group(function () {
         Route::get('/roles', 'index')->name('roles.index');
