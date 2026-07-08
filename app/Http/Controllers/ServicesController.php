@@ -360,7 +360,13 @@ class ServicesController extends Controller
             $service->costings()->delete();
             $service->delete();
 
-            DB::connection('admin_mysql')->table('products')->where('productid', $service->itemid)->delete();
+            if ($service->sync === 'yes') {
+                try {
+                    DB::connection('admin_mysql')->table('products')->where('productid', $service->itemid)->delete();
+                } catch (\Exception $e) {
+                    Log::error('Superadmin Product Delete Failed: ' . $e->getMessage());
+                }
+            }
         });
 
         return redirect()->route('services.index')->with('success', 'Item deleted successfully.');
@@ -503,7 +509,11 @@ class ServicesController extends Controller
                 ]);
             }
         } else {
-            DB::connection('admin_mysql')->table('products')->where('productid', $item->itemid)->delete();
+            try {
+                DB::connection('admin_mysql')->table('products')->where('productid', $item->itemid)->delete();
+            } catch (\Exception $e) {
+                Log::error('Superadmin Product Delete Failed: ' . $e->getMessage());
+            }
         }
     }
 }
