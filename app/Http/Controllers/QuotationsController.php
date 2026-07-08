@@ -353,7 +353,7 @@ class QuotationsController extends Controller
         }
 
         $request->validate([
-            'quo_number' => 'required|string|max:30|unique:quotations,quo_number,'.($draftQuotation?->quotationid ?? 'NULL').',quotationid',
+            'quo_number' => 'required|string|max:30|unique:quotations,quo_number,'.($draftQuotation?->quotationid ?? 'NULL').',quotationid,accountid,'.$accountid,
         ]);
 
         $items = json_decode((string) $validated['items_data'], true);

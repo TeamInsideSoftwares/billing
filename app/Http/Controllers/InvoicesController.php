@@ -2553,7 +2553,7 @@ class InvoicesController extends Controller
 
         $validated = $request->validate([
             'clientid' => 'required|exists:clients,clientid',
-            'invoice_number' => 'required|string|unique:invoices,'.$invoiceNumberColumn.','.$invoice->invoiceid.',invoiceid',
+            'invoice_number' => 'required|string|unique:invoices,'.$invoiceNumberColumn.','.$invoice->invoiceid.',invoiceid,accountid,'.$accountid,
             'invoice_title' => 'nullable|string|max:255',
             'issue_date' => 'required|date|after_or_equal:'.$invoiceDateBounds['min_date'].'|before_or_equal:'.($invoiceDateBounds['issue_max_date'] ?? $invoiceDateBounds['max_date']),
             'due_date' => 'required|date|after_or_equal:issue_date|before_or_equal:'.($invoiceDateBounds['due_max_date'] ?? $invoiceDateBounds['max_date']),
@@ -2975,6 +2975,7 @@ class InvoicesController extends Controller
     protected function assertDocumentNumberAvailable(string $invoiceNumber, ?string $ignoreInvoiceId = null, ?string $numberColumn = null): void
     {
         $numberExists = Invoice::query()
+            ->where('accountid', $this->resolveAccountId())
             ->when($numberColumn, fn ($query) => $query->where($numberColumn, $invoiceNumber), function ($query) use ($invoiceNumber) {
                 $query->where(function ($inner) use ($invoiceNumber) {
                     $inner->where('pi_number', $invoiceNumber)
