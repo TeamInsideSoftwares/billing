@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -21,20 +22,20 @@ use Illuminate\Notifications\Notifiable;
     'name',
     'email',
     'profile_image',
+    'date_of_birth',
+    'salaryid',
     'depid',
     'phone',
     'designation',
     'gender',
     'notes',
     'shiftid',
-    'att_policyid',
     'paid_leaves_pm',
     'carry_forward',
     'probation_months',
     'password',
     'roleid',
     'permissions',
-    'assigned_users',
     'is_active',
     'can_assign_clients',
 ])]
@@ -66,7 +67,6 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'is_active' => 'boolean',
             'permissions' => 'array',
-            'assigned_users' => 'array',
             'password' => 'hashed',
             'can_assign_clients' => 'boolean',
         ];
@@ -92,6 +92,21 @@ class User extends Authenticatable
         return $this->belongsTo(AccountDepartment::class, 'depid', 'depid');
     }
 
+    public function clients()
+    {
+        return $this->belongsToMany(ClientDetail::class, 'client_assignments', 'userid', 'clientid');
+    }
+
+    public function salary(): BelongsTo
+    {
+        return $this->belongsTo(UserSalary::class, 'salaryid', 'salaryid');
+    }
+
+    public function policies()
+    {
+        return $this->hasMany(UserPolicy::class, 'userid', 'userid');
+    }
+
     public function shift(): BelongsTo
     {
         return $this->belongsTo(Shift::class, 'shiftid', 'shiftid');
@@ -102,19 +117,9 @@ class User extends Authenticatable
         return $this->hasMany(Attendance::class, 'userid', 'userid');
     }
 
-    public function attendancePolicy(): BelongsTo
-    {
-        return $this->belongsTo(AttendancePolicy::class, 'att_policyid', 'att_policyid');
-    }
-
     public function leaveRequests(): HasMany
     {
         return $this->hasMany(LeaveRequest::class, 'userid', 'userid');
-    }
-
-    public function userLeavePolicies(): HasMany
-    {
-        return $this->hasMany(UserLeavePolicy::class, 'userid', 'userid');
     }
 
     public function sendPasswordResetNotification($token): void
@@ -129,6 +134,13 @@ class User extends Authenticatable
         return in_array($permission, $perms, true);
     }
 
+    public function teamMembers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_assignments', 'userid', 'assigned_userid')
+                    ->withPivot('team_name')
+                    ->withTimestamps();
+    }
+
     /**
      * Returns the list of userids this user is allowed to manage in Team Work.
      *
@@ -136,6 +148,6 @@ class User extends Authenticatable
      */
     public function assignedUserIds(): array
     {
-        return array_values(array_filter((array) ($this->assigned_users ?? [])));
+        return $this->teamMembers()->pluck('account_users.userid')->toArray();
     }
 }

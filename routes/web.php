@@ -1,9 +1,9 @@
 <?php
 
 use App\Http\Controllers\AccountDepartmentController;
+use App\Http\Controllers\AccountPolicyController;
 use App\Http\Controllers\AccountRoleController;
 use App\Http\Controllers\AccountsController;
-use App\Http\Controllers\AttendancePolicyController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingUiController;
 use App\Http\Controllers\ClientCategoriesController;
@@ -15,13 +15,14 @@ use App\Http\Controllers\GroupsController;
 use App\Http\Controllers\InvoicesController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\PaymentsController;
+use App\Http\Controllers\PayrollComponentController;
 use App\Http\Controllers\ProductCategoriesController;
 use App\Http\Controllers\ProfileApprovalsController;
 use App\Http\Controllers\QuotationsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ShiftController;
-// use App\Http\Controllers\TeamManagementController;
+use App\Http\Controllers\TeamManagementController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
@@ -173,6 +174,8 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/users/{user}', 'usersUpdate')->name('users.update');
         Route::patch('/users/{user}/toggle-status', 'usersToggleStatus')->name('users.toggle-status');
         Route::delete('/users/{user}', 'usersDestroy')->name('users.destroy');
+        Route::get('/users/{user}/assignments', 'getAssignments')->name('users.assignments.get');
+        Route::post('/users/{user}/assignments', 'updateAssignments')->name('users.assignments.update');
     });
 
     Route::controller(ProfileApprovalsController::class)->middleware('permission:users.view')->group(function () {
@@ -183,13 +186,16 @@ Route::middleware(['auth'])->group(function () {
 
     // Route::post('team/{employee}/login-as', [TeamManagementController::class, 'loginAs'])->name('team.loginAs');
 
-    // Route::resource('team', TeamManagementController::class)->except(['show']);
+    Route::get('team', [TeamManagementController::class, 'index'])->name('team.index');
 
     Route::resource('shifts', ShiftController::class)->except(['create', 'show', 'edit']);
     Route::patch('/shifts/{shift}/toggle', [ShiftController::class, 'toggleStatus'])->name('shifts.toggle-status');
 
-    Route::resource('attendance-policies', AttendancePolicyController::class)->except(['create', 'show', 'edit']);
-    Route::patch('/attendance-policies/{policy}/toggle', [AttendancePolicyController::class, 'toggleStatus'])->name('attendance-policies.toggle-status');
+    Route::resource('payroll-components', PayrollComponentController::class)->except(['create', 'show', 'edit']);
+    Route::patch('/payroll-components/{component}/toggle', [PayrollComponentController::class, 'toggleStatus'])->name('payroll-components.toggle-status');
+
+    Route::resource('account-policies', AccountPolicyController::class)->except(['create', 'show', 'edit']);
+    Route::patch('/account-policies/{policy}/toggle', [AccountPolicyController::class, 'toggleStatus'])->name('account-policies.toggle-status');
 
     Route::controller(AccountRoleController::class)->middleware('permission:users.view')->group(function () {
         Route::get('/roles', 'index')->name('roles.index');

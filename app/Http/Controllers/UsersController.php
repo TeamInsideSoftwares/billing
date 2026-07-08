@@ -5,16 +5,18 @@ namespace App\Http\Controllers;
 use App\Mail\UserCredentialsMail;
 use App\Models\Account;
 use App\Models\AccountDepartment;
+use App\Models\AccountPolicy;
 use App\Models\AccountRole;
-use App\Models\AttendancePolicy;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
+use App\Models\PayrollComponent;
 use App\Models\RoleLevel;
 use App\Models\Shift;
 use App\Models\User;
 use App\Models\UserDoc;
-use App\Models\UserLeavePolicy;
+use App\Models\UserPolicy;
 use App\Models\UserProfile;
+use App\Models\UserSalary;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -46,7 +48,7 @@ class UsersController extends Controller
 
         $query = User::query()
             ->where('accountid', $accountId)
-            ->with(['role', 'department'])
+            ->with(['role', 'department', 'teamMembers'])
             ->orderByDesc('created_at');
 
         $maxLevel = RoleLevel::max('level_value');
@@ -75,6 +77,7 @@ class UsersController extends Controller
         $departments = AccountDepartment::where('accountid', $accountId)->orderBy('name')->get();
         $roleLevels = RoleLevel::where('status', 'active')->orderByDesc('level_value')->get();
         $allUsersMap = User::where('accountid', $accountId)->pluck('name', 'userid');
+        $payrollComponents = PayrollComponent::where('accountid', $accountId)->orderBy('name')->get();
 
         return view('users.index', [
             'title' => 'Employees',
@@ -84,6 +87,7 @@ class UsersController extends Controller
             'departments' => $departments,
             'roleLevels' => $roleLevels,
             'allUsersMap' => $allUsersMap,
+            'payrollComponents' => $payrollComponents,
         ]);
     }
 
@@ -100,11 +104,24 @@ class UsersController extends Controller
             ->get();
         $departments = AccountDepartment::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
         $shifts = Shift::where('accountid', $accountId)->where('status', 'active')->orderBy('shift_name')->get();
-        $policies = AttendancePolicy::where('accountid', $accountId)->where('status', 'active')->orderBy('policy_name')->get();
+        $policies = AccountPolicy::with('component')->where('accountid', $accountId)->where('status', 1)->orderBy('title')->get();
         $account = Account::find($accountId);
         $allAccountUsers = User::with('role.roleLevel')->where('accountid', $accountId)->where('is_active', true)->orderBy('name')->get(['userid', 'name', 'email', 'roleid']);
         $maxLevel = RoleLevel::max('level_value');
-        $paidLeaveTypes = LeaveType::where('accountid', $accountId)->where('is_paid_accrued', true)->where('status', 'active')->orderBy('name')->get();
+        $payrollComponents = PayrollComponent::where('accountid', $accountId)->where('status', 1)->orderBy('name')->get();
+
+        \Log::debug('[usersCreate] Loading form data', [
+            'accountId' => $accountId,
+            'policies_count' => $policies->count(),
+            'policies' => $policies->map(fn ($p) => [
+                'policyid' => $p->policyid,
+                'title' => $p->title,
+                'componentid' => $p->componentid,
+                'component' => $p->component?->name ?? 'NULL (orphaned)',
+            ]),
+            'payrollComponents_count' => $payrollComponents->count(),
+            'payrollComponents' => $payrollComponents->pluck('name', 'componentid'),
+        ]);
 
         return view('users.form', [
             'title' => 'Add User',
@@ -114,10 +131,10 @@ class UsersController extends Controller
             'departments' => $departments,
             'shifts' => $shifts,
             'policies' => $policies,
+            'payrollComponents' => $payrollComponents,
             'hasTeamManagement' => $account ? $account->has_team_management : false,
             'allAccountUsers' => $allAccountUsers,
             'maxLevel' => $maxLevel,
-            'paidLeaveTypes' => $paidLeaveTypes,
         ]);
     }
 
@@ -131,18 +148,15 @@ class UsersController extends Controller
             'roleid' => ['required', 'string'],
             'depid' => ['nullable', 'string'],
             'shiftid' => ['nullable', 'string'],
-            'att_policyid' => ['nullable', 'string'],
-            'leave_typeid' => ['nullable', 'string'],
-            'paid_leaves_pm' => ['nullable', 'numeric', 'min:0'],
-            'probation_months' => ['nullable', 'integer', 'min:0'],
-            'carry_forward' => ['nullable', 'boolean'],
+            'date_of_birth' => ['nullable', 'date'],
+            'salary_amount' => ['nullable', 'numeric', 'min:0'],
+            'account_policies' => ['nullable', 'array'],
+            'account_policies.*' => ['string'],
             'designation' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', 'string', 'in:Male,Female,Other'],
             'phone' => ['nullable', 'string', 'max:20'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(self::AVAILABLE_PERMISSIONS)],
-            'assigned_users' => ['nullable', 'array'],
-            'assigned_users.*' => ['string'],
             'can_assign_clients' => ['nullable', 'boolean'],
 
             'password' => ['required', 'string', 'min:6', 'max:100', 'confirmed'],
@@ -170,27 +184,38 @@ class UsersController extends Controller
             'roleid' => $validated['roleid'],
             'depid' => $validated['depid'] ?? null,
             'shiftid' => $validated['shiftid'] ?? null,
-            'att_policyid' => $validated['att_policyid'] ?? null,
+            'date_of_birth' => $validated['date_of_birth'] ?? null,
             'designation' => $validated['designation'] ?? null,
             'gender' => $validated['gender'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'permissions' => array_values($validated['permissions'] ?? []),
-            'assigned_users' => array_values($validated['assigned_users'] ?? []),
             'is_active' => true,
             'can_assign_clients' => $request->has('can_assign_clients') ? 1 : 0,
             'password' => $validated['password'],
         ]);
 
-        if (! empty($validated['leave_typeid'])) {
-            UserLeavePolicy::create([
+        if (isset($validated['salary_amount']) && $validated['salary_amount'] !== '') {
+            $salary = UserSalary::create([
                 'accountid' => $accountId,
                 'userid' => $user->userid,
-                'typeid' => $validated['leave_typeid'],
-                'leave_per_month' => $validated['paid_leaves_pm'] ?? 0,
-                'carry_forward' => $request->has('carry_forward') ? 1 : 0,
-                'probation_months' => $validated['probation_months'] ?? 0,
+                'amount' => $validated['salary_amount'],
+                'effective_date' => now()->toDateString(),
+                'status' => 'active',
             ]);
+            $user->update(['salaryid' => $salary->salaryid]);
+        }
+
+        if (! empty($validated['account_policies'])) {
+            foreach ($validated['account_policies'] as $policyId) {
+                if (! empty($policyId)) {
+                    UserPolicy::create([
+                        'accountid' => $accountId,
+                        'userid' => $user->userid,
+                        'policyid' => $policyId,
+                    ]);
+                }
+            }
         }
 
         if (! empty($validated['documents'])) {
@@ -257,7 +282,8 @@ class UsersController extends Controller
             ->get();
         $departments = AccountDepartment::where('accountid', $accountId)->where('status', 'active')->orderBy('name')->get();
         $shifts = Shift::where('accountid', $accountId)->where('status', 'active')->orderBy('shift_name')->get();
-        $policies = AttendancePolicy::where('accountid', $accountId)->where('status', 'active')->orderBy('policy_name')->get();
+        $policies = AccountPolicy::with('component')->where('accountid', $accountId)->where('status', 1)->orderBy('title')->get();
+        $payrollComponents = PayrollComponent::where('accountid', $accountId)->where('status', 1)->orderBy('name')->get();
         $account = Account::find($accountId);
         $allAccountUsers = User::with('role.roleLevel')->where('accountid', $accountId)
             ->where('is_active', true)
@@ -265,8 +291,22 @@ class UsersController extends Controller
             ->orderBy('name')
             ->get(['userid', 'name', 'email', 'roleid']);
         $maxLevel = RoleLevel::max('level_value');
-        $paidLeaveTypes = LeaveType::where('accountid', $accountId)->where('is_paid_accrued', true)->where('status', 'active')->orderBy('name')->get();
-        $user->load('userLeavePolicies');
+        $user->load(['salary', 'policies']);
+
+        \Log::debug('[usersEdit] Loading form data', [
+            'accountId' => $accountId,
+            'userid' => $user->userid,
+            'policies_count' => $policies->count(),
+            'policies' => $policies->map(fn ($p) => [
+                'policyid' => $p->policyid,
+                'title' => $p->title,
+                'componentid' => $p->componentid,
+                'component' => $p->component?->name ?? 'NULL (orphaned)',
+            ]),
+            'payrollComponents_count' => $payrollComponents->count(),
+            'payrollComponents' => $payrollComponents->pluck('name', 'componentid'),
+            'user_assigned_policies' => $user->policies->pluck('policyid'),
+        ]);
 
         return view('users.form', [
             'title' => 'Edit User',
@@ -277,10 +317,10 @@ class UsersController extends Controller
             'departments' => $departments,
             'shifts' => $shifts,
             'policies' => $policies,
+            'payrollComponents' => $payrollComponents,
             'hasTeamManagement' => $account ? $account->has_team_management : false,
             'allAccountUsers' => $allAccountUsers,
             'maxLevel' => $maxLevel,
-            'paidLeaveTypes' => $paidLeaveTypes,
         ]);
     }
 
@@ -297,18 +337,15 @@ class UsersController extends Controller
             'roleid' => ['required', 'string'],
             'depid' => ['nullable', 'string'],
             'shiftid' => ['nullable', 'string'],
-            'att_policyid' => ['nullable', 'string'],
-            'leave_typeid' => ['nullable', 'string'],
-            'paid_leaves_pm' => ['nullable', 'numeric', 'min:0'],
-            'probation_months' => ['nullable', 'integer', 'min:0'],
-            'carry_forward' => ['nullable', 'boolean'],
+            'date_of_birth' => ['nullable', 'date'],
+            'salary_amount' => ['nullable', 'numeric', 'min:0'],
+            'account_policies' => ['nullable', 'array'],
+            'account_policies.*' => ['string'],
             'designation' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', 'string', 'in:Male,Female,Other'],
             'phone' => ['nullable', 'string', 'max:20'],
             'permissions' => 'nullable|array',
             'permissions.*' => 'string',
-            'assigned_users' => 'nullable|array',
-            'assigned_users.*' => 'string',
             'can_assign_clients' => 'nullable|boolean',
             'password' => ['nullable', 'string', 'min:6', 'max:100', 'confirmed'],
             'documents' => 'nullable|array',
@@ -336,13 +373,12 @@ class UsersController extends Controller
             'roleid' => $validated['roleid'],
             'depid' => $validated['depid'] ?? null,
             'shiftid' => $validated['shiftid'] ?? null,
-            'att_policyid' => $validated['att_policyid'] ?? null,
+            'date_of_birth' => $validated['date_of_birth'] ?? null,
             'designation' => $validated['designation'] ?? null,
             'gender' => $validated['gender'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'permissions' => array_values($validated['permissions'] ?? []),
-            'assigned_users' => array_values($validated['assigned_users'] ?? []),
             'can_assign_clients' => $request->has('can_assign_clients') ? 1 : 0,
         ];
 
@@ -352,16 +388,28 @@ class UsersController extends Controller
 
         $user->update($payload);
 
-        UserLeavePolicy::where('userid', $user->userid)->delete();
-        if (! empty($validated['leave_typeid'])) {
-            UserLeavePolicy::create([
+        if (isset($validated['salary_amount']) && $validated['salary_amount'] !== '') {
+            $salary = UserSalary::create([
                 'accountid' => $accountId,
                 'userid' => $user->userid,
-                'typeid' => $validated['leave_typeid'],
-                'leave_per_month' => $validated['paid_leaves_pm'] ?? 0,
-                'carry_forward' => $request->has('carry_forward') ? 1 : 0,
-                'probation_months' => $validated['probation_months'] ?? 0,
+                'amount' => $validated['salary_amount'],
+                'effective_date' => now()->toDateString(),
+                'status' => 'active',
             ]);
+            $user->update(['salaryid' => $salary->salaryid]);
+        }
+
+        UserPolicy::where('userid', $user->userid)->delete();
+        if (! empty($validated['account_policies'])) {
+            foreach ($validated['account_policies'] as $policyId) {
+                if (! empty($policyId)) {
+                    UserPolicy::create([
+                        'accountid' => $accountId,
+                        'userid' => $user->userid,
+                        'policyid' => $policyId,
+                    ]);
+                }
+            }
         }
 
         if (! empty($validated['documents'])) {
@@ -481,14 +529,9 @@ class UsersController extends Controller
         $accountId = $this->resolveAccountId();
 
         // Get all userids that are assigned to any manager
-        $assignedUserids = User::where('accountid', $accountId)
-            ->whereNotNull('assigned_users')
-            ->get()
-            ->flatMap(function ($user) {
-                return is_array($user->assigned_users) ? $user->assigned_users : [];
-            })
+        $assignedUserids = \Illuminate\Support\Facades\DB::table('user_assignments')
+            ->pluck('assigned_userid')
             ->unique()
-            ->filter()
             ->values()
             ->all();
 
@@ -559,5 +602,74 @@ class UsersController extends Controller
         $leave->save();
 
         return redirect()->route('users.leaves.index')->with('success', 'Leave request updated successfully.');
+    }
+
+    public function getAssignments(User $user)
+    {
+        $accountId = $this->resolveAccountId();
+        abort_if($user->accountid !== $accountId, 403);
+
+        $targetUserLevel = $user->role?->roleLevel?->level_value ?? 0;
+
+        // All active users in this account except the manager, filtered by role level
+        $allUsers = User::with('role.roleLevel')
+            ->where('accountid', $accountId)
+            ->where('is_active', true)
+            ->where('userid', '!=', $user->userid)
+            ->get(['userid', 'name', 'roleid'])
+            ->filter(function ($u) use ($targetUserLevel) {
+                $userLevel = $u->role?->roleLevel?->level_value ?? 0;
+                return $userLevel > 0 && $userLevel <= $targetUserLevel;
+            })
+            ->map(function ($u) {
+                return [
+                    'userid' => $u->userid,
+                    'name' => $u->name,
+                    'role_name' => $u->role ? $u->role->name : 'No Role',
+                ];
+            })
+            ->values();
+        // Current assignments
+        $assignedUserIds = $user->teamMembers()->pluck('account_users.userid')->toArray();
+        
+        // Get the team name from pivot if exists, otherwise default
+        $firstMember = $user->teamMembers()->first();
+        $teamName = $firstMember ? $firstMember->pivot->team_name : ($user->name . "'s Team");
+
+        return response()->json([
+            'allUsers' => $allUsers,
+            'assignedUserIds' => $assignedUserIds,
+            'teamName' => $teamName,
+        ]);
+    }
+
+    public function updateAssignments(Request $request, User $user)
+    {
+        $accountId = $this->resolveAccountId();
+        abort_if($user->accountid !== $accountId, 403);
+
+        $validated = $request->validate([
+            'assigned_users' => 'nullable|array',
+            'assigned_users.*' => 'string',
+            'team_name' => 'nullable|string|max:255',
+        ]);
+
+        $teamName = $validated['team_name'] ?: ($user->name . "'s Team");
+        $assignedUsers = $validated['assigned_users'] ?? [];
+
+        // Ensure we only assign users that belong to the same account
+        $validUsers = User::where('accountid', $accountId)
+            ->whereIn('userid', $assignedUsers)
+            ->pluck('userid')
+            ->toArray();
+            
+        $syncData = [];
+        foreach ($validUsers as $uid) {
+            $syncData[$uid] = ['team_name' => $teamName];
+        }
+
+        $user->teamMembers()->sync($syncData);
+
+        return response()->json(['success' => true]);
     }
 }

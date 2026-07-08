@@ -101,14 +101,18 @@
                         </div>
 
                         <div class="col-12 col-md-6">
-                            <label for="att_policyid" class="form-label small lh-sm fw-semibold text-dark mb-1">Attendance Policy</label>
-                            <select id="att_policyid" name="att_policyid" class="form-select">
-                                <option value="" {{ old('att_policyid', $userModel->att_policyid ?? '') ? '' : 'selected' }}>Select Policy</option>
-                                @foreach($policies as $policy)
-                                    <option value="{{ $policy->att_policyid }}" {{ old('att_policyid', $userModel->att_policyid ?? '') == $policy->att_policyid ? 'selected' : '' }}>{{ $policy->policy_name }}</option>
-                                @endforeach
-                            </select>
-                            @error('att_policyid') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                            <label for="date_of_birth" class="form-label small lh-sm fw-semibold text-dark mb-1">Date of Birth</label>
+                            <input type="date" id="date_of_birth" name="date_of_birth" class="form-control" value="{{ old('date_of_birth', $userModel->date_of_birth ?? '') }}">
+                            @error('date_of_birth') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        
+                        <div class="col-12 col-md-12">
+                            <label for="salary_amount" class="form-label small lh-sm fw-semibold text-dark mb-1">Salary Amount (Monthly)</label>
+                            <div class="input-group">
+                                <span class="input-group-text border-end-0 bg-light"><i class="fas fa-rupee-sign small"></i></span>
+                                <input type="number" id="salary_amount" name="salary_amount" class="form-control border-start-0" step="0.01" min="0" value="{{ old('salary_amount', isset($userModel) && $userModel->salary ? (float)$userModel->salary->amount : '') }}">
+                            </div>
+                            @error('salary_amount') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                         </div>
 
                         <div class="col-12 col-md-12">
@@ -140,48 +144,38 @@
                     </div>
                 </div>
                 
+
+
                 <div class="bg-light p-2 rounded-3 mt-2">
                     <div class="mb-2">
-                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Leave Settings</h5>
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Account Policies</h5>
+                        <small class="text-muted" style="font-size: 0.7rem;">Select the policies that apply to this user.</small>
                     </div>
                     
                     <div class="row g-2">
-                        <div class="col-12 col-md-6">
-                            <label for="leave_typeid" class="form-label small lh-sm fw-semibold text-dark mb-1">Paid Leave Type</label>
+                        @php
+                            $userPolicyIds = isset($userModel) ? $userModel->policies->pluck('policyid')->toArray() : [];
+                            $groupedPolicies = $policies->groupBy('componentid');
+                        @endphp
+                        @foreach($groupedPolicies as $componentId => $componentPolicies)
                             @php
-                                $currentLeavePolicy = isset($userModel) ? $userModel->userLeavePolicies->first() : null;
+                                $componentName = $componentPolicies->first()->component?->name ?? 'Unknown Type';
                             @endphp
-                            <select name="leave_typeid" id="leave_typeid" class="form-select">
-                                <option value="" {{ !$currentLeavePolicy ? 'selected' : '' }}>No Paid Leave Policy</option>
-                                @foreach($paidLeaveTypes ?? [] as $leaveType)
-                                    <option value="{{ $leaveType->typeid }}" {{ (old('leave_typeid', $currentLeavePolicy->typeid ?? '') == $leaveType->typeid) ? 'selected' : '' }}>
-                                        {{ $leaveType->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('leave_typeid') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                        </div>
-
-                        <div class="col-12 col-md-6">
-                            <label for="paid_leaves_pm" class="form-label small lh-sm fw-semibold text-dark mb-1">Paid Leaves / Month</label>
-                            <input type="number" id="paid_leaves_pm" name="paid_leaves_pm" class="form-control" value="{{ old('paid_leaves_pm', isset($currentLeavePolicy) ? (float) $currentLeavePolicy->leave_per_month : 0) }}" min="0" step="any">
-                            @error('paid_leaves_pm') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                        </div>
-
-                        <div class="col-12 col-md-6">
-                            <label for="probation_months" class="form-label small lh-sm fw-semibold text-dark mb-1">Wait Months for Paid Leave</label>
-                            <input type="number" id="probation_months" name="probation_months" class="form-control" value="{{ old('probation_months', $currentLeavePolicy->probation_months ?? 0) }}" min="0">
-                            @error('probation_months') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                        </div>
-
-                        <div class="col-12 col-md-6 d-flex align-items-end mb-2">
-                            <div class="mb-0 bg-white border rounded-1 px-2 py-1 w-100">
-                                <div class="form-check mb-0 d-flex align-items-center gap-1">
-                                    <input type="checkbox" class="form-check-input border-primary border-2 mt-0" id="carry_forward" name="carry_forward" value="1" {{ old('carry_forward', $currentLeavePolicy->carry_forward ?? false) ? 'checked' : '' }}>
-                                    <label class="form-check-label small lh-sm fw-normal text-dark" style="cursor: pointer;" for="carry_forward">Carry Forward Leaves</label>
+                            <div class="col-12 col-md-6">
+                                <div class="mb-0 bg-white border rounded-1 px-2 py-1 w-100">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">{{ $componentName }}</label>
+                                    <select class="form-select form-select-sm border-primary" name="account_policies[{{ $componentId }}]">
+                                        <option value="">No Policy Selected</option>
+                                        @foreach($componentPolicies as $policy)
+                                            <option value="{{ $policy->policyid }}" {{ in_array($policy->policyid, old('account_policies', $userPolicyIds)) ? 'selected' : '' }}>
+                                                {{ $policy->title }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
-                        </div>
+                        @endforeach
+                        @error('account_policies') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
                 </div>
             </div>
@@ -241,33 +235,7 @@
                             </div>
                         </div>
 
-                        @if(count($allAccountUsers ?? []) > 0)
-                        <div class="col-12">
-                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Assign Employee</label>
-                            <div class="mb-0 bg-white border rounded-1 px-2 py-1 ms-1" style="max-height: 200px; overflow-y: auto;">
-                                <div class="row g-2">
-                                    @php
-                                        $selectedAssignedUsers = old('assigned_users', $userModel->assigned_users ?? []);
-                                    @endphp
-                                    @foreach(($allAccountUsers ?? []) as $accUser)
-                                        <div class="col-12 col-md-6 col-lg-6 assign-user-col" data-level-value="{{ $accUser->role?->roleLevel?->level_value ?? 0 }}">
-                                            <div class="form-check mb-0 form-check-large">
-                                                <input class="form-check-input border-primary border-2" type="checkbox" name="assigned_users[]" value="{{ $accUser->userid }}" id="assign_user_{{ $accUser->userid }}" {{ in_array($accUser->userid, $selectedAssignedUsers, true) ? 'checked' : '' }}>
-                                                <label class="form-check-label small lh-sm fw-normal text-dark" for="assign_user_{{ $accUser->userid }}">
-                                                    {{ $accUser->name }} ({{ $accUser->email }})
-                                                </label>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                    <div id="no_assignable_users_msg" class="col-12 text-muted" style="display: none;">
-                                        No employees available to assign based on the selected role's level.
-                                    </div>
-                                </div>
-                                @error('assigned_users') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                                @error('assigned_users.*') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                            </div>
-                        </div>
-                        @endif
+
 
                         <div class="col-12 col-md-6">
                             <label for="password" class="form-label small lh-sm fw-semibold text-dark mb-1">{{ isset($userModel) ? 'New Password' : 'Password' }}<span class="text-danger">{{ isset($userModel) ? '' : '*' }}</span></label>
@@ -499,49 +467,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const roleSelect = document.getElementById('roleid');
-        const assignUserCols = document.querySelectorAll('.assign-user-col');
-        
-        if (roleSelect && assignUserCols.length > 0) {
-            const maxLevel = parseInt(roleSelect.getAttribute('data-max-level')) || 6;
-            const noUsersMsg = document.getElementById('no_assignable_users_msg');
 
-            function updateAssignedUsersVisibility() {
-                if (!roleSelect.value) return;
-                
-                const selectedOption = roleSelect.options[roleSelect.selectedIndex];
-                const selectedLevel = parseInt(selectedOption.getAttribute('data-level-value')) || 0;
-                let visibleCount = 0;
-                
-                assignUserCols.forEach(col => {
-                    const userLevel = parseInt(col.getAttribute('data-level-value')) || 0;
-                    const checkbox = col.querySelector('.form-check-input');
-                    
-                    if (selectedLevel >= maxLevel) {
-                        col.style.display = 'block';
-                        visibleCount++;
-                    } else {
-                        if (userLevel > 0 && userLevel < selectedLevel) {
-                            col.style.display = 'block';
-                            visibleCount++;
-                        } else {
-                            col.style.display = 'none';
-                            if (checkbox) checkbox.checked = false;
-                        }
-                    }
-                });
-
-                if (noUsersMsg) {
-                    noUsersMsg.style.display = visibleCount === 0 ? 'block' : 'none';
-                }
-            }
-
-            roleSelect.addEventListener('change', updateAssignedUsersVisibility);
-            updateAssignedUsersVisibility();
-        }
-    });
-</script>
 
 @endsection
