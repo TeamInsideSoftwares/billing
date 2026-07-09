@@ -814,8 +814,8 @@ class QuotationsController extends Controller
             'subject' => $validated['subject'] ?? null,
             'body' => $normalizedBody,
             'attachment_type' => 'quotation',
-            'attachment_path' => $isEmailChannel ? $this->resolveCampioQuotationPdfUrl($quotation, $isSendAction) : null,
-            'custom_attachment_path' => $isEmailChannel ? $finalCustomAttachmentPath : null,
+            'attachment_path' => $this->resolveCampioQuotationPdfUrl($quotation, $isSendAction),
+            'custom_attachment_path' => $finalCustomAttachmentPath,
             'status' => $isSendAction ? 'sent' : 'draft',
             'channel' => $channel,
         ];
@@ -971,6 +971,42 @@ class QuotationsController extends Controller
                     'source_url' => url()->current(),
                     'notes' => 'Quotation communication: '.strtoupper($channel),
                 ];
+
+                $canUseWhatsappDocumentHeader = true;
+                if ($channel === 'whatsapp' && $channelTemplateConfig) {
+                    $headerTypeMap = $this->fetchCampioTemplateHeaderTypes($accountid, 'whatsapp');
+                    $resolvedHeaderType = strtolower(trim((string) (
+                        $headerTypeMap[trim((string) ($channelTemplateConfig->template_id ?? ''))]
+                        ?? $headerTypeMap[trim((string) ($channelTemplateConfig->meta_template_id ?? ''))]
+                        ?? ($channelTemplateConfig->header_type ?? '')
+                    )));
+                    $canUseWhatsappDocumentHeader = in_array($resolvedHeaderType, ['document', 'image', 'video', 'media']);
+                }
+
+                $documentLinks = [];
+                if ($channel === 'whatsapp' && $canUseWhatsappDocumentHeader) {
+                    $documentLinks[] = [
+                        'label' => 'Quotation (PDF)',
+                        'url' => $this->resolveCampioQuotationPdfUrl($quotation, $isSendAction),
+                    ];
+                    foreach ($finalCustomAttachmentPaths as $customPath) {
+                        $documentLinks[] = [
+                            'label' => 'Attachment',
+                            'url' => $customPath,
+                        ];
+                    }
+                }
+
+                if ($channel === 'whatsapp' && ! empty($documentLinks) && $canUseWhatsappDocumentHeader) {
+                    $payload['media_url'] = (string) ($documentLinks[0]['url'] ?? '');
+                    if ($payload['media_url'] !== '' && ! str_starts_with(strtolower($payload['media_url']), 'https://')) {
+                        $msg = 'WhatsApp media delivery requires a public HTTPS document URL. Current PDF URL is HTTP. Please enable SSL/HTTPS for this domain, then try again.';
+                        if ($request->wantsJson()) {
+                            return response()->json(['success' => false, 'message' => $msg], 422);
+                        }
+                        return back()->withErrors(['general' => $msg])->withInput();
+                    }
+                }
 
                 if (! empty($channelTemplateConfig?->template_id)) {
                     $payload['template_id'] = (string) $channelTemplateConfig->template_id;
