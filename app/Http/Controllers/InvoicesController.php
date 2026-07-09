@@ -139,7 +139,10 @@ class InvoicesController extends Controller
     {
         $replace = $this->buildInvoiceMessageTemplateReplacements($invoice, $companyName);
 
-        return strtr($value, $replace);
+        return preg_replace_callback('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', function ($matches) use ($replace) {
+            $key = '{{' . $matches[1] . '}}';
+            return array_key_exists($key, $replace) ? $replace[$key] : $matches[0];
+        }, $value);
     }
 
     private function buildInvoiceMessageTemplateReplacements(Invoice $invoice, ?string $companyName = null): array
@@ -176,6 +179,7 @@ class InvoicesController extends Controller
         $accountid = $this->resolveAccountId();
         $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
         $billingName = $accountBillingDetail->billing_name ?? ($companyName ?? '');
+        $designation = trim((string) ($accountBillingDetail?->designation ?? ''));
         $sourceOrder = null;
         if ($primaryItem?->itemid) {
             $sourceOrder = Order::query()
@@ -206,6 +210,7 @@ class InvoicesController extends Controller
             '{{client_name}}' => $clientName, // Legacy - use client_business_name instead
             // YOUR business info - from Billing Details tab (or Account as fallback)
             '{{business_name}}' => $billingName,
+            '{{designation}}' => $designation,
             // Invoice info
             '{{invoice_number}}' => (string) ($invoice->invoice_number ?? ''),
             '{{invoice_title}}' => (string) ($invoice->invoice_title ?? ''),
@@ -3156,10 +3161,7 @@ class InvoicesController extends Controller
             $signatureName,
         ], $billingAddressLines)));
 
-        $defaultBody = "Hello,\n\nPlease find attached your invoice.\n\nInvoice No: ".($defaultSubjectNumber ?: $invoice->invoice_number);
-        if (! empty($signatureLines)) {
-            $defaultBody .= "\n\nRegards,\n".implode("\n", $signatureLines);
-        }
+        $defaultBody = "";
 
         $user = Auth::user();
         $currentUserId = $user?->userid ?? $user?->id;
