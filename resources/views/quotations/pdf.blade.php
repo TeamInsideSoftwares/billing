@@ -560,6 +560,9 @@
         <tr>
             <td style="text-align: right; font-size: 14pt; font-weight: bold; border: none; padding: 0px 0px 5px;">
                 Amount Payable: ₹{{ number_format($grandTotal, 0) }}
+                <div style="font-size: 9pt; font-weight: normal; color: #000; margin-top: 2px;">
+                    Rupees {{ ucwords(\Illuminate\Support\Number::spell($grandTotal)) }} Only
+                </div>
             </td>
         </tr>
     </table>
