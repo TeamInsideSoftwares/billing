@@ -421,12 +421,20 @@ $activeSettingsTab = 'billing-details';
                                         required>
                                 </div>
 
-                                <div class="col-12 col-md-12">
+                                <div class="col-12 col-md-6">
                                     <label class="form-label small lh-sm fw-semibold text-dark mb-1">Billing From Email</label>
                                     <input type="text" name="billing_from_email" class="form-control"
                                         value="{{ old('billing_from_email', $editingBillingDetail->billing_from_email ?? '') }}"
                                         placeholder="billing@company.com, finance@company.com">
                                     <div class="form-text text-muted small mt-1">Use comma to add multiple emails</div>
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Billing From Name <span class="text-muted fw-normal">(optional)</span></label>
+                                    <input type="text" name="billing_from_name" class="form-control"
+                                        value="{{ old('billing_from_name', $editingBillingDetail->billing_from_name ?? '') }}"
+                                        placeholder="e.g. SkoolReady Billing Team">
+                                    <div class="form-text text-muted small mt-1">Shown as the sender name in outgoing emails.</div>
                                 </div>
 
                                 <div class="col-12 col-md-6">

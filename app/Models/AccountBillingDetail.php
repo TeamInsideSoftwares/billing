@@ -35,6 +35,7 @@ class AccountBillingDetail extends Model
         'authorize_signatory',
         'signature_upload',
         'billing_from_email',
+        'billing_from_name',
         'designation',
     ];
 

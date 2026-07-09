@@ -140,7 +140,8 @@ class InvoicesController extends Controller
         $replace = $this->buildInvoiceMessageTemplateReplacements($invoice, $companyName);
 
         return preg_replace_callback('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', function ($matches) use ($replace) {
-            $key = '{{' . $matches[1] . '}}';
+            $key = '{{'.$matches[1].'}}';
+
             return array_key_exists($key, $replace) ? $replace[$key] : $matches[0];
         }, $value);
     }
@@ -3161,7 +3162,7 @@ class InvoicesController extends Controller
             $signatureName,
         ], $billingAddressLines)));
 
-        $defaultBody = "";
+        $defaultBody = '';
 
         $user = Auth::user();
         $currentUserId = $user?->userid ?? $user?->id;
@@ -3421,7 +3422,7 @@ class InvoicesController extends Controller
         $accountid = $this->resolveAccountId();
         $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
         $forcedFromEmail = (string) ($accountBillingDetail?->billing_from_email ?? '');
-        $forcedFromName = trim((string) ($accountBillingDetail?->billing_name ?? ''));
+        $forcedFromName = trim((string) ($accountBillingDetail?->billing_from_name ?? ''));
         $forcedToEmail = (string) (
             $invoice->client?->billingDetail?->billing_email
             ?? $invoice->client?->billing_email
@@ -3881,6 +3882,8 @@ class InvoicesController extends Controller
             'subject' => (string) ($validated['subject'] ?? ''),
             'message' => $emailMessage,
             'sender_id' => $forcedFromName !== '' ? $forcedFromName : $forcedFromEmail,
+            'from_name' => $forcedFromName,
+            'from_email' => $forcedFromEmail,
             'records' => $recipientRecords,
             'source_url' => url()->current(),
             'notes' => 'Invoice communication: EMAIL',
