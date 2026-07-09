@@ -3598,8 +3598,8 @@ class InvoicesController extends Controller
             $uploadedCustomAttachmentPaths
         ))));
         $finalCustomAttachmentPath = ! empty($finalCustomAttachmentPaths) ? implode(',', $finalCustomAttachmentPaths) : null;
-        $storeAttachmentPath = ($channel === 'email' && ! empty($attachmentPaths)) ? implode(',', $attachmentPaths) : null;
-        $storeCustomAttachmentPath = $channel === 'email' ? $finalCustomAttachmentPath : null;
+        $storeAttachmentPath = (! empty($attachmentPaths)) ? implode(',', $attachmentPaths) : null;
+        $storeCustomAttachmentPath = $finalCustomAttachmentPath;
         $sentAt = now();
         $documentLabel = $selectedType === 'ti' ? 'Tax Invoice (TI)' : 'Proforma Invoice (PI)';
         $successTitle = $selectedType === 'ti'
@@ -3696,7 +3696,7 @@ class InvoicesController extends Controller
                     ?? $headerTypeMap[trim((string) ($channelTemplateConfig->meta_template_id ?? ''))]
                     ?? ($channelTemplateConfig->header_type ?? '')
                 )));
-                $canUseWhatsappDocumentHeader = $resolvedHeaderType === 'document';
+                $canUseWhatsappDocumentHeader = in_array($resolvedHeaderType, ['document', 'image', 'video', 'media']);
             }
             $templateBodySource = (string) ($channelTemplateConfig?->body ?? ($validated['body'] ?? ''));
             $templateWantsDocLinks = preg_match('/\{\{\s*(pi_link|ti_link)\s*\}\}/i', $templateBodySource) === 1;
