@@ -251,7 +251,7 @@
         .terms-list {
             margin: 0;
             font-size: 9pt;
-            line-height: 1.1;
+            line-height: 1.2;
             color: #000;
         }
 

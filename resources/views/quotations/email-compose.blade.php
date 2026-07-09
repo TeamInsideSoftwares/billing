@@ -163,10 +163,13 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
                             </div>
 
                             <div class="col-12">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Message Body</label>
-                                <textarea name="body" id="whatsappBodyInput" rows="12" class="form-control" {{
-                                    !$hasWhatsappTemplate ? 'readonly' : ''
-                                    }}>{{ old('body', $whatsappBody) }}</textarea>
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1 d-flex justify-content-between align-items-center w-100">
+                                    <span>Message Body</span>
+                                    <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 m-0" onclick="refreshTemplateFromCampio('whatsapp')">
+                                        <i class="fas fa-sync-alt"></i> Refresh from Meta
+                                    </button>
+                                </label>
+                                <textarea name="body" id="whatsappBodyInput" rows="12" class="form-control bg-light" readonly tabindex="-1">{{ old('body', $whatsappBody) }}</textarea>
                             </div>
                         </div>
 
@@ -221,7 +224,12 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
                             </div>
 
                             <div class="col-12">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Message Body</label>
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1 d-flex justify-content-between align-items-center w-100">
+                                    <span>Message Body</span>
+                                    <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 m-0" onclick="refreshTemplateFromCampio('sms')">
+                                        <i class="fas fa-sync-alt"></i> Refresh from Meta
+                                    </button>
+                                </label>
                                 <textarea name="body" id="smsBodyInput" rows="12" class="form-control" {{
                                     !$hasSmsTemplate ? 'readonly' : '' }}>{{ old('body', $smsBody) }}</textarea>
                             </div>
@@ -479,6 +487,73 @@ $hasSmsTemplate = !empty($templateCatalog['sms'] ?? []);
         function getTemplatesForSelection(channel) {
             return (templateCatalog[channel] || []);
         }
+
+        window.refreshTemplateFromCampio = async function (channel) {
+            const form = document.getElementById(channel + 'Form');
+            if (!form) return;
+            
+            const options = getTemplatesForSelection(channel);
+            const payload = options.length > 0 ? options[0] : null;
+            const templateId = payload ? payload.templateid : null;
+
+            if (!templateId) {
+                alert('No template configured for this channel.');
+                return;
+            }
+
+            try {
+                const btn = event.currentTarget;
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+                btn.disabled = true;
+
+                const response = await fetch('{{ route("message-templates.refresh") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        channel: channel,
+                        template_id: templateId,
+                        document_type: 'quotation',
+                        document_id: '{{ $quotation->quotationid }}'
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    if (typeof templateCatalog !== 'undefined' && templateCatalog[channel]) {
+                        const catalogEntry = templateCatalog[channel].find(t => t.templateid == templateId);
+                        if (catalogEntry) {
+                            catalogEntry.body = data.template.body;
+                            if (data.template.name) catalogEntry.name = data.template.name;
+                        }
+                    }
+                    // re-apply
+                    if (typeof applyTemplate === 'function') {
+                        applyTemplate(channel, false);
+                    }
+                    if (typeof showToastDedup === 'function') {
+                        showToastDedup('success', 'Template refreshed successfully from Meta!');
+                    } else if (typeof window.showToast === 'function') {
+                        window.showToast('success', 'Template refreshed successfully from Meta!');
+                    } else {
+                        alert('Template refreshed successfully from Meta!');
+                    }
+                } else {
+                    alert(data.message || 'Failed to refresh template');
+                }
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            } catch (e) {
+                alert('Error refreshing template');
+                console.error(e);
+                const btn = event.currentTarget;
+                btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Refresh from Meta';
+                btn.disabled = false;
+            }
+        };
 
         function applyTemplate(channel, preserveExisting = false) {
             const options = getTemplatesForSelection(channel);
