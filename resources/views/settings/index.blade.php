@@ -889,7 +889,7 @@ $activeSettingsTab = 'billing-details';
                                     <form method="POST" action="{{ route('message-templates.store') }}"
                                         class="mainForm message-template-form d-flex flex-column h-100" data-channel="email"
                                         data-store-action="{{ route('message-templates.store') }}"
-                                        data-update-base="{{ url('settings/message-templates') }}">
+                                        data-update-base="{{ url('settings/message-templates') }}" autocomplete="off">
                                         @csrf
                                         <input type="hidden" name="template_type" value="{{ $defaultTypeKey }}">
                                         <input type="hidden" name="templateid" class="template-id-input" value="">
@@ -932,6 +932,7 @@ $activeSettingsTab = 'billing-details';
                                                         Body<span class="template-body-required-mark text-danger">*</span></label>
                                                     <textarea name="body" id="templateBodyInput-email" rows="5"
                                                         class="form-control template-body-input grow"
+                                                        autocomplete="off"
                                                         placeholder="Hi @{{ client_name }},\nPlease find the details below."></textarea>
                                                 </div>
                                             </div>
@@ -944,7 +945,7 @@ $activeSettingsTab = 'billing-details';
                                     <form method="POST" action="{{ route('message-templates.store') }}"
                                         class="mainForm message-template-form d-flex flex-column h-100" data-channel="whatsapp"
                                         data-store-action="{{ route('message-templates.store') }}"
-                                        data-update-base="{{ url('settings/message-templates') }}">
+                                        data-update-base="{{ url('settings/message-templates') }}" autocomplete="off">
                                         @csrf
                                         <input type="hidden" name="template_type" value="{{ $defaultTypeKey }}">
                                         <input type="hidden" name="templateid" class="template-id-input" value="">
@@ -986,6 +987,7 @@ $activeSettingsTab = 'billing-details';
                                                         Body</label>
                                                     <textarea name="body" id="templateBodyInput-whatsapp" rows="5"
                                                         class="form-control template-body-input grow"
+                                                        autocomplete="off"
                                                         placeholder="Hi @{{ client_name }},\nPlease find the details below."></textarea>
                                                     <small class="small lh-sm text-muted mt-1 mb-0">
                                                         Message text is fixed by the provider template. Only keep/update dynamic
@@ -1002,7 +1004,7 @@ $activeSettingsTab = 'billing-details';
                                     <form method="POST" action="{{ route('message-templates.store') }}"
                                         class="mainForm message-template-form d-flex flex-column h-100" data-channel="sms"
                                         data-store-action="{{ route('message-templates.store') }}"
-                                        data-update-base="{{ url('settings/message-templates') }}">
+                                        data-update-base="{{ url('settings/message-templates') }}" autocomplete="off">
                                         @csrf
                                         <input type="hidden" name="template_type" value="{{ $defaultTypeKey }}">
                                         <input type="hidden" name="templateid" class="template-id-input" value="">
@@ -1050,6 +1052,7 @@ $activeSettingsTab = 'billing-details';
                                                         Body</label>
                                                     <textarea name="body" id="templateBodyInput-sms" rows="5"
                                                         class="form-control template-body-input grow"
+                                                        autocomplete="off"
                                                         placeholder="Hi @{{ client_name }},\nPlease find the details below."></textarea>
                                                     <small class="small lh-sm text-muted mt-1 mb-0">
                                                         Message text is fixed by the provider template. Only keep/update dynamic
@@ -2493,6 +2496,13 @@ $activeSettingsTab = 'billing-details';
                             height: 280,
                             plugins: 'lists link table code autoresize',
                             toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
+                            init_instance_callback: function (ed) {
+                                const curType = getCurrentTemplateType();
+                                const ctx = templateContextMap[curType + '|' + channel] || null;
+                                if (ctx && ctx.body) {
+                                    setTinyContent(bodyInput.id, ctx.body);
+                                }
+                            },
                         });
                     }
                     return;

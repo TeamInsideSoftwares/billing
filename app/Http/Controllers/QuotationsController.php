@@ -753,7 +753,22 @@ class QuotationsController extends Controller
         $accountid = $this->resolveAccountId();
         $user = Auth::user();
 
-        $existingCustomAttachmentPaths = collect(explode(',', (string) ($validated['existing_custom_attachment_paths'] ?? '')))
+        $logid = $request->input('logid');
+        $channel = (string) ($validated['channel'] ?? 'email');
+
+        $draft = null;
+        if (! empty($logid)) {
+            $draft = CommunicationLog::where('accountid', $accountid)
+                ->where('logid', $logid)
+                ->where('type', 'draft')
+                ->where('communication_type', $channel)
+                ->first();
+        }
+
+        $existingPathsSource = $request->exists('existing_custom_attachment_paths')
+            ? (string) $request->input('existing_custom_attachment_paths')
+            : ($draft?->custom_attachment_path ?? '');
+        $existingCustomAttachmentPaths = collect(explode(',', $existingPathsSource))
             ->map(fn ($path) => trim((string) $path))
             ->filter()
             ->values()
@@ -785,6 +800,9 @@ class QuotationsController extends Controller
                 ->first();
         }
 
+        $action = $validated['action'] ?? 'save';
+        $isSendAction = $action === 'send';
+
         $logData = [
             'accountid' => $accountid,
             'quotationid' => $quotation->quotationid,
@@ -796,9 +814,9 @@ class QuotationsController extends Controller
             'subject' => $validated['subject'] ?? null,
             'body' => $normalizedBody,
             'attachment_type' => 'quotation',
-            'attachment_path' => $isEmailChannel ? $this->resolveCampioQuotationPdfUrl($quotation) : null,
+            'attachment_path' => $isEmailChannel ? $this->resolveCampioQuotationPdfUrl($quotation, $isSendAction) : null,
             'custom_attachment_path' => $isEmailChannel ? $finalCustomAttachmentPath : null,
-            'status' => $validated['action'] === 'send' ? 'sent' : 'draft',
+            'status' => $isSendAction ? 'sent' : 'draft',
             'channel' => $channel,
         ];
 
@@ -810,7 +828,7 @@ class QuotationsController extends Controller
             ]);
         }
 
-        if ($validated['action'] === 'send') {
+        if ($isSendAction) {
             if ($channel === 'email') {
                 $toEmailValue = trim((string) ($validated['to_email'] ?? ''));
                 if ($toEmailValue === '') {
@@ -822,7 +840,7 @@ class QuotationsController extends Controller
                     return back()->withErrors(['to_email' => $msg])->withInput();
                 }
 
-                $quotationPdfUrl = $this->resolveCampioQuotationPdfUrl($quotation);
+                $quotationPdfUrl = $this->resolveCampioQuotationPdfUrl($quotation, $isSendAction);
                 $quotationName = trim((string) ($quotation->quo_title ?: $quotation->quo_number ?: $quotation->quotationid));
                 $emailAttachmentItems = [[
                     'url' => $quotationPdfUrl,
@@ -1090,14 +1108,16 @@ class QuotationsController extends Controller
         ];
     }
 
-    private function resolveCampioQuotationPdfUrl(Quotation $quotation): string
+    private function resolveCampioQuotationPdfUrl(Quotation $quotation, bool $forceRegenerate = false): string
     {
-        $existing = collect($this->listStoredQuotationPdfVersions($quotation))
-            ->sortByDesc(fn ($row) => (int) ($row['version'] ?? 0))
-            ->first();
+        if (! $forceRegenerate) {
+            $existing = collect($this->listStoredQuotationPdfVersions($quotation))
+                ->sortByDesc(fn ($row) => (int) ($row['version'] ?? 0))
+                ->first();
 
-        if (! empty($existing['path'])) {
-            return $this->buildFriendlyCampioQuotationPdfUrl($quotation, (string) $existing['path']);
+            if (! empty($existing['path'])) {
+                return $this->buildFriendlyCampioQuotationPdfUrl($quotation, (string) $existing['path']);
+            }
         }
 
         $saved = $this->persistQuotationPdfVersion($quotation);
@@ -1115,7 +1135,12 @@ class QuotationsController extends Controller
         $friendlyBase = 'Quotation - '.($number !== '' ? $number : $quotation->quotationid);
         $friendlyBase = preg_replace('/[\\\\\\/:*?"<>|]+/', '-', $friendlyBase) ?: 'Quotation';
         $friendlyBase = preg_replace('/\s+/', '-', $friendlyBase) ?: $friendlyBase;
-        $targetPath = 'clients/'.$quotation->clientid.'/quotations-share/'.$friendlyBase.'.pdf';
+        $versionSuffix = '';
+        if (preg_match('/__v(\d+)\.pdf$/', $sourcePath, $m)) {
+            $versionSuffix = '-v'.$m[1];
+        }
+
+        $targetPath = 'clients/'.$quotation->clientid.'/quotations-share/'.$friendlyBase.$versionSuffix.'.pdf';
 
         if (! $disk->exists($targetPath) && $disk->exists($sourcePath)) {
             $disk->put($targetPath, (string) $disk->get($sourcePath));
