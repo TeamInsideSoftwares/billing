@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\AccountBillingDetail;
 use App\Models\FinancialYear;
+use App\Models\Invoice;
 use App\Models\MessageTemplate;
+use App\Models\Quotation;
 use App\Models\SerialConfiguration;
 use App\Models\Setting;
 use App\Models\Tax;
@@ -1230,5 +1232,103 @@ class SettingsController extends Controller
         }
 
         return redirect()->to(route('settings.index').'#taxes')->with('success', 'Tax status toggled.');
+    }
+
+    public function refreshTemplate(Request $request)
+    {
+        $validated = $request->validate([
+            'channel' => 'required|string|in:email,whatsapp,sms',
+            'template_id' => 'required|string',
+            'document_type' => 'nullable|string|in:quotation,invoice',
+            'document_id' => 'nullable|string',
+        ]);
+
+        $channel = $validated['channel'];
+        $templateId = $validated['template_id'];
+
+        if ($channel === 'email') {
+            return response()->json(['success' => false, 'message' => 'Email templates cannot be refreshed from Meta/Campio.']);
+        }
+
+        try {
+            // 1. Try to find the local template by local primary key (templateid) first
+            $localTemplate = MessageTemplate::where('accountid', $this->resolveAccountId())
+                ->where('channel', $channel)
+                ->where('templateid', $templateId)
+                ->first();
+
+            // If not found by local primary key, try by external template_id
+            if (! $localTemplate) {
+                $localTemplate = MessageTemplate::where('accountid', $this->resolveAccountId())
+                    ->where('channel', $channel)
+                    ->where('template_id', $templateId)
+                    ->first();
+            }
+
+            if (! $localTemplate) {
+                return response()->json(['success' => false, 'message' => 'Template not found locally. Please save it first.']);
+            }
+
+            $externalTemplateId = $localTemplate->template_id;
+
+            if (empty($externalTemplateId)) {
+                return response()->json(['success' => false, 'message' => 'Local template is missing the Meta/Campio Template ID.']);
+            }
+
+            $campioTemplate = $this->findCampioTemplateById($this->resolveAccountId(), $channel, $externalTemplateId);
+
+            if (! $campioTemplate) {
+                return response()->json(['success' => false, 'message' => 'Template not found on Meta/Campio.']);
+            }
+
+            // Update all local templates with this channel and external template_id
+            $templates = MessageTemplate::where('accountid', $this->resolveAccountId())
+                ->where('channel', $channel)
+                ->where('template_id', $externalTemplateId)
+                ->get();
+
+            foreach ($templates as $template) {
+                $template->name = $campioTemplate['name'] ?? $template->name;
+                $template->body = $campioTemplate['body'] ?? $template->body;
+                if ($channel === 'sms' && ! empty($campioTemplate['sender_id'])) {
+                    $template->sender_id = $campioTemplate['sender_id'];
+                }
+                if ($channel === 'whatsapp') {
+                    $template->meta_template_id = $campioTemplate['meta_template_id'] ?? $externalTemplateId;
+                }
+                $template->save();
+            }
+
+            $body = $campioTemplate['body'] ?? $templates->first()->body;
+            $name = $campioTemplate['name'] ?? $templates->first()->name;
+
+            if (! empty($validated['document_type']) && ! empty($validated['document_id'])) {
+                if ($validated['document_type'] === 'quotation') {
+                    $quotation = Quotation::find($validated['document_id']);
+                    if ($quotation) {
+                        $quotationsController = new QuotationsController;
+                        $body = $quotationsController->renderQuotationTemplateExternal($body, $quotation);
+                    }
+                } elseif ($validated['document_type'] === 'invoice') {
+                    $invoice = Invoice::find($validated['document_id']);
+                    if ($invoice) {
+                        $invoicesController = new InvoicesController;
+                        $body = $invoicesController->renderInvoiceTemplateExternal($body, $invoice);
+                    }
+                }
+            }
+
+            // Return the updated data
+            return response()->json([
+                'success' => true,
+                'message' => 'Template refreshed successfully from Meta.',
+                'template' => [
+                    'body' => $body,
+                    'name' => $name,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
     }
 }

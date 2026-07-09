@@ -1004,7 +1004,14 @@ class QuotationsController extends Controller
                         if ($request->wantsJson()) {
                             return response()->json(['success' => false, 'message' => $msg], 422);
                         }
+
                         return back()->withErrors(['general' => $msg])->withInput();
+                    }
+                    if ($payload['media_url'] !== '') {
+                        if (! isset($payload['dynamic_context']) || ! is_array($payload['dynamic_context'])) {
+                            $payload['dynamic_context'] = [];
+                        }
+                        $payload['dynamic_context']['media_url'] = $payload['media_url'];
                     }
                 }
 
@@ -1512,5 +1519,10 @@ class QuotationsController extends Controller
         }
 
         return $number;
+    }
+
+    public function renderQuotationTemplateExternal(string $value, Quotation $quotation): string
+    {
+        return $this->renderQuotationMessageTemplate($value, $quotation);
     }
 }

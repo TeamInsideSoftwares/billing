@@ -983,8 +983,12 @@ $activeSettingsTab = 'billing-details';
                                                 </div>
 
                                                 <div class="form-group mb-2 grow d-flex flex-column">
-                                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Message
-                                                        Body</label>
+                                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1 d-flex justify-content-between align-items-center w-100">
+                                                        <span>Message Body</span>
+                                                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 m-0" onclick="refreshTemplateFromCampio('whatsapp')">
+                                                            <i class="fas fa-sync-alt"></i> Refresh from Meta
+                                                        </button>
+                                                    </label>
                                                     <textarea name="body" id="templateBodyInput-whatsapp" rows="5"
                                                         class="form-control template-body-input grow"
                                                         autocomplete="off"
@@ -1048,8 +1052,12 @@ $activeSettingsTab = 'billing-details';
                                                 </div>
 
                                                 <div class="form-group mb-2 grow d-flex flex-column">
-                                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Message
-                                                        Body</label>
+                                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1 d-flex justify-content-between align-items-center w-100">
+                                                        <span>Message Body</span>
+                                                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 m-0" onclick="refreshTemplateFromCampio('sms')">
+                                                            <i class="fas fa-sync-alt"></i> Refresh from Meta
+                                                        </button>
+                                                    </label>
                                                     <textarea name="body" id="templateBodyInput-sms" rows="5"
                                                         class="form-control template-body-input grow"
                                                         autocomplete="off"
@@ -2475,8 +2483,17 @@ $activeSettingsTab = 'billing-details';
                 bodyInput.setCustomValidity('');
                 if (nameRequiredMark) nameRequiredMark.classList.toggle('is-hidden', !isEmail);
                 if (bodyRequiredMark) bodyRequiredMark.classList.toggle('is-hidden', !isEmail);
-                bodyInput.readOnly = false;
-                bodyInput.classList.remove('is-readonly-field');
+
+                const isWhatsApp = channel === 'whatsapp';
+                bodyInput.readOnly = isWhatsApp;
+                if (isWhatsApp) {
+                    bodyInput.classList.add('is-readonly-field', 'bg-light', 'text-muted');
+                    bodyInput.setAttribute('tabindex', '-1');
+                } else {
+                    bodyInput.classList.remove('is-readonly-field', 'bg-light', 'text-muted');
+                    bodyInput.removeAttribute('tabindex');
+                }
+
                 if (variableOnlyNote) {
                     variableOnlyNote.classList.toggle('is-hidden', isEmail);
                 }
@@ -2727,16 +2744,6 @@ $activeSettingsTab = 'billing-details';
                 });
             });
 
-            if (mtErrorToast) {
-                try {
-                    const messageText = String(mtErrorToast);
-                    if (typeof showToastDedup === 'function') {
-                        showToastDedup('error', messageText, 2000);
-                    } else if (typeof window.showToast === 'function') {
-                        window.showToast('error', messageText);
-                    }
-                } catch (e) { }
-            }
 
             async function toggleTermStatusBadge(badgeEl) {
                 const url = badgeEl?.dataset?.toggleUrl;
@@ -2809,4 +2816,64 @@ $activeSettingsTab = 'billing-details';
         });
     </script>
 
-    @endsection
+    <script>
+async function refreshTemplateFromCampio(channel) {
+    const form = document.querySelector('form.message-template-form[data-channel="' + channel + '"]');
+    if (!form) return;
+    
+    const templateIdInput = form.querySelector('input[name="template_id"]');
+    const templateId = templateIdInput ? templateIdInput.value : null;
+
+    if (!templateId) {
+        alert('Please enter a Template ID first.');
+        return;
+    }
+
+    try {
+        const btn = event.currentTarget;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+        btn.disabled = true;
+
+        const response = await fetch('{{ route("message-templates.refresh") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                channel: channel,
+                template_id: templateId
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            const bodyInput = form.querySelector('textarea[name="body"]');
+            if (bodyInput) bodyInput.value = data.template.body;
+            
+            const nameInput = form.querySelector('input[name="name"]');
+            if (nameInput && data.template.name) nameInput.value = data.template.name;
+            
+            if (typeof showToastDedup === 'function') {
+                showToastDedup('success', 'Template refreshed successfully from Meta!');
+            } else if (typeof window.showToast === 'function') {
+                window.showToast('success', 'Template refreshed successfully from Meta!');
+            } else {
+                alert('Template refreshed successfully from Meta!');
+            }
+        } else {
+            alert(data.message || 'Failed to refresh template');
+        }
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    } catch (e) {
+        alert('Error refreshing template');
+        console.error(e);
+        const btn = event.currentTarget;
+        btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Refresh from Meta';
+        btn.disabled = false;
+    }
+}
+</script>
+@endsection

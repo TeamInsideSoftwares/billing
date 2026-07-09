@@ -4036,4 +4036,9 @@ class InvoicesController extends Controller
         // Subtract 1 day to make it inclusive (e.g., 1st Jan to 31st Dec)
         return $date->subDay();
     }
+
+    public function renderInvoiceTemplateExternal(string $value, Invoice $invoice): string
+    {
+        return $this->renderMessageTemplate($value, $invoice);
+    }
 }
