@@ -353,6 +353,7 @@ class SettingsController extends Controller
             'gstin' => 'nullable|string|size:15',
             'tin' => 'nullable|string',
             'authorize_signatory' => 'nullable|string',
+            'designation' => 'nullable|string',
             'signature_upload' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
             'billing_from_email' => 'nullable|string',
         ]);

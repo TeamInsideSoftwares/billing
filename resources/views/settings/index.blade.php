@@ -429,10 +429,16 @@ $activeSettingsTab = 'billing-details';
                                     <div class="form-text text-muted small mt-1">Use comma to add multiple emails</div>
                                 </div>
 
-                                <div class="col-12 col-md-12">
+                                <div class="col-12 col-md-6">
                                     <label class="form-label small lh-sm fw-semibold text-dark mb-1">Authorize Signatory</label>
                                     <input type="text" name="authorize_signatory" class="form-control"
                                         value="{{ old('authorize_signatory', $editingBillingDetail->authorize_signatory ?? '') }}">
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Designation</label>
+                                    <input type="text" name="designation" class="form-control"
+                                        value="{{ old('designation', $editingBillingDetail->designation ?? '') }}">
                                 </div>
                             </div>
                             <div class="mb-2">

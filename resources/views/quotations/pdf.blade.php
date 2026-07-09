@@ -496,7 +496,7 @@
                         @endif
                     </td>
 
-                    <td class="center">
+                    <td class="center" style="vertical-align: middle;">
                         <div>{{ $durationLabel }}</div>
                         @if (!empty($item->start_date) && !empty($item->end_date))
                             <div style="font-size: 7pt; color: #555; margin-top: 2pt;">
@@ -592,16 +592,16 @@
             <td style="width: 40%; border: none;" align="right">
                 <table style="width: 160px; text-align: center; border: none;">
                     <tr>
-                        <td style="border: none; padding-bottom: 5px; height: 60px; vertical-align: bottom;">
+                        <td style="border: none; height: 60px; vertical-align: bottom;">
                             @if (!empty($signatureUrl))
                                 <img src="{{ $signatureUrl }}" style="max-width: 130px; max-height: 52px;" alt="Signature">
                             @endif
                         </td>
                     </tr>
                     <tr>
-                        <td style="border: none; padding-top: 5px; font-size: 9pt;">
+                        <td style="border: none; font-size: 9pt;">
                             {{ $accountBillingDetail->authorize_signatory ?? '' }}<br>
-                            {{ $accountBillingDetail->billing_name ?? $account->name }}
+                            {{ $accountBillingDetail->designation ?: ($accountBillingDetail->billing_name ?? $account->name) }}
                         </td>
                     </tr>
                 </table>
