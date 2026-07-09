@@ -230,6 +230,8 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/orders/{order}/force-delete', 'ordersForceDelete')->name('orders.force-delete');
     });
 
+    Route::post('/message-templates/refresh', [SettingsController::class, 'refreshTemplate'])->name('message-templates.refresh');
+
     Route::controller(SettingsController::class)->middleware('permission:settings.view')->group(function () {
         Route::post('/settings/fy-prefix', 'fyPrefixUpdate')->name('settings.fy-prefix.update');
         Route::get('/settings', 'settings')->name('settings.index');
