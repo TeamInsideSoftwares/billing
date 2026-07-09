@@ -48,8 +48,8 @@
 
         .company-name {
             margin: 4pt 0 1pt 0;
-            font-size: 11pt;
-            font-weight: 700;
+            font-size: 10pt;
+            font-weight: bold;
             color: #000;
         }
 
@@ -57,7 +57,7 @@
             margin: 2pt 0;
             font-size: 9pt;
             color: #000;
-            line-height: 1.45;
+            line-height: 1pt;
         }
 
         .gstin {
@@ -72,8 +72,8 @@
         }
 
         .doc-title {
-            font-size: 20pt;
-            font-weight: 800;
+            font-size: 16pt;
+            font-weight: bold;
             color: #000;
             text-transform: uppercase;
             letter-spacing: 0.02em;
@@ -148,7 +148,7 @@
             width: 100%;
             margin-bottom: 8pt;
             border-collapse: collapse;
-            border: 2pt solid #000;
+            border: 1pt solid #444;
         }
 
         table.items-table thead {
@@ -157,27 +157,30 @@
         }
 
         table.items-table th {
-            padding: 3pt 4pt;
-            border: 1pt solid #000;
-            border-bottom: 1pt solid #000;
+            padding: 4pt 6pt;
+            border: 1pt solid #444;
+            border-bottom: 1pt solid #444;
             font-size: 8.5pt;
             font-weight: bold;
-            text-align: left;
         }
 
+        th.left,
+        td.left {
+            text-align: left!important;
+        }  
         th.center,
         td.center {
-            text-align: center;
+            text-align: center!important;
         }
 
         th.right,
         td.right {
-            text-align: right;
+            text-align: right!important;
         }
 
         table.items-table td {
-            padding: 3pt 4pt;
-            border: 1pt solid #000;
+            padding: 4pt 6pt;
+            border: 1pt solid #333;
             font-size: 9pt;
             color: #000;
             vertical-align: top;
@@ -238,7 +241,7 @@
 
         .terms-title {
             margin: 0;
-            font-size: 10pt;
+            font-size: 9pt;
             font-weight: bold;
             color: #000;
             text-transform: uppercase;
@@ -454,15 +457,15 @@
     <table class="items-table">
         <thead>
             <tr>
-                <th style="width:5%">#</th>
-                <th style="width:45%">Description</th>
+                <th class="center" style="width:5%">#</th>
+                <th class="left" style="width:45%">Description</th>
                 <th class="center" style="width:20%">Duration</th>
 
                 @if ($hasUsersColumn)
                     <th class="center" style="width:7%">User</th>
                 @endif
 
-                <th class="center" style="width:5%">Qty</th>
+                <th class="center" style="width:8%">Qty</th>
                 <th class="right" style="width:8%">Rate</th>
                 <th class="right" style="width:10%">Total</th>
             </tr>
@@ -486,17 +489,17 @@
                 <tr>
                     <td>{{ $idx + 1 }}</td>
 
-                    <td style="padding-left: 5px;">
+                    <td>
                         <div><b>{{ $item->item_name }}</b></div>
                         @if (!empty($item->item_description))
                             <div class="item-desc">{!! nl2br(e($item->item_description)) !!}</div>
                         @endif
                     </td>
 
-                    <td class="center" style="vertical-align: middle;">
-                        <b>{{ $durationLabel }}</b>
+                    <td class="center">
+                        <div>{{ $durationLabel }}</div>
                         @if (!empty($item->start_date) && !empty($item->end_date))
-                            <div style="font-size: 7pt; color: #000; margin-top: 2pt;">
+                            <div style="font-size: 7pt; color: #555; margin-top: 2pt;">
                                 {{ $item->start_date->format('d M Y') }} - {{ $item->end_date->format('d M Y') }}
                             </div>
                         @endif
@@ -526,20 +529,20 @@
                     <b>Total</b>
                 </td>
 
-                <td class="right" style="padding-right: 5px; vertical-align: middle;">
+                <td class="right" style="padding-right: 5px;">
                     <b>{{ number_format($discountedSubtotal, 0) }}</b>
                 </td>
             </tr>
             <tr style="font-size: 8.5pt; background: #fff;">
                 <td class="right" colspan="{{ $hasUsersColumn ? 5 : 4 }}"
                     style="padding: 3pt 4pt; vertical-align: middle; border-top: 1px solid #000;">
-                    <strong>CGST</strong>
+                    CGST
 
                     {{ $cgst > 0 ? number_format($cgst, 0) : '0' }}
-                    <strong>SGST</strong>
+                    + SGST
 
                     {{ $sgst > 0 ? number_format($sgst, 0) : '0' }}
-                    <strong>IGST</strong>
+                    + IGST
 
                     {{ $igst > 0 ? number_format($igst, 0) : '0' }}
                 </td>
@@ -555,12 +558,12 @@
 
     <table style="width: 100%; margin-top: 5px;">
         <tr>
-            <td style="text-align: right; font-size: 14pt; font-weight: bold; border: none; padding: 5px 0;">
-                Total Payable: {{ number_format($grandTotal, 0) }}
+            <td style="text-align: right; font-size: 14pt; font-weight: bold; border: none; padding: 0px 0px 5px;">
+                Amount Payable: ₹{{ number_format($grandTotal, 0) }}
             </td>
         </tr>
     </table>
-    <div style="border-top: 2px solid #000; width: 100%; margin: 5px 0 2px 0;"></div>
+    <div style="border-top: 1px solid #444; width: 100%; margin: 5px 0 2px 0;"></div>
 
     @if (!empty($quotation->notes))
         <div class="notes-section">{{ trim($quotation->notes) }}</div>
@@ -580,13 +583,13 @@
         </div>
     @endif
 
-    <table style="width: 100%; margin-top: 20px;">
+    <table style="width: 100%; margin-top: 0px;">
         <tr>
             <td style="width: 60%; border: none;"></td>
             <td style="width: 40%; border: none;" align="right">
                 <table style="width: 160px; text-align: center; border: none;">
                     <tr>
-                        <td style="border: none; border-bottom: 1px solid #000; padding-bottom: 5px; height: 60px; vertical-align: bottom;">
+                        <td style="border: none; padding-bottom: 5px; height: 60px; vertical-align: bottom;">
                             @if (!empty($signatureUrl))
                                 <img src="{{ $signatureUrl }}" style="max-width: 130px; max-height: 52px;" alt="Signature">
                             @endif
