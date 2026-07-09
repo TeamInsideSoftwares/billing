@@ -356,6 +356,7 @@ class SettingsController extends Controller
             'designation' => 'nullable|string',
             'signature_upload' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
             'billing_from_email' => 'nullable|string',
+            'billing_from_name' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {

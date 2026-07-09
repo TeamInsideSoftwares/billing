@@ -33,7 +33,8 @@ class QuotationsController extends Controller
         $replace = $this->buildQuotationMessageTemplateReplacements($quotation, $companyName);
 
         return preg_replace_callback('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', function ($matches) use ($replace) {
-            $key = '{{' . $matches[1] . '}}';
+            $key = '{{'.$matches[1].'}}';
+
             return array_key_exists($key, $replace) ? $replace[$key] : $matches[0];
         }, $value);
     }
@@ -598,7 +599,7 @@ class QuotationsController extends Controller
         ]));
         $signatureName = trim((string) ($accountBillingDetail?->billing_name ?? ''));
         $signatureLines = array_values(array_filter(array_merge([$signatureName], $billingAddressLines)));
-        $defaultBody = "";
+        $defaultBody = '';
         $templateRows = MessageTemplate::query()
             ->where('accountid', $accountid)
             ->where('template_type', 'quotation')
@@ -861,6 +862,11 @@ class QuotationsController extends Controller
                     return back()->withErrors(['to_email' => $msg])->withInput();
                 }
 
+                $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
+                $forcedFromEmail = (string) ($accountBillingDetail?->billing_from_email ?? '');
+                $forcedFromName = trim((string) ($accountBillingDetail?->billing_from_name ?? ''));
+                $senderId = $forcedFromName !== '' ? $forcedFromName : ($forcedFromEmail !== '' ? $forcedFromEmail : (string) ($user?->email ?? ''));
+
                 $payload = [
                     'account_id' => $accountid,
                     'campaign_name' => '',
@@ -869,7 +875,9 @@ class QuotationsController extends Controller
                     'message' => $this->sanitizeComposedMessageBody(
                         $this->renderQuotationMessageTemplate((string) ($validated['body'] ?? ''), $quotation, $user?->name)
                     ),
-                    'sender_id' => (string) ($user?->email ?? ''),
+                    'sender_id' => $senderId,
+                    'from_name' => $forcedFromName,
+                    'from_email' => $forcedFromEmail !== '' ? $forcedFromEmail : (string) ($user?->email ?? ''),
                     'records' => $recipientRecords,
                     'source_url' => url()->current(),
                     'notes' => 'Quotation communication: EMAIL',
