@@ -30,7 +30,12 @@ class QuotationsController extends Controller
 
     private function renderQuotationMessageTemplate(string $value, Quotation $quotation, ?string $companyName = null): string
     {
-        return strtr($value, $this->buildQuotationMessageTemplateReplacements($quotation, $companyName));
+        $replace = $this->buildQuotationMessageTemplateReplacements($quotation, $companyName);
+
+        return preg_replace_callback('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', function ($matches) use ($replace) {
+            $key = '{{' . $matches[1] . '}}';
+            return array_key_exists($key, $replace) ? $replace[$key] : $matches[0];
+        }, $value);
     }
 
     private function buildQuotationMessageTemplateReplacements(Quotation $quotation, ?string $companyName = null): array
@@ -63,6 +68,7 @@ class QuotationsController extends Controller
         $accountid = $this->resolveAccountId();
         $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
         $billingName = trim((string) ($accountBillingDetail?->billing_name ?? $companyName ?? ''));
+        $designation = trim((string) ($accountBillingDetail?->designation ?? ''));
 
         $latestPayment = Payment::query()
             ->where('clientid', $quotation->clientid)
@@ -77,6 +83,7 @@ class QuotationsController extends Controller
             '{{business_name}}' => $billingName,
             '{{company_name}}' => $billingName,
             '{{account_name}}' => $billingName,
+            '{{designation}}' => $designation,
             '{{quotation_number}}' => $quotationNumber,
             '{{quotation_title}}' => $quotationTitle,
             '{{quotation_link}}' => $quotationLink,
@@ -591,12 +598,7 @@ class QuotationsController extends Controller
         ]));
         $signatureName = trim((string) ($accountBillingDetail?->billing_name ?? ''));
         $signatureLines = array_values(array_filter(array_merge([$signatureName], $billingAddressLines)));
-        $defaultBody = "Hello,\n\nPlease find attached quotation PDF ".($quotation->quo_number ?? $quotation->quotationid).'.';
-        if (! empty($signatureLines)) {
-            $defaultBody .= "\n\nRegards,\n".implode("\n", $signatureLines);
-        } else {
-            $defaultBody .= "\n\nRegards";
-        }
+        $defaultBody = "";
         $templateRows = MessageTemplate::query()
             ->where('accountid', $accountid)
             ->where('template_type', 'quotation')
