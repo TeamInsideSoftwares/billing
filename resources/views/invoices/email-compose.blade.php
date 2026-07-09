@@ -119,11 +119,19 @@ $hasSmsTemplate = !empty($templateCatalog['pi']['sms'] ?? []) || !empty($templat
                             </div>
 
                             <div class="col-12">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Extra Attachments
-                                    (optional)</label>
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Attachments</label>
+                                <input type="hidden" name="existing_custom_attachment_paths" id="existingCustomAttachmentPathsInput" value="{{ implode(',', $emailCustomAttachmentUrls ?? []) }}">
+
+                                <!-- Auto-attached invoice PDF -->
+                                <div id="autoAttachmentList" class="mb-2"></div>
+
+                                <!-- Saved custom attachments (deletable) -->
+                                <div id="currentCustomAttachment" class="mb-2"></div>
+
+                                <!-- Upload new attachment -->
                                 <input type="file" name="custom_attachments[]" id="customAttachmentInput" multiple
-                                    class="form-control" {{ !$hasEmailTemplate ? 'disabled' : '' }}>
-                                <div id="currentCustomAttachment" class="mt-2"></div>
+                                    class="form-control form-control-sm" {{ !$hasEmailTemplate ? 'disabled' : '' }}>
+                                <div class="form-text text-muted small mt-1">Upload additional files to attach</div>
                             </div>
                         </div>
 
@@ -447,45 +455,77 @@ $hasSmsTemplate = !empty($templateCatalog['pi']['sms'] ?? []) || !empty($templat
             return /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(String(url || ''));
         }
 
+        function syncExistingAttachmentPaths() {
+            const input = document.getElementById('existingCustomAttachmentPathsInput');
+            if (input) {
+                input.value = (savedCustomAttachmentUrls || []).join(',');
+            }
+        }
+
+        function renderAutoAttachment() {
+            const container = document.getElementById('autoAttachmentList');
+            if (!container) return;
+            const label = currentType === 'pi' ? 'Proforma Invoice (PI)' : 'Tax Invoice (TI)';
+            const url = currentType === 'pi' ? piPdfUrl : tiPdfUrl;
+            container.innerHTML =
+                '<div class="d-flex align-items-center gap-2 px-2 py-1 rounded border bg-light mb-1">'
+                + '<i class="fas fa-file-pdf text-danger"></i>'
+                + '<span class="small fw-semibold flex-grow-1">' + label + '.pdf'
+                + ' <span class="badge bg-info text-dark ms-1" style="font-size:0.65rem;">Auto-attached</span></span>'
+                + '<div class="tableActionButton d-inline-flex gap-1"><a href="' + url + '" target="_blank" class="bg01 color01 border-0 text-decoration-none">View</a></div>'
+                + '</div>';
+        }
+
         function renderCurrentCustomAttachment() {
             if (!currentCustomAttachment) return;
 
             const selectedFiles = Array.from(customAttachmentInput?.files || []);
-            const attachments = selectedFiles.length > 0
-                ? selectedFiles.map((file, index) => ({
-                    name: 'Attachment ' + (index + 1),
-                    url: dscPreviewUrls[index] || null,
-                    fileType: file?.type || ''
-                })).filter((item) => !!item.url)
-                : (savedCustomAttachmentUrls || []).map((url, index) => ({
-                    name: 'Attachment ' + (index + 1),
-                    url,
-                    fileType: ''
-                }));
 
-            if (attachments.length === 0) {
-                currentCustomAttachment.innerHTML = '<span class="small text-muted">No extra attachment selected.</span>';
+            // Show newly selected files (not yet uploaded)
+            if (selectedFiles.length > 0) {
+                const rows = selectedFiles.map((file, index) => {
+                    const previewUrl = dscPreviewUrls[index] || null;
+                    const isImg = isImageAttachment(file.name);
+                    return '<div class="d-flex align-items-center gap-2 px-2 py-1 rounded border bg-light mb-1">'
+                        + (isImg && previewUrl
+                            ? '<img src="' + previewUrl + '" style="height:32px;width:32px;object-fit:cover;border-radius:4px;">'
+                            : '<i class="fas fa-paperclip text-secondary"></i>')
+                        + '<span class="small flex-grow-1">' + file.name + '</span>'
+                        + (previewUrl ? '<div class="tableActionButton d-inline-flex gap-1"><a href="' + previewUrl + '" target="_blank" class="bg01 color01 border-0 text-decoration-none">View</a></div>' : '')
+                        + '</div>';
+                }).join('');
+                currentCustomAttachment.innerHTML = rows;
                 return;
             }
-            const imageRows = attachments.filter((item) => isImageAttachment(item.url));
-            const fileRows = attachments.filter((item) => !isImageAttachment(item.url));
 
-            const imageHtml = imageRows.length
-                ? ('<div class="small text-muted mb-1 mt-2">Image preview: ' +
+            // Show saved attachments with delete buttons
+            if (!savedCustomAttachmentUrls || savedCustomAttachmentUrls.length === 0) {
+                currentCustomAttachment.innerHTML = '';
+                return;
+            }
 
-                    imageRows.map((item) => (
-                        '<a href="' + item.url + '" target="_blank" class="text-decoration-none">' +
-                        '<img src="' + item.url + '" alt="' + String(item.name).replace(/"/g, '&quot;') + '"' +
-                        ' style="height:60px;width:60px;border:1px solid #e2e8f0;border-radius:8px;padding:2px;background:#fff;object-fit:cover;">' +
-                        '</a>'
-                    )).join('') +
-                    '</div>')
-                : '';
-            currentCustomAttachment.innerHTML =
-                '<div class="small text-muted mb-1">Current attachments: ' + fileRows.concat(imageRows).map((item) => (
-                    '<a href="' + item.url + '" target="_blank">' + item.name + '</a>'
-                )).join(', ') + '</div>' + imageHtml;
+            const rows = savedCustomAttachmentUrls.map((url, index) => {
+                const filename = decodeURIComponent(url.split('/').pop() || ('Attachment ' + (index + 1)));
+                const isImg = isImageAttachment(url);
+                return '<div class="d-flex align-items-center gap-2 px-2 py-1 rounded border bg-light mb-1" id="saved-att-' + index + '">'
+                    + (isImg
+                        ? '<img src="' + url + '" style="height:32px;width:32px;object-fit:cover;border-radius:4px;">'
+                        : '<i class="fas fa-paperclip text-secondary"></i>')
+                    + '<span class="small flex-grow-1 text-truncate" style="max-width:180px;" title="' + filename + '">' + filename + '</span>'
+                    + '<div class="tableActionButton d-inline-flex gap-1">'
+                    + '<a href="' + url + '" target="_blank" class="bg01 color01 border-0 text-decoration-none">View</a>'
+                    + '<button type="button" class="bg04 color04 border-0" onclick="removeCustomAttachment(' + index + ')" title="Remove">Remove</button>'
+                    + '</div>'
+                    + '</div>';
+            }).join('');
+            currentCustomAttachment.innerHTML = rows;
         }
+
+        window.removeCustomAttachment = function (index) {
+            savedCustomAttachmentUrls.splice(index, 1);
+            syncExistingAttachmentPaths();
+            renderCurrentCustomAttachment();
+        };
 
         function getTemplatesForSelection(type, channel) {
             return ((templateCatalog[type] || {})[channel] || []);
@@ -884,6 +924,7 @@ $hasSmsTemplate = !empty($templateCatalog['pi']['sms'] ?? []) || !empty($templat
 
         // Initialize attachment renders on page load
         refreshAttachmentPreview();
+        renderAutoAttachment();
         renderCurrentCustomAttachment();
     })();
 </script>
