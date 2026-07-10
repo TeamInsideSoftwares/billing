@@ -27,13 +27,10 @@ class DashboardController extends Controller
 
         $accountid = $this->resolveAccountId();
 
-        $payments = Payment::query()
+        $totalRevenue = (float) Payment::query()
             ->where('accountid', $accountid)
-            ->get(['paymentid', 'clientid', 'received_amount', 'payment_date', 'created_at']);
-
-        $totalRevenue = (float) $payments->sum(function ($payment) {
-            return max(0, (float) ($payment->received_amount ?? 0));
-        });
+            ->where('received_amount', '>', 0)
+            ->sum('received_amount');
 
         $today = now()->startOfDay();
 
@@ -164,19 +161,18 @@ class DashboardController extends Controller
 
         $attentionCount = $renewalsDue30Days->count();
 
-        $totalOutstanding = (float) Invoice::query()
+        $activeInvoices = Invoice::query()
             ->where('accountid', $accountid)
             ->where('status', '!=', 'cancelled')
-            ->get()
-            ->sum(function ($invoice) {
-                return max(0.0, (float) (($invoice->grand_total ?? 0) - ($invoice->amount_paid ?? 0)));
-            });
+            ->with(['client', 'items', 'paymentDetails.payment'])
+            ->get();
 
-        $outstandingInvoices = Invoice::query()
-            ->where('accountid', $accountid)
-            ->whereNotIn('status', ['cancelled', 'draft'])
-            ->with(['client', 'paymentDetails.payment', 'invoiceItems'])
-            ->get()
+        $totalOutstanding = (float) $activeInvoices->sum(function ($invoice) {
+            return max(0.0, (float) (($invoice->grand_total ?? 0) - ($invoice->amount_paid ?? 0)));
+        });
+
+        $outstandingInvoices = $activeInvoices
+            ->where('status', '!=', 'draft')
             ->filter(function ($invoice) {
                 return $invoice->balance_due > 0;
             })

@@ -1247,7 +1247,7 @@ class SettingsController extends Controller
         $templateId = $validated['template_id'];
 
         if ($channel === 'email') {
-            return response()->json(['success' => false, 'message' => 'Email templates cannot be refreshed from Meta/Campio.']);
+            return response()->json(['success' => false, 'message' => 'Email templates cannot be refreshed from Campio.']);
         }
 
         try {
@@ -1321,7 +1321,7 @@ class SettingsController extends Controller
             // Return the updated data
             return response()->json([
                 'success' => true,
-                'message' => 'Template refreshed successfully from Meta.',
+                'message' => 'Template refreshed successfully.',
                 'template' => [
                     'body' => $body,
                     'name' => $name,
