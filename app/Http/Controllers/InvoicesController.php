@@ -3575,8 +3575,12 @@ class InvoicesController extends Controller
         $action = $validated['action'] ?? 'save';
         $isSendAction = $action === 'send';
 
+        $piPdfUrl = null;
+        $tiPdfUrl = null;
+
         if (in_array('pi', $selectedTypes, true)) {
-            $attachmentPaths[] = $this->resolveCampioInvoicePdfUrl($invoice, false, $isSendAction);
+            $piPdfUrl = $this->resolveCampioInvoicePdfUrl($invoice, false, $isSendAction);
+            $attachmentPaths[] = $piPdfUrl;
         }
         if (in_array('ti', $selectedTypes, true)) {
             if (empty(trim((string) $invoice->ti_number))) {
@@ -3587,7 +3591,8 @@ class InvoicesController extends Controller
 
                 return back()->withErrors(['attachment_type' => $msg])->withInput();
             }
-            $attachmentPaths[] = $this->resolveCampioInvoicePdfUrl($invoice, true, $isSendAction);
+            $tiPdfUrl = $this->resolveCampioInvoicePdfUrl($invoice, true, $isSendAction);
+            $attachmentPaths[] = $tiPdfUrl;
         }
         foreach ((array) $request->file('custom_attachments', []) as $file) {
             if ($file && $file->isValid()) {
@@ -3706,16 +3711,16 @@ class InvoicesController extends Controller
             $allowDocumentPayloadForChannel = ($channel === 'whatsapp' && $canUseWhatsappDocumentHeader) || $templateWantsDocLinks;
             $documentLinks = [];
             if ($allowDocumentPayloadForChannel) {
-                if (in_array('pi', $selectedTypes, true)) {
+                if (in_array('pi', $selectedTypes, true) && $piPdfUrl) {
                     $documentLinks[] = [
                         'label' => 'Proforma Invoice (PDF)',
-                        'url' => $this->resolveCampioInvoicePdfUrl($invoice, false, $isSendAction),
+                        'url' => $piPdfUrl,
                     ];
                 }
-                if (in_array('ti', $selectedTypes, true)) {
+                if (in_array('ti', $selectedTypes, true) && $tiPdfUrl) {
                     $documentLinks[] = [
                         'label' => 'Tax Invoice (PDF)',
-                        'url' => $this->resolveCampioInvoicePdfUrl($invoice, true, $isSendAction),
+                        'url' => $tiPdfUrl,
                     ];
                 }
                 foreach ($finalCustomAttachmentPaths as $customPath) {
@@ -3734,15 +3739,21 @@ class InvoicesController extends Controller
             $plainBody = $this->sanitizeForCampioText($plainBody);
             $plainBody = str_replace("\n", "\r\n", $plainBody);
 
+            $phoneNumbers = collect(preg_split('/[\s,;]+/', $phone))
+                ->map(fn ($p) => trim((string) $p))
+                ->filter()
+                ->values()
+                ->unique();
+
             // Build payload
             $payload = [
                 'account_id' => $currentAccountId,
                 'campaign_name' => '',
                 'schedule_at' => now()->toIso8601String(),
                 'message' => $plainBody,
-                'records' => [
-                    $this->buildCampioRecipientRecord($invoice, $channel, $toEmailValue, $phone),
-                ],
+                'records' => $phoneNumbers->map(function ($p) use ($invoice, $channel, $toEmailValue) {
+                    return $this->buildCampioRecipientRecord($invoice, $channel, $toEmailValue, $p);
+                })->all(),
                 'source_url' => url()->current(),
                 'notes' => 'Invoice communication: '.strtoupper($channel),
             ];
@@ -3867,8 +3878,8 @@ class InvoicesController extends Controller
         $emailMessage = $this->sanitizeComposedMessageBody((string) ($validated['body'] ?? ''));
         $emailAttachmentUrls = [];
         $emailAttachmentItems = [];
-        if (in_array('pi', $selectedTypes, true)) {
-            $piUrl = $this->resolveCampioInvoicePdfUrl($invoice, false, $isSendAction);
+        if (in_array('pi', $selectedTypes, true) && $piPdfUrl) {
+            $piUrl = $piPdfUrl;
             $piNumber = trim((string) ($invoice->pi_number ?: $invoice->invoice_number));
             $emailAttachmentUrls[] = $piUrl;
             $emailAttachmentItems[] = [
@@ -3876,8 +3887,8 @@ class InvoicesController extends Controller
                 'name' => 'Proforma Invoice - '.($piNumber !== '' ? $piNumber : $invoice->invoiceid).'.pdf',
             ];
         }
-        if (in_array('ti', $selectedTypes, true)) {
-            $tiUrl = $this->resolveCampioInvoicePdfUrl($invoice, true, $isSendAction);
+        if (in_array('ti', $selectedTypes, true) && $tiPdfUrl) {
+            $tiUrl = $tiPdfUrl;
             $tiNumber = trim((string) ($invoice->ti_number ?: $invoice->invoice_number));
             $emailAttachmentUrls[] = $tiUrl;
             $emailAttachmentItems[] = [
