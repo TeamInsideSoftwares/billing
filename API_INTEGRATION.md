@@ -289,6 +289,198 @@ Returns all approved WhatsApp templates for the account.
 
 ---
 
+#### 8. Communication Log
+
+```
+POST /api/communication-log
+```
+
+Returns the full log details (subject, body, recipient, attachments) for a timeline entry. Used by CRM to populate the "View" modal on communication timeline entries.
+
+**Request:**
+
+```json
+{
+    "account_id": "ACC123",
+    "tlid": "TL789"
+}
+```
+
+| Field        | Type   | Required | Description                                |
+| ------------ | ------ | -------- | ------------------------------------------ |
+| `account_id` | string | Yes      | Account identifier                         |
+| `tlid`       | string | Yes      | Timeline ID from the `lead_timeline` table |
+
+**Success Response (200):**
+
+```json
+{
+    "status": "success",
+    "data": {
+        "tlid": "TL789",
+        "leadid": "LEAD456",
+        "accountid": "ACC123",
+        "channel": "email",
+        "subject": "Welcome to Our Platform!",
+        "message": "<html><body><h1>Hello John</h1><p>Welcome!</p></body></html>",
+        "sent_to": "john@example.com",
+        "from": "team@company.com",
+        "from_name": "Company Team",
+        "attachments_count": 2,
+        "attachments": [
+            {
+                "file_url": "https://cdn.example.com/docs/brochure.pdf",
+                "file_name": "brochure.pdf",
+                "content_type": "application/pdf",
+                "category": "attachments",
+                "url_type": "url_type_0"
+            }
+        ],
+        "entry_by": "John Doe",
+        "note": "Email Sent | Source: API",
+        "dt": "2026-02-12 10:00:00"
+    }
+}
+```
+
+**Channel resolution** (first match wins):
+
+1. MailLog for this `accountid` + `tlid` → `"email"`
+2. SmsLog → `"sms"`
+3. WhatsappLog → `"whatsapp"`
+4. None → `"timeline"` (no communication data)
+
+**Attachment resolution** (email only):
+
+- Resolved from `CommunicationManager.email_attachments` (JSON array of doc IDs) or from `email_data` payload
+- Documents fetched via `Docmanager` model and returned with `file_url` and `file_name`
+
+**Error Responses:**
+
+```json
+// 422 - Missing fields
+{ "status": "error", "message": "Missing required fields: account_id, tlid" }
+
+// 404 - Not found
+{ "status": "error", "message": "Timeline entry not found" }
+```
+
+---
+
+#### 9. Send Email (Quick-Send)
+
+```
+POST /api/mail/send
+```
+
+Sends a single transactional email. Creates a MailLog entry, lead timeline entry (if `lead_id` provided), and dispatches delivery. Used by CRM for quick email sends.
+
+**Request:**
+
+```json
+{
+    "from_email": "team@company.com",
+    "from_name": "Company Team",
+    "to_email": "john@example.com",
+    "subject": "Welcome!",
+    "body": "<html><body><h1>Hello</h1></body></html>",
+    "url": "https://crm.app/leads/123",
+    "source": "crm",
+    "account_id": "ACC123",
+    "lead_id": "LEAD456",
+    "userid": "USER789"
+}
+```
+
+| Field         | Type   | Required | Description                                    |
+| ------------- | ------ | -------- | ---------------------------------------------- |
+| `from_email`  | string | Yes      | Sender email address                           |
+| `from_name`   | string | Yes      | Sender name                                    |
+| `to_email`    | string | Yes      | Recipient email address                        |
+| `subject`     | string | Yes      | Email subject line                             |
+| `body`        | string | Yes      | Email body (HTML)                              |
+| `url`         | string | Yes      | Origin URL for tracking                        |
+| `source`      | string | Yes      | Source identifier                              |
+| `account_id`  | string | No       | Account identifier (auto-resolved if omitted)  |
+| `lead_id`     | string | No       | Lead ID for timeline entry creation            |
+| `userid`      | string | No       | User ID for timeline entry attribution         |
+| `attachments` | array  | No       | Array of `{file_url, file_name, content_type}` |
+
+---
+
+#### 10. Send SMS (Quick-Send)
+
+```
+POST /api/sms/send
+```
+
+Sends a single SMS message. Creates an SmsLog entry, lead timeline entry (if `leadid` provided), and dispatches delivery. Used by CRM for quick SMS sends.
+
+**Request:**
+
+```json
+{
+    "accountid": "ACC123",
+    "message": "Your OTP is 123456",
+    "mobileNos": "+919000000000",
+    "userid": "USER789",
+    "leadid": "LEAD456"
+}
+```
+
+| Field              | Type   | Required | Description                           |
+| ------------------ | ------ | -------- | ------------------------------------- |
+| `accountid`        | string | Yes      | Account identifier                    |
+| `message`          | string | Yes      | SMS text                              |
+| `mobileNos`        | string | No\*     | Recipient phone number (E.164 format) |
+| `mobile_nos`       | string | No\*     | Alias for mobileNos                   |
+| `lead_mobile_list` | string | No\*     | Comma-separated phone numbers         |
+| `lead_mobile`      | string | No\*     | Single phone number                   |
+| `userid`           | string | No       | User ID for timeline attribution      |
+| `leadid`           | string | No       | Lead ID for timeline entry creation   |
+| `senderId`         | string | No       | SMS sender ID                         |
+
+\*At least one of `mobileNos`, `mobile_nos`, `lead_mobile_list`, or `lead_mobile` is required.
+
+---
+
+#### 11. Send WhatsApp (Quick-Send)
+
+```
+POST /api/whatsapp/send
+```
+
+Sends a single WhatsApp message using a WABA template. Creates a WhatsappLog entry, lead timeline entry (if `leadid` provided), and dispatches delivery.
+
+**Request:**
+
+```json
+{
+    "accountid": "ACC123",
+    "waba_template": "enrollment_confirmation_v2",
+    "lead_mobile": "+919000000000",
+    "userid": "USER789",
+    "leadid": "LEAD456",
+    "headerText": "Enrollment Confirmed",
+    "body_variables": ["John", "Python Course"]
+}
+```
+
+| Field              | Type   | Required | Description                                                |
+| ------------------ | ------ | -------- | ---------------------------------------------------------- |
+| `accountid`        | string | Yes      | Account identifier                                         |
+| `waba_template`    | string | Yes      | WABA template name (must be approved)                      |
+| `lead_mobile`      | string | Yes      | Recipient phone number (E.164 format)                      |
+| `userid`           | string | No       | User ID for timeline attribution                           |
+| `leadid`           | string | No       | Lead ID for timeline entry creation                        |
+| `headerText`       | string | No       | Header text for templates with text headers                |
+| `media_url`        | string | No       | URL for image/video/document headers                       |
+| `media_filename`   | string | No       | Filename for document headers (falls back to URL basename) |
+| `header_variables` | array  | No       | Values for header placeholders                             |
+| `body_variables`   | array  | No       | Values for body placeholders                               |
+
+---
+
 ## Request Structure
 
 ### Required Headers
@@ -317,21 +509,24 @@ Content-Type: application/json
 
 ### Optional Fields
 
-| Field              | Type   | Description                                                  |
-| ------------------ | ------ | ------------------------------------------------------------ |
-| `subject`          | string | Email subject line (email campaigns only)                    |
-| `template_id`      | string | ID of stored template to use                                 |
-| `template_name`    | string | Name of template (auto-populated if using template_id)       |
-| `sender_id`        | string | Sender identifier (SMS sender ID, email from name)           |
-| `meta_template_id` | string | Meta/WABA template identifier for WhatsApp                   |
-| `header_text`      | string | Header text for WhatsApp templates                           |
-| `media_url`        | string | URL for media attachments (WhatsApp)                         |
-| `dynamic_context`  | object | Variable mapping configuration                               |
-| `variables`        | array  | Sequential variable values for positional placeholders       |
-| `source_url`       | string | Origin URL for tracking (recommended)                        |
-| `notes`            | string | Campaign notes/description                                   |
-| `group_source`     | string | Source identifier for audience group (defaults to "api")     |
-| `platforms`        | array  | Full platform configuration array (alternative to shorthand) |
+| Field               | Type   | Description                                                          |
+| ------------------- | ------ | -------------------------------------------------------------------- |
+| `subject`           | string | Email subject line (email campaigns only)                            |
+| `template_id`       | string | ID of stored template to use                                         |
+| `template_name`     | string | Name of template (auto-populated if using template_id)               |
+| `sender_id`         | string | Sender identifier (SMS sender ID, email from name)                   |
+| `meta_template_id`  | string | Meta/WABA template identifier for WhatsApp                           |
+| `header_text`       | string | Header text for WhatsApp templates                                   |
+| `media_url`         | string | URL for media attachments (WhatsApp)                                 |
+| `media_filename`    | string | Filename for document headers (WhatsApp, falls back to URL basename) |
+| `dynamic_context`   | object | Variable mapping configuration                                       |
+| `variables`         | array  | Sequential variable values for positional placeholders               |
+| `source_url`        | string | Origin URL for tracking (recommended)                                |
+| `notes`             | string | Campaign notes/description                                           |
+| `group_source`      | string | Source identifier for audience group (defaults to "api")             |
+| `platforms`         | array  | Full platform configuration array (alternative to shorthand)         |
+| `attachments`       | array  | Array of `{file_url, file_name, content_type}` objects (email only)  |
+| `attachment_docids` | array  | Array of Docmanager document IDs to attach (email only)              |
 
 ### Request Format Options
 
@@ -493,6 +688,54 @@ POST /api/campaigns/schedule/email
 {
     "status": "success",
     "campaign_id": "CAMP001XYZ"
+}
+```
+
+### 1a. Email Campaign - With Attachments
+
+```json
+POST /api/campaigns/schedule/email
+
+{
+  "account_id": "acct_123",
+  "campaign_name": "Course Brochure Email",
+  "schedule_at": "2026-02-12T10:00:00Z",
+  "subject": "Course Brochure Attached",
+  "message": "<html><body><h1>Hello {{name}}</h1><p>Please find the brochure attached.</p></body></html>",
+  "platforms": [
+    {
+      "platform": "email",
+      "payload": {
+        "subject": "Course Brochure Attached",
+        "message": "<html><body><h1>Hello {{name}}</h1><p>Please find the brochure attached.</p></body></html>",
+        "attachment_docids": ["doc_abc123", "doc_def456"]
+      }
+    }
+  ],
+  "records": [
+    {
+      "id": "lead-001",
+      "email": "john.doe@example.com",
+      "student_customer_name": "John Doe"
+    }
+  ]
+}
+```
+
+**Notes on attachments:**
+
+- `attachment_docids` accepts an array of Docmanager document IDs
+- Attachments are resolved at send time from the `docmanager` table
+- Attachments appear in the timeline "View" modal via `POST /api/communication-log`
+- The `attachments` field (array of `{file_url, file_name, content_type}`) can be used as an alternative to reference external URLs
+- Quick-send emails (`/api/mail/send`) do not support Docmanager-based attachments
+
+**Response:**
+
+```json
+{
+    "status": "success",
+    "campaign_id": "CAMP001BRO"
 }
 ```
 
@@ -727,7 +970,8 @@ POST /api/campaigns/schedule/whatsapp
   "template_id": "wa_template_media_99",
   "meta_template_id": "brochure_template_2026",
   "header_text": "2026 Course Catalog",
-  "media_url": "https://cdn.example.com/brochures/2026-catalog.pdf",
+    "media_url": "https://cdn.example.com/brochures/2026-catalog.pdf",
+    "media_filename": "2026-catalog.pdf",
   "message": "Hi {{name}}, check out our complete 2026 course catalog! Find the perfect course for your career goals.",
   "dynamic_context": {
     "fields": [
@@ -1087,6 +1331,7 @@ POST /api/campaigns/schedule/whatsapp
     "meta_template_id": "meta_whatsapp_media_xyz",
     "header_text": "Course Catalog 2026",
     "media_url": "https://cdn.example.com/brochure-2026.pdf",
+    "media_filename": "brochure-2026.pdf",
     "dynamic_context": {
         "fields": [
             {
@@ -1177,9 +1422,11 @@ The API validates the following:
 4. **platforms**: Required array with at least 1 entry
 5. **platforms.\*.platform**: Must be one of: email, sms, whatsapp
 6. **platforms._.template_id OR platforms._.payload.message**: At least one required
-7. **records**: Required array with at least 1 entry
-8. **records.\*.email**: Required for email campaigns
-9. **records._.mobile OR records._.phone**: Required for SMS/WhatsApp campaigns
+7. **platforms.\_.payload.attachments**: Array of `{file_url, file_name, content_type}` (email only)
+8. **platforms.\_.payload.attachment_docids**: Array of Docmanager document IDs (email only)
+9. **records**: Required array with at least 1 entry
+10. **records.\*.email**: Required for email campaigns
+11. **records._.mobile OR records._.phone**: Required for SMS/WhatsApp campaigns
 
 ### Dynamic Variables
 
@@ -1293,6 +1540,7 @@ WhatsApp campaigns can use Meta's Business API (WABA) templates, which require s
 
 - **header_text**: For text headers
 - **media_url**: For image/video/document headers (must be publicly accessible)
+- **media_filename**: Custom filename for document headers (optional, falls back to basename of media_url)
 - **footer_text**: Footer text (if template supports it)
 - **variables**: Array of sequential values for positional placeholders
 
@@ -1336,6 +1584,98 @@ WhatsApp campaigns can use Meta's Business API (WABA) templates, which require s
 4. Service merges user-provided `message` with template body (user message takes precedence)
 5. Service applies `dynamic_context` variable replacements
 6. Service creates `WhatsappLog` entry with resolved message and metadata
+
+#### Named Parameter Format (parameter_format = NAMED)
+
+Templates with `parameter_format: "NAMED"` use named variables like `{{client_business_name}}` instead of positional ones like `{{1}}`. When such a template is synced from Meta, the system automatically detects the NAMED format from the stored `WabaTemplateComponent` record and includes `parameter_name` in body parameters sent to Meta's API.
+
+**How it works:**
+
+1. The stored `components_json` (from Meta's template sync) contains `parameter_format: "NAMED"` and `body_text_named_params` array with the order of parameter names.
+2. The system reads `param_name` values from `body_text_named_params[].param_name` in order.
+3. When building the Meta API request body, each parameter includes the `parameter_name` field.
+4. No changes needed on your end — send `body_variables` as a flat array; the system maps them to the correct parameter names automatically.
+
+**Example Meta API payload generated (internal):**
+
+```json
+{
+    "messaging_product": "whatsapp",
+    "recipient_type": "individual",
+    "type": "template",
+    "template": {
+        "name": "pi_and_ti",
+        "language": { "code": "en" },
+        "components": [
+            {
+                "type": "header",
+                "parameters": [
+                    {
+                        "type": "document",
+                        "document": {
+                            "link": "https://cdn.example.com/invoice.pdf",
+                            "filename": "invoice.pdf"
+                        }
+                    }
+                ]
+            },
+            {
+                "type": "body",
+                "parameters": [
+                    {
+                        "type": "text",
+                        "parameter_name": "client_business_name",
+                        "text": "Acme Solutions Inc."
+                    },
+                    {
+                        "type": "text",
+                        "parameter_name": "invoice_title",
+                        "text": "testing"
+                    },
+                    {
+                        "type": "text",
+                        "parameter_name": "pi_number",
+                        "text": "PI-1011-2026"
+                    },
+                    {
+                        "type": "text",
+                        "parameter_name": "total_amount",
+                        "text": "INR 16,520.00"
+                    },
+                    {
+                        "type": "text",
+                        "parameter_name": "due_date",
+                        "text": "15 Jul 2026"
+                    }
+                ]
+            }
+        ]
+    }
+}
+```
+
+**Sending body variables for a NAMED template via `/api/whatsapp/send`:**
+
+Send `body_variables` as a flat array. Values are matched to parameter names in the order defined by `body_text_named_params`:
+
+```json
+{
+    "accountid": "acct_123",
+    "lead_mobile": "919000000000",
+    "waba_template": "B54O6E",
+    "body_variables": [
+        "Acme Solutions Inc.",
+        "testing",
+        "PI-1011-2026",
+        "INR 16,520.00",
+        "15 Jul 2026"
+    ],
+    "media_url_manual": "https://cdn.example.com/invoice.pdf",
+    "media_filename": "Proforma-Invoice-PI-1011-2026.pdf"
+}
+```
+
+The system automatically includes `parameter_name` in each body parameter when `parameter_format` is NAMED. No additional configuration is required.
 
 ### Communication Group Persistence
 
@@ -1771,24 +2111,30 @@ For additional assistance:
 
 ### communication_manager Fields
 
-| Field           | Type     | Description                                   |
-| --------------- | -------- | --------------------------------------------- |
-| `campaignid`    | string   | Unique campaign identifier                    |
-| `accountid`     | string   | Account owner                                 |
-| `userid`        | string   | User who created the campaign                 |
-| `campaign`      | string   | Campaign name                                 |
-| `groupid`       | string   | Links to communication_groups                 |
-| `subject`       | string   | Email subject (email campaigns)               |
-| `templateid`    | string   | Template used                                 |
-| `template_name` | string   | Template name                                 |
-| `send_email`    | enum     | "yes" or "no"                                 |
-| `send_sms`      | enum     | "yes" or "no"                                 |
-| `send_whatsapp` | enum     | "yes" or "no"                                 |
-| `email_data`    | json     | Email platform config                         |
-| `sms_data`      | json     | SMS platform config                           |
-| `whatsapp_data` | json     | WhatsApp platform config                      |
-| `status`        | enum     | "scheduled", "running", "completed", "paused" |
-| `dt`            | datetime | Creation timestamp                            |
+| Field               | Type     | Description                                                                       |
+| ------------------- | -------- | --------------------------------------------------------------------------------- |
+| `campaignid`        | string   | Unique campaign identifier                                                        |
+| `accountid`         | string   | Account owner                                                                     |
+| `userid`            | string   | User who created the campaign                                                     |
+| `campaign`          | string   | Campaign name                                                                     |
+| `groupid`           | string   | Links to communication_groups                                                     |
+| `subject`           | string   | Email subject (email campaigns)                                                   |
+| `from_name`         | string   | Sender name                                                                       |
+| `from_email`        | string   | Sender email                                                                      |
+| `reply_to_name`     | string   | Reply-to name                                                                     |
+| `reply_to_email`    | string   | Reply-to email                                                                    |
+| `templateid`        | string   | Template used                                                                     |
+| `template_name`     | string   | Template name                                                                     |
+| `send_email`        | enum     | "yes" or "no"                                                                     |
+| `send_sms`          | enum     | "yes" or "no"                                                                     |
+| `send_whatsapp`     | enum     | "yes" or "no"                                                                     |
+| `email_data`        | json     | Email platform config (includes subject, message, attachments, attachment_docids) |
+| `sms_data`          | json     | SMS platform config                                                               |
+| `whatsapp_data`     | json     | WhatsApp platform config                                                          |
+| `email_attachments` | json     | Array of Docmanager document IDs for email attachments                            |
+| `campaign_payload`  | json     | Raw campaign payload for draft persistence                                        |
+| `status`            | enum     | "scheduled", "running", "completed", "paused"                                     |
+| `dt`                | datetime | Creation timestamp                                                                |
 
 ### communication_outbox Fields
 
@@ -2328,6 +2674,14 @@ For additional assistance:
 
 ## Changelog
 
+### 2026-07-06
+
+- **NEW**: `POST /api/communication-log` endpoint — returns full communication details (subject, body, recipient, attachments) for timeline "View" modal
+- **NEW**: Email attachment support via `attachment_docids` (Docmanager document IDs) and `attachments` (direct URLs) in platform payloads
+- **NEW**: `email_attachments` field added to `communication_manager` table — stores Docmanager document IDs for email attachments
+- **NEW**: Documented quick-send endpoints: `POST /api/mail/send`, `POST /api/sms/send`, `POST /api/whatsapp/send`
+- **FIX**: Campaign API now properly persists `attachment_docids` to `email_attachments` column for timeline log resolution
+
 ### 2026-02-11 (Latest)
 
 - **CRITICAL FIX**: Fixed email subject missing in scheduled campaigns
@@ -2547,6 +2901,10 @@ AND accountid = 'YOUR_ACCOUNT_ID';
 - `mail_logs` - Detailed email sending logs
 - `sms_logs` - Detailed SMS sending logs
 - `whatsapp_logs` - Detailed WhatsApp sending logs
+
+**Viewing Communication Details:**
+
+The CRM calls `POST /api/communication-log` with `account_id` and `tlid` to fetch full communication details (subject, body, recipient, attachments) for the timeline "View" modal. See [Section 8](#8-communication-log) for API details.
 
 ---
 

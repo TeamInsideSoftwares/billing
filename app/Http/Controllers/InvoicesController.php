@@ -332,6 +332,7 @@ class InvoicesController extends Controller
         $friendlyBase = $prefix.($number !== '' ? $number : $invoice->invoiceid);
         $friendlyBase = preg_replace('/[\\\\\\/:*?"<>|]+/', '-', $friendlyBase) ?: ($isTaxInvoice ? 'Tax-Invoice' : 'Proforma-Invoice');
         $friendlyBase = preg_replace('/\s+/', '-', $friendlyBase) ?: $friendlyBase;
+        $friendlyBase = preg_replace('/-+/', '-', $friendlyBase);
         $versionSuffix = '';
         if (preg_match('/__v(\d+)\.pdf$/', $sourcePath, $m)) {
             $versionSuffix = '-v'.$m[1];
@@ -415,11 +416,29 @@ class InvoicesController extends Controller
     {
         $invoice->loadMissing(['client']);
 
-        $pdfAttachment = $this->buildInvoicePdfAttachment($invoice, $isTaxInvoice);
         $disk = Storage::disk('public');
         $typeKey = $isTaxInvoice ? 'ti' : 'pi';
         $directory = 'clients/'.$invoice->clientid.'/invoices-pdf';
         $baseName = $invoice->invoiceid.'_'.$typeKey;
+
+        $currentHash = $this->getInvoiceDataHash($invoice, $isTaxInvoice);
+        $hashFile = $directory.'/'.$baseName.'.hash';
+        $storedHash = $disk->exists($hashFile) ? trim((string) $disk->get($hashFile)) : '';
+
+        if ($currentHash === $storedHash) {
+            $existingVersions = $this->listStoredInvoicePdfVersions($invoice);
+            $latestExisting = collect($existingVersions)
+                ->filter(fn ($row) => (string) ($row['type'] ?? '') === $typeKey)
+                ->sortByDesc(fn ($row) => (int) ($row['version'] ?? 0))
+                ->first();
+
+            if ($latestExisting) {
+                return $latestExisting;
+            }
+        }
+
+        $pdfAttachment = $this->buildInvoicePdfAttachment($invoice, $isTaxInvoice);
+        
         $existing = collect($disk->files($directory))
             ->map(function (string $path) use ($baseName) {
                 $name = pathinfo($path, PATHINFO_FILENAME);
@@ -435,6 +454,7 @@ class InvoicesController extends Controller
         $nextVersion = ((int) ($existing->max() ?? 0)) + 1;
         $relativePath = $directory.'/'.$baseName.'__v'.$nextVersion.'.pdf';
         $disk->put($relativePath, $pdfAttachment['binary']);
+        $disk->put($hashFile, $currentHash);
 
         return [
             'type' => $typeKey,
@@ -444,6 +464,45 @@ class InvoicesController extends Controller
             'url' => asset('storage/'.$relativePath),
             'saved_at' => now()->toDateTimeString(),
         ];
+    }
+
+    private function getInvoiceDataHash(Invoice $invoice, bool $isTaxInvoice): string
+    {
+        $invoice->loadMissing(['client.billingDetail', 'invoiceItems', 'paymentDetails.payment']);
+        $accountid = $invoice->accountid;
+        $account = Account::find($accountid);
+        $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
+
+        $data = [
+            'is_tax' => $isTaxInvoice,
+            'invoice' => $invoice->toArray(),
+            'client' => $invoice->client?->toArray() ?? [],
+            'client_billing' => $invoice->client?->billingDetail?->toArray() ?? [],
+            'account' => $account?->toArray() ?? [],
+            'account_billing' => $accountBillingDetail?->toArray() ?? [],
+            'items' => $invoice->invoiceItems->toArray(),
+            'payments' => $invoice->paymentDetails->toArray(),
+        ];
+
+        $volatileFields = [
+            'updated_at', 'created_at', 'last_emailed_at', 'status', 'email_status', 'sms_status', 'whatsapp_status'
+        ];
+
+        $cleanData = $this->recursiveRemoveVolatileFields($data, $volatileFields);
+
+        return md5(json_encode($cleanData));
+    }
+
+    private function recursiveRemoveVolatileFields(array $array, array $volatileFields): array
+    {
+        foreach ($array as $key => &$value) {
+            if (in_array($key, $volatileFields, true)) {
+                unset($array[$key]);
+            } elseif (is_array($value)) {
+                $value = $this->recursiveRemoveVolatileFields($value, $volatileFields);
+            }
+        }
+        return $array;
     }
 
     private function listStoredInvoicePdfVersions(Invoice $invoice): array
@@ -3712,15 +3771,19 @@ class InvoicesController extends Controller
             $documentLinks = [];
             if ($allowDocumentPayloadForChannel) {
                 if (in_array('pi', $selectedTypes, true) && $piPdfUrl) {
+                    $piNumber = trim((string) ($invoice->pi_number ?: $invoice->invoice_number));
                     $documentLinks[] = [
                         'label' => 'Proforma Invoice (PDF)',
                         'url' => $piPdfUrl,
+                        'name' => 'Proforma Invoice - '.($piNumber !== '' ? $piNumber : $invoice->invoiceid).'.pdf'
                     ];
                 }
                 if (in_array('ti', $selectedTypes, true) && $tiPdfUrl) {
+                    $tiNumber = trim((string) ($invoice->ti_number ?: $invoice->invoice_number));
                     $documentLinks[] = [
                         'label' => 'Tax Invoice (PDF)',
                         'url' => $tiPdfUrl,
+                        'name' => 'Tax Invoice - '.($tiNumber !== '' ? $tiNumber : $invoice->invoiceid).'.pdf'
                     ];
                 }
                 foreach ($finalCustomAttachmentPaths as $customPath) {
@@ -3798,7 +3861,7 @@ class InvoicesController extends Controller
             }
             if ($channel === 'whatsapp' && ! empty($documentLinks) && $canUseWhatsappDocumentHeader) {
                 $payload['media_url'] = (string) ($documentLinks[0]['url'] ?? '');
-                // $payload['media_url'] = 'https://billing.skoolready.com/public/storage/clients/P9AEGIF6Q8/invoices-share/Proforma-Invoice---PI-1011-2026-v23.pdf';
+                // $payload['media_url'] = 'https://billing.skoolready.com/public/storage/clients/P9AEGIF6Q8/invoices-share/Proforma-Invoice-PI-1011-2026-v23.pdf';
                 if ($payload['media_url'] !== '' && ! str_starts_with(strtolower($payload['media_url']), 'https://')) {
                     $msg = 'WhatsApp media delivery requires a public HTTPS document URL. Current PDF URL is HTTP. Please enable SSL/HTTPS for this domain, then try again.';
                     if ($request->wantsJson()) {
@@ -3810,6 +3873,11 @@ class InvoicesController extends Controller
                     ])->withInput();
                 }
                 if ($payload['media_url'] !== '') {
+                    $beautifulName = (string) ($documentLinks[0]['name'] ?? 'Document.pdf');
+                    $payload['media_filename'] = $beautifulName;
+                    $payload['filename'] = $beautifulName; // Keep for fallback just in case
+                    $payload['media_name'] = $beautifulName; // Keep for fallback just in case
+
                     if (! isset($payload['dynamic_context']) || ! is_array($payload['dynamic_context'])) {
                         $payload['dynamic_context'] = [];
                     }
@@ -3824,7 +3892,8 @@ class InvoicesController extends Controller
                             [
                                 'type' => 'document',
                                 'document' => [
-                                    'link' => $payload['media_url']
+                                    'link' => $payload['media_url'],
+                                    'filename' => $beautifulName
                                 ]
                             ]
                         ]

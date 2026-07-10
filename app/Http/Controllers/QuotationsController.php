@@ -988,9 +988,11 @@ class QuotationsController extends Controller
 
                 $documentLinks = [];
                 if ($channel === 'whatsapp' && $canUseWhatsappDocumentHeader) {
+                    $quoNumber = trim((string) ($quotation->quo_number ?: $quotation->quotationid));
                     $documentLinks[] = [
                         'label' => 'Quotation (PDF)',
                         'url' => $this->resolveCampioQuotationPdfUrl($quotation, $isSendAction),
+                        'name' => 'Quotation - '.($quoNumber !== '' ? $quoNumber : $quotation->quotationid).'.pdf'
                     ];
                     foreach ($finalCustomAttachmentPaths as $customPath) {
                         $documentLinks[] = [
@@ -1011,6 +1013,11 @@ class QuotationsController extends Controller
                         return back()->withErrors(['general' => $msg])->withInput();
                     }
                     if ($payload['media_url'] !== '') {
+                        $beautifulName = (string) ($documentLinks[0]['name'] ?? 'Document.pdf');
+                        $payload['media_filename'] = $beautifulName;
+                        $payload['filename'] = $beautifulName; // Keep for fallback just in case
+                        $payload['media_name'] = $beautifulName; // Keep for fallback just in case
+
                         if (! isset($payload['dynamic_context']) || ! is_array($payload['dynamic_context'])) {
                             $payload['dynamic_context'] = [];
                         }
@@ -1025,7 +1032,8 @@ class QuotationsController extends Controller
                                 [
                                     'type' => 'document',
                                     'document' => [
-                                        'link' => $payload['media_url']
+                                        'link' => $payload['media_url'],
+                                        'filename' => $beautifulName
                                     ]
                                 ]
                             ]
@@ -1208,6 +1216,7 @@ class QuotationsController extends Controller
         $friendlyBase = 'Quotation - '.($number !== '' ? $number : $quotation->quotationid);
         $friendlyBase = preg_replace('/[\\\\\\/:*?"<>|]+/', '-', $friendlyBase) ?: 'Quotation';
         $friendlyBase = preg_replace('/\s+/', '-', $friendlyBase) ?: $friendlyBase;
+        $friendlyBase = preg_replace('/-+/', '-', $friendlyBase);
         $versionSuffix = '';
         if (preg_match('/__v(\d+)\.pdf$/', $sourcePath, $m)) {
             $versionSuffix = '-v'.$m[1];
