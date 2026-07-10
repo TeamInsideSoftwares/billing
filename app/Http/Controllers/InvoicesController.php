@@ -264,7 +264,10 @@ class InvoicesController extends Controller
             $resolved = array_key_exists($placeholder, $replace)
                 ? (string) $replace[$placeholder]
                 : (string) $token;
-            $variables[] = $this->sanitizeForCampioText($resolved);
+            $variables[] = [
+                'name' => $token,
+                'value' => $this->sanitizeForCampioText($resolved),
+            ];
         }
 
         return $variables;
@@ -3758,13 +3761,25 @@ class InvoicesController extends Controller
                 $accountName = (string) (optional(Account::find($currentAccountId))->name ?? '');
                 $templateVariables = $this->extractCampioTemplateVariables((string) ($channelTemplateConfig->body ?? ''), $invoice, $accountName);
                 if (! empty($templateVariables)) {
-                    $payload['variables'] = $templateVariables;
+                    $payload['variables'] = collect($templateVariables)->pluck('value')->all();
+                    $payload['components'] = [
+                        [
+                            'type' => 'body',
+                            'parameters' => collect($templateVariables)->map(
+                                fn ($var, $index) => [
+                                    'type' => 'text',
+                                    'parameter_name' => (string) $var['name'],
+                                    'text' => (string) $var['value'],
+                                ]
+                            )->all(),
+                        ]
+                    ];
                     $payload['dynamic_context'] = [
-                        'fields' => collect($templateVariables)->values()->map(
-                            fn ($value, $index) => [
+                        'fields' => collect($templateVariables)->map(
+                            fn ($var, $index) => [
                                 'key' => 'Body_'.((int) $index + 1),
                                 'type' => 'custom',
-                                'value' => (string) $value,
+                                'value' => (string) $var['value'],
                             ]
                         )->all(),
                     ];
@@ -3772,6 +3787,7 @@ class InvoicesController extends Controller
             }
             if ($channel === 'whatsapp' && ! empty($documentLinks) && $canUseWhatsappDocumentHeader) {
                 $payload['media_url'] = (string) ($documentLinks[0]['url'] ?? '');
+                // $payload['media_url'] = 'https://billing.skoolready.com/public/storage/clients/P9AEGIF6Q8/invoices-share/Proforma-Invoice---PI-1011-2026-v23.pdf';
                 if ($payload['media_url'] !== '' && ! str_starts_with(strtolower($payload['media_url']), 'https://')) {
                     $msg = 'WhatsApp media delivery requires a public HTTPS document URL. Current PDF URL is HTTP. Please enable SSL/HTTPS for this domain, then try again.';
                     if ($request->wantsJson()) {
@@ -3787,6 +3803,21 @@ class InvoicesController extends Controller
                         $payload['dynamic_context'] = [];
                     }
                     $payload['dynamic_context']['media_url'] = $payload['media_url'];
+
+                    if (! isset($payload['components'])) {
+                        $payload['components'] = [];
+                    }
+                    array_unshift($payload['components'], [
+                        'type' => 'header',
+                        'parameters' => [
+                            [
+                                'type' => 'document',
+                                'document' => [
+                                    'link' => $payload['media_url']
+                                ]
+                            ]
+                        ]
+                    ]);
                 }
             }
 

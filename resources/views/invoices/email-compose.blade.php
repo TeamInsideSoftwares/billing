@@ -26,6 +26,10 @@ $hasSmsTemplate = !empty($templateCatalog['pi']['sms'] ?? []) || !empty($templat
 @extends('layouts.app')
 
 @section('header_actions')
+<a href="{{ route('invoices.create', ['step' => 3, 'c' => $invoice->clientid, 'd' => $invoice->invoiceid, 'tax_invoice' => !empty($invoice->ti_number) ? 1 : null]) }}"
+    class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
+    <i class="fas fa-arrow-left btn-icon"></i> Back
+</a>
 <a href="{{ route('invoices.index', [], false) }}"
     class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
     <i class="fas fa-list btn-icon"></i> Invoice List
@@ -190,8 +194,8 @@ $hasSmsTemplate = !empty($templateCatalog['pi']['sms'] ?? []) || !empty($templat
                             <div class="col-12">
                                 <label class="form-label small lh-sm fw-semibold text-dark mb-1 d-flex justify-content-between align-items-center w-100">
                                     <span>Message Body</span>
-                                    <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 m-0" onclick="refreshTemplateFromCampio('whatsapp')">
-                                        <i class="fas fa-sync-alt"></i> Refresh from Meta
+                                    <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 m-0" onclick="refreshTemplateFromCampio('whatsapp')" {{ !$hasWhatsappTemplate ? 'disabled' : '' }}>
+                                        <i class="fas fa-sync-alt"></i> Refresh template
                                     </button>
                                 </label>
                                 <textarea name="body" id="whatsappBodyInput" rows="12" class="form-control bg-light" readonly tabindex="-1">{{ old('body', $whatsappBody) }}</textarea>
@@ -252,8 +256,8 @@ $hasSmsTemplate = !empty($templateCatalog['pi']['sms'] ?? []) || !empty($templat
                             <div class="col-12">
                                 <label class="form-label small lh-sm fw-semibold text-dark mb-1 d-flex justify-content-between align-items-center w-100">
                                     <span>Message Body</span>
-                                    <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 m-0" onclick="refreshTemplateFromCampio('sms')">
-                                        <i class="fas fa-sync-alt"></i> Refresh from Meta
+                                    <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 m-0" onclick="refreshTemplateFromCampio('sms')" {{ !$hasSmsTemplate ? 'disabled' : '' }}>
+                                        <i class="fas fa-sync-alt"></i> Refresh template
                                     </button>
                                 </label>
                                 <textarea name="body" id="smsBodyInput" rows="12" class="form-control" {{
@@ -589,13 +593,12 @@ $hasSmsTemplate = !empty($templateCatalog['pi']['sms'] ?? []) || !empty($templat
                         applyTemplate(channel, false);
                     }
                     if (typeof showToastDedup === 'function') {
-                        showToastDedup('success', 'Template refreshed successfully from Meta!');
-                    } else if (typeof window.showToast === 'function') {
-                        window.showToast('success', 'Template refreshed successfully from Meta!');
-                    } else {
-                        alert('Template refreshed successfully from Meta!');
-                    }
-                } else {
+                showToastDedup('success', 'Template refreshed successfully!');
+            } else if (typeof window.showToast === 'function') {
+                window.showToast('success', 'Template refreshed successfully!');
+            } else {
+                alert('Template refreshed successfully!');
+            }        } else {
                     alert(data.message || 'Failed to refresh template');
                 }
                 btn.innerHTML = originalHtml;
@@ -604,7 +607,7 @@ $hasSmsTemplate = !empty($templateCatalog['pi']['sms'] ?? []) || !empty($templat
                 alert('Error refreshing template');
                 console.error(e);
                 const btn = event.currentTarget;
-                btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Refresh from Meta';
+                btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Refresh template';
                 btn.disabled = false;
             }
         };

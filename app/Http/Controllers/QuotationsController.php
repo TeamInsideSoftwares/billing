@@ -120,7 +120,10 @@ class QuotationsController extends Controller
             $resolved = array_key_exists($placeholder, $replace)
                 ? (string) $replace[$placeholder]
                 : (string) $token;
-            $variables[] = $this->sanitizeForCampioText($resolved);
+            $variables[] = [
+                'name' => $token,
+                'value' => $this->sanitizeForCampioText($resolved),
+            ];
         }
 
         return $variables;
@@ -1012,6 +1015,21 @@ class QuotationsController extends Controller
                             $payload['dynamic_context'] = [];
                         }
                         $payload['dynamic_context']['media_url'] = $payload['media_url'];
+
+                        if (! isset($payload['components'])) {
+                            $payload['components'] = [];
+                        }
+                        array_unshift($payload['components'], [
+                            'type' => 'header',
+                            'parameters' => [
+                                [
+                                    'type' => 'document',
+                                    'document' => [
+                                        'link' => $payload['media_url']
+                                    ]
+                                ]
+                            ]
+                        ]);
                     }
                 }
 
@@ -1025,13 +1043,25 @@ class QuotationsController extends Controller
                 if (! empty($channelTemplateConfig?->template_id)) {
                     $templateVariables = $this->extractCampioQuotationTemplateVariables((string) ($channelTemplateConfig->body ?? ''), $quotation, $user?->name);
                     if (! empty($templateVariables)) {
-                        $payload['variables'] = $templateVariables;
+                        $payload['variables'] = collect($templateVariables)->pluck('value')->all();
+                        $payload['components'] = [
+                            [
+                                'type' => 'body',
+                                'parameters' => collect($templateVariables)->map(
+                                    fn ($var, $index) => [
+                                        'type' => 'text',
+                                        'parameter_name' => (string) $var['name'],
+                                        'text' => (string) $var['value'],
+                                    ]
+                                )->all(),
+                            ]
+                        ];
                         $payload['dynamic_context'] = [
-                            'fields' => collect($templateVariables)->values()->map(
-                                fn ($value, $index) => [
+                            'fields' => collect($templateVariables)->map(
+                                fn ($var, $index) => [
                                     'key' => 'Body_'.((int) $index + 1),
                                     'type' => 'custom',
-                                    'value' => (string) $value,
+                                    'value' => (string) $var['value'],
                                 ]
                             )->all(),
                         ];

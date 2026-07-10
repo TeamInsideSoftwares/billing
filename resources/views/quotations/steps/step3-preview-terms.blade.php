@@ -169,9 +169,15 @@ $clientDataArr = [
                         </div>
                     </div>
                     <div id="quotationPreviewContainer" class="card overflow-hidden">
-                        <div id="previewContent" class="bg-white" style="min-height:650px;">
+                        <div id="previewContent" class="bg-white position-relative" style="min-height:650px;">
+                            <div id="pdfLoader" class="position-absolute top-50 start-50 translate-middle text-center" style="z-index: 10;">
+                                <div class="spinner-border text-primary mb-2" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="text-muted small fw-medium mb-0">Generating PDF...</p>
+                            </div>
                             <iframe id="quotationPdfPreviewFrame" title="Quotation PDF Preview" src="about:blank"
-                                class="w-100 border-0" style="min-height:650px;"></iframe>
+                                class="w-100 border-0" style="min-height:650px; opacity: 0; transition: opacity 0.3s;" onload="this.style.opacity = '1'; document.getElementById('pdfLoader')?.classList.add('d-none');"></iframe>
                         </div>
                     </div>
                 </div>
@@ -339,9 +345,13 @@ $clientDataArr = [
 
         function updateQuotationPreview() {
             const previewFrame = document.getElementById('quotationPdfPreviewFrame');
+            const loader = document.getElementById('pdfLoader');
             const quotationId = quotationIdHidden.value || draftId;
 
             if (!previewFrame) return;
+
+            if (loader) loader.classList.remove('d-none');
+            previewFrame.style.opacity = '0';
 
             if (!quotationId) {
                 previewFrame.srcdoc = `
