@@ -2,7 +2,9 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 return new class extends Migration
 {
@@ -16,17 +18,17 @@ return new class extends Migration
         });
 
         // Populate existing rows
-        $assignments = \Illuminate\Support\Facades\DB::table('user_assignments')->get();
+        $assignments = DB::table('user_assignments')->get();
         foreach ($assignments as $assignment) {
-            \Illuminate\Support\Facades\DB::table('user_assignments')
+            DB::table('user_assignments')
                 ->where('id', $assignment->id)
-                ->update(['user_assignid' => \Illuminate\Support\Str::random(6)]);
+                ->update(['user_assignid' => Str::random(6)]);
         }
 
         Schema::table('user_assignments', function (Blueprint $table) {
             $table->dropColumn('id');
         });
-        
+
         Schema::table('user_assignments', function (Blueprint $table) {
             $table->string('user_assignid', 6)->nullable(false)->primary()->change();
         });

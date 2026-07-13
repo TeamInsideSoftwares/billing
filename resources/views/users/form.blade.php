@@ -225,13 +225,14 @@
                         <div class="col-12 mt-3">
                             <label class="form-label small lh-sm fw-semibold text-dark mb-1">Client Management</label>
                             <div class="mb-0 bg-white border rounded-1 px-2 py-1 ms-1">
-                                <div class="form-check mb-0 form-check-large">
-                                    <input class="form-check-input border-primary border-2" type="checkbox" name="can_assign_clients" id="can_assign_clients" value="1" {{ old('can_assign_clients', $userModel->can_assign_clients ?? 0) ? 'checked' : '' }}>
-                                    <label class="form-check-label small lh-sm fw-normal text-dark" for="can_assign_clients">
-                                        Allow this user to assign clients to other employees
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input border-primary border-2" type="checkbox" name="can_add_maintenance_duration" id="can_add_maintenance_duration" value="1" {{ old('can_add_maintenance_duration', $userModel->can_add_maintenance_duration ?? 0) ? 'checked' : '' }}>
+                                    <label class="form-check-label small lh-sm fw-normal text-dark" for="can_add_maintenance_duration">
+                                        Can Add Maintenance Duration
+                                        <div class="small text-muted" style="font-size: 0.75rem;">Allow user to assign maintenance duration to clients</div>
                                     </label>
                                 </div>
-                                @error('can_assign_clients') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                @error('can_add_maintenance_duration') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                             </div>
                         </div>
 

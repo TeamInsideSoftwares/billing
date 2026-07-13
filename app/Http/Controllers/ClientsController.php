@@ -831,7 +831,7 @@ class ClientsController extends Controller
             'whatsapp_number' => 'nullable|string|max:50',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'status' => 'in:active,review,inactive',
-            'maintenance_duration' => 'nullable|numeric|min:0|max:9999',
+
             'currency' => 'required|string|size:3|exists:currency,iso',
             'country' => 'nullable|string',
             'state' => 'nullable|string',
@@ -1346,6 +1346,25 @@ class ClientsController extends Controller
                 default => $categoryName,
             };
 
+            // Collect all emails
+            $emails = collect([$client->primary_email, $client->email, $client->billing_email])
+                ->filter()
+                ->flatMap(function ($email) {
+                    return array_map('trim', explode(',', (string) $email));
+                });
+
+            if ($client->contacts) {
+                $emails = $emails->merge(
+                    $client->contacts->pluck('email')
+                        ->filter()
+                        ->flatMap(function ($email) {
+                            return array_map('trim', explode(',', (string) $email));
+                        })
+                );
+            }
+
+            $allEmails = $emails->filter()->unique()->implode(',') ?: '';
+
             $payload = [
                 'accountid' => $client->clientid,
                 'groupid' => $client->groupid ?: $client->clientid,
@@ -1353,7 +1372,7 @@ class ClientsController extends Controller
                 'account_business_name' => $client->business_name ?: '',
                 'account_contact_person_name' => $contactName,
                 'account_domain' => $domain,
-                'account_email' => $client->primary_email ?: ($client->email ?: ''),
+                'account_email' => $allEmails,
                 'account_mobile' => $client->phone ?: '',
                 'account_address' => trim($client->address_line_1.' '.$client->address_line_2) ?: null,
                 'account_city' => $client->city ?: 'N/A',

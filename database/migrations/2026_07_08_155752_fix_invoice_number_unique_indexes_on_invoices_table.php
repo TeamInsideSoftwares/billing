@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::table('invoices', function (Blueprint $table) {
             $indexes = Schema::getIndexes('invoices');
             $indexNames = array_column($indexes, 'name');
-            
+
             if (in_array('invoices_pi_number_unique', $indexNames)) {
                 $table->dropUnique('invoices_pi_number_unique');
             } elseif (in_array('pi_number', $indexNames)) {
@@ -26,7 +26,7 @@ return new class extends Migration
             } elseif (in_array('ti_number', $indexNames)) {
                 $table->dropUnique('ti_number');
             }
-            
+
             $table->unique(['accountid', 'pi_number'], 'invoices_accountid_pi_number_unique');
             $table->unique(['accountid', 'ti_number'], 'invoices_accountid_ti_number_unique');
         });
@@ -40,7 +40,7 @@ return new class extends Migration
         Schema::table('invoices', function (Blueprint $table) {
             $table->dropUnique('invoices_accountid_pi_number_unique');
             $table->dropUnique('invoices_accountid_ti_number_unique');
-            
+
             $table->unique('pi_number');
             $table->unique('ti_number');
         });

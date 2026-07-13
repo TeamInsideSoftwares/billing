@@ -41,6 +41,24 @@ CREATE TABLE `account_departments` (
   PRIMARY KEY (`depid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `account_policies`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `account_policies` (
+  `policyid` varchar(6) NOT NULL,
+  `accountid` varchar(10) NOT NULL,
+  `componentid` varchar(6) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `rules` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`rules`)),
+  `status` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`policyid`),
+  KEY `account_policies_accountid_index` (`accountid`),
+  KEY `account_policies_componentid_index` (`componentid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `account_quotation_details`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -72,10 +90,12 @@ CREATE TABLE `account_roles` (
   `accountid` varchar(10) NOT NULL,
   `name` varchar(50) NOT NULL,
   `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  `levelid` varchar(6) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`roleid`),
-  KEY `account_roles_accountid_foreign` (`accountid`)
+  KEY `account_roles_accountid_foreign` (`accountid`),
+  KEY `account_roles_levelid_foreign` (`levelid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `account_taxes`;
@@ -125,8 +145,6 @@ DROP TABLE IF EXISTS `account_users`;
 CREATE TABLE `account_users` (
   `userid` varchar(6) NOT NULL,
   `shiftid` varchar(6) DEFAULT NULL,
-  `att_policyid` varchar(6) DEFAULT NULL,
-  `leave_policyid` varchar(10) DEFAULT NULL,
   `accountid` varchar(10) DEFAULT NULL,
   `name` varchar(255) NOT NULL,
   `email` varchar(255) NOT NULL,
@@ -137,9 +155,12 @@ CREATE TABLE `account_users` (
   `password` varchar(255) NOT NULL,
   `roleid` varchar(10) DEFAULT NULL,
   `permissions` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`permissions`)),
+  `can_assign_clients` tinyint(1) NOT NULL DEFAULT 0,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `designation` varchar(255) DEFAULT NULL,
   `gender` varchar(255) DEFAULT NULL,
+  `date_of_birth` date DEFAULT NULL,
+  `salaryid` varchar(6) DEFAULT NULL,
   `remember_token` varchar(100) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -181,23 +202,6 @@ CREATE TABLE `accounts` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`accountid`),
   UNIQUE KEY `accounts_email_unique` (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `attendance_policies`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE `attendance_policies` (
-  `att_policyid` varchar(6) NOT NULL,
-  `accountid` varchar(10) NOT NULL,
-  `policy_name` varchar(255) NOT NULL,
-  `description` text DEFAULT NULL,
-  `late_arrival_grace` int(11) NOT NULL DEFAULT 0,
-  `early_departure_grace` int(11) NOT NULL DEFAULT 0,
-  `overtime_rate` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `status` varchar(20) NOT NULL DEFAULT 'active',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`att_policyid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `cache`;
@@ -320,6 +324,7 @@ CREATE TABLE `clients` (
   `postal_code` varchar(20) DEFAULT NULL,
   `country` varchar(100) DEFAULT NULL,
   `notes` text DEFAULT NULL,
+  `maintenance_duration` float DEFAULT NULL COMMENT 'Annual Maintenance Contract hours',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `logo_path` varchar(255) DEFAULT NULL,
@@ -481,8 +486,8 @@ CREATE TABLE `invoices` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`invoiceid`),
-  UNIQUE KEY `pi_number` (`pi_number`),
-  UNIQUE KEY `ti_number` (`ti_number`)
+  UNIQUE KEY `invoices_accountid_pi_number_unique` (`accountid`,`pi_number`),
+  UNIQUE KEY `invoices_accountid_ti_number_unique` (`accountid`,`ti_number`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `item_costings`;
@@ -559,25 +564,6 @@ CREATE TABLE `jobs` (
   KEY `jobs_queue_index` (`queue`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `leave_policies`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE `leave_policies` (
-  `leave_policyid` varchar(10) NOT NULL,
-  `accountid` varchar(10) NOT NULL,
-  `typeid` varchar(10) DEFAULT NULL,
-  `policy_name` varchar(255) NOT NULL,
-  `description` text DEFAULT NULL,
-  `carry_forward_limit` int(11) NOT NULL DEFAULT 0,
-  `min_days_per_application` int(11) NOT NULL DEFAULT 1,
-  `max_days_per_application` int(11) NOT NULL DEFAULT 0,
-  `status` varchar(20) NOT NULL DEFAULT 'active',
-  `is_paid` tinyint(1) NOT NULL DEFAULT 0,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`leave_policyid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `leave_types`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -585,6 +571,7 @@ CREATE TABLE `leave_types` (
   `typeid` varchar(10) NOT NULL,
   `accountid` varchar(10) NOT NULL,
   `name` varchar(255) NOT NULL,
+  `is_paid_accrued` tinyint(1) NOT NULL DEFAULT 0,
   `description` text DEFAULT NULL,
   `status` varchar(20) NOT NULL DEFAULT 'active',
   `created_at` timestamp NULL DEFAULT NULL,
@@ -669,7 +656,7 @@ CREATE TABLE `orders` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`orderid`),
-  UNIQUE KEY `orders_new_order_number_unique` (`order_number`),
+  UNIQUE KEY `orders_accountid_order_number_unique` (`accountid`,`order_number`),
   KEY `orders_new_accountid_status_index` (`accountid`,`status`),
   KEY `orders_new_clientid_created_at_index` (`clientid`,`created_at`),
   KEY `orders_accountid_type_index` (`accountid`,`type`)
@@ -726,9 +713,28 @@ CREATE TABLE `payments` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`paymentid`),
+  UNIQUE KEY `payments_accountid_receipt_number_unique` (`accountid`,`receipt_number`),
   KEY `payments_clientid_foreign` (`clientid`),
   KEY `payments_accountid_status_index` (`accountid`),
   KEY `payments_account_receipt_idx` (`accountid`,`receipt_number`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `payroll_components`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `payroll_components` (
+  `componentid` varchar(6) NOT NULL,
+  `accountid` varchar(10) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `category_type` enum('attendance','leave','security_deposit','general_earning','general_deduction') NOT NULL,
+  `type` enum('earning','deduction') NOT NULL,
+  `calculation_type` enum('fixed','percentage') DEFAULT NULL,
+  `calculation_value` decimal(10,2) DEFAULT NULL,
+  `status` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`componentid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `ps_categories`;
@@ -798,9 +804,23 @@ CREATE TABLE `quotations` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`quotationid`),
+  UNIQUE KEY `quotations_accountid_quo_number_unique` (`accountid`,`quo_number`),
   KEY `estimates_clientid_foreign` (`clientid`),
   KEY `estimates_created_by_foreign` (`created_by`),
   KEY `estimates_accountid_status_index` (`accountid`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `roles_level`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `roles_level` (
+  `levelid` varchar(6) NOT NULL,
+  `level_name` varchar(255) NOT NULL,
+  `level_value` int(11) NOT NULL,
+  `status` varchar(255) NOT NULL DEFAULT 'active',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`levelid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `serial_configurations`;
@@ -901,6 +921,54 @@ CREATE TABLE `terms_conditions` (
   PRIMARY KEY (`tc_id`),
   KEY `terms_conditions_accountid_type_index` (`accountid`,`type`),
   KEY `terms_account_type_default_idx` (`accountid`,`type`,`is_default`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `user_assignments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_assignments` (
+  `user_assignid` varchar(6) NOT NULL,
+  `userid` varchar(6) NOT NULL,
+  `assigned_userid` varchar(6) NOT NULL,
+  `team_name` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`user_assignid`),
+  UNIQUE KEY `user_assignments_userid_assigned_userid_unique` (`userid`,`assigned_userid`),
+  KEY `user_assignments_assigned_userid_foreign` (`assigned_userid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `user_policies`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_policies` (
+  `user_policyid` varchar(6) NOT NULL,
+  `accountid` varchar(10) NOT NULL,
+  `userid` varchar(6) NOT NULL,
+  `policyid` varchar(6) NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`user_policyid`),
+  KEY `user_policies_accountid_index` (`accountid`),
+  KEY `user_policies_userid_index` (`userid`),
+  KEY `user_policies_policyid_index` (`policyid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `user_salaries`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_salaries` (
+  `salaryid` varchar(6) NOT NULL,
+  `accountid` varchar(10) NOT NULL,
+  `userid` varchar(6) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `effective_date` date NOT NULL,
+  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`salaryid`),
+  KEY `user_salaries_accountid_index` (`accountid`),
+  KEY `user_salaries_userid_index` (`userid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `users_doc`;
@@ -1137,5 +1205,33 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (195,'2026_06_30_17
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (196,'2026_06_30_173558_add_leave_policyid_to_account_users_table',146);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (197,'2026_06_30_174509_add_is_paid_to_leave_policies_table',147);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (198,'2026_06_30_175333_add_designation_and_gender_to_account_users_table',148);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (199,'2026_07_01_165548_add_assigned_users_to_account_users_table',149);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (200,'2026_07_03_121500_recreate_leave_types_table',150);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (201,'2026_07_03_124054_drop_leave_policies_and_remove_leave_policyid',151);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (202,'2026_07_03_125507_add_leave_parameters_to_account_users_table',152);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (203,'2026_07_03_132111_create_roles_level_table',153);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (204,'2026_07_03_132234_add_levelid_to_account_roles_table',153);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (205,'2026_07_03_141009_change_levelid_to_alphanumeric',154);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (206,'2026_07_03_143005_add_can_assign_clients_to_account_users_table',155);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (207,'2026_07_03_162808_create_user_leavepolicy_table',156);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (208,'2026_07_03_162843_add_is_paid_to_leave_types_table',157);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (209,'2026_07_03_162921_drop_leave_parameters_from_account_users_table',157);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (210,'2026_07_03_162955_add_duration_to_leave_requests_table',157);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (211,'2026_07_04_153915_add_maintenance_duration_to_clients_table',158);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (212,'2026_07_07_113218_add_date_of_birth_and_salaryid_to_account_users_table',159);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (213,'2026_07_07_113435_create_payroll_components_table',159);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (214,'2026_07_07_113436_create_account_policies_table',159);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (215,'2026_07_07_113436_create_user_policies_table',159);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (216,'2026_07_07_113436_create_user_salaries_table',159);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (217,'2026_07_07_115806_change_accountid_type_in_payroll_tables',160);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (219,'2026_07_07_120754_add_calculation_value_to_payroll_components_table',161);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (220,'2026_07_07_121243_make_calculation_type_nullable',162);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (221,'2026_07_07_155613_drop_attendance_policies_and_att_policyid',163);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (222,'2026_07_07_155623_drop_user_leavepolicy_table',163);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (223,'2026_07_08_102645_create_user_assignments_table',164);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (224,'2026_07_08_111822_drop_foreign_keys_from_user_assignments_table',165);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (225,'2026_07_08_143717_update_user_assignments_primary_key',166);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (226,'2026_07_08_155752_fix_invoice_number_unique_indexes_on_invoices_table',167);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (227,'2026_07_08_160400_make_document_numbers_unique_per_account',168);
 COMMIT;
 SET AUTOCOMMIT=@OLD_AUTOCOMMIT;

@@ -364,7 +364,7 @@ class ServicesController extends Controller
                 try {
                     DB::connection('admin_mysql')->table('products')->where('productid', $service->itemid)->delete();
                 } catch (\Exception $e) {
-                    Log::error('Superadmin Product Delete Failed: ' . $e->getMessage());
+                    Log::error('Superadmin Product Delete Failed: '.$e->getMessage());
                 }
             }
         });
@@ -512,7 +512,7 @@ class ServicesController extends Controller
             try {
                 DB::connection('admin_mysql')->table('products')->where('productid', $item->itemid)->delete();
             } catch (\Exception $e) {
-                Log::error('Superadmin Product Delete Failed: ' . $e->getMessage());
+                Log::error('Superadmin Product Delete Failed: '.$e->getMessage());
             }
         }
     }

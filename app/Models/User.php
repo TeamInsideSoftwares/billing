@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -37,7 +36,7 @@ use Illuminate\Notifications\Notifiable;
     'roleid',
     'permissions',
     'is_active',
-    'can_assign_clients',
+    'can_add_maintenance_duration',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -68,7 +67,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'permissions' => 'array',
             'password' => 'hashed',
-            'can_assign_clients' => 'boolean',
+            'can_add_maintenance_duration' => 'boolean',
         ];
     }
 

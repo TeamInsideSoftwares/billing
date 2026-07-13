@@ -763,8 +763,8 @@ class QuotationsController extends Controller
         if (! empty($logid)) {
             $draft = CommunicationLog::where('accountid', $accountid)
                 ->where('logid', $logid)
-                ->where('type', 'draft')
-                ->where('communication_type', $channel)
+                ->where('status', 'draft')
+                ->where('channel', $channel)
                 ->first();
         }
 
@@ -992,7 +992,7 @@ class QuotationsController extends Controller
                     $documentLinks[] = [
                         'label' => 'Quotation (PDF)',
                         'url' => $this->resolveCampioQuotationPdfUrl($quotation, $isSendAction),
-                        'name' => 'Quotation - '.($quoNumber !== '' ? $quoNumber : $quotation->quotationid).'.pdf'
+                        'name' => 'Quotation - '.($quoNumber !== '' ? $quoNumber : $quotation->quotationid).'.pdf',
                     ];
                     foreach ($finalCustomAttachmentPaths as $customPath) {
                         $documentLinks[] = [
@@ -1033,10 +1033,10 @@ class QuotationsController extends Controller
                                     'type' => 'document',
                                     'document' => [
                                         'link' => $payload['media_url'],
-                                        'filename' => $beautifulName
-                                    ]
-                                ]
-                            ]
+                                        'filename' => $beautifulName,
+                                    ],
+                                ],
+                            ],
                         ]);
                     }
                 }
@@ -1062,7 +1062,7 @@ class QuotationsController extends Controller
                                         'text' => (string) $var['value'],
                                     ]
                                 )->all(),
-                            ]
+                            ],
                         ];
                         $payload['dynamic_context'] = [
                             'fields' => collect($templateVariables)->map(
