@@ -21,6 +21,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -157,7 +158,7 @@ class UsersController extends Controller
             'phone' => ['nullable', 'string', 'max:20'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(self::AVAILABLE_PERMISSIONS)],
-            'can_assign_clients' => ['nullable', 'boolean'],
+            'can_add_maintenance_duration' => ['nullable', 'boolean'],
 
             'password' => ['required', 'string', 'min:6', 'max:100', 'confirmed'],
             'documents' => ['nullable', 'array'],
@@ -191,7 +192,7 @@ class UsersController extends Controller
             'notes' => $validated['notes'] ?? null,
             'permissions' => array_values($validated['permissions'] ?? []),
             'is_active' => true,
-            'can_assign_clients' => $request->has('can_assign_clients') ? 1 : 0,
+            'can_add_maintenance_duration' => $request->has('can_add_maintenance_duration') ? 1 : 0,
             'password' => $validated['password'],
         ]);
 
@@ -346,7 +347,7 @@ class UsersController extends Controller
             'phone' => ['nullable', 'string', 'max:20'],
             'permissions' => 'nullable|array',
             'permissions.*' => 'string',
-            'can_assign_clients' => 'nullable|boolean',
+            'can_add_maintenance_duration' => 'nullable|boolean',
             'password' => ['nullable', 'string', 'min:6', 'max:100', 'confirmed'],
             'documents' => 'nullable|array',
             'documents.*.type' => 'required_with:documents|string|in:Photo,PAN,Identity proof,Bank details',
@@ -379,7 +380,7 @@ class UsersController extends Controller
             'phone' => $validated['phone'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'permissions' => array_values($validated['permissions'] ?? []),
-            'can_assign_clients' => $request->has('can_assign_clients') ? 1 : 0,
+            'can_add_maintenance_duration' => $request->has('can_add_maintenance_duration') ? 1 : 0,
         ];
 
         if (! empty($validated['password'])) {
@@ -529,7 +530,7 @@ class UsersController extends Controller
         $accountId = $this->resolveAccountId();
 
         // Get all userids that are assigned to any manager
-        $assignedUserids = \Illuminate\Support\Facades\DB::table('user_assignments')
+        $assignedUserids = DB::table('user_assignments')
             ->pluck('assigned_userid')
             ->unique()
             ->values()
@@ -619,6 +620,7 @@ class UsersController extends Controller
             ->get(['userid', 'name', 'roleid'])
             ->filter(function ($u) use ($targetUserLevel) {
                 $userLevel = $u->role?->roleLevel?->level_value ?? 0;
+
                 return $userLevel > 0 && $userLevel <= $targetUserLevel;
             })
             ->map(function ($u) {
@@ -631,10 +633,10 @@ class UsersController extends Controller
             ->values();
         // Current assignments
         $assignedUserIds = $user->teamMembers()->pluck('account_users.userid')->toArray();
-        
+
         // Get the team name from pivot if exists, otherwise default
         $firstMember = $user->teamMembers()->first();
-        $teamName = $firstMember ? $firstMember->pivot->team_name : ($user->name . "'s Team");
+        $teamName = $firstMember ? $firstMember->pivot->team_name : ($user->name."'s Team");
 
         return response()->json([
             'allUsers' => $allUsers,
@@ -654,7 +656,7 @@ class UsersController extends Controller
             'team_name' => 'nullable|string|max:255',
         ]);
 
-        $teamName = $validated['team_name'] ?: ($user->name . "'s Team");
+        $teamName = $validated['team_name'] ?: ($user->name."'s Team");
         $assignedUsers = $validated['assigned_users'] ?? [];
 
         // Ensure we only assign users that belong to the same account
@@ -662,7 +664,7 @@ class UsersController extends Controller
             ->whereIn('userid', $assignedUsers)
             ->pluck('userid')
             ->toArray();
-            
+
         $syncData = [];
         foreach ($validUsers as $uid) {
             $syncData[$uid] = ['team_name' => $teamName];

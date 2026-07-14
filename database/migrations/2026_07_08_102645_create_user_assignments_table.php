@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('assigned_userid', 6);
             $table->string('team_name')->nullable();
             $table->timestamps();
-            
+
             $table->foreign('userid')->references('userid')->on('account_users')->onDelete('cascade');
             $table->foreign('assigned_userid')->references('userid')->on('account_users')->onDelete('cascade');
             $table->unique(['userid', 'assigned_userid']);
@@ -28,9 +28,9 @@ return new class extends Migration
         $users = DB::table('account_users')->whereNotNull('assigned_users')->get();
         foreach ($users as $user) {
             $assignedUsers = json_decode($user->assigned_users, true);
-            if (is_array($assignedUsers) && !empty($assignedUsers)) {
+            if (is_array($assignedUsers) && ! empty($assignedUsers)) {
                 $now = now();
-                $teamName = $user->name . "'s Team";
+                $teamName = $user->name."'s Team";
                 foreach ($assignedUsers as $assignedId) {
                     $exists = DB::table('account_users')->where('userid', $assignedId)->exists();
                     if ($exists) {

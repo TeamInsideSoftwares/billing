@@ -351,7 +351,7 @@ class InvoicesController extends Controller
     {
         $invoice->loadMissing(['client.billingDetail', 'invoiceItems', 'paymentDetails.payment']);
 
-        $accountid = $this->resolveAccountId();
+        $accountid = $invoice->accountid;
         $account = Account::find($accountid);
         $accountBillingDetail = AccountBillingDetail::query()->where('accountid', $accountid)->first();
 

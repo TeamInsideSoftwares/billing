@@ -856,6 +856,14 @@ $activeSettingsTab = 'billing-details';
                                 </button>
                             </li>
                             @endforeach
+                            <li class="nav-item">
+                                <button type="button"
+                                    class="nav-link btn btn-md px-3 settings-tab-btn mt-type-tab-btn rounded-0 text-primary bg-transparent border-transparent d-inline-flex align-items-center gap-2"
+                                    data-type="consolidated">
+                                    <i class="fas fa-layer-group"></i>
+                                    Consolidated
+                                </button>
+                            </li>
                         </ul>
                         <div class="position-relative">
                             @php
@@ -883,10 +891,11 @@ $activeSettingsTab = 'billing-details';
                             }
                             @endphp
 
-                            <div class="row align-items-stretch g-2">
+                            <div class="row align-items-stretch g-2" id="template-editors-container">
                                 <!-- Email Column -->
-                                <div class="col-12 col-lg-4">
-                                    <form method="POST" action="{{ route('message-templates.store') }}"
+                                <div class="col-12 col-lg-4" id="email-form-col">
+                                    <div id="email-form-container" class="h-100">
+                                        <form method="POST" action="{{ route('message-templates.store') }}"
                                         class="mainForm message-template-form d-flex flex-column h-100" data-channel="email"
                                         data-store-action="{{ route('message-templates.store') }}"
                                         data-update-base="{{ url('settings/message-templates') }}" autocomplete="off">
@@ -938,10 +947,11 @@ $activeSettingsTab = 'billing-details';
                                             </div>
                                         </div>
                                     </form>
+                                    </div>
                                 </div>
 
                                 <!-- WhatsApp Column -->
-                                <div class="col-12 col-lg-4">
+                                <div class="col-12 col-lg-4" id="whatsapp-form-col">
                                     <form method="POST" action="{{ route('message-templates.store') }}"
                                         class="mainForm message-template-form d-flex flex-column h-100" data-channel="whatsapp"
                                         data-store-action="{{ route('message-templates.store') }}"
@@ -1004,7 +1014,7 @@ $activeSettingsTab = 'billing-details';
                                 </div>
 
                                 <!-- SMS Column -->
-                                <div class="col-12 col-lg-4">
+                                <div class="col-12 col-lg-4" id="sms-form-col">
                                     <form method="POST" action="{{ route('message-templates.store') }}"
                                         class="mainForm message-template-form d-flex flex-column h-100" data-channel="sms"
                                         data-store-action="{{ route('message-templates.store') }}"
@@ -1083,7 +1093,49 @@ $activeSettingsTab = 'billing-details';
                                         </small> 
                                     </div>
                                 </div>
-                            </div> 
+                            </div>
+                            
+                            <div class="row align-items-stretch g-3 d-none" id="consolidated-view-container">
+                                <!-- Order Summary Column -->
+                                <div class="col-12 col-xl-6">
+                                    <div class="bg-white p-2 rounded-3 border d-flex flex-column h-100">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <strong class="fw-semibold text-primary small lh-sm">
+                                                <i class="fas fa-eye fs-6 lh-sm me-1"></i> Consolidated Order Summary
+                                            </strong>
+                                            <form method="POST" action="{{ route('settings.consolidated-days.update') }}" class="m-0 d-flex gap-2 align-items-center">
+                                                @csrf
+                                                <label class="form-label small lh-sm fw-semibold text-dark mb-0 text-nowrap">Trigger Days:</label>
+                                                <input type="number" name="days" value="{{ $consolidatedReminderDays ?? 10 }}" class="form-control form-control-sm" style="width: 70px" min="1" max="90" required>
+                                                <button type="submit" class="btn btn-sm btn-primary fw-medium px-2 py-1" title="Save trigger days configuration">Save</button>
+                                            </form>
+                                        </div>
+                                        <div class="flex-grow-1" style="min-height: 500px;">
+                                            @include('settings.partials.consolidated-preview')
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Payment Due Column -->
+                                <div class="col-12 col-xl-6">
+                                    <div class="bg-white p-2 rounded-3 border d-flex flex-column h-100">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <strong class="fw-semibold text-primary small lh-sm">
+                                                <i class="fas fa-eye fs-6 lh-sm me-1"></i> Consolidated Payments Due
+                                            </strong>
+                                            <form method="POST" action="{{ route('settings.consolidated-payment-days.update') }}" class="m-0 d-flex gap-2 align-items-center">
+                                                @csrf
+                                                <label class="form-label small lh-sm fw-semibold text-dark mb-0 text-nowrap">Trigger Days:</label>
+                                                <input type="number" name="days" value="{{ $consolidatedPaymentReminderDays ?? 5 }}" class="form-control form-control-sm" style="width: 70px" min="1" max="90" required>
+                                                <button type="submit" class="btn btn-sm btn-primary fw-medium px-2 py-1" title="Save trigger days configuration">Save</button>
+                                            </form>
+                                        </div>
+                                        <div class="flex-grow-1" style="min-height: 500px;">
+                                            @include('settings.partials.consolidated-payment-preview')
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>   
                         </div>
                     </div>                                           
                 </div> 
@@ -2560,6 +2612,43 @@ $activeSettingsTab = 'billing-details';
                 const currentType = type || defaultTemplateType;
                 renderTemplateVariableBadges(currentType);
 
+                const templateEditorsContainer = document.getElementById('template-editors-container');
+                const consolidatedViewContainer = document.getElementById('consolidated-view-container');
+                
+                const emailCol = document.getElementById('email-form-col');
+                const whatsappCol = document.getElementById('whatsapp-form-col');
+                const smsCol = document.getElementById('sms-form-col');
+
+                if (currentType === 'consolidated') {
+                    if (templateEditorsContainer) templateEditorsContainer.classList.add('d-none');
+                    if (consolidatedViewContainer) consolidatedViewContainer.classList.remove('d-none');
+                    saveMtState(currentType); // Save state before returning
+                    return; // Skip the rest of form resetting since it doesn't apply to consolidated
+                } else {
+                    if (templateEditorsContainer) templateEditorsContainer.classList.remove('d-none');
+                    if (consolidatedViewContainer) consolidatedViewContainer.classList.add('d-none');
+                    
+                    if (currentType === 'reminder' || currentType === 'expiry') {
+                        if (emailCol) emailCol.classList.add('d-none');
+                        if (smsCol) smsCol.classList.add('d-none');
+                        if (whatsappCol) {
+                            whatsappCol.classList.remove('col-lg-4', 'col-lg-6');
+                            whatsappCol.classList.add('col-lg-8'); // Expanded since email and sms are hidden
+                        }
+                    } else {
+                        if (emailCol) emailCol.classList.remove('d-none');
+                        if (smsCol) smsCol.classList.remove('d-none');
+                        if (whatsappCol) {
+                            whatsappCol.classList.remove('col-lg-6', 'col-lg-8');
+                            whatsappCol.classList.add('col-lg-4');
+                        }
+                        if (smsCol) {
+                            smsCol.classList.remove('col-lg-6', 'col-lg-8');
+                            smsCol.classList.add('col-lg-4');
+                        }
+                    }
+                }
+
                 templateForms.forEach((form) => {
                     const channel = form.dataset.channel;
                     const channelInput = form.querySelector('.template-channel-input');
@@ -2663,7 +2752,7 @@ $activeSettingsTab = 'billing-details';
             const persistedMtState = loadMtState();
             const initialTemplateType = (oldTemplateType && templateTypeLabels[oldTemplateType]) ?
                 oldTemplateType :
-                ((persistedMtState?.type && templateTypeLabels[persistedMtState.type]) ? persistedMtState.type :
+                ((persistedMtState?.type && (templateTypeLabels[persistedMtState.type] || persistedMtState.type === 'consolidated')) ? persistedMtState.type :
                     defaultTemplateType);
             setActiveTab(typeTabs, 'type', initialTemplateType);
             resetAllTemplateForms(initialTemplateType);
@@ -2687,9 +2776,27 @@ $activeSettingsTab = 'billing-details';
             ensureTemplateEditorReady();
 
             const initialHash = window.location.hash.replace('#', '');
-            if (initialHash === 'message-templates') {
-                setTimeout(function () { ensureTemplateEditorReady(); }, 400);
+            if (initialHash) {
+                const targetBtn = document.querySelector('.settings-tab-group button[data-bs-target="#' + initialHash + '"]');
+                if (targetBtn) {
+                    const tabInstance = new bootstrap.Tab(targetBtn);
+                    tabInstance.show();
+                }
+                if (initialHash === 'message-templates') {
+                    setTimeout(function () { ensureTemplateEditorReady(); }, 400);
+                }
             }
+
+            // Update the URL hash when a main tab is clicked
+            const mainTabs = document.querySelectorAll('.settings-tab-group button[data-bs-toggle="tab"]');
+            mainTabs.forEach(btn => {
+                btn.addEventListener('shown.bs.tab', function(e) {
+                    const target = e.target.getAttribute('data-bs-target');
+                    if (target) {
+                        history.replaceState(null, null, target);
+                    }
+                });
+            });
 
             templateForms.forEach((form) => {
                 form.addEventListener('submit', function (event) {

@@ -154,6 +154,7 @@ class SettingsController extends Controller
                 'SUPPORT_EMAIL' => 'Support Email',
                 'CONTACT_PHONE' => 'Contact Phone',
                 'WEBSITE_URL' => 'Website URL',
+                'CONSOLIDATED_REMINDER_DAYS' => 'Consolidated Reminder Trigger Days',
             ],
         ];
 
@@ -183,6 +184,8 @@ class SettingsController extends Controller
             'messageTemplates' => $messageTemplates,
             'messageTemplatesByType' => $messageTemplatesByType,
             'messageTemplateTypes' => $this->messageTemplateTypes(),
+            'consolidatedReminderDays' => Setting::where('accountid', $accountid)->where('setting_key', 'CONSOLIDATED_REMINDER_DAYS')->value('setting_value') ?? 10,
+            'consolidatedPaymentReminderDays' => Setting::where('accountid', $accountid)->where('setting_key', 'CONSOLIDATED_PAYMENT_REMINDER_DAYS')->value('setting_value') ?? 5,
         ]);
     }
 
@@ -1330,5 +1333,148 @@ class SettingsController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
+    }
+
+    public function consolidatedPreview(): View
+    {
+        $accountid = $this->resolveAccountId();
+        $setting = Setting::where('accountid', $accountid)->where('setting_key', 'CONSOLIDATED_REMINDER_DAYS')->first();
+        $windowDays = $setting && is_numeric($setting->setting_value) ? (int) $setting->setting_value : 10;
+
+        $today = now()->format('d M Y');
+        $items = collect([
+            [
+                'order_number' => 'ORD-1001',
+                'item_name' => 'Premium Hosting',
+                'item_description' => 'Annual premium hosting package',
+                'qty' => 1,
+                'end_date' => now()->addDays($windowDays)->format('d M Y'),
+                'days_label' => $windowDays.' day(s) left',
+            ],
+            [
+                'order_number' => 'ORD-1002',
+                'item_name' => 'Domain Registration',
+                'item_description' => 'example.com',
+                'qty' => 1,
+                'end_date' => now()->addDays(2)->format('d M Y'),
+                'days_label' => '2 day(s) left',
+            ],
+        ]);
+
+        $account = Account::find($accountid);
+        $accountBilling = AccountBillingDetail::where('accountid', $accountid)->first();
+
+        $senderName = (string) ($accountBilling?->billing_name ?: $account?->name ?: config('app.name', 'Team'));
+        $senderEmail = (string) ($accountBilling?->billing_from_email ?: $account?->email ?: '');
+        $senderPhone = (string) ($account?->phone ?? '');
+        $senderPostal = (string) ($accountBilling?->postal_code ?: $account?->postal_code ?: '');
+        $senderAddressParts = array_values(array_filter([
+            (string) ($accountBilling?->address ?: $account?->address_line_1 ?: ''),
+            (string) ($accountBilling?->city ?: $account?->city ?: ''),
+            (string) ($accountBilling?->state ?: $account?->state ?: ''),
+            (string) ($senderPostal ?: ''),
+            (string) ($accountBilling?->country ?: $account?->country ?: ''),
+        ]));
+
+        return view('emails.consolidated-client-orders', [
+            'clientName' => 'John Doe',
+            'windowDays' => $windowDays,
+            'today' => $today,
+            'items' => $items,
+            'senderName' => $senderName,
+            'senderEmail' => $senderEmail,
+            'senderPhone' => $senderPhone,
+            'senderAddressLine' => implode(' | ', $senderAddressParts),
+        ]);
+    }
+
+    public function updateConsolidatedDays(Request $request)
+    {
+        $validated = $request->validate([
+            'days' => 'required|integer|min:1|max:90',
+        ]);
+
+        $accountid = $this->resolveAccountId();
+        Setting::updateOrCreate(
+            ['accountid' => $accountid, 'setting_key' => 'CONSOLIDATED_REMINDER_DAYS'],
+            ['setting_value' => (string) $validated['days']]
+        );
+
+        return redirect()->to(route('settings.index').'#message-templates')->with('success', 'Consolidated reminder days updated successfully.');
+    }
+
+    public function consolidatedPaymentPreview(): View
+    {
+        $accountid = $this->resolveAccountId();
+        $setting = Setting::where('accountid', $accountid)->where('setting_key', 'CONSOLIDATED_PAYMENT_REMINDER_DAYS')->first();
+        $windowDays = $setting && is_numeric($setting->setting_value) ? (int) $setting->setting_value : 5;
+
+        $today = now()->format('d M Y');
+        $items = collect([
+            [
+                'invoice_number' => 'INV-2023-001',
+                'invoice_title' => 'Web Design Services',
+                'pdf_link' => '#',
+                'overdue_days' => 5,
+                'balance_due' => 150.00,
+            ],
+            [
+                'invoice_number' => 'INV-2023-042',
+                'invoice_title' => 'Monthly Hosting',
+                'pdf_link' => '#',
+                'overdue_days' => 1,
+                'balance_due' => 45.50,
+            ],
+        ]);
+
+        $currency = 'USD';
+        $formatAmount = function ($amount) {
+            return number_format((float) $amount, 2);
+        };
+        $totalOverdueAmount = 195.50;
+
+        $account = Account::find($accountid);
+        $accountBilling = AccountBillingDetail::where('accountid', $accountid)->first();
+
+        $senderName = (string) ($accountBilling?->billing_name ?: $account?->name ?: config('app.name', 'Team'));
+        $senderEmail = (string) ($accountBilling?->billing_from_email ?: $account?->email ?: '');
+        $senderPhone = (string) ($account?->phone ?? '');
+        $senderPostal = (string) ($accountBilling?->postal_code ?: $account?->postal_code ?: '');
+        $senderAddressParts = array_values(array_filter([
+            (string) ($accountBilling?->address ?: $account?->address_line_1 ?: ''),
+            (string) ($accountBilling?->city ?: $account?->city ?: ''),
+            (string) ($accountBilling?->state ?: $account?->state ?: ''),
+            (string) ($senderPostal ?: ''),
+            (string) ($accountBilling?->country ?: $account?->country ?: ''),
+        ]));
+
+        return view('emails.consolidated-client-payments', [
+            'clientName' => 'John Doe',
+            'windowDays' => $windowDays,
+            'today' => $today,
+            'items' => $items,
+            'currency' => $currency,
+            'formatAmount' => $formatAmount,
+            'totalOverdueAmount' => $totalOverdueAmount,
+            'senderName' => $senderName,
+            'senderEmail' => $senderEmail,
+            'senderPhone' => $senderPhone,
+            'senderAddressLine' => implode(' | ', $senderAddressParts),
+        ]);
+    }
+
+    public function updateConsolidatedPaymentDays(Request $request)
+    {
+        $validated = $request->validate([
+            'days' => 'required|integer|min:1|max:90',
+        ]);
+
+        $accountid = $this->resolveAccountId();
+        Setting::updateOrCreate(
+            ['accountid' => $accountid, 'setting_key' => 'CONSOLIDATED_PAYMENT_REMINDER_DAYS'],
+            ['setting_value' => (string) $validated['days']]
+        );
+
+        return redirect()->to(route('settings.index').'#message-templates')->with('success', 'Consolidated payment reminder days updated successfully.');
     }
 }

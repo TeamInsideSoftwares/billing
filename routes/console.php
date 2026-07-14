@@ -25,9 +25,10 @@ Artisan::command('reminders:dispatch {--account=}', function (InvoiceReminderSer
     $this->line('Skipped: '.(int) ($summary['skipped'] ?? 0));
 })->purpose('Dispatch automated reminder and expiry notifications');
 
-Artisan::command('reminders:dispatch-consolidated {--account=}', function (ClientConsolidatedReminderService $consolidatedReminderService) {
+Artisan::command('reminders:dispatch-consolidated {--account=} {--client=}', function (ClientConsolidatedReminderService $consolidatedReminderService) {
     $accountId = trim((string) ($this->option('account') ?? ''));
-    $summary = $consolidatedReminderService->dispatchAutomatedConsolidatedEmails($accountId !== '' ? $accountId : null);
+    $clientId = trim((string) ($this->option('client') ?? ''));
+    $summary = $consolidatedReminderService->dispatchAutomatedConsolidatedEmails($accountId !== '' ? $accountId : null, $clientId !== '' ? $clientId : null);
 
     $this->info('Consolidated reminder automation completed.');
     $this->line('Accounts: '.(int) ($summary['accounts'] ?? 0));
@@ -39,7 +40,8 @@ Artisan::command('reminders:dispatch-consolidated {--account=}', function (Clien
     $this->line('Skipped: '.(int) ($summary['skipped'] ?? 0));
 })->purpose('Dispatch automated consolidated client order summary emails');
 
-Schedule::command('reminders:dispatch')->dailyAt('09:00');
+// Single automated reminders disabled in favor of consolidated emails.
+// Schedule::command('reminders:dispatch')->dailyAt('09:00');
 Schedule::command('reminders:dispatch-consolidated')->dailyAt('09:10');
 
 Artisan::command('reminders:dispatch-consolidated-payments {--account=} {--client=}', function (ClientConsolidatedPaymentReminderService $consolidatedPaymentReminderService) {
