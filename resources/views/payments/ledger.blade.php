@@ -76,14 +76,13 @@
     <div class="card position-relative overflow-hidden p-2 border-0 bg-DarkLight rounded-3 mb-3">
         <div class="table-responsive p-2 bg-white rounded-3">
             <div id="balanceToggleContainer" class="d-inline-flex align-items-center me-3 d-none">
-                <div class="form-check form-switch mb-0 d-inline-flex align-items-center rounded-pill me-1"
-                    style="padding-left: 2.5em; min-height: auto;">
-                    <input class="form-check-input rounded-pill mt-0" type="checkbox" role="switch" id="toggleBalanceCol"
-                        style="cursor: pointer; height: 1.15em; width: 2.1em;">
-                    <label class="form-check-label small fw-semibold text-dark ms-2 align-self-center"
-                        for="toggleBalanceCol" style="cursor: pointer; user-select: none;">
-                        Show Row Balance
-                    </label>
+                <div class="bg-white px-2 py-1 rounded-pill border" style="cursor:pointer;">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" role="switch" id="toggleBalanceCol" style="cursor: pointer;">
+                        <label class="form-check-label small fw-semibold text-dark" for="toggleBalanceCol" style="cursor: pointer; user-select: none;">
+                            Show Row Balance
+                        </label>
+                    </div>
                 </div>
             </div>
             <table id="ledgerDataTable" class="table table-striped mainTable align-middle mb-0" style="width: 100%;">
@@ -143,19 +142,21 @@
                 <tfoot class="table-light">
                     @if($selectedFyId !== 'all' && $selectedClientId !== '' && $selectedClientId !== 'all')
                     <tr>
-                        <td colspan="2" class="text-end fw-medium text-muted label-cell">Opening Balance</td>
-                        <td class="text-end fw-semibold text-dark val-cell">{{ number_format($openingBalance, 0, '.',
-                            ',') }}</td>
-                        <td colspan="3" class="empty-cell"></td>
+                        <td></td>
+                        <td class="text-end fw-medium text-muted">Opening Balance</td>
+                        <td class="text-end fw-semibold text-dark val-opening-received" data-val="{{ number_format($openingBalance ?? 0, 0, '.', ',') }}">{{ number_format($openingBalance ?? 0, 0, '.', ',') }}</td>
+                        <td class="text-end fw-semibold text-dark val-opening-balance" data-val="{{ number_format($openingBalance ?? 0, 0, '.', ',') }}"></td>
+                        <td></td>
+                        <td></td>
                     </tr>
                     @endif
                     <tr>
-                        <td colspan="2" class="text-end fw-semibold small lh-sm text-dark label-cell">Closing Balance
-                        </td>
-                        <td class="text-end fw-bold fs-6 lh-sm text-dark val-cell">{{ number_format($closingBalance, 0,
-                            '.',
-                            ',') }}</td>
-                        <td colspan="3" class="empty-cell"></td>
+                        <td></td>
+                        <td class="text-end fw-semibold small lh-sm text-dark">Closing Balance</td>
+                        <td class="text-end fw-bold fs-6 lh-sm text-dark val-closing-received" data-val="{{ number_format($closingBalance ?? 0, 0, '.', ',') }}">{{ number_format($closingBalance ?? 0, 0, '.', ',') }}</td>
+                        <td class="text-end fw-bold fs-6 lh-sm text-dark val-closing-balance" data-val="{{ number_format($closingBalance ?? 0, 0, '.', ',') }}"></td>
+                        <td></td>
+                        <td></td>
                     </tr>
                 </tfoot>
             </table>
@@ -242,33 +243,30 @@
             // Move toggle container to DataTable filter area before the search input
             const toggleContainer = jQuery('#balanceToggleContainer');
             if (toggleContainer.length) {
-                jQuery('#ledgerDataTable_filter')
-                    .addClass('d-flex align-items-center justify-content-md-end flex-wrap')
-                    .prepend(toggleContainer.removeClass('d-none'));
-            }
-
-            function updateFooterLayout(isChecked) {
-                if (isChecked) {
-                    jQuery('#ledgerDataTable tfoot td.label-cell').attr('colspan', 3).show();
-                    jQuery('#ledgerDataTable tfoot td.val-cell').show();
-                    jQuery('#ledgerDataTable tfoot td.empty-cell').attr('colspan', 2).show();
-                } else {
-                    jQuery('#ledgerDataTable tfoot td.label-cell').attr('colspan', 2).show();
-                    jQuery('#ledgerDataTable tfoot td.val-cell').show();
-                    jQuery('#ledgerDataTable tfoot td.empty-cell').attr('colspan', 2).show();
-                }
+                const filterWrapper = jQuery('#ledgerDataTable_filter');
+                filterWrapper.parent().addClass('d-flex align-items-center justify-content-md-end flex-wrap gap-2');
+                filterWrapper.before(toggleContainer.removeClass('d-none'));
+                filterWrapper.find('label').addClass('mb-0');
             }
 
             // Change listener to show/hide column
             jQuery('#toggleBalanceCol').on('change', function () {
                 const isChecked = this.checked;
                 table.column(3).visible(isChecked);
-                updateFooterLayout(isChecked);
+                
+                if (isChecked) {
+                    jQuery('.val-closing-received, .val-opening-received').text('');
+                    jQuery('.val-closing-balance').text(function() { return jQuery(this).data('val'); });
+                    jQuery('.val-opening-balance').text(function() { return jQuery(this).data('val'); });
+                } else {
+                    jQuery('.val-closing-received').text(function() { return jQuery(this).data('val'); });
+                    jQuery('.val-opening-received').text(function() { return jQuery(this).data('val'); });
+                    jQuery('.val-closing-balance, .val-opening-balance').text('');
+                }
+                
+                // Redraw table header/footer sizes if needed
                 table.columns.adjust();
             });
-
-            // Initialize layout on load
-            updateFooterLayout(false);
         }
 
         const modalEl = document.getElementById('pdfViewerModal');

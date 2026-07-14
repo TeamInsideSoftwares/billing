@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\AccountBillingDetail;
 use App\Models\CommunicationLog;
 use App\Models\Order;
+use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,7 @@ class ClientConsolidatedReminderService
 
     private const ATTACHMENT_TYPE = 'consolidated_order_summary';
 
-    public function dispatchAutomatedConsolidatedEmails(?string $accountId = null): array
+    public function dispatchAutomatedConsolidatedEmails(?string $accountId = null, ?string $clientId = null): array
     {
         if ((bool) config('communications.pause_automated_all_channels', false)) {
             return [
@@ -28,8 +29,15 @@ class ClientConsolidatedReminderService
         }
 
         $today = Carbon::today();
-        $triggerFromDate = $today->copy()->toDateString();
-        $triggerToDate = $today->copy()->addDays(self::WINDOW_DAYS)->toDateString();
+        // Allow items that expired up to 3 days ago to actively trigger the email
+        $triggerFromDate = $today->copy()->subDays(3)->toDateString();
+
+        $settings = Setting::where('setting_key', 'CONSOLIDATED_REMINDER_DAYS')->get()->keyBy('accountid');
+        $defaultWindowDays = self::WINDOW_DAYS;
+        $maxWindowDays = $settings->max('setting_value');
+        $maxWindowDays = max((int) $maxWindowDays, $defaultWindowDays);
+
+        $triggerToDate = $today->copy()->addDays($maxWindowDays)->toDateString();
 
         // Trigger only when client has at least one order expiring in next N days.
         $triggerOrders = Order::query()
@@ -39,6 +47,10 @@ class ClientConsolidatedReminderService
             ->when(
                 ! empty($accountId),
                 fn ($query) => $query->where('accountid', (string) $accountId)
+            )
+            ->when(
+                ! empty($clientId),
+                fn ($query) => $query->where('clientid', (string) $clientId)
             )
             ->where(function ($query) {
                 $query->whereNotIn('status', ['cancelled', 'suspended'])
@@ -69,11 +81,36 @@ class ClientConsolidatedReminderService
 
             $accountId = (string) $first->accountid;
             $clientId = (string) $first->clientid;
+
+            // Determine this account's window days
+            $accountSetting = $settings->get($accountId);
+            $accountWindowDays = $accountSetting && is_numeric($accountSetting->setting_value)
+                ? (int) $accountSetting->setting_value
+                : self::WINDOW_DAYS;
+
+            // Check if any order in this group is within the account's window
+            $hasTrigger = $rows->contains(function (Order $order) use ($today, $accountWindowDays) {
+                $endDate = $order->end_date ? $order->end_date->copy()->startOfDay() : null;
+                if (! $endDate) {
+                    return false;
+                }
+                $diff = $today->diffInDays($endDate, false);
+
+                return $diff >= 0 && $diff <= $accountWindowDays;
+            });
+
+            if (! $hasTrigger) {
+                $summary['skipped']++;
+
+                continue;
+            }
+            $upperBoundDate = $today->copy()->addDays($accountWindowDays)->endOfMonth()->toDateString();
+
             $allClientOrders = Order::query()
                 ->where('accountid', $accountId)
                 ->where('clientid', $clientId)
                 ->whereNotNull('end_date')
-                ->whereDate('end_date', '<', '2099-01-01')
+                ->whereDate('end_date', '<=', $upperBoundDate)
                 ->where(function ($query) {
                     $query->whereNotIn('status', ['cancelled', 'suspended'])
                         ->orWhereNull('status');
@@ -96,20 +133,27 @@ class ClientConsolidatedReminderService
                 continue;
             }
 
-            $alreadySent = CommunicationLog::query()
-                ->where('accountid', $accountId)
-                ->where('clientid', $clientId)
-                ->where('attachment_type', self::ATTACHMENT_TYPE)
-                ->where('channel', 'email')
-                ->where('status', 'sent')
-                ->where('created_by', 'SYSTEM')
-                ->where('created_at', '>=', $today->copy()->subDays(7)->startOfDay())
-                ->exists();
+            $firstEndDate = $first->end_date ? $first->end_date->copy()->startOfDay() : null;
+            $daysLeft = $firstEndDate ? $today->diffInDays($firstEndDate, false) : 999;
 
-            if ($alreadySent) {
-                $summary['skipped']++;
+            // Apply 7-day cooldown only if the closest expiring order is more than 3 days away.
+            // If it is 3, 2, 1, or 0 days away (or expired), send continuous daily reminders.
+            if ($daysLeft > 3) {
+                $alreadySent = CommunicationLog::query()
+                    ->where('accountid', $accountId)
+                    ->where('clientid', $clientId)
+                    ->where('attachment_type', self::ATTACHMENT_TYPE)
+                    ->where('channel', 'email')
+                    ->where('status', 'sent')
+                    ->where('created_by', 'SYSTEM')
+                    ->where('created_at', '>=', $today->copy()->subDays(7)->startOfDay())
+                    ->exists();
 
-                continue;
+                if ($alreadySent) {
+                    $summary['skipped']++;
+
+                    continue;
+                }
             }
 
             $account = Account::query()->find($accountId);
@@ -146,7 +190,7 @@ class ClientConsolidatedReminderService
 
             $message = view('emails.consolidated-client-orders', [
                 'clientName' => (string) ($client?->business_name ?: $client?->contact_name ?: 'Client'),
-                'windowDays' => self::WINDOW_DAYS,
+                'windowDays' => $accountWindowDays,
                 'today' => $today->format('d M Y'),
                 'items' => $items,
                 'senderName' => $senderName,

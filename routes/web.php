@@ -24,6 +24,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\TeamManagementController;
 use App\Http\Controllers\UsersController;
+use App\Http\Middleware\EnsureAppAccess;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', function () {
@@ -34,7 +35,7 @@ Route::match(['get', 'post'], '/logout', function () {
 })->name('logout')->middleware('auth');
 // AJAX routes without auth
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', EnsureAppAccess::class])->group(function () {
     Route::get('/', function () {
         return redirect()->route('dashboard');
     });
@@ -260,6 +261,10 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/settings/message-templates/{template}', 'messageTemplateUpdate')->name('message-templates.update');
         Route::patch('/settings/message-templates/{template}/toggle', 'messageTemplateToggle')->name('message-templates.toggle');
         Route::delete('/settings/message-templates/{template}', 'messageTemplateDestroy')->name('message-templates.destroy');
+        Route::get('/settings/consolidated-preview', 'consolidatedPreview')->name('settings.consolidated-preview');
+        Route::post('/settings/consolidated-days', 'updateConsolidatedDays')->name('settings.consolidated-days.update');
+        Route::get('/settings/consolidated-payment-preview', 'consolidatedPaymentPreview')->name('settings.consolidated-payment-preview');
+        Route::post('/settings/consolidated-payment-days', 'updateConsolidatedPaymentDays')->name('settings.consolidated-payment-days.update');
     });
 
     Route::get('/change-password', [AuthController::class, 'showChangePassword'])->name('password.change');
