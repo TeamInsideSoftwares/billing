@@ -110,6 +110,7 @@
                                                     data-description="{{ $pc['description'] ?? '' }}"
                                                     data-status="{{ strtolower($pc['status']) }}">Edit</button>
                                                 @endif
+                                                {{-- 
                                                 @if(auth()->user()->hasPermission('items.delete'))
                                                 <form method="POST"
                                                     action="{{ route('product-categories.destroy', $pc['record_id']) }}"
@@ -118,6 +119,7 @@
                                                     <button type="submit" class="bg04 color04 border-0">Delete</button>
                                                 </form>
                                                 @endif
+                                                --}}
                                             </div>
                                         </td>
                                     </tr>
@@ -242,9 +244,9 @@
                             </td>
                             <td>
                                 @if(!empty($service['addons']) && count($service['addons']) > 0)
-                                <div class="service-pill-wrap">
+                                <div class="service-pill-wrap d-flex flex-wrap gap-1">
                                     @foreach($service['addons'] as $addon)
-                                    <span class="">
+                                    <span class="badge bg-light text-dark border fw-normal" style="font-size: 11px;">
                                         {{ $addon['name'] }}
                                     </span>
                                     @endforeach
@@ -259,6 +261,7 @@
                                     <a href="{{ route('services.edit', $service['record_id']) }}"
                                         class="bg03 color03">Edit</a>
                                     @endif
+                                    {{-- 
                                     @if(auth()->user()->hasPermission('items.delete'))
                                     <form method="POST" action="{{ route('services.destroy', $service['record_id']) }}"
                                         class="d-inline service-delete-form" data-name="{{ $service['name'] }}">
@@ -266,6 +269,7 @@
                                         <button type="submit" class="bg04 color04">Delete</button>
                                     </form>
                                     @endif
+                                    --}}
                                 </div>
                             </td>
                         </tr>
