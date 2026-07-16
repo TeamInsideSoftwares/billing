@@ -50,7 +50,7 @@ class ServicesController extends Controller
         }
 
         $resultCount = $query->count();
-        $records = $query->take(20)->get();
+        $records = $query->get();
 
         $visibleItemIds = $records->pluck('itemid')->all();
 
@@ -112,7 +112,7 @@ class ServicesController extends Controller
             $catQuery->where('name', 'like', '%'.$catSearch.'%');
         }
         $catResultCount = $catQuery->count();
-        $productCategories = $catQuery->take(20)->get()->map(function ($pc) {
+        $productCategories = $catQuery->get()->map(function ($pc) {
             return [
                 'record_id' => $pc->ps_catid,
                 'name' => $pc->name,
