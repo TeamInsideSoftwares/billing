@@ -47,8 +47,8 @@ class MapProductIds extends Command
         try {
             $this->info('Starting ID mappings for T499MU1L1l account to prevent conflicts...');
             foreach ($tAccountMappings as $oldId => $newId) {
-                // First check if the T account item even exists (to prevent errors if they don't have it)
-                if (DB::table('items')->where('itemid', $oldId)->exists()) {
+                // Check if the item exists AND belongs to the T account
+                if (DB::table('items')->where('itemid', $oldId)->where('accountid', 'T499MU1L1l')->exists()) {
                     $this->performCascadingUpdate($oldId, $newId);
                     $this->info("Mapped conflicting item $oldId -> $newId");
                 }
@@ -56,7 +56,8 @@ class MapProductIds extends Command
 
             $this->info('Starting ID mappings for S00003 account to Superadmin products...');
             foreach ($sAccountMappings as $oldId => $newId) {
-                if (DB::table('items')->where('itemid', $oldId)->exists()) {
+                // Check if the item exists AND belongs to the S account
+                if (DB::table('items')->where('itemid', $oldId)->where('accountid', 'S00003')->exists()) {
                     $this->performCascadingUpdate($oldId, $newId);
                     $this->info("Mapped S account item $oldId -> $newId");
                 }
@@ -92,7 +93,7 @@ class MapProductIds extends Command
                         // Insert costings
                         foreach ($cmsCostings as $costing) {
                             $newCosting = (array) $costing;
-                            unset($newCosting['costingid']); // Auto-increments
+                            $newCosting['costingid'] = strtoupper(Str::random(6)); // Generate random 6-char ID
                             $newCosting['itemid'] = $newId;
                             $newCosting['created_at'] = now();
                             $newCosting['updated_at'] = now();
@@ -101,7 +102,22 @@ class MapProductIds extends Command
                         }
                         $this->info("Added new item $newName ($newId) with CMS costings");
                     } else {
-                        $this->info("Item $newId already exists, skipping insertion.");
+                        $this->info("Item $newName ($newId) already exists.");
+                        
+                        // Check if costings are missing due to a previous partial failure
+                        if (!DB::table('item_costings')->where('itemid', $newId)->exists()) {
+                            foreach ($cmsCostings as $costing) {
+                                $newCosting = (array) $costing;
+                                $newCosting['costingid'] = strtoupper(Str::random(6));
+                                $newCosting['itemid'] = $newId;
+                                $newCosting['created_at'] = now();
+                                $newCosting['updated_at'] = now();
+                                DB::table('item_costings')->insert($newCosting);
+                            }
+                            $this->info("Recovered: Added missing costings for $newName ($newId)");
+                        } else {
+                            $this->info("Skipping $newName ($newId) as it already has costings.");
+                        }
                     }
                 }
             } else {
