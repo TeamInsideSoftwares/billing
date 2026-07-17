@@ -63,7 +63,7 @@
     ['label' => 'Payments', 'route' => 'payments.index', 'permission' => 'payments.view'],
     ['label' => 'GST Report', 'route' => 'gst-report.index', 'permission' => 'payments.view'],
     ['label' => 'Items', 'route' => 'services.index', 'permission' => 'items.view'],
-    ['label' => 'Users', 'route' => 'users.index', 'permission' => 'users.view'],
+    ['label' => 'Team', 'route' => 'users.index', 'permission' => 'users.view'],
     ['label' => 'Settings', 'route' => 'settings.index', 'permission' => 'settings.view'],
     ];
 

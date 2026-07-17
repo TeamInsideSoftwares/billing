@@ -2,7 +2,7 @@
 
 @section('header_actions')
 <a href="{{ route('users.index') }}" class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-    <i class="fas fa-arrow-left btn-icon"></i> Back to Users
+    <i class="fas fa-arrow-left btn-icon"></i> Back to Team List
 </a>
 @endsection
 
@@ -15,7 +15,7 @@
             <table class="table table-striped mainTable align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>User</th>
+                        <th>Team Member</th>
                         <th>Email</th>
                         <th>Submitted At</th>
                         <th class="text-end">Actions</th>
@@ -167,9 +167,9 @@
                     @empty
                         <tr>
                             <td colspan="4" class="text-center py-5 text-muted bg-white">
-                                <i class="fas fa-check-circle fs-1 mb-3 text-success opacity-50"></i>
-                                <h6>All caught up!</h6>
-                                <p class="small">There are no pending profile updates to review.</p>
+                                <i class="fas fa-inbox mb-3 text-secondary fs-1 opacity-50"></i>
+                                <p class="fw-semibold text-dark mb-1">No pending profile updates found.</p>
+                                <p class="small text-muted mb-0">Pending approvals will appear here.</p>
                             </td>
                         </tr>
                     @endforelse

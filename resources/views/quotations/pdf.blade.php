@@ -586,25 +586,17 @@
         </div>
     @endif
 
-    <table style="width: 100%; margin-top: 0px;">
+    <table style="width: 100%; margin-top: 0;">
         <tr>
-            <td style="width: 60%; border: none;"></td>
-            <td style="width: 40%; border: none;" align="right">
-                <table style="width: 160px; text-align: center; border: none;">
-                    <tr>
-                        <td style="border: none; height: 60px; vertical-align: bottom;">
-                            @if (!empty($signatureUrl))
-                                <img src="{{ $signatureUrl }}" style="max-width: 130px; max-height: 52px;" alt="Signature">
-                            @endif
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="border: none; font-size: 9pt;">
-                            {{ $accountBillingDetail->authorize_signatory ?? '' }}<br>
-                            {{ $accountBillingDetail->designation ?: ($accountBillingDetail->billing_name ?? $account->name) }}
-                        </td>
-                    </tr>
-                </table>
+            <td style="width: 75%; border: none;"></td>
+            <td style="border: none; vertical-align: bottom; text-align: center;">
+                @if (!empty($signatureUrl))
+                    <img src="{{ $signatureUrl }}" style="max-width: 130px; max-height: 52px;" alt="Signature">
+                @endif
+                <div style="border: none; font-size: 9pt;">
+                    {{ $accountBillingDetail->authorize_signatory ?? '' }}<br>
+                    {{ $accountBillingDetail->designation ?: ($accountBillingDetail->billing_name ?? $account->name) }}
+                </div>
             </td>
         </tr>
     </table>

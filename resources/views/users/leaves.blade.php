@@ -2,7 +2,7 @@
 
 @section('header_actions')
 <a href="{{ route('users.index') }}" class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-    <i class="fas fa-arrow-left btn-icon"></i> Back to Users
+    <i class="fas fa-arrow-left btn-icon"></i> Back to Team List
 </a>
 @endsection
 
@@ -87,7 +87,7 @@
                 <table class="table table-striped mainTable align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>User</th>
+                            <th>Team Member</th>
                             <th>Leave Type</th>
                             <th>Start Date</th>
                             <th>End Date</th>
@@ -230,7 +230,7 @@
                 <table class="table table-striped mainTable align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>User</th>
+                            <th>Team Member</th>
                             <th>Leave Type</th>
                             <th>Start Date</th>
                             <th>End Date</th>

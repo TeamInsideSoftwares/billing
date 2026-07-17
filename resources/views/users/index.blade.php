@@ -24,7 +24,9 @@
         class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium position-relative">
         <i class="fas fa-user-check btn-icon"></i> Profile Approvals
         @php
-            $pendingCount = \App\Models\UserProfile::where('status', 'pending')->count();
+            $pendingCount = \App\Models\UserProfile::where('status', 'pending')
+                ->where('accountid', auth()->user()->accountid)
+                ->count();
         @endphp
         @if($pendingCount > 0)
         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
@@ -42,11 +44,13 @@
                 ->values()
                 ->all();
             
-            $unassignedUserids = \App\Models\User::whereNotIn('userid', $assignedUserids)
+            $unassignedUserids = \App\Models\User::where('accountid', auth()->user()->accountid)
+                ->whereNotIn('userid', $assignedUserids)
                 ->pluck('userid')
                 ->all();
 
-            $pendingLeavesCount = \App\Models\LeaveRequest::whereIn('userid', $unassignedUserids)
+            $pendingLeavesCount = \App\Models\LeaveRequest::where('accountid', auth()->user()->accountid)
+                ->whereIn('userid', $unassignedUserids)
                 ->where('status', 'pending')
                 ->count();
         @endphp
@@ -92,7 +96,7 @@
          <div class="d-flex align-items-center gap-2">
             <a href="{{ route('users.create') }}"
                 class="btn btn-sm btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-                <i class="fas fa-plus btn-icon"></i> Add User
+                <i class="fas fa-plus btn-icon"></i> Add Team
             </a>
         </div>
     </div>
@@ -103,7 +107,7 @@
             <table class="table table-striped mainTable align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>User</th>
+                        <th>Team Member</th>
                         <th>Department</th>
 
                         <th>Role</th>
@@ -189,11 +193,11 @@
                         </td>
                         <td class="text-end">
                             <div class="tableActionButton d-inline-flex gap-1 align-items-center">
-                                @if(auth()->user()->hasPermission('users.edit'))
+                                @if(auth()->user()->hasPermission('users.edit') && count($allUsersMap) > 1)
                                 <button type="button" class="bg01 color01 border-0" onclick="openAssignTeamModal('{{ $member->userid }}', '{{ addslashes($member->name) }}')" title="Assign Team">Assign Team</button>
                                 @endif
                                 @if(auth()->user()->hasPermission('users.edit'))
-                                <a href="{{ route('users.edit', $member) }}" class="bg03 color03" title="Edit User">Edit</a>
+                                <a href="{{ route('users.edit', $member) }}" class="bg03 color03" title="Edit Team">Edit</a>
                                 @endif
                                 @if(auth()->user()->hasPermission('users.cancel'))
                                 <form method="POST" action="{{ route('users.toggle-status', $member) }}" class="m-0 p-0 d-inline" title="Toggle Status">
@@ -211,7 +215,7 @@
                     <tr>
                         <td colspan="6" class="text-center py-5 text-muted">
                             <i class="fas fa-users mb-3 text-secondary fs-1 opacity-50"></i>
-                            <p class="fw-semibold text-dark mb-1">No users found</p>
+                            <p class="fw-semibold text-dark mb-1">No team members found</p>
                             <p class="small text-muted mb-0">Try adjusting your search criteria.</p>
                         </td>
                     </tr>
