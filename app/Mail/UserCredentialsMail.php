@@ -32,7 +32,7 @@ class UserCredentialsMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Welcome! Your Account Credentials',
+            subject: "Welcome, {$this->user->name}! Your login credentials",
         );
     }
 

@@ -33,6 +33,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'country',
     'notes',
     'bd_id',
+    'reason_deactive',
 ])]
 class Client extends Model
 {

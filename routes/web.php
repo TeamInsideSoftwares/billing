@@ -229,6 +229,7 @@ Route::middleware(['auth', EnsureAppAccess::class])->group(function () {
         Route::patch('/orders/{order}/restore', 'ordersRestore')->name('orders.restore');
         Route::delete('/orders/{order}', 'ordersDestroy')->name('orders.destroy');
         Route::delete('/orders/{order}/force-delete', 'ordersForceDelete')->name('orders.force-delete');
+        Route::patch('/orders/{order}/convert-to-regular', 'convertOrderToRegular')->name('orders.convert-to-regular');
     });
 
     Route::post('/message-templates/refresh', [SettingsController::class, 'refreshTemplate'])->name('message-templates.refresh');

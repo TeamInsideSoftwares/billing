@@ -183,7 +183,7 @@ default => collect(),
                             <th>Items</th>
                             <th class="text-center" width="15%">Expiry</th>
                             <th class="text-center" width="15%">Days</th>
-                            <th class="text-end" width="20%">Actions</th>
+                            <th class="text-end" width="25%">Actions</th>
                         </tr>
                     </thead>
                     <tbody>

@@ -26,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'end_date',
     'delivery_date',
     'type',
+    'grace_period',
 ])]
 class Order extends Model
 {
@@ -59,6 +60,7 @@ class Order extends Model
                 'end_date' => ['label' => 'Expiry date', 'action' => 'expiry_date_changed'],
                 'delivery_date' => ['label' => 'Delivery date', 'action' => 'delivery_date_changed'],
                 'client_docid' => ['label' => 'Purchase Order', 'action' => 'po_changed'],
+                'grace_period' => ['label' => 'Grace period', 'action' => 'grace_period_changed'],
             ];
 
             foreach ($fields as $field => $meta) {

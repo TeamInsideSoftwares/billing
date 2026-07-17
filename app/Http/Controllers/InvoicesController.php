@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Traits\InvalidatesOrderCache;
 use App\Models\Account;
 use App\Models\AccountBillingDetail;
 use App\Models\Client;
@@ -34,7 +35,7 @@ use Illuminate\Validation\ValidationException;
 
 class InvoicesController extends Controller
 {
-    use ConfiguresBrowsershot;
+    use ConfiguresBrowsershot, InvalidatesOrderCache;
 
     private function normalizeInvoiceTermsByType(mixed $terms): array
     {
@@ -438,7 +439,7 @@ class InvoicesController extends Controller
         }
 
         $pdfAttachment = $this->buildInvoicePdfAttachment($invoice, $isTaxInvoice);
-        
+
         $existing = collect($disk->files($directory))
             ->map(function (string $path) use ($baseName) {
                 $name = pathinfo($path, PATHINFO_FILENAME);
@@ -485,7 +486,7 @@ class InvoicesController extends Controller
         ];
 
         $volatileFields = [
-            'updated_at', 'created_at', 'last_emailed_at', 'status', 'email_status', 'sms_status', 'whatsapp_status'
+            'updated_at', 'created_at', 'last_emailed_at', 'status', 'email_status', 'sms_status', 'whatsapp_status',
         ];
 
         $cleanData = $this->recursiveRemoveVolatileFields($data, $volatileFields);
@@ -502,6 +503,7 @@ class InvoicesController extends Controller
                 $value = $this->recursiveRemoveVolatileFields($value, $volatileFields);
             }
         }
+
         return $array;
     }
 
@@ -2849,14 +2851,9 @@ class InvoicesController extends Controller
                 ->with('error', 'Cancelled order cannot be suspended.');
         }
 
-        $today = now()->startOfDay();
-        $endDate = $orderModel->end_date?->copy()->startOfDay();
-        if (! $endDate || $endDate->gt($today)) {
-            return $this->redirectExpiryListWithFilters($request, 'expired')
-                ->with('error', 'Only expired orders can be suspended.');
-        }
-
         $orderModel->update(['status' => 'suspended']);
+
+        $this->invalidateOrderCache();
 
         return $this->redirectExpiryListWithFilters($request, 'expired')
             ->with('success', 'Order suspended successfully.');
@@ -2874,6 +2871,8 @@ class InvoicesController extends Controller
         }
 
         $orderModel->update(['status' => 'active']);
+
+        $this->invalidateOrderCache();
 
         return $this->redirectExpiryListWithFilters($request, 'suspended')
             ->with('success', 'Order unsuspended successfully.');
@@ -2906,6 +2905,8 @@ class InvoicesController extends Controller
         $orderModel->update([
             'end_date' => $newEndDate,
         ]);
+
+        $this->invalidateOrderCache();
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
@@ -2967,6 +2968,10 @@ class InvoicesController extends Controller
 
     private function redirectExpiryListWithFilters(Request $request, string $fallbackTab)
     {
+        if ($request->input('redirect') === 'back') {
+            return redirect()->back();
+        }
+
         $requestedClient = trim((string) $request->input('c', ''));
 
         $params = array_filter([
@@ -3775,7 +3780,7 @@ class InvoicesController extends Controller
                     $documentLinks[] = [
                         'label' => 'Proforma Invoice (PDF)',
                         'url' => $piPdfUrl,
-                        'name' => 'Proforma Invoice - '.($piNumber !== '' ? $piNumber : $invoice->invoiceid).'.pdf'
+                        'name' => 'Proforma Invoice - '.($piNumber !== '' ? $piNumber : $invoice->invoiceid).'.pdf',
                     ];
                 }
                 if (in_array('ti', $selectedTypes, true) && $tiPdfUrl) {
@@ -3783,7 +3788,7 @@ class InvoicesController extends Controller
                     $documentLinks[] = [
                         'label' => 'Tax Invoice (PDF)',
                         'url' => $tiPdfUrl,
-                        'name' => 'Tax Invoice - '.($tiNumber !== '' ? $tiNumber : $invoice->invoiceid).'.pdf'
+                        'name' => 'Tax Invoice - '.($tiNumber !== '' ? $tiNumber : $invoice->invoiceid).'.pdf',
                     ];
                 }
                 foreach ($finalCustomAttachmentPaths as $customPath) {
@@ -3846,7 +3851,7 @@ class InvoicesController extends Controller
                                     'text' => (string) $var['value'],
                                 ]
                             )->all(),
-                        ]
+                        ],
                     ];
                     $payload['dynamic_context'] = [
                         'fields' => collect($templateVariables)->map(
@@ -3893,10 +3898,10 @@ class InvoicesController extends Controller
                                 'type' => 'document',
                                 'document' => [
                                     'link' => $payload['media_url'],
-                                    'filename' => $beautifulName
-                                ]
-                            ]
-                        ]
+                                    'filename' => $beautifulName,
+                                ],
+                            ],
+                        ],
                     ]);
                 }
             }

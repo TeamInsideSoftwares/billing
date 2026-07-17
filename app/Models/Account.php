@@ -52,6 +52,7 @@ class Account extends Model
         'has_team_management',
         'fixed_tax_rate',
         'fixed_tax_type',
+        'reason_deactive',
     ];
 
     protected function casts(): array

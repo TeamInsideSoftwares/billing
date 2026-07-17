@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Traits\InvalidatesOrderCache;
 use App\Models\Account;
 use App\Models\Client;
 use App\Models\ClientDocument;
@@ -19,6 +20,8 @@ use Illuminate\Validation\Rule;
 
 class OrdersController extends Controller
 {
+    use InvalidatesOrderCache;
+
     public function ordersFile(Order $order, string $type)
     {
         $userAccountId = $this->resolveAccountId();
@@ -102,6 +105,7 @@ class OrdersController extends Controller
                     'delivery_date' => $order->delivery_date?->format('Y-m-d'),
                     'frequency' => $latestInvoiceItem?->frequency ?? '',
                     'duration' => $latestInvoiceItem?->duration ?? 1,
+                    'grace_period' => $order->grace_period ?? 0,
                 ]],
                 'has_pi' => $order->invoices->isNotEmpty(),
                 'linked_invoice_id' => $linkedInvoice?->invoiceid,
@@ -114,6 +118,45 @@ class OrdersController extends Controller
             : ($clientId !== ''
                 ? [($selectedClient?->business_name ?? $selectedClient?->contact_name ?? 'Client') => $orders]
                 : $orders->groupBy('client')->sortKeys());
+
+        // Fetch trial orders for a specific regular client so they are visible and manageable
+        $trialOrders = collect();
+        if ($clientId !== '' && $selectedClient && strtolower((string) ($selectedClient->type ?? '')) !== 'trial') {
+            $trialRecords = Order::query()
+                ->where('accountid', $accountId)
+                ->where('clientid', $clientId)
+                ->trial()
+                ->with(['item', 'invoices', 'invoiceItems'])
+                ->orderByDesc('start_date')
+                ->orderByDesc('created_at')
+                ->get();
+
+            $trialOrders = $trialRecords->map(function (Order $order) use ($selectedClient) {
+                $latestInvoiceItem = $order->invoiceItems->sortByDesc('created_at')->sortByDesc('invoice_itemid')->first();
+
+                return [
+                    'record_id' => $order->orderid,
+                    'number' => $order->order_number,
+                    'client' => $selectedClient?->business_name ?? $selectedClient?->contact_name ?? 'Client',
+                    'clientid' => $order->clientid,
+                    'status' => (string) ($order->status ?? ''),
+                    'itemid' => $order->itemid,
+                    'client_docid' => $order->client_docid,
+                    'items' => [[
+                        'item_name' => $order->item_name ?: ($order->item?->name ?? 'Item'),
+                        'item_description' => $order->item_description,
+                        'quantity' => (float) ($order->quantity ?? 1),
+                        'no_of_users' => $order->no_of_users,
+                        'start_date' => $order->start_date?->format('Y-m-d'),
+                        'end_date' => $order->end_date?->format('Y-m-d'),
+                        'delivery_date' => $order->delivery_date?->format('Y-m-d'),
+                        'frequency' => $latestInvoiceItem?->frequency ?? '',
+                        'duration' => $latestInvoiceItem?->duration ?? 1,
+                        'grace_period' => $order->grace_period ?? 0,
+                    ]],
+                ];
+            });
+        }
 
         $services = Service::query()
             ->where('accountid', $accountId)
@@ -134,6 +177,7 @@ class OrdersController extends Controller
             'title' => $clientId ? 'All Orders' : 'Manage Orders',
             'orders' => $orders,
             'groupedOrders' => $groupedOrders,
+            'trialOrders' => $trialOrders,
             'selectedClient' => $selectedClient,
             'clientId' => $clientId,
             'hasClientFilter' => $hasClientFilter,
@@ -154,6 +198,7 @@ class OrdersController extends Controller
         $documents = collect();
         $clientQuotations = collect();
         $existingClientItemIds = [];
+        $existingClientItemMap = [];
         $recentOrders = collect();
 
         if (! $carryRecent) {
@@ -176,16 +221,17 @@ class OrdersController extends Controller
                 ->orderByDesc('created_at')
                 ->get();
 
-            $existingClientItemIds = Order::query()
+            $existingClientItemMap = Order::query()
                 ->where('accountid', $accountId)
                 ->where('clientid', $preSelectedClientId)
-                ->whereIn('status', ['active', 'running'])
                 ->whereNotNull('itemid')
-                ->pluck('itemid')
-                ->map(fn ($itemId) => (string) $itemId)
-                ->unique()
-                ->values()
+                ->get()
+                ->mapWithKeys(function ($order) {
+                    return [(string) $order->itemid => (string) $order->orderid];
+                })
                 ->all();
+
+            $existingClientItemIds = array_keys($existingClientItemMap);
 
             $clientQuotations = Quotation::query()
                 ->where('accountid', $accountId)
@@ -218,6 +264,7 @@ class OrdersController extends Controller
             'clientDocuments' => $documents->values(),
             'clientQuotations' => $clientQuotations,
             'existingClientItemIds' => $existingClientItemIds,
+            'existingClientItemMap' => $existingClientItemMap,
             'recentOrders' => $recentOrders,
             'isEditMode' => false,
             'order' => null,
@@ -263,8 +310,11 @@ class OrdersController extends Controller
                 'start_date' => ! empty($itemData['start_date']) ? $itemData['start_date'] : now()->toDateString(),
                 'end_date' => $itemData['end_date'] ?? '2099-12-31',
                 'delivery_date' => ! empty($itemData['delivery_date']) ? $itemData['delivery_date'] : null,
+                'grace_period' => $itemData['grace_period'] ?? 0,
             ]);
         }
+
+        $this->invalidateOrderCache();
 
         $redirectClientId = $createdOrders[0]->clientid ?? $validated['clientid'];
         $createdOrderIds = collect($createdOrders)
@@ -373,6 +423,7 @@ class OrdersController extends Controller
                 'quantity' => $order->quantity ?? 1,
                 'item_name' => $order->item_name ?? 'Item',
                 'item_description' => $order->item_description ?? '',
+                'grace_period' => $order->grace_period ?? 0,
             ]],
         ]);
     }
@@ -451,7 +502,10 @@ class OrdersController extends Controller
             'start_date' => ! empty($itemData['start_date']) ? $itemData['start_date'] : now()->toDateString(),
             'end_date' => $itemData['end_date'] ?? '2099-12-31',
             'delivery_date' => ! empty($itemData['delivery_date']) ? $itemData['delivery_date'] : null,
+            'grace_period' => $itemData['grace_period'] ?? 0,
         ]);
+
+        $this->invalidateOrderCache();
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
@@ -486,6 +540,8 @@ class OrdersController extends Controller
             'status' => 'cancelled',
         ]);
 
+        $this->invalidateOrderCache();
+
         if (request()->query('return_to') === 'create') {
             $recentOrderIds = collect(session('orders_create_recent_ids', []))
                 ->map(fn ($id) => (string) $id)
@@ -518,6 +574,8 @@ class OrdersController extends Controller
             'status' => 'active',
         ]);
 
+        $this->invalidateOrderCache();
+
         if (request()->query('return_to') === 'trials') {
             return redirect()->route('clients.trials')->with('success', 'Order restored successfully.');
         }
@@ -538,7 +596,28 @@ class OrdersController extends Controller
             $order->delete();
         });
 
+        $this->invalidateOrderCache();
+
         return redirect()->route('orders.index', ['c' => $order->clientid])->with('success', 'Order deleted permanently.');
+    }
+
+    public function convertOrderToRegular(Order $order)
+    {
+        if ((string) $order->accountid !== $this->resolveAccountId()) {
+            abort(404);
+        }
+
+        if ($order->type !== 'trial') {
+            return redirect()->route('orders.index', ['c' => $order->clientid])
+                ->with('error', 'This order is not a trial order.');
+        }
+
+        $order->update(['type' => 'regular']);
+
+        $this->invalidateOrderCache();
+
+        return redirect()->route('orders.index', ['c' => $order->clientid])
+            ->with('success', 'Order #'.$order->order_number.' converted to regular successfully.');
     }
 
     protected function generateOrderNumber(string $accountId): string

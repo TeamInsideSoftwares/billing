@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Traits\InvalidatesOrderCache;
 use App\Models\Account;
 use App\Models\AccountBillingDetail;
 use App\Models\Client;
@@ -27,6 +28,8 @@ use Throwable;
 
 class ClientsController extends Controller
 {
+    use InvalidatesOrderCache;
+
     public function clientsStoreApi(Request $request): JsonResponse
     {
         $this->assertInternalApiKey($request);
@@ -135,6 +138,8 @@ class ClientsController extends Controller
                     'message' => 'Order creation failed. Please check logs.',
                 ], 500);
             }
+
+            $this->invalidateOrderCache();
 
             Log::info('New order created for existing client (no trial conversion).', [
                 'clientid' => $existingClient->clientid,
@@ -283,6 +288,8 @@ class ClientsController extends Controller
                 'message' => 'Insert failed. Please check logs.',
             ], 500);
         }
+
+        $this->invalidateOrderCache();
 
         return response()->json([
             'success' => true,
@@ -438,7 +445,7 @@ class ClientsController extends Controller
 
         $resultCount = $query->count();
 
-        $clients = $query->orderBy('business_name')->take(50)->get()->map(function ($client) use ($selectedItem) {
+        $clients = $query->orderBy('business_name')->take(100)->get()->map(function ($client) use ($selectedItem) {
             $invoiceTotal = $client->invoices
                 ->where('status', '!=', 'cancelled')
                 ->where('payment_status', '!=', 'paid')
@@ -1039,11 +1046,31 @@ class ClientsController extends Controller
 
         $validated = $request->validate([
             'status' => 'required|in:active,inactive',
+            'reason_deactive' => 'nullable|string',
         ]);
+
+        $reason = $validated['status'] === 'inactive' ? ($validated['reason_deactive'] ?? null) : null;
 
         $client->update([
             'status' => $validated['status'],
+            'reason_deactive' => $reason,
         ]);
+
+        if ($validated['status'] === 'inactive' && $reason) {
+            DB::connection('admin_mysql')
+                ->table('accounts')
+                ->where('accountid', $client->clientid)
+                ->update([
+                    'reason_deactive' => $reason,
+                ]);
+        } elseif ($validated['status'] === 'active') {
+            DB::connection('admin_mysql')
+                ->table('accounts')
+                ->where('accountid', $client->clientid)
+                ->update([
+                    'reason_deactive' => null,
+                ]);
+        }
 
         $this->syncWithSuperadmin($client);
 

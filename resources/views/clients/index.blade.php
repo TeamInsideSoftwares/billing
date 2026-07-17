@@ -1322,22 +1322,64 @@
                 const newStatus = isChecked ? 'active' : 'inactive';
 
                 // Confirm action
-                const msg = isChecked
-                    ? "Are you sure? All login details will also be activated."
-                    : "Are you sure? All login details will also be deactivated.";
+                let payload = { status: newStatus };
 
-                const isConfirmed = await window.appConfirm(msg, {
-                    title: 'Please Confirm',
-                    icon: 'warning',
-                    confirmButtonText: 'Yes',
-                    cancelButtonText: 'Cancel'
-                });
+                if (!isChecked) {
+                    if (window.Swal && typeof window.Swal.fire === 'function') {
+                        const result = await window.Swal.fire({
+                            title: 'Deactivate Client',
+                            text: 'Are you sure? All login details will also be deactivated. Please provide a reason for deactivation:',
+                            input: 'text',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Deactivate',
+                            cancelButtonText: 'Cancel',
+                            customClass: {
+                                popup: 'app-swal-popup',
+                                title: 'app-swal-title',
+                                htmlContainer: 'app-swal-text',
+                                confirmButton: 'app-swal-btn app-swal-btn-confirm bg-danger',
+                                cancelButton: 'app-swal-btn app-swal-btn-cancel',
+                                icon: 'app-swal-icon'
+                            },
+                            inputValidator: (value) => {
+                                if (!value || value.trim() === '') {
+                                    return 'Please enter a reason!';
+                                }
+                            }
+                        });
 
-                if (!isConfirmed) {
-                    document.querySelectorAll(`.client-status-toggle[data-id="${clientId}"]`).forEach(cb => {
-                        cb.checked = !isChecked;
+                        if (!result.isConfirmed) {
+                            document.querySelectorAll(`.client-status-toggle[data-id="${clientId}"]`).forEach(cb => {
+                                cb.checked = !isChecked;
+                            });
+                            return;
+                        }
+                        payload.reason_deactive = result.value;
+                    } else {
+                        const reason = prompt("Are you sure? All login details will also be deactivated.\nPlease provide a reason:");
+                        if (reason === null || reason.trim() === '') {
+                            document.querySelectorAll(`.client-status-toggle[data-id="${clientId}"]`).forEach(cb => {
+                                cb.checked = !isChecked;
+                            });
+                            return;
+                        }
+                        payload.reason_deactive = reason;
+                    }
+                } else {
+                    const isConfirmed = await window.appConfirm("Are you sure? All login details will also be activated.", {
+                        title: 'Please Confirm',
+                        icon: 'warning',
+                        confirmButtonText: 'Yes',
+                        cancelButtonText: 'Cancel'
                     });
-                    return;
+
+                    if (!isConfirmed) {
+                        document.querySelectorAll(`.client-status-toggle[data-id="${clientId}"]`).forEach(cb => {
+                            cb.checked = !isChecked;
+                        });
+                        return;
+                    }
                 }
 
                 // Sync other toggle switches for the same client (grid and list views)
@@ -1358,7 +1400,7 @@
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
                             'X-Requested-With': 'XMLHttpRequest'
                         },
-                        body: JSON.stringify({ status: newStatus })
+                        body: JSON.stringify(payload)
                     });
 
                     if (response.ok) {
