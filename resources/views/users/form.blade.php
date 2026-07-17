@@ -2,8 +2,8 @@
 
 @section('header_actions')
 <a href="{{ route('users.index') }}"
-    class="btn btn-outline-primary btn-primary text-white d-inline-flex align-items-center gap-1 fw-medium">
-    <i class="fas fa-list btn-icon"></i> Users List
+    class="btn btn-outline-primary bg-white text-primary d-inline-flex align-items-center gap-1 fw-medium">
+    <i class="fas fa-list btn-icon"></i> Team List
 </a>
 @endsection
 
@@ -21,7 +21,7 @@
             <div class="col-12 col-lg-4">
                 <div class="bg-light p-2 rounded-3">
                     <div class="mb-2">
-                        <h5 class="fw-semibold text-primary small lh-sm mb-0">User Information</h5>
+                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Team Information</h5>
                     </div>
 
                     <div class="row g-2">
@@ -338,8 +338,7 @@
         <div class="mt-2 d-flex justify-content-end gap-2">
             <a href="{{ route('users.index') }}"
                 class="btn btn-outline-primary bg-white text-primary fw-medium px-4">Cancel</a>
-            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium px-4">Save User
-                Details</button>
+            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium px-4">Save Team</button>
         </div>
     </form>
 </div>

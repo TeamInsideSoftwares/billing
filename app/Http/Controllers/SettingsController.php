@@ -977,7 +977,7 @@ class SettingsController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return redirect()->to(route('settings.index').'#terms-conditions')
+            return redirect()->to(route('settings.index', ['t' => $request->type ?? 'billing']).'#terms-conditions')
                 ->withErrors($validator)
                 ->withInput();
         }
@@ -1007,7 +1007,7 @@ class SettingsController extends Controller
         }
 
         // Redirect without edit_tc parameter to clear the form
-        return redirect()->to(route('settings.index').'#terms-conditions')->with('success', $message);
+        return redirect()->to(route('settings.index', ['t' => $validated['type'] ?? 'billing']).'#terms-conditions')->with('success', $message);
     }
 
     public function termsConditionsUpdateSequence(Request $request, TermsCondition $term)
@@ -1044,7 +1044,7 @@ class SettingsController extends Controller
             }
         }
 
-        return redirect()->to(route('settings.index').'#terms-conditions')->with('success', 'Sequence updated successfully.');
+        return redirect()->to(route('settings.index', ['t' => $term->type]).'#terms-conditions')->with('success', 'Sequence updated successfully.');
     }
 
     public function termsConditionsToggle(Request $request, TermsCondition $term)
@@ -1063,7 +1063,7 @@ class SettingsController extends Controller
             ]);
         }
 
-        return redirect()->to(route('settings.index').'#terms-conditions')->with('success', 'T&C status toggled.');
+        return redirect()->to(route('settings.index', ['t' => $term->type]).'#terms-conditions')->with('success', 'T&C status toggled.');
     }
 
     public function termsConditionsDestroy(TermsCondition $term)
@@ -1074,7 +1074,7 @@ class SettingsController extends Controller
         }
         $term->delete();
 
-        return redirect()->to(route('settings.index').'#terms-conditions')->with('success', 'T&C deleted successfully.');
+        return redirect()->to(route('settings.index', ['t' => $term->type]).'#terms-conditions')->with('success', 'T&C deleted successfully.');
     }
 
     public function fyPrefixUpdate(Request $request)

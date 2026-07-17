@@ -1146,6 +1146,7 @@ $activeSettingsTab = 'billing-details';
         <div id="terms-conditions"
             class="tab-pane fade {{ $activeSettingsTab === 'terms-conditions' ? 'show active' : '' }}" role="tabpanel">
 
+
              <div class="row g-2 align-items-stretch">
                 <div class="col-12 col-md-12"> 
                     <div class="meta-info ps-2">
@@ -1284,15 +1285,13 @@ $activeSettingsTab = 'billing-details';
                                                     <select name="sequence" onchange="this.form.submit()"
                                                         class="form-select form-select-sm" style="width: 70px;" {{ !auth()->user()->hasPermission('settings.edit') ? 'disabled' : '' }}>
                                                         @for ($i = 1; $i <= $billingTerms->count(); $i++)
-                                                            <option value="{{ $i }}" {{ ($term->sequence ?? $index + 1)
-                                                                ==
-                                                                $i ? 'selected' : '' }}>
+                                                            <option value="{{ $i }}" {{ $index + 1 == $i ? 'selected' : '' }}>
                                                                 {{ $i }}</option>
                                                             @endfor
                                                     </select>
                                                 </form>
                                             </td>
-                                            <td class="text-wrap">{!! $term->content !!}
+                                            <td class="text-wrap align-middle">{!! str_replace('<p>', '<p class="mb-0">', $term->content) !!}
                                             </td>
                                             <td class="text-center">
                                                 @if ($term->is_default)
@@ -1365,15 +1364,13 @@ $activeSettingsTab = 'billing-details';
                                                     <select name="sequence" onchange="this.form.submit()"
                                                         class="form-select form-select-sm" style="width: 70px;" {{ !auth()->user()->hasPermission('settings.edit') ? 'disabled' : '' }}>
                                                         @for ($i = 1; $i <= $quotationTerms->count(); $i++)
-                                                            <option value="{{ $i }}" {{ ($term->sequence ?? $index + 1)
-                                                                ==
-                                                                $i ? 'selected' : '' }}>
+                                                            <option value="{{ $i }}" {{ $index + 1 == $i ? 'selected' : '' }}>
                                                                 {{ $i }}</option>
                                                             @endfor
                                                     </select>
                                                 </form>
                                             </td>
-                                            <td class="text-wrap">{!! $term->content !!}
+                                            <td class="text-wrap align-middle">{!! str_replace('<p>', '<p class="mb-0">', $term->content) !!}
                                             </td>
                                             <td class="text-center">
                                                 @if ($term->is_default)
@@ -1446,15 +1443,13 @@ $activeSettingsTab = 'billing-details';
                                                     <select name="sequence" onchange="this.form.submit()"
                                                         class="form-select form-select-sm" style="width: 70px;" {{ !auth()->user()->hasPermission('settings.edit') ? 'disabled' : '' }}>
                                                         @for ($i = 1; $i <= $proformaTerms->count(); $i++)
-                                                            <option value="{{ $i }}" {{ ($term->sequence ?? $index + 1)
-                                                                ==
-                                                                $i ? 'selected' : '' }}>
+                                                            <option value="{{ $i }}" {{ $index + 1 == $i ? 'selected' : '' }}>
                                                                 {{ $i }}</option>
                                                             @endfor
                                                     </select>
                                                 </form>
                                             </td>
-                                            <td class="text-wrap">{!! $term->content !!}
+                                            <td class="text-wrap align-middle">{!! str_replace('<p>', '<p class="mb-0">', $term->content) !!}
                                             </td>
                                             <td class="text-center">
                                                 @if ($term->is_default)
@@ -1775,10 +1770,22 @@ $activeSettingsTab = 'billing-details';
                     if (!targetId) return;
 
                     const isSubTab = event.target.classList.contains('tc-type-tab');
+                    const url = new URL(window.location.href);
 
                     if (!isSubTab) {
-                        window.history.replaceState(null, null, `#${targetId}`);
+                        if (targetId !== 'terms-conditions') {
+                            url.searchParams.delete('t');
+                        } else {
+                            if (!url.searchParams.get('t')) {
+                                url.searchParams.set('t', 'billing');
+                            }
+                        }
+                        url.hash = `#${targetId}`;
+                    } else {
+                        const type = targetId.replace('-tc', '');
+                        url.searchParams.set('t', type);
                     }
+                    window.history.replaceState(null, null, url.pathname + url.search + url.hash);
 
                     // Dynamically toggle active/inactive bootstrap classes
                     if (event.relatedTarget) {
@@ -1818,6 +1825,14 @@ $activeSettingsTab = 'billing-details';
                 fyStart.dispatchEvent(new Event('change'));
             }
 
+            function activateSubTab(type) {
+                if (!type) return;
+                const subTabTrigger = document.querySelector(`.tc-type-tab[data-bs-target="#${type}-tc"]`);
+                if (subTabTrigger) {
+                    bootstrap.Tab.getOrCreateInstance(subTabTrigger).show();
+                }
+            }
+
             // Handle initial load from Hash
             const hash = window.location.hash.replace('#', '');
             const urlParams = new URLSearchParams(window.location.search);
@@ -1835,11 +1850,17 @@ $activeSettingsTab = 'billing-details';
                 activateTab(hash);
                 if (hash === 'terms-conditions') {
                     setTimeout(function() { if (typeof initTinymce === 'function') initTinymce(); }, 300);
+                    if (tcTypeFromUrl) {
+                        activateSubTab(tcTypeFromUrl);
+                    }
                 }
             } else if (decodedE) {
                 if (decodedE.startsWith('TC')) {
                     activateTab('terms-conditions');
                     setTimeout(function() { if (typeof initTinymce === 'function') initTinymce(); }, 300);
+                    if (tcTypeFromUrl) {
+                        activateSubTab(tcTypeFromUrl);
+                    }
                 }
                 else if (decodedE.startsWith('SET')) activateTab('config');
                 else if (decodedE.startsWith('ABD')) activateTab('billing-details');
@@ -2041,6 +2062,7 @@ $activeSettingsTab = 'billing-details';
                 tinymce.init({
                     license_key: 'gpl',
                     selector: '#settings_tc_content',
+                    forced_root_block: ' ', // Prevents wrapping new text in <p>
                     menubar: false,
                     height: 200,
                     plugins: 'lists link table code autoresize',
@@ -2048,6 +2070,12 @@ $activeSettingsTab = 'billing-details';
                     setup: function (editor) {
                         editor.on('change', function () {
                             editor.save(); // keep textarea synchronized
+                        });
+                        editor.on('BeforeSetContent', function (e) {
+                            e.content = e.content.replace(/<\/?p[^>]*>/gi, '');
+                        });
+                        editor.on('GetContent', function (e) {
+                            e.content = e.content.replace(/<\/?p[^>]*>/gi, '');
                         });
                     }
                 });
@@ -2787,16 +2815,7 @@ $activeSettingsTab = 'billing-details';
                 }
             }
 
-            // Update the URL hash when a main tab is clicked
-            const mainTabs = document.querySelectorAll('.settings-tab-group button[data-bs-toggle="tab"]');
-            mainTabs.forEach(btn => {
-                btn.addEventListener('shown.bs.tab', function(e) {
-                    const target = e.target.getAttribute('data-bs-target');
-                    if (target) {
-                        history.replaceState(null, null, target);
-                    }
-                });
-            });
+            // Main tabs URL hash updates are handled in the global event listener above.
 
             templateForms.forEach((form) => {
                 form.addEventListener('submit', function (event) {
