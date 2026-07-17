@@ -1056,20 +1056,26 @@ class ClientsController extends Controller
             'reason_deactive' => $reason,
         ]);
 
-        if ($validated['status'] === 'inactive' && $reason) {
-            DB::connection('admin_mysql')
-                ->table('accounts')
-                ->where('accountid', $client->clientid)
-                ->update([
-                    'reason_deactive' => $reason,
-                ]);
-        } elseif ($validated['status'] === 'active') {
-            DB::connection('admin_mysql')
-                ->table('accounts')
-                ->where('accountid', $client->clientid)
-                ->update([
-                    'reason_deactive' => null,
-                ]);
+        try {
+            if ($validated['status'] === 'inactive' && $reason) {
+                DB::connection('admin_mysql')
+                    ->table('accounts')
+                    ->where('accountid', $client->clientid)
+                    ->update([
+                        'reason_deactive' => $reason,
+                    ]);
+            } elseif ($validated['status'] === 'active') {
+                DB::connection('admin_mysql')
+                    ->table('accounts')
+                    ->where('accountid', $client->clientid)
+                    ->update([
+                        'reason_deactive' => null,
+                    ]);
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to update reason_deactive in admin_mysql accounts table. Column might be missing.', [
+                'error' => $e->getMessage(),
+            ]);
         }
 
         $this->syncWithSuperadmin($client);
