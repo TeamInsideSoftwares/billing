@@ -344,7 +344,7 @@ class ClientsController extends Controller
 
         $resultCount = $query->count();
 
-        $clients = $query->orderBy('business_name')->paginate(20);
+        $clients = $query->orderBy('business_name')->paginate(100);
 
         $clients->getCollection()->transform(function ($client) {
             $invoiceTotal = $client->invoices
