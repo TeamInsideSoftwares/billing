@@ -8,9 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->decimal('maintenance_duration', 8, 2)->nullable()->comment('Annual Maintenance Contract hours')->after('notes');
-        });
+        if (! Schema::hasColumn('clients', 'maintenance_duration')) {
+            Schema::table('clients', function (Blueprint $table) {
+                $table->decimal('maintenance_duration', 8, 2)->nullable()->comment('Annual Maintenance Contract hours')->after('notes');
+            });
+        }
     }
 
     public function down(): void

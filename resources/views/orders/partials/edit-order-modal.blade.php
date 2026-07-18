@@ -40,7 +40,8 @@
                                     @foreach($categoryServices as $service)
                                     <option value="{{ $service->itemid }}"
                                         data-description="{{ $service->description ?? '' }}"
-                                        data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
+                                        data-user-wise="{{ (int) ($service->user_wise ?? 0) }}"
+                                        data-grace-period="{{ $service->grace_period ?? 0 }}">
                                         {{ $service->name }}
                                     </option>
                                     @endforeach
@@ -111,6 +112,11 @@
                                 <option value="">Select</option>
                             </select>
                         </div>
+
+                        <div class="col-12 col-md-6" id="edit_grace_period_wrapper">
+                            <label class="form-label small lh-sm fw-semibold text-dark mb-1">Grace Period (Days)</label>
+                            <input type="number" id="edit_grace_period" class="form-control" min="0" step="1" value="0">
+                        </div>
                     </div>
 
                     <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
@@ -149,6 +155,7 @@
             const editEndDateInput = document.getElementById('edit_end_date');
             const editDeliveryDateInput = document.getElementById('edit_delivery_date');
             const editClientDocidSelect = document.getElementById('edit_client_docid');
+            const editGracePeriodInput = document.getElementById('edit_grace_period');
             const editUsersWrapper = document.getElementById('edit_users_wrapper');
             const maxEndDate = '2099-12-31';
             let editOriginalStartDate = '';
@@ -165,6 +172,9 @@
                 const option = editItemSelect.options[editItemSelect.selectedIndex];
                 if (editDescriptionInput) {
                     editDescriptionInput.value = option?.dataset.description || '';
+                }
+                if (editGracePeriodInput) {
+                    editGracePeriodInput.value = option?.dataset.gracePeriod || 0;
                 }
                 editToggleUsersField();
             }
@@ -289,7 +299,10 @@
                         editDescriptionInput.value = this.dataset.itemDescription || '';
                     }
                     editQuantityInput.value = this.dataset.quantity || 1;
-                    editNoOfUsersInput.value = this.dataset.noOfUsers === undefined || this.dataset.noOfUsers === null
+                    if (editGracePeriodInput) {
+                        editGracePeriodInput.value = this.dataset.gracePeriod || 0;
+                    }
+                    editNoOfUsersInput.value = (this.dataset.noOfUsers === '' || this.dataset.noOfUsers === 'null')
                         ? ''
                         : String(this.dataset.noOfUsers).trim();
                     editOriginalStartDate = this.dataset.startDate || todayStr;
@@ -342,6 +355,7 @@
                         start_date: editStartDateInput?.value || todayStr,
                         end_date: editEndDateInput?.value || maxEndDate,
                         delivery_date: editDeliveryDateInput?.value || '',
+                        grace_period: Math.max(0, Math.round(Number(editGracePeriodInput?.value || 0))),
                     };
 
                     document.getElementById('edit_items_data').value = JSON.stringify([payload]);

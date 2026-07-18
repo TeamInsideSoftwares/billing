@@ -40,4 +40,8 @@ return [
         'key' => env('SUPERADMIN_API_KEY'),
     ],
 
+    'cache_invalidation' => [
+        'key' => env('CACHE_INVALIDATION_KEY'),
+    ],
+
 ];

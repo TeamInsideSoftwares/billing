@@ -285,9 +285,29 @@ $subtitle = null;
                                             data-start-date="{{ $order['items'][0]['start_date'] ?? '' }}"
                                             data-end-date="{{ $order['items'][0]['end_date'] ?? '' }}"
                                             data-delivery-date="{{ $order['items'][0]['delivery_date'] ?? '' }}"
+                                            data-grace-period="{{ $order['items'][0]['grace_period'] ?? 0 }}"
                                             data-client-docid="{{ $order['client_docid'] ?? '' }}">
                                             Edit
                                         </button>
+                                    @endif
+                                    @if (($order['status'] ?? '') !== 'suspended')
+                                        <form method="POST"
+                                            action="{{ route('invoices.orders.suspend', ['order' => $order['record_id']]) }}"
+                                            class="d-inline" onsubmit="return confirm('Suspend this order?')">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="redirect" value="back">
+                                            <button type="submit" class="bg04 color04">Suspend</button>
+                                        </form>
+                                    @elseif(($order['status'] ?? '') === 'suspended')
+                                        <form method="POST"
+                                            action="{{ route('invoices.orders.unsuspend', ['order' => $order['record_id']]) }}"
+                                            class="d-inline" onsubmit="return confirm('Unsuspend this order?')">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="redirect" value="back">
+                                            <button type="submit" class="bg02 color02">Unsuspend</button>
+                                        </form>
                                     @endif
                                     @if(auth()->user()->hasPermission('orders.cancel'))
                                         <form method="POST"
@@ -470,9 +490,29 @@ $subtitle = null;
                                     data-start-date="{{ $order['items'][0]['start_date'] ?? '' }}"
                                     data-end-date="{{ $order['items'][0]['end_date'] ?? '' }}"
                                     data-delivery-date="{{ $order['items'][0]['delivery_date'] ?? '' }}"
+                                    data-grace-period="{{ $order['items'][0]['grace_period'] ?? 0 }}"
                                     data-client-docid="{{ $order['client_docid'] ?? '' }}">
                                     Edit
                                 </button>
+                                @endif
+                                @if (($order['status'] ?? '') !== 'suspended')
+                                <form method="POST"
+                                    action="{{ route('invoices.orders.suspend', ['order' => $order['record_id']]) }}"
+                                    class="d-inline flex-grow-1" onsubmit="return confirm('Suspend this order?')">
+                                    @csrf
+                                    @method('PATCH')
+                                    <input type="hidden" name="redirect" value="back">
+                                    <button type="submit" class="bg04 color04 text-center w-100">Suspend</button>
+                                </form>
+                                @elseif(($order['status'] ?? '') === 'suspended')
+                                <form method="POST"
+                                    action="{{ route('invoices.orders.unsuspend', ['order' => $order['record_id']]) }}"
+                                    class="d-inline flex-grow-1" onsubmit="return confirm('Unsuspend this order?')">
+                                    @csrf
+                                    @method('PATCH')
+                                    <input type="hidden" name="redirect" value="back">
+                                    <button type="submit" class="bg02 color02 text-center w-100">Unsuspend</button>
+                                </form>
                                 @endif
                                 @if(auth()->user()->hasPermission('orders.cancel'))
                                 <form method="POST" action="{{ route('orders.destroy', ['order' => $order['record_id']]) }}"
@@ -518,6 +558,111 @@ $subtitle = null;
         </div>
     </div>
     @endforelse
+
+    @if(!empty($clientId) && isset($trialOrders) && $trialOrders->isNotEmpty())
+    <div class="card border-0 mb-3 mt-1">
+        <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pb-1 pt-0 px-1">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold fs-5 lh-sm">Trial Orders</span>
+                <span class="status-pill is-pending">{{ $trialOrders->count() }} trial</span>
+            </div>
+            <span class="small text-muted">These orders are still marked as trial. Convert to regular once purchased.</span>
+        </div>
+        <div class="table-responsive orders-list-view p-2 border-0 bg-DarkLight rounded-3">
+            <table class="table table-striped border mainTable align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th width="6%">Order</th>
+                        <th width="40%">Item Details</th>
+                        <th class="text-center" width="15%">Start Date</th>
+                        <th class="text-center" width="15%">Expiry</th>
+                        <th class="text-end" width="20%">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($trialOrders as $order)
+                    <tr>
+                        <td class="fw-semibold text-dark">
+                            #{{ $order['number'] }}
+                            <div><span class="status-pill rounded-pill border border-primary text-primary bg-light is-pending py-0 px-2 small" style="font-size:11px;">Trial</span></div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center flex-wrap gap-1">
+                                <span class="fw-bold text-dark">{{ $order['items'][0]['item_name'] ?? 'Item' }}</span>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    @if(($order['status'] ?? '') === 'cancelled')
+                                    <span class="status-pill rounded-pill border border-danger text-danger bg-light is-cancelled py-0 px-2 small" style="font-size: 11px;">Cancelled</span>
+                                    @endif
+                                </div>
+                                @if(!empty($order['items'][0]['item_description']))
+                                <button type="button"
+                                    class="btn p-0 border-0 bg-transparent btn-desc-toggle d-inline-flex align-items-center"
+                                    style="outline: none; box-shadow: none;">
+                                    <i class="fas fa-arrow-up text-primary ms-2 desc-toggle-icon"
+                                        style="transition: transform 0.2s ease; font-size: 0.8rem;"></i>
+                                </button>
+                                @endif
+                            </div>
+                            @if(!empty($order['items'][0]['item_description']))
+                            <div class="text-dark mt-1 d-none desc-container">{{ $order['items'][0]['item_description'] }}</div>
+                            @endif
+                            <div class="d-flex flex-wrap text-black mt-2">
+                                <div class="border-end border-dark-subtle rounded-pill small lh-sm px-2 py-1 me-2 my-1">
+                                    <small>Qty:</small>
+                                    <span class="fw-semibold">{{ rtrim(rtrim(number_format((float) ($order['items'][0]['quantity'] ?? 1), 2, '.', ''), '0'), '.') }}</span>
+                                </div>
+                                @if(!empty($order['items'][0]['no_of_users']))
+                                <div class="border-end border-dark-subtle rounded-pill small lh-sm px-2 py-1 me-2 my-1">
+                                    <small>Users:</small>
+                                    <span class="fw-semibold">{{ $order['items'][0]['no_of_users'] }}</span>
+                                </div>
+                                @endif
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            {{ !empty($order['items'][0]['start_date']) ? \Carbon\Carbon::parse($order['items'][0]['start_date'])->format('d M Y') : '-' }}
+                        </td>
+                        <td class="text-center">
+                            @php
+                            $trialEndDate = $order['items'][0]['end_date'] ?? null;
+                            $showTrialDays = $trialEndDate && !in_array($trialEndDate, ['9999-12-31', '2099-12-31']);
+                            $trialDaysLeft = $showTrialDays ? now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($trialEndDate)->startOfDay(), false) : null;
+                            @endphp
+                            @if(in_array($trialEndDate ?? '', ['9999-12-31', '2099-12-31']))
+                            No Expiry
+                            @else
+                            {{ $trialEndDate ? \Carbon\Carbon::parse($trialEndDate)->format('d M Y') : '-' }}
+                            @endif
+                            @if($showTrialDays)
+                            <br>
+                            @if($trialDaysLeft >= 0)
+                            <small class="text-success fw-semibold">{{ $trialDaysLeft }} day(s)</small>
+                            @else
+                            <small class="text-danger fw-semibold">- {{ abs($trialDaysLeft) }} day(s)</small>
+                            @endif
+                            @endif
+                        </td>
+                        <td class="text-end">
+                            <div class="tableActionButton d-inline-flex gap-1">
+                                @if(auth()->user()->hasPermission('orders.edit'))
+                                <form method="POST"
+                                    action="{{ route('orders.convert-to-regular', ['order' => $order['record_id']]) }}"
+                                    class="d-inline"
+                                    onsubmit="return confirm('Convert order #{{ $order['number'] }} to regular?')">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="bg02 color02">Convert to Regular</button>
+                                </form>
+                                @endif
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
 </div>
 @endif
 
@@ -803,6 +948,18 @@ $subtitle = null;
         }
         if (durationInput) {
             durationInput.addEventListener('input', refreshEndDate);
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoRenewOrderId = urlParams.get('renew_order');
+        if (autoRenewOrderId) {
+            const btn = document.querySelector(`.js-renew-order-btn[data-order-id="${autoRenewOrderId}"]`);
+            if (btn) btn.click();
+        }
+        const autoEditOrderId = urlParams.get('edit_order');
+        if (autoEditOrderId) {
+            const btn = document.querySelector(`.js-edit-order-btn[data-order-id="${autoEditOrderId}"]`);
+            if (btn) btn.click();
         }
     });
 </script>

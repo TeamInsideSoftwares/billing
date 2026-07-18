@@ -1,8 +1,10 @@
 <?php
 
+use App\Models\Order;
 use App\Services\ClientConsolidatedPaymentReminderService;
 use App\Services\ClientConsolidatedReminderService;
 use App\Services\InvoiceReminderService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -66,3 +68,34 @@ Artisan::command('reminders:dispatch-consolidated-payments {--account=} {--clien
 })->purpose('Dispatch automated consolidated client payment due reminders');
 
 Schedule::command('reminders:dispatch-consolidated-payments')->dailyAt('09:15');
+
+Artisan::command('orders:auto-suspend', function () {
+    $today = now()->startOfDay();
+    $suspendedCount = 0;
+
+    Order::query()
+        ->whereNotIn('status', ['cancelled', 'suspended'])
+        ->whereNotNull('end_date')
+        ->where('end_date', '<', $today->toDateString())
+        ->with('item')
+        ->chunkById(100, function ($orders) use ($today, &$suspendedCount) {
+            foreach ($orders as $order) {
+                $expiryDate = $order->end_date instanceof Carbon
+                    ? $order->end_date->copy()->startOfDay()
+                    : Carbon::parse((string) $order->end_date)->startOfDay();
+
+                $daysUntilExpiry = $today->diffInDays($expiryDate, false);
+                $daysAfterExpiry = $daysUntilExpiry < 0 ? abs($daysUntilExpiry) : 0;
+                $gracePeriodDays = (int) ($order->item?->grace_period ?? 0);
+
+                if ($daysUntilExpiry < 0 && $daysAfterExpiry > $gracePeriodDays) {
+                    $order->update(['status' => 'suspended']);
+                    $suspendedCount++;
+                }
+            }
+        }, 'orderid');
+
+    $this->info("Auto-suspend completed. Suspended {$suspendedCount} orders.");
+})->purpose('Automatically suspend orders that have passed their grace period');
+
+Schedule::command('orders:auto-suspend')->dailyAt('09:05');

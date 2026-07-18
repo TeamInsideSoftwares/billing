@@ -139,7 +139,9 @@ $initialOrderItems = [[
                                         @foreach($categoryServices as $service)
                                         <option value="{{ $service->itemid }}"
                                             data-description="{{ $service->description ?? '' }}"
-                                            data-user-wise="{{ (int) ($service->user_wise ?? 0) }}">
+                                            data-user-wise="{{ (int) ($service->user_wise ?? 0) }}"
+                                            data-sync="{{ ($service->sync === 'yes') ? '1' : '0' }}"
+                                            data-grace-period="{{ $service->grace_period ?? 0 }}">
                                             {{ $service->name }}
                                         </option>
                                         @endforeach
@@ -182,6 +184,8 @@ $initialOrderItems = [[
                                 <label class="form-label small lh-sm fw-semibold text-dark mb-1">Dur</label>
                                 <input type="number" id="item_duration" class="form-control" min="1" step="1" value="1">
                             </div>
+
+
 
                             <div class="col-12 col-md-6">
                                 <label class="form-label small lh-sm fw-semibold text-dark mb-1">Start Date</label>
@@ -231,6 +235,11 @@ $initialOrderItems = [[
                                     <option value="" disabled>No PO documents found</option>
                                     @endforelse
                                 </select>
+                            </div>
+
+                            <div class="col-12 col-md-6" id="item_grace_period_wrapper">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Grace Period (Days)</label>
+                                <input type="number" id="item_grace_period" class="form-control" min="0" step="1" value="0">
                             </div>
 
                             @if(!$isEditMode)
@@ -321,6 +330,7 @@ $initialOrderItems = [[
     'initialItems' => $initialOrderItems ?? [],
     'clientQuotations' => $clientQuotations ?? [],
     'existingClientItemIds' => $existingClientItemIds ?? [],
+    'existingClientItemMap' => $existingClientItemMap ?? [],
 ]) !!}
 </script>
 
@@ -339,6 +349,7 @@ $initialOrderItems = [[
         const maxEndDate = pageData.maxEndDate;
         const initialItems = pageData.initialItems;
         const clientQuotations = pageData.clientQuotations;
+        const existingClientItemMap = pageData.existingClientItemMap || {};
         const existingClientItemIds = new Set((pageData.existingClientItemIds || [])
             .map(value => String(value || ''))
             .filter(Boolean));
@@ -365,6 +376,7 @@ $initialOrderItems = [[
         const deliveryDateInput = document.getElementById('item_delivery_date');
         const descriptionInput = document.getElementById('item_description');
         const quantityInput = document.getElementById('item_quantity');
+        const gracePeriodInput = document.getElementById('item_grace_period');
         const docSelect = document.getElementById('client_docid');
         const orderForm = document.getElementById('orderForm');
         const quotationMap = new Map(clientQuotations.map((quotation) => [String(quotation.quotationid || ''), quotation]));
@@ -388,6 +400,7 @@ $initialOrderItems = [[
                 itemid: String(item?.itemid || ''),
                 item_name: String(item?.item_name || item?.name || 'Item').trim() || 'Item',
                 item_description: String(item?.item_description || ''),
+                grace_period: Math.max(0, Math.round(Number(item?.grace_period || 0))),
                 quantity: Math.max(1, Math.round(Number(item?.quantity || 1))),
                 no_of_users: item?.no_of_users === null || item?.no_of_users === undefined || String(item?.no_of_users || '').trim() === ''
                     ? null
@@ -516,6 +529,7 @@ $initialOrderItems = [[
                 itemid: String(itemSelect?.value || ''),
                 item_name: option ? String(option.textContent || '').trim() : '',
                 item_description: String(descriptionInput?.value || ''),
+                grace_period: Math.max(0, Math.round(Number(gracePeriodInput?.value || 0))),
                 quantity: Math.max(1, Math.round(Number(quantityInput?.value || 1))),
                 no_of_users: usersInput && !usersInput.disabled
                     ? Math.max(1, Math.round(Number(usersInput?.value || 1)))
@@ -570,6 +584,7 @@ $initialOrderItems = [[
                 if (deliveryDateInput._flatpickr) deliveryDateInput._flatpickr.clear();
             }
             if (descriptionInput) descriptionInput.value = '';
+            if (gracePeriodInput) gracePeriodInput.value = 0;
             if (docSelect) docSelect.value = '';
             editingItemIndex = null;
             confirmedDuplicateItemId = null;
@@ -601,6 +616,7 @@ $initialOrderItems = [[
                 }
             }
             if (descriptionInput) descriptionInput.value = item.item_description || '';
+            if (gracePeriodInput) gracePeriodInput.value = item.grace_period || 0;
             if (docSelect) docSelect.value = item.client_docid || '';
             confirmedDuplicateItemId = item.itemid || null;
             toggleUsersField();
@@ -785,7 +801,53 @@ $initialOrderItems = [[
             return confirm('This Product/Service already exists in the list. Do you want to add it again?');
         }
 
-        async function confirmDuplicateSavedItem() {
+        async function confirmDuplicateSavedItem(itemid) {
+            const option = itemSelect ? itemSelect.querySelector(`option[value="${itemid}"]`) : null;
+            const isSync = option ? option.dataset.sync === '1' : false;
+
+            if (isSync) {
+                if (window.Swal && typeof window.Swal.fire === 'function') {
+                    const result = await window.Swal.fire({
+                        title: 'Duplicate Product/Service',
+                        text: 'This Product/Service already exists and cannot be added again. You can Edit or Renew the existing order instead.',
+                        icon: 'info',
+                        showDenyButton: true,
+                        showCancelButton: true,
+                        confirmButtonText: 'Renew',
+                        denyButtonText: 'Edit',
+                        cancelButtonText: 'Cancel',
+                        customClass: {
+                            popup: 'app-swal-popup',
+                            title: 'app-swal-title',
+                            htmlContainer: 'app-swal-text',
+                            confirmButton: 'app-swal-btn app-swal-btn-confirm',
+                            denyButton: 'app-swal-btn bg03 color03 border-0 ms-2',
+                            cancelButton: 'app-swal-btn app-swal-btn-cancel',
+                            icon: 'app-swal-icon',
+                        },
+                        width: 430,
+                        buttonsStyling: false,
+                    });
+                    
+                    const orderId = existingClientItemMap[String(itemid)];
+                    if (result.isConfirmed && orderId) {
+                        window.location.href = "{{ route('orders.index') }}?c={{ $selectedClientId }}&renew_order=" + orderId;
+                    } else if (result.isDenied && orderId) {
+                        window.location.href = "{{ route('orders.index') }}?c={{ $selectedClientId }}&edit_order=" + orderId;
+                    }
+                    return false;
+                }
+                
+                const confirmedNative = confirm('This Product/Service already exists and cannot be added again. Please edit or renew the existing order instead.\n\nClick OK to Renew, or Cancel to go back.');
+                if (confirmedNative) {
+                    const orderId = existingClientItemMap[String(itemid)];
+                    if (orderId) {
+                        window.location.href = "{{ route('orders.index') }}?c={{ $selectedClientId }}&renew_order=" + orderId;
+                    }
+                }
+                return false;
+            }
+
             if (typeof window.appConfirm === 'function') {
                 return await window.appConfirm(
                     'This Product/Service already exists in the list. Do you want to add it again?',
@@ -829,8 +891,8 @@ $initialOrderItems = [[
             }
 
             if (editingItemIndex === null && hasDuplicateInSavedOrders(selectedItemId)) {
-                const shouldKeepSavedDuplicate = await confirmDuplicateSavedItem();
-                if (!shouldKeepSavedDuplicate) {
+                const isConfirmed = await confirmDuplicateSavedItem(selectedItemId);
+                if (!isConfirmed) {
                     resetItemForm();
                     return false;
                 }
@@ -899,6 +961,9 @@ $initialOrderItems = [[
                 const option = itemSelect.options[itemSelect.selectedIndex];
                 if (descriptionInput) {
                     descriptionInput.value = option?.dataset.description || '';
+                }
+                if (gracePeriodInput) {
+                    gracePeriodInput.value = option?.dataset.gracePeriod || 0;
                 }
                 if (startDateInput) {
                     startDateInput.value = todayDate;

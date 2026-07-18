@@ -301,6 +301,8 @@ $clientDataArr = [
                     tinymce.init({
                         license_key: 'gpl',
                         selector: '#newTermContent',
+                        forced_root_block: false,
+                        invalid_elements: 'p',
                         menubar: false,
                         height: 220,
                         plugins: 'lists link table code autoresize',
@@ -308,6 +310,12 @@ $clientDataArr = [
                         setup: function (editor) {
                             editor.on('change', function () {
                                 editor.save();
+                            });
+                            editor.on('BeforeSetContent', function (e) {
+                                e.content = e.content.replace(/<\/?p[^>]*>/gi, '');
+                            });
+                            editor.on('GetContent', function (e) {
+                                e.content = e.content.replace(/<\/?p[^>]*>/gi, '');
                             });
                         },
                         init_instance_callback: function (editor) {

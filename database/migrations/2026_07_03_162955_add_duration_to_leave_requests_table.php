@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::connection('team')->table('leave_requests', function (Blueprint $table) {
-            $table->decimal('leave_days', 8, 2)->default(1.00)->after('end_date');
-        });
+        if (! Schema::connection('team')->hasColumn('leave_requests', 'leave_days')) {
+            Schema::connection('team')->table('leave_requests', function (Blueprint $table) {
+                $table->decimal('leave_days', 8, 2)->default(1.00)->after('end_date');
+            });
+        }
     }
 
     /**
