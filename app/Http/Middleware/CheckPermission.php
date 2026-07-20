@@ -76,6 +76,7 @@ class CheckPermission
                     'financial-year' => 'settings',
                     'terms-conditions' => 'settings',
                     'message-templates' => 'settings',
+                    'holidays' => 'settings',
                 ];
 
                 if (array_key_exists($module, $moduleAliases)) {

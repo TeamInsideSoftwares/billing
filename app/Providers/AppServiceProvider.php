@@ -30,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
             return true;
         });
 
+        // \App\Models\Order::observe(\App\Observers\OrderObserver::class);
+
         if (str_contains(config('app.url'), 'skoolready.com')) {
             URL::forceRootUrl(config('app.url'));
             if (str_starts_with(config('app.url'), 'https://')) {

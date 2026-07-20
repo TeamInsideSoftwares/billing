@@ -26,7 +26,7 @@ old('signature_upload') !== null);
 $isBusinessInfoValidation =
 $errors->any() &&
 !($isMessageTemplateValidation || $isFinancialYearValidation || $isBillingDetailsValidation);
-$activeSettingsTab = 'personal';
+$activeSettingsTab = request('t', 'personal');
 
 if ($isFinancialYearValidation) {
 $activeSettingsTab = 'financial-year';
@@ -99,6 +99,13 @@ $activeSettingsTab = 'billing-details';
                 <i class="far fa-file-alt me-1"></i> Terms &amp; Conditions
             </button>
         </li>
+        <li class="nav-item">
+            <button type="button"
+                class="nav-link btn btn-md px-3 rounded-0 settings-tab-btn {{ $activeSettingsTab === 'holidays' ? 'rounded-0 text-primary bg-primary-subtle border-primary fw-bold active' : 'rounded-0 text-primary bg-transparent border-transparent' }}"
+                data-bs-toggle="tab" data-bs-target="#holidays" role="tab" aria-controls="holidays" aria-selected="false">
+                <i class="far fa-calendar-alt me-1"></i> Holidays & Weekends
+            </button>
+        </li>
         @if ($account->allow_multi_taxation)
         <li class="nav-item">
             <button type="button"
@@ -111,585 +118,11 @@ $activeSettingsTab = 'billing-details';
     </ul>
 
     <div class="tab-content settings-tab-content">
-        <!-- PERSONAL TAB -->
-        <div id="personal" class="tab-pane fade {{ $activeSettingsTab === 'personal' ? 'show active' : '' }}"
-            role="tabpanel">
-            <form method="POST" action="{{ route('account.update') }}" enctype="multipart/form-data" class="mainForm">
-                    @csrf
-                    @method('PUT')
-                <div class="row g-2 align-items-stretch">
-                    <div class="col-12 col-md-12"> 
-                        <div class="meta-info ps-2">
-                            <strong class="fw-bold fs-5 lh-sm">Business Information</strong>
-                        </div>
-                    </div>
+        @include('settings.tabs.personal')
 
-                    <div class="col-12 col-lg-4">                    
-                        <div class="bg-light p-2 rounded-3 h-100">
-                            <div class="mb-2">
-                                <h5 class="fw-semibold text-primary small lh-sm mb-0">Client Information</h5>
-                            </div>
-                            <div class="row g-2">
-                                <div class="col-12 col-md-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Business Name <span
-                                            class="text-danger">*</span></label>
-                                    <input type="text" name="name" value="{{ old('name', $account->name ?? '') }}"
-                                        required class="form-control">
-                                </div>
+        @include('settings.tabs.billing-details')
 
-                                <div class="col-12 col-md-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Legal Entity
-                                        Name</label>
-                                    <input type="text" name="legal_name"
-                                        value="{{ old('legal_name', $account->legal_name ?? '') }}"
-                                        class="form-control">
-                                </div>
-
-                                <div class="col-12 col-md-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Website</label>
-                                    <input type="text" name="website"
-                                        value="{{ old('website', $account->website ?? '') }}" class="form-control">
-                                </div>
-
-                                <div class="col-12 col-md-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Email <span
-                                            class="text-danger">*</span></label>
-                                    <input type="text" name="email" value="{{ old('email', $account->email ?? '') }}"
-                                        required class="form-control"
-                                        placeholder="name@company.com, accounts@company.com">
-                                    <div class="form-text text-muted small mt-1">Use comma to add multiple emails</div>
-                                </div>
-
-                                <div class="col-12 col-md-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Phone</label>
-                                    <input type="text" name="phone" value="{{ old('phone', $account->phone ?? '') }}"
-                                        class="form-control" placeholder="+91..., +1...">
-                                    <div class="form-text text-muted small mt-1">Use comma to add multiple phone numbers
-                                    </div>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Currency</label>
-                                    <select name="currency_code" class="form-select">
-                                        @foreach ($currencies as $currency)
-                                        <option value="{{ $currency->iso }}" {{ old('currency_code', $account->currency_code ??
-                                            'INR') == $currency->iso ? 'selected' : '' }}>
-                                            {{ $currency->iso }} - {{ $currency->name }}
-                                        </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Timezone</label>
-                                    <input type="text" name="timezone"
-                                        value="{{ old('timezone', $account->timezone ?? 'Asia/Kolkata') }}"
-                                        class="form-control">
-                                </div>
-                                
-                                            <!-- Logo Upload -->
-                                <div class="col-12 col-md-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Company Logo</label>
-                                    @php
-                                    $hasLogo = !empty($account->logo_path);
-                                    @endphp
-                                    <div class="logo-drag-drop-zone border border-dashed rounded-3 text-center bg-white position-relative py-2"
-                                        style="cursor:pointer;" id="logo-drop-zone">
-                                        <input type="file" id="logo-upload" name="logo" accept="image/*"
-                                            class="position-absolute top-0 start-0 w-100 h-100 opacity-0"
-                                            onchange="previewLogo(this)">
-
-                                        <div class="drop-zone-prompt {{ $hasLogo ? 'd-none' : 'd-flex' }} align-items-center justify-content-center"
-                                            id="drop-zone-prompt">
-                                            <i class="far fa-file text-secondary mb-2 fs-4"></i>
-                                            <span class="small text-muted fw-medium ms-2">Drag and drop or <span
-                                                    class="text-primary fw-semibold">browse files</span></span>
-                                        </div>
-
-                                        <div class="drop-zone-preview {{ $hasLogo ? '' : 'd-none' }} align-items-center justify-content-between w-100"
-                                            id="drop-zone-preview">
-                                            <img id="logo-preview"
-                                                src="{{ $hasLogo ? (str_starts_with($account->logo_path, 'http') ? $account->logo_path : asset($account->logo_path)) : '#' }}"
-                                                alt="Logo Preview" class="img-fluid rounded mb-0 shadow-sm" width="50px">
-                                            <button type="button" id="remove-logo-btn"
-                                                class="btn btn-sm btn-danger rounded-circle p-0 bg-transparent text-dark border-0"
-                                                title="Remove Image">
-                                                <i class="fas fa-upload fs-6 lh-sm"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <small class="text-muted small d-block mt-1">Square recommended. 5MB max.</small>
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>            
-                    <div class="col-12 col-lg-4">                    
-                        <div class="bg-light p-2 rounded-3 h-100">
-                            <div class="mb-2">
-                                <h5 class="fw-semibold text-primary small lh-sm mb-0">Business Address</h5>
-                            </div>
-                            <div class="row g-2">
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
-                                    <select name="country" class="country-select form-select"
-                                        data-selected="{{ old('country', $account->country ?? '') }}">
-                                        <option value="">Select Country</option>
-                                    </select>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">State<span
-                                            class="text-danger">*</span></label>
-                                    <select name="state" required class="state-select form-select"
-                                        data-selected="{{ old('state', $account->state ?? '') }}">
-                                        <option value="">Select State</option>
-                                    </select>
-                                    @error('state')
-                                    <div class="text-danger small mt-1">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
-                                    <select name="city" class="city-select form-select"
-                                        data-selected="{{ old('city', $account->city ?? '') }}">
-                                        <option value="">Select City</option>
-                                    </select>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Postal Code</label>
-                                    <input type="text" name="postal_code"
-                                        value="{{ old('postal_code', $account->postal_code ?? '') }}" class="form-control">
-                                </div>
-
-                                <div class="col-12 col-md-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Address</label>
-                                    <textarea name="address_line_1" rows="2" class="form-control">{{ old('address_line_1', $account->address_line_1 ?? '') }}</textarea>
-                                </div>
-                                <div class="col-12 col-md-12">
-                                    <div class="mb-0 mt-3">
-                                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Financial Year</h5>
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">FY Start (Day &
-                                        Month)</label>
-                                    <div class="d-flex gap-2">
-                                        @php
-                                        $currentFy = old('fy_startdate', $account->fy_startdate ?? '04-01');
-                                        $parts = explode('-', $currentFy);
-                                        $curMonth = $parts[0] ?? '04';
-                                        $curDay = $parts[1] ?? '01';
-                                        @endphp
-                                        <select name="fy_day" class="fy-day-select form-select w-25">
-                                            @for ($i = 1; $i <= 31; $i++) <option value="{{ sprintf('%02d', $i) }}" {{
-                                                $curDay==sprintf('%02d', $i) ? 'selected' : '' }}>{{ $i }}
-                                                </option>
-                                                @endfor
-                                        </select>
-                                        <select name="fy_month" class="fy-month-select form-select w-75">
-                                            @foreach (['01' => 'January', '02' => 'February', '03' => 'March', '04' => 'April',
-                                            '05' => 'May', '06' => 'June', '07' => 'July', '08' => 'August', '09' =>
-                                            'September', '10' => 'October', '11' => 'November', '12' => 'December'] as $mVal =>
-                                            $mName)
-                                            <option value="{{ $mVal }}" {{ $curMonth==$mVal ? 'selected' : '' }}>
-                                                {{ $mName }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>            
-                    <div class="col-12 col-lg-4">                    
-                        <div class="bg-light p-2 rounded-3 h-100">
-                            <div class="row g-2">
-                                <div class="col-12">
-                                    <div>
-                                        <h5 class="fw-semibold text-primary small lh-sm mb-0">Advanced Settings</h5>
-                                    </div>
-                                </div>
-
-                                <!-- Tax Settings Toggle -->
-                                <div class="col-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-2">Tax Settings</label>
-                                    <div class="d-flex justify-content-between align-items-center bg-white rounded-3 border px-3 py-2">
-                                        <label for="allow_multi_taxation" class="form-label small lh-sm fw-semibold text-dark mb-0"
-                                            style="cursor: pointer;">
-                                            Allow Multi-Taxation
-                                            <span class="d-block text-dark fw-normal mt-0.5">Use different tax rates</span>
-                                        </label>
-                                        <div class="form-check form-switch fs-5 lh-sm mb-0">
-                                            <input type="checkbox" name="allow_multi_taxation" value="1" id="allow_multi_taxation"
-                                                {{ old('allow_multi_taxation', $account->allow_multi_taxation ?? false) ? 'checked' : '' }}
-                                                class="form-check-input border-primary" role="switch" style="cursor: pointer;">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Fixed Tax Rate Section -->
-                                <div class="col-12 {{ $account->allow_multi_taxation ? 'is-hidden' : '' }}" id="fixed-tax-section">
-                                    <div class="d-flex justify-content-between align-items-center bg-white rounded-3 border px-3 py-2">
-                                        <span class="fw-semibold text-dark">Fixed Tax Rate</span>
-                                        <div class="d-flex align-items-center gap-2">
-                                            @if (!$account->allow_multi_taxation)
-                                            <span class="badge bg-warning text-dark border border-warning px-2 py-1">
-                                                {{ $account->fixed_tax_type ?? 'GST' }}
-                                                {{ number_format($account->fixed_tax_rate ?? 0, 2) }}%
-                                            </span>
-                                            <button type="button" id="open-fixed-tax-modal"
-                                                class="btn btn-sm btn-outline-primary bg-white text-primary h-75">
-                                                {{ ($account->fixed_tax_rate ?? 0) > 0 ? 'Edit Tax' : 'Add Tax' }} <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                                            </button>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- User Settings Toggle -->
-                                <div class="col-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-2 mt-2">User Settings</label>
-                                    <div class="d-flex justify-content-between align-items-center bg-white rounded-3 border px-3 py-2">
-                                        <label for="have_users" class="form-label  fw-semibold text-dark mb-0"
-                                            style="cursor: pointer;">
-                                            Does your Products/Services are with the No. of Users?
-                                        </label>
-                                        <div class="form-check form-switch fs-5 lh-sm mb-0">
-                                            <input type="checkbox" name="have_users" value="1" id="have_users"
-                                                {{ old('have_users', $account->have_users ?? false) ? 'checked' : '' }}
-                                                class="form-check-input border-primary" role="switch" style="cursor: pointer;">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-12">
-                        <div class="text-end mt-1">
-                            @if(auth()->user()->hasPermission('settings.edit'))
-                            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                Update Settings <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                            </button>
-                            @endif
-                        </div>
-                    </div>
-                </div> 
-            </form>
-        </div>
-
-        <!-- BILLING DETAILS TAB -->
-        <div id="billing-details"
-            class="tab-pane fade {{ $activeSettingsTab === 'billing-details' ? 'show active' : '' }}" role="tabpanel">
-
-
-
-            {{-- DEBUG: Check if editingBillingDetail exists --}}
-            @php
-            echo '<!-- DEBUG: editingBillingDetail = ' .
-                    (isset($editingBillingDetail) ? 'SET' : 'NOT SET') .
-                    ' -->';
-            @endphp
-
-            <form method="POST" action="{{ route('account.billing.update') }}" enctype="multipart/form-data"
-                class="mainForm">
-                @csrf
-                @if (isset($editingBillingDetail))
-                <input type="hidden" name="account_bdid" value="{{ $editingBillingDetail->account_bdid }}">
-                @endif
-                <input type="hidden" name="accountid" value="{{ $account->accountid }}">
-
-                <div class="row g-2 align-items-stretch">
-                    <div class="col-12 col-md-12"> 
-                        <div class="meta-info ps-2">
-                            <strong class="fw-bold fs-5 lh-sm">Billing Details</strong>
-                        </div>
-                    </div>
-                    <!-- Billing Information Card -->
-                    <div class="col-12 col-lg-4">                    
-                        <div class="bg-light p-2 rounded-3 h-100">
-                            <div class="mb-2">
-                                <h5 class="fw-semibold text-primary small lh-sm mb-0">Billing Profile</h5>
-                            </div>
-                            <div class="row g-2">
-                                <div class="col-12 col-md-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Business Billing Name <span
-                                            class="text-danger">*</span></label>
-                                    <input type="text" name="billing_name" class="form-control"
-                                        value="{{ old('billing_name', $editingBillingDetail->billing_name ?? ($account->name ?? '')) }}"
-                                        required>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Billing From Email</label>
-                                    <input type="text" name="billing_from_email" class="form-control"
-                                        value="{{ old('billing_from_email', $editingBillingDetail->billing_from_email ?? '') }}"
-                                        placeholder="billing@company.com, finance@company.com">
-                                    <div class="form-text text-muted small mt-1">Use comma to add multiple emails</div>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Billing From Name <span class="text-muted fw-normal">(optional)</span></label>
-                                    <input type="text" name="billing_from_name" class="form-control"
-                                        value="{{ old('billing_from_name', $editingBillingDetail->billing_from_name ?? '') }}"
-                                        placeholder="e.g. SkoolReady Billing Team">
-                                    <div class="form-text text-muted small mt-1">Shown as the sender name in outgoing emails.</div>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Authorize Signatory</label>
-                                    <input type="text" name="authorize_signatory" class="form-control"
-                                        value="{{ old('authorize_signatory', $editingBillingDetail->authorize_signatory ?? '') }}">
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Designation</label>
-                                    <input type="text" name="designation" class="form-control"
-                                        value="{{ old('designation', $editingBillingDetail->designation ?? '') }}">
-                                </div>
-                            </div>
-                            <div class="mb-2">
-                                <h5 class="fw-semibold text-primary small lh-sm mb-0">Tax &amp; Verification</h5>
-                            </div>
-                            <div class="row g-2">
-                                <div class="col-12 col-md-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">GSTIN</label>
-                                    <input type="text" name="gstin" class="form-control"
-                                        value="{{ old('gstin', $editingBillingDetail->gstin ?? '') }}" maxlength="15"
-                                        minlength="15" pattern="[A-Z0-9]{15}" title="GSTIN must be exactly 15 characters"
-                                        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
-                                        onblur="if(this.value && this.value.length!==15){this.setCustomValidity('GSTIN must be exactly 15 characters');this.reportValidity();}else{this.setCustomValidity('');}">
-                                    <div class="form-text text-muted small mt-1">Exactly 15 characters required</div>
-                                </div>
-
-                                <div class="col-12 col-md-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">TIN</label>
-                                    <input type="text" name="tin" class="form-control"
-                                        value="{{ old('tin', $editingBillingDetail->tin ?? '') }}">
-                                </div>
-
-                                <div class="col-12 col-md-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Signature Upload</label>
-                                    @php
-                                    $hasSignature = !empty($editingBillingDetail) && !empty($editingBillingDetail->signature_upload);
-                                    @endphp
-                                    <div class="logo-drag-drop-zone border border-dashed rounded-3 text-center bg-white position-relative py-2"
-                                        style="cursor:pointer;" id="sig-drop-zone">
-                                        <input type="file" id="billing-signature-upload" name="signature_upload"
-                                            accept="image/*" class="position-absolute top-0 start-0 w-100 h-100 opacity-0"
-                                            onchange="previewSignature(this)">
-
-                                        <div class="drop-zone-prompt {{ $hasSignature ? 'd-none' : 'd-flex' }} align-items-center justify-content-center"
-                                            id="sig-drop-zone-prompt">
-                                            <i class="far fa-file text-secondary mb-2 fs-4"></i>
-                                            <span class="small text-muted fw-medium ms-2">Drag and drop or <span
-                                                    class="text-primary fw-semibold">browse files</span></span>
-                                        </div>
-
-                                        <div class="drop-zone-preview {{ $hasSignature ? '' : 'd-none' }} align-items-center justify-content-between w-100"
-                                            id="sig-drop-zone-preview">
-                                            <img id="signature-preview-img"
-                                                src="{{ $hasSignature ? $editingBillingDetail->signature_upload : '#' }}"
-                                                alt="Signature Preview" class="img-fluid rounded mb-0 shadow-sm" width="50px">
-                                            <button type="button" id="remove-signature-btn"
-                                                class="btn btn-sm btn-danger rounded-circle p-0 bg-transparent text-dark border-0"
-                                                title="Remove Image">
-                                                <i class="fas fa-upload fs-6 lh-sm"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="form-text text-muted small mt-1">Max file size: 5MB. Supported formats: JPG, PNG, GIF, SVG</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Billing Address Card -->
-                    <div class="col-12 col-lg-4">                    
-                        <div class="bg-light p-2 rounded-3 h-100">
-                            <div class="mb-2">
-                                <h5 class="fw-semibold text-primary small lh-sm mb-0">Billing Address</h5>
-                            </div>
-                            <div class="row g-2">
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Country</label>
-                                    <select name="billing_country" class="country-select form-select"
-                                        data-selected="{{ old('billing_country', $editingBillingDetail->country ?? 'India') }}">
-                                        <option value="">Select Country</option>
-                                    </select>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">State <span
-                                            class="text-danger">*</span></label>
-                                    <select name="billing_state" required class="state-select form-select"
-                                        data-selected="{{ old('billing_state', $editingBillingDetail->state ?? '') }}">
-                                        <option value="">Select State</option>
-                                    </select>
-                                    @error('billing_state')
-                                    <div class="text-danger small mt-1">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">City</label>
-                                    <select name="billing_city" class="city-select form-select"
-                                        data-selected="{{ old('billing_city', $editingBillingDetail->city ?? '') }}">
-                                        <option value="">Select City</option>
-                                    </select>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Postal Code</label>
-                                    <input type="text" name="billing_postal_code" class="form-control"
-                                        value="{{ old('billing_postal_code', $editingBillingDetail->postal_code ?? '') }}">
-                                </div>
-
-                                <div class="col-12 col-md-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Address</label>
-                                    <textarea name="address" rows="2"
-                                        class="form-control">{{ old('address', $editingBillingDetail->address ?? '') }}</textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="col-12 col-md-8">
-                        <div class="text-end mt-2">
-                            @if (isset($editingBillingDetail) && request('edit_bd'))
-                            <a href="{{ route('settings.index') }}#billing-details"
-                                class="btn btn-outline-primary bg-white text-primary fw-medium me-2">
-                                <i class="fas fa-times btn-icon me-1"></i> Cancel
-                            </a>
-                            @endif
-                            @if(auth()->user()->hasPermission('settings.edit'))
-                            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                Save Billing Detail <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                            </button>
-                            @endif
-                        </div>
-                    </div>
-
-                </div>
-            </form>
-        </div>
-
-        <!-- FINANCIAL YEAR -->
-        <div id="financial-year" class="tab-pane fade {{ $activeSettingsTab === 'financial-year' ? 'show active' : '' }}" role="tabpanel">           
-            <div class="row g-2 align-items-stretch">
-                <div class="col-12 col-md-12"> 
-                    <div class="meta-info ps-2">
-                        <strong class="fw-bold fs-5 lh-sm">Financial Year (FY)</strong>
-                    </div>
-                </div>
-
-                <div class="col-12 col-md-4">
-                    <div class="bg-light p-2 rounded-3 h-100">
-                        <div class="mb-2">
-                            <h6 class="fw-semibold text-primary small lh-sm mb-0">Add FY</h6>
-                        </div>
-                        <form method="POST" action="{{ route('financial-year.update') }}" class="mainForm">
-                            @csrf
-                            <div class="row g-1 align-items-end">
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Start
-                                        Year</label>
-                                    <select name="year_start" id="fy_year_start" required class="form-select">
-                                        @php $currentYear = date('Y'); @endphp
-                                        @for ($y = $currentYear - 1; $y <= $currentYear + 1; $y++) <option
-                                            value="{{ $y }}" {{ $y==$currentYear ? 'selected' : '' }}>{{ $y }}
-                                            </option>
-                                            @endfor
-                                    </select>
-                                </div>
-                                <div class="col-3 col-md-1 pb-2 text-dark fw-bold text-center">-</div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">End
-                                        Year</label>
-                                    <select name="year_end" id="fy_year_end" required class="form-select">
-                                        @for ($y = $currentYear; $y <= $currentYear + 2; $y++) <option
-                                            value="{{ $y }}" {{ $y==$currentYear + 1 ? 'selected' : '' }}>{{ $y
-                                            }}
-                                            </option>
-                                            @endfor
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-3">
-                                    <div class="text-end">
-                                        @if(auth()->user()->hasPermission('settings.edit'))
-                                        <button type="submit"
-                                            class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                             Add FY <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                                        </button>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        </form> 
-                    </div>
-                </div>
-                <div class="col-12 col-md-4">
-                    <div class="bg-light p-2 rounded-3 h-100">
-                        <div class="mb-2">
-                            <h6 class="fw-semibold text-primary small lh-sm mb-0">FY List</h6>
-                        </div>
-                        <div class="card border-0 overflow-hidden">
-                            <div class="table-responsive">
-                                <table class="table table-striped mainTable border align-middle mb-0">
-                                    <thead class="table-light">
-                                            <tr>
-                                                <th>Financial Year</th>
-                                                <th>Status</th>
-                                                <th class="text-end pe-3">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @forelse ($financialYears as $index => $fy)
-                                            <tr>
-                                                <td><span class="fw-semibold text-dark">{{ $fy->financial_year
-                                                        }}</span></td>
-                                                <td>
-                                                    @if ($fy->default)
-                                                    <span
-                                                        class="badge bg-white text-success border rounded-pill border-success-subtle px-2 py-1">Default</span>
-                                                    @else
-                                                    <span class="text-muted small">—</span>
-                                                    @endif
-                                                </td>
-                                                <td class="text-end pe-3">
-                                                    @if (!$fy->default)
-                                                    <div class="tableActionButton d-inline-flex gap-1">
-                                                        <form method="POST"
-                                                            action="{{ route('financial-year.default', $fy->fy_id) }}"
-                                                            class="d-inline">
-                                                            @csrf
-                                                            @method('PUT')
-                                                            @if(auth()->user()->hasPermission('settings.edit'))
-                                                            <button type="submit" class="bg03 color03" title="Set Default">
-                                                                Set Default
-                                                            </button>
-                                                            @endif
-                                                        </form>
-                                                    </div>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                            @empty
-                                            <tr>
-                                                <td colspan="3" class="text-center py-4 text-muted">No financial
-                                                    years yet.</td>
-                                            </tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div> 
-            </div>
+        @include('settings.tabs.financial-year')
 
         <!-- Serial Number Configuration -->
         <div id="serial-number-configuration" class="tab-pane fade {{ $activeSettingsTab === 'serial-number-configuration' ? 'show active' : '' }}" role="tabpanel">
@@ -708,992 +141,20 @@ $activeSettingsTab = 'billing-details';
             </div>
         </div>
 
-        <!-- CONFIG -->
-        <div id="config" class="tab-pane fade {{ $activeSettingsTab === 'config' ? 'show active' : '' }}"
-            role="tabpanel">
-            <div class="row g-2 align-items-stretch">
-                <div class="col-12 col-md-12"> 
-                    <div class="meta-info ps-2">
-                        <strong class="fw-bold fs-5 lh-sm">Configuration Keys</strong>
-                    </div>
-                </div> 
-                <div class="col-12 col-md-4"> 
-                    <div class="bg-light p-2 rounded-3 h-100">
-                        <div class="mb-2">
-                            <h6 class="fw-semibold text-primary small lh-sm mb-0">{{ $editingSetting ? 'Edit Configuration Key' : 'Add Configuration Key' }}</h6>
-                        </div>
-                          <form method="POST"
-                        action="{{ $editingSetting ? route('settings.update', $editingSetting->settingid) : route('settings.store') }}"
-                        class="mainForm">
-                        @csrf
-                        @if ($editingSetting)
-                        @method('PUT')
-                        @endif
+        @include('settings.tabs.config')
 
-                        <div class="row g-3 align-items-end">
-                            <div class="col-12 col-md-5">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Key Name <span
-                                        class="text-danger">*</span></label>
-                                <select id="config-key-select" name="key" required class="form-select">
-                                    <option value="">-- Select Key --</option>
-                                    @php
-                                    $currentKey = old('key', $editingSetting->setting_key ?? '');
-                                    @endphp
-                                    @foreach ($suggestedKeys as $group => $keys)
-                                    <optgroup label="{{ $group }}">
-                                        @foreach ($keys as $key => $label)
-                                        <option value="{{ $key }}" {{ $currentKey==$key ? 'selected' : '' }}>{{ $key }}
-                                            ({{ $label }})</option>
-                                        @endforeach
-                                    </optgroup>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Value <span
-                                        class="text-danger">*</span></label>
-                                <input type="text" name="value"
-                                    value="{{ old('value', $editingSetting->setting_value ?? '') }}"
-                                    placeholder="Enter value" required class="form-control">
-                            </div>
-                            <div class="col-12 col-md-3 text-end">
-                                @if(auth()->user()->hasPermission('settings.edit'))
-                                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                    {{ $editingSetting ? 'Update Key' : 'Add Key' }} <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                                </button>
-                                @endif
-                               
-                                @if ($editingSetting)
-                                 <a href="{{ route('settings.index') }}#config"
-                                    class="btn btn-outline-secondary">Cancel <i class="fas fa-arrow-right btn-icon ms-1"></i></a>
-                                @endif
-                            </div> 
-                        </div>
-                    </form>
-                    </div>                                               
-                </div> 
-                <div class="col-12 col-md-4">
-                    <div class="bg-light p-2 rounded-3 h-100">
-                        <div class="mb-2">
-                            <h6 class="fw-semibold text-primary small lh-sm mb-0">Configuration Key </h6>
-                        </div>
-                        <div class="card border-0 shadow-sm overflow-hidden">
-                            <div class="table-responsive">
-                                <table class="table table-striped mainTable border align-middle mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Key</th>
-                                            <th>Value</th>
-                                            <th class="text-end pe-3">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse ($settings as $index => $setting)
-                                        <tr>
-                                            <td><code class="text-danger fw-semibold">{{ $setting['key'] }}</code></td>
-                                            <td><span class="text-dark">{{ $setting['value'] }}</span></td>
-                                            <td class="text-end pe-3">
-                                                <div class="tableActionButton d-inline-flex gap-1">
-                                                    <a href="{{ route('settings.index', ['e' => base64_encode($setting['record_id'])]) }}#config"
-                                                        class="bg03 color03" title="Edit">
-                                                        Edit
-                                                    </a>
-                                                    <form method="POST"
-                                                        action="{{ route('settings.destroy', $setting['record_id']) }}"
-                                                        class="d-inline" onsubmit="return confirm('Delete this setting?')">
-                                                        @csrf @method('DELETE')
-                                                        @if(auth()->user()->hasPermission('settings.edit'))
-                                                        <button type="submit" class="bg04 color04" title="Delete">
-                                                            Delete
-                                                        </button>
-                                                        @endif
-                                                    </form>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        @empty
-                                        <tr>
-                                            <td colspan="3" class="text-center py-4 text-muted">No settings found</td>
-                                        </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>  
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div> <!-- MESSAGE TEMPLATES -->
- 
-        <div id="message-templates"
-            class="tab-pane fade {{ $activeSettingsTab === 'message-templates' ? 'show active' : '' }}" role="tabpanel">
-            <div class="row g-2 align-items-stretch">
-                <div class="col-12 col-md-12"> 
-                    <div class="meta-info ps-2">
-                        <strong class="fw-bold fs-5 lh-sm">Automation Templates</strong>
-                    </div>
-                </div>
-                <div class="col-12 col-md-12"> 
-                    <div class="bg-light p-2 rounded-3 h-100">
-                        @php
-                        $typeIcons = [
-                            'pi' => 'far fa-file-lines',
-                            'ti' => 'fas fa-file-invoice-dollar',
-                            'quotation' => 'fas fa-file-signature',
-                            'reminder' => 'far fa-clock',
-                            'expiry' => 'far fa-calendar-times',
-                            'payment_received' => 'far fa-check-circle',
-                        ];
-                        @endphp
-                        <ul class="nav nav-underline mb-3 settings-tab-group border-bottom" role="tablist">
-                            @foreach ($messageTemplateTypes as $typeKey => $typeLabel)
-                            <li class="nav-item">
-                                <button type="button"
-                                    class="nav-link btn btn-md px-3 settings-tab-btn mt-type-tab-btn {{ $loop->first ? 'is-active active rounded-0 text-primary bg-primary-subtle border-primary fw-bold' : 'rounded-0 text-primary bg-transparent border-transparent' }} d-inline-flex align-items-center gap-2"
-                                    data-type="{{ $typeKey }}">
-                                    <i class="{{ $typeIcons[$typeKey] ?? 'far fa-file' }}"></i>
-                                    {{ $typeLabel }}
-                                </button>
-                            </li>
-                            @endforeach
-                            <li class="nav-item">
-                                <button type="button"
-                                    class="nav-link btn btn-md px-3 settings-tab-btn mt-type-tab-btn rounded-0 text-primary bg-transparent border-transparent d-inline-flex align-items-center gap-2"
-                                    data-type="consolidated">
-                                    <i class="fas fa-layer-group"></i>
-                                    Consolidated
-                                </button>
-                            </li>
-                        </ul>
-                        <div class="position-relative">
-                            @php
-                            // Flatten all templates into a single collection for the right-side list
-                            $defaultTypeKey = array_key_first($messageTemplateTypes);
-                            $templateContextMap = [];
-                            $allTemplates = collect();
-                            foreach ($messageTemplatesByType as $t) {
-                            $allTemplates = $allTemplates->concat($t);
-                            }
-                            foreach ($allTemplates as $tpl) {
-                            $ctxKey = ($tpl->template_type ?? '') . '|' . ($tpl->channel ?? '');
-                            if ($ctxKey !== '|') {
-                            $templateContextMap[$ctxKey] = [
-                            'templateid' => (string) ($tpl->templateid ?? ''),
-                            'template_type' => (string) ($tpl->template_type ?? ''),
-                            'channel' => (string) ($tpl->channel ?? ''),
-                            'name' => (string) ($tpl->name ?? ''),
-                            'subject' => (string) ($tpl->subject ?? ''),
-                            'body' => (string) ($tpl->body ?? ''),
-                            'template_id' => (string) ($tpl->template_id ?? ''),
-                            'sender_id' => (string) ($tpl->sender_id ?? ''),
-                            ];
-                            }
-                            }
-                            @endphp
+        @include('settings.tabs.message-templates')
 
-                            <div class="row align-items-stretch g-2" id="template-editors-container">
-                                <!-- Email Column -->
-                                <div class="col-12 col-lg-4" id="email-form-col">
-                                    <div id="email-form-container" class="h-100">
-                                        <form method="POST" action="{{ route('message-templates.store') }}"
-                                        class="mainForm message-template-form d-flex flex-column h-100" data-channel="email"
-                                        data-store-action="{{ route('message-templates.store') }}"
-                                        data-update-base="{{ url('settings/message-templates') }}" autocomplete="off">
-                                        @csrf
-                                        <input type="hidden" name="template_type" value="{{ $defaultTypeKey }}">
-                                        <input type="hidden" name="templateid" class="template-id-input" value="">
-                                        <input type="hidden" name="channel" class="template-channel-input" value="email">
+        @include('settings.tabs.terms-conditions')
 
-                                        <div class="bg-white p-2 rounded-3 h-100">
-                                            <div class="mb-3 border-bottom rounded-3 bg-light p-2 d-flex justify-content-between align-items-center">
-                                                <h5 class="fw-semibold text-primary small lh-sm mb-0"><i
-                                                        class="fas fa-envelope fs-6 lh-sm me-1"></i> Email Template <span class="text-dark fw-normal">(One template per type)</span></h5>
-                                                @if(auth()->user()->hasPermission('settings.edit'))
-                                                <button type="submit"
-                                                    class="btn btn-primary text-white fw-medium template-submit-btn h-auto">
-                                                    Save Email Template <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                                                </button>
-                                                @endif
-                                            </div> 
-                                            <div class="d-flex flex-column grow">
-                                                <div class="row g-2 mb-2">
-                                                    <div class="col-6 form-group">
-                                                        <label
-                                                            class="form-label small lh-sm fw-semibold text-dark mb-1">Template
-                                                            Name<span class="template-name-required-mark text-danger">*</span></label>
-                                                        <input type="text" name="name" class="form-control template-name-input"
-                                                            placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} Email Template"
-                                                            required>
-                                                    </div>
+        @include('settings.tabs.taxes')
 
-                                                    <div class="col-6 form-group template-subject-group">
-                                                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">Subject
-                                                            (optional)</label>
-                                                        <input type="text" name="subject"
-                                                            class="form-control template-subject-input"
-                                                            placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} update for @{{ client_name }}"
-                                                            autocomplete="off">
-                                                    </div>
-                                                </div>
-
-                                                <div class="form-group mb-2 grow d-flex flex-column">
-                                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Message
-                                                        Body<span class="template-body-required-mark text-danger">*</span></label>
-                                                    <textarea name="body" id="templateBodyInput-email" rows="5"
-                                                        class="form-control template-body-input grow"
-                                                        autocomplete="off"
-                                                        placeholder="Hi @{{ client_name }},\nPlease find the details below."></textarea>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </form>
-                                    </div>
-                                </div>
-
-                                <!-- WhatsApp Column -->
-                                <div class="col-12 col-lg-4" id="whatsapp-form-col">
-                                    <form method="POST" action="{{ route('message-templates.store') }}"
-                                        class="mainForm message-template-form d-flex flex-column h-100" data-channel="whatsapp"
-                                        data-store-action="{{ route('message-templates.store') }}"
-                                        data-update-base="{{ url('settings/message-templates') }}" autocomplete="off">
-                                        @csrf
-                                        <input type="hidden" name="template_type" value="{{ $defaultTypeKey }}">
-                                        <input type="hidden" name="templateid" class="template-id-input" value="">
-                                        <input type="hidden" name="channel" class="template-channel-input" value="whatsapp">
-
-                                        <div class="bg-white p-2 rounded-3 h-100">
-                                            <div class="mb-3 border-bottom rounded-3 bg-light p-2 d-flex justify-content-between align-items-center">
-                                                <h5 class="fw-semibold text-success small lh-sm mb-0"><i
-                                                        class="fab fa-whatsapp fs-6 lh-sm me-1"></i> WhatsApp Template <span class="text-dark fw-normal">(One template per type)</span></h5>
-                                                @if(auth()->user()->hasPermission('settings.edit'))
-                                                <button type="submit"
-                                                    class="btn btn-primary text-white fw-medium template-submit-btn h-auto">
-                                                    Save WhatsApp Template <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                                                </button>
-                                                @endif
-                                            </div>
-                                            <div class="d-flex flex-column grow">
-                                                <div class="row g-2 mb-2">
-                                                    <div class="col-6 form-group">
-                                                        <label
-                                                            class="form-label small lh-sm fw-semibold text-dark mb-1">Template
-                                                            Name (optional)</label>
-                                                        <input type="text" name="name" class="form-control template-name-input"
-                                                            placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} WhatsApp Template">
-                                                    </div>
-
-                                                    <div class="col-6 form-group template-wa-template-id-group">
-                                                        <label
-                                                            class="form-label small lh-sm fw-semibold text-dark mb-1">WhatsApp
-                                                            Template ID <span class="text-danger">*</span></label>
-                                                        <input type="text" name="template_id"
-                                                            class="form-control template-wa-template-id-input template-external-id-input"
-                                                            placeholder="wa_template_42" autocomplete="off" required>
-                                                    </div>
-                                                </div>
-
-                                                <div class="form-group mb-2 grow d-flex flex-column">
-                                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1 d-flex justify-content-between align-items-center w-100">
-                                                        <span>Message Body</span>
-                                                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 m-0" onclick="refreshTemplateFromCampio('whatsapp')">
-                                                            <i class="fas fa-sync-alt"></i> Refresh template
-                                                        </button>
-                                                    </label>
-                                                    <textarea name="body" id="templateBodyInput-whatsapp" rows="5"
-                                                        class="form-control template-body-input grow"
-                                                        autocomplete="off"
-                                                        placeholder="Hi @{{ client_name }},\nPlease find the details below."></textarea>
-                                                    <small class="small lh-sm text-muted mt-1 mb-0">
-                                                        Message text is fixed by the provider template. Only keep/update dynamic
-                                                        variables here.
-                                                    </small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </form>
-                                </div>
-
-                                <!-- SMS Column -->
-                                <div class="col-12 col-lg-4" id="sms-form-col">
-                                    <form method="POST" action="{{ route('message-templates.store') }}"
-                                        class="mainForm message-template-form d-flex flex-column h-100" data-channel="sms"
-                                        data-store-action="{{ route('message-templates.store') }}"
-                                        data-update-base="{{ url('settings/message-templates') }}" autocomplete="off">
-                                        @csrf
-                                        <input type="hidden" name="template_type" value="{{ $defaultTypeKey }}">
-                                        <input type="hidden" name="templateid" class="template-id-input" value="">
-                                        <input type="hidden" name="channel" class="template-channel-input" value="sms">
-
-                                        <div class="bg-white p-2 rounded-3 h-100">
-                                            <div class="mb-3 border-bottom rounded-3 bg-light p-2 d-flex justify-content-between align-items-center">
-                                                <h5 class="fw-semibold small lh-sm mb-0" style="    color: #1179c5;"><i
-                                                        class="fas fa-sms fs-6 lh-sm me-1"></i> SMS Template <span class="text-dark fw-normal">(One template per type)</span></h5>
-                                                @if(auth()->user()->hasPermission('settings.edit'))
-                                                <button type="submit"
-                                                    class="btn btn-primary text-white fw-medium template-submit-btn h-auto">
-                                                    Save SMS Template <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                                                </button>
-                                                @endif
-                                            </div>
-                                            <div class="d-flex flex-column grow">
-                                                <div class="form-group mb-2">
-                                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Template
-                                                        Name (optional)</label>
-                                                    <input type="text" name="name" class="form-control template-name-input"
-                                                        placeholder="{{ $messageTemplateTypes[$defaultTypeKey] ?? '' }} SMS Template">
-                                                </div>
-
-                                                <div class="row g-2 mb-2">
-                                                    <div class="col-6 form-group">
-                                                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">SMS
-                                                            Template ID <span class="text-danger">*</span></label>
-                                                        <input type="text" name="template_id"
-                                                            class="form-control template-external-id-input"
-                                                            placeholder="sms_template_15" autocomplete="off" required>
-                                                    </div>
-
-                                                    <div class="col-6 form-group">
-                                                        <label class="form-label small lh-sm fw-semibold text-dark mb-1">SMS
-                                                            Sender ID (optional)</label>
-                                                        <input type="text" name="sender_id"
-                                                            class="form-control template-sender-id-input" placeholder=""
-                                                            autocomplete="off">
-                                                    </div>
-                                                </div>
-
-                                                <div class="form-group mb-2 grow d-flex flex-column">
-                                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1 d-flex justify-content-between align-items-center w-100">
-                                                        <span>Message Body</span>
-                                                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 m-0" onclick="refreshTemplateFromCampio('sms')">
-                                                            <i class="fas fa-sync-alt"></i> Refresh template
-                                                        </button>
-                                                    </label>
-                                                    <textarea name="body" id="templateBodyInput-sms" rows="5"
-                                                        class="form-control template-body-input grow"
-                                                        autocomplete="off"
-                                                        placeholder="Hi @{{ client_name }},\nPlease find the details below."></textarea>
-                                                    <small class="small lh-sm text-muted mt-1 mb-0">
-                                                        Message text is fixed by the provider template. Only keep/update dynamic
-                                                        variables here.
-                                                    </small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </form>
-                                </div>
-                                <div class="col-12 col-md-12">
-                                     <!-- Template Variables Helper Box at the bottom of the row -->
-                                        <div class="meta-info ps-2">
-                                            <strong class="fw-bold fs-5 lh-sm">Available Template Variables</strong>
-                                        </div>
-                                    <div class="bg-white p-2 rounded-3 mt-2">
-                                        <div class="d-flex flex-wrap gap-2 template-variable-badges"></div>
-                                        <small class="d-block small lh-sm text-muted mt-2 template-variable-help">
-                                            Showing common tags and tags relevant to the selected template type.
-                                        </small> 
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="row align-items-stretch g-3 d-none" id="consolidated-view-container">
-                                <!-- Order Summary Column -->
-                                <div class="col-12 col-xl-6">
-                                    <div class="bg-white p-2 rounded-3 border d-flex flex-column h-100">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <strong class="fw-semibold text-primary small lh-sm">
-                                                <i class="fas fa-eye fs-6 lh-sm me-1"></i> Consolidated Order Summary
-                                            </strong>
-                                            <form method="POST" action="{{ route('settings.consolidated-days.update') }}" class="m-0 d-flex gap-2 align-items-center">
-                                                @csrf
-                                                <label class="form-label small lh-sm fw-semibold text-dark mb-0 text-nowrap">Trigger Days:</label>
-                                                <input type="number" name="days" value="{{ $consolidatedReminderDays ?? 10 }}" class="form-control form-control-sm" style="width: 70px" min="1" max="90" required>
-                                                <button type="submit" class="btn btn-sm btn-primary fw-medium px-2 py-1" title="Save trigger days configuration">Save</button>
-                                            </form>
-                                        </div>
-                                        <div class="flex-grow-1" style="min-height: 500px;">
-                                            @include('settings.partials.consolidated-preview')
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Payment Due Column -->
-                                <div class="col-12 col-xl-6">
-                                    <div class="bg-white p-2 rounded-3 border d-flex flex-column h-100">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <strong class="fw-semibold text-primary small lh-sm">
-                                                <i class="fas fa-eye fs-6 lh-sm me-1"></i> Consolidated Payments Due
-                                            </strong>
-                                            <form method="POST" action="{{ route('settings.consolidated-payment-days.update') }}" class="m-0 d-flex gap-2 align-items-center">
-                                                @csrf
-                                                <label class="form-label small lh-sm fw-semibold text-dark mb-0 text-nowrap">Trigger Days:</label>
-                                                <input type="number" name="days" value="{{ $consolidatedPaymentReminderDays ?? 5 }}" class="form-control form-control-sm" style="width: 70px" min="1" max="90" required>
-                                                <button type="submit" class="btn btn-sm btn-primary fw-medium px-2 py-1" title="Save trigger days configuration">Save</button>
-                                            </form>
-                                        </div>
-                                        <div class="flex-grow-1" style="min-height: 500px;">
-                                            @include('settings.partials.consolidated-payment-preview')
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>   
-                        </div>
-                    </div>                                           
-                </div> 
-            </div>
-        </div>
-
-        <!-- TERMS & CONDITIONS TAB -->
-        <div id="terms-conditions"
-            class="tab-pane fade {{ $activeSettingsTab === 'terms-conditions' ? 'show active' : '' }}" role="tabpanel">
-
-
-             <div class="row g-2 align-items-stretch">
-                <div class="col-12 col-md-12"> 
-                    <div class="meta-info ps-2">
-                        <strong class="fw-bold fs-5 lh-sm">Terms & Conditions</strong>
-                    </div>
-                </div>
-                <div class="col-12 col-md-4">
-                    <div class="bg-light p-2 rounded-3 h-100">
-                        <div class="mb-2">
-                            <h6 class="fw-semibold text-primary small lh-sm mb-0">Add Terms & Conditions</h6>
-                        </div>
-                          <form method="POST" action="{{ route('terms-conditions.store') }}" class="mainForm">
-                            @csrf
-                            @if ($editingTerm)
-                            <input type="hidden" name="tc_id" value="{{ $editingTerm->tc_id }}">
-                            @endif
-
-                            <div class="row g-2">
-                                {{-- Left: Type + checkbox + submit --}}
-                                <div class="col-12 col-lg-12 d-flex flex-column gap-2">
-                                    <div>
-                                        <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                                            for="settings_term_type">Type<span class="text-danger">*</span></label>
-                                        <select id="settings_term_type" name="type" required class="form-select">
-                                            <option value="billing" {{ old('type', $editingTerm->type ?? '') == 'billing' ?
-                                                'selected' : '' }}>Billing</option>
-                                            <option value="quotation" {{ old('type', $editingTerm->type ?? '') ==
-                                                'quotation' ? 'selected' : '' }}>Quotation</option>
-                                            <option value="proforma" {{ old('type', $editingTerm->type ?? '') == 'proforma'
-                                                ? 'selected' : '' }}>Proforma</option>
-                                        </select>
-                                    </div>
-                                    
-                                </div>
-
-                                {{-- Right: Textarea --}}
-                                <div class="col-12 col-lg-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                                        for="settings_tc_content">Terms and Condition<span
-                                            class="text-danger">*</span></label>
-                                    <textarea id="settings_tc_content" name="content" rows="6"
-                                        placeholder="Enter terms and condition"
-                                        class="form-control w-100">{{ old('content', $editingTerm->content ?? '') }}</textarea>
-                                </div>
-                                <div class="col-12 col-md-12">
-                                    <div class="mb-0 bg-white border rounded-1 px-2 py-1 ms-1">
-                                        <div class="form-check mb-0 form-check-large">
-                                            <input type="hidden" name="is_default" value="0">
-                                            <input type="checkbox" name="is_default" value="1" class="form-check-input"
-                                                id="settings_tc_default" {{ old('is_default', (int)
-                                                ($editingTerm->is_default ?? 0)) ? 'checked' : '' }}>
-                                            <label class="form-check-label small lh-sm fw-normal text-dark"
-                                                for="settings_tc_default">
-                                                Set as default
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-12">
-                                    <div class="d-flex justify-content-between align-items-center gap-2 mt-2">
-                                        <div> 
-                                        @if ($editingTerm)
-                                        <a href="{{ route('settings.index', ['t' => request('t', $editingTerm->type ?? 'billing')]) }}#terms-conditions"
-                                            class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm">
-                                            <i class="fas fa-sync-alt btn-icon me-1"></i> Clear
-                                        </a>
-                                        @endif
-                                        </div>  
-                                        <div>
-                                        @if(auth()->user()->hasPermission('settings.edit'))
-                                        <button type="submit"
-                                            class="btn btn-outline-primary btn-primary text-white fw-medium btn-sm">
-                                            {{ $editingTerm ? 'Update Terms & Conditions' : 'Add Terms & Conditions' }} <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                                        </button>
-                                        @endif
-                                        </div>
-                                    </div>                           
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <div class="col-12 col-md-8">
-                    <div class="bg-light p-2 rounded-3 h-100">
-                        <div class="mb-2"> 
-                            <h6 class="fw-semibold text-primary small lh-sm mb-0">Terms & Conditions List</h6>
-                        </div>
-                        <ul class="nav nav-underline d-inline-flex mb-3 settings-tab-group border-bottom rounded-3 gap-0" id="tcTypeTabs" role="tablist">
-                            <li class="nav-item">
-                                <button type="button" class="nav-link btn btn-md px-3 rounded-0 tc-type-tab rounded-0 text-primary bg-primary-subtle border-primary fw-bold active" data-bs-toggle="tab"
-                                    data-bs-target="#billing-tc" role="tab" aria-controls="billing-tc" aria-selected="true">
-                                    <i class="far fa-credit-card me-1"></i> Billing
-                                </button>
-                            </li>
-                            <li class="nav-item">
-                                <button type="button" class="nav-link btn btn-md px-3 rounded-0 tc-type-tab rounded-0 text-primary bg-transparent border-transparent" data-bs-toggle="tab"
-                                    data-bs-target="#quotation-tc" role="tab" aria-controls="quotation-tc"
-                                    aria-selected="false">
-                                    <i class="far fa-file-alt me-1"></i> Quotation
-                                </button>
-                            </li>
-                            <li class="nav-item">
-                                <button type="button" class="nav-link btn btn-md px-3 rounded-0 tc-type-tab rounded-0 text-primary bg-transparent border-transparent" data-bs-toggle="tab"
-                                    data-bs-target="#proforma-tc" role="tab" aria-controls="proforma-tc" aria-selected="false">
-                                    <i class="far fa-file me-1"></i> Proforma
-                                </button>
-                            </li>
-                        </ul>
-
-                <div class="tab-content tc-grid">
-                    {{-- Billing Terms List --}}
-                    <div class="tab-pane fade show active tc-type-pane" id="billing-tc" data-tc-type="billing"
-                        role="tabpanel">
-                        <div class="mb-2"> 
-                            <h6 class="fw-bold fs-5 lh-sm mb-0">Billing</h6>
-                        </div>
-                        <div class="card border-0 shadow-sm overflow-hidden mb-0"> 
-                            <div class="table-responsive">
-                                <table class="table table-striped mainTable border align-middle mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th width="10%">Seq</th>
-                                            <th>Particular</th>
-                                            <th width="10%" class="text-center"></th>
-                                            <th width="20%" class="text-end">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse($billingTerms as $index => $term)
-                                        <tr>
-                                            <td>
-                                                <form method="POST"
-                                                    action="{{ route('terms-conditions.update-sequence', $term) }}"
-                                                    class="settings-sequence-form">
-                                                    @csrf @method('PATCH')
-                                                    <select name="sequence" onchange="this.form.submit()"
-                                                        class="form-select form-select-sm" style="width: 70px;" {{ !auth()->user()->hasPermission('settings.edit') ? 'disabled' : '' }}>
-                                                        @for ($i = 1; $i <= $billingTerms->count(); $i++)
-                                                            <option value="{{ $i }}" {{ $index + 1 == $i ? 'selected' : '' }}>
-                                                                {{ $i }}</option>
-                                                            @endfor
-                                                    </select>
-                                                </form>
-                                            </td>
-                                            <td class="text-wrap align-middle">{!! str_replace('<p>', '<p class="mb-0">', $term->content) !!}
-                                            </td>
-                                            <td class="text-center">
-                                                @if ($term->is_default)
-                                                <span
-                                                    class="badge bg-white text-success border rounded-pill border-success-subtle px-2 py-1">Default</span>
-                                                @else
-                                                <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-end">
-                                                <div class="tableActionButton d-inline-flex gap-1">
-                                                    @if(auth()->user()->hasPermission('settings.edit'))
-                                                    <button type="button"
-                                                        class="js-term-status-badge {{ $term->is_active ? 'bg02 color02' : 'bg-secondary text-white' }}"
-                                                        data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
-                                                        data-is-active="{{ $term->is_active ? '1' : '0' }}"
-                                                        title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}">
-                                                        {{ $term->is_active ? 'Active' : 'Inactive' }}
-                                                    </button>
-                                                    <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'billing']) }}#terms-conditions"
-                                                        class="bg03 color03" title="Edit">Edit</a>
-                                                    <form method="POST"
-                                                        action="{{ route('terms-conditions.destroy', $term) }}"
-                                                        class="d-inline" onsubmit="return confirm('Delete this term?')">
-                                                        @csrf @method('DELETE')
-                                                        <button type="submit" class="bg04 color04"
-                                                            title="Delete">Delete</button>
-                                                    </form>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        @empty
-                                        <tr>
-                                            <td colspan="4" class="text-center py-4 text-muted">No billing T&C added
-                                                yet.
-                                            </td>
-                                        </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Quotation Terms List --}}
-                    <div class="tab-pane fade tc-type-pane" id="quotation-tc" data-tc-type="quotation" role="tabpanel">
-                        <div class="mb-2">
-                            <h6 class="fw-bold fs-5 lh-sm mb-0">Quotation</h6>
-                        </div>
-                        <div class="card border-0 shadow-sm overflow-hidden mb-0">
-                            <div class="table-responsive">
-                                <table class="table table-striped mainTable border align-middle mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th width="10%">Seq</th>
-                                            <th>Particular</th>
-                                            <th width="10%" class="text-center"></th>
-                                            <th width="20%" class="text-end">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse($quotationTerms as $index => $term)
-                                        <tr>
-                                            <td>
-                                                <form method="POST"
-                                                    action="{{ route('terms-conditions.update-sequence', $term) }}"
-                                                    class="settings-sequence-form">
-                                                    @csrf @method('PATCH')
-                                                    <select name="sequence" onchange="this.form.submit()"
-                                                        class="form-select form-select-sm" style="width: 70px;" {{ !auth()->user()->hasPermission('settings.edit') ? 'disabled' : '' }}>
-                                                        @for ($i = 1; $i <= $quotationTerms->count(); $i++)
-                                                            <option value="{{ $i }}" {{ $index + 1 == $i ? 'selected' : '' }}>
-                                                                {{ $i }}</option>
-                                                            @endfor
-                                                    </select>
-                                                </form>
-                                            </td>
-                                            <td class="text-wrap align-middle">{!! str_replace('<p>', '<p class="mb-0">', $term->content) !!}
-                                            </td>
-                                            <td class="text-center">
-                                                @if ($term->is_default)
-                                                <span
-                                                    class="badge bg-white text-success border rounded-pill border-success-subtle px-2 py-1">Default</span>
-                                                @else
-                                                <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-end">
-                                                <div class="tableActionButton d-inline-flex gap-1">
-                                                    @if(auth()->user()->hasPermission('settings.edit'))
-                                                    <button type="button"
-                                                        class="js-term-status-badge {{ $term->is_active ? 'bg02 color02' : 'bg-secondary text-white' }}"
-                                                        data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
-                                                        data-is-active="{{ $term->is_active ? '1' : '0' }}"
-                                                        title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}">
-                                                        {{ $term->is_active ? 'Active' : 'Inactive' }}
-                                                    </button>
-                                                    <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'quotation']) }}#terms-conditions"
-                                                        class="bg03 color03" title="Edit">Edit</a>
-                                                    <form method="POST"
-                                                        action="{{ route('terms-conditions.destroy', $term) }}"
-                                                        class="d-inline" onsubmit="return confirm('Delete this term?')">
-                                                        @csrf @method('DELETE')
-                                                        <button type="submit" class="bg04 color04"
-                                                            title="Delete">Delete</button>
-                                                    </form>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        @empty
-                                        <tr>
-                                            <td colspan="4" class="text-center py-4 text-muted">No quotation T&C added
-                                                yet.
-                                            </td>
-                                        </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Proforma Terms List --}}
-                    <div class="tab-pane fade tc-type-pane" id="proforma-tc" data-tc-type="proforma" role="tabpanel">
-                        <div class="mb-2">
-                            <h6 class="fw-bold fs-5 lh-sm mb-0">Proforma</h6>
-                        </div>
-                        <div class="card border-0 shadow-sm overflow-hidden mb-0">
-                            <div class="table-responsive">
-                                <table class="table table-striped mainTable border align-middle mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th width="10%">Seq</th>
-                                            <th>Particular</th>
-                                            <th width="10%" class="text-center"></th>
-                                            <th width="20%" class="text-end">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse($proformaTerms as $index => $term)
-                                        <tr>
-                                            <td>
-                                                <form method="POST"
-                                                    action="{{ route('terms-conditions.update-sequence', $term) }}"
-                                                    class="settings-sequence-form">
-                                                    @csrf @method('PATCH')
-                                                    <select name="sequence" onchange="this.form.submit()"
-                                                        class="form-select form-select-sm" style="width: 70px;" {{ !auth()->user()->hasPermission('settings.edit') ? 'disabled' : '' }}>
-                                                        @for ($i = 1; $i <= $proformaTerms->count(); $i++)
-                                                            <option value="{{ $i }}" {{ $index + 1 == $i ? 'selected' : '' }}>
-                                                                {{ $i }}</option>
-                                                            @endfor
-                                                    </select>
-                                                </form>
-                                            </td>
-                                            <td class="text-wrap align-middle">{!! str_replace('<p>', '<p class="mb-0">', $term->content) !!}
-                                            </td>
-                                            <td class="text-center">
-                                                @if ($term->is_default)
-                                                <span
-                                                    class="badge bg-white text-success border rounded-pill border-success-subtle px-2 py-1">Default</span>
-                                                @else
-                                                <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-end">
-                                                <div class="tableActionButton d-inline-flex gap-1">
-                                                    @if(auth()->user()->hasPermission('settings.edit'))
-                                                    <button type="button"
-                                                        class="js-term-status-badge {{ $term->is_active ? 'bg02 color02' : 'bg-secondary text-white' }}"
-                                                        data-toggle-url="{{ route('terms-conditions.toggle', $term) }}"
-                                                        data-is-active="{{ $term->is_active ? '1' : '0' }}"
-                                                        title="Click to {{ $term->is_active ? 'Deactivate' : 'Activate' }}">
-                                                        {{ $term->is_active ? 'Active' : 'Inactive' }}
-                                                    </button>
-                                                    <a href="{{ route('settings.index', ['e' => base64_encode($term->tc_id), 't' => 'proforma']) }}#terms-conditions"
-                                                        class="bg03 color03" title="Edit">Edit</a>
-                                                    <form method="POST"
-                                                        action="{{ route('terms-conditions.destroy', $term) }}"
-                                                        class="d-inline" onsubmit="return confirm('Delete this term?')">
-                                                        @csrf @method('DELETE')
-                                                        <button type="submit" class="bg04 color04"
-                                                            title="Delete">Delete</button>
-                                                    </form>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        @empty
-                                        <tr>
-                                            <td colspan="4" class="text-center py-4 text-muted">No proforma T&C added
-                                                yet.
-                                            </td>
-                                        </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAXES TAB -->
-        <div id="taxes" class="tab-pane fade {{ $activeSettingsTab === 'taxes' ? 'show active' : '' }}" role="tabpanel">
-            <div class="row g-2 align-items-stretch">
-                <div class="col-12 col-md-12"> 
-                    <div class="meta-info ps-2">
-                        <strong class="fw-bold fs-5 lh-sm">Tax Management</strong>
-                    </div>
-                </div>
-                <div class="col-12 col-md-4">
-                    <div class="bg-light p-2 rounded-3 h-100" id="tax-form-card">
-                        <div class="mb-2">
-                            <h6 id="tax-form-title" class="fw-semibold text-primary small lh-sm mb-0">Add New Tax</h6>
-                        </div>
-                        <form method="POST" id="tax-form" action="{{ route('taxes.store') }}" class="mainForm">
-                            @csrf
-                            <div class="row g-2">
-                                <div class="col-12 col-lg-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Rate (%)<span
-                                            class="text-danger">*</span></label>
-                                    <input type="number" name="rate" id="tax-rate-input" value="{{ old('rate') }}"
-                                        placeholder="e.g., 18" step="0.01" min="0" max="100" required class="form-control">
-                                </div>
-                                <div class="col-12 col-lg-12">
-                                    <label class="form-label small lh-sm fw-semibold text-dark mb-1">Type<span
-                                            class="text-danger">*</span></label>
-                                    <select name="type" id="tax-type-select" required class="form-select">
-                                        @foreach (['GST' => 'GST', 'VAT' => 'VAT'] as $val => $label)
-                                        <option value="{{ $val }}" {{ old('type')==$val ? 'selected' : '' }}>
-                                            {{ $label }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-12">
-                                    <div class="d-flex justify-content-between align-items-center gap-2 mt-2">
-                                        <div>
-                                            <button type="button" id="tax-form-cancel"
-                                                class="btn btn-outline-primary bg-white text-primary fw-medium btn-sm d-none"
-                                                onclick="cancelEditTax()"><i class="fas fa-times btn-icon me-1"></i> Cancel</button>
-                                        </div>
-                                        <div>
-                                            @if(auth()->user()->hasPermission('settings.edit'))
-                                            <button type="submit" id="tax-form-btn"
-                                                class="btn btn-outline-primary btn-primary text-white fw-medium btn-sm">
-                                                Add Tax <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                                            </button>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="col-12 col-md-8">
-                    <div class="bg-light p-2 rounded-3 h-100">
-                        <div class="mb-2"> 
-                            <h6 class="fw-semibold text-primary small lh-sm mb-0">Taxes List</h6>
-                        </div>
-
-                        {{-- Taxes Grouped by Type --}}
-                        @php
-                        $taxTypes = ['GST', 'VAT', 'Sales Tax', 'Service Tax', 'Other'];
-                        $groupedTaxes = $taxes->groupBy('type');
-                        @endphp
-                        <div class="tax-list-grid">
-                            @foreach ($taxTypes as $taxType)
-                            @php
-                            $group = $groupedTaxes->get($taxType, collect());
-                            @endphp
-                            @if ($group->count() > 0)
-                            <div class="field-gap mb-4">
-                                <div class="mb-2">
-                                    <h6 class="fw-semibold text-dark mb-0">
-                                        <span
-                                            class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">{{
-                                            $taxType }}</span>
-                                        — <span class="text-muted small">{{ $group->count() }}
-                                            tax{{ $group->count() > 1 ? 'es' : '' }}</span>
-                                    </h6>
-                                </div>
-                                <div class="card border-0 shadow-sm overflow-hidden mb-3">
-                                    <div class="table-responsive">
-                                        <table class="table mainTable border align-middle mb-0">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th style="width: 80px;">#</th>
-                                                    <th>Rate</th>
-                                                    <th style="width: 150px;">Status</th>
-                                                    <th style="width: 150px;" class="text-end pe-3">Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach ($group as $index => $tax)
-                                                <tr>
-                                                    <td>{{ $index + 1 }}</td>
-                                                    <td>{{ $tax->rate }}%</td>
-                                                    <td>
-                                                        <div class="tableActionButton d-inline-flex">
-                                                            <button type="button"
-                                                                class="js-term-status-badge {{ $tax->is_active ? 'bg02 color02' : 'bg-secondary text-white' }}"
-                                                                data-toggle-url="{{ route('taxes.toggle', $tax) }}"
-                                                                data-is-active="{{ $tax->is_active ? '1' : '0' }}"
-                                                                title="Click to {{ $tax->is_active ? 'Deactivate' : 'Activate' }}">
-                                                                {{ $tax->is_active ? 'Active' : 'Inactive' }}
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                    <td class="text-end pe-3">
-                                                        <div class="tableActionButton d-inline-flex gap-1">
-                                                            @if(auth()->user()->hasPermission('settings.edit'))
-                                                            <a href="javascript:void(0)" class="bg03 color03"
-                                                                data-id="{{ $tax->taxid }}" data-rate="{{ $tax->rate }}"
-                                                                data-type="{{ $tax->type }}" data-name="{{ $tax->tax_name }}"
-                                                                onclick="startEditTax(this)">Edit</a>
-                                                            @endif
-                                                            <form method="POST" action="{{ route('taxes.destroy', $tax) }}"
-                                                                class="d-inline" onsubmit="return confirm('Delete this tax?')">
-                                                                @csrf @method('DELETE')
-                                                                @if(auth()->user()->hasPermission('settings.edit'))
-                                                                <button type="submit" class="bg04 color04">Delete</button>
-                                                                @endif
-                                                            </form>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                            @endif
-                            @endforeach
-                        </div>
-                        @if ($taxes->isEmpty())
-                        <p class="text-center py-5 text-muted">No taxes configured yet.</p>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Fixed Tax Rate Modal --}}
-        <div class="modal fade" id="fixedTaxRateModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg">
-                    <div class="modal-header bg-white border-bottom">
-                        <h5 class="modal-title fw-semibold" id="fixedTaxRateModalLabel">Add Tax</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <form method="POST" action="{{ route('account.fixed-tax.update') }}" id="fixed-tax-form"
-                        class="mainForm">
-                        @csrf
-                        <div class="modal-body bg-light p-4">
-                            <div class="mb-3">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                                    for="fixed_tax_rate">Rate (%)<span class="text-danger">*</span></label>
-                                <input type="number" id="fixed_tax_rate" name="fixed_tax_rate" placeholder="18"
-                                    step="0.01" min="0" max="100"
-                                    value="{{ old('fixed_tax_rate', $account->fixed_tax_rate ?? 0) }}" required
-                                    class="form-control">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label small lh-sm fw-semibold text-dark mb-1"
-                                    for="fixed_tax_type">Type<span class="text-danger">*</span></label>
-                                <select id="fixed_tax_type" name="fixed_tax_type" required class="form-select">
-                                    @foreach (['GST' => 'GST', 'VAT' => 'VAT'] as $v => $l)
-                                    <option value="{{ $v }}" {{ old('fixed_tax_type', $account->fixed_tax_type ?? 'GST')
-                                        ==
-                                        $v ? 'selected' : '' }}>
-                                        {{ $l }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="d-flex align-items-center justify-content-between mt-3">
-                                <button type="button" class="btn btn-outline-primary bg-white text-primary fw-medium"
-                                    data-bs-dismiss="modal">
-                                    <i class="fas fa-times btn-icon me-1"></i> Cancel
-                                </button>
-                                @if(auth()->user()->hasPermission('settings.edit'))
-                                <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium">
-                                    Save <i class="fas fa-arrow-right btn-icon ms-1"></i>
-                                </button>
-                                @endif
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+        @include('settings.tabs.holidays')
 
     </div>
 </div>
+
+
 
 
     <script>
@@ -1769,7 +230,9 @@ $activeSettingsTab = 'billing-details';
                     const targetId = (event.target.getAttribute('data-bs-target') || '').replace('#', '');
                     if (!targetId) return;
 
-                    const isSubTab = event.target.classList.contains('tc-type-tab');
+                    const isTcSubTab = event.target.classList.contains('tc-type-tab');
+                    const isHolidaySubTab = event.target.classList.contains('holiday-type-tab');
+                    const isSubTab = isTcSubTab || isHolidaySubTab;
                     const url = new URL(window.location.href);
 
                     if (!isSubTab) {
@@ -1781,7 +244,7 @@ $activeSettingsTab = 'billing-details';
                             }
                         }
                         url.hash = `#${targetId}`;
-                    } else {
+                    } else if (isTcSubTab) {
                         const type = targetId.replace('-tc', '');
                         url.searchParams.set('t', type);
                     }
@@ -1789,7 +252,7 @@ $activeSettingsTab = 'billing-details';
 
                     // Dynamically toggle active/inactive bootstrap classes
                     if (event.relatedTarget) {
-                        const isRelSub = event.relatedTarget.classList.contains('tc-type-tab');
+                        const isRelSub = event.relatedTarget.classList.contains('tc-type-tab') || event.relatedTarget.classList.contains('holiday-type-tab');
                         event.relatedTarget.classList.remove(isRelSub ? 'rounded-0' : 'rounded-top', 'bg-primary-subtle', 'border-primary', 'fw-bold');
                         event.relatedTarget.classList.add('rounded-0', 'bg-transparent', 'border-transparent');
                     }
@@ -2939,6 +1402,12 @@ $activeSettingsTab = 'billing-details';
                     await toggleTermStatusBadge(this);
                 });
             });
+
+            // Initialize Bootstrap tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            });
         });
     </script>
 
@@ -3002,4 +1471,108 @@ async function refreshTemplateFromCampio(channel) {
     }
 }
 </script>
+<!-- Holiday Modals -->
+<div class="modal fade" id="addHolidayModal" tabindex="-1" aria-labelledby="addHolidayModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-DarkLight py-2 border-0">
+                <h5 class="modal-title fw-semibold" id="addHolidayModalLabel">Add Holiday</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-white p-2">
+                <div class="bg-DarkLight p-2 rounded-3 mb-3">
+                    <form action="{{ route('holidays.store') }}" method="POST" class="mainForm">
+                        @csrf
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Holiday Title <span class="text-danger">*</span></label>
+                                <input type="text" name="title" class="form-control" required placeholder="e.g. Christmas">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Date <span class="text-danger">*</span></label>
+                                <input type="date" name="holiday_date" class="form-control" required>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input border-primary" type="checkbox" name="is_recurring" value="1" id="repeatAnnuallyCheck" style="cursor: pointer;">
+                                    <label class="form-check-label small text-dark fw-medium" for="repeatAnnuallyCheck" style="cursor: pointer;">
+                                        Repeat this holiday every year
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-end mt-2">
+                            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium text-end">
+                                Save Holiday <i class="fas fa-arrow-right btn-icon ms-1"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="bulkWeekendModal" tabindex="-1" aria-labelledby="bulkWeekendModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-DarkLight py-2 border-0">
+                <h5 class="modal-title fw-semibold" id="bulkWeekendModalLabel">Weekend Policy Generator</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-white p-2">
+                <div class="bg-DarkLight p-2 rounded-3 mb-3">
+                    <form action="{{ route('holidays.bulk.store') }}" method="POST" class="mainForm">
+                        @csrf
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1">Year <span class="text-danger">*</span></label>
+                                <input type="number" name="year" class="form-control" value="{{ date('Y') }}" min="2000" max="2100" required>
+                            </div>
+                            
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1 d-block">Sundays</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="sundays" value="1" id="sundayCheck" checked>
+                                    <label class="form-check-label" for="sundayCheck">
+                                        All Sundays Off
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-12">
+                                <label class="form-label small lh-sm fw-semibold text-dark mb-1 d-block">Saturdays</label>
+                                <div class="form-check form-check-inline mb-2">
+                                    <input class="form-check-input" type="checkbox" name="saturdays[]" value="1" id="sat1">
+                                    <label class="form-check-label" for="sat1">1st</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-2">
+                                    <input class="form-check-input" type="checkbox" name="saturdays[]" value="2" id="sat2">
+                                    <label class="form-check-label" for="sat2">2nd</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-2">
+                                    <input class="form-check-input" type="checkbox" name="saturdays[]" value="3" id="sat3">
+                                    <label class="form-check-label" for="sat3">3rd</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-2">
+                                    <input class="form-check-input" type="checkbox" name="saturdays[]" value="4" id="sat4">
+                                    <label class="form-check-label" for="sat4">4th</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-2">
+                                    <input class="form-check-input" type="checkbox" name="saturdays[]" value="5" id="sat5">
+                                    <label class="form-check-label" for="sat5">5th</label>
+                                </div>
+                                <div class="form-text mt-1">Select which Saturdays of the month should be marked as weekends.</div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-end mt-2">
+                            <button type="submit" class="btn btn-outline-primary btn-primary text-white fw-medium text-end">
+                                Generate <i class="fas fa-magic btn-icon ms-1"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection

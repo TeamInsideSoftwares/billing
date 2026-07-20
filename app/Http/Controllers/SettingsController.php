@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\AccountBillingDetail;
 use App\Models\FinancialYear;
+use App\Models\Holiday;
 use App\Models\Invoice;
 use App\Models\MessageTemplate;
 use App\Models\Quotation;
@@ -12,6 +13,7 @@ use App\Models\SerialConfiguration;
 use App\Models\Setting;
 use App\Models\Tax;
 use App\Models\TermsCondition;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class SettingsController extends Controller
@@ -132,6 +135,35 @@ class SettingsController extends Controller
             ->get();
         $messageTemplatesByType = $messageTemplates->groupBy('template_type');
 
+        $holidays = Holiday::where('accountid', $accountid)->orderBy('holiday_date', 'asc')->get();
+        
+        $holidayMap = [];
+        $currentYear = date('Y');
+        foreach ($holidays as $holiday) {
+            $date = $holiday->holiday_date;
+            $dateKey = $date->format('Y-m-d');
+            
+            // Prioritize custom holidays over system weekends
+            if (!isset($holidayMap[$dateKey]) || $holiday->type !== 'weekend' || $holidayMap[$dateKey]['type'] === 'weekend') {
+                $holidayMap[$dateKey] = [
+                    'title' => $holiday->title,
+                    'type' => $holiday->type,
+                    'is_recurring' => $holiday->is_recurring,
+                ];
+            }
+
+            if ($holiday->is_recurring && $date->format('Y') != $currentYear) {
+                $recurringKey = $currentYear . '-' . $date->format('m-d');
+                if (!isset($holidayMap[$recurringKey]) || $holiday->type !== 'weekend' || $holidayMap[$recurringKey]['type'] === 'weekend') {
+                    $holidayMap[$recurringKey] = [
+                        'title' => $holiday->title,
+                        'type' => $holiday->type,
+                        'is_recurring' => true,
+                    ];
+                }
+            }
+        }
+
         $editingTerm = null;
         if ($editId && strlen($editId) === 6 && ! str_starts_with($editId, 'SET') && ! str_starts_with($editId, 'ABD')) {
             $editingTerm = TermsCondition::query()
@@ -186,6 +218,8 @@ class SettingsController extends Controller
             'messageTemplateTypes' => $this->messageTemplateTypes(),
             'consolidatedReminderDays' => Setting::where('accountid', $accountid)->where('setting_key', 'CONSOLIDATED_REMINDER_DAYS')->value('setting_value') ?? 10,
             'consolidatedPaymentReminderDays' => Setting::where('accountid', $accountid)->where('setting_key', 'CONSOLIDATED_PAYMENT_REMINDER_DAYS')->value('setting_value') ?? 5,
+            'holidays' => $holidays,
+            'holidayMap' => $holidayMap,
         ]);
     }
 
@@ -1476,5 +1510,106 @@ class SettingsController extends Controller
         );
 
         return redirect()->to(route('settings.index').'#message-templates')->with('success', 'Consolidated payment reminder days updated successfully.');
+    }
+
+    public function holidayStore(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'holiday_date' => 'required|date',
+            'is_recurring' => 'nullable|boolean',
+        ]);
+
+        $accountid = $this->resolveAccountId();
+
+        Holiday::create([
+            'holidayid' => strtoupper(Str::random(6)),
+            'accountid' => $accountid,
+            'title' => $validated['title'],
+            'holiday_date' => $validated['holiday_date'],
+            'type' => 'custom',
+            'is_recurring' => $request->has('is_recurring'),
+        ]);
+
+        return redirect()->to(route('settings.index').'#holidays')->with('success', 'Holiday added successfully.');
+    }
+
+    public function holidayBulkStore(Request $request)
+    {
+        $validated = $request->validate([
+            'year' => 'required|integer|min:2000|max:2100',
+            'sundays' => 'nullable|boolean',
+            'saturdays' => 'nullable|array',
+        ]);
+
+        $accountid = $this->resolveAccountId();
+        $year = $validated['year'];
+        $insertData = [];
+
+        // Sundays
+        if (! empty($validated['sundays'])) {
+            $date = Carbon::create($year, 1, 1);
+            $date->modify('first sunday of this month');
+            while ($date->year == $year) {
+                $insertData[] = [
+                    'holidayid' => strtoupper(Str::random(6)),
+                    'accountid' => $accountid,
+                    'title' => 'Sunday',
+                    'holiday_date' => $date->format('Y-m-d'),
+                    'type' => 'weekend',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+                $date->addWeek();
+            }
+        }
+
+        // Saturdays
+        if (! empty($validated['saturdays']) && is_array($validated['saturdays'])) {
+            $saturdayRules = $validated['saturdays']; // array like [1, 2, 3, 4, 5]
+
+            for ($month = 1; $month <= 12; $month++) {
+                foreach ($saturdayRules as $weekNum) {
+                    $dateStr = 'first saturday of '.date('F', mktime(0, 0, 0, $month, 10))." $year";
+                    $date = Carbon::parse($dateStr);
+                    // Add weeks depending on the rule (1st is 0 weeks added, 2nd is 1 week added, etc)
+                    $date->addWeeks($weekNum - 1);
+
+                    if ($date->month == $month && $date->year == $year) {
+                        $insertData[] = [
+                            'holidayid' => strtoupper(Str::random(6)),
+                            'accountid' => $accountid,
+                            'title' => 'Saturday',
+                            'holiday_date' => $date->format('Y-m-d'),
+                            'type' => 'weekend',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Insert safely (ignore duplicates if any)
+        foreach ($insertData as $data) {
+            $exists = Holiday::where('accountid', $accountid)
+                ->where('holiday_date', $data['holiday_date'])
+                ->exists();
+            if (! $exists) {
+                Holiday::create($data);
+            }
+        }
+
+        return redirect()->to(route('settings.index').'#holidays')->with('success', 'Weekend policy applied successfully for '.$year);
+    }
+
+    public function holidayDestroy($holidayid)
+    {
+        $accountid = $this->resolveAccountId();
+        Holiday::where('holidayid', $holidayid)
+            ->where('accountid', $accountid)
+            ->delete();
+
+        return redirect()->to(route('settings.index').'#holidays')->with('success', 'Holiday removed.');
     }
 }

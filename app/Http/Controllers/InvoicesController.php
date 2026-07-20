@@ -4087,6 +4087,28 @@ class InvoicesController extends Controller
         ]);
     }
 
+    public function sharePdf(Request $request, string $invoice)
+    {
+        $inv = Invoice::findOrFail($invoice);
+
+        $type = $request->query('type'); // optional: pi | tax_invoice
+
+        if ($type === 'tax_invoice') {
+            $isTaxInvoice = true;
+        } elseif ($type === 'pi') {
+            $isTaxInvoice = false;
+        } else {
+            $isTaxInvoice = ! empty(trim($inv->ti_number ?? ''));
+        }
+
+        $pdfAttachment = $this->buildInvoicePdfAttachment($inv, $isTaxInvoice);
+
+        return response($pdfAttachment['binary'], 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$pdfAttachment['filename'].'"',
+        ]);
+    }
+
     public function pdfVersions(string $invoice)
     {
         $invoice = $this->resolveInvoiceDocument($invoice);

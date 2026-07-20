@@ -33,6 +33,8 @@ Route::get('/login', function () {
 Route::match(['get', 'post'], '/logout', function () {
     return redirect(config('app.team_url').'/logout');
 })->name('logout')->middleware('auth');
+
+Route::get('/invoices/{invoice}/pdf/share', [InvoicesController::class, 'sharePdf'])->name('invoices.pdf.share');
 // AJAX routes without auth
 
 Route::middleware(['auth', EnsureAppAccess::class])->group(function () {
@@ -266,6 +268,9 @@ Route::middleware(['auth', EnsureAppAccess::class])->group(function () {
         Route::post('/settings/consolidated-days', 'updateConsolidatedDays')->name('settings.consolidated-days.update');
         Route::get('/settings/consolidated-payment-preview', 'consolidatedPaymentPreview')->name('settings.consolidated-payment-preview');
         Route::post('/settings/consolidated-payment-days', 'updateConsolidatedPaymentDays')->name('settings.consolidated-payment-days.update');
+        Route::post('/settings/holidays', 'holidayStore')->name('holidays.store');
+        Route::post('/settings/holidays/bulk', 'holidayBulkStore')->name('holidays.bulk.store');
+        Route::delete('/settings/holidays/{holidayid}', 'holidayDestroy')->name('holidays.destroy');
     });
 
     Route::get('/change-password', [AuthController::class, 'showChangePassword'])->name('password.change');
