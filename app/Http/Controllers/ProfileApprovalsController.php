@@ -8,14 +8,27 @@ use Illuminate\Support\Facades\Auth;
 
 class ProfileApprovalsController extends Controller
 {
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $pendingProfiles = UserProfile::with('user')
-            ->where('accountid', Auth::user()->accountid)
-            ->where('status', 'pending')
-            ->get();
+        $accountid = Auth::user()->accountid;
+        $employees = User::where('accountid', $accountid)->orderBy('name')->get();
 
-        return view('users.approvals', compact('pendingProfiles'));
+        $query = UserProfile::with(['user', 'documents'])
+            ->where('accountid', $accountid);
+
+        if ($request->filled('employee_id')) {
+            $query->where('userid', $request->employee_id);
+        }
+
+        $profiles = $query->orderByDesc('created_at')->get();
+        $pendingProfiles = $profiles->filter(function ($profile) {
+            return strtolower(trim((string) $profile->status)) === 'pending';
+        })->values();
+        $historyProfiles = $profiles->filter(function ($profile) {
+            return strtolower(trim((string) $profile->status)) !== 'pending';
+        })->values();
+
+        return view('users.profile-approvals', compact('pendingProfiles', 'historyProfiles', 'employees', 'profiles'));
     }
 
     public function approve($profileid)

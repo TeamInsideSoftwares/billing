@@ -87,7 +87,7 @@
             @yield('header_actions')
             <form action="{{ route('logout') }}" method="POST" class="m-0">
                 @csrf
-                <button type="submit" class="secondary-button">Sign Out</button>
+                <button type="submit" class="btn btn-secondary">Sign Out</button>
             </form>
         </div>
     </header>

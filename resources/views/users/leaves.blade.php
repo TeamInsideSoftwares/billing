@@ -105,28 +105,21 @@
                             @endphp
                             <tr>
                                 <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <img src="{{ !empty($leave->user?->profile_image) ? asset('storage/' . $leave->user->profile_image) : 'https://ui-avatars.com/api/?name=' . urlencode($leave->user->name ?? 'User') . '&background=eff6ff&color=1e3a8a' }}" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
-                                        <div>
-                                            <span class="fw-medium text-dark d-block">{{ $leave->user->name ?? 'Unknown User' }}</span>
-                                            <span class="text-muted small">{{ $leave->user->email ?? 'N/A' }}</span>
-                                        </div>
-                                    </div>
+                                    <strong>{{ $leave->user?->name ?? 'Unknown User' }}</strong>
+                                    <span class="d-block text-muted small">{{ $leave->user?->email ?? 'N/A' }}</span>
                                 </td>
-                                <td>
-                                    <span class="badge bg-info text-white">{{ $leave->leaveType?->name ?? 'N/A' }}</span>
-                                </td>
-                                <td class="small">{{ $leave->start_date?->format('M d, Y') ?? '-' }}</td>
-                                <td class="small">{{ $leave->end_date?->format('M d, Y') ?? '-' }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ $leave->leaveType?->name ?? 'N/A' }}</span></td>
+                                <td class="small">{{ $leave->start_date?->format('d M, Y') ?? '-' }}</td>
+                                <td class="small">{{ $leave->end_date?->format('d M, Y') ?? '-' }}</td>
                                 <td class="text-center">
-                                    <span class="badge bg-secondary d-block">{{ $totalDays }} day(s)</span>
+                                    <span class="d-block" style="display: inline-flex !important; align-items: center; justify-content: center; padding: 0.32rem 0.75rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; width: 100%;">{{ $totalDays }} day(s)</span>
                                     @if($lwpDays > 0)
                                         <small class="text-danger d-block mt-1" style="font-size: 0.75rem;">({{ $paidDays }} Paid, {{ $lwpDays }} LWP)</small>
                                     @endif
                                 </td>
                                 <td>
-                                    <span class="text-wrap d-inline-block text-muted small" style="max-width: 250px;" title="{{ $leave->reason }}">
-                                        {{ \Illuminate\Support\Str::limit($leave->reason, 60) }}
+                                    <span class="text-wrap d-inline-block" style="max-width: 250px;" title="{{ $leave->reason }}">
+                                        {{ $leave->reason }}
                                     </span>
                                 </td>
                                 <td class="text-end">
@@ -163,7 +156,7 @@
                                                 </div>
                                                 <div class="modal-body p-3">
                                                     <div class="mb-3 pb-3 border-bottom d-flex align-items-center gap-3">
-                                                        <img src="{{ !empty($leave->user?->profile_image) ? asset('storage/' . $leave->user->profile_image) : 'https://ui-avatars.com/api/?name=' . urlencode($leave->user->name ?? 'User') . '&background=eff6ff&color=1e3a8a' }}" class="rounded-circle" style="width: 48px; height: 48px; object-fit: cover;">
+                                                        <img src="{{ !empty($leave->user?->profile_image) ? str_replace(env('APP_URL', url('/')), env('TEAM_URL', url('/')), asset('storage/' . $leave->user->profile_image)) : 'https://ui-avatars.com/api/?name=' . urlencode($leave->user->name ?? 'User') . '&background=eff6ff&color=1e3a8a' }}" class="rounded-circle" style="width: 48px; height: 48px; object-fit: cover;">
                                                         <div>
                                                             <h6 class="mb-0 fw-bold text-dark">{{ $leave->user->name ?? 'Unknown User' }}</h6>
                                                             <small class="text-muted">{{ $leave->user->email ?? 'N/A' }}</small>
@@ -194,6 +187,18 @@
                                                                 <span class="text-danger small ms-1 fw-medium">({{ $paidDays }} Paid, {{ $lwpDays }} LWP)</span>
                                                             @endif
                                                         </div>
+                                                        @php
+                                                            $datesBreakdownCount = count(json_decode($leave->dates_breakdown, true) ?? []);
+                                                            $calendarDays = $leave->start_date && $leave->end_date ? $leave->start_date->diffInDays($leave->end_date) + 1 : 0;
+                                                        @endphp
+                                                        @if($calendarDays > $datesBreakdownCount)
+                                                        <div class="col-12 mt-1">
+                                                            <div class="alert alert-warning py-1 px-2 mb-0 d-inline-flex align-items-center" style="font-size: 0.75rem;">
+                                                                <i class="fas fa-info-circle me-1"></i>
+                                                                Note: Date range spans {{ $calendarDays }} calendar days. Only {{ $datesBreakdownCount }} day(s) were applied for (Company Holidays are excluded).
+                                                            </div>
+                                                        </div>
+                                                        @endif
                                                     </div>
                                                     
                                                     <div class="bg-light p-2 rounded-3">
@@ -249,21 +254,14 @@
                             @endphp
                             <tr>
                                 <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <img src="{{ !empty($leave->user?->profile_image) ? asset('storage/' . $leave->user->profile_image) : 'https://ui-avatars.com/api/?name=' . urlencode($leave->user->name ?? 'User') . '&background=eff6ff&color=1e3a8a' }}" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
-                                        <div>
-                                            <span class="fw-medium text-dark d-block">{{ $leave->user->name ?? 'Unknown User' }}</span>
-                                            <span class="text-muted small">{{ $leave->user->email ?? 'N/A' }}</span>
-                                        </div>
-                                    </div>
+                                    <strong>{{ $leave->user?->name ?? 'Unknown User' }}</strong>
+                                    <span class="d-block text-muted small">{{ $leave->user?->email ?? 'N/A' }}</span>
                                 </td>
-                                <td>
-                                    <span class="badge bg-info text-white">{{ $leave->leaveType?->name ?? 'N/A' }}</span>
-                                </td>
-                                <td class="small">{{ $leave->start_date?->format('M d, Y') ?? '-' }}</td>
-                                <td class="small">{{ $leave->end_date?->format('M d, Y') ?? '-' }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ $leave->leaveType?->name ?? 'N/A' }}</span></td>
+                                <td class="small">{{ $leave->start_date?->format('d M, Y') ?? '-' }}</td>
+                                <td class="small">{{ $leave->end_date?->format('d M, Y') ?? '-' }}</td>
                                 <td class="text-center">
-                                    <span class="badge bg-secondary d-block">{{ $totalDays }} day(s)</span>
+                                    <span class="d-block" style="display: inline-flex !important; align-items: center; justify-content: center; padding: 0.32rem 0.75rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; width: 100%;">{{ $totalDays }} day(s)</span>
                                     @if($lwpDays > 0)
                                         <small class="text-danger d-block mt-1" style="font-size: 0.75rem;">({{ $paidDays }} Paid, {{ $lwpDays }} LWP)</small>
                                     @endif
@@ -299,7 +297,7 @@
                                                 </div>
                                                 <div class="modal-body p-3">
                                                     <div class="mb-3 pb-3 border-bottom d-flex align-items-center gap-3">
-                                                        <img src="{{ !empty($leave->user?->profile_image) ? asset('storage/' . $leave->user->profile_image) : 'https://ui-avatars.com/api/?name=' . urlencode($leave->user->name ?? 'User') . '&background=eff6ff&color=1e3a8a' }}" class="rounded-circle" style="width: 48px; height: 48px; object-fit: cover;">
+                                                        <img src="{{ !empty($leave->user?->profile_image) ? str_replace(env('APP_URL', url('/')), env('TEAM_URL', url('/')), asset('storage/' . $leave->user->profile_image)) : 'https://ui-avatars.com/api/?name=' . urlencode($leave->user->name ?? 'User') . '&background=eff6ff&color=1e3a8a' }}" class="rounded-circle" style="width: 48px; height: 48px; object-fit: cover;">
                                                         <div>
                                                             <h6 class="mb-0 fw-bold text-dark">{{ $leave->user->name ?? 'Unknown User' }}</h6>
                                                             <small class="text-muted">{{ $leave->user->email ?? 'N/A' }}</small>
@@ -334,6 +332,18 @@
                                                                 <span class="text-danger small ms-1 fw-medium">({{ $paidDays }} Paid, {{ $lwpDays }} LWP)</span>
                                                             @endif
                                                         </div>
+                                                        @php
+                                                            $datesBreakdownCount = count(json_decode($leave->dates_breakdown, true) ?? []);
+                                                            $calendarDays = $leave->start_date && $leave->end_date ? \Carbon\Carbon::parse($leave->start_date)->startOfDay()->diffInDays(\Carbon\Carbon::parse($leave->end_date)->startOfDay()) + 1 : 0;
+                                                        @endphp
+                                                        @if($datesBreakdownCount > 0 && $calendarDays > $datesBreakdownCount)
+                                                        <div class="col-12 mt-1">
+                                                            <div class="alert alert-warning py-1 px-2 mb-0 d-inline-flex align-items-center" style="font-size: 0.75rem;">
+                                                                <i class="fas fa-info-circle me-1"></i>
+                                                                Note: This leave spans {{ $calendarDays }} calendar days, but only {{ $datesBreakdownCount }} specific dates were selected (weekends or holidays were skipped).
+                                                            </div>
+                                                        </div>
+                                                        @endif
                                                     </div>
                                                     
                                                     <div class="mb-3 bg-light p-2 rounded-3">

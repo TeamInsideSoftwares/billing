@@ -124,7 +124,7 @@
                                 <div class="tablePrifix position-relative bg-primary-subtle text-primary rounded-circle fw-semibold">
                                     @if(!empty($member->profile_image))
                                         <span class="d-none position-absolute">{{ strtoupper(substr($member->name ?? 'U', 0, 2)) }}</span>
-                                        <img src="{{ asset('storage/' . $member->profile_image) }}" 
+                                        <img src="{{ str_replace(env('APP_URL', url('/')), env('TEAM_URL', url('/')), asset('storage/' . $member->profile_image)) }}" 
                                              onerror="this.style.display='none'; this.previousElementSibling.classList.replace('d-none', 'd-block');"
                                              alt="{{ $member->name }}" 
                                              class="position-absolute rounded-circle bg-white" 
